@@ -1,31 +1,21 @@
 /**
- * Student Edition home: the character sheet. Streak + mat hours on top, then the card
- * (belt → mat hours frame + timer → radar → medals → details), the private body scan,
- * and a menu with every hub section. No profile yet → profile setup first.
- * The classic hub stays at /student/hub.
+ * Student Edition home: the branded hub header (tiled navy, Parent approvals, clock logo,
+ * Advantage title, Student Edition belt bar, photo + description), then the character sheet
+ * (card face with belt → radar → medals rail → mat hours frame + stopwatch + streak), the private
+ * body scan, then the usual hub tiles. No profile yet → profile setup first.
  */
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { HomeMark } from '../../components/HomeMark';
-import { SiteFooter } from '../../components/SiteFooter';
-import { matHoursLongLabel, matHoursTotal } from '../../lib/matHours';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { studentDemoRequested } from '../../lib/studentDemo';
 import { todayIso } from '../../lib/studentEdition';
-import { groupMenuLinks } from '../../lib/studentHubMenu';
-import { tierHomeHref } from '../../lib/submenuNav';
 import { readStreakTarget, streakLabel, streakWeekLine, trainingStreak } from '../../lib/trainingStreak';
-import { lockStudentEditionBrowser } from '../../lib/studentUnlock';
 import { BodyScanSection } from './BodyScan';
 import { useStudentFile, useStudentPath } from './chrome';
 import { useProfileMedia } from './ProfileIdentity';
 import { StudentCardLayout } from './StudentCardLayout';
+import { StudentHub } from './StudentMenus';
 import './profile.css';
 import './studentCardLayout.css';
 
-export const HOME_EXTRA_LINKS = [
-  { label: 'My report card', note: 'Mat hours, streak, and progress', to: '/student/report' },
-  { label: 'Settings', note: 'Profile, training target, and switches', to: '/student/profile' },
-  { label: 'Classic menu', note: 'The grouped hub', to: '/student/hub' },
-] as const;
 
 /** Duolingo-style weekly streak. Always on; the 2 or 3 sessions target stays in Settings. */
 export function StreakBadge({ journal }: { journal: Parameters<typeof trainingStreak>[0] }) {
@@ -49,44 +39,20 @@ export function StreakBadge({ journal }: { journal: Parameters<typeof trainingSt
 export function StudentHome() {
   const { report, commit } = useStudentFile();
   const to = useStudentPath();
-  const navigate = useNavigate();
   const [params] = useSearchParams();
   const media = useProfileMedia();
   if (!report.profile.displayName.trim() && !studentDemoRequested()) {
     return <Navigate to={to('/student/profile?setup=1')} replace />;
   }
-  const links = [...groupMenuLinks(report.profile.belt), ...HOME_EXTRA_LINKS];
-  const seen = new Set<string>();
-  const menu = links.filter((l) => (seen.has(l.to + l.label) ? false : (seen.add(l.to + l.label), true)));
   const zone = params.get('zone') ?? '';
   return (
-    <main className="student student-frame student--arena student--profile student-home" data-testid="student-home">
-      <div className="arena-scroll">
-        <HomeMark to={tierHomeHref(params.toString())} />
-        <header className="student-home__top" data-testid="student-home-top">
-          <StreakBadge journal={report.journal} />
-          <p className="student-home__hours" data-testid="home-mat-hours">{matHoursLongLabel(matHoursTotal(report.journal).minutes)}</p>
-        </header>
-        <StudentCardLayout portrait={media.portrait} logo={media.logo} to={to} />
-        <BodyScanSection key={zone} report={report} commit={commit} to={to} focusZone={zone} forceOpen={params.get('scan') === '1'} />
-        <nav className="student-home__menu" aria-label="Student Edition menu" data-testid="student-home-menu">
-          <h2>Menu</h2>
-          <ul>
-            {menu.map((item) => (
-              <li key={item.label + item.to}>
-                <Link className="student-home__link" to={to(item.to)} data-testid="home-menu-link">
-                  <strong>{item.label}</strong>
-                  {item.note ? <small>{item.note}</small> : null}
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <button type="button" className="ink-btn student-home__lock" onClick={() => { lockStudentEditionBrowser(); navigate('/products'); }}>
-            Lock Student Edition
-          </button>
-        </nav>
-        <SiteFooter />
-      </div>
-    </main>
+    <StudentHub
+      sheet={
+        <section className="student-home" aria-label="My character sheet" data-testid="student-home">
+          <StudentCardLayout home portrait={media.portrait} logo={media.logo} to={to} streak={<StreakBadge journal={report.journal} />} />
+          <BodyScanSection key={zone} report={report} commit={commit} to={to} focusZone={zone} forceOpen={params.get('scan') === '1'} />
+        </section>
+      }
+    />
   );
 }

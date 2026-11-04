@@ -180,12 +180,12 @@ export function MatchLogSheet({ medal, onClose }: { medal: CardMedal; onClose: (
   );
 }
 
-export function CardMedals({ report, to }: { report: StudentProgressReport; to: (path: string) => string }) {
+export function CardMedals({ report, to, rail = false }: { report: StudentProgressReport; to: (path: string) => string; rail?: boolean }) {
   const medals = recentMedals(report.competition);
   const [open, setOpen] = useState<string | null>(null);
   const shown = medals.find((m) => m.resultId === open) ?? null;
   return (
-    <section className="card-medals" aria-label="Medals" data-testid="card-medals">
+    <section className={rail ? 'card-medals card-medals--rail' : 'card-medals'} aria-label="Medals" data-testid="card-medals">
       <h3 className="card-medals__k">Recent medals</h3>
       {medals.length ? (
         <ul className="card-medals__strip">
@@ -229,10 +229,25 @@ export function MatHoursDetails({ report, to }: { report: StudentProgressReport;
   );
 }
 
-/** The whole card column on the profile page. */
-export function StudentCardLayout({ portrait, logo, to }: { portrait: string | null; logo: string | null; to: (path: string) => string }) {
+/** The whole card column on the profile page. `home` = the /student order with `streak` beside mat hours. */
+export function StudentCardLayout({ portrait, logo, to, home = false, streak }: { portrait: string | null; logo: string | null; to: (path: string) => string; home?: boolean; streak?: React.ReactNode }) {
   const { report, commit } = useStudentFile();
   const [adding, setAdding] = useState(false);
+  if (home) {
+    return (
+      <div className="student-card-layout student-card-layout--home" data-testid="student-card-layout">
+        <ProfileCardFace report={report} portrait={portrait} logo={logo} to={to} />
+        <CardRadar to={to} />
+        <CardMedals report={report} to={to} rail />
+        <div className="mh-row mh-row--home" data-testid="mat-hours-row">
+          <MatHoursFrame report={report} />
+          <MatTimerButton onClick={() => setAdding(true)} />
+          {streak}
+        </div>
+        {adding ? <MatQuickAddSheet report={report} commit={commit} onClose={() => setAdding(false)} /> : null}
+      </div>
+    );
+  }
   return (
     <div className="student-card-layout" data-testid="student-card-layout">
       <ProfileCardFace

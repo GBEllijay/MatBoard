@@ -81,9 +81,10 @@ export function trainingStreak(journal: readonly JournalEntry[], today: string, 
 }
 
 /** "3-week streak", with copy that never asks for daily training. */
-export function streakLabel(view: StreakView): string {
-  if (!view.weeks) return 'No streak yet';
-  return `${view.weeks}-week streak`;
+/** "Training streak: 3 weeks" (digits; 0 → "0 weeks", 1 → "1 week"). */
+export function streakLabel(view: Pick<StreakView, 'weeks'>): string {
+  const n = Math.max(0, Math.floor(view.weeks || 0));
+  return `Training streak: ${n} ${n === 1 ? 'week' : 'weeks'}`;
 }
 
 export function streakWeekLine(view: StreakView): string {

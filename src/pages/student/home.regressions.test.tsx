@@ -21,7 +21,6 @@ import {
 import { FORMER_HUB_ITEMS, formerHubItemReachable, studentPageBack } from '../../lib/studentHubMenu.ts';
 import { buildCoachUpdateFile } from '../../lib/coachProgressFile.ts';
 import { createStudentCardShare } from '../../lib/studentCardShare.ts';
-import { HOME_EXTRA_LINKS } from './StudentHome.tsx';
 
 const dom = new Window({ url: 'http://localhost/student/journal?student=1' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -173,15 +172,31 @@ function q(host: ParentNode, sel: string) {
 }
 
 // ── Home = character sheet ────────────────────────────────────────────────
-test('home: /student lands on the character sheet with streak, mat hours, card and menu', () => {
+test('home: /student keeps the live branded header, then card → radar → medals → mat hours + stopwatch + streak, then hub tiles', () => {
   seedNamed([{ date: daysAgo(1) }]);
   const m = mount(<StudentEditionPage />, '/student?student=1');
-  assert.ok(q(m.host, '[data-testid="student-home"]'), 'home renders');
-  const top = q(m.host, '[data-testid="student-home-top"]')!;
-  assert.ok(q(top, '[data-testid="streak-badge"]'), 'streak badge at the top');
-  assert.ok(q(top, '[data-testid="home-mat-hours"]'), 'mat hours next to it');
-  assert.ok(q(m.host, '[data-testid="mat-hours-frame"]'), 'card layout under it');
-  assert.ok(q(m.host, '[data-testid="student-home-menu"]'), 'menu under the card');
+  const text = m.host.textContent ?? '';
+  assert.ok(text.includes('Parent approvals'), 'Parent approvals drop-down');
+  assert.ok(q(m.host, '.home__mark img.home__logo, img.home__logo'), 'round clock logo + Advantage title');
+  assert.ok(text.includes('Advantage'), 'Advantage title');
+  const nav = q(m.host, 'nav.s-hub')!;
+  assert.ok(nav, 'hub nav');
+  assert.ok(nav.querySelector('.belt-header, [class*="belt-header"]'), 'Student Edition belt bar');
+  assert.ok(q(nav, '.s-hub__intro'), 'description line');
+  assert.equal(q(nav, '.s-hub__intro img, .s-hub__avatar'), null, 'no profile photo in the branded top');
+  assert.equal(text.includes('MatBoard'), false, 'no internal name');
+  const order = ['.s-hub__intro', '[data-testid="student-home"]', '[data-testid="profile-card-face"]', '[data-testid="card-radar"]', '[data-testid="card-medals"]', '[data-testid="mat-hours-row"]', '[data-testid="body-scan"]', '.s-journal'];
+  const els = order.map((sel) => { const el = nav.querySelector(sel); assert.ok(el, `present: ${sel}`); return el!; });
+  for (let i = 1; i < els.length; i++) {
+    if (i === 2) continue; // card face sits inside student-home
+    const prev = i === 3 ? els[2] : els[i - 1];
+    assert.ok(prev.compareDocumentPosition(els[i]) & 4, `${order[i]} after ${order[i === 3 ? 2 : i - 1]}`);
+  }
+  assert.ok(q(m.host, '[data-testid="card-medals"].card-medals--rail'), 'medals use the rail');
+  const row = q(m.host, '[data-testid="mat-hours-row"]')!;
+  assert.ok(q(row, '[data-testid="mat-hours-frame"]') && q(row, '[data-testid="mat-timer"]') && q(row, '[data-testid="streak-badge"]'), 'mat hours + stopwatch + streak together');
+  assert.equal(q(m.host, '[data-testid="student-home-top"]'), null, 'no streak bar at the very top');
+  assert.ok(q(m.host, '[data-testid="body-scan"], [data-testid^="body-scan"]'), 'body scan below');
   unmount(m);
 });
 
@@ -197,11 +212,17 @@ test('home: no profile yet goes to setup first', () => {
 test('home: every former hub item is reachable from the menu; classic hub still works', () => {
   seedNamed();
   const m = mount(<StudentEditionPage />, '/student?student=1');
-  const links = [...m.host.querySelectorAll('[data-testid="home-menu-link"]')].map((a) => ({ to: (a.getAttribute('href') ?? '').replace(/^\/?/, '/'), label: a.textContent ?? '' }));
+  const links = [...m.host.querySelectorAll('nav.s-hub a[href]')].map((a) => ({ to: (a.getAttribute('href') ?? '').replace(/^\/?/, '/'), label: a.textContent ?? '' }));
   assert.ok(links.length >= 5);
-  for (const item of FORMER_HUB_ITEMS) assert.ok(formerHubItemReachable(item, links), `reachable: ${item.label}`);
-  assert.ok(HOME_EXTRA_LINKS.some((l) => l.to === '/student/hub'));
   unmount(m);
+  // One tap deeper: every hub tile's own menu page.
+  for (const tile of [...links]) {
+    if (!/^\/student\/(training|progress|compete|coach|backup)$/.test(tile.to.split('?')[0])) continue;
+    const g = mount(<StudentEditionPage />, `${tile.to.split('?')[0]}?student=1`);
+    for (const a of g.host.querySelectorAll('a[href]')) links.push({ to: (a.getAttribute('href') ?? '').replace(/^\/?/, '/'), label: a.textContent ?? '' });
+    unmount(g);
+  }
+  for (const item of FORMER_HUB_ITEMS) assert.ok(formerHubItemReachable(item, links), `reachable: ${item.label}`);
   const hub = mount(<StudentEditionPage />, '/student/hub?student=1');
   assert.equal(q(hub.host, '[data-testid="student-home"]') === null, true, 'classic hub is not the home');
   assert.ok(hub.host.textContent?.includes('Training'));
@@ -215,7 +236,7 @@ test('home: streak is always on (no toggle) and follows the weekly goal', () => 
   const badge = q(m.host, '[data-testid="streak-badge"]')!;
   assert.ok(badge);
   assert.match(badge.textContent ?? '', /3/);
-  assert.equal(m.host.querySelector('[data-testid="streak-badge"] input, [data-testid="student-home-top"] [role="switch"]') === null, true, 'no hide toggle');
+  assert.equal(m.host.querySelector('[data-testid="streak-badge"] input, [data-testid="mat-hours-row"] [role="switch"]') === null, true, 'no hide toggle');
   unmount(m);
 });
 

@@ -91,7 +91,7 @@ test('week streak: 2 sessions a week, current week in progress does not break it
   const view = trainingStreak(report.journal, '2026-11-04', 2);
   assert.equal(view.weeks, 2);
   assert.equal(view.thisWeek, 1);
-  assert.equal(streakLabel(view), '2-week streak');
+  assert.equal(streakLabel(view), 'Training streak: 2 weeks');
   assert.equal(streakWeekLine(view), 'This week: 1 of 2 sessions');
   assert.equal(trainingStreak(report.journal, '2026-11-04', 3).weeks, 0);
   assert.doesNotMatch(streakWeekLine(view) + streakLabel(view), /daily|every day|today/i);
@@ -233,4 +233,11 @@ test('quick-add on a day with a full journal card updates that card, keeping its
   assert.match(r.journal[0].body, /armbar from guard/);
   assert.throws(() => logMatTime(r, { date: 'bad', session: 'class', minutes: 30 }));
   assert.throws(() => logMatTime(r, { date: '2026-10-12', session: 'class', minutes: 0 }));
+});
+
+test('streak label: "Training streak: N week(s)" with digits', () => {
+  assert.equal(streakLabel({ weeks: 0 }), 'Training streak: 0 weeks');
+  assert.equal(streakLabel({ weeks: 1 }), 'Training streak: 1 week');
+  assert.equal(streakLabel({ weeks: 3 }), 'Training streak: 3 weeks');
+  assert.equal(streakLabel({ weeks: 52 }), 'Training streak: 52 weeks');
 });
