@@ -9,7 +9,6 @@ import {
   acceptCoachRankUpdate,
   COACH_UPDATE_EVENT,
   dismissCoachRankUpdate,
-  queueCoachUpdate,
   readCoachQueue,
   readUpdateLedger,
   removeQueuedUpdate,
@@ -17,7 +16,14 @@ import {
   writeUpdateLedger,
   type CoachInboxPacket,
 } from '../lib/coachRankUpdate';
-import { parseProgressPacket } from '../lib/progress/format';
+import {
+  acceptCoachSyncUpdate,
+  coachStatusLabel,
+  coachSyncSentence,
+  readCoachOverlay,
+  receiveSyncPacket,
+  writeCoachOverlay,
+} from '../lib/coachSync';
 import { writeStudentGymLogo } from '../lib/studentGymMark';
 import { assignStudentId, readStableStudentId } from '../lib/studentIdentity';
 import { clearStudentInboxItem, pullStudentInbox, readInboxPass } from '../lib/studentInboxClient';
@@ -53,9 +59,11 @@ export function CoachUpdateInbox() {
     void pullStudentInbox(pass).then((result) => {
       if (!alive || !result.ok) return;
       for (const item of result.packets) {
-        const parsed = parseProgressPacket(JSON.stringify(item));
-        if (parsed.ok && (parsed.value.kind === 'coach-rank-update' || parsed.value.kind === 'coach-competition-update')) {
-          queueCoachUpdate(localStorage, parsed.value);
+        const received = receiveSyncPacket(localStorage, item);
+        // A gym logo is not an accept card. Once recorded, clear it from the inbox list.
+        const updateId = item && typeof item === 'object' ? (item as { updateId?: unknown }).updateId : undefined;
+        if ((received === 'logo-started' || received === 'logo-prompt') && typeof updateId === 'string') {
+          void clearStudentInboxItem(pass, updateId);
         }
       }
     });
@@ -78,14 +86,23 @@ export function CoachUpdateInbox() {
       current = assignStudentId(current, stable);
     }
     const ledger = readUpdateLedger(localStorage);
-    const result =
-      kind === 'dismiss'
-        ? dismissCoachRankUpdate(current, packet, ledger)
-        : packet.kind === 'coach-rank-update'
-          ? acceptCoachRankUpdate(current, packet, ledger)
-          : acceptCoachCompetitionUpdate(current, packet, ledger, choices);
-    if (result.applied && kind === 'accept') {
+    let result: { report: typeof current; ledger: typeof ledger; applied: boolean };
+    if (kind === 'dismiss') {
+      result = dismissCoachRankUpdate(current, packet, ledger);
+    } else if (packet.kind === 'coach-rank-update') {
+      result = acceptCoachRankUpdate(current, packet, ledger);
+    } else if (packet.kind === 'coach-competition-update') {
+      result = acceptCoachCompetitionUpdate(current, packet, ledger, choices);
+    } else {
+      // Belt progress and assessments go to the coach overlay only. A coach note also appends a labeled journal block.
+      const synced = acceptCoachSyncUpdate(current, packet, ledger, readCoachOverlay(localStorage));
+      if (synced.applied) writeCoachOverlay(localStorage, synced.overlay);
+      result = { report: synced.report, ledger: synced.ledger, applied: synced.applied };
+    }
+    if (result.applied && kind === 'accept' && result.report !== current) {
       commit(result.report);
+    }
+    if (result.applied && kind === 'accept') {
       if (packet.gym?.logo) writeStudentGymLogo(packet.gym.logo);
     }
     if (result.applied || result.ledger !== ledger) writeUpdateLedger(localStorage, result.ledger);
@@ -99,7 +116,23 @@ export function CoachUpdateInbox() {
   return (
     <section className="coach-update" aria-label="Coach update">
       <h2>From your coach</h2>
-      <p>{packet.kind === 'coach-rank-update' ? rankUpdateSentence(packet) : competitionUpdateSentence(packet)}</p>
+      <p>
+        {packet.kind === 'coach-rank-update'
+          ? rankUpdateSentence(packet)
+          : packet.kind === 'coach-competition-update'
+            ? competitionUpdateSentence(packet)
+            : coachSyncSentence(packet)}
+      </p>
+      {packet.kind === 'coach-belt-progress-update'
+        ? packet.beltProgress.benchmarks.map((mark) => (
+            <p key={mark.targetId}>
+              {mark.name}: {coachStatusLabel(mark.coachStatus)}
+              {mark.note ? `. ${mark.note}` : ''}
+            </p>
+          ))
+        : null}
+      {packet.kind === 'coach-assessment-update' && packet.assessment.note ? <p>{packet.assessment.note}</p> : null}
+      {packet.kind === 'coach-note-update' ? <p>{packet.coachNote.note}</p> : null}
       {packet.kind === 'coach-rank-update' && packet.rankUpdate.note ? <p>{packet.rankUpdate.note}</p> : null}
       {packet.kind === 'coach-competition-update'
         ? packet.competitionUpdate.matches.map((match) => (
@@ -139,7 +172,9 @@ export function CoachUpdateInbox() {
       <p>
         {packet.kind === 'coach-rank-update'
           ? 'Accept adds this to My rank and a journal card. Dismiss leaves your rank and journal as they are. Your checklist is not changed.'
-          : 'Accept adds this tournament and these matches. A match you already wrote stays. Dismiss leaves your results alone.'}
+          : packet.kind === 'coach-competition-update'
+            ? 'Accept adds this tournament and these matches. A match you already wrote stays. Dismiss leaves your results alone.'
+            : "Accept keeps your coach's view beside your own. Your checklist, marks, and self-assessment are not changed."}
       </p>
       {note ? (
         <p role="alert">{note}</p>

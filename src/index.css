@@ -18819,3 +18819,395 @@ a.plan-pick {
   display: grid;
   gap: 0.5rem;
 }
+
+/* License share pages: Advantage Instructor / Student Edition QR in a belt frame.
+   Yellow is logo only here: chrome uses the edition's belt colours. */
+.license-share-entry {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0.2rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.license-share-entry__label {
+  color: #dbe4f0;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+.license-share-entry__btn {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 2rem;
+  padding: 0.2rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.license-share-entry__btn:hover,
+.license-share-entry__btn:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  outline: 2px solid var(--cta-focus);
+  outline-offset: 2px;
+}
+
+/* Dim the tile background ~60% so the card pops. */
+.license-share.home::before {
+  background: rgba(4, 8, 16, 0.6);
+}
+
+.license-share .home__inner {
+  display: block;
+  max-width: 720px;
+  min-height: 0;
+  padding-top: calc(0.5rem + var(--safe-t));
+}
+
+/* Slim, non-sticky top bar. No logo: the only logo is inside the card. */
+.license-share__bar {
+  position: static;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: min(40rem, 100%);
+  margin: 0 auto 0.35rem;
+  min-height: 1.75rem;
+}
+
+.license-share__bar-link {
+  color: #dbe4f0;
+  font-size: 0.85rem;
+  text-decoration: none;
+  padding: 0.2rem 0.3rem;
+}
+
+.license-share__bar-link:hover,
+.license-share__bar-link:focus-visible {
+  text-decoration: underline;
+}
+
+.license-share .license-share__page {
+  width: min(40rem, 100%);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.license-share__page {
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  margin-top: 0;
+  text-align: center;
+}
+
+/* Header centred at every width, compact so the card fits at 1024x768. */
+.license-share .belt-header {
+  width: min(32rem, 100%);
+  margin: 0 auto;
+}
+
+.license-share .belt-header__belt {
+  min-height: 3.25rem;
+}
+
+.license-share .belt-header .belt-header__title {
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  font-size: clamp(1.1rem, 3vw, 1.45rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 479.98px) {
+  .license-share .belt-header__tip {
+    flex: 0 0 22%;
+    min-width: 0;
+  }
+
+  /* Drop 'Advantage' on mobile so the edition stays on one line. Screen readers keep the full title. */
+  .license-share .belt-header .belt-header__title {
+    font-size: 0;
+    padding: 0.5rem 0.5rem;
+  }
+
+  .license-share .belt-header .belt-header__title::before {
+    font-size: clamp(16px, 4.6vw, 22px);
+    content: 'Instructor Edition';
+  }
+
+  .license-share--student .belt-header .belt-header__title::before {
+    content: 'Student Edition';
+  }
+}
+
+.license-share__lead {
+  max-width: 34rem;
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(6, 14, 28, 0.72);
+  color: #dbe4f0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.license-share__ticker {
+  margin: 0;
+  padding: 0.15rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(219, 228, 240, 0.5);
+  background: rgba(6, 14, 28, 0.72);
+  color: #dbe4f0;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.license-share__frame {
+  --frame-edge: #e6e9ef;
+  --frame-accent: #c8102e;
+  --frame-belt: #0b0b0d;
+  --frame-tip: #c8102e;
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  width: min(100%, 20rem);
+  margin: 0;
+  padding: 0.9rem 1.2rem calc(28px + 0.9rem);
+  border: 2px solid var(--frame-edge);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #0f1a2e, #08101e);
+  box-shadow: var(--shadow), inset 0 3px 0 var(--frame-accent);
+  overflow: hidden;
+}
+
+.license-share__frame--student {
+  --frame-edge: #004eba;
+  --frame-accent: #004eba;
+  --frame-belt: #1c4fd4;
+  --frame-tip: #0b0b0d;
+}
+
+.license-share__corner {
+  position: absolute;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 3px solid rgba(255, 255, 255, 0.7);
+}
+
+.license-share__corner--tl { top: 0.5rem; left: 0.5rem; border-right: 0; border-bottom: 0; border-top-left-radius: 8px; }
+.license-share__corner--tr { top: 0.5rem; right: 0.5rem; border-left: 0; border-bottom: 0; border-top-right-radius: 8px; }
+.license-share__corner--bl { bottom: calc(28px + 0.4rem); left: 0.5rem; border-right: 0; border-top: 0; border-bottom-left-radius: 8px; }
+.license-share__corner--br { bottom: calc(28px + 0.4rem); right: 0.5rem; border-left: 0; border-top: 0; border-bottom-right-radius: 8px; }
+
+.license-share__logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.license-share__qr {
+  display: grid;
+  place-items: center;
+  box-sizing: content-box;
+  width: min(240px, 30vh);
+  max-width: calc(100% - 16px);
+  aspect-ratio: 1;
+  padding: 8px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--frame-edge);
+}
+
+/* Student links are long: keep modules >= 3px on phones (QR >= 230px at 390). */
+@media (max-width: 479.98px) {
+  .license-share__qr {
+    width: 240px;
+  }
+}
+
+.license-share__qr img {
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.license-share__qr-wait {
+  color: #10131a;
+  font-size: 0.85rem;
+}
+
+.license-share__frame figcaption {
+  display: grid;
+  gap: 0.1rem;
+  max-width: 16rem;
+  padding: 0 0.75rem 12px;
+  color: #dbe4f0;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.license-share__cap-title {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.license-share--student .license-share__cap {
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* The belt across the foot of the frame, fully inside the rounded corners. */
+.license-share__belt {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  background: var(--frame-belt) url('/belt-weave.png') repeat-x center / auto 100%;
+  background-blend-mode: multiply;
+  border-radius: 0 0 16px 16px;
+}
+
+.license-share__belt-tip {
+  position: absolute;
+  right: 12%;
+  top: 0;
+  bottom: 0;
+  width: 18%;
+  background: var(--frame-tip);
+  box-shadow: inset 4px 0 0 #fff, inset -4px 0 0 #fff;
+}
+
+.license-share__link {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 0.45rem;
+  width: min(100%, 22rem);
+}
+
+.license-share__link label {
+  display: grid;
+  gap: 0.2rem;
+  text-align: left;
+  font-size: 0.75rem;
+  color: #dbe4f0;
+}
+
+.license-share__link input {
+  width: 100%;
+  min-height: 2.3rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgba(219, 228, 240, 0.35);
+  border-radius: 10px;
+  background: rgba(6, 14, 28, 0.8);
+  color: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.license-share__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.3rem;
+  white-space: nowrap;
+}
+
+.license-share__copy[data-copy-state='copied'] {
+  background: var(--points);
+  color: #06170c;
+}
+
+.license-share__check {
+  flex: 0 0 auto;
+}
+
+.license-share__link [role='alert'] {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.license-share__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.license-share__pick {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #dbe4f0;
+}
+
+.license-share__pick select {
+  min-height: 2.2rem;
+  border-radius: 10px;
+  padding: 0.2rem 0.5rem;
+  background: var(--bg-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.license-share__tabs {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.license-share__tab {
+  min-height: 2rem;
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: transparent;
+  color: #fff;
+}
+
+.license-share__tab[aria-pressed='true'] {
+  background: var(--permission-on);
+  border-color: var(--permission-on);
+}
+
+.license-share__empty {
+  max-width: 30rem;
+  color: #dbe4f0;
+}
+
+.license-share__switch {
+  margin: 0;
+}
+
+.license-share__switch a {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.license-share__tabs {
+  justify-self: center;
+  justify-content: center;
+}
+
+/* Copy stays right under the card; logo tools and the cross-link follow it. */
+.license-share__switch { order: 2; }

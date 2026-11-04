@@ -64,6 +64,8 @@ import { MatchDisplayPage } from './pages/MatchDisplay';
 import { RosterPage } from './pages/Roster';
 import {
   PaidAcademyPathwayPage,
+  PaidInstructorSharePage,
+  PaidStudentSharePage,
   PaidClassHistoryPage,
   PaidCoachUnlimitedPage,
   PaidProPage,
@@ -588,6 +590,22 @@ export default function App() {
         element={
           <CoachUnlimitedRoute>
             <PaidAcademyPathwayPage />
+          </CoachUnlimitedRoute>
+        }
+      />
+      <Route
+        path="/coach-unlimited/share/instructor"
+        element={
+          <CoachUnlimitedRoute>
+            <PaidInstructorSharePage />
+          </CoachUnlimitedRoute>
+        }
+      />
+      <Route
+        path="/coach-unlimited/share/student"
+        element={
+          <CoachUnlimitedRoute>
+            <PaidStudentSharePage />
           </CoachUnlimitedRoute>
         }
       />

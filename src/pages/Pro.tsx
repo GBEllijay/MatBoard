@@ -3,6 +3,7 @@ import { BeltHeader } from '../components/BeltHeader';
 import { EditionLadder } from '../components/EditionLadder';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
+import { LicenseShareButton } from '../components/LicenseShareButton';
 import { ProToolboxCard } from '../components/ProToolboxCard';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
@@ -51,6 +52,8 @@ export function ProPage() {
           />
           <ProToolboxCard hubs={hubs} label={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro hubs'} />
         </nav>
+
+        <LicenseShareButton />
 
         <AcademyPathwayPanel />
 

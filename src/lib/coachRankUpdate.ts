@@ -13,6 +13,9 @@ import { exportProgressPacket, parseProgressPacket } from './progress/format.ts'
 import {
   PROGRESS_NOTE_MAX,
   PROGRESS_SCHEMA_VERSION,
+  type CoachAssessmentPacket,
+  type CoachBeltProgressPacket,
+  type CoachNotePacket,
   type CoachCompetitionUpdatePacket,
   type CoachGymBrand,
   type CoachRankUpdatePacket,
@@ -52,7 +55,25 @@ export type UpdateLedger = {
   dismissed: string[];
 };
 
-export type CoachInboxPacket = CoachRankUpdatePacket | CoachCompetitionUpdatePacket;
+export type CoachInboxPacket =
+  | CoachRankUpdatePacket
+  | CoachCompetitionUpdatePacket
+  | CoachBeltProgressPacket
+  | CoachAssessmentPacket
+  | CoachNotePacket;
+
+/** Every coach → student kind the inbox queue keeps. */
+export const COACH_INBOX_KINDS = [
+  'coach-rank-update',
+  'coach-competition-update',
+  'coach-belt-progress-update',
+  'coach-assessment-update',
+  'coach-note-update',
+] as const;
+
+export function isCoachInboxPacket(value: { kind: string }): value is CoachInboxPacket {
+  return (COACH_INBOX_KINDS as readonly string[]).includes(value.kind);
+}
 
 export function rosterBeltToProgress(belt: string): ProgressBelt | null {
   const canonical = canonicalBelt(belt);
@@ -195,7 +216,7 @@ export function readCoachQueue(storage: Pick<MemoryStore, 'getItem'>): CoachInbo
     for (const item of parsed) {
       const check = parseProgressPacket(JSON.stringify(item));
       if (!check.ok) continue;
-      if (check.value.kind === 'coach-rank-update' || check.value.kind === 'coach-competition-update') packets.push(check.value);
+      if (isCoachInboxPacket(check.value)) packets.push(check.value);
     }
     return packets;
   } catch {

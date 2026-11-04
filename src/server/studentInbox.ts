@@ -6,12 +6,30 @@
  * Instructors), may write. A student pass can read and clear only that
  * student's own inbox. Assistant coach and program director seats cannot write.
  * Unlock codes, entitlements, Stripe, and Drive are not involved.
+ *
+ * Clearing an item writes a marker under inbox-cleared/. No R2 object is
+ * deleted (gyms keep a 60-day download window after a lapse).
+ *
+ * Student profile photos: the student pass submits to photos/pending/. Only the
+ * head coach (owner or Instructors seat) lists, decides (photos/decided/), and
+ * publishes (photos/approved/). Approval never publishes on its own.
  */
 
 import { readSignedJson, signJson, verifyToken, type EntitlementClaims } from '../lib/entitlementToken.ts';
+import { readCoachAssessment, readCoachBeltProgress, readCoachNote } from '../lib/progress/syncPackets.ts';
+import { photoReadyToSend, readPhotoSubmission } from '../lib/rosterPhotoApproval.ts';
+import { cardShareReadyToSend, readStudentCardShare } from '../lib/studentCardShare.ts';
+import { readTournamentRegistration } from '../lib/studentEvents.ts';
 import { signingMaterial } from './tokenIssue.ts';
 
-export const INBOX_PACKET_KINDS = ['coach-rank-update', 'coach-competition-update'] as const;
+export const INBOX_PACKET_KINDS = [
+  'coach-rank-update',
+  'coach-competition-update',
+  'coach-belt-progress-update',
+  'coach-assessment-update',
+  'coach-note-update',
+  'coach-gym-logo-update',
+] as const;
 
 const RANK_BELTS = new Set([
   'white',
@@ -274,6 +292,123 @@ export function readStoredCompetitionUpdate(value: unknown): StoredCompetitionUp
   return stored;
 }
 
+type SyncEnvelope = {
+  schemaVersion: 1 | 2;
+  id: string;
+  studentId: string;
+  updatedAt: number;
+  issuedAt: number;
+  updateId: string;
+  gym?: { name: string; logo?: string };
+};
+
+function readEnvelope(row: Record<string, unknown>): SyncEnvelope | null {
+  if (row.schemaVersion !== 1 && row.schemaVersion !== 2) return null;
+  if (typeof row.id !== 'string' || !ID_RE.test(row.id)) return null;
+  if (typeof row.studentId !== 'string' || !ID_RE.test(row.studentId)) return null;
+  if (typeof row.updateId !== 'string' || !ID_RE.test(row.updateId)) return null;
+  if (typeof row.updatedAt !== 'number' || !Number.isFinite(row.updatedAt) || row.updatedAt < 0) return null;
+  if (typeof row.issuedAt !== 'number' || !Number.isFinite(row.issuedAt) || row.issuedAt < 0) return null;
+  return {
+    schemaVersion: row.schemaVersion,
+    id: row.id,
+    studentId: row.studentId,
+    updatedAt: row.updatedAt,
+    issuedAt: row.issuedAt,
+    updateId: row.updateId,
+  };
+}
+
+/**
+ * Belt progress, coach assessment, and gym logo packets. Same rules as the
+ * progress file: no checklist, met marks, rubric, or journal keys ride along.
+ */
+export function readStoredSyncPacket(value: unknown): (SyncEnvelope & { kind: string }) | null {
+  if (!value || typeof value !== 'object' || carriesBannedKey(value)) return null;
+  const row = value as Record<string, unknown>;
+  const envelope = readEnvelope(row);
+  if (!envelope) return null;
+  const errors: string[] = [];
+  if (row.kind === 'coach-belt-progress-update') {
+    const beltProgress = readCoachBeltProgress(row.beltProgress, errors);
+    if (errors.length) return null;
+    const stored = { ...envelope, kind: row.kind, beltProgress };
+    attachStoredGym(stored, row.gym);
+    return stored;
+  }
+  if (row.kind === 'coach-assessment-update') {
+    const assessment = readCoachAssessment(row.assessment, errors);
+    if (errors.length) return null;
+    const stored = { ...envelope, kind: row.kind, assessment };
+    attachStoredGym(stored, row.gym);
+    return stored;
+  }
+  if (row.kind === 'coach-note-update') {
+    const coachNote = readCoachNote(row.coachNote, errors);
+    if (errors.length) return null;
+    const stored = { ...envelope, kind: row.kind, coachNote };
+    attachStoredGym(stored, row.gym);
+    return stored;
+  }
+  if (row.kind === 'coach-gym-logo-update') {
+    const gymLogo = row.gymLogo as Record<string, unknown> | undefined;
+    const logoVersion = gymLogo && typeof gymLogo === 'object' ? gymLogo.logoVersion : undefined;
+    if (typeof logoVersion !== 'number' || !Number.isFinite(logoVersion) || logoVersion < 0) return null;
+    const stored: SyncEnvelope & { kind: string; gymLogo: { logoVersion: number } } = {
+      ...envelope,
+      kind: row.kind,
+      gymLogo: { logoVersion },
+    };
+    const gym = row.gym as Record<string, unknown> | undefined;
+    const name = gym && typeof gym.name === 'string' ? gym.name.trim().slice(0, 80) : '';
+    const logo = gym?.logo;
+    if (typeof logo !== 'string' || !/^data:image\/(?:jpeg|png|webp);base64,/.test(logo) || logo.length > 350_000) {
+      return null;
+    }
+    stored.gym = { name, logo };
+    return stored;
+  }
+  return null;
+}
+
+/** Cleared items get a marker. The R2 object itself is kept (60-day download window). */
+export function inboxClearedKey(license: string, studentId: string, updateId: string): string {
+  return `groups/${license}/students/${studentId}/inbox-cleared/${updateId}`;
+}
+
+export function photoKey(
+  license: string,
+  studentId: string,
+  lane: 'pending' | 'decided' | 'approved',
+  photoId: string,
+): string {
+  return `groups/${license}/students/${studentId}/photos/${lane}/${photoId}.json`;
+}
+
+/** Head coach: the license owner or an Instructors seat. Not Coach, Assistant coach, or Program director. */
+export function canApproveStudentPhotos(claims: EntitlementClaims | null, license: string): boolean {
+  if (!canWriteStudentInbox(claims, license) || !claims) return false;
+  if (isSeat(claims)) return claims.preset === 'instructors';
+  return true;
+}
+
+const PHOTO_PENDING_MAX = 20;
+const STUDENT_EVENTS_MAX = 100;
+const CARD_SHARES_MAX = 50;
+
+export function cardShareKey(license: string, shareId: string): string {
+  return `groups/${license}/card-shares/${shareId}.json`;
+}
+
+export function cardShareDecidedKey(license: string, shareId: string): string {
+  return `groups/${license}/card-shares-decided/${shareId}`;
+}
+
+/** Student → coach tournament registrations. One object per tournament. */
+export function studentEventKey(license: string, studentId: string, eventId: string): string {
+  return `groups/${license}/students/${studentId}/events/${eventId}.json`;
+}
+
 async function objectText(object: InboxObject): Promise<string> {
   if (object.text) return object.text();
   if (!object.body) return '';
@@ -295,19 +430,199 @@ export async function handleStudentInbox(
   const keys = [{ kid: material.kid, jwk: material.publicJwk }];
 
   if (request.method === 'POST') {
-    let body: { action?: unknown; token?: unknown; license?: unknown; studentId?: unknown; packet?: unknown } = {};
+    let body: {
+      action?: unknown;
+      token?: unknown;
+      license?: unknown;
+      studentId?: unknown;
+      packet?: unknown;
+      submission?: unknown;
+      photoId?: unknown;
+      decision?: unknown;
+      event?: unknown;
+      share?: unknown;
+      shareId?: unknown;
+    } = {};
     try {
       body = JSON.parse(await request.text()) as typeof body;
     } catch {
       return json(400, { ok: false, error: 'The inbox request was not JSON.' });
     }
     const token = bearerOf(request) || (typeof body.token === 'string' ? body.token : '');
-    const claims = token ? await verifyToken(token, keys) : null;
     const license = typeof body.license === 'string' ? body.license : '';
     const studentId = typeof body.studentId === 'string' ? body.studentId : '';
     if (!LICENSE_RE.test(license) || !ID_RE.test(studentId)) {
       return json(400, { ok: false, error: 'Missing license or student id.' });
     }
+
+    if (body.action === 'photo-submit') {
+      // Student → head coach. Signed with the student's own inbox pass.
+      const pass = asPass(token ? await readSignedJson(token, keys) : null);
+      if (!studentPassAllows(pass, license, studentId, Math.floor(now().getTime() / 1000))) {
+        return json(403, { ok: false, error: 'Only this student can send a photo to the coach.' });
+      }
+      const submission = readPhotoSubmission(body.submission);
+      if (!submission || submission.studentId !== studentId) {
+        return json(400, { ok: false, error: 'That is not a profile photo for this student.' });
+      }
+      if (!photoReadyToSend(submission)) {
+        return json(400, { ok: false, error: 'A parent must approve this photo first.' });
+      }
+      const pending = await bucket.list({ prefix: `groups/${license}/students/${studentId}/photos/pending/` });
+      if (pending.objects.length >= PHOTO_PENDING_MAX) {
+        return json(429, { ok: false, error: 'Too many photos are waiting for the coach.' });
+      }
+      await bucket.put(photoKey(license, studentId, 'pending', submission.photoId), JSON.stringify(submission), {
+        httpMetadata: { contentType: 'application/json' },
+      });
+      return json(200, { ok: true, photoId: submission.photoId, stage: 'awaiting-head-coach' });
+    }
+
+    if (body.action === 'card-share-submit') {
+      // Student → coach card share after a QR sign-up. The phone has no inbox
+      // pass yet, so this is open: strict payload, no journal or notes, a size
+      // and count cap, parent stamp enforced, and it only ever lands as pending.
+      const share = readStudentCardShare(body.share);
+      if (!share || share.studentId !== studentId) {
+        return json(400, { ok: false, error: 'That is not a student card share.' });
+      }
+      if (!cardShareReadyToSend(share)) return json(400, { ok: false, error: 'A parent must approve this first.' });
+      const key = cardShareKey(license, share.shareId);
+      if (!(await bucket.get(key))) {
+        const listed = await bucket.list({ prefix: `groups/${license}/card-shares/` });
+        if (listed.objects.length >= CARD_SHARES_MAX) {
+          return json(429, { ok: false, error: 'Too many student cards are waiting for the coach.' });
+        }
+      }
+      await bucket.put(key, JSON.stringify(share), { httpMetadata: { contentType: 'application/json' } });
+      return json(200, { ok: true, shareId: share.shareId, stage: 'pending' });
+    }
+
+    if (body.action === 'event-submit') {
+      // Student → coach: tournament registration only. Signed with the student's own inbox pass.
+      const pass = asPass(token ? await readSignedJson(token, keys) : null);
+      if (!studentPassAllows(pass, license, studentId, Math.floor(now().getTime() / 1000))) {
+        return json(403, { ok: false, error: 'Only this student can tell the coach about their tournament.' });
+      }
+      const event = readTournamentRegistration(body.event);
+      if (!event || event.studentId !== studentId) {
+        return json(400, { ok: false, error: 'That is not a tournament registration for this student.' });
+      }
+      const key = studentEventKey(license, studentId, event.eventId);
+      const existing = await bucket.get(key);
+      if (!existing) {
+        const listed = await bucket.list({ prefix: `groups/${license}/students/${studentId}/events/` });
+        if (listed.objects.length >= STUDENT_EVENTS_MAX) {
+          return json(429, { ok: false, error: 'Too many tournament notices are waiting for the coach.' });
+        }
+      }
+      // Same tournament again writes the same key. Nothing is ever deleted.
+      await bucket.put(key, JSON.stringify(event), { httpMetadata: { contentType: 'application/json' } });
+      return json(200, { ok: true, eventId: event.eventId });
+    }
+
+    const claims = token ? await verifyToken(token, keys) : null;
+
+    if (body.action === 'card-share-list' || body.action === 'card-share-decide') {
+      if (!canWriteStudentInbox(claims, license)) {
+        return json(403, { ok: false, error: 'Only an Instructor or Coach seat can review student cards.' });
+      }
+      if (body.action === 'card-share-decide') {
+        const shareId = typeof body.shareId === 'string' ? body.shareId : '';
+        if (!ID_RE.test(shareId)) return json(400, { ok: false, error: 'Missing share id.' });
+        if (!(await bucket.get(cardShareKey(license, shareId)))) return json(404, { ok: false, error: 'That card share is not waiting.' });
+        // A marker only. The share itself stays in R2 (60-day download window).
+        await bucket.put(cardShareDecidedKey(license, shareId), String(now().getTime()), {
+          httpMetadata: { contentType: 'text/plain' },
+        });
+        return json(200, { ok: true, shareId });
+      }
+      const decidedPrefix = cardShareDecidedKey(license, '');
+      const decided = new Set((await bucket.list({ prefix: decidedPrefix })).objects.map((row) => row.key.slice(decidedPrefix.length)));
+      const listed = await bucket.list({ prefix: `groups/${license}/card-shares/` });
+      const shares: unknown[] = [];
+      for (const object of listed.objects) {
+        const stored = await bucket.get(object.key);
+        if (!stored) continue;
+        try {
+          const share = readStudentCardShare(JSON.parse(await objectText(stored)));
+          if (share && !decided.has(share.shareId)) shares.push(share);
+        } catch {
+          /* a corrupt object stays out of the list */
+        }
+      }
+      return json(200, { ok: true, shares });
+    }
+
+    if (body.action === 'event-list') {
+      if (!canWriteStudentInbox(claims, license)) {
+        return json(403, { ok: false, error: 'Only the gym owner or an instructor with upload rights can read student notices.' });
+      }
+      const listed = await bucket.list({ prefix: `groups/${license}/students/${studentId}/events/` });
+      const events: unknown[] = [];
+      for (const object of listed.objects) {
+        const stored = await bucket.get(object.key);
+        if (!stored) continue;
+        try {
+          const event = readTournamentRegistration(JSON.parse(await objectText(stored)));
+          if (event && event.studentId === studentId) events.push(event);
+        } catch {
+          /* a corrupt object stays out of the list */
+        }
+      }
+      return json(200, { ok: true, events });
+    }
+
+    if (body.action === 'photo-list' || body.action === 'photo-decide' || body.action === 'photo-publish') {
+      if (!canApproveStudentPhotos(claims, license)) {
+        return json(403, { ok: false, error: 'Only the head coach can review student photos.' });
+      }
+      if (body.action === 'photo-list') {
+        const prefix = `groups/${license}/students/${studentId}/photos/`;
+        const listed = await bucket.list({ prefix });
+        const decided = new Set(
+          listed.objects.filter((row) => row.key.startsWith(`${prefix}decided/`)).map((row) => row.key.slice(`${prefix}decided/`.length)),
+        );
+        const photos: unknown[] = [];
+        for (const object of listed.objects) {
+          if (!object.key.startsWith(`${prefix}pending/`)) continue;
+          if (decided.has(object.key.slice(`${prefix}pending/`.length))) continue;
+          const stored = await bucket.get(object.key);
+          if (!stored) continue;
+          const submission = readPhotoSubmission(JSON.parse(await objectText(stored)));
+          if (submission) photos.push(submission);
+        }
+        return json(200, { ok: true, photos });
+      }
+      const photoId = typeof body.photoId === 'string' ? body.photoId : '';
+      if (!ID_RE.test(photoId)) return json(400, { ok: false, error: 'Missing photo id.' });
+      const pendingObject = await bucket.get(photoKey(license, studentId, 'pending', photoId));
+      if (!pendingObject) return json(404, { ok: false, error: 'That photo is not waiting for review.' });
+      const submission = readPhotoSubmission(JSON.parse(await objectText(pendingObject)));
+      if (!submission) return json(404, { ok: false, error: 'That photo is not waiting for review.' });
+      const decidedObject = await bucket.get(photoKey(license, studentId, 'decided', photoId));
+      const previous = decidedObject ? (JSON.parse(await objectText(decidedObject)) as { decision?: unknown }) : null;
+      if (body.action === 'photo-decide') {
+        if (body.decision !== 'approve' && body.decision !== 'decline') {
+          return json(400, { ok: false, error: 'Choose approve or decline.' });
+        }
+        if (previous) return json(409, { ok: false, error: 'That photo was already decided.' });
+        await bucket.put(
+          photoKey(license, studentId, 'decided', photoId),
+          JSON.stringify({ photoId, decision: body.decision, decidedAt: now().getTime() }),
+          { httpMetadata: { contentType: 'application/json' } },
+        );
+        // Approval does not publish. Publishing is its own head-coach step.
+        return json(200, { ok: true, photoId, stage: body.decision === 'approve' ? 'approved' : 'declined' });
+      }
+      if (previous?.decision !== 'approve') return json(409, { ok: false, error: 'Approve the photo before publishing it.' });
+      const key = photoKey(license, studentId, 'approved', photoId);
+      await bucket.put(key, JSON.stringify({ ...submission, publishedAt: now().getTime() }), {
+        httpMetadata: { contentType: 'application/json' },
+      });
+      return json(200, { ok: true, photoId, path: key });
+    }
+
     if (!canWriteStudentInbox(claims, license)) {
       return json(403, { ok: false, error: 'Only the gym owner or an instructor with upload rights can write a student inbox.' });
     }
@@ -318,7 +633,8 @@ export async function handleStudentInbox(
       material.privateJwk,
     );
     if (body.action === 'pass') return json(200, { ok: true, studentPass });
-    const parsed = readStoredRankUpdate(body.packet) ?? readStoredCompetitionUpdate(body.packet);
+    const parsed =
+      readStoredRankUpdate(body.packet) ?? readStoredCompetitionUpdate(body.packet) ?? readStoredSyncPacket(body.packet);
     if (!parsed) return json(400, { ok: false, error: 'That file is not a coach update for a student inbox.' });
     if (parsed.studentId !== studentId || !ID_RE.test(parsed.updateId)) {
       return json(400, { ok: false, error: 'The update is for a different student.' });
@@ -345,15 +661,23 @@ export async function handleStudentInbox(
     if (request.method === 'DELETE') {
       const updateId = url.searchParams.get('updateId') ?? '';
       if (!ID_RE.test(updateId)) return json(400, { ok: false, error: 'Missing update id.' });
-      await bucket.delete(inboxObjectKey(license, studentId, updateId));
+      // Never delete R2 files. A marker hides the item from this student's list.
+      await bucket.put(inboxClearedKey(license, studentId, updateId), String(now().getTime()), {
+        httpMetadata: { contentType: 'text/plain' },
+      });
       return json(200, { ok: true, cleared: true });
     }
     const prefix = inboxPrefix(license, studentId);
     const listed = await bucket.list({ prefix });
+    const clearedPrefix = inboxClearedKey(license, studentId, '');
+    const cleared = new Set(
+      (await bucket.list({ prefix: clearedPrefix })).objects.map((row) => row.key.slice(clearedPrefix.length)),
+    );
     const packets: unknown[] = [];
     for (const object of listed.objects) {
       const rest = object.key.startsWith(prefix) ? object.key.slice(prefix.length) : '';
       if (!rest.endsWith('.json') || rest.includes('/')) continue;
+      if (cleared.has(rest.slice(0, -'.json'.length))) continue;
       const stored = await bucket.get(object.key);
       if (!stored) continue;
       try {

@@ -6,7 +6,7 @@ import { coachGymLogoFits } from '../lib/coachGymFit';
 import { readGymLogo } from '../lib/gymLogo';
 import { readGymName } from '../lib/gymName';
 import { linkRosterCard, type Student } from '../lib/rosterStore';
-import { deliverRankUpdate } from '../lib/studentInboxClient';
+import { sendCardSync } from '../lib/cardSync';
 import { parseStudentLink } from '../lib/studentIdentity';
 import type { CoachGymBrand } from '../lib/progress/types';
 
@@ -124,7 +124,12 @@ export function SendRankUpdateSheet({ student, onClose }: { student: Student | n
         setStatus(built.error);
         return;
       }
-      const delivery = await deliverRankUpdate(built.packet);
+      const delivery = await sendCardSync(student.id, built.packet);
+      if (delivery.mode === 'blocked' || delivery.mode === 'folder') {
+        setPass('');
+        setStatus(delivery.mode === 'blocked' ? delivery.reason : 'Saved in the gym folder for the student.');
+        return;
+      }
       if (delivery.mode === 'file') {
         downloadText(delivery.name, delivery.json);
         setPass('');
