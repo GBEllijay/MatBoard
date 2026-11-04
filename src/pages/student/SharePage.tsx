@@ -11,15 +11,15 @@ import {
 } from '../../lib/studentTools';
 import { COACH_FILE_HINT, COACH_FILE_LABEL } from '../../lib/studentHubMenu';
 import { setStudentProfile } from '../../lib/studentEdition';
-import { buildCoachUpdateFile, markCoachFileSent, type CoachUpdateSection } from '../../lib/coachProgressFile';
+import { buildCoachUpdateFile, markCoachFileSent, readShareWeightWithCoach, writeShareWeightWithCoach, type CoachUpdateSection } from '../../lib/coachProgressFile';
 import { loadAssessments } from '../../lib/studentAssessment';
 import { readStableStudentId } from '../../lib/studentIdentity';
 
 export const COACH_UPDATE_FILE_COPY =
-  'The file stays on this device until you send it. Advantage does not host it. It has what changed since your last file: profile, belt and stripes, A/B/C game, upcoming tournaments you entered, and new self-assessments. It never has promotion photos or any photo, your journal, move permissions, or weigh-ins. Your coach adds it to your card; belt and stripes wait for your coach to approve. For a full copy of your journal, use Back up my journal or the spreadsheet in Connections.';
+  'The file stays on this device until you send it. Advantage does not host it. It has what changed since your last file: profile, belt and stripes, A/B/C game, tournaments you entered (not ones you are considering), new self-assessments, and weight updates when you turn on sharing below. It never has promotion photos or any photo, your journal, or move permissions. Your coach adds it to your card; belt and stripes wait for your coach to approve. For a full copy of your journal, use Back up my journal or the spreadsheet in Connections.';
 
 function sectionLabel(section: CoachUpdateSection): string {
-  return { profile: 'profile', card: 'belt and stripes', competition: 'A/B/C game and tournaments', assessments: 'self-assessments' }[section];
+  return { profile: 'profile', card: 'belt and stripes', competition: 'A/B/C game and tournaments', weight: 'weight updates', assessments: 'self-assessments' }[section];
 }
 import { writeStudentGymLogo } from '../../lib/studentGymMark';
 import { LeatherHeader, StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
@@ -39,6 +39,7 @@ export function SharePage() {
   const { report, commit } = useStudentFile();
   useScrollToHash();
   const [sendNote, setSendNote] = useState('');
+  const [shareWeight, setShareWeight] = useState(() => readShareWeightWithCoach(localStorage));
   const [importNote, setImportNote] = useState('');
   const [error, setError] = useState('');
   const [pendingOwn, setPendingOwn] = useState<StudentProgressReport | null>(null);
@@ -114,6 +115,17 @@ export function SharePage() {
             <h2>{COACH_FILE_LABEL}</h2>
             <p>{COACH_FILE_HINT}</p>
             <p>{COACH_UPDATE_FILE_COPY}</p>
+            <label className="student-share-check">
+              <input
+                type="checkbox"
+                checked={shareWeight}
+                onChange={(event) => {
+                  writeShareWeightWithCoach(localStorage, event.target.checked);
+                  setShareWeight(event.target.checked);
+                }}
+              />
+              <span>Share my weight updates with my coach</span>
+            </label>
             <button type="button" className="ink-btn ink-btn--save" onClick={() => void send()}>
               {COACH_FILE_LABEL}
             </button>

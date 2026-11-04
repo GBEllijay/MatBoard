@@ -204,3 +204,55 @@ test('dark look: tokens, 46px buttons, 12px labels, no yellow demo banner here',
   const sizes = [...block.matchAll(/font-size: (\d+)px/g)].map((match) => Number(match[1]));
   assert.ok(sizes.every((size) => size >= 12), String(sizes));
 });
+
+test('owner answer 7: the Connections page is titled Connect to my academy', () => {
+  localStorage.clear();
+  const page = mount(<ConnectionsPage />, '/student/connections?student=1');
+  assert.equal(page.host.querySelectorAll('h1').length, 1);
+  assert.equal(page.host.querySelector('h1')?.textContent, 'Connect to my academy');
+  unmount(page);
+});
+
+test('owner answer 5: old-gym alert after disconnect + a different gym; Keep and Remove old gym', async () => {
+  const { forgetAcademyFolder, readPreviousGym } = await import('../../lib/academyMembership.ts');
+  const seed = () => {
+    localStorage.clear();
+    const link = (folderId: string, gymName: string) =>
+      saveStudentDriveLink(localStorage, { role: 'academy', provider: 'googleDrive', folderId, folderName: `${gymName} folder`, accountLabel: null, gymName });
+    link('folder-old', 'Old Gym');
+    joinAcademy(localStorage, { folderId: 'folder-old', provider: 'googleDrive', gymName: 'Old Gym', license: 'lic-old-1234' }, 1000);
+    forgetAcademyFolder(localStorage);
+    link('folder-new', 'New Gym');
+    joinAcademy(localStorage, { folderId: 'folder-new', provider: 'googleDrive', gymName: 'New Gym', license: 'lic-new-5678' }, 2000);
+  };
+  seed();
+  let page = mount(<AcademyConnectPage />, '/student/academy?student=1');
+  assert.match(page.host.textContent ?? '', /You were connected to Old Gym\. Remove it\?/);
+  act(() => button(page.host, 'Keep').click());
+  assert.doesNotMatch(page.host.textContent ?? '', /You were connected to Old Gym/);
+  assert.equal(readPreviousGym(localStorage), null);
+  assert.equal(readMembership(localStorage).left.length, 0);
+  unmount(page);
+
+  seed();
+  localStorage.setItem(STUDENT_GYM_LOGO_KEY, 'data:image/png;base64,AAAA');
+  page = mount(<AcademyConnectPage />, '/student/academy?student=1');
+  act(() => button(page.host, 'Remove old gym').click());
+  assert.match(page.host.textContent ?? '', new RegExp(LEAVE_LOGO_PROMPT.replace(/[?]/g, '\\?')));
+  act(() => button(page.host, 'Remove logo').click());
+  assert.equal(readPreviousGym(localStorage), null);
+  assert.deepEqual(readMembership(localStorage).left.map((row) => row.name), ['Old Gym']);
+  assert.equal(localStorage.getItem(ACADEMY_LICENSE_KEY), 'lic-new-5678');
+  assert.equal(loadAcademyLink(localStorage)?.folderId, 'folder-new');
+  assert.match(page.host.textContent ?? '', /Removed Old Gym/);
+  unmount(page);
+});
+
+test('owner answer 8: Parent approvals strip on the academy pages is navy, 12px+, 44px targets', () => {
+  const css = readFileSync('src/student-edition.css', 'utf8');
+  const block = css.slice(css.indexOf('/* Parent approvals strip on the academy pages'));
+  assert.ok(block.includes('body:has(main.academy-modern) .parent-approvals'));
+  assert.ok(block.includes('#14203a'));
+  for (const size of [...block.matchAll(/font-size:\s*(\d+)px/g)].map((m) => Number(m[1]))) assert.ok(size >= 12, String(size));
+  assert.ok((block.match(/min-height: 44px/g) ?? []).length >= 3);
+});

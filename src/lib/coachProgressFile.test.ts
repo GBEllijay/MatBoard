@@ -9,6 +9,9 @@ import {
   applyStudentCoachUpdate,
   buildCoachUpdateFile,
   dismissStudentCoachUpdate,
+  keptStudentCoachUpdates,
+  studentCompetitorSummary,
+  writeShareWeightWithCoach,
   markCoachFileSent,
   pendingStudentCoachUpdates,
   receiveStudentCoachUpdate,
@@ -17,7 +20,8 @@ import { pendingCardShares, receiveCardShare } from './coachStudentInbox.ts';
 import { saveStudentDriveLink } from './academyPathway.ts';
 import { studentCardShareDraft } from './studentCoachOutbox.ts';
 import { addJournalEntry, blankStudentReport } from './studentEdition.ts';
-import { addTournament } from './studentCompetition.ts';
+import { addTournament, addWeighIn } from './studentCompetition.ts';
+import { canAcceptCardShare } from './coachStudentInbox.ts';
 import type { Student, StudentDraft } from './rosterStore.ts';
 import { testMemory } from './testPackets.ts';
 
@@ -140,4 +144,54 @@ test('Send my ID with no gym folder or cloud is not eligible (the page shows the
   const drafted = studentCardShareDraft(testMemory(), baseReport(), { photo: null, now: 7 });
   assert.equal(drafted.ok, false);
   if (!drafted.ok) assert.equal(drafted.error, 'not-eligible');
+});
+
+test('owner answer 1: any Coach seat can approve belt changes; assistants cannot', () => {
+  assert.equal(canAcceptCardShare('owner'), true);
+  assert.equal(canAcceptCardShare('head'), true);
+  assert.equal(canAcceptCardShare('coach'), true);
+  assert.equal(canAcceptCardShare('assistant'), false);
+  const coach = testMemory();
+  const built = buildCoachUpdateFile(baseReport(), { storage: testMemory(), assessments, now: 100, today: '2026-11-04' });
+  receiveStudentCoachUpdate(coach, JSON.parse(built.json));
+  const cards = [card({ id: 'c1', linkedStudentId: 'stu-alex' } as Partial<Student> & { id: string })];
+  const applied = applyStudentCoachUpdate(coach, built.update.updateId, roster(cards), { actor: 'coach', approveRank: true });
+  assert.ok(applied.ok && applied.rank === 'approved');
+  assert.equal(cards[0].belt, 'Blue');
+});
+
+test('owner answer 3: entered tournaments (never considering), weight only with opt-in, kept on the coach side', () => {
+  let report = baseReport();
+  report = addWeighIn(report, { date: '2026-11-03', weight: '170', unit: 'lb', note: 'SECRET-NOTE' }, 5);
+  const off = testMemory();
+  const noShare = buildCoachUpdateFile(report, { storage: off, assessments, now: 100, today: '2026-11-04' });
+  assert.equal(noShare.update.weight, undefined);
+  assert.ok(!noShare.json.includes('170'));
+  const names = noShare.update.competition?.tournaments.map((t) => t.name) ?? [];
+  assert.deepEqual(names, ['Winter Open']);
+  assert.ok(!noShare.json.includes('Maybe Cup'));
+
+  const on = testMemory();
+  writeShareWeightWithCoach(on, true);
+  const shared = buildCoachUpdateFile(report, { storage: on, assessments, now: 200, today: '2026-11-04' });
+  assert.equal(shared.update.weight?.weighIns.length, 1);
+  assert.equal(shared.update.weight?.weighIns[0].weight, 170);
+  assert.ok(!shared.json.includes('SECRET-NOTE'));
+
+  const coach = testMemory();
+  receiveStudentCoachUpdate(coach, JSON.parse(shared.json));
+  const cards = [card({ id: 'c1', linkedStudentId: 'stu-alex' } as Partial<Student> & { id: string })];
+  const applied = applyStudentCoachUpdate(coach, shared.update.updateId, roster(cards), { actor: 'coach', approveRank: false });
+  assert.ok(applied.ok);
+  assert.equal(cards[0].division, 'Adult');
+  assert.equal(keptStudentCoachUpdates(coach, 'stu-alex').length, 1);
+  const summary = studentCompetitorSummary(coach, 'stu-alex');
+  assert.deepEqual(summary.tournaments.map((t) => t.name), ['Winter Open']);
+  assert.equal(summary.weighIns.length, 1);
+  // A typed division is never overwritten.
+  const typed = [card({ id: 'c2', linkedStudentId: 'stu-alex', division: 'Masters' } as Partial<Student> & { id: string })];
+  const again = buildCoachUpdateFile(report, { storage: testMemory(), assessments, now: 300, today: '2026-11-04' });
+  receiveStudentCoachUpdate(coach, JSON.parse(again.json));
+  applyStudentCoachUpdate(coach, again.update.updateId, roster(typed), { actor: 'coach', approveRank: false });
+  assert.equal(typed[0].division, 'Masters');
 });

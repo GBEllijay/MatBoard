@@ -13,6 +13,9 @@ import {
   forgetAcademyFolder,
   gymPacketAllowed,
   joinAcademy,
+  keepPreviousGym,
+  readPreviousGym,
+  removePreviousGym,
   leaveAcademy,
   moveAcademyFolder,
   readAcademyStale,
@@ -131,4 +134,47 @@ test('stale link: 403 and 404 mark it, other failures do not, joining clears it'
   const fresh = testMemory();
   assert.equal(await confirmAcademyLinkStale(fresh, { provider: 'googleDrive', folderId: 'folder-one-1' }, 'tok', offline), false);
   assert.equal(await confirmAcademyLinkStale(fresh, { provider: 'googleDrive', folderId: 'folder-one-1' }, null, forbidden), false);
+});
+
+test('owner answer 5: disconnect then a different gym asks about the old gym; Remove blocks it, Keep does not, nothing automatic', () => {
+  const storage = testMemory();
+  connect(storage, 'folder-old', 'Old Gym', 'lic-old-1234');
+  storage.setItem(STUDENT_GYM_LOGO_KEY, 'data:image/png;base64,AAAA');
+  forgetAcademyFolder(storage);
+  assert.equal(readPreviousGym(storage), null);
+  connect(storage, 'folder-new', 'New Gym', 'lic-new-5678');
+  const previous = readPreviousGym(storage);
+  assert.equal(previous?.name, 'Old Gym');
+  // Not removed automatically: nothing in left yet.
+  assert.equal(readMembership(storage).left.length, 0);
+  const oldGym = { ids: ['lic-old-1234', 'folder:folder-old'], name: 'Old Gym' };
+  const newGym = { ids: ['lic-new-5678'], name: 'New Gym' };
+  assert.equal(gymPacketAllowed(storage, { gym: oldGym }), false);
+  assert.equal(gymPacketAllowed(storage, { gym: newGym }), true);
+
+  const result = removePreviousGym(storage, { removeLogo: true });
+  assert.equal(result.left, 'Old Gym');
+  assert.equal(readPreviousGym(storage), null);
+  assert.equal(readAcademyLicense(storage), 'lic-new-5678');
+  assert.equal(loadAcademyLink(storage)?.folderId, 'folder-new');
+  assert.equal(storage.getItem(STUDENT_GYM_LOGO_KEY) || null, null);
+  assert.deepEqual(readMembership(storage).left.map((row) => row.name), ['Old Gym']);
+  assert.equal(gymPacketAllowed(storage, { gym: newGym }), true);
+  leaveAcademy(storage, { removeLogo: false });
+  assert.equal(gymPacketAllowed(storage, { gym: oldGym }), false);
+
+  const kept = testMemory();
+  connect(kept, 'folder-old', 'Old Gym', 'lic-old-1234');
+  forgetAcademyFolder(kept);
+  connect(kept, 'folder-new', 'New Gym', 'lic-new-5678');
+  keepPreviousGym(kept);
+  assert.equal(readPreviousGym(kept), null);
+  assert.equal(readMembership(kept).left.length, 0);
+  assert.equal(readAcademyLicense(kept), 'lic-new-5678');
+
+  const same = testMemory();
+  connect(same, 'folder-old', 'Old Gym', 'lic-old-1234');
+  forgetAcademyFolder(same);
+  connect(same, 'folder-old', 'Old Gym', 'lic-old-1234');
+  assert.equal(readPreviousGym(same), null);
 });

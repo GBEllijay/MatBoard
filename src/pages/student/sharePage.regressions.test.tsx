@@ -149,7 +149,13 @@ test('share page controls still make a file, explain a coach file, and import on
   assert.equal(send.classList.contains('ink-btn--save'), true);
 
   // The coach update file replaced the full progress file; the spreadsheet stays in Connections.
-  assert.equal(page.host.querySelector('input[type="checkbox"]'), null);
+  // Owner answer 3: the only checkbox is the weight-sharing opt-in, off by default.
+  const boxes = [...page.host.querySelectorAll('input[type="checkbox"]')] as HTMLInputElement[];
+  assert.equal(boxes.length, 1);
+  assert.match(boxes[0].closest('label')?.textContent ?? '', /Share my weight updates with my coach/);
+  assert.equal(boxes[0].checked, false);
+  assert.doesNotMatch(page.host.textContent ?? '', /Include the spreadsheet/i);
+  assert.match(page.host.textContent ?? '', /tournaments you entered \(not ones you are considering\)/);
   saved.length = 0;
   click(send);
   assert.equal(saved.length, 1);

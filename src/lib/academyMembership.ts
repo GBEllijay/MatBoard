@@ -39,7 +39,16 @@ export type AcademyMembership = {
   v: 1;
   current: AcademyGym | null;
   left: { ids: string[]; name: string; at: number }[];
+  /**
+   * A gym the student disconnected from (folder only) and then replaced with a
+   * different gym, without Leave academy. The app asks once: remove it or keep it.
+   * Never removed automatically. Omitted when there is nothing to ask.
+   */
+  previous?: AcademyGym | null;
 };
+
+export const OLD_GYM_PROMPT = (name: string) => `You were connected to ${name || 'another gym'}. Remove it?`;
+export const REMOVE_OLD_GYM_LABEL = 'Remove old gym';
 
 const LEFT_MAX = 12;
 
@@ -100,7 +109,8 @@ export function readMembership(storage: Pick<MemoryStore, 'getItem'>): AcademyMe
       };
     }
   }
-  return { v: 1, current, left: left.slice(-LEFT_MAX) };
+  const previous = parsed?.v === 1 ? readGym(parsed.previous) : null;
+  return { v: 1, current, left: left.slice(-LEFT_MAX), previous };
 }
 
 function writeMembership(storage: MemoryStore, value: AcademyMembership): void {
@@ -130,6 +140,13 @@ export function joinAcademy(
       since: sameGym && before.current?.since ? before.current.since : now,
     },
     left: before.left.filter((row) => !row.ids.some((id) => ids.includes(id))),
+    // A different gym replaced the current one without Leave academy: ask about it.
+    previous:
+      before.current && !sameGym
+        ? before.current
+        : before.previous && !before.previous.ids.some((id) => ids.includes(id))
+          ? before.previous
+          : null,
   };
   writeMembership(storage, next);
   clearAcademyStale(storage);
@@ -168,7 +185,7 @@ export function leaveAcademy(storage: MemoryStore, options: { removeLogo: boolea
   const name = before.current?.name || link?.gymName || '';
   const left = [...before.left];
   if (ids.length || name) left.push({ ids, name, at: now });
-  writeMembership(storage, { v: 1, current: null, left: left.slice(-LEFT_MAX) });
+  writeMembership(storage, { v: 1, current: null, left: left.slice(-LEFT_MAX), previous: before.previous ?? null });
   remove(storage, ACADEMY_BINDING_KEY);
   remove(storage, ACADEMY_LICENSE_KEY);
   // Updates still waiting came from the old gym.
@@ -179,6 +196,40 @@ export function leaveAcademy(storage: MemoryStore, options: { removeLogo: boolea
     remove(storage, STUDENT_GYM_LOGO_SYNC_KEY);
   }
   return { left: name, logoRemoved: options.removeLogo };
+}
+
+/** The gym to ask about after Disconnect then a different gym. Null when nothing to ask. */
+export function readPreviousGym(storage: Pick<MemoryStore, 'getItem'>): AcademyGym | null {
+  return readMembership(storage).previous ?? null;
+}
+
+/**
+ * "Remove old gym": the same cleanup as Leave academy for the old gym only.
+ * Its license and folder ids join the left list, so its packets are refused.
+ * The current gym's link and license stay. `removeLogo` clears the gym logo.
+ */
+export function removePreviousGym(storage: MemoryStore, options: { removeLogo: boolean }, now = Date.now()): LeaveResult {
+  const before = readMembership(storage);
+  const old = before.previous;
+  if (!old) return { left: '', logoRemoved: false };
+  const currentIds = before.current?.ids ?? [];
+  const ids = old.ids.filter((id) => !currentIds.includes(id));
+  // A license id still saved that belongs to the old gym is cleared.
+  const license = readAcademyLicense(storage);
+  if (license && old.ids.includes(license) && !currentIds.includes(license)) remove(storage, ACADEMY_LICENSE_KEY);
+  const left = [...before.left, { ids, name: old.name, at: now }].slice(-LEFT_MAX);
+  writeMembership(storage, { v: 1, current: before.current, left, previous: null });
+  if (options.removeLogo) {
+    remove(storage, STUDENT_GYM_LOGO_KEY);
+    remove(storage, STUDENT_GYM_LOGO_SYNC_KEY);
+  }
+  return { left: old.name, logoRemoved: options.removeLogo };
+}
+
+/** "Keep": stop asking. Nothing is blocked. */
+export function keepPreviousGym(storage: MemoryStore): void {
+  const before = readMembership(storage);
+  writeMembership(storage, { ...before, previous: null });
 }
 
 function sameName(a: string, b: string): boolean {

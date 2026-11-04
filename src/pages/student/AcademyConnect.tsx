@@ -42,6 +42,10 @@ import {
   moveAcademyFolder,
   readAcademyStale,
   readMembership,
+  keepPreviousGym,
+  OLD_GYM_PROMPT,
+  REMOVE_OLD_GYM_LABEL,
+  removePreviousGym,
 } from '../../lib/academyMembership';
 import { subscribeGoogleDriveDisconnect } from '../../lib/driveSession';
 import { driveAccountEmail, driveSignInFailureCopy, requestDriveConsent } from '../../lib/googleDrive';
@@ -116,6 +120,7 @@ export function AcademyStaleBanner({ onRescan, rescanHref }: { onRescan?: () => 
 type Sheet =
   | { kind: 'leave'; step: 'confirm' | 'logo' }
   | { kind: 'switch'; next: AcademyPathway; step: 'confirm' | 'logo' }
+  | { kind: 'old-gym'; step: 'logo' }
   | null;
 
 export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
@@ -177,6 +182,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
       });
       setLinked(link);
       setPathway(null);
+      setTick((n) => n + 1);
       setStatus(`Connected to ${next.gymName || link.folderName}. ${ACADEMY_FREE_NOTE}`);
       clearPendingPathway();
     };
@@ -262,7 +268,15 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
     );
   };
 
+  const removeOld = (removeLogo: boolean) => {
+    const result = removePreviousGym(localStorage, { removeLogo });
+    setSheet(null);
+    setTick((n) => n + 1);
+    setStatus(`Removed ${result.left || 'the old gym'}. Files from it are not accepted.` + (removeLogo ? ' The old gym logo was removed.' : ''));
+  };
+
   const membership = readMembership(localStorage);
+  const previousGym = membership.previous ?? null;
   const gymName = linked ? linked.gymName || membership.current?.name || linked.folderName : '';
   const since = sinceLabel(membership.current?.since ?? 0);
   const logo = linked ? readStudentGymLogo(localStorage) : null;
@@ -314,6 +328,29 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
   return (
     <section className="am" aria-label={ACADEMY_CONNECT_LABEL}>
       {showHeading ? <h2 className="am-title">{ACADEMY_CONNECT_LABEL}</h2> : null}
+      {previousGym && sheet?.kind !== 'old-gym' ? (
+        <div className="am-card am-old-gym" role="alert" aria-label="Old gym">
+          <span className="am-tag am-tag--warn">Old gym</span>
+          <h2>{OLD_GYM_PROMPT(previousGym.name)}</h2>
+          <p>Removing it blocks files from {previousGym.name || 'that gym'}, the same as Leave academy. Your journal, reports, and student ID stay.</p>
+          <div className="am-two">
+            <button
+              type="button"
+              className={BTN}
+              onClick={() => {
+                keepPreviousGym(localStorage);
+                setTick((n) => n + 1);
+                setStatus(`Kept ${previousGym.name || 'the old gym'}.`);
+              }}
+            >
+              Keep
+            </button>
+            <button type="button" className={DANGER} onClick={() => (hasLogo() ? setSheet({ kind: 'old-gym', step: 'logo' }) : removeOld(false))}>
+              {REMOVE_OLD_GYM_LABEL}
+            </button>
+          </div>
+        </div>
+      ) : null}
       <AcademyStaleBanner
         onRescan={() => {
           document.getElementById('rescan')?.scrollIntoView?.({ block: 'start' });
@@ -437,7 +474,8 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
         </div>
       )}
       {sheet ? (
-        <div className="am-sheet" role="dialog" aria-modal="false" aria-label={sheet.kind === 'leave' ? 'Leave academy' : 'Switch gyms'}>
+        <div className="am-sheet" role="dialog" aria-modal="false" aria-label={sheet.kind === 'leave' ? 'Leave academy' : sheet.kind === 'old-gym' ? 'Remove old gym' : 'Switch gyms'}>
+          {sheet.kind === 'old-gym' ? logoStep(removeOld) : null}
           {sheet.kind === 'leave' && sheet.step === 'confirm' ? (
             <>
               <h2>Leave {gymName || 'your academy'}?</h2>

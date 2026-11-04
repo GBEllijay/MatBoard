@@ -48,6 +48,8 @@ import { StudentMarks, useStudentPath } from './chrome';
 import { AcademyConnect } from './AcademyConnect';
 import { ExportChoices } from './ExportChoices';
 
+export const CONNECTIONS_TITLE = 'Connect to my academy';
+
 function AcademyTop({ title }: { title: string }) {
   return (
     <header className="am-top">
@@ -94,7 +96,7 @@ export function ConnectionsPage() {
   return (
     <main className="student academy-modern">
       <StudentMarks />
-      <AcademyTop title="Connections" />
+      <AcademyTop title={CONNECTIONS_TITLE} />
       <div className="am-wrap student-connections">
         <AcademyConnect />
           <PersonalDrive />

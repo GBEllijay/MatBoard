@@ -4,10 +4,13 @@
  * In the file (each section only when it changed since the last file):
  *  - profile: name, gym, start date, gi / no-gi
  *  - card: belt, stripes, date awarded (competitor card)
- *  - competition: A/B/C game and upcoming tournaments marked Entered
+ *  - competition: A/B/C game and tournaments marked Entered (registered), never Considering
+ *  - weight: new weigh-ins, goal weight and weigh-in day, only when the student
+ *    turned on "Share my weight updates with my coach" (off by default)
  *  - assessments: self-assessments added since the last file
  * Never in the file: promotion photos, any photo, the journal, move-permission
- * toggles (techniquePolicy), weigh-ins, results, bracket notes, the gym logo.
+ * toggles (techniquePolicy), results, bracket notes, the gym logo, the spreadsheet.
+ * Weight is never sent while the opt-in is off.
  *
  * The coach import only fills blanks. Belt and stripes are coach-owned and wait
  * for an Instructor / Coach seat (or the owner) to approve them.
@@ -27,8 +30,41 @@ export const COACH_STUDENT_UPDATES_KEY = 'matboard.coach.studentUpdates.v1';
 const TEXT_MAX = 80;
 const NOTE_MAX = 400;
 const UPDATES_MAX = 60;
+/** Student opt-in: weight updates go in the coach file only when this is '1'. */
+export const SHARE_WEIGHT_WITH_COACH_KEY = 'matboard.studentEdition.shareWeightWithCoach.v1';
 
-export type CoachUpdateSection = 'profile' | 'card' | 'competition' | 'assessments';
+export function readShareWeightWithCoach(storage: Pick<Store, 'getItem'> | null): boolean {
+  try {
+    return storage?.getItem(SHARE_WEIGHT_WITH_COACH_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function writeShareWeightWithCoach(storage: Store, on: boolean): void {
+  storage.setItem(SHARE_WEIGHT_WITH_COACH_KEY, on ? '1' : '0');
+}
+
+export type CoachUpdateSection = 'profile' | 'card' | 'competition' | 'weight' | 'assessments';
+
+export type UpdateTournament = {
+  id: string;
+  name: string;
+  date: string;
+  location: string;
+  division: string;
+  weightClass: string;
+  targetWeight: number | null;
+  targetUnit: string;
+};
+
+export type UpdateWeight = {
+  unit: string;
+  goalWeight: number | null;
+  goalUnit: string;
+  weighDate: string;
+  weighIns: { id: string; date: string; weight: number; unit: string }[];
+};
 
 export type StudentCoachUpdate = {
   schemaVersion: 1;
@@ -42,12 +78,13 @@ export type StudentCoachUpdate = {
   card?: { belt: string; stripes: number; awardedOn: string };
   competition?: {
     games: { tag: string; techniques: string; notes: string }[];
-    tournaments: { id: string; name: string; date: string; location: string; division: string }[];
+    tournaments: UpdateTournament[];
   };
+  weight?: UpdateWeight;
   assessments?: { id: string; date: string; note: string; scores: Record<string, number> }[];
 };
 
-type Snapshot = { at: number; sections: Partial<Record<CoachUpdateSection, string>>; assessmentIds: string[] };
+type Snapshot = { at: number; sections: Partial<Record<CoachUpdateSection, string>>; assessmentIds: string[]; weighInIds: string[] };
 
 function clip(value: unknown, max = TEXT_MAX): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -57,14 +94,15 @@ function readSnapshot(storage: Pick<Store, 'getItem'>): Snapshot {
   try {
     const raw = storage.getItem(COACH_FILE_SNAPSHOT_KEY);
     const parsed = raw ? (JSON.parse(raw) as Partial<Snapshot>) : null;
-    if (!parsed) return { at: 0, sections: {}, assessmentIds: [] };
+    if (!parsed) return { at: 0, sections: {}, assessmentIds: [], weighInIds: [] };
     return {
       at: typeof parsed.at === 'number' ? parsed.at : 0,
       sections: parsed.sections && typeof parsed.sections === 'object' ? parsed.sections : {},
       assessmentIds: Array.isArray(parsed.assessmentIds) ? parsed.assessmentIds.filter((id) => typeof id === 'string') : [],
+      weighInIds: Array.isArray(parsed.weighInIds) ? parsed.weighInIds.filter((id) => typeof id === 'string') : [],
     };
   } catch {
-    return { at: 0, sections: {}, assessmentIds: [] };
+    return { at: 0, sections: {}, assessmentIds: [], weighInIds: [] };
   }
 }
 
@@ -75,7 +113,24 @@ function games(value: CompetitionGames | undefined) {
     .filter((row) => row.techniques || row.notes);
 }
 
-function sections(report: StudentProgressReport, today: string) {
+function num(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 && value < 1000 ? Math.round(value * 10) / 10 : null;
+}
+
+function tournamentRow(row: Partial<UpdateTournament> & Record<string, unknown>): UpdateTournament {
+  return {
+    id: clip(row.id),
+    name: clip(row.name),
+    date: clip(row.date, 10),
+    location: clip(row.location),
+    division: clip(row.division),
+    weightClass: clip(row.weightClass, 40),
+    targetWeight: num(row.targetWeight),
+    targetUnit: clip(row.targetUnit, 4),
+  };
+}
+
+function sections(report: StudentProgressReport) {
   const profile = {
     displayName: clip(report.profile.displayName),
     gymName: clip(report.profile.gymName),
@@ -90,14 +145,9 @@ function sections(report: StudentProgressReport, today: string) {
   const competition = {
     games: games(report.competition?.games),
     tournaments: (report.competition?.tournaments ?? [])
-      .filter((row) => row.status === 'entered' && row.date >= today)
-      .map((row) => ({
-        id: clip(row.id),
-        name: clip(row.name),
-        date: clip(row.date, 10),
-        location: clip(row.location),
-        division: clip(row.division),
-      })),
+      // Entered = registered. Considering never goes to the coach.
+      .filter((row) => row.status === 'entered')
+      .map((row) => tournamentRow(row)),
   };
   return { profile, card, competition };
 }
@@ -117,6 +167,8 @@ export function buildCoachUpdateFile(
     storage: Pick<Store, 'getItem'>;
     assessments: readonly AssessmentEntry[];
     studentId?: string;
+    /** Defaults to the student's opt-in in storage. */
+    shareWeight?: boolean;
     now?: number;
     today?: string;
   },
@@ -124,7 +176,7 @@ export function buildCoachUpdateFile(
   const now = input.now ?? Date.now();
   const today = input.today ?? new Date(now).toISOString().slice(0, 10);
   const before = readSnapshot(input.storage);
-  const parts = sections(report, today);
+  const parts = sections(report);
   const studentId = clip(input.studentId || report.studentId);
   const update: StudentCoachUpdate = {
     schemaVersion: 1,
@@ -135,7 +187,7 @@ export function buildCoachUpdateFile(
     since: before.at,
   };
   const included: CoachUpdateSection[] = [];
-  const next: Snapshot = { at: now, sections: { ...before.sections }, assessmentIds: [...before.assessmentIds] };
+  const next: Snapshot = { at: now, sections: { ...before.sections }, assessmentIds: [...before.assessmentIds], weighInIds: [...before.weighInIds] };
   for (const key of ['profile', 'card', 'competition'] as const) {
     const value = parts[key];
     const text = JSON.stringify(value);
@@ -145,6 +197,28 @@ export function buildCoachUpdateFile(
     (update as Record<string, unknown>)[key] = value;
     included.push(key);
   }
+  const shareWeight = input.shareWeight ?? readShareWeightWithCoach(input.storage);
+  const competition = report.competition;
+  const allWeighIns = shareWeight ? competition?.weighIns ?? [] : [];
+  if (shareWeight && competition) {
+    const goal = { unit: clip(competition.weightUnit, 4), goalWeight: num(competition.goalWeight), goalUnit: clip(competition.goalUnit ?? '', 4), weighDate: clip(competition.weighDate ?? '', 10) };
+    const goalText = JSON.stringify(goal);
+    const newWeighIns = allWeighIns
+      .filter((row) => !before.weighInIds.includes(row.id))
+      .flatMap((row) => {
+        const weight = num(row.weight);
+        return weight === null ? [] : [{ id: clip(row.id), date: clip(row.date, 10), weight, unit: clip(row.unit, 4) }];
+      })
+      .slice(-60);
+    const goalChanged = before.sections.weight !== goalText && Boolean(goal.goalWeight !== null || goal.weighDate || before.sections.weight);
+    next.sections.weight = goalText;
+    if (newWeighIns.length || goalChanged) {
+      update.weight = { ...goal, weighIns: newWeighIns };
+      included.push('weight');
+    }
+  }
+  // Weigh-ins seen while the opt-in is on are not sent again.
+  next.weighInIds = [...new Set([...before.weighInIds, ...allWeighIns.map((row) => row.id)])].slice(-400);
   const fresh = input.assessments.filter((entry) => !before.assessmentIds.includes(entry.id));
   if (fresh.length) {
     update.assessments = fresh.map((entry) => ({
@@ -206,13 +280,22 @@ export function readStudentCoachUpdate(raw: unknown): StudentCoachUpdate | null 
         techniques: clip(game?.techniques, NOTE_MAX),
         notes: clip(game?.notes, NOTE_MAX),
       })),
-      tournaments: (Array.isArray(row.competition.tournaments) ? row.competition.tournaments : []).slice(0, 40).map((t) => ({
-        id: clip(t?.id),
-        name: clip(t?.name),
-        date: clip(t?.date, 10),
-        location: clip(t?.location),
-        division: clip(t?.division),
-      })),
+      tournaments: (Array.isArray(row.competition.tournaments) ? row.competition.tournaments : [])
+        .slice(0, 40)
+        .map((t) => tournamentRow((t ?? {}) as Partial<UpdateTournament> & Record<string, unknown>)),
+    };
+  }
+  if (row.weight && typeof row.weight === 'object') {
+    const w = row.weight;
+    out.weight = {
+      unit: clip(w.unit, 4),
+      goalWeight: num(w.goalWeight),
+      goalUnit: clip(w.goalUnit, 4),
+      weighDate: clip(w.weighDate, 10),
+      weighIns: (Array.isArray(w.weighIns) ? w.weighIns : []).slice(0, 60).flatMap((entry) => {
+        const weight = num(entry?.weight);
+        return weight === null ? [] : [{ id: clip(entry?.id), date: clip(entry?.date, 10), weight, unit: clip(entry?.unit, 4) }];
+      }),
     };
   }
   if (Array.isArray(row.assessments)) {
@@ -228,7 +311,13 @@ export function readStudentCoachUpdate(raw: unknown): StudentCoachUpdate | null 
   return out;
 }
 
-type UpdatesState = { pending: StudentCoachUpdate[]; decided: { updateId: string; decision: 'applied' | 'dismissed'; at: number }[] };
+type Decided = { updateId: string; decision: 'applied' | 'dismissed'; at: number };
+/**
+ * kept: applied updates, whole. Weight and tournaments that have no field on
+ * the roster card stay here, so nothing in the student's file is lost.
+ */
+type UpdatesState = { pending: StudentCoachUpdate[]; decided: Decided[]; kept: StudentCoachUpdate[] };
+const KEPT_MAX = 200;
 
 function readUpdates(storage: Pick<Store, 'getItem'>): UpdatesState {
   try {
@@ -240,9 +329,13 @@ function readUpdates(storage: Pick<Store, 'getItem'>): UpdatesState {
         return update ? [update] : [];
       }),
       decided: Array.isArray(parsed?.decided) ? parsed.decided.slice(-200) : [],
+      kept: (Array.isArray(parsed?.kept) ? parsed.kept : []).flatMap((row) => {
+        const update = readStudentCoachUpdate(row);
+        return update ? [update] : [];
+      }),
     };
   } catch {
-    return { pending: [], decided: [] };
+    return { pending: [], decided: [], kept: [] };
   }
 }
 
@@ -263,6 +356,35 @@ export function receiveStudentCoachUpdate(storage: Store, raw: unknown): UpdateR
   return 'pending';
 }
 
+/** Applied updates for one student, oldest first: tournaments and weight kept whole. */
+export function keptStudentCoachUpdates(storage: Pick<Store, 'getItem'>, studentId: string): StudentCoachUpdate[] {
+  return readUpdates(storage).kept.filter((row) => row.studentId === studentId);
+}
+
+/** Latest kept competition data for one student: entered tournaments and weigh-ins. */
+export function studentCompetitorSummary(storage: Pick<Store, 'getItem'>, studentId: string) {
+  const tournaments = new Map<string, UpdateTournament>();
+  const weighIns = new Map<string, UpdateWeight['weighIns'][number]>();
+  let goal: Omit<UpdateWeight, 'weighIns'> | null = null;
+  for (const row of keptStudentCoachUpdates(storage, studentId)) {
+    if (row.competition) {
+      // Each file carries the student's whole entered list, so the latest list wins.
+      tournaments.clear();
+      for (const t of row.competition.tournaments) tournaments.set(t.id || `${t.name}-${t.date}`, t);
+    }
+    if (row.weight) {
+      const { weighIns: rows, ...rest } = row.weight;
+      goal = rest;
+      for (const w of rows) weighIns.set(w.id || `${w.date}-${w.weight}`, w);
+    }
+  }
+  return {
+    tournaments: [...tournaments.values()].sort((a, b) => a.date.localeCompare(b.date)),
+    weighIns: [...weighIns.values()].sort((a, b) => a.date.localeCompare(b.date)),
+    goal,
+  };
+}
+
 export function pendingStudentCoachUpdates(storage: Pick<Store, 'getItem'>): StudentCoachUpdate[] {
   return readUpdates(storage).pending;
 }
@@ -273,6 +395,13 @@ export function studentUpdateFillPatch(card: Student, update: StudentCoachUpdate
   if (update.profile) {
     if (!card.name.trim() && update.profile.displayName) patch.name = update.profile.displayName;
     if (!card.gym.trim() && update.profile.gymName) patch.gym = update.profile.gymName;
+  }
+  // Competitor data: a blank bout division takes the next entered tournament's division.
+  if (!card.division.trim() && update.competition?.tournaments.length) {
+    const sent = new Date(update.sentAt || Date.now()).toISOString().slice(0, 10);
+    const rows = [...update.competition.tournaments].sort((a, b) => a.date.localeCompare(b.date));
+    const next = rows.find((t) => t.date >= sent && t.division) ?? [...rows].reverse().find((t) => t.division);
+    if (next) patch.division = [next.division, next.weightClass].filter(Boolean).join(' / ').slice(0, TEXT_MAX);
   }
   return patch;
 }
@@ -320,6 +449,7 @@ export function applyStudentCoachUpdate(
   writeUpdates(storage, {
     pending: state.pending.filter((row) => row.updateId !== updateId),
     decided: [...state.decided, { updateId, decision: 'applied' as const, at: options.now ?? Date.now() }].slice(-200),
+    kept: [...state.kept, update].slice(-KEPT_MAX),
   });
   return { ok: true, card: saved, filled: Object.keys(patch), rank: rankState };
 }
@@ -329,5 +459,6 @@ export function dismissStudentCoachUpdate(storage: Store, updateId: string, now 
   writeUpdates(storage, {
     pending: state.pending.filter((row) => row.updateId !== updateId),
     decided: [...state.decided, { updateId, decision: 'dismissed' as const, at: now }].slice(-200),
+    kept: state.kept,
   });
 }

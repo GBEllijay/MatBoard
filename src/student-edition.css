@@ -3080,3 +3080,56 @@ body:has(main.academy-modern) .student-demo-banner p::before {
 main.student.academy-modern {
   padding-top: calc(var(--mark-home-clear) + var(--safe-t));
 }
+
+/* Parent approvals strip on the academy pages: navy, readable, 12px minimum, 44px targets. */
+body:has(main.academy-modern) .parent-approvals {
+  background: #14203a;
+  color: #eef2f8;
+  border: 1px solid #2a3a5c;
+  border-radius: 12px;
+  padding: 0 14px;
+  /* Clear the fixed Home mark; it sits above the page, so main drops its own clearance. */
+  margin: calc(var(--mark-home-clear) + var(--safe-t)) 16px 0;
+  position: relative;
+  z-index: 2;
+  font-size: 14px;
+  line-height: 1.4;
+}
+body:has(main.academy-modern) .parent-approvals summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #eef2f8;
+  cursor: pointer;
+}
+body:has(main.academy-modern) .parent-approvals p,
+body:has(main.academy-modern) .parent-approvals label,
+body:has(main.academy-modern) .parent-approvals span {
+  font-size: 13px;
+  color: #eef2f8;
+}
+body:has(main.academy-modern) .parent-approvals input {
+  min-height: 44px;
+  font-size: 16px;
+  background: #0d1729;
+  color: #eef2f8;
+  border: 1px solid #3a4c70;
+  border-radius: 8px;
+  padding: 0 10px;
+}
+body:has(main.academy-modern) .parent-approvals button {
+  min-height: 44px;
+  min-width: 44px;
+  font-size: 14px;
+  color: #eef2f8;
+  background: #22335a;
+  border: 1px solid #3a4c70;
+  border-radius: 10px;
+  padding: 0 14px;
+  margin: 6px 6px 10px 0;
+}
+body:has(main.academy-modern) .parent-approvals ~ main.student.academy-modern {
+  padding-top: 12px;
+}

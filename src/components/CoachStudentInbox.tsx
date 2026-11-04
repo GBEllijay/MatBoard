@@ -169,7 +169,7 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
   return (
     <div aria-label="Student updates waiting">
       <h3>Student updates waiting</h3>
-      <p>Adding fills only blank fields on the linked card. Belt and stripes change only when you approve them.</p>
+      <p>Adding fills only blank fields on the linked card, including a blank bout division from an entered tournament. Tournaments and weight are kept with the student's updates. Belt and stripes change only when you approve them.</p>
       {updates.map((update) => {
         const card = roster.find((row) => row.linkedStudentId === update.studentId && !row.guestId);
         const tournaments = update.competition?.tournaments ?? [];
@@ -182,6 +182,8 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
               {update.competition?.games.length ? ' · A/B/C game' : ''}
               {tournaments.length ? ` · entered ${tournaments.map((t) => `${t.name} ${t.date}`).join(', ')}` : ''}
               {update.assessments?.length ? ` · ${update.assessments.length} self-assessment(s)` : ''}
+              {update.weight?.weighIns.length ? ` · weigh-ins ${update.weight.weighIns.map((w) => `${w.weight} ${w.unit} ${w.date}`).join(', ')}` : ''}
+              {update.weight?.goalWeight ? ` · goal ${update.weight.goalWeight} ${update.weight.goalUnit || update.weight.unit}` : ''}
             </p>
             <button
               type="button"
@@ -201,7 +203,7 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
                 disabled={!card}
                 onClick={() => {
                   const result = applyStudentUpdate(update.updateId, true);
-                  done(result.ok ? 'Added. Belt and stripes approved.' : result.reason === 'not-allowed' ? 'Only an Instructor or Coach seat can approve belt changes.' : `Could not add (${result.reason}).`);
+                  done(result.ok ? 'Added. Belt and stripes approved.' : result.reason === 'not-allowed' ? 'Only a Coach seat or the owner can approve belt changes.' : `Could not add (${result.reason}).`);
                 }}
               >
                 Add and approve belt
