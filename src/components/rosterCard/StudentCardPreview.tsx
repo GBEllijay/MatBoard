@@ -16,6 +16,7 @@ import { loadAssessments, type AssessmentEntry, type AssessmentScores } from '..
 import { readStudentNoPhotos } from '../../lib/studentPhotoFlag';
 import { readStudentOutbox } from '../../lib/studentEvents';
 import type { StudentProgressReport } from '../../lib/progress/types';
+import { MatHoursStat } from '../../pages/student/MatTime';
 import './coachClipboard.css';
 
 /** Newest accepted coach note, or null. Accept order breaks ties on the same day. */
@@ -124,6 +125,7 @@ export function StudentCardPreview({
           }
           extras={
             <>
+              <MatHoursStat report={report} />
               <div data-testid="latest-from-coach">
                 <strong>Latest from coach</strong>{' '}
                 {latest ? (

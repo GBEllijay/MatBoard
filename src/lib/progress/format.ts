@@ -35,6 +35,8 @@ import {
   PROGRESS_GOALS_MAX,
   PROGRESS_ID_MAX,
   PROGRESS_JOURNAL_MAX,
+  JOURNAL_MINUTES_MAX,
+  JOURNAL_SESSIONS,
   PROGRESS_LEVELS_MAX,
   RANK_EXPORT_BUDGET,
   RANK_PHOTO_MAX_CHARS,
@@ -811,6 +813,13 @@ function mergeJournal(
     if (techniqueKey(current.techniqueRefs) !== techniqueKey(entry.techniqueRefs)) {
       conflicts.push(`Journal ${entry.id} technique names were kept.`);
     }
+    // Mat time: a card with no time picks one up from the other file. A different time keeps this one.
+    if (current.minutes === undefined && entry.minutes !== undefined) current.minutes = entry.minutes;
+    else if (entry.minutes !== undefined && current.minutes !== entry.minutes) conflicts.push(`Journal ${entry.id} mat time was kept.`);
+    if (current.session === undefined && entry.session !== undefined) current.session = entry.session;
+    if (current.quality === undefined && entry.quality !== undefined) current.quality = entry.quality;
+    if (current.injury === undefined && entry.injury) current.injury = structuredClone(entry.injury);
+    if (current.hiatus === undefined && entry.hiatus) current.hiatus = structuredClone(entry.hiatus);
     for (const amendment of entry.amendments) {
       const prior = current.amendments.find((item) => item.id === amendment.id);
       if (!prior) {
@@ -1622,7 +1631,7 @@ function readJournalEntry(value: unknown, index: number, errors: string[]): Jour
     readAmendment(row, `${label} amendment ${amendmentIndex + 1}`, errors),
   );
   uniqueIds(amendments.map((item) => item.id), `${label} amendment`, errors);
-  return {
+  const entry: JournalEntry = {
     id: readId(record.id, `${label} id`, errors),
     date: readDate(record.date, `${label} date`, errors, true),
     gameTag: readGameTag(record.gameTag, label, errors),
@@ -1632,6 +1641,38 @@ function readJournalEntry(value: unknown, index: number, errors: string[]): Jour
     createdAt: readTime(record.createdAt, `${label} createdAt`, errors),
     updatedAt: readTime(record.updatedAt, `${label} updatedAt`, errors),
   };
+  const minutes = readJournalMinutes(record.minutes, `${label} minutes`, errors);
+  if (minutes !== undefined) entry.minutes = minutes;
+  const session = readChoice(record.session, `${label} session`, JOURNAL_SESSIONS, errors);
+  if (session) entry.session = session;
+  const quality = readTargetLevel(record.quality, `${label} quality`, errors);
+  if (quality) entry.quality = quality;
+  const injury = asRecord(record.injury);
+  if (injury) {
+    entry.injury = {
+      area: readOptionalText(injury.area, `${label} injury area`, PROGRESS_NAME_MAX, errors),
+      note: readOptionalText(injury.note, `${label} injury note`, PROGRESS_NAME_MAX * 4, errors),
+    };
+  }
+  const hiatus = asRecord(record.hiatus);
+  if (hiatus) {
+    entry.hiatus = {
+      reason: readChoice(hiatus.reason, `${label} break reason`, ['medical', 'other'] as const, errors) ?? 'other',
+      start: readDate(hiatus.start, `${label} break start`, errors, false) || entry.date,
+      end: readDate(hiatus.end, `${label} break end`, errors, false),
+    };
+  }
+  return entry;
+}
+
+/** Optional whole minutes, 1 to 720. Missing or 0 means untimed. */
+function readJournalMinutes(value: unknown, label: string, errors: string[]): number | undefined {
+  if (value == null || value === 0) return undefined;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > JOURNAL_MINUTES_MAX) {
+    errors.push(`${label} must be whole minutes from 0 to ${JOURNAL_MINUTES_MAX}.`);
+    return undefined;
+  }
+  return value;
 }
 
 function readTechniqueRef(value: unknown, label: string, errors: string[]): TechniqueRef {

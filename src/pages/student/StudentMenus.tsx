@@ -40,6 +40,7 @@ import { useStudentFile, useStudentPath } from './chrome';
 import { GroupFrame, MenuList, MenuRow } from './groupChrome';
 import { BinderDecor, BracketArt, Chevron, JournalDecor, RowIcon } from './hubArt';
 import { WornBeltMark } from './wornBelt';
+import { MatHoursStat } from './MatTime';
 
 function profileCardNote(report: StudentProgressReport): string {
   const identity = reportIdentity(report);
@@ -98,6 +99,14 @@ export function StudentHub() {
             <p>{STUDENT_HOME_DESCRIPTION}</p>
           </header>
           <ProfileCard />
+          <MatHoursStat report={report} />
+          <Link className="s-profile mat-hours__report" to={to('/student/report')} aria-label="My report card">
+            <span className="s-profile__text">
+              <strong>My report card</strong>
+              <small>Mat hours, streak, game and status. Just for you.</small>
+            </span>
+            <Chevron />
+          </Link>
           <Link className="s-tile s-journal" to={to('/student/training')} aria-label={TRAINING_GROUP_LABEL}>
             <JournalDecor />
             <span className="s-tile__text">

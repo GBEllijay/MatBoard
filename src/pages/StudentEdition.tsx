@@ -68,6 +68,9 @@ import './student/arena.css';
 import './student/hub.css';
 import './student/progressPages.css';
 import './student/beltWeave.css';
+import { ProfileReportPage } from './student/ProfileReport';
+import { EMPTY_EXTRAS, MatTimeField, SessionExtras, extrasDraft, extrasFromCard, matTimeLine, type SessionExtrasValue } from './student/MatTime';
+import type { JournalSession } from '../lib/progress/types';
 
 function blankTechniqueRows(count: number): { id: string; name: string }[] {
   return Array.from({ length: count }, () => ({ id: '', name: '' }));
@@ -169,6 +172,8 @@ function studentScreenNode(rest: string) {
       return <BeltPage />;
     case 'profile':
       return <ProfilePage />;
+    case 'report':
+      return <ProfileReportPage />;
     case 'rank':
       return <RankPage />;
     case 'share':
@@ -253,6 +258,9 @@ function JournalToday() {
   const requested = params.get('date') ?? '';
   const [date, setDate] = useState(isIsoDate(requested) ? requested : todayIso());
   const [className, setClassName] = useState('');
+  const [session, setSession] = useState<JournalSession>('class');
+  const [minutes, setMinutes] = useState(0);
+  const [extras, setExtras] = useState<SessionExtrasValue>(EMPTY_EXTRAS);
   const [techniques, setTechniques] = useState(() => blankTechniqueRows(JOURNAL_TECHNIQUE_ROWS));
   const [partners, setPartners] = useState('');
   const [drills, setDrills] = useState('');
@@ -286,10 +294,16 @@ function JournalToday() {
           rolls,
           notes,
           stopDoing,
+          session,
+          minutes,
+          ...extrasDraft(extras, date),
         }),
       );
       const id = next.journal[next.journal.length - 1]?.id ?? '';
       setClassName('');
+      setSession('class');
+      setMinutes(0);
+      setExtras(EMPTY_EXTRAS);
       setTechniques(blankTechniqueRows(JOURNAL_TECHNIQUE_ROWS));
       setPartners('');
       setDrills('');
@@ -331,6 +345,8 @@ function JournalToday() {
               />
             </label>
           </div>
+          <MatTimeField idPrefix="" session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} />
+          <SessionExtras idPrefix="" report={report} value={extras} onChange={setExtras} />
           <div className="student-split">
             <div className="student-stack">
               {techniques.map((slot, index) => (
@@ -682,6 +698,16 @@ function CardBody({ card }: { card: JournalCardView }) {
         {formatJournalDate(card.date)}
         {card.className ? ` · ${card.className}` : ''}
       </p>
+      <p className="journal-card__mat" data-testid="card-mat-time">
+        {matTimeLine(card.session, card.minutes)}
+      </p>
+      {card.injury ? <p className="journal-card__mat" data-testid="card-injury">Injury · {card.injury.area || 'unspecified'}{card.injury.note ? ` — ${card.injury.note}` : ''}</p> : null}
+      {card.hiatus ? (
+        <p className="journal-card__mat" data-testid="card-hiatus">
+          {card.hiatus.reason === 'medical' ? 'Medical break' : 'Break'} · {card.hiatus.start}
+          {card.hiatus.end ? ` to ${card.hiatus.end}` : ' · ongoing'}
+        </p>
+      ) : null}
       {journalFieldLines(card).map((line) => (
         <p key={line}>{line}</p>
       ))}
@@ -720,10 +746,16 @@ function JournalEditor({
     rolls: string;
     notes: string;
     stopDoing: string;
-  }) => void;
+    session: JournalSession;
+    minutes: number;
+  } & ReturnType<typeof extrasDraft>) => void;
 }) {
+  const { report } = useStudentFile();
+  const [extras, setExtras] = useState<SessionExtrasValue>(() => extrasFromCard(card));
   const [date, setDate] = useState(card.date);
   const [className, setClassName] = useState(card.className);
+  const [session, setSession] = useState<JournalSession>(card.session);
+  const [minutes, setMinutes] = useState(card.minutes);
   const [techniques, setTechniques] = useState(() => {
     const rows = card.techniques.map((item) => ({ id: item.id, name: item.name }));
     while (rows.length < JOURNAL_TECHNIQUE_ROWS) rows.push({ id: '', name: '' });
@@ -743,7 +775,7 @@ function JournalEditor({
       onSubmit={(event) => {
         event.preventDefault();
         try {
-          onSave({ date, className, techniques, partners, drills, rolls, notes, stopDoing });
+          onSave({ date, className, techniques, partners, drills, rolls, notes, stopDoing, session, minutes, ...extrasDraft(extras, date) });
           setError('');
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Could not save this card.');
@@ -763,6 +795,8 @@ function JournalEditor({
           />
         </label>
       </div>
+      <MatTimeField idPrefix="Edit " session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} />
+      <SessionExtras idPrefix="Edit " report={report} value={extras} onChange={setExtras} />
       {techniques.map((slot, index) => (
         <label key={index} className="ink">
           <span className="ink__label">{techniqueDrilledLabel(index)}</span>

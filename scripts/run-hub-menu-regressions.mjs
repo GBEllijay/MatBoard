@@ -16,6 +16,7 @@ await build({
   external: ['node:test', 'node:assert', 'node:assert/strict'],
   jsx: 'automatic',
   logLevel: 'silent',
+  loader: { '.css': 'empty' },
   plugins: [paidChunksStub],
 });
 

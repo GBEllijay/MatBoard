@@ -10,6 +10,8 @@ import { joinJournalNotes, splitJournalNotes } from './journalNotes.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { emptyRank } from './studentRank.ts';
+import { clampMinutes, sessionOf } from './matHours.ts';
+import type { JournalSession } from './progress/types.ts';
 import {
   beginAppStudentSave,
   endAppStudentSave,
@@ -118,12 +120,26 @@ export type JournalDraft = {
    * A missing value is empty. Text that lived in `notes` is still read from there.
    */
   stopDoing?: string;
+  /** Time on the mat in minutes. 0 or missing saves an untimed card. Missing on edit keeps the saved time. */
+  minutes?: number;
+  /** Class or open mat. Missing keeps the saved kind (or class on a new card). */
+  session?: JournalSession;
+  /** 0 or missing: unrated. Missing on edit keeps the saved rating. */
+  quality?: number;
+  /** null clears. Missing on edit keeps. */
+  injury?: JournalEntry['injury'] | null;
+  hiatus?: JournalEntry['hiatus'] | null;
 };
 
 export type JournalCardView = JournalDraft & {
   id: string;
   amendments: JournalEntry['amendments'];
   createdAt: number;
+  minutes: number;
+  session: JournalSession;
+  quality: number;
+  injury: NonNullable<JournalEntry['injury']> | null;
+  hiatus: NonNullable<JournalEntry['hiatus']> | null;
 };
 
 export type FundamentalRow = {
@@ -391,6 +407,11 @@ export function viewJournalEntry(entry: JournalEntry): JournalCardView {
     stopDoing: decoded.stopDoing,
     amendments: entry.amendments,
     createdAt: entry.createdAt,
+    minutes: clampMinutes(entry.minutes),
+    session: sessionOf(entry),
+    quality: entry.quality ?? 0,
+    injury: entry.injury ?? null,
+    hiatus: entry.hiatus ?? null,
   };
 }
 
@@ -418,7 +439,7 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
     }))
     .filter((item) => item.name)
     .slice(0, JOURNAL_TECHNIQUE_MAX);
-  return {
+  const entry: JournalEntry = {
     id: newId('card', now),
     date: draft.date,
     gameTag: (GAME_TAGS as readonly string[]).includes(draft.gameTag) ? draft.gameTag : '',
@@ -428,6 +449,18 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
     createdAt: now,
     updatedAt: now,
   };
+  const minutes = clampMinutes(draft.minutes);
+  if (minutes) entry.minutes = minutes;
+  if (draft.session === 'openMat' || draft.session === 'class') entry.session = draft.session;
+  const quality = Math.round(Number(draft.quality ?? 0));
+  if (quality >= 1 && quality <= 5) entry.quality = quality as 1 | 2 | 3 | 4 | 5;
+  if (draft.injury) entry.injury = { area: draft.injury.area.trim().slice(0, PROGRESS_NAME_MAX), note: draft.injury.note.trim().slice(0, PROGRESS_NAME_MAX * 4) };
+  if (draft.hiatus) {
+    const start = DATE_RE.test(draft.hiatus.start) ? draft.hiatus.start : draft.date;
+    const end = DATE_RE.test(draft.hiatus.end) && draft.hiatus.end >= start ? draft.hiatus.end : '';
+    entry.hiatus = { reason: draft.hiatus.reason === 'medical' ? 'medical' : 'other', start, end };
+  }
+  return entry;
 }
 
 export function addJournalEntry(report: StudentProgressReport, draft: JournalDraft, now = Date.now()): StudentProgressReport {
@@ -450,7 +483,12 @@ export function updateJournalEntry(
   if (index < 0) return report;
   const current = report.journal[index];
   const stopDoing = draft.stopDoing === undefined ? viewJournalEntry(current).stopDoing : draft.stopDoing;
-  const next = createJournalEntry({ ...draft, stopDoing, gameTag: draft.gameTag || current.gameTag }, now);
+  const minutes = draft.minutes === undefined ? current.minutes : draft.minutes;
+  const session = draft.session === undefined ? current.session : draft.session;
+  const quality = draft.quality === undefined ? current.quality : draft.quality;
+  const injury = draft.injury === undefined ? current.injury : draft.injury;
+  const hiatus = draft.hiatus === undefined ? current.hiatus : draft.hiatus;
+  const next = createJournalEntry({ ...draft, stopDoing, minutes, session, quality, injury, hiatus, gameTag: draft.gameTag || current.gameTag }, now);
   const journal = report.journal.slice();
   journal[index] = {
     ...next,
