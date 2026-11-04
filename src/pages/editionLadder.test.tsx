@@ -108,7 +108,7 @@ test('Student page highlights Student, opens White, and shows server upgrade pri
   assert.doesNotMatch(m.host.querySelector('[data-rung="instructor"]')?.textContent ?? '', /\$49\.99/);
   assert.equal(role(m.host, 'pro-cloud'), 'soon');
   assert.equal(m.host.querySelector('[data-rung="pro-cloud"] a')?.getAttribute('href'), '/editions/pro-cloud');
-  assert.match(m.host.querySelector('[data-rung="pro-cloud"]')?.textContent ?? '', /Coming soon/);
+  assert.match(m.host.querySelector('[data-rung="pro-cloud"]')?.textContent ?? '', /This product is in alpha/);
   assert.deepEqual(calls.map((call) => call.tier).sort(), ['coach', 'media', 'pro']);
   assert.equal(calls.every((call) => call.email === 'buyer@gym.test'), true);
   assert.equal(m.host.querySelector('.edition-ladder__note'), null);

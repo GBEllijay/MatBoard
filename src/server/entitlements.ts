@@ -54,6 +54,53 @@ export type ProEntitlement = {
   updatedAt: string;
 };
 
+/**
+ * Media Cloud or Instructor Cloud add-on, one record per Stripe subscription.
+ * Separate from the one-time Media or Coach record, which a lapse never changes.
+ * cloudLapsedAt is the first time Cloud went off. Nothing is deleted on a lapse.
+ */
+export type CloudEntitlement = {
+  subscriptionId: string;
+  edition: 'media' | 'coach';
+  sessionId?: string;
+  status: ProEntitlementStatus;
+  cloudLapsedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function cloudRecordKey(subscriptionId: string): string {
+  return `cloud-subscription:${subscriptionId}`;
+}
+
+function parseCloudEntitlement(raw: unknown): CloudEntitlement | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  if (typeof row.subscriptionId !== 'string' || !row.subscriptionId) return null;
+  if (row.edition !== 'media' && row.edition !== 'coach') return null;
+  if (row.status !== 'active' && row.status !== 'inactive') return null;
+  return {
+    subscriptionId: row.subscriptionId,
+    edition: row.edition,
+    ...(typeof row.sessionId === 'string' ? { sessionId: row.sessionId } : {}),
+    status: row.status,
+    cloudLapsedAt: typeof row.cloudLapsedAt === 'string' ? row.cloudLapsedAt : null,
+    createdAt: typeof row.createdAt === 'string' ? row.createdAt : '',
+    updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : '',
+  };
+}
+
+/** Keep the session id and the first lapse time across repeats. */
+function mergeCloud(existing: CloudEntitlement | null, record: CloudEntitlement): CloudEntitlement {
+  if (!existing) return record;
+  return {
+    ...record,
+    sessionId: record.sessionId ?? existing.sessionId,
+    createdAt: existing.createdAt || record.createdAt,
+    cloudLapsedAt: record.status === 'active' ? null : (existing.cloudLapsedAt ?? record.cloudLapsedAt),
+  };
+}
+
 export type EntitlementIndex = {
   sessions: Record<string, WhiteEntitlement>;
   emails: Record<string, string>;
@@ -85,6 +132,9 @@ export type EntitlementStore = {
   findProByEmail(email: string): Promise<ProEntitlement | null>;
   findProBySessionId(sessionId: string): Promise<ProEntitlement | null>;
   findProBySubscriptionId(subscriptionId: string): Promise<ProEntitlement | null>;
+  /** Media or Instructor Cloud add-on. Optional so older stores keep working. */
+  saveCloud?(record: CloudEntitlement): Promise<CloudEntitlement>;
+  findCloudBySubscriptionId?(subscriptionId: string): Promise<CloudEntitlement | null>;
 };
 
 /** Cloudflare KV binding shape used by Pages Functions. */
@@ -473,7 +523,16 @@ export function proEntitlementBySubscription(index: EntitlementIndex, subscripti
 
 export function memoryEntitlementStore(initial?: EntitlementIndex): EntitlementStore {
   const index = initial ?? emptyEntitlementIndex();
+  const clouds = new Map<string, CloudEntitlement>();
   return {
+    async saveCloud(record) {
+      const stored = mergeCloud(clouds.get(record.subscriptionId) ?? null, record);
+      clouds.set(stored.subscriptionId, stored);
+      return stored;
+    },
+    async findCloudBySubscriptionId(subscriptionId) {
+      return clouds.get(subscriptionId) ?? null;
+    },
     async save(record) {
       return applyEntitlement(index, record);
     },
@@ -547,7 +606,25 @@ export function kvEntitlementStore(kv: KvBinding): EntitlementStore {
     await kv.put(INDEX_KEY, JSON.stringify(index));
   };
 
+  const readCloud = async (subscriptionId: string): Promise<CloudEntitlement | null> => {
+    const raw = await kv.get(cloudRecordKey(subscriptionId));
+    if (!raw) return null;
+    try {
+      return parseCloudEntitlement(JSON.parse(raw));
+    } catch {
+      return null;
+    }
+  };
+
   return {
+    async saveCloud(record) {
+      const stored = mergeCloud(await readCloud(record.subscriptionId), record);
+      await kv.put(cloudRecordKey(stored.subscriptionId), JSON.stringify(stored));
+      return stored;
+    },
+    async findCloudBySubscriptionId(subscriptionId) {
+      return readCloud(subscriptionId);
+    },
     async save(record) {
       const index = await read();
       const stored = applyEntitlement(index, record);

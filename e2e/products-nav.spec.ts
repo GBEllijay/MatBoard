@@ -68,6 +68,6 @@ test('/products belt accents and order match the homepage ladder', async ({ page
   await expect(media.getByRole('button')).toHaveCount(0);
 
   // Coach ids and routes are unchanged under the new name.
-  await expect(page.getByRole('button', { name: 'Advantage Instructor Edition, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Instructor Edition, This product is in alpha' })).toBeVisible();
   await expect(page.locator('.mode-card--coach')).toContainText('$29.99 one-time');
 });

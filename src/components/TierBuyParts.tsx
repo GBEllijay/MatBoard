@@ -27,7 +27,7 @@ export function TierBeltIcon({ belt, big = false }: { belt: TierBelt; big?: bool
 /** One higher-tier card: belt icon, kicker, name, price, one line, alpha line, link to its buy page. */
 export function TierCard({
   tier,
-  kicker = 'Coming soon',
+  kicker = 'This product is in alpha',
   children,
 }: {
   tier: TierBuyEntry;
@@ -69,7 +69,7 @@ export function ProCloudBuyCard() {
           <span className="belt-tip__bar belt-tip__bar--red" />
         </span>
         <span>
-          <span className="buy__kicker">Coming soon</span>
+          <span className="buy__kicker">This product is in alpha</span>
           <h2>{PRO_PLUS_CLOUD_NAME}</h2>
         </span>
       </div>

@@ -39,7 +39,7 @@ export function ComingSoonPage() {
       ? 'Advantage Coach is on for this browser.'
       : seated
         ? 'This browser is signed in with an instructor seat.'
-        : 'Coming soon — Advantage Coach and Advantage Pro.';
+        : 'This product is in alpha — Advantage Coach and Advantage Pro.';
 
   return (
     <main className="home home--soon">
@@ -93,12 +93,12 @@ export function ComingSoonPage() {
             ) : null}
           </nav>
         ) : (
-          <nav className="home__soon-actions" aria-label="Coming soon">
+          <nav className="home__soon-actions" aria-label="Alpha">
             <p className="home__soon-lead">
               {whiteUnlocked
                 ? 'Advantage White is ready on this browser — Live Bout and Rounds. '
                 : 'Advantage White is $9.99 — Live Bout and Rounds unlock after purchase. '}
-              Advantage Coach and Advantage Pro stay Coming soon on home. Gym-owner tools stay off
+              Advantage Coach and Advantage Pro stay in alpha on home. Gym-owner tools stay off
               until Coach or Pro is unlocked on this browser.
             </p>
             <AlphaAccessNote />

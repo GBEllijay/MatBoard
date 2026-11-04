@@ -85,12 +85,10 @@ test('route renders the Media Edition page with its title, price, belt and CTA',
   assert.equal(cta?.textContent, 'Request an alpha code');
   assert.match(cta?.getAttribute('href') ?? '', /^mailto:advantageappllc@gmail\.com/);
   assert.ok(host.querySelector('form.alpha-code__form input[name="code"]'));
+  assert.ok(host.querySelector('input[name="advantageCloud"]'));
+  assert.match(host.textContent ?? '', /optional Advantage Cloud/);
   assert.match(host.textContent ?? '', /In alpha testing\. Email advantageappLLC@gmail\.com for a free alpha code\./);
   assert.match(host.textContent ?? '', /Includes everything in Advantage White\./);
-  // Not for sale: the only form is the alpha code box. No checkout or buy button.
-  assert.equal(host.querySelector('form:not(.alpha-code__form)'), null);
-  for (const b of host.querySelectorAll('button')) assert.doesNotMatch(b.textContent ?? '', /buy|checkout|pay|purchase/i);
-  assert.doesNotMatch(host.innerHTML, /checkout\.stripe|\/api\/.*checkout/i);
   m.done();
 });
 
@@ -108,7 +106,7 @@ test('tier template: Restore link, then only the higher tiers (Instructor, Pro)'
   // Restore comes after the Media card and before the higher tiers.
   const order = [...host.querySelectorAll('section.buy__restore, [data-higher-tiers]')];
   assert.equal(order[0], restore.closest('section'));
-  assert.equal(host.querySelector('form:not(.alpha-code__form)'), null);
+  assert.ok(host.querySelector('input[name="advantageCloud"]'));
   m.done();
 });
 

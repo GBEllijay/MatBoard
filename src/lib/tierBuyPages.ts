@@ -29,7 +29,6 @@ import {
   EDITION_EMAIL_DISPLAY,
   INSTRUCTOR_LIST_PRICE_CENTS,
   PRO_LIST_PRICE_CENTS,
-  PRO_MONTHLY_PRICE_CENTS,
   STUDENT_ALPHA_ACCESS_NOTE,
   STUDENT_LIST_PRICE_CENTS,
 } from './productPrices.ts';
@@ -163,8 +162,8 @@ export const TIER_LADDER: readonly TierBuyEntry[] = [
     id: 'pro',
     name: 'Advantage Pro',
     belt: 'black',
-    price: `${formatUsdFromCents(PRO_LIST_PRICE_CENTS)} + ${formatUsdFromCents(PRO_MONTHLY_PRICE_CENTS)}/mo`,
-    priceDetail: `USD — one-time, plus ${formatUsdFromCents(PRO_MONTHLY_PRICE_CENTS)}/month, when it launches`,
+    price: formatUsdFromCents(PRO_LIST_PRICE_CENTS),
+    priceDetail: 'USD — one-time',
     blurb: PRO_HOME_LINES[0],
     lead: COMING_SOON_ADS.pro.lead,
     includes: PRO_INCLUDES_ALL,

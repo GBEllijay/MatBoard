@@ -19,6 +19,12 @@ export const PRO_LIST_PRICE_CENTS = 9999;
 /** Monthly Advantage Pro price. The Pro Checkout session includes this with the one-time price. */
 export const PRO_MONTHLY_PRICE_CENTS = 599;
 
+/** Monthly Advantage Cloud price on Media Edition (STRIPE_PRICE_MEDIA_CLOUD_MONTHLY). */
+export const MEDIA_CLOUD_MONTHLY_PRICE_CENTS = 299;
+
+/** Monthly Advantage Cloud price on Instructor Edition. Same as Pro monthly. */
+export const INSTRUCTOR_CLOUD_MONTHLY_PRICE_CENTS = 599;
+
 export const STUDENT_PRICE_LINE = '$19.99 one-time';
 
 export const COACH_PRICE_LINE = '$29.99 one-time';
@@ -26,10 +32,39 @@ export const COACH_PRICE_LINE = '$29.99 one-time';
 /** Instructor Edition (id coach) price line on /products and the homepage belt ladder. Matches INSTRUCTOR_LIST_PRICE_CENTS. */
 export const INSTRUCTOR_DISPLAY_PRICE_LINE = '$49.99 one-time';
 
-/** Display only. Media is not for sale and has no Stripe product. Matches the homepage belt ladder. */
+/** One-time Media Edition list price. Checkout product `media`, env STRIPE_PRICE_MEDIA. */
+export const MEDIA_LIST_PRICE_CENTS = 2999;
+
+/** Display only. Matches the homepage belt ladder. */
 export const MEDIA_PRICE_LINE = '$29.99 one-time';
 
-export const PRO_PRICE_LINE = '$99.99 one-time, plus $5.99/month';
+/** Pro base price. Advantage Cloud is not included. */
+export const PRO_PRICE_LINE = '$99.99 one-time';
+
+/** Shown on Media, Instructor, and Pro. Not a second product and not part of the base price. */
+export const CLOUD_ADDON_LINE = '+ optional Advantage Cloud $5.99/month';
+
+export const CLOUD_ADDON_CHECKBOX =
+  "Include Advantage Cloud access ($5.99/month), so you don't need your own Google Drive or OneDrive";
+
+/** White buy page. Scoreboard, timer, and roster stay in this browser. No Drive connector. */
+export const WHITE_STORAGE_LINE =
+  "Everything runs right on this device, so you don't need Google Drive or OneDrive.";
+
+/**
+ * Student buy page. The journal stays on the phone. Connections can add Google Drive
+ * or OneDrive later for a personal backup or an academy folder.
+ */
+export const STUDENT_STORAGE_LINE =
+  "Your progress saves on this phone, so you don't need Google Drive or OneDrive. Connect one anytime to back up or link with your academy.";
+
+export const ALPHA_PRODUCT_STATUS = 'This product is in alpha';
+
+/** Instructor buy pages. Drive and OneDrive are the live share connectors. Dropbox is not wired. */
+export const INSTRUCTOR_CLOUD_FIT =
+  'Pair it with Advantage Cloud or your own Google Drive or OneDrive to share with your staff and students.';
+
+export const INSTRUCTOR_CLOUD_LIMIT = 'Without one, everything still works on this device.';
 
 /**
  * Display only. Advantage Pro Plus Cloud is the $5.99/month hosted-storage plan.
