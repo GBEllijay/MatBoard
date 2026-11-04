@@ -6,6 +6,7 @@ import { TRAINING_SKIN_KEY } from './trainingSkin.ts';
 import { polishedSkinById, polishedSkinBySlug } from './polishedSkins.ts';
 import {
   METAL_METER_SEGMENTS,
+  metalBoardPhase,
   metalBoardState,
   metalFaceParts,
   metalMeterLit,
@@ -45,13 +46,14 @@ test('side chips read BLUE and WHITE from the competitor side, never the belt', 
 
 test('Metal Mania headings put numerals in Anton, and clocks stay plain Anton', () => {
   assert.deepEqual(metalFaceParts('Mat 1'), [
-    { kind: 'chrome', value: 'Mat ' },
+    { kind: 'chrome', value: 'Mat' },
     { kind: 'num', value: '1' },
   ]);
   assert.deepEqual(metalFaceParts('Round 1'), [
-    { kind: 'chrome', value: 'Round ' },
+    { kind: 'chrome', value: 'Round' },
     { kind: 'num', value: '1' },
   ]);
+  assert.deepEqual(metalFaceParts('Round Semifinal'), [{ kind: 'chrome', value: 'Round Semifinal' }]);
   assert.deepEqual(metalTimerTitle(false, 1), { word: 'Round', numeral: '1' });
   assert.equal(metalTimerTitle(false, 1).numeral, '1');
   assert.deepEqual(metalTimerTitle(true, 1), { word: 'Rest', numeral: null });
@@ -63,6 +65,10 @@ test('Metal Mania headings put numerals in Anton, and clocks stay plain Anton', 
   assert.match(fonts, /anton-latin-400-normal\.woff2/);
   assert.doesNotMatch(fonts, /fonts\.googleapis\.com/);
   assert.match(css, /\.n \{[^}]*font-family: Anton/);
+  assert.match(css, /\.n \{[^}]*margin-left: 0\.3em/);
+  assert.match(css, /\.id \{[^}]*min-width: 0;[^}]*overflow: hidden/);
+  assert.match(css, /\.name a \{[^}]*overflow: hidden;[^}]*text-overflow: ellipsis/);
+  assert.match(css, /font-size: min\(24vw, 11vh\)/);
   assert.match(css, /\.num,\s*\n\.skin-root\[data-skin="heavy-metal"\] \.clock,/);
   assert.match(css, /font-family: Anton, sans-serif;\s*font-weight: 400;/);
   assert.match(css, /color: #fff;/);
@@ -89,7 +95,13 @@ test('the Chrome Inferno meter is 30 live segments and 04:40 of 05:00 lights 28'
   assert.equal(metalMeterLit(0), 0);
   assert.deepEqual(metalPhaseParts('WORK · ROUND 1 · ENDLESS'), { pill: 'WORK', sub: 'ROUND 1 · ENDLESS' });
   assert.deepEqual(metalPhaseParts('REST · ROUND 1 / 5'), { pill: 'REST', sub: 'ROUND 1 / 5' });
+  assert.equal(metalBoardPhase({ running: false, decided: false }), 'OPEN');
+  assert.equal(metalBoardPhase({ running: true, decided: false }), 'LIVE');
+  assert.equal(metalBoardPhase({ running: false, decided: true }), 'FINAL');
+  assert.equal(metalBoardPhase({ running: true, decided: true }), 'FINAL');
   assert.equal(metalBoardState('Match'), 'OPEN');
+  assert.equal(metalBoardState('LIVE'), 'LIVE');
+  assert.equal(metalBoardState('FINAL'), 'FINAL');
   assert.equal(metalBoardState('Final'), 'Final');
   const timer = read('../components/PolishedTimer.tsx');
   assert.match(timer, /METAL_METER_SEGMENTS/);

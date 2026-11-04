@@ -32,6 +32,7 @@ export function PolishedTimer({
   phaseLabel,
   onPhase,
   onClock,
+  running,
   children,
 }: {
   slug: PolishedTimerSlug;
@@ -46,6 +47,8 @@ export function PolishedTimer({
   phaseLabel: string;
   onPhase: (event: MouseEvent) => void;
   onClock: (event: MouseEvent) => void;
+  /** Heavy Metal only: a paused clock dims the meter and shows PAUSED. */
+  running?: boolean;
   children?: ReactNode;
 }) {
   const mod = usePolishedSkinModule(slug);
@@ -57,6 +60,7 @@ export function PolishedTimer({
   const ringP = Math.round(p * 1000) / 1000;
 
   const metalPhase = slug === 'heavy-metal' ? metalPhaseParts(phaseLine) : null;
+  const metalPaused = slug === 'heavy-metal' && running === false;
 
   const clockBtn = (content: ReactNode, cls = 'digits', data?: string) => (
     <button
@@ -139,6 +143,9 @@ export function PolishedTimer({
             ))}
           </div>
           <div className="next">{next}</div>
+          <div className="paused-tag" aria-hidden="true">
+            PAUSED
+          </div>
         </>
       );
       break;
@@ -232,7 +239,7 @@ export function PolishedTimer({
 
   return (
     <div className={`skin-root skin-root--timer${mod ? '' : ' skin-root--loading'}`} data-skin={slug}>
-      <div className={`tm${rest ? ' rest' : ''}`} style={{ ['--p' as string]: p.toFixed(4) }}>
+      <div className={`tm${rest ? ' rest' : ''}${metalPaused ? ' is-paused' : ''}`} style={{ ['--p' as string]: p.toFixed(4) }}>
         {deco ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: deco }} /> : null}
         <img className="logo" src="/card-logo.png" alt="Advantage" />
         <button type="button" className="phase sk-btn tm-phase" aria-label={phaseLabel} onClick={onPhase}>

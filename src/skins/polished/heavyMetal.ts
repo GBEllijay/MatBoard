@@ -11,9 +11,23 @@ export function sideChipLabel(side: 'blue' | 'white'): 'BLUE' | 'WHITE' {
   return side === 'blue' ? 'BLUE' : 'WHITE';
 }
 
-/** The approved board calls the left band pill OPEN. Any other live state is kept. */
+export type MetalBoardPhase = 'OPEN' | 'LIVE' | 'FINAL';
+
+/**
+ * Left band pill. OPEN before the clock runs, LIVE while it runs,
+ * FINAL after a win or a DQ. A plain "Match" label is OPEN.
+ */
+export function metalBoardPhase(input: { running: boolean; decided: boolean }): MetalBoardPhase {
+  if (input.decided) return 'FINAL';
+  if (input.running) return 'LIVE';
+  return 'OPEN';
+}
+
+/** The approved board calls the left band pill OPEN. LIVE and FINAL pass through. */
 export function metalBoardState(state: string): string {
-  return state.trim().toLowerCase() === 'match' ? 'OPEN' : state;
+  const value = state.trim();
+  if (value === 'OPEN' || value === 'LIVE' || value === 'FINAL') return value;
+  return value.toLowerCase() === 'match' ? 'OPEN' : state;
 }
 
 export type MetalFacePart = { kind: 'chrome' | 'num'; value: string };
@@ -25,8 +39,15 @@ export type MetalFacePart = { kind: 'chrome' | 'num'; value: string };
 export function metalFaceParts(text: string): MetalFacePart[] {
   const parts = text.split(/(\d+)/).filter((part) => part !== '');
   if (parts.length === 0) return [];
-  if (!parts.some((part) => /^\d+$/.test(part))) return [{ kind: 'chrome', value: text }];
-  return parts.map((value) => ({ kind: /^\d+$/.test(value) ? 'num' : 'chrome', value }));
+  if (!parts.some((part) => /^\d+$/.test(part))) return [{ kind: 'chrome', value: text.trim() }];
+  /* The gap before a numeral is margin on .n. A space inside the metal-face flex item collapses. */
+  return parts
+    .map((value) =>
+      /^\d+$/.test(value)
+        ? { kind: 'num' as const, value }
+        : { kind: 'chrome' as const, value: value.trim() },
+    )
+    .filter((part) => part.value !== '');
 }
 
 /** Heavy Metal timer title. Rest has no numeral. A round uses an Arabic numeral, not Roman. */
