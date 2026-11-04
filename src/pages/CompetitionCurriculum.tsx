@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { PlanDateNav } from '../components/PlanDateNav';
 import { LessonMediaRail } from '../components/LessonMediaRail';
+import { ReviewSlotControls } from '../components/ReviewSlotControls';
 import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { visibleCoachControl } from '../lib/instructorSeats';
@@ -650,6 +651,20 @@ export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boo
               onChange={(event) => commit({ ...plan, closing: event.target.value })}
             />
           </label>
+          {blockOffersReviewToggle('closing') ? (
+            <ReviewSlotControls
+              id={`${plan.id}-closing`}
+              heading="Closing"
+              slot={plan.closingReview}
+              dateKey={viewKey}
+              readOnly={!editingToday}
+              canCapture={canCaptureReplay}
+              onChange={(closingReview) => {
+                const { closingReview: _drop, ...rest } = plan;
+                commit(closingReview ? { ...rest, closingReview } : rest);
+              }}
+            />
+          ) : null}
         </section>
 
         {editingToday ? (

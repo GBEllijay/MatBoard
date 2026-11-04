@@ -7,7 +7,7 @@
 
 import { parseMmSs } from './format.ts';
 import { asRecord, clampText } from './plainValue.ts';
-import { cleanClip, type ReplayClipRef } from './replayAnalysis.ts';
+import { cleanClip, cleanReviewSlot, type ReplayClipRef, type ReviewSlot } from './replayAnalysis.ts';
 import {
   CLASS_DESIGNATION_MAX,
   CLASS_TIME_MAX,
@@ -88,6 +88,8 @@ export type CurriculumPlan = {
   classTime: string;
   blocks: CurriculumBlock[];
   closing: string;
+  /** Record for Review on the Closing section. Absent when off with no clip. */
+  closingReview?: ReviewSlot;
   locked: boolean;
 };
 
@@ -148,12 +150,17 @@ export function blockOffersClock(kind: CurriculumKind): boolean {
   return kind === 'warmup' || kind === 'body' || kind === 'takedown' || kind === 'specific' || kind === 'custom';
 }
 
+/** Lesson sections that can carry "Record for Review": curriculum kinds plus the Intro and Closing (outro) sections. */
+export type ReviewToggleKind = CurriculumKind | 'intro' | 'closing';
+
 /**
- * "Record for Review" switch: sparring (Live Rounds) and added blocks such as
- * Bag Work or Cardio. Not on warm-up, body movement, or technique blocks.
+ * "Record for Review" switch (owner decision): sparring (Live Rounds), added
+ * blocks such as Bag Work or Cardio, Specific Training, Intro, and Closing
+ * (the outro block in every template). Not on Cool down, warm-up, body
+ * movement, or technique/takedown blocks.
  */
-export function blockOffersReviewToggle(kind: CurriculumKind): boolean {
-  return kind === 'live' || kind === 'custom';
+export function blockOffersReviewToggle(kind: ReviewToggleKind): boolean {
+  return kind === 'live' || kind === 'custom' || kind === 'specific' || kind === 'intro' || kind === 'closing';
 }
 
 /** The block shows the replay recorder: its mode is "Record for replay", or Record for Review is on. */
@@ -360,6 +367,8 @@ export function sanitizeCurriculum(input: unknown): { plan: CurriculumPlan; repa
   const classTime = clampText(raw?.classTime, CLASS_TIME_MAX);
   const closing = clampText(raw?.closing, CLOSING_MAX);
   const locked = raw?.locked === true;
+  const closingSlot = cleanReviewSlot(raw?.closingReview);
+  if (closingSlot.repaired) repaired = true;
   if (
     raw &&
     (raw.coachName !== coachName ||
@@ -380,6 +389,7 @@ export function sanitizeCurriculum(input: unknown): { plan: CurriculumPlan; repa
       classTime,
       blocks,
       closing,
+      ...(closingSlot.slot ? { closingReview: closingSlot.slot } : {}),
       locked,
     },
   };

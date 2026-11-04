@@ -297,20 +297,24 @@ test('curriculum: Record for replay shows the replay recorder and hides the roun
   unmount(mounted);
 });
 
-test('curriculum: Record for Review is only on sparring (Live Rounds) among the starter blocks; it keeps the timer', async () => {
+test('curriculum: Record for Review is on Live Rounds and Specific Training among the starter blocks; it keeps the timer', async () => {
   const mounted = await curriculumPage();
-  const switches = [...mounted.host.querySelectorAll('[data-record-review]')] as HTMLButtonElement[];
-  assert.equal(switches.length, 1, 'only Live Rounds among the suggested blocks');
-  const live = switches[0].closest('section.notes__card') as HTMLElement;
-  const title = (live.querySelector('h2')?.textContent ?? '').trim();
-  assert.match(title, /live/i);
+  const blockSwitches = curriculumCards(mounted.host)
+    .map((card) => [(card.querySelector('h2')?.textContent ?? '').trim(), card.querySelector('[data-record-review]')] as const)
+    .filter(([, sw]) => sw);
+  const titles = blockSwitches.map(([t]) => t);
+  assert.equal(titles.length, 2, titles.join(','));
+  assert.ok(titles.some((t) => /live/i.test(t)), 'live');
+  assert.ok(titles.some((t) => /specific/i.test(t)), 'specific');
   for (const card of curriculumCards(mounted.host)) {
     const h = (card.querySelector('h2')?.textContent ?? '').trim();
-    if (/warm|body|takedown|technique/i.test(h)) assert.equal(card.querySelector('[data-record-review]'), null, h);
+    if (/warm|body|takedown|technique|cool/i.test(h)) assert.equal(card.querySelector('[data-record-review]'), null, h);
   }
-  assert.equal(switches[0].getAttribute('aria-checked'), 'false');
-  assert.equal(switches[0].getAttribute('role'), 'switch');
-  click(switches[0]);
+  const title = titles.find((t) => /live/i.test(t)) as string;
+  const sw = cardTitled(mounted.host, title).querySelector('[data-record-review]') as HTMLButtonElement;
+  assert.equal(sw.getAttribute('aria-checked'), 'false');
+  assert.equal(sw.getAttribute('role'), 'switch');
+  click(sw);
   const card = cardTitled(mounted.host, title);
   const on = card.querySelector('[data-record-review]') as HTMLButtonElement;
   assert.equal(on.getAttribute('aria-checked'), 'true');
@@ -318,6 +322,40 @@ test('curriculum: Record for Review is only on sparring (Live Rounds) among the 
   assert.ok(buttons(card).some((b) => (b.textContent ?? '').includes('Open round timer')), 'timer stays');
   click(on);
   assert.equal(cardTitled(mounted.host, title).querySelector('.replay-card--embedded'), null);
+  unmount(mounted);
+});
+
+test('curriculum: the Closing (outro) section offers Record for Review and shows the recorder when on', async () => {
+  const mounted = await curriculumPage();
+  const label = mounted.host.querySelector('[aria-label="Record for Review for Closing"]') as HTMLButtonElement;
+  assert.ok(label, 'closing switch');
+  click(label);
+  const on = mounted.host.querySelector('[aria-label="Record for Review for Closing"]') as HTMLButtonElement;
+  assert.equal(on.getAttribute('aria-checked'), 'true');
+  assert.ok(on.parentElement?.querySelector('.replay-card--embedded'));
+  unmount(mounted);
+});
+
+test('Daily Lesson Plan source: Intro, Specific Training and Closing carry Record for Review; Cool down does not', () => {
+  const src = readFileSync('src/pages/TrainingNotes.tsx', 'utf8');
+  for (const kind of ['intro', 'specific', 'closing']) assert.ok(src.includes(`blockOffersReviewToggle('${kind}')`), kind);
+  assert.equal(src.includes("blockOffersReviewToggle('cooldown')"), false);
+});
+
+test('player: Restart returns the clip to 0:00 and pauses', () => {
+  const mounted = player();
+  const video = mounted.host.querySelector('video') as HTMLVideoElement;
+  let current = 0;
+  let paused = 0;
+  Object.defineProperty(video, 'currentTime', { configurable: true, get: () => current, set: (v: number) => { current = v; } });
+  Object.defineProperty(video, 'duration', { configurable: true, get: () => 60 });
+  video.pause = () => { paused += 1; };
+  click(button(mounted.host, '+10s'));
+  click(button(mounted.host, '+10s'));
+  assert.equal(current, 20);
+  click(button(mounted.host, 'Restart'));
+  assert.equal(current, 0);
+  assert.equal(paused, 1);
   unmount(mounted);
 });
 

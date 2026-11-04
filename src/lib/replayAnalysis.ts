@@ -308,3 +308,26 @@ export function replayFileName(dateKey: string, title: string, mime: string, id:
   const tail = id.replace(/[^a-z0-9]/gi, '').slice(-6) || 'clip';
   return `replay-${dateKey}-${slug || 'analysis'}-${tail}.${ext}`;
 }
+
+/**
+ * "Record for Review" on a fixed lesson section such as Intro or Closing (the
+ * outro block). Only the switch and a clip reference are stored.
+ */
+export type ReviewSlot = { recordReview?: boolean; replayClip?: ReplayClipRef };
+
+/** Clean a stored review slot. Off with no clip is dropped. */
+export function cleanReviewSlot(value: unknown): { slot: ReviewSlot | undefined; repaired: boolean } {
+  if (value == null) return { slot: undefined, repaired: false };
+  const raw = typeof value === 'object' ? (value as Record<string, unknown>) : null;
+  if (!raw) return { slot: undefined, repaired: true };
+  const recordReview = raw.recordReview === true;
+  let repaired = raw.recordReview != null && raw.recordReview !== true && raw.recordReview !== false;
+  let replayClip: ReplayClipRef | undefined;
+  if (raw.replayClip != null) {
+    const cleaned = cleanClip(raw.replayClip);
+    replayClip = cleaned.clip;
+    if (!replayClip || cleaned.repaired) repaired = true;
+  }
+  if (!recordReview && !replayClip) return { slot: undefined, repaired: true };
+  return { slot: { ...(recordReview ? { recordReview } : {}), ...(replayClip ? { replayClip } : {}) }, repaired };
+}

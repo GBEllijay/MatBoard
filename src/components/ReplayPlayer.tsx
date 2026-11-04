@@ -147,6 +147,14 @@ export function ReplayPlayer({ src, label, frameName }: Props) {
     } else video.pause();
   }, []);
 
+  /** Back to 0:00 and pause, so the coach can replay the clip from the start. */
+  const restart = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.pause();
+    seekTo(0);
+  }, [seekTo]);
+
   const skip = useCallback(
     (direction: -1 | 1) => {
       const video = videoRef.current;
@@ -323,6 +331,9 @@ export function ReplayPlayer({ src, label, frameName }: Props) {
       </div>
 
       <div className="replay-player__controls">
+        <button type="button" className="btn btn--ghost" data-replay-restart="" onClick={restart} aria-label={`Restart ${label} from the beginning`}>
+          Restart
+        </button>
         <button type="button" className="btn btn--ghost" onClick={() => skip(-1)} aria-label={`Back ${SEEK_STEP_SECONDS} seconds`}>
           −{SEEK_STEP_SECONDS}s
         </button>

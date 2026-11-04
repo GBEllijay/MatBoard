@@ -16,7 +16,7 @@ import {
   templateAlreadyApplied,
   updateLessonReplay,
 } from './lessonTemplates.ts';
-import { MAX_REPLAYS, REPLAY_HEADING } from './replayAnalysis.ts';
+import { MAX_REPLAYS, REPLAY_HEADING, cleanReviewSlot } from './replayAnalysis.ts';
 import {
   TRAINING_NOTES_STORAGE_KEY,
   copyPlan,
@@ -240,10 +240,11 @@ test('curriculum modes: Timer only / Looping video / Record for replay', () => {
   assert.equal(RECORD_FOR_REVIEW_LABEL, 'Record for Review');
 });
 
-test('Record for Review: sparring and added blocks only, not warm-up, body movement or technique', () => {
-  assert.equal(blockOffersReviewToggle('live'), true);
-  assert.equal(blockOffersReviewToggle('custom'), true);
-  for (const kind of ['warmup', 'body', 'takedown', 'specific', 'cooldown'] as const) {
+test('Record for Review (owner): sparring, added blocks, Specific Training, Intro and Closing; not cool down, warm-up, body movement or technique', () => {
+  for (const kind of ['live', 'custom', 'specific', 'intro', 'closing'] as const) {
+    assert.equal(blockOffersReviewToggle(kind), true, kind);
+  }
+  for (const kind of ['warmup', 'body', 'takedown', 'cooldown'] as const) {
     assert.equal(blockOffersReviewToggle(kind), false, kind);
   }
   assert.equal(blockWantsReplay({ kind: 'warmup', timing: 'replay' }), true);
@@ -297,4 +298,17 @@ test('a fresh curriculum is still empty; toggling Record for Review counts as co
   const live = plan.blocks.findIndex((b) => b.kind === 'live');
   const next = { ...plan, blocks: plan.blocks.map((b, i) => (i === live ? { ...b, recordReview: true } : b)) };
   assert.equal(curriculumHasContent(next), true);
+});
+
+test('review slots: intro/specific/closing keep switch and clip through sanitize; off with no clip drops', async () => {
+  const { sanitizePlan, emptyPlan } = await import('./trainingNotesStore.ts');
+  const clip = { localId: 'clip-9', name: 'intro.mp4', mime: 'video/mp4', size: 5, source: 'record' };
+  const base = emptyPlan();
+  const { plan } = sanitizePlan(JSON.parse(JSON.stringify({ ...base, introReview: { recordReview: true }, specificReview: { recordReview: true, replayClip: clip }, closingReview: { recordReview: false } })));
+  assert.deepEqual(plan.introReview, { recordReview: true });
+  assert.deepEqual(plan.specificReview, { recordReview: true, replayClip: clip });
+  assert.equal(plan.closingReview, undefined);
+  assert.deepEqual(cleanReviewSlot(null), { slot: undefined, repaired: false });
+  const cur = sanitizeCurriculum(JSON.parse(JSON.stringify({ ...emptyCurriculum(), closingReview: { recordReview: true } }))).plan;
+  assert.deepEqual(cur.closingReview, { recordReview: true });
 });

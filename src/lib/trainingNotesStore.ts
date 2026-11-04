@@ -15,7 +15,7 @@ import {
   type PlanBlock,
 } from './lessonTemplates.ts';
 import { asRecord, clampText } from './plainValue.ts';
-import { replayHasContent, type ReplayBlock } from './replayAnalysis.ts';
+import { cleanReviewSlot, replayHasContent, type ReplayBlock, type ReviewSlot } from './replayAnalysis.ts';
 import { clampDriveFileId } from './techniqueLogic.ts';
 
 export const TRAINING_NOTES_STORAGE_KEY = 'matboard.coach.trainingNotes.v1';
@@ -128,6 +128,12 @@ export type TrainingNotesPlan = {
   games?: GameBlock[];
   /** Video replay analysis cards. Text and a clip reference only; clip bytes stay on the device. */
   replays?: ReplayBlock[];
+  /** Record for Review on the Intro section. Absent when off with no clip. */
+  introReview?: ReviewSlot;
+  /** Record for Review on the Specific Training section. Absent when off with no clip. */
+  specificReview?: ReviewSlot;
+  /** Record for Review on the Closing (outro) section. Absent when off with no clip. */
+  closingReview?: ReviewSlot;
 };
 
 /** One calendar day. Several class plans can share the date. */
@@ -465,6 +471,14 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
   if (structure.blocks) plan.blocks = structure.blocks;
   if (structure.games) plan.games = structure.games;
   if (structure.replays) plan.replays = structure.replays;
+  const introSlot = cleanReviewSlot(raw?.introReview);
+  const closingSlot = cleanReviewSlot(raw?.closingReview);
+  if (introSlot.repaired || closingSlot.repaired) repaired = true;
+  const specificSlot = cleanReviewSlot(raw?.specificReview);
+  if (specificSlot.repaired) repaired = true;
+  if (specificSlot.slot) plan.specificReview = specificSlot.slot;
+  if (introSlot.slot) plan.introReview = introSlot.slot;
+  if (closingSlot.slot) plan.closingReview = closingSlot.slot;
   return { repaired, plan };
 }
 
