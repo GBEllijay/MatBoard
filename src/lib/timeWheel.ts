@@ -18,6 +18,18 @@ export const TENS_MARK_MS = 10_000;
  */
 export const WHEEL_FLICK_PX_PER_MS = 0.55;
 
+/** Row height. Matches `.wheel-item` in `src/index.css`. */
+export const WHEEL_ITEM_PX = 48;
+
+/** Visible window. Matches `.wheel-scroller` height. */
+export const WHEEL_WINDOW_PX = 240;
+
+/**
+ * Hard mouse-wheel and trackpad deltas are multiplied by at most this.
+ * Smaller deltas stay 1:1 so a light swipe is not exaggerated.
+ */
+export const WHEEL_DELTA_GAIN_MAX = 1.45;
+
 export type WheelRange = {
   minMs: number;
   maxMs: number;
@@ -32,7 +44,7 @@ export type WheelOption = {
   value: number;
   label: string;
   snap?: boolean;
-  /** Ten-second mark. Bolder row, longer tick, and a gentle slow-scroll catch. */
+  /** Bolder row, longer tick, and a gentle slow-scroll catch. A fast flick passes through. */
   detent?: boolean;
 };
 
@@ -135,6 +147,89 @@ export function detentIndex(
     }
   }
   return best >= 0 ? best : centered;
+}
+
+/** Nearest row for a scroll offset. Always a real index. */
+export function nearestRowIndex(scrollTop: number, count: number, itemPx = WHEEL_ITEM_PX): number {
+  if (count <= 0 || !Number.isFinite(scrollTop) || itemPx <= 0) return 0;
+  return clamp(Math.round(scrollTop / itemPx), 0, count - 1);
+}
+
+/** Scroll offset that centers `index` in the wheel window. */
+export function centeredScrollTop(index: number, itemPx = WHEEL_ITEM_PX): number {
+  if (!Number.isFinite(index) || itemPx <= 0) return 0;
+  return Math.round(index) * itemPx;
+}
+
+/**
+ * Where a coast lands.
+ * A direct pick (tap, arrow, chip) stays on the centered row.
+ * A slow scroll within two rows of a detent lands on that detent.
+ * A fast flick stays on the nearest row, so the coast is not pulled backward.
+ */
+export function settleRowIndex(
+  scrollTop: number,
+  options: readonly { detent?: boolean }[],
+  speedPxPerMs: number,
+  precise: boolean,
+  itemPx = WHEEL_ITEM_PX,
+): number {
+  const centered = nearestRowIndex(scrollTop, options.length, itemPx);
+  if (precise) return centered;
+  return detentIndex(centered, options, speedPxPerMs);
+}
+
+/** True when the samples left the row they started on. */
+export function wheelGestureMoved(samples: readonly WheelSample[], slop = 0.5): boolean {
+  if (samples.length < 2) return false;
+  const origin = samples[0]?.top ?? 0;
+  for (let i = 1; i < samples.length; i += 1) {
+    if (Math.abs((samples[i]?.top ?? origin) - origin) > slop) return true;
+  }
+  return false;
+}
+
+/**
+ * A finger-down that never moved, already sitting on a row, must not be
+ * re-snapped onto a nearby detent. A real drag, a coast that stopped between
+ * rows, or a direct pick still settles.
+ */
+export function shouldSettleWheel(
+  scrollTop: number,
+  count: number,
+  samples: readonly WheelSample[],
+  precise: boolean,
+  originTop: number,
+  itemPx = WHEEL_ITEM_PX,
+): boolean {
+  if (precise) return true;
+  if (wheelGestureMoved(samples)) return true;
+  if (Number.isFinite(originTop) && Math.abs(scrollTop - originTop) > 0.5) return true;
+  const nearest = nearestRowIndex(scrollTop, count, itemPx);
+  return Math.abs(scrollTop - centeredScrollTop(nearest, itemPx)) > 0.5;
+}
+
+/**
+ * Pixel distance for one wheel or trackpad delta.
+ * Pixel deltas (trackpads and most mouse wheels) pass through, and a hard
+ * flick larger than one row picks up a modest gain, capped. Line deltas become
+ * a fraction of a row. Page deltas move one window. Both stay proportional
+ * to the reported delta.
+ */
+export function wheelDeltaPx(
+  deltaY: number,
+  deltaMode: number,
+  itemPx = WHEEL_ITEM_PX,
+  pagePx = WHEEL_WINDOW_PX,
+): number {
+  if (!Number.isFinite(deltaY) || deltaY === 0 || itemPx <= 0) return 0;
+  const raw = deltaMode === 1 ? deltaY * (itemPx / 3) : deltaMode === 2 ? deltaY * pagePx : deltaY;
+  // Line and page deltas are already a chosen distance. Pixel deltas (trackpad
+  // and most mouse wheels) pick up a modest gain once they pass one row.
+  if (deltaMode !== 0) return raw;
+  const abs = Math.abs(raw);
+  const gain = abs <= itemPx ? 1 : Math.min(WHEEL_DELTA_GAIN_MAX, 1 + (abs - itemPx) / (itemPx * 10));
+  return raw * gain;
 }
 
 /** Saved round counts land on a whole number from 1 to 99. */

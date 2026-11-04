@@ -3,15 +3,18 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   DEFAULT_EXPECTED_MINUTES,
+  EXPECTED_DETENT_MINUTES,
   EXPECTED_MAX_MINUTES,
   EXPECTED_MIN_MINUTES,
   EXPECTED_MINUTE_OPTIONS,
+  EXPECTED_SNAP_MINUTES,
   expectedMinutes,
   lessonExpectedText,
   loopSecondsForSlot,
   migrateExpectedDuration,
   parseExpectedMinutes,
 } from './expectedDuration.ts';
+import { settleRowIndex, WHEEL_FLICK_PX_PER_MS, WHEEL_ITEM_PX } from './timeWheel.ts';
 import { emptyCurriculum, expectedToWorkMs, normalizeExpectedDuration, saveCurriculum } from './competitionCurriculum.ts';
 import { curriculumVideoCards } from './curriculumVideos.ts';
 import { emptyVideoPlan, sanitizeVideoPlan, setSlotDrill } from './techniqueLogic.ts';
@@ -164,6 +167,45 @@ test('the lesson duration is the video loop unless a manual length wins', () => 
   storage.clear();
   const stored = saveCurriculum(TODAY, curriculum, TODAY);
   assert.equal(stored.plan.blocks[0]?.expected, '8');
+});
+
+test('expected duration chips are 5, 10, 15, 20, 30, 45, and 60, and 5, 10, 15 catch a slow scroll', () => {
+  assert.deepEqual(
+    EXPECTED_MINUTE_OPTIONS.filter((option) => option.snap).map((option) => option.value),
+    [...EXPECTED_SNAP_MINUTES],
+  );
+  assert.deepEqual(
+    EXPECTED_MINUTE_OPTIONS.filter((option) => option.detent).map((option) => option.value),
+    [...EXPECTED_DETENT_MINUTES],
+  );
+  assert.deepEqual([...EXPECTED_SNAP_MINUTES], [5, 10, 15, 20, 30, 45, 60]);
+  assert.deepEqual([...EXPECTED_DETENT_MINUTES], [5, 10, 15]);
+  for (const minute of [1, 8, 9, 12, 16, 18, 25, 40, 90, 120]) {
+    const option = EXPECTED_MINUTE_OPTIONS.find((row) => row.value === minute);
+    assert.equal(option?.snap, false, `${minute} min chip`);
+    assert.equal(option?.detent, false, `${minute} min detent`);
+    assert.equal(option?.label, `${minute} min`);
+  }
+  const at = (minute: number) => EXPECTED_MINUTE_OPTIONS.findIndex((option) => option.value === minute);
+  const top = (minute: number) => at(minute) * WHEEL_ITEM_PX;
+  assert.equal(settleRowIndex(top(8), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(9) + 10, EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(7), EXPECTED_MINUTE_OPTIONS, 0.2, false), at(5));
+  assert.equal(settleRowIndex(top(4), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(5));
+  assert.equal(settleRowIndex(top(3), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(5));
+  assert.equal(settleRowIndex(top(2), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(2));
+  assert.equal(settleRowIndex(top(12), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(13), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(15));
+  assert.equal(settleRowIndex(top(11), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(16), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(15));
+  assert.equal(settleRowIndex(top(18), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(18));
+  assert.equal(settleRowIndex(top(9), EXPECTED_MINUTE_OPTIONS, WHEEL_FLICK_PX_PER_MS + 0.2, false), at(9));
+  assert.equal(settleRowIndex(top(14), EXPECTED_MINUTE_OPTIONS, 2, false), at(14));
+  assert.equal(settleRowIndex(top(30), EXPECTED_MINUTE_OPTIONS, 3, false), at(30));
+  assert.equal(settleRowIndex(top(8) + 23, EXPECTED_MINUTE_OPTIONS, 2, false), at(8));
+  assert.equal(settleRowIndex(top(8) + 24, EXPECTED_MINUTE_OPTIONS, 2, false), at(9));
+  assert.equal(settleRowIndex(top(8), EXPECTED_MINUTE_OPTIONS, 0.1, true), at(8));
+  assert.equal(settleRowIndex(top(9) + 20, EXPECTED_MINUTE_OPTIONS, 0.05, true), at(9));
 });
 
 test('the minute wheel is the expected-duration control and the loop uses it', () => {
