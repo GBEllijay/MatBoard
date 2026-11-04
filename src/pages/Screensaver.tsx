@@ -22,6 +22,7 @@ import { DriveMediaPicker } from '../components/DriveMediaPicker';
 import { GooglePhotosPicker } from '../components/GooglePhotosPicker';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
+import { CameraWindow } from '../components/CameraWindow';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useScheduleState } from '../hooks/useStores';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -35,6 +36,7 @@ import { isProgramDirectorSeat, seatPermissionAllows } from '../lib/instructorSe
 import { APPROVAL_WAITING, readGalleryApproval } from '../lib/galleryApproval';
 import { addClassPhotoPromotionFiles } from '../lib/classPhotoPromotions';
 import { gymActorForCloud } from '../lib/advantageCloudMedia';
+import { CAMERA_PARAM, cameraDailyVideosAllowed, cameraModeRequested, cameraPhotoAllowed } from '../lib/pdCamera';
 import { readOneDriveBinding, readOneDriveSession } from '../lib/oneDrive';
 import {
   DAILY_VIDEO_STAY,
@@ -192,10 +194,12 @@ export function ScreensaverPage() {
   const addFolderRef = useRef<FolderId>('gallery');
   const savingRef = useRef(false);
   const intervalMs = secondsToMs(intervalSec);
-  const fs = usePlayFullscreen();
+  const [searchParams] = useSearchParams();
+  // Program director Camera window: a view of this page, so it reuses the add sheet below.
+  const cameraMode = cameraModeRequested(searchParams.get(CAMERA_PARAM), seat);
+  const fs = usePlayFullscreen(cameraMode ? { auto: false } : undefined);
   const navigate = useNavigate();
   const back = useSubmenuBack() ?? '/pro';
-  const [searchParams] = useSearchParams();
   const folderParam = searchParams.get('folder');
   const requestedFolder =
     folderParam === 'videos' ? 'gallery' : isFolderId(folderParam) ? folderParam : null;
@@ -232,7 +236,7 @@ export function ScreensaverPage() {
   );
 
   useVisibleViewportHeight();
-  useWakeLock(playing && slides.length > 0);
+  useWakeLock(!cameraMode && playing && slides.length > 0);
 
   const refresh = async () => {
     const rows = await listPhotos();
@@ -395,6 +399,13 @@ export function ScreensaverPage() {
       setDailyHome(null);
     }
   };
+
+  /** Camera window video: Gallery or Today's videos, the same sheet and choice as Add videos. */
+  const openCameraVideo = () => {
+    openAdd('gallery', 'video');
+    if (!cameraPhotoAllowed(seat)) setVideoDest('daily-videos');
+  };
+  const cameraGalleryChoice = !cameraMode || cameraPhotoAllowed(seat);
 
   const dailyChoiceShown = addKind === 'video' && addFolderRef.current === 'gallery' && dailyVideoSeat && dailyHome !== null;
   const sendingDaily = dailyChoiceShown && videoDest === 'daily-videos';
@@ -628,6 +639,12 @@ export function ScreensaverPage() {
       await onDailyFiles([...files], dailyHome);
       return;
     }
+    if (!cameraGalleryChoice && folderId === 'gallery') {
+      // Camera window with the Gallery switch off: only today's videos may take this file.
+      setAddOpen(false);
+      setBatchStatus({ tone: 'error', text: "Nothing was saved. Today's videos is not set up for this gym yet." });
+      return;
+    }
     const folder = folderById(folderId);
     const picked = [...files];
     const readable = picked.filter((file) => file.size > 0);
@@ -794,6 +811,139 @@ export function ScreensaverPage() {
         : focusFolder === 'events'
           ? 'Nothing is set to play. Turn on Events in options, then tap a left preview so at least one photo is On.'
           : 'Nothing is set to play. Turn on Gallery in options, then tap a left preview so at least one photo or video is On.';
+
+  const addSheets = (
+    <>
+      <MediaSourceSheet
+        open={addOpen}
+        kind={addKind}
+        title={addKind === 'video' ? 'Add videos' : folderById(addFolderRef.current).addLabel}
+        captureInputId={addKind === 'video' ? 'saver-video-record' : 'saver-photo-capture'}
+        libraryInputId={addKind === 'video' ? 'saver-video-library' : 'saver-photo-library'}
+        stacked={options && !cameraMode}
+        stay={sendingDaily ? DAILY_VIDEO_STAY : undefined}
+        onPickPhotos={sendingDaily ? undefined : () => openPhotosPick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
+        onPickDrive={sendingDaily ? undefined : () => openDrivePick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
+        onClose={() => setAddOpen(false)}
+      >
+        {dailyChoiceShown && dailyHome ? (
+          <fieldset className="cloud-media__choice" data-video-destination="">
+            <legend>{VIDEO_DESTINATION_LEGEND}</legend>
+            {cameraGalleryChoice ? (
+            <label>
+              <input
+                type="radio"
+                name="saver-video-destination"
+                value="gallery"
+                checked={videoDest === 'gallery'}
+                onChange={() => setVideoDest('gallery')}
+              />
+              <span>
+                <strong>{VIDEO_DESTINATION_GALLERY}</strong> {VIDEO_DESTINATION_GALLERY_HINT}
+              </span>
+            </label>
+            ) : null}
+            <label>
+              <input
+                type="radio"
+                name="saver-video-destination"
+                value="daily-videos"
+                checked={videoDest === 'daily-videos'}
+                onChange={() => setVideoDest('daily-videos')}
+              />
+              <span>
+                <strong>{VIDEO_DESTINATION_DAILY}</strong> {VIDEO_DESTINATION_DAILY_HINT} Saved in {dailyVideoHomeLabel(dailyHome)}.
+              </span>
+            </label>
+          </fieldset>
+        ) : null}
+      </MediaSourceSheet>
+      <GooglePhotosPicker
+        open={photosPickOpen}
+        kind={photosPickKind}
+        stacked={options && !cameraMode}
+        getPopup={() => photosPopupRef.current}
+        onClose={closePhotosPick}
+        onDone={(files) => {
+          void importFromPhotos(files);
+        }}
+      />
+      <DriveMediaPicker
+        open={drivePickOpen}
+        kind={drivePickKind}
+        stacked={options && !cameraMode}
+        onClose={() => setDrivePickOpen(false)}
+        onDone={(files) => {
+          void importFromDrive(files);
+        }}
+      />
+      <Sheet
+        open={driveConnectOpen && !driveBinding}
+        title="Connect with"
+        onClose={() => setDriveConnectOpen(false)}
+        stacked
+      >
+        <DriveConnectCard />
+      </Sheet>
+      <Sheet
+        open={photosConnectOpen && !photosBinding}
+        title="Connect with"
+        onClose={() => setPhotosConnectOpen(false)}
+        stacked
+      >
+        <DriveConnectCard />
+      </Sheet>
+      <DeviceMediaInput
+        id="saver-photo-capture"
+        inputRef={photoCaptureRef}
+        accept={PHOTO_PICKER_ACCEPT}
+        capture={VIDEO_CAPTURE}
+        onFiles={onFiles}
+      />
+      <DeviceMediaInput
+        id="saver-photo-library"
+        inputRef={photoLibraryRef}
+        accept={PHOTO_PICKER_ACCEPT}
+        multiple
+        onFiles={onFiles}
+      />
+      <DeviceMediaInput
+        id="saver-video-record"
+        inputRef={videoRecordRef}
+        accept={VIDEO_RECORD_ACCEPT}
+        capture={VIDEO_CAPTURE}
+        onFiles={onFiles}
+      />
+      <DeviceMediaInput
+        id="saver-video-library"
+        inputRef={videoLibraryRef}
+        accept={VIDEO_PICKER_ACCEPT}
+        multiple
+        onFiles={onFiles}
+      />
+    </>
+  );
+
+  if (cameraMode) {
+    return (
+      <main className={`saver saver--belt saver--camera${fs.className ? ` ${fs.className}` : ''}`}>
+        <PlayExitMark to={back} onExit={exitSlideshow} />
+        <CameraWindow
+          photoAllowed={cameraPhotoAllowed(seat)}
+          dailyAllowed={cameraDailyVideosAllowed(seat)}
+          dateKey={todayKey}
+          statusText={batchStatus ? batchStatus.text : ''}
+          note={pickerNote}
+          muted={muteVideo}
+          fs={fs}
+          onTakePhoto={() => openAdd('gallery', 'photo')}
+          onTakeVideo={openCameraVideo}
+          onToggleMute={() => commitMuteVideo(!muteVideo)}
+        />
+        {addSheets}
+      </main>
+    );
+  }
 
   return (
     <main
@@ -1238,111 +1388,7 @@ export function ScreensaverPage() {
         <GymLogoControl />
       </Sheet>
 
-      <MediaSourceSheet
-        open={addOpen}
-        kind={addKind}
-        title={addKind === 'video' ? 'Add videos' : folderById(addFolderRef.current).addLabel}
-        captureInputId={addKind === 'video' ? 'saver-video-record' : 'saver-photo-capture'}
-        libraryInputId={addKind === 'video' ? 'saver-video-library' : 'saver-photo-library'}
-        stacked={options}
-        stay={sendingDaily ? DAILY_VIDEO_STAY : undefined}
-        onPickPhotos={sendingDaily ? undefined : () => openPhotosPick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
-        onPickDrive={sendingDaily ? undefined : () => openDrivePick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
-        onClose={() => setAddOpen(false)}
-      >
-        {dailyChoiceShown && dailyHome ? (
-          <fieldset className="cloud-media__choice" data-video-destination="">
-            <legend>{VIDEO_DESTINATION_LEGEND}</legend>
-            <label>
-              <input
-                type="radio"
-                name="saver-video-destination"
-                value="gallery"
-                checked={videoDest === 'gallery'}
-                onChange={() => setVideoDest('gallery')}
-              />
-              <span>
-                <strong>{VIDEO_DESTINATION_GALLERY}</strong> {VIDEO_DESTINATION_GALLERY_HINT}
-              </span>
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="saver-video-destination"
-                value="daily-videos"
-                checked={videoDest === 'daily-videos'}
-                onChange={() => setVideoDest('daily-videos')}
-              />
-              <span>
-                <strong>{VIDEO_DESTINATION_DAILY}</strong> {VIDEO_DESTINATION_DAILY_HINT} Saved in {dailyVideoHomeLabel(dailyHome)}.
-              </span>
-            </label>
-          </fieldset>
-        ) : null}
-      </MediaSourceSheet>
-      <GooglePhotosPicker
-        open={photosPickOpen}
-        kind={photosPickKind}
-        stacked={options}
-        getPopup={() => photosPopupRef.current}
-        onClose={closePhotosPick}
-        onDone={(files) => {
-          void importFromPhotos(files);
-        }}
-      />
-      <DriveMediaPicker
-        open={drivePickOpen}
-        kind={drivePickKind}
-        stacked={options}
-        onClose={() => setDrivePickOpen(false)}
-        onDone={(files) => {
-          void importFromDrive(files);
-        }}
-      />
-      <Sheet
-        open={driveConnectOpen && !driveBinding}
-        title="Connect with"
-        onClose={() => setDriveConnectOpen(false)}
-        stacked
-      >
-        <DriveConnectCard />
-      </Sheet>
-      <Sheet
-        open={photosConnectOpen && !photosBinding}
-        title="Connect with"
-        onClose={() => setPhotosConnectOpen(false)}
-        stacked
-      >
-        <DriveConnectCard />
-      </Sheet>
-      <DeviceMediaInput
-        id="saver-photo-capture"
-        inputRef={photoCaptureRef}
-        accept={PHOTO_PICKER_ACCEPT}
-        capture={VIDEO_CAPTURE}
-        onFiles={onFiles}
-      />
-      <DeviceMediaInput
-        id="saver-photo-library"
-        inputRef={photoLibraryRef}
-        accept={PHOTO_PICKER_ACCEPT}
-        multiple
-        onFiles={onFiles}
-      />
-      <DeviceMediaInput
-        id="saver-video-record"
-        inputRef={videoRecordRef}
-        accept={VIDEO_RECORD_ACCEPT}
-        capture={VIDEO_CAPTURE}
-        onFiles={onFiles}
-      />
-      <DeviceMediaInput
-        id="saver-video-library"
-        inputRef={videoLibraryRef}
-        accept={VIDEO_PICKER_ACCEPT}
-        multiple
-        onFiles={onFiles}
-      />
+      {addSheets}
     </main>
   );
 }

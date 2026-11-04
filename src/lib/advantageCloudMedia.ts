@@ -351,6 +351,8 @@ export type CloudStatusBody = {
   canUpload?: boolean;
   /** Program director: may put a video in today's daily videos, nothing else. */
   dailyVideoDrop?: boolean;
+  /** Program director: may list and play today's daily videos, nothing else. */
+  dailyVideoPlay?: boolean;
   licenseUsedBytes?: number;
   bucketUsedBytes?: number;
   capBytes?: number;
