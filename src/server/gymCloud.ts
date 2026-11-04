@@ -422,7 +422,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
           ok: true,
           cloud: false,
           ...(pendingReplay ? { replayUpload: 'pending' as const } : {}),
-          ...(actor.dailyDrop ? { dailyVideoDrop: true, maxUploadBytes: maxUpload } : {}),
+          ...(actor.dailyDrop ? { dailyVideoDrop: true, dailyVideoPlay: true, maxUploadBytes: maxUpload } : {}),
         });
       }
       const [licenseUsedBytes, bucketUsedBytes] = await Promise.all([
@@ -449,6 +449,23 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       const key = cloudObjectKey(actor.licenseId, path);
       const allowed = actor.kind === 'owner' ? actor.read : actor.replayUpload === 'pending' && key !== null && ownPendingKey(actor, key);
       if (!key || !allowed || !parsePendingReplayPath(path)) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
+      const object = await bucket.get(key);
+      if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
+      return fileResponse(object);
+    }
+    // Program director Camera window: list and play today's videos only. Lessons, skins, and other paths stay closed.
+    if (!actor.read && actor.dailyDrop && (op === 'list' || op === 'file')) {
+      if (op === 'list') {
+        if ((url.searchParams.get('purpose') ?? 'daily-video') !== 'daily-video') {
+          return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
+        }
+        const files = await listFiles(bucket, actor, 'daily-video', url.searchParams.get('date') ?? '');
+        if (files instanceof Response) return files;
+        return json(200, { ok: true, files: files.filter((file) => isDailyVideoCloudPath(file.path)) });
+      }
+      const path = url.searchParams.get('path') ?? '';
+      const key = isDailyVideoCloudPath(path) ? cloudObjectKey(actor.licenseId, path) : null;
+      if (!key) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
       const object = await bucket.get(key);
       if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
       return fileResponse(object);

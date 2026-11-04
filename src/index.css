@@ -18791,3 +18791,31 @@ a.plan-pick {
   padding-top: 0.75rem;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
+
+/* Program director Camera window (Media Console). */
+.camera-window {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  max-width: 48rem;
+  margin: 0 auto;
+}
+.camera-window__capture,
+.camera-window__controls,
+.camera-window__sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.camera-window__today {
+  display: grid;
+  gap: 0.75rem;
+}
+.camera-window__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}

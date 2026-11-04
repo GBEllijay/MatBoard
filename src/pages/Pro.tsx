@@ -10,7 +10,8 @@ import { useSeatDoor } from '../hooks/useSeatDoor';
 import { CHECKOUT_BUY_PATH } from '../lib/checkoutProducts';
 import { PRO_LIST_PRICE_CENTS, PRO_MONTHLY_PRICE_CENTS } from '../lib/productPrices';
 import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
-import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL, PRODUCTS_PATH, consoleHubs, grantedConsoleHubs } from '../lib/productNames';
+import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL, PRODUCTS_PATH, consoleHubs, grantedConsoleHubs, mediaConsoleDoorOpen } from '../lib/productNames';
+import { cameraHubs } from '../lib/pdCamera';
 import { formatUsdFromCents } from '../lib/whitePurchase';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { lockMedia } from '../lib/mediaUnlock';
@@ -23,7 +24,11 @@ export function ProPage() {
   const door = useSeatDoor();
   const access = entitlementSnapshot();
   const hubs = grantedConsoleHubs(
-    consoleHubs(door, door.seat?.permissions ?? null),
+    [
+      ...consoleHubs(door, door.seat?.permissions ?? null),
+      // Program director Camera window, beside the Media Console folders.
+      ...(mediaConsoleDoorOpen(door) ? cameraHubs(door.seat ?? null) : []),
+    ],
     access.claims,
     entitlementNowMs(),
     access.amnesty,
