@@ -15,6 +15,7 @@ import { saveStudentDriveLink } from './academyPathway.ts';
 import { buildCoachUpdateFile } from './coachProgressFile.ts';
 import { assignStudentId } from './studentIdentity.ts';
 import { testMemory } from './testPackets.ts';
+import { logMatTime, markTrained, untimedOn, findSessionRecord } from './matLog.ts';
 import type { StudentProgressReport } from './progress/types.ts';
 
 const base = { className: 'Fundamentals', gameTag: '', techniques: [], partners: '', drills: '', rolls: '', notes: '' };
@@ -159,4 +160,49 @@ test('coach update file never carries mat time, injury or break marks', () => {
   report = log(report, '2026-11-01', { minutes: 90, injury: { area: 'SECRET-KNEE', note: '' } });
   const built = buildCoachUpdateFile(report, { storage: testMemory(), assessments: [], now: 100, today: '2026-11-04' });
   assert.doesNotMatch(built.json, /minutes|SECRET-KNEE|hiatus|quality/);
+});
+
+test('shared log: quick-add, calendar mark and journal card de-dupe by day + session', () => {
+  let r = blankStudentReport(1);
+  r = logMatTime(r, { date: '2026-10-05', session: 'class', minutes: 60 }, 2);
+  assert.equal(r.journal.length, 1);
+  assert.equal(matHoursTotal(r.journal).minutes, 60);
+  // Same day + same session again: updates, never doubles.
+  r = logMatTime(r, { date: '2026-10-05', session: 'class', minutes: 90 }, 3);
+  assert.equal(r.journal.length, 1);
+  assert.equal(matHoursTotal(r.journal).minutes, 90);
+  // Different session same day is a second session.
+  r = logMatTime(r, { date: '2026-10-05', session: 'openMat', minutes: 30 }, 4);
+  assert.equal(r.journal.length, 2);
+  assert.equal(matHoursTotal(r.journal).minutes, 120);
+  // Calendar mark on a day that already has a session is a no-op.
+  assert.equal(markTrained(r, '2026-10-05', 5).journal.length, 2);
+});
+
+test('calendar trained mark counts for the streak untimed, then quick-add fills the same record', () => {
+  let r = blankStudentReport(1);
+  r = markTrained(r, '2026-11-02', 2);
+  r = markTrained(r, '2026-11-03', 3);
+  assert.equal(r.journal.length, 2);
+  assert.equal(matHoursTotal(r.journal).minutes, 0);
+  assert.equal(untimedOn(r.journal, '2026-11-02').length, 1);
+  assert.equal(trainingStreak(r.journal, '2026-11-04', 2).thisWeek, 2);
+  r = logMatTime(r, { date: '2026-11-02', session: 'class', minutes: 75 }, 4);
+  assert.equal(r.journal.length, 2);
+  assert.equal(matHoursTotal(r.journal).minutes, 75);
+  assert.equal(untimedOn(r.journal, '2026-11-02').length, 0);
+  // An untyped mark adopts an open mat time too, still one record.
+  r = logMatTime(r, { date: '2026-11-03', session: 'openMat', minutes: 30 }, 5);
+  assert.equal(r.journal.length, 2);
+  assert.equal(findSessionRecord(r.journal, '2026-11-03', 'openMat')?.minutes, 30);
+});
+
+test('quick-add on a day with a full journal card updates that card, keeping its notes', () => {
+  let r = log(blankStudentReport(1), '2026-10-12', { className: 'Fundamentals', notes: 'armbar from guard', minutes: 60 });
+  r = logMatTime(r, { date: '2026-10-12', session: 'class', minutes: 45 }, 9);
+  assert.equal(r.journal.length, 1);
+  assert.equal(r.journal[0].minutes, 45);
+  assert.match(r.journal[0].body, /armbar from guard/);
+  assert.throws(() => logMatTime(r, { date: 'bad', session: 'class', minutes: 30 }));
+  assert.throws(() => logMatTime(r, { date: '2026-10-12', session: 'class', minutes: 0 }));
 });

@@ -26,6 +26,9 @@ import { rankMarks, rankMarksOnDate } from '../../lib/studentRank';
 import { todayIso, viewJournalEntry } from '../../lib/studentEdition';
 import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import './fundamentals.css';
+import { markTrained, untimedOn } from '../../lib/matLog';
+import { formatMatTime, sessionOf, JOURNAL_SESSION_LABELS } from '../../lib/matHours';
+import { MatQuickAddSheet } from './MatQuickAdd';
 import './calendar.css';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -307,6 +310,7 @@ export function CalendarDayPage({ date }: { date: string }) {
   return (
     <CalendarFrame>
       <p className="cal-nav__label cal-day-title">{dayLabel(date, cards.length > 0, events.length > 0, tournaments.length > 0, ranks.length > 0)}</p>
+      {date <= todayIso() ? <CalendarMatTime report={report} commit={commit} date={date} /> : null}
       {ranks.length ? (
         <section className="ink" aria-label="My rank">
           <h2 className="ink__label">My rank</h2>
@@ -488,4 +492,46 @@ function eventDetail(event: CalendarEvent): string {
 
 function entriesFor(report: ReturnType<typeof useStudentFile>['report'], date: string) {
   return report.journal.filter((entry) => entry.date === date).map(viewJournalEntry);
+}
+
+/** Shared mat hour log on a calendar day: mark trained (untimed session), then add the time. */
+function CalendarMatTime({
+  report,
+  commit,
+  date,
+}: {
+  report: StudentProgressReport;
+  commit: (next: StudentProgressReport) => void;
+  date: string;
+}) {
+  const [adding, setAdding] = useState(false);
+  const sessions = report.journal.filter((entry) => entry.date === date && !entry.hiatus);
+  const untimed = untimedOn(report.journal, date);
+  const first = untimed[0];
+  return (
+    <section className="ink cal-mat" aria-label="Mat time" data-testid="cal-mat">
+      <h2 className="ink__label">Mat time</h2>
+      {sessions.length ? (
+        <ul className="comp-list">
+          {sessions.map((entry) => (
+            <li key={entry.id} data-testid="cal-mat-row">
+              Trained · {JOURNAL_SESSION_LABELS[sessionOf(entry)]} · {entry.minutes ? formatMatTime(entry.minutes) : 'no time yet'}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <button type="button" className="ink-btn" onClick={() => commit(markTrained(report, date))}>
+          Mark trained
+        </button>
+      )}
+      {sessions.length && !adding ? (
+        <button type="button" className="ink-btn" onClick={() => setAdding(true)}>
+          {first ? 'Add time' : 'Log more time'}
+        </button>
+      ) : null}
+      {adding ? (
+        <MatQuickAddSheet report={report} commit={commit} date={date} session={first ? sessionOf(first) : 'class'} onClose={() => setAdding(false)} />
+      ) : null}
+    </section>
+  );
 }

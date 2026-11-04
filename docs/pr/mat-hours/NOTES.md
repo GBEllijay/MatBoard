@@ -49,6 +49,22 @@ The profile summary reads "Lately: <label>", with the average of the last 10 rat
 3. Is a 14-day window for the "current injury" status right?
 4. Should the report card level be kept, renamed or dropped?
 
+## Update: profile card stat, quick-add, one shared log (10:41–10:42 AM EST)
+- **Hub:** the standalone mat hours tile and the "My report card" tile are both gone. Only My profile and the existing tiles remain.
+- **Profile card stat** (`src/pages/student/MatQuickAdd.tsx` → `ProfileMatHoursStat`, one line in `ProfilePage.tsx`). Mat hours is a card stat labeled "Mat hours · from your journal". It shows the belt-cloth total, the class / open mat split, a "Days · years" units chip (hours ↔ days/years), the week streak and this week's progress, and the **My report card** link. I moved the report link here, so there's no hub tile for it.
+- **Quick-add sheet** (`MatQuickAddSheet`). Tapping the total opens it: Date (defaults to today), Class / Open mat, duration chips with the h:mm stepper, then Save or Cancel. It writes the shared log.
+- **One shared log = the journal** (`src/lib/matLog.ts`):
+  - `logMatTime`: quick-add and the calendar's "Add time". On the same day and session (`sessionOf`, which also reads old cards' class names), it updates the existing record's minutes, keeping its notes. An untyped, untimed calendar mark adopts the session. Otherwise it creates a minimal journal card, which then shows up in the journal and calendar.
+  - `markTrained`: the calendar "Mark trained" button. It adds an untimed session, which counts for the streak with 0 minutes. It does nothing if the day already has a session.
+  - Full journal cards are unchanged and are the same records.
+- **Calendar day** (`CalendarPages.tsx` `CalendarMatTime`). A "Mat time" section on past days and today lists "Trained · Class · 2h / no time yet". Buttons: Mark trained, then Add time (opens the same sheet with the date prefilled), or Log more time. The month grid's journal dot covers marked days automatically.
+- **Tests:** +3 unit tests (de-dupe across entry points, an untimed mark counting for the streak then being filled, quick-add over a full card keeping its notes) and +2 UI tests (profile stat → quick-add → same record; calendar mark → add time → one card). The hub test now asserts there's no mat hours tile and no report tile. The profile test asserts the stat, streak and report link.
+- **Test runners:** I added the empty `.css` loader to the remaining `scripts/run-*-regressions.mjs` runners, because the calendar and profile now import the mat hours CSS.
+- **Overlap with #399** (which turns ProfilePage into a card face): one import and one `<ProfileMatHoursStat to={to} />` line at the top of `profile-stack`. #399 can move that line into its card's stats. The stat is self-contained (`useStudentFile`, its own CSS under `.card-stat--mat-hours`). `StudentCardPreview` still shows the read-only stat. The stat CSS forces readable colors on the dark profile arena.
+- **Decision:** two different taps on the profile stat. The total opens quick-add, and the separate units chip switches hours ↔ days/years. The read-only stat (report card, card preview) keeps "tap the total to toggle".
+- **Open question:** should two classes on the same day be logged separately? Right now same day + same session means one record, so a second class adds to the existing record instead of creating a new one. Use a full journal card if it's a separate class.
+- **Screenshots:** `after-move-hub-{white,purple,black}-*`, `after-move-profile-stat-{white,purple,black}-*`, `after-move-quick-add-*`, `after-move-calendar-mark-*`, `after-move-calendar-add-time-*`, `after-move-calendar-month-*`, at 390 and 1024. All have no sideways scroll, text at least 12px and taps at least 44px.
+
 ## Screenshots (390 and 1024)
 - `before-journal-log-*`, `after-journal-log-*`
 - `after-journal-injury-mark-*`, `after-journal-break-mark-*`

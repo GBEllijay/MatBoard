@@ -9,6 +9,7 @@ const outfile = resolve('node_modules/.cache/shared-tournaments.test.mjs');
 await build({
   entryPoints: ['src/pages/student/sharedTournaments.regressions.test.tsx'],
   bundle: true,
+  loader: { '.css': 'empty' },
   format: 'esm',
   platform: 'node',
   outfile,

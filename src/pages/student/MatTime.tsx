@@ -108,7 +108,8 @@ function finalCloth(preview: WornBeltPreview): CSSProperties {
 }
 
 /** "128.5 mat hours" on the student's current belt cloth. Updates with rank. */
-export function MatHoursStat({ report }: { report: StudentProgressReport }) {
+/** Total stat on belt cloth. With `onAdd`, tapping the total opens quick-add and a small unit chip toggles hours / days-years. */
+export function MatHoursStat({ report, onAdd }: { report: StudentProgressReport; onAdd?: () => void }) {
   const total = matHoursTotal(report.journal);
   const preview = wornBeltPreview(report);
   const kids = preview.kind === 'kids';
@@ -127,19 +128,37 @@ export function MatHoursStat({ report }: { report: StudentProgressReport }) {
       <span className={rung} style={style}>
         <span className="belt mat-hours__belt">
           <span className="belt__body">
-            <button
-              type="button"
-              className="belt__name mat-hours__value"
-              aria-pressed={long}
-              aria-label={long ? `${label}. Show hours` : `${label}. Show days and years`}
-              onClick={() => setLong((v) => !v)}
-            >
-              {visible}
-            </button>
-            <span className="belt__sub mat-hours__sub">{split || (total.minutes ? 'Logged in your journal' : 'Log time on a journal card')}</span>
+            {onAdd ? (
+              <button type="button" className="belt__name mat-hours__value" aria-label={`${label}. Log mat time`} onClick={onAdd}>
+                {visible} <span className="mat-hours__plus" aria-hidden="true">+</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="belt__name mat-hours__value"
+                aria-pressed={long}
+                aria-label={long ? `${label}. Show hours` : `${label}. Show days and years`}
+                onClick={() => setLong((v) => !v)}
+              >
+                {visible}
+              </button>
+            )}
+            <span className="belt__sub mat-hours__sub">{split || (total.minutes ? 'Logged in your journal' : 'Tap to log mat time')}</span>
+
           </span>
         </span>
       </span>
+            {onAdd ? (
+        <button
+          type="button"
+          className="mat-hours__units"
+          aria-pressed={long}
+          aria-label={long ? 'Show hours' : 'Show days and years'}
+          onClick={() => setLong((v) => !v)}
+        >
+          {long ? 'Hours' : 'Days · years'}
+        </button>
+      ) : null}
     </span>
   );
 }

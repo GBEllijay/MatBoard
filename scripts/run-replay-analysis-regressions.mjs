@@ -9,6 +9,7 @@ const outfile = resolve('node_modules/.cache/replay-analysis.test.mjs');
 await build({
   entryPoints: ['src/components/replayAnalysis.test.tsx'],
   bundle: true,
+  loader: { '.css': 'empty' },
   format: 'esm',
   platform: 'node',
   outfile,

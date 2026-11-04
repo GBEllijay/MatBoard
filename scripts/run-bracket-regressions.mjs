@@ -17,6 +17,7 @@ const outfile = '.regression-cache/bracket-regressions.test.mjs';
 await build({
   entryPoints: ['src/components/bracketRegressions.test.tsx'],
   bundle: true,
+  loader: { '.css': 'empty' },
   format: 'esm',
   platform: 'node',
   outfile,

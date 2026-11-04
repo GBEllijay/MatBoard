@@ -220,13 +220,20 @@ test('total stat wears the belt cloth on white, blue, purple, black and toggles 
   }
 });
 
-test('hub shows the stat and links the report card; report shows streak, status and source labels', () => {
+test('hub has no mat hours tile; profile shows stat, streak and report link; report shows streak, status and source labels', () => {
   seed('purple', { minutes: 60, injury: { area: 'Shoulder', note: '' } });
   const hub = mount(<StudentEditionPage />, '/student?student=1');
-  assert.ok(hub.host.querySelector('[data-testid="mat-hours"]'));
+  assert.equal(hub.host.querySelector('[data-testid="mat-hours"]'), null);
+  assert.equal(hub.host.querySelector('[aria-label="My report card"]'), null);
   assert.ok(labeled(hub.host, 'My profile'));
-  assert.equal(labeled(hub.host, 'My report card').getAttribute('href'), '/student/report?student=1');
   unmount(hub);
+  const profile = mount(<StudentEditionPage />, '/student/profile?student=1');
+  const section = profile.host.querySelector('[data-testid="profile-mat-hours"]') as HTMLElement;
+  assert.ok(section);
+  assert.match(section.querySelector('[data-testid="mat-hours"]')?.textContent ?? '', /1 mat hour|1\.0 mat hours|mat hour/);
+  assert.match(section.querySelector('[data-testid="profile-streak"]')?.textContent ?? '', /of 2 sessions|paused/);
+  assert.equal(labeled(section, 'My report card').getAttribute('href'), '/student/report?student=1');
+  unmount(profile);
   const page = mount(<StudentEditionPage />, '/student/report?student=1');
   const report = page.host.querySelector('[data-testid="profile-report"]');
   assert.ok(report);
@@ -246,4 +253,42 @@ test('backup carries mat time', () => {
   const parsed = parseProgressPacket(exportProgressPacket(report));
   assert.ok(parsed.ok);
   if (parsed.ok) assert.equal(parsed.value.journal[0].minutes, 45);
+});
+
+test('profile card stat: tap opens quick-add; save updates the same day record and the units chip toggles', () => {
+  seed('blue', { minutes: 60 });
+  const page = mount(<StudentEditionPage />, '/student/profile?student=1');
+  const stat = page.host.querySelector('[data-testid="profile-mat-hours"]') as HTMLElement;
+  assert.ok(stat);
+  click(labeled(stat, 'Show days and years'));
+  assert.match(stat.querySelector('.mat-hours__value')?.textContent ?? '', /days on the mat/);
+  click(stat.querySelector('.mat-hours__value') as HTMLElement);
+  const sheet = page.host.querySelector('[data-testid="mat-quick-add"]') as HTMLElement;
+  assert.ok(sheet);
+  typeInto(field(sheet, 'Date') as HTMLInputElement, '2026-10-11');
+  click(control(sheet, 'button', '1h 30m'));
+  click(control(sheet, 'button', 'Save'));
+  assert.equal(page.host.querySelector('[data-testid="mat-quick-add"]'), null);
+  const saved = loadStudentReport(localStorage);
+  assert.equal(saved.journal.length, 1);
+  assert.equal(saved.journal[0].minutes, 90);
+  unmount(page);
+});
+
+test('calendar day: mark trained (untimed), then add time from the same sheet; journal shows one card', () => {
+  localStorage.clear();
+  saveStudentReport(localStorage, blankStudentReport(10));
+  const day = mount(<StudentEditionPage />, '/student/calendar/2026-10-20?student=1');
+  const section = () => day.host.querySelector('[data-testid="cal-mat"]') as HTMLElement;
+  click(control(section(), 'button', 'Mark trained'));
+  assert.match(section().textContent ?? '', /no time yet/);
+  assert.equal(loadStudentReport(localStorage).journal.length, 1);
+  click(control(section(), 'button', 'Add time'));
+  click(control(section(), 'button', '2h'));
+  click(control(section(), 'button', 'Save'));
+  assert.match(section().textContent ?? '', /Trained · Class · 2h/);
+  const saved = loadStudentReport(localStorage);
+  assert.equal(saved.journal.length, 1);
+  assert.equal(saved.journal[0].minutes, 120);
+  unmount(day);
 });

@@ -6,6 +6,7 @@ import { StudentCardPreview } from '../../components/rosterCard/StudentCardPrevi
 import { ShareCardWithCoach, cardShareAvailable } from '../../components/StudentToCoachShare';
 import { ProfileCornerMarks, ProfileMedia, ProfileSwitches, useProfileMedia } from './ProfileIdentity';
 import { StudentProfileFields, TrainingSettings } from './ProfileFields';
+import { ProfileMatHoursStat } from './MatQuickAdd';
 import './profile.css';
 
 /** Name, gym, start date, birth year, Kid or Adult, optional photo, and gym logo. Saved on this phone. */
@@ -36,6 +37,7 @@ export function ProfilePage() {
           />
         </header>
         <div className="profile-stack">
+          <ProfileMatHoursStat to={to} />
           <ProfileMedia media={media} kids={kids} />
           <KidAdultFields report={report} commit={commit} />
           <StudentProfileFields

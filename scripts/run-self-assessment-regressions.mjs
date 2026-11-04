@@ -8,6 +8,7 @@ const outfile = '.regression-cache/self-assessment-page.test.mjs';
 await build({
   entryPoints: ['src/pages/student/selfAssessmentPage.test.tsx'],
   bundle: true,
+  loader: { '.css': 'empty' },
   format: 'esm',
   platform: 'node',
   outfile,

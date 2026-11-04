@@ -136,3 +136,39 @@
   display: block;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
+.profile-mat-hours { display: grid; gap: 12px; }
+.profile-mat-hours .mat-hours { max-width: 100%; }
+.profile-mat-hours__streak { margin: 0; display: grid; gap: 2px; font-size: 14px; }
+.profile-mat-hours__report { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; justify-self: start; padding: 0 16px; }
+.card-stat--mat-hours { display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(20, 30, 60, 0.14); }
+.card-stat__label { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; }
+.mat-hours.mat-hours .mat-hours__units { min-height: 44px; min-width: 44px; padding: 0 12px; margin-top: 6px; border-radius: 999px; border: 1px solid currentColor; background: transparent; color: inherit; font: inherit; font-size: 13px; }
+.mat-hours__plus { font-size: 0.8em; opacity: 0.85; }
+.mat-quick { display: grid; gap: 12px; padding: 16px; border-radius: 12px; background: #fffdf6; border: 1px solid rgba(20, 30, 60, 0.2); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); color: #1c2430; }
+.mat-quick__title { margin: 0; font-size: 18px; }
+.mat-quick__date { display: grid; gap: 4px; font-size: 14px; }
+.mat-quick__date input { min-height: 44px; font-size: 16px; padding: 0 10px; max-width: 100%; box-sizing: border-box; }
+.mat-quick__actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.mat-quick__actions .ink-btn { min-height: 44px; min-width: 88px; }
+.mat-quick__error { margin: 0; color: #a01818; font-size: 14px; }
+.cal-mat .ink-btn { min-height: 44px; }
+/* Profile card stat + quick-add: readable on the dark profile arena and on paper. */
+.card-stat.card-stat--mat-hours { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.22); color: inherit; }
+.card-stat--mat-hours .mat-hours.mat-hours { display: grid; gap: 8px; }
+.card-stat--mat-hours .mat-hours.mat-hours .mat-hours__units,
+.mat-hours.mat-hours > .mat-hours__units { justify-self: start; border: 1.5px solid currentColor; background: transparent; color: inherit; font-weight: 700; }
+.card-stat--mat-hours .profile-mat-hours__report.profile-mat-hours__report { color: inherit; border: 1.5px solid currentColor; background: transparent; }
+.mat-quick.mat-quick, .mat-quick.mat-quick .mat-time, .mat-quick.mat-quick legend { background: #fffdf6; color: #1c2430; box-shadow: none; }
+.mat-quick.mat-quick { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); }
+.mat-quick.mat-quick .mat-time { border: 0; padding: 0; }
+.mat-quick.mat-quick .mat-time__note, .mat-quick.mat-quick .mat-time__clock { color: #1c2430; opacity: 1; }
+.mat-quick.mat-quick .mat-time__chip, .mat-quick.mat-quick .mat-time__step, .mat-quick.mat-quick .mat-time__clear { background: #fffdf7; color: #1d263a; border: 1.5px solid rgba(29, 38, 58, 0.35); }
+.mat-quick.mat-quick .mat-time__chip[aria-pressed='true'] { background: #1d263a; color: #fff; border-color: #1d263a; }
+.mat-quick.mat-quick input[type='date'] { background: #fff; color: #1c2430; border: 1.5px solid rgba(29, 38, 58, 0.35); border-radius: 8px; color-scheme: light; }
+.mat-quick.mat-quick .mat-quick__actions .ink-btn { background: #1d263a; color: #fff; border: 0; }
+.mat-quick.mat-quick .mat-quick__actions .ink-btn + .ink-btn { background: transparent; color: #1d263a; border: 1.5px solid #1d263a; }
+.mat-quick.mat-quick .mat-time.mat-time { background: transparent !important; color: #1c2430 !important; box-shadow: none !important; }
+.mat-quick.mat-quick .mat-time.mat-time legend, .mat-quick.mat-quick .mat-time.mat-time * { color: inherit; }
+.mat-quick.mat-quick .mat-time__chip[aria-pressed='true'] { color: #fff !important; }
+.mat-quick.mat-quick .mat-time__note { color: #1c2430 !important; }
+.card-stat--mat-hours a.profile-mat-hours__report { color: inherit !important; background: transparent !important; }

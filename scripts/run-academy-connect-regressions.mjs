@@ -9,6 +9,7 @@ const outfile = resolve('node_modules/.cache/academy-connect.test.mjs');
 await build({
   entryPoints: ['src/pages/student/academyConnect.regressions.test.tsx'],
   bundle: true,
+  loader: { '.css': 'empty' },
   format: 'esm',
   platform: 'node',
   outfile,
