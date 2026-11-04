@@ -6,6 +6,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useCurrentSeat } from './SeatSessionBar';
 import { ensureGymBackfill, markPastPlansTaught } from '../lib/gymBackfill.ts';
 import { installGymActor } from '../lib/gymActor.ts';
+import { syncGymEvents } from '../lib/gymEventSync.ts';
 import {
   eventsForView,
   formatDays,
@@ -38,6 +39,7 @@ export function GymCoachPulse() {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     ensureGymBackfill();
+    void syncGymEvents();
   }, []);
   const view = gymViewFor({
     seatId: seat?.id ?? null,

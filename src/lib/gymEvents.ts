@@ -476,6 +476,22 @@ export function studentLabel(
   return students.find((student) => student.id === studentId)?.name || 'Student';
 }
 
+export type YearBelts = { year: string; belts: BeltTally[] };
+
+/** Belt promotions grouped by the year they were dated. */
+export function promotionsByYear(events: readonly GymEvent[]): YearBelts[] {
+  const years = new Map<string, GymEvent[]>();
+  for (const event of promotionEvents(events)) {
+    const year = event.date.slice(0, 4) || 'Unknown';
+    const list = years.get(year) ?? [];
+    list.push(event);
+    years.set(year, list);
+  }
+  return [...years.entries()]
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([year, rows]) => ({ year, belts: beltsPromoted(rows) }));
+}
+
 export type GymCloudTotals = {
   promotions: number;
   stripes: number;
@@ -485,9 +501,10 @@ export type GymCloudTotals = {
   activeStudents: number;
   belts: BeltTally[];
   instructors: InstructorTally[];
+  tenure: TenureStats;
 };
 
-export function cloudTotals(events: readonly GymEvent[], year = new Date().getFullYear()): GymCloudTotals {
+export function cloudTotals(events: readonly GymEvent[], year = new Date().getFullYear(), today = localDay()): GymCloudTotals {
   const classes = netClasses(events);
   return {
     promotions: promotionEvents(events).length,
@@ -498,6 +515,7 @@ export function cloudTotals(events: readonly GymEvent[], year = new Date().getFu
     activeStudents: activeStudentCount(events),
     belts: beltsPromoted(events),
     instructors: instructorTallies(events),
+    tenure: tenureStats(events, today),
   };
 }
 

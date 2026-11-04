@@ -19,6 +19,7 @@ import { lockMedia } from '../lib/mediaUnlock';
 import { lockPro } from '../lib/proUnlock';
 import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 import { CloudLapseNotice } from '../components/CloudLapseNotice';
+import { GymCharacterSheet } from '../components/GymCharacterSheet';
 
 export function ProPage() {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ export function ProPage() {
       <div className="home__inner">
         <HomeMark to={PRODUCTS_PATH} />
         <CloudLapseNotice />
+        <GymCharacterSheet />
 
         <nav className="home__modes" aria-label="Advantage Pro">
           <BeltHeader

@@ -14,6 +14,7 @@ import {
   sanitizeGymEvents,
   type ArchiveReason,
   type GymActor,
+  type GymCloudTotals,
   type GymEvent,
   type GymSource,
   type MinutePlan,
@@ -29,6 +30,7 @@ export type GymMeta = {
   pushCursor: number;
   pullCursor: number;
   cloudSynced: boolean;
+  cloudTotals: GymCloudTotals | null;
 };
 
 export type MemoryStore = {
@@ -47,7 +49,7 @@ let bound: MemoryStore | null = null;
 let actorReader: () => ActorContext = () => ({ licenseId: 'local', seatId: 'owner', name: 'Owner' });
 
 function emptyMeta(): GymMeta {
-  return { v: 1, backfillDone: false, pushCursor: 0, pullCursor: 0, cloudSynced: false };
+  return { v: 1, backfillDone: false, pushCursor: 0, pullCursor: 0, cloudSynced: false, cloudTotals: null };
 }
 
 function storage(): MemoryStore | null {
@@ -120,12 +122,14 @@ export function readGymMeta(): GymMeta {
   try {
     const raw = storage()?.getItem(GYM_EVENTS_META_KEY);
     const parsed = raw ? (JSON.parse(raw) as Partial<GymMeta>) : {};
+    const totals = parsed.cloudTotals;
     metaCache = {
       v: 1,
       backfillDone: parsed.backfillDone === true,
       pushCursor: typeof parsed.pushCursor === 'number' ? parsed.pushCursor : 0,
       pullCursor: typeof parsed.pullCursor === 'number' ? parsed.pullCursor : 0,
       cloudSynced: parsed.cloudSynced === true,
+      cloudTotals: totals && typeof totals === 'object' && typeof totals.classes === 'number' ? totals : null,
     };
   } catch {
     metaCache = emptyMeta();
