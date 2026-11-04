@@ -70,13 +70,13 @@ test('Metal Mania headings put numerals in Anton, and clocks stay plain Anton', 
   assert.match(css, /\.id \{[^}]*min-width: 0;[^}]*overflow: hidden/);
   assert.match(css, /\.name a \{[^}]*overflow: hidden;[^}]*text-overflow: ellipsis/);
   assert.match(css, /\.lead \{[^}]*min-width: 0/);
-  assert.match(css, /\.hdr \.mat \{[^}]*margin-left: auto/);
+  assert.match(css, /\.trail \{[^}]*grid-column: 3;[^}]*justify-self: end;[^}]*min-width: 0/);
   assert.match(css, /\.hdr \.mat a \{[^}]*overflow: hidden;[^}]*white-space: nowrap;[^}]*text-overflow: ellipsis/);
   assert.match(css, /font-size: 92cqh/);
   assert.match(css, /\.digit--pair \{[^}]*font-size: min\(92cqh, 86cqi\)/);
   assert.match(css, /padding: 0\.6vh max\(6px, 0\.6vw\)/);
-  assert.match(css, /\.hdr \.mat \{[^}]*flex: 0 1 auto;[^}]*margin-left: auto;[^}]*min-width: 0;[^}]*max-width: 22%;[^}]*text-align: right/);
-  assert.match(css, /\.hdr \.div \{[^}]*flex: 1 1 auto;[^}]*flex-grow: 0;[^}]*min-width: max\(30%, min-content\)/);
+  assert.match(css, /\.hdr \.mat \{[^}]*flex-shrink: 0/);
+  assert.match(css, /\.hdr \.div \{[^}]*flex: 0 1 auto;[^}]*min-width: 0/);
   assert.equal(metalRoundLabel('Round 1'), 'Round 1');
   assert.equal(metalRoundLabel('Round Semifinal'), 'Semifinal');
   assert.equal(metalRoundLabel('Round Final'), 'Final');
@@ -142,8 +142,12 @@ const skinCss = () => {
     const dir = new URL('./', url);
     return read(url.pathname).replace(/url\(([^)]+)\)/g, (_all, raw: string) => {
       const cleaned = raw.trim().replace(/^['"]|['"]$/g, '');
-      if (/^(?:data:|https?:|file:)/.test(cleaned)) return `url(${cleaned})`;
-      return `url(${new URL(cleaned, dir).href})`;
+      if (cleaned.startsWith('data:')) return `url(${cleaned})`;
+      const abs = new URL(cleaned, dir);
+      if (abs.pathname.endsWith('.woff2')) {
+        return `url(data:font/woff2;base64,${readFileSync(abs).toString('base64')})`;
+      }
+      return `url(${abs.href})`;
     });
   };
   const root = new URL('../skins/polished/', import.meta.url);
@@ -192,25 +196,27 @@ test('a typical division stays whole at 1024 beside the round', async () => {
   const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1024, height: 768 } });
-  const oswald = new URL('../../node_modules/@fontsource/oswald/files/oswald-latin-600-normal.woff2', import.meta.url);
+  const oswald = readFileSync(new URL('../../node_modules/@fontsource/oswald/files/oswald-latin-600-normal.woff2', import.meta.url)).toString('base64');
   const header = (round: string) => `<header class="hdr">
       <div class="lead"><img class="logo" alt=""><span class="wm">Advantage</span></div>
       <i class="crest"></i>
-      <div class="trail"><span class="mat"><a href="#"><span class="metal-face">${round}</span></a></span>
+      <div class="trail"><span class="mat"><a href="#">${round}</a></span>
       <span class="div"><a href="#">Adult · Middleweight</a></span></div>
     </header>`;
-  await page.setContent(`<!doctype html>
-    <style>
-      @font-face { font-family: Oswald; font-weight: 600; src: url('${oswald.href}') format('woff2'); }
-      ${skinCss()}
-      body { margin: 0; }
-    </style>
-    <div class="skin-root" data-skin="heavy-metal" style="width:1024px;height:768px">
-      <div class="sb">${header('Round 1')}${header('Semifinal')}</div>
-    </div>`);
-  await page.evaluate(() => document.fonts.ready);
-  const rows = await page.evaluate(() =>
-    [...document.querySelectorAll('.hdr')].map((hdr) => {
+  const rows = [];
+  for (const round of ['<span class="metal-face">Round</span><span class="n">1</span>', '<span class="metal-face">Semifinal</span>']) {
+    await page.setContent(`<!doctype html>
+      <style>
+        @font-face { font-family: Oswald; font-weight: 600; src: url(data:font/woff2;base64,${oswald}) format('woff2'); }
+        ${skinCss()}
+        body { margin: 0; }
+      </style>
+      <div class="skin-root" data-skin="heavy-metal" style="width:1024px;height:768px">
+        <div class="sb">${header(round)}</div>
+      </div>`);
+    await page.evaluate(() => document.fonts.load('600 18px Oswald'));
+    rows.push(await page.evaluate(() => {
+      const hdr = document.querySelector('.hdr');
       const box = hdr.getBoundingClientRect();
       const div = hdr.querySelector('.div a');
       const mat = hdr.querySelector('.mat').getBoundingClientRect();
@@ -223,12 +229,59 @@ test('a typical division stays whole at 1024 beside the round', async () => {
         gap: Math.round(division.left - mat.right),
         crestOff: Math.round(crest.left + crest.width / 2 - (box.left + box.width / 2)),
       };
-    }),
-  );
+    }));
+  }
   await browser.close();
   for (const row of rows) {
     assert.equal(row.truncated, false, `${row.round} truncated the division (${row.division})`);
     assert.ok(row.gap >= -2 && row.gap < 48, `${row.round} round sits beside the division, gap ${row.gap}px`);
     assert.ok(Math.abs(row.crestOff) <= 2, `${row.round} crest off center by ${row.crestOff}px`);
   }
+});
+
+test('a long division ellipsizes and leaves Semifinal clear of the crest', async () => {
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const oswald = readFileSync(new URL('../../node_modules/@fontsource/oswald/files/oswald-latin-600-normal.woff2', import.meta.url)).toString('base64');
+  const division = 'Adult · Ultra Heavyweight · Black Belt · Gi';
+  const markup = (width: number, height: number) => `<!doctype html>
+    <style>
+      @font-face { font-family: Oswald; font-weight: 600; src: url(data:font/woff2;base64,${oswald}) format('woff2'); }
+      ${skinCss()}
+      body { margin: 0; }
+    </style>
+    <div class="skin-root" data-skin="heavy-metal" style="width:${width}px;height:${height}px">
+      <div class="sb"><header class="hdr">
+        <div class="lead"><img class="logo" alt=""><span class="wm">Advantage</span></div>
+        <i class="crest"></i>
+        <div class="trail"><span class="mat"><a href="#"><span class="metal-face">Semifinal</span></a></span>
+        <span class="div"><a href="#">${division}</a></span></div>
+      </header></div>
+    </div>`;
+  for (const viewport of [
+    { width: 1024, height: 768 },
+    { width: 1920, height: 1080 },
+  ]) {
+    const page = await browser.newPage({ viewport });
+    await page.setContent(markup(viewport.width, viewport.height));
+    await page.evaluate(() => document.fonts.load('600 18px Oswald'));
+    const row = await page.evaluate(() => {
+      const hdr = document.querySelector('.hdr').getBoundingClientRect();
+      const crest = document.querySelector('.crest').getBoundingClientRect();
+      const mat = document.querySelector('.mat').getBoundingClientRect();
+      const div = document.querySelector('.div a');
+      return {
+        clear: mat.left - crest.right,
+        truncated: div.scrollWidth > div.clientWidth + 1,
+        ellipsis: getComputedStyle(div).textOverflow,
+        crestOff: Math.abs(crest.left + crest.width / 2 - (hdr.left + hdr.width / 2)),
+      };
+    });
+    await page.close();
+    assert.ok(row.clear >= -1, `${viewport.width} Semifinal crosses the crest by ${(-row.clear).toFixed(1)}px`);
+    assert.equal(row.truncated, true, `${viewport.width} long division did not ellipsize`);
+    assert.equal(row.ellipsis, 'ellipsis', `${viewport.width} division is clipped without an ellipsis`);
+    assert.ok(row.crestOff <= 2, `${viewport.width} crest off center by ${row.crestOff}px`);
+  }
+  await browser.close();
 });

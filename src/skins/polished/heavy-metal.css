@@ -122,7 +122,8 @@
 .skin-root[data-skin="heavy-metal"] .hdr {
   position: relative;
   z-index: 4;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   column-gap: 1.4vh;
   min-width: 0;
@@ -131,8 +132,10 @@
 }
 
 .skin-root[data-skin="heavy-metal"] .lead {
+  grid-column: 1;
   display: flex;
   align-items: center;
+  justify-self: start;
   gap: 1.2vh;
   min-width: 0;
   overflow: hidden;
@@ -158,25 +161,34 @@
 }
 
 .skin-root[data-skin="heavy-metal"] .hdr .crest {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  grid-column: 2;
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  justify-self: center;
   height: 9vh;
   width: 18vh;
   z-index: 2;
 }
 
 .skin-root[data-skin="heavy-metal"] .trail {
-  display: contents;
+  grid-column: 3;
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  justify-content: flex-end;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .skin-root[data-skin="heavy-metal"] .hdr .mat {
   display: flex;
-  flex: 0 1 auto;
-  margin-left: auto;
-  min-width: 0;
-  max-width: 22%;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  margin-left: 0;
+  max-width: none;
   text-align: right;
   overflow: hidden;
   font-family: "Metal Mania", cursive;
@@ -219,11 +231,9 @@
 }
 
 .skin-root[data-skin="heavy-metal"] .hdr .div {
-  /* Do not grow: a growing division eats the free space and the round's auto margin stays put. */
-  flex: 1 1 auto;
-  flex-grow: 0;
+  flex: 0 1 auto;
   justify-self: start;
-  min-width: max(30%, min-content);
+  min-width: 0;
   max-width: none;
   font-family: Oswald, sans-serif;
   font-weight: 600;
