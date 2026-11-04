@@ -1,4 +1,12 @@
 /* Academy tracking. Same dark mat and logo blue as the rest of Advantage. */
+.home__inner > .gym-sheet,
+.home__inner > .gym-pulse {
+  grid-column: 1 / -1;
+  width: 100%;
+  align-self: start;
+  justify-self: stretch;
+}
+
 .gym-pulse {
   display: grid;
   gap: 8px;
@@ -105,7 +113,16 @@
   color: #6ea8ff;
 }
 .gym-id { display: flex; gap: 12px; align-items: center; min-width: 0; }
-.gym-id img { width: 56px; height: 56px; object-fit: contain; border-radius: 8px; background: rgba(0, 0, 0, 0.25); }
+.gym-sheet .gym-id__logo {
+  width: 56px;
+  height: 56px;
+  max-width: 56px;
+  max-height: 56px;
+  flex: 0 0 56px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
 .gym-id h2 { margin: 0; font-size: 22px; line-height: 1.15; overflow-wrap: anywhere; }
 .gym-id p { margin: 2px 0 0; font-size: 14px; color: var(--muted, #9aa3b5); }
 .gym-sheet .sheet-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -133,7 +150,10 @@
 .gym-log li { display: grid; gap: 2px; padding-top: 6px; border-top: 1px solid var(--sheet-line); font-size: 14px; }
 .gym-log span, .gym-sheet__note, .gym-sheet__empty { margin: 0; font-size: 14px; color: var(--muted, #9aa3b5); }
 .gym-fields { display: grid; gap: 8px; }
-.gym-fields label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; }
+.gym-fields > label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; }
+.gym-fields fieldset { margin: 0; padding: 8px 10px; border: 1px solid rgba(110, 168, 255, 0.35); border-radius: 8px; display: grid; gap: 8px; }
+.gym-fields fieldset label { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 700; }
+.gym-fields fieldset input { width: 22px; height: 22px; min-height: 0; }
 .gym-fields input, .gym-fields textarea {
   min-height: 44px;
   padding: 8px 10px;
@@ -148,7 +168,7 @@
   .gym-sheet .sheet-stat__num { font-size: 26px; }
 }
 @media (min-width: 1024px) {
-  .gym-sheet { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .gym-sheet { grid-template-columns: minmax(280px, 1.35fr) minmax(240px, 1fr); }
   .gym-sheet .sheet-zone--identity { grid-column: 1; grid-row: 1; border-top: 0; border-right: 1px solid var(--sheet-line); }
   .gym-sheet .sheet-zone--stats { grid-column: 2; grid-row: 1; border-top: 0; }
   .gym-sheet .sheet-zone--stats .sheet-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); height: 100%; }
