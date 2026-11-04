@@ -3,7 +3,8 @@ import { usePolishedSkinModule, useViewportSize } from '../hooks/usePolishedSkin
 import { formatMmSs, formatMss } from '../lib/format';
 import type { PolishedTimerSlug } from '../lib/polishedSkins';
 import { brasilRing, keynoteRing } from '../skins/polished/ring';
-import { metalTimerTitle, psychedelicTimerTitle, reggaeTimerTitle, timerNextLine, timerProgress, visionaryTimerTitle } from '../skins/polished/timerText';
+import { METAL_METER_SEGMENTS, metalMeterLit, metalPhaseParts, metalTimerTitle } from '../skins/polished/heavyMetal';
+import { psychedelicTimerTitle, reggaeTimerTitle, timerNextLine, timerProgress, visionaryTimerTitle } from '../skins/polished/timerText';
 
 const STAR =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.8l3.1 6.6 7.1.9-5.2 4.9 1.4 7.1L12 17.8l-6.4 3.5 1.4-7.1L1.8 9.3l7.1-.9z" fill="#fff" stroke="#2A1A7A" stroke-width="1.6" stroke-linejoin="round"/></svg>';
@@ -54,6 +55,8 @@ export function PolishedTimer({
   const next = timerNextLine(rest, workMs, breakMs, round);
   const deco = mod ? (rest && mod.TIMER_REST_DECO != null ? mod.TIMER_REST_DECO : mod.TIMER_DECO) : '';
   const ringP = Math.round(p * 1000) / 1000;
+
+  const metalPhase = slug === 'heavy-metal' ? metalPhaseParts(phaseLine) : null;
 
   const clockBtn = (content: ReactNode, cls = 'digits', data?: string) => (
     <button
@@ -119,20 +122,27 @@ export function PolishedTimer({
         </>
       );
       break;
-    case 'heavy-metal':
+    case 'heavy-metal': {
+      const title = metalTimerTitle(rest, round);
+      const lit = metalMeterLit(p);
       inner = (
         <>
-          <div className="title">{metalTimerTitle(rest, round)}</div>
+          <i className="crest" aria-hidden="true" />
+          <div className="title">
+            <span className="metal-face">{title.word}</span>
+            {title.numeral != null ? <span className="n">{title.numeral}</span> : null}
+          </div>
           {clockBtn(digits, 'digits', digits)}
-          <div className="vu">
-            {Array.from({ length: 32 }, (_, i) => (
-              <i key={i} style={{ ['--i' as string]: i }} />
+          <div className="meter" aria-hidden="true">
+            {Array.from({ length: METAL_METER_SEGMENTS }, (_, i) => (
+              <i key={i} className={i < lit ? 'on' : undefined} style={{ ['--i' as string]: i }} />
             ))}
           </div>
           <div className="next">{next}</div>
         </>
       );
       break;
+    }
     case 'brasil':
       inner = (
         <div className="globe-wrap">
@@ -226,7 +236,14 @@ export function PolishedTimer({
         {deco ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: deco }} /> : null}
         <img className="logo" src="/card-logo.png" alt="Advantage" />
         <button type="button" className="phase sk-btn tm-phase" aria-label={phaseLabel} onClick={onPhase}>
-          {phaseLine}
+          {metalPhase ? (
+            <>
+              <span className="phase-pill">{metalPhase.pill}</span>
+              {metalPhase.sub ? <span className="endless">{metalPhase.sub}</span> : null}
+            </>
+          ) : (
+            phaseLine
+          )}
         </button>
         {inner}
         {children}

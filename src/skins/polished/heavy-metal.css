@@ -1,153 +1,910 @@
-/* GENERATED from the polished mock (base.css + themes/heavy-metal.css), scoped to [data-skin="heavy-metal"]. Do not edit by hand. */
-/* Shared layout for all scoreboard + timer skins. All sizes in vh/vw so 1280x600 and 844x390 scale the same. */
-[data-skin="heavy-metal"],[data-skin="heavy-metal"] *{box-sizing:border-box}
-[data-skin="heavy-metal"]{margin:0;width:100vw;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased}
-[data-skin="heavy-metal"]{font-family:Inter,system-ui,sans-serif}
-[data-skin="heavy-metal"] .num,[data-skin="heavy-metal"] .clock,[data-skin="heavy-metal"] .digits{font-variant-numeric:tabular-nums}
+/* Heavy Metal v2 — direction A "Chrome Inferno".
+   Scoped to [data-skin="heavy-metal"]. Art is background, flames, plate, and crest only.
+   Names, scores, times, and labels are live text. Digits stay solid white Anton.
+   Metal Mania is headings only; a numeral inside a heading is .n (Anton). */
 
-/* ---------- SCOREBOARD ---------- */
-[data-skin="heavy-metal"] .sb{position:relative;width:100vw;height:100vh;padding:1.8vh 2vh 2vh;display:grid;
-  grid-template-rows:5.5vh 1fr 15vh 1fr;gap:1.6vh;isolation:isolate}
-[data-skin="heavy-metal"] .hdr{display:flex;align-items:center;gap:1.6vh;position:relative;z-index:2}
-[data-skin="heavy-metal"] .logo{height:5.5vh;width:5.5vh;border-radius:50%;display:block;flex:none}
-[data-skin="heavy-metal"] .hdr .mat{font-size:2.4vh;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
-[data-skin="heavy-metal"] .hdr .div{font-size:2.3vh;font-weight:600;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-left:auto}
-[data-skin="heavy-metal"] .row{position:relative;display:grid;grid-template-columns:30% 1.3fr 1fr 1fr;gap:1.4vh;padding:1.4vh;min-height:0;z-index:1}
-[data-skin="heavy-metal"] .id{display:flex;flex-direction:column;justify-content:center;gap:1.3vh;padding-left:2.4vh;min-width:0}
-[data-skin="heavy-metal"] .name{font-size:6vh;font-weight:800;line-height:1;white-space:nowrap;letter-spacing:-.01em}
-[data-skin="heavy-metal"] .meta{display:flex;align-items:center;gap:1.4vh;min-width:0}
-[data-skin="heavy-metal"] .belt{display:inline-flex;align-items:center;height:4.4vh;padding:0 1.6vh 0 1.2vh;gap:1vh;border-radius:99px;
-  font-size:2.3vh;font-weight:800;letter-spacing:.1em;flex:none}
-[data-skin="heavy-metal"] .belt i{display:block;width:2.6vh;height:1.6vh;border-radius:.4vh;background:#111}
-[data-skin="heavy-metal"] .belt.blue{background:#1f56d6;color:#fff}
-[data-skin="heavy-metal"] .belt.purple{background:#6b2fb3;color:#fff}
-[data-skin="heavy-metal"] .gym{font-size:2.6vh;font-weight:600;white-space:nowrap;opacity:.8}
-[data-skin="heavy-metal"] .tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
-  padding:1.6vh .6vh .4vh;min-width:0;overflow:hidden}
-[data-skin="heavy-metal"] .lab{font-size:max(2.7vh,12px);font-weight:800;letter-spacing:.12em;line-height:1;white-space:nowrap}
-[data-skin="heavy-metal"] .num{font-size:21vh;font-weight:800;line-height:.82;letter-spacing:-.02em}
-[data-skin="heavy-metal"] .band{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 3vh;z-index:1}
-[data-skin="heavy-metal"] .band .state{font-size:3vh;font-weight:800;letter-spacing:.12em;justify-self:start}
-[data-skin="heavy-metal"] .band .status{font-size:3vh;font-weight:800;letter-spacing:.12em;justify-self:end}
-[data-skin="heavy-metal"] .clock{font-size:13.5vh;font-weight:800;line-height:1;letter-spacing:-.01em}
+.skin-root[data-skin="heavy-metal"] {
+  --pts: #ffc53a;
+  --adv: #6fd6ff;
+  --pen: #ff3b30;
+  background: #050506;
+  color: #eee;
+  font-family: "Big Shoulders Display", Oswald, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
 
-/* ---------- TIMER ---------- */
-[data-skin="heavy-metal"] .tm{position:relative;width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;isolation:isolate;overflow:hidden}
-[data-skin="heavy-metal"] .tm .logo{position:absolute;left:4.4vh;top:3.4vh;height:9vh;width:9vh;z-index:5}
-[data-skin="heavy-metal"] .tm .phase{position:absolute;top:4.6vh;left:0;right:0;text-align:center;font-size:3.6vh;font-weight:800;letter-spacing:.16em;z-index:5}
-[data-skin="heavy-metal"] .digits{font-size:40vh;font-weight:800;line-height:1;letter-spacing:-.01em;position:relative;z-index:3}
+.skin-root[data-skin="heavy-metal"],
+.skin-root[data-skin="heavy-metal"] * {
+  box-sizing: border-box;
+}
 
-/* polish: progress fraction (--p, 1 = full) is set inline on .tm; min label size floor */
-[data-skin="heavy-metal"] .tm{--p:1}
+/* Digits stay plain: solid white Anton. Color lives in the glow, the label, and the underline. */
+.skin-root[data-skin="heavy-metal"] .num,
+.skin-root[data-skin="heavy-metal"] .clock,
+.skin-root[data-skin="heavy-metal"] .digits {
+  font-family: Anton, sans-serif;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: none;
+  letter-spacing: 0.01em;
+}
 
-/* 04 Heavy Metal — "up to 11". Assets: assets/metal-forge.jpg (bg), assets/metal-plate.jpg (plates). Fonts: Anton (digits), Big Shoulders Display 900 (labels), Pirata One (blackletter headers), Metal Mania (wordmark only). */
-[data-skin="heavy-metal"]{--hot:#FF5A1F;--ember:#FF7A2A;--steel1:#E4E7EC;--steel2:#767B84;--iron:#0B0B0D;
-  --pts:#5BFF3A;--adv:#FF8C1A;--pen:#FF2A3A;
-  --crack:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 20' preserveAspectRatio='none'><polyline points='0,10.1 26,7.7 37,11.2 48,6.4 64,11.3 77,4.5 101,7.8 126,14.8 142,9.5 160,11.7 180,10.7 200,15.3 218,9.2 239,6.9 254,15.7 273,10.6 283,9.0 302,4.2 322,11.6 333,11.5 350,12.2 366,12.5 388,4.3 399,12.1 400,10' fill='none' stroke='black' stroke-width='4' stroke-linejoin='bevel'/></svg>")}
-[data-skin="heavy-metal"]{background:#050506;color:#ECE8E2;font-family:"Big Shoulders Display",Oswald,sans-serif}
-[data-skin="heavy-metal"] .dec{position:absolute;display:block;pointer-events:none}
-[data-skin="heavy-metal"] .bg{position:absolute;inset:0;z-index:0;background:radial-gradient(75% 70% at 50% 48%,rgba(5,5,6,.9),rgba(5,5,6,.35) 70%,rgba(5,5,6,0)),url(./assets/metal-forge.jpg) center/cover}
-[data-skin="heavy-metal"] .grain{position:absolute;inset:0;z-index:8;pointer-events:none;opacity:.28;mix-blend-mode:overlay}
-[data-skin="heavy-metal"] .embers-f{position:absolute;inset:0;z-index:7;pointer-events:none}
-[data-skin="heavy-metal"] .ember{position:absolute;border-radius:50%}
-/* bolts */
-[data-skin="heavy-metal"] .bolt{position:absolute;width:3vh;height:3vh;border-radius:50%;z-index:3;
-  background:radial-gradient(circle at 36% 30%,#F2F4F7 0 8%,#9CA1A9 22%,#3A3C42 55%,#0C0C0E 74%);
-  box-shadow:0 .35vh .5vh rgba(0,0,0,.9),inset 0 0 0 .25vh rgba(0,0,0,.55)}
-[data-skin="heavy-metal"] .bolt::after{content:"";position:absolute;left:22%;right:22%;top:50%;height:.45vh;margin-top:-.22vh;background:#0C0C0E;border-radius:2px;transform:rotate(-28deg);box-shadow:0 1px 0 rgba(255,255,255,.18)}
-[data-skin="heavy-metal"] .bolt.a{left:1.2vh;top:1.2vh}[data-skin="heavy-metal"] .bolt.b{right:1.2vh;top:1.2vh}[data-skin="heavy-metal"] .bolt.c{left:1.2vh;bottom:1.2vh}[data-skin="heavy-metal"] .bolt.d{right:1.2vh;bottom:1.2vh}
-/* header: blackletter mat + band-logo wordmark */
-[data-skin="heavy-metal"] .hdr .mat{font-family:"Pirata One",serif;font-size:4.8vh;margin-left:.6vh;letter-spacing:.02em;text-transform:none;font-weight:400;line-height:1;
-  background:linear-gradient(180deg,#FFFFFF 10%,#FFD9C4 45%,#FF7A3D 80%,#E0401A);-webkit-background-clip:text;color:transparent;
-  filter:drop-shadow(0 .25vh 0 #000) drop-shadow(0 0 1.2vh rgba(255,90,31,.55))}
-[data-skin="heavy-metal"] .hdr .div{font-family:Oswald;font-weight:600;font-size:2.3vh;letter-spacing:.24em;color:#B5B0A8;opacity:1}
-[data-skin="heavy-metal"] .logo{box-shadow:0 0 0 .3vh #0A0A0B,0 0 0 .6vh #7A7E86,0 0 1.6vh rgba(255,90,31,.5)}
-[data-skin="heavy-metal"] .wordmark{position:absolute;left:0;right:0;top:1.8vh;height:5.5vh;display:flex;align-items:center;justify-content:center;z-index:3;pointer-events:none}
-[data-skin="heavy-metal"] .wordmark span{font-family:"Metal Mania";font-size:4.6vh;line-height:1;letter-spacing:.06em;
-  background:linear-gradient(180deg,#FFFFFF 0%,#C9CDD3 40%,#4B4F56 52%,#D8DBE0 70%,#7A7E86 100%);-webkit-background-clip:text;color:transparent;
-  filter:drop-shadow(0 .25vh 0 #000) drop-shadow(0 0 1.4vh rgba(255,90,31,.35))}
-/* plates */
-[data-skin="heavy-metal"] .row{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 30%,rgba(0,0,0,.35)),url(./assets/metal-plate.jpg) center/cover;
-  clip-path:polygon(2.6vh 0,5.00% 0.44vh,7.50% 0.01vh,10.00% 0.18vh,12.50% 0.70vh,15.00% 0.59vh,17.50% 0.45vh,20.00% 0.44vh,22.50% 0.37vh,25.00% 0.47vh,27.50% 0.53vh,30.00% 0.21vh,32.50% 0.61vh,35.00% 0.50vh,37.50% 0.50vh,40.00% 0.28vh,42.50% 0.31vh,45.00% 0.62vh,47.50% 0.10vh,50.00% 0.68vh,52.50% 0.44vh,55.00% 0.36vh,57.50% 0.25vh,60.00% 0.41vh,62.50% 0.48vh,65.00% 0.60vh,67.50% 0.47vh,70.00% 0.60vh,72.50% 0.63vh,75.00% 0.50vh,77.50% 0.58vh,80.00% 0.20vh,82.50% 0.60vh,85.00% 0.06vh,87.50% 0.29vh,90.00% 0.21vh,92.50% 0.61vh,95.00% 0.43vh,calc(100% - 2.6vh) 0,100% 2.6vh,100% calc(100% - 2.6vh),calc(100% - 2.6vh) 100%,95.00% calc(100% - 0.05vh),92.50% calc(100% - 0.59vh),90.00% calc(100% - 0.16vh),87.50% calc(100% - 0.33vh),85.00% calc(100% - 0.33vh),82.50% calc(100% - 0.11vh),80.00% calc(100% - 0.61vh),77.50% calc(100% - 0.52vh),75.00% calc(100% - 0.04vh),72.50% calc(100% - 0.41vh),70.00% calc(100% - 0.02vh),67.50% calc(100% - 0.33vh),65.00% calc(100% - 0.62vh),62.50% calc(100% - 0.64vh),60.00% calc(100% - 0.56vh),57.50% calc(100% - 0.65vh),55.00% calc(100% - 0.07vh),52.50% calc(100% - 0.15vh),50.00% calc(100% - 0.31vh),47.50% calc(100% - 0.21vh),45.00% calc(100% - 0.27vh),42.50% calc(100% - 0.41vh),40.00% calc(100% - 0.63vh),37.50% calc(100% - 0.65vh),35.00% calc(100% - 0.69vh),32.50% calc(100% - 0.11vh),30.00% calc(100% - 0.68vh),27.50% calc(100% - 0.40vh),25.00% calc(100% - 0.15vh),22.50% calc(100% - 0.40vh),20.00% calc(100% - 0.04vh),17.50% calc(100% - 0.69vh),15.00% calc(100% - 0.56vh),12.50% calc(100% - 0.11vh),10.00% calc(100% - 0.54vh),7.50% calc(100% - 0.03vh),5.00% calc(100% - 0.03vh),2.6vh 100%,0 calc(100% - 2.6vh),0 2.6vh);
-  padding:2.4vh 4.4vh 2.4vh 3vh;
-  box-shadow:inset 0 .35vh 0 rgba(255,255,255,.22),inset 0 -.5vh 0 rgba(0,0,0,.7),inset .35vh 0 0 rgba(255,255,255,.08),inset -.35vh 0 0 rgba(0,0,0,.6),inset 0 0 6vh rgba(0,0,0,.65)}
-[data-skin="heavy-metal"] .row::after{content:"";position:absolute;left:3.6vh;top:4.6vh;bottom:4.6vh;width:.8vh;border-radius:2px;z-index:2}
-[data-skin="heavy-metal"] .c1::after{background:linear-gradient(180deg,#9CB8FF,#2D5BFF);box-shadow:0 0 1.6vh rgba(45,91,255,.9)}
-[data-skin="heavy-metal"] .c2::after{background:linear-gradient(180deg,#FFFFFF,#CFC6B0);box-shadow:0 0 1.4vh rgba(255,255,255,.5)}
-[data-skin="heavy-metal"] .id{padding-left:4vh}
-[data-skin="heavy-metal"] .name{font-family:"Big Shoulders Display";font-weight:900;text-transform:uppercase;letter-spacing:.03em;font-size:6.6vh;
-  background:linear-gradient(180deg,#FFFFFF 30%,#C7CBD1 60%,#8F949C);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 .3vh 0 #000)}
-[data-skin="heavy-metal"] .gym{font-family:Oswald;font-weight:600;letter-spacing:.16em;text-transform:uppercase;font-size:2.6vh;color:#BDB8B0;opacity:1}
-[data-skin="heavy-metal"] .belt{font-family:"Big Shoulders Display";font-weight:900;font-size:2.4vh;border-radius:.5vh;letter-spacing:.16em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),0 .3vh 0 #000}
-/* recessed score wells with a molten crack along the floor */
-[data-skin="heavy-metal"] .tile{background:linear-gradient(180deg,#060607,#121316 70%,#0A0A0C);border-radius:.6vh;overflow:visible;padding-top:1.5vh;
-  box-shadow:inset 0 .6vh 1.6vh rgba(0,0,0,.95),inset 0 0 0 .2vh #000,0 .2vh 0 rgba(255,255,255,.16),0 -.2vh 0 rgba(0,0,0,.8)}
-[data-skin="heavy-metal"] .tile::before,[data-skin="heavy-metal"] .tile::after{content:"";position:absolute;left:6%;right:6%;bottom:.4vh;height:1.8vh;background:var(--c);
-  -webkit-mask:var(--crack) center/100% 100% no-repeat;mask:var(--crack) center/100% 100% no-repeat}
-[data-skin="heavy-metal"] .tile::before{filter:blur(1vh);opacity:.95;height:2.6vh;bottom:0}
-[data-skin="heavy-metal"] .tile::after{background:linear-gradient(90deg,var(--c),#FFF2E0 50%,var(--c))}
-[data-skin="heavy-metal"] .pts{--c:var(--pts)} [data-skin="heavy-metal"] .adv{--c:var(--adv)} [data-skin="heavy-metal"] .pen{--c:var(--pen)}
-[data-skin="heavy-metal"] .lab{font-family:"Big Shoulders Display";font-weight:900;font-size:max(3.5vh,13px);letter-spacing:.14em;color:var(--c);
-  text-shadow:0 .2vh 0 #000,0 0 1.4vh color-mix(in srgb,var(--c) 55%,transparent)}
-[data-skin="heavy-metal"] .num{font-family:Anton,Oswald;font-weight:400;font-size:21vh;line-height:.95;letter-spacing:0;margin-bottom:1.6vh;
-  background:linear-gradient(180deg,#FFFFFF 0%,#FFF7EC 40%,#FFD2AE 78%,#FF9E62 100%);-webkit-background-clip:text;color:transparent;
-  -webkit-text-stroke:.12vh rgba(90,25,0,.55);
-  filter:drop-shadow(0 0 .25vh rgba(255,255,255,.7)) drop-shadow(0 0 2.6vh color-mix(in srgb,var(--c) 75%,transparent))}
-/* band: forged clock plate flanked by chains */
-[data-skin="heavy-metal"] .band{grid-template-columns:1fr auto 1fr;z-index:4}
-[data-skin="heavy-metal"] .clockplate{position:absolute;left:50%;width:46vh;margin-left:-23vh;top:46.4vh;height:14.2vh;z-index:3;
-  background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(0,0,0,.4)),url(./assets/metal-plate.jpg) center 30%/cover;
-  clip-path:polygon(3vh 0,calc(100% - 3vh) 0,100% 50%,calc(100% - 3vh) 100%,3vh 100%,0 50%);
-  box-shadow:inset 0 .35vh 0 rgba(255,255,255,.25),inset 0 -.5vh 0 rgba(0,0,0,.8),inset 0 0 3vh rgba(255,60,20,.35)}
-[data-skin="heavy-metal"] .clockplate .bolt{width:2.4vh;height:2.4vh}
-[data-skin="heavy-metal"] .clockplate .bolt.a,[data-skin="heavy-metal"] .clockplate .bolt.c{left:4vh}[data-skin="heavy-metal"] .clockplate .bolt.b,[data-skin="heavy-metal"] .clockplate .bolt.d{right:4vh}
-[data-skin="heavy-metal"] .clockplate .bolt.a,[data-skin="heavy-metal"] .clockplate .bolt.b{top:1.1vh}[data-skin="heavy-metal"] .clockplate .bolt.c,[data-skin="heavy-metal"] .clockplate .bolt.d{bottom:1.1vh}
-[data-skin="heavy-metal"] .clock{font-family:Anton;font-weight:400;font-size:12.6vh;letter-spacing:.02em;line-height:1;position:relative;z-index:5;padding:0 4vh;
-  background:linear-gradient(180deg,#FFFFFF 0%,#FFF3E6 45%,#FFC08E 85%,#FF8A4A);-webkit-background-clip:text;color:transparent;
-  filter:drop-shadow(0 0 .3vh rgba(255,255,255,.8)) drop-shadow(0 0 2.4vh rgba(255,70,20,.95)) drop-shadow(0 0 6vh rgba(255,59,31,.5))}
-[data-skin="heavy-metal"] .chain{position:absolute;top:51.6vh;height:3.8vh;z-index:2;background-repeat:repeat-x;background-size:auto 100%;filter:drop-shadow(0 .4vh .4vh #000)}
-[data-skin="heavy-metal"] .chain.l{left:19vh;right:calc(50% + 22vh)}
-[data-skin="heavy-metal"] .chain.r{left:calc(50% + 22vh);right:23vh;transform:scaleX(-1)}
-[data-skin="heavy-metal"] .band .state,[data-skin="heavy-metal"] .band .status{font-family:"Big Shoulders Display";font-weight:900;letter-spacing:.2em;font-size:3vh;padding:.9vh 2vh .9vh 2.2vh;border-radius:.4vh;position:relative;z-index:5}
-[data-skin="heavy-metal"] .band .state{color:#F2EFEA;background:linear-gradient(180deg,#3A3C42,#1A1B1E);box-shadow:inset 0 .2vh 0 rgba(255,255,255,.25),0 .3vh 0 #000}
-[data-skin="heavy-metal"] .band .status{color:#FFFFFF;background:linear-gradient(180deg,#C21A0E,#7E0C05);box-shadow:inset 0 .2vh 0 rgba(255,200,180,.4),0 .3vh 0 #000,0 0 2.4vh rgba(255,40,20,.6)}
-[data-skin="heavy-metal"] .lava{position:absolute;left:0;right:0;top:44vh;height:19vh;z-index:0;pointer-events:none;background:radial-gradient(60% 50% at 50% 50%,rgba(255,80,20,.38),rgba(255,50,10,.12) 55%,transparent 75%);filter:blur(1vh)}
+/* Numeral inside a Metal Mania heading. Never inherits the chrome fill. */
+.skin-root[data-skin="heavy-metal"] .n {
+  font-family: Anton, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
+  font-size: 0.9em;
+  margin-left: 0.12em;
+  vertical-align: 0.02em;
+  background: none;
+  -webkit-background-clip: border-box;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  filter: none;
+}
 
-/* ---------- TIMER: amp head ---------- */
-[data-skin="heavy-metal"] .tm .bg{background:radial-gradient(60% 55% at 50% 46%,rgba(5,5,6,.82),rgba(5,5,6,.2) 75%,rgba(5,5,6,0)),url(./assets/metal-forge.jpg) center/cover}
-[data-skin="heavy-metal"] .ampframe{position:absolute;inset:0;z-index:6;pointer-events:none;
-  box-shadow:inset 0 0 0 1.4vh #151619,inset 0 0 0 1.6vh #000,inset 0 0 0 1.8vh rgba(255,255,255,.14),inset 0 0 6vh rgba(0,0,0,.6)}
-[data-skin="heavy-metal"] .ampframe .bolt{width:2.6vh;height:2.6vh}
-[data-skin="heavy-metal"] .ampframe .bolt.a,[data-skin="heavy-metal"] .ampframe .bolt.c{left:.0vh}[data-skin="heavy-metal"] .ampframe .bolt.b,[data-skin="heavy-metal"] .ampframe .bolt.d{right:.0vh}
-[data-skin="heavy-metal"] .ampframe .bolt.a,[data-skin="heavy-metal"] .ampframe .bolt.b{top:0}[data-skin="heavy-metal"] .ampframe .bolt.c,[data-skin="heavy-metal"] .ampframe .bolt.d{bottom:0}
-[data-skin="heavy-metal"] .ampframe .bolt{margin:.2vh}
-[data-skin="heavy-metal"] .smoke{position:absolute;left:-10vw;right:-10vw;bottom:-12vh;height:46vh;z-index:2;pointer-events:none;
-  background:radial-gradient(50% 60% at 30% 70%,rgba(150,140,135,.22),transparent 70%),radial-gradient(45% 55% at 75% 75%,rgba(150,140,135,.18),transparent 70%);filter:blur(3vh)}
-[data-skin="heavy-metal"] .tm .logo{left:4.4vh;top:4vh;width:8.5vh;height:8.5vh}
-[data-skin="heavy-metal"] .tm .phase{top:5.6vh;font-family:Oswald;font-weight:700;letter-spacing:.3em;color:#FF7A4A;font-size:3.6vh;text-shadow:0 .2vh 0 #000,0 0 1.6vh rgba(255,80,30,.65)}
-[data-skin="heavy-metal"] .tm .title{position:relative;z-index:4;font-family:"Pirata One";font-size:8vh;line-height:1;margin-top:6vh;
-  background:linear-gradient(180deg,#FFFFFF,#C9CDD3 45%,#5E6269 60%,#D8DBE0 80%,#8A8E95);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 .3vh 0 #000) drop-shadow(0 0 1.6vh rgba(255,90,31,.35))}
-[data-skin="heavy-metal"] .tm .digits{font-family:Anton;font-weight:400;font-size:40vh;line-height:1.02;letter-spacing:.02em;z-index:4;
-  background:linear-gradient(180deg,#FFFFFF 0%,#FFF6EC 38%,#FFD0A6 72%,#FF9A58 100%);-webkit-background-clip:text;color:transparent;
-  -webkit-text-stroke:.2vh rgba(90,25,0,.55);
-  filter:drop-shadow(0 0 .4vh rgba(255,255,255,.8)) drop-shadow(0 0 3.4vh rgba(255,70,20,.95)) drop-shadow(0 0 10vh rgba(255,59,31,.55))}
-[data-skin="heavy-metal"] .vu{position:relative;z-index:4;display:flex;gap:.55vh;width:60vh;height:3.2vh;margin-top:.4vh;padding:.6vh;background:#060607;border-radius:.6vh;
-  box-shadow:inset 0 .3vh .8vh #000,0 0 0 .25vh #2A2C31,0 0 0 .45vh #000}
-[data-skin="heavy-metal"] .vu i{flex:1;position:relative;border-radius:.2vh;background:#1C0E0A}
-[data-skin="heavy-metal"] .vu i::after{content:"";position:absolute;inset:0;border-radius:inherit;
-  background:hsl(calc(2 + var(--i) * .8) 100% calc(42% + var(--i) * 1.25%));
-  opacity:clamp(0,(var(--p) * 32 - var(--i)),1);box-shadow:0 0 1vh hsl(calc(2 + var(--i) * .8) 100% 50%)}
-[data-skin="heavy-metal"] .next{position:relative;z-index:4;font-family:Oswald;font-weight:600;font-size:2.7vh;letter-spacing:.32em;color:#C4BEB6;margin-top:1.8vh;text-shadow:0 .2vh 0 #000}
-[data-skin="heavy-metal"] .knobwrap{position:absolute;right:4vh;bottom:3.6vh;width:30vh;z-index:5;display:flex;flex-direction:column;align-items:center}
-[data-skin="heavy-metal"] .knob11{width:30vh;height:30vh;filter:drop-shadow(0 .8vh 1.2vh #000)}
-[data-skin="heavy-metal"] .knob11 .kn{font-family:Oswald;font-weight:700;font-size:21px;fill:#BFC3C9}
-[data-skin="heavy-metal"] .knob11 .kn.hot{fill:#FF7A3D;font-size:27px;filter:drop-shadow(0 0 3px #FF5A1F)}
-[data-skin="heavy-metal"] .kcap{font-family:"Big Shoulders Display";font-weight:900;font-size:2vh;letter-spacing:.4em;color:#8E8A84;margin-top:-.4vh}
-[data-skin="heavy-metal"] .tm.rest .vu i::after{background:hsl(calc(200 + var(--i) * .5) 70% calc(45% + var(--i) * 1%));box-shadow:0 0 1vh hsl(205 90% 55%)}
-[data-skin="heavy-metal"] .tm.rest .phase{color:#7FB0FF;text-shadow:0 .2vh 0 #000,0 0 1.6vh rgba(80,140,255,.6)}
-[data-skin="heavy-metal"] .knobwrap::before{content:"";position:absolute;left:-1vh;right:-1vh;top:-1vh;height:32vh;border-radius:50%;z-index:-1;
-  background:radial-gradient(circle,rgba(10,10,12,.92) 55%,rgba(10,10,12,0) 71%)}
-[data-skin="heavy-metal"] .kcap{color:#C4BEB6;margin-top:-1.6vh;font-size:2.1vh}
+/* background-clip:text plus a filter only paints on a flex box, not an inline or inline-block. */
+.skin-root[data-skin="heavy-metal"] .metal-face,
+.skin-root[data-skin="heavy-metal"] .wm {
+  display: inline-flex;
+  align-items: center;
+  font-family: "Metal Mania", cursive;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  background: linear-gradient(180deg, #ffffff 0%, #dadde2 38%, #5a5f68 50%, #e6e8ec 64%, #9ea3ab 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0.3vh 0 #000) drop-shadow(0 0 1.4vh rgba(255, 120, 30, 0.6));
+}
 
-[data-skin="heavy-metal"] .grain{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}[data-skin="heavy-metal"] .chain{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='24' viewBox='0 0 60 24'><defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23E4E7EC'/><stop offset='.5' stop-color='%23767B84'/><stop offset='1' stop-color='%232A2C31'/></linearGradient></defs><rect x='4' y='3.5' width='30' height='17' rx='8.5' fill='none' stroke='%23050506' stroke-width='8'/><rect x='4' y='3.5' width='30' height='17' rx='8.5' fill='none' stroke='url(%23s)' stroke-width='5'/><rect x='28' y='8.5' width='34' height='7' rx='3.5' fill='url(%23s)' stroke='%23050506' stroke-width='2'/></svg>")}
-[data-skin="heavy-metal"] .grain{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+/* Decoration never takes a tap. */
+.skin-root[data-skin="heavy-metal"] .bg,
+.skin-root[data-skin="heavy-metal"] .flames-bot,
+.skin-root[data-skin="heavy-metal"] .embers,
+.skin-root[data-skin="heavy-metal"] .ember,
+.skin-root[data-skin="heavy-metal"] .crest,
+.skin-root[data-skin="heavy-metal"] .rail,
+.skin-root[data-skin="heavy-metal"] .rv,
+.skin-root[data-skin="heavy-metal"] .bandfx,
+.skin-root[data-skin="heavy-metal"] .flameband {
+  pointer-events: none;
+}
+
+.skin-root[data-skin="heavy-metal"] .bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: radial-gradient(60% 60% at 50% 52%, rgba(4, 4, 6, 0.78), rgba(4, 4, 6, 0.35) 75%, rgba(4, 4, 6, 0.1)),
+    url(./assets/inferno-bg.webp);
+  background-size: cover;
+  background-position: center;
+}
+
+.skin-root[data-skin="heavy-metal"] .flames-bot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2vh;
+  height: 30vh;
+  z-index: 1;
+  background: url(./assets/inferno-flames.webp) bottom / 100% 100% no-repeat;
+  mix-blend-mode: screen;
+  opacity: 0.95;
+}
+
+.skin-root[data-skin="heavy-metal"] .embers {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.skin-root[data-skin="heavy-metal"] .ember {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.skin-root[data-skin="heavy-metal"] .sb {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 1.6vh 2.4vh 2.4vh;
+  display: grid;
+  grid-template-rows: 8vh 1fr 16vh 1fr;
+  gap: 2vh;
+  isolation: isolate;
+}
+
+.skin-root[data-skin="heavy-metal"] .hdr {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 1.6vh;
+  min-width: 0;
+}
+
+.skin-root[data-skin="heavy-metal"] .hdr .logo {
+  height: 6.4vh;
+  width: 6.4vh;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 0 0 0.3vh #0a0a0b, 0 0 0 0.55vh #8c9199, 0 0 1.6vh rgba(255, 110, 20, 0.55);
+}
+
+.skin-root[data-skin="heavy-metal"] .wm {
+  font-size: 5.4vh;
+  flex: none;
+}
+
+.skin-root[data-skin="heavy-metal"] .crest {
+  display: block;
+  background: url(./assets/inferno-crest.webp) center / contain no-repeat;
+  filter: drop-shadow(0 0.4vh 0.6vh #000);
+}
+
+.skin-root[data-skin="heavy-metal"] .hdr .crest {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -55%);
+  height: 10.6vh;
+  width: 22vh;
+  z-index: 2;
+}
+
+.skin-root[data-skin="heavy-metal"] .hdr .mat {
+  margin-left: auto;
+  min-width: 0;
+  font-family: "Metal Mania", cursive;
+  font-size: 5.2vh;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  line-height: 1;
+}
+
+/* The metal face only paints when the word is a flex item. */
+.skin-root[data-skin="heavy-metal"] .hdr .mat a {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.skin-root[data-skin="heavy-metal"] .hdr .div {
+  flex: none;
+  max-width: 42vw;
+  font-family: Oswald, sans-serif;
+  font-weight: 600;
+  font-size: 2.4vh;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #d2ccc4;
+  opacity: 1;
+  padding-left: 2vh;
+  border-left: 0.3vh solid rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skin-root[data-skin="heavy-metal"] .row {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 31% 1.3fr 1fr 1fr;
+  gap: 1.6vh;
+  padding: 1.8vh 1.8vh 1.8vh 4.2vh;
+  min-height: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.62)) padding-box,
+    url(./assets/inferno-plate.jpg) center / cover padding-box,
+    linear-gradient(180deg, #ffffff, #8c9199 22%, #2a2d33 48%, #c9cdd3 60%, #55595f 100%) border-box;
+  border: 0.6vh solid transparent;
+  border-radius: 1.4vh;
+  box-shadow: 0 1vh 3vh #000, 0 0 3vh rgba(255, 110, 20, 0.35), inset 0 0 4vh rgba(0, 0, 0, 0.7);
+}
+
+.skin-root[data-skin="heavy-metal"] .rail {
+  position: absolute;
+  left: 1.4vh;
+  top: 2vh;
+  bottom: 2vh;
+  width: 1.3vh;
+  border-radius: 0.4vh;
+  z-index: 3;
+}
+
+.skin-root[data-skin="heavy-metal"] .c1 .rail {
+  background: linear-gradient(180deg, #a9c4ff, #1f5bff);
+  box-shadow: 0 0 2vh #2d6bff;
+}
+
+.skin-root[data-skin="heavy-metal"] .c2 .rail {
+  background: linear-gradient(180deg, #ffffff, #cfc8b8);
+  box-shadow: 0 0 1.6vh rgba(255, 255, 255, 0.7);
+}
+
+.skin-root[data-skin="heavy-metal"] .rv {
+  position: absolute;
+  width: 2.2vh;
+  height: 2.2vh;
+  border-radius: 50%;
+  z-index: 4;
+  background: radial-gradient(circle at 35% 30%, #f4f5f7 0 10%, #9aa0a8 25%, #3a3c42 58%, #0b0b0d 76%);
+  box-shadow: 0 0.3vh 0.4vh #000;
+}
+
+.skin-root[data-skin="heavy-metal"] .rv.r1 { left: 0.6vh; top: 0.6vh; }
+.skin-root[data-skin="heavy-metal"] .rv.r2 { right: 0.6vh; top: 0.6vh; }
+.skin-root[data-skin="heavy-metal"] .rv.r3 { left: 0.6vh; bottom: 0.6vh; }
+.skin-root[data-skin="heavy-metal"] .rv.r4 { right: 0.6vh; bottom: 0.6vh; }
+
+.skin-root[data-skin="heavy-metal"] .id {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1vh;
+  padding-left: 1.4vh;
+  min-width: 0;
+  border-radius: 1vh;
+}
+
+.skin-root[data-skin="heavy-metal"] .c1 .id {
+  background: linear-gradient(90deg, rgba(31, 91, 255, 0.34), rgba(31, 91, 255, 0.1) 70%, transparent);
+}
+
+.skin-root[data-skin="heavy-metal"] .c2 .id {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05) 70%, transparent);
+}
+
+.skin-root[data-skin="heavy-metal"] .side {
+  font-family: Oswald, sans-serif;
+  font-weight: 700;
+  font-size: 2.4vh;
+  letter-spacing: 0.34em;
+  line-height: 1;
+}
+
+.skin-root[data-skin="heavy-metal"] .side b {
+  display: inline-block;
+  padding: 0.5vh 1.4vh 0.5vh 1.7vh;
+  border-radius: 0.5vh;
+  line-height: 1;
+  font-style: normal;
+}
+
+.skin-root[data-skin="heavy-metal"] .c1 .side b {
+  background: #1f5bff;
+  color: #fff;
+  box-shadow: 0 0 1.6vh rgba(40, 100, 255, 0.8), inset 0 0 0 0.2vh #9dbbff;
+}
+
+.skin-root[data-skin="heavy-metal"] .c2 .side b {
+  background: #f4f1ea;
+  color: #0e1726;
+  box-shadow: 0 0 1.4vh rgba(255, 255, 255, 0.55), inset 0 0 0 0.2vh #fff;
+}
+
+.skin-root[data-skin="heavy-metal"] .name {
+  font-family: "Big Shoulders Display", sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 7vh;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: none;
+  text-shadow: 0 0.35vh 0 #000, 0 0 1.2vh rgba(0, 0, 0, 0.9);
+}
+
+.skin-root[data-skin="heavy-metal"] .meta {
+  display: flex;
+  align-items: center;
+  gap: 1.6vh;
+  min-width: 0;
+}
+
+.skin-root[data-skin="heavy-metal"] .belt {
+  font-family: Oswald, sans-serif;
+  font-weight: 700;
+  font-size: 2.3vh;
+  letter-spacing: 0.12em;
+  height: 4.2vh;
+  padding: 0 1.6vh 0 1vh;
+  border-radius: 0.6vh;
+  box-shadow: inset 0 0 0 0.25vh rgba(0, 0, 0, 0.4);
+}
+
+.skin-root[data-skin="heavy-metal"] .belt.blue {
+  background: #1d52d8;
+  color: #fff;
+}
+
+.skin-root[data-skin="heavy-metal"] .belt.purple {
+  background: #6b2fb3;
+  color: #fff;
+}
+
+.skin-root[data-skin="heavy-metal"] .belt i {
+  width: 2.6vh;
+  height: 1.4vh;
+  border-radius: 0.3vh;
+  background: #111;
+}
+
+.skin-root[data-skin="heavy-metal"] .gym {
+  font-family: Oswald, sans-serif;
+  font-weight: 600;
+  font-size: 2.7vh;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #d8d2ca;
+  opacity: 1;
+}
+
+.skin-root[data-skin="heavy-metal"] .tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.4vh 0.6vh 1vh;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 0%, #17181c, #060607 70%);
+  border-radius: 1vh;
+  box-shadow: inset 0 0.5vh 1.4vh #000, inset 0 0 0 0.3vh #3b3e45, 0 0.2vh 0 rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.skin-root[data-skin="heavy-metal"] .lab {
+  font-family: "Big Shoulders Display", sans-serif;
+  font-weight: 900;
+  font-size: 3vh;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.skin-root[data-skin="heavy-metal"] .num {
+  font-size: 23vh;
+  line-height: 0.86;
+}
+
+.skin-root[data-skin="heavy-metal"] .pts .lab { color: var(--pts); }
+.skin-root[data-skin="heavy-metal"] .adv .lab { color: var(--adv); }
+.skin-root[data-skin="heavy-metal"] .pen .lab { color: var(--pen); }
+
+.skin-root[data-skin="heavy-metal"] .pts .num { text-shadow: 0 0.5vh 0 #000, 0 0 3vh var(--pts); }
+.skin-root[data-skin="heavy-metal"] .adv .num { text-shadow: 0 0.5vh 0 #000, 0 0 3vh var(--adv); }
+.skin-root[data-skin="heavy-metal"] .pen .num { text-shadow: 0 0.5vh 0 #000, 0 0 3vh var(--pen); }
+
+.skin-root[data-skin="heavy-metal"] .tile::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 0;
+  height: 0.6vh;
+  border-radius: 0.3vh 0.3vh 0 0;
+}
+
+.skin-root[data-skin="heavy-metal"] .pts::after { background: var(--pts); }
+.skin-root[data-skin="heavy-metal"] .adv::after { background: var(--adv); }
+.skin-root[data-skin="heavy-metal"] .pen::after { background: var(--pen); }
+
+.skin-root[data-skin="heavy-metal"] .band {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 2vh;
+  min-height: 0;
+}
+
+.skin-root[data-skin="heavy-metal"] .bandfx {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.skin-root[data-skin="heavy-metal"] .flameband {
+  position: absolute;
+  left: -2.4vh;
+  right: -2.4vh;
+  top: -3vh;
+  bottom: -3vh;
+  background: url(./assets/inferno-flames.webp) bottom / 50% 100% repeat-x;
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.skin-root[data-skin="heavy-metal"] .band .state,
+.skin-root[data-skin="heavy-metal"] .band .status {
+  position: relative;
+  z-index: 2;
+  font-family: Oswald, sans-serif;
+  font-weight: 700;
+  font-size: 3vh;
+  letter-spacing: 0.18em;
+  line-height: 1;
+}
+
+.skin-root[data-skin="heavy-metal"] .band .state {
+  justify-self: start;
+  background: #0b0b0d;
+  color: #e9e5df;
+  box-shadow: inset 0 0 0 0.25vh #5a5e66;
+  padding: 1vh 2.2vh;
+  border-radius: 0.6vh;
+}
+
+.skin-root[data-skin="heavy-metal"] .band .status {
+  justify-self: end;
+}
+
+.skin-root[data-skin="heavy-metal"] .band .status .sk-btn {
+  display: block;
+  background: #c8141e;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  box-shadow: inset 0 0 0 0.25vh #ff8a8a, 0 0 2vh rgba(255, 40, 40, 0.5);
+  padding: 1vh 2.2vh;
+  border-radius: 0.6vh;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: uppercase;
+}
+
+.skin-root[data-skin="heavy-metal"] .plate {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16vh;
+  min-width: 42vh;
+  padding: 0 3vh;
+  background:
+    linear-gradient(180deg, #121317, #050506) padding-box,
+    linear-gradient(180deg, #ffffff, #8c9199 22%, #2a2d33 48%, #c9cdd3 60%, #55595f) border-box;
+  border: 0.6vh solid transparent;
+  border-radius: 1.4vh;
+  box-shadow: 0 0 4vh rgba(255, 120, 30, 0.8), 0 0.8vh 2vh #000;
+}
+
+.skin-root[data-skin="heavy-metal"] .plate .clock {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.skin-root[data-skin="heavy-metal"] .plate .clock .sk-btn {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-family: Anton, sans-serif;
+  font-size: 14vh;
+  line-height: 1;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  text-shadow: 0 0.4vh 0 #000, 0 0 2.4vh rgba(255, 140, 40, 0.9);
+}
+
+/* ---------- timer ---------- */
+.skin-root[data-skin="heavy-metal"] .tm {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.skin-root[data-skin="heavy-metal"] .tm .logo {
+  position: absolute;
+  left: 3.6vh;
+  top: 3.2vh;
+  height: 9vh;
+  width: 9vh;
+  z-index: 5;
+  border-radius: 50%;
+}
+
+.skin-root[data-skin="heavy-metal"] .tm .crest {
+  position: absolute;
+  left: 50%;
+  top: 2.4vh;
+  transform: translateX(-50%);
+  height: 19vh;
+  width: 40vh;
+  z-index: 4;
+  filter: drop-shadow(0 0.6vh 1vh #000);
+}
+
+.skin-root[data-skin="heavy-metal"] .tm .phase {
+  position: absolute;
+  /* Clear the round-timer fullscreen chip, which sits in the top-right corner. */
+  right: calc(4.6rem + var(--safe-r, 0px));
+  top: calc(0.7rem + var(--safe-t, 0px));
+  left: auto;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1.4vh;
+  margin: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  text-align: right;
+}
+
+.skin-root[data-skin="heavy-metal"] .phase-pill {
+  font-family: Oswald, sans-serif;
+  font-weight: 700;
+  font-size: 4.4vh;
+  letter-spacing: 0.24em;
+  line-height: 1;
+  padding: 1vh 2.4vh;
+  border-radius: 0.6vh;
+  background: #c8141e;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+.skin-root[data-skin="heavy-metal"] .tm.rest .phase-pill {
+  background: #1d52d8;
+}
+
+.skin-root[data-skin="heavy-metal"] .endless {
+  font-family: Oswald, sans-serif;
+  font-weight: 600;
+  font-size: 2.8vh;
+  letter-spacing: 0.24em;
+  color: #ede8e1;
+  text-shadow: 0 0.2vh 0 #000, 0 0 1vh #000, 0 0 2vh #000;
+}
+
+.skin-root[data-skin="heavy-metal"] .tm .title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 21vh;
+  z-index: 5;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  text-align: center;
+  font-family: "Metal Mania", cursive;
+  font-size: 7.4vh;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+}
+
+.skin-root[data-skin="heavy-metal"] .tm .digits {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 29vh;
+  z-index: 4;
+  font-size: 46vh;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 0.8vh 0 #000, 0 0 4vh rgba(255, 120, 30, 0.95), 0 0 12vh rgba(255, 80, 20, 0.6);
+}
+
+.skin-root[data-skin="heavy-metal"] .tm.rest .digits {
+  text-shadow: 0 0.8vh 0 #000, 0 0 4vh rgba(80, 160, 255, 0.95), 0 0 12vh rgba(40, 110, 255, 0.6);
+}
+
+.skin-root[data-skin="heavy-metal"] .meter {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 80vh;
+  width: 62vw;
+  height: 3.6vh;
+  display: grid;
+  grid-template-columns: repeat(30, 1fr);
+  gap: 0.5vh;
+  padding: 0.6vh;
+  z-index: 4;
+  border-radius: 0.6vh;
+  background: #08080a;
+  box-shadow: inset 0 0 0 0.3vh #3a3d44, 0 0.4vh 1vh #000;
+}
+
+.skin-root[data-skin="heavy-metal"] .meter i {
+  --seg: hsl(calc(8 + var(--i) * 1.3) 100% calc(48% + var(--i) * 0.8%));
+  border-radius: 0.2vh;
+  background: #1a1416;
+  position: relative;
+}
+
+.skin-root[data-skin="heavy-metal"] .tm.rest .meter i {
+  --seg: #4fa8ff;
+}
+
+.skin-root[data-skin="heavy-metal"] .meter i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  background: var(--seg);
+  box-shadow: 0 0 1vh var(--seg);
+}
+
+.skin-root[data-skin="heavy-metal"] .meter i.on::after {
+  opacity: 1;
+}
+
+.skin-root[data-skin="heavy-metal"] .tm .next {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  top: 87vh;
+  transform: translateX(-50%);
+  z-index: 4;
+  margin: 0;
+  white-space: nowrap;
+  padding: 1vh 2.6vh 1vh 2.9vh;
+  border-radius: 0.8vh;
+  background: rgba(6, 6, 8, 0.82);
+  box-shadow: inset 0 0 0 0.25vh #5a5e66, 0 0.4vh 1.2vh #000;
+  color: #f2eee8;
+  font-family: Oswald, sans-serif;
+  font-weight: 600;
+  font-size: 3.2vh;
+  letter-spacing: 0.32em;
+  text-shadow: none;
+}
+
+/* Phone portrait. Clears the Home / Skin / Fullscreen / Controller row unless the board is fullscreen. */
+@media (orientation: portrait) {
+  .skin-root[data-skin="heavy-metal"] .sb {
+    padding: calc(2.4vw + 3.2rem) 3vw 3vw;
+    grid-template-rows: auto 1fr auto 1fr;
+    gap: 3.4vw;
+  }
+
+  .play--fs .skin-root[data-skin="heavy-metal"] .sb,
+  .play--landscape .skin-root[data-skin="heavy-metal"] .sb {
+    padding-top: 2.4vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .hdr {
+    flex-wrap: wrap;
+    row-gap: 1vw;
+    height: auto;
+    padding: 1vw 0;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .hdr .logo {
+    height: 10vw;
+    width: 10vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .wm {
+    font-size: 7.4vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .hdr .crest {
+    position: static;
+    transform: none;
+    height: 11vw;
+    width: 22vw;
+    order: 3;
+    margin-left: auto;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .hdr .mat {
+    font-size: 6.6vw;
+    margin-left: 0;
+    order: 4;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .hdr .div {
+    order: 5;
+    flex-basis: 100%;
+    max-width: none;
+    text-align: center;
+    border: 0;
+    padding: 0;
+    font-size: 3.2vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .row {
+    grid-template-columns: 1.25fr 1fr 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 2.4vw;
+    padding: 3vw 2.6vw 2.6vw 6vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .id {
+    grid-column: 1 / -1;
+    gap: 1.6vw;
+    padding-left: 1vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .rail {
+    left: 2vw;
+    width: 2vw;
+    top: 3vw;
+    bottom: 3vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .rv {
+    width: 3vw;
+    height: 3vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .side {
+    font-size: 3.4vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .side b {
+    padding: 0.8vw 2vw 0.8vw 2.4vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .row .name {
+    font-size: 9.6vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .belt {
+    height: 6.6vw;
+    font-size: 3.4vw;
+    padding: 0 2.4vw 0 1.6vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .gym {
+    font-size: 3.8vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .row .tile .lab {
+    font-size: 3.4vw;
+    letter-spacing: 0.08em;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .row .tile .num {
+    font-size: 24vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .tile {
+    padding: 2vw 0.4vw 1.6vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .band.band {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    row-gap: 2vw;
+    padding: 0;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .band .plate {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    height: auto;
+    min-width: 0;
+    padding: 1.4vw 6vw;
+    justify-self: center;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .plate .clock.clock,
+  .skin-root[data-skin="heavy-metal"] .plate .clock .sk-btn {
+    font-size: 17vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .band .state.state,
+  .skin-root[data-skin="heavy-metal"] .band .status.status {
+    grid-row: 2;
+    font-size: 3.6vw;
+    overflow: visible;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .band .status .sk-btn {
+    padding: 1.4vw 3vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .flames-bot {
+    height: 18vh;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .flameband {
+    top: -4vw;
+    bottom: 30%;
+    background-size: 100% 100%;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .tm .digits.tm-clock {
+    font-size: min(34vh, 22vw);
+    top: 34vh;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .tm .title {
+    top: 26vh;
+    font-size: min(7.4vh, 9vw);
+  }
+
+  .skin-root[data-skin="heavy-metal"] .tm .crest {
+    height: 14vh;
+    width: 30vh;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .phase-pill {
+    font-size: min(4.4vh, 5vw);
+  }
+
+  .skin-root[data-skin="heavy-metal"] .endless {
+    font-size: min(2.8vh, 3.2vw);
+  }
+
+  .skin-root[data-skin="heavy-metal"] .meter {
+    top: 78vh;
+    width: 88vw;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .tm .next {
+    top: 86vh;
+    font-size: min(3.2vh, 3.4vw);
+    letter-spacing: 0.12em;
+    max-width: 92vw;
+  }
+}
+
+/* Short landscape phones: the 46vh clock would run off the sides. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .skin-root[data-skin="heavy-metal"] .tm .digits.tm-clock {
+    font-size: 28vh;
+    top: 32vh;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .tm .title {
+    top: 18vh;
+    font-size: 6vh;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .tm .crest {
+    height: 14vh;
+    width: 30vh;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .meter {
+    top: 78vh;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .num {
+    font-size: 16vh;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .name {
+    font-size: 5vh;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .plate {
+    min-width: 28vh;
+    height: 14vh;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .plate .clock .sk-btn {
+    font-size: 10vh;
+  }
+}

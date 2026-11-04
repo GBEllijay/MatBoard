@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react';
+import { cloneElement, isValidElement, type ReactNode } from 'react';
 import { useHoldPress } from '../hooks/useHoldPress';
 import { usePolishedSkinModule } from '../hooks/usePolishedSkins';
 import { dispatchMatch, type ScoreKind, type Side } from '../lib/matchStore';
 import type { PolishedSkinSlug } from '../lib/polishedSkins';
 import { beltChipKey, canonicalBelt } from '../lib/rosterStore';
+import { metalBoardState, metalFaceParts, sideChipLabel } from '../skins/polished/heavyMetal';
 
 export type PolishedRow = {
   side: Side;
@@ -41,29 +42,62 @@ function PolishedTile({ side, kind, value }: { side: Side; kind: ScoreKind; valu
   );
 }
 
-function Belt({ rank }: { rank: string }) {
+/** Metal Mania for the words, Anton for every numeral, so "Round 1" never reads as I. */
+function MetalFace({ children }: { children: ReactNode }) {
+  return <>{paintMetal(children)}</>;
+}
+
+function paintMetal(node: ReactNode): ReactNode {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return metalFaceParts(String(node)).map((part, index) =>
+      part.kind === 'num' ? (
+        <span key={index} className="n">
+          {part.value}
+        </span>
+      ) : (
+        <span key={index} className="metal-face">
+          {part.value}
+        </span>
+      ),
+    );
+  }
+  if (Array.isArray(node)) return node.map((child, index) => <span key={index}>{paintMetal(child)}</span>);
+  if (isValidElement<{ children?: ReactNode }>(node)) {
+    return cloneElement(node, undefined, paintMetal(node.props.children));
+  }
+  return node;
+}
+
+function Belt({ rank, metal }: { rank: string; metal: boolean }) {
   const label = rank.trim();
   if (!label) return null;
   const canonical = canonicalBelt(label) || label;
   const key = beltChipKey(canonical).replace(/[^a-z]+/g, '-');
   const first = key.split('-')[0] || 'custom';
+  const upper = canonical.toUpperCase();
+  const text = metal && !/\bBELT\b/.test(upper) ? `${upper} BELT` : upper;
   return (
     <span className={`belt ${first} belt--${key}`}>
       <i />
-      {canonical.toUpperCase()}
+      {text}
     </span>
   );
 }
 
-function Row({ row, cls, extra }: { row: PolishedRow; cls: string; extra: string }) {
+function Row({ row, cls, extra, chip }: { row: PolishedRow; cls: string; extra: string; chip: boolean }) {
   const label = row.side === 'blue' ? 'Blue' : 'White';
   return (
     <section className={`row ${cls}`} aria-label={`${label} competitor`}>
       {extra ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: extra }} /> : null}
       <div className="id">
+        {chip ? (
+          <div className="side">
+            <b>{sideChipLabel(row.side)}</b>
+          </div>
+        ) : null}
         <div className="name">{row.name}</div>
         <div className="meta">
-          <Belt rank={row.rank} />
+          <Belt rank={row.rank} metal={chip} />
           <span className="gym">{row.gym}</span>
         </div>
       </div>
@@ -98,22 +132,37 @@ export function PolishedScoreboard({
 }) {
   const mod = usePolishedSkinModule(slug);
   const extra = mod?.ROW_EXTRA ?? ['', ''];
+  const metal = slug === 'heavy-metal';
+  const stateLabel = metal && typeof state === 'string' ? metalBoardState(state) : state;
   return (
     <div className={`skin-root skin-root--board${mod ? '' : ' skin-root--loading'}`} data-skin={slug}>
       <div className="sb">
         {mod ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: mod.SCOREBOARD_DECO ?? '' }} /> : null}
         <header className="hdr">
           <img className="logo" src="/card-logo.png" alt="Advantage" />
-          <span className="mat">{mat}</span>
+          {metal ? <span className="wm">Advantage</span> : null}
+          {metal ? <i className="crest" aria-hidden="true" /> : null}
+          <span className="mat">{metal ? <MetalFace>{mat}</MetalFace> : mat}</span>
           <span className="div">{division}</span>
         </header>
-        <Row row={rows[0]} cls="c1" extra={extra[0]} />
+        <Row row={rows[0]} cls="c1" extra={extra[0]} chip={metal} />
         <div className="band">
-          <span className="state">{state}</span>
-          <span className="clock">{clock}</span>
+          {metal ? (
+            <div className="bandfx" aria-hidden="true">
+              <div className="flameband" />
+            </div>
+          ) : null}
+          <span className="state">{stateLabel}</span>
+          {metal ? (
+            <span className="plate">
+              <span className="clock">{clock}</span>
+            </span>
+          ) : (
+            <span className="clock">{clock}</span>
+          )}
           <span className="status">{status}</span>
         </div>
-        <Row row={rows[1]} cls="c2" extra={extra[1]} />
+        <Row row={rows[1]} cls="c2" extra={extra[1]} chip={metal} />
       </div>
     </div>
   );

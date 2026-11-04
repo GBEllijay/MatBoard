@@ -40,14 +40,13 @@ import { isMediaUnlocked } from './mediaUnlock.ts';
 import { isProUnlocked } from './proUnlock.ts';
 import { impliedDoors } from './tierImplications.ts';
 import {
-  metalTimerTitle,
   psychedelicTimerTitle,
   reggaeTimerTitle,
-  romanRound,
   timerNextLine,
   timerProgress,
   visionaryTimerTitle,
 } from '../skins/polished/timerText.ts';
+import { metalTimerTitle } from '../skins/polished/heavyMetal.ts';
 import { brasilRing, keynoteRing, lerpHex } from '../skins/polished/ring.ts';
 
 function memoryStorage() {
@@ -231,17 +230,17 @@ test('saved picks survive a reload; a locked one paints the default and is kept 
   assert.equal(getTrainingSkin(), DEFAULT_TRAINING_SKIN);
 });
 
-test('timer text: Reggae rest reads "Rest Easy", Psychedelic "Far Out", Visionary "Breathe"; Metal counts in Roman numerals', () => {
+test('timer text: Reggae rest reads "Rest Easy", Psychedelic "Far Out", Visionary "Breathe"; Metal uses an Arabic numeral', () => {
   assert.equal(visionaryTimerTitle(true, 4), 'Breathe');
   assert.equal(visionaryTimerTitle(false, 4), 'Round 4');
   assert.equal(reggaeTimerTitle(true, 3), 'Rest Easy');
   assert.equal(reggaeTimerTitle(false, 3), 'Round 3');
   assert.equal(psychedelicTimerTitle(true, 2), 'Far Out');
   assert.equal(psychedelicTimerTitle(false, 2), 'Round 2');
-  assert.equal(metalTimerTitle(false, 3), 'Round III');
-  assert.equal(metalTimerTitle(true, 3), 'Rest');
-  assert.equal(romanRound(11), 'XI');
-  assert.equal(romanRound(40), '40');
+  assert.deepEqual(metalTimerTitle(false, 1), { word: 'Round', numeral: '1' });
+  assert.deepEqual(metalTimerTitle(false, 3), { word: 'Round', numeral: '3' });
+  assert.deepEqual(metalTimerTitle(true, 3), { word: 'Rest', numeral: null });
+  assert.notEqual(metalTimerTitle(false, 1).numeral, 'I');
   assert.equal(timerNextLine(false, 300_000, 30_000, 2), 'NEXT · REST 00:30');
   assert.equal(timerNextLine(true, 300_000, 30_000, 2), 'NEXT · WORK 05:00 · ROUND 3');
 });
