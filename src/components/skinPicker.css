@@ -69,6 +69,21 @@
   gap: var(--skin-gap);
 }
 
+.skin-pick__radios {
+  display: contents;
+}
+
+.skin-pick__cell {
+  position: relative;
+  width: var(--skin-tile-w);
+  height: calc(var(--skin-tile-img) + var(--skin-tile-name) + 0.66rem);
+}
+
+.skin-pick__cell > .skin-pick__thumb {
+  width: 100%;
+  height: 100%;
+}
+
 .skin-pick__thumb {
   position: relative;
   display: grid;
@@ -121,6 +136,84 @@
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+.skin-pick__upload {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--skin-tile-w);
+  height: calc(var(--skin-tile-img) + var(--skin-tile-name) + 0.66rem);
+  box-sizing: border-box;
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 2px dashed rgba(247, 244, 238, 0.45);
+  color: #f7f4ee;
+  -webkit-text-fill-color: #f7f4ee;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.skin-pick__upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.skin-pick__upload.is-full {
+  cursor: default;
+}
+
+.skin-pick__cell .skin-pick__name {
+  visibility: hidden;
+}
+
+.skin-pick__cell:not(:has(.skin-pick__rename)) .skin-pick__name {
+  visibility: visible;
+}
+
+.skin-pick__rename {
+  position: absolute;
+  left: 0.28rem;
+  right: 0.28rem;
+  bottom: 0.2rem;
+  z-index: 1;
+  width: auto;
+  height: var(--skin-tile-name);
+  margin: 0;
+  padding: 0 0.15rem;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(8, 12, 20, 0.72);
+  color: #f7f4ee;
+  -webkit-text-fill-color: #f7f4ee;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.skin-pick__delete {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  z-index: 1;
+  min-height: 0;
+  padding: 0.08rem 0.32rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
 }
 
 /* The next row peeks through this fade while more skins sit below. */
