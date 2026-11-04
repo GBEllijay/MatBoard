@@ -1,142 +1,195 @@
-/* Arcade Fighter rearranges the shared board: a plate per fighter, scores under each, VS between. */
+/* Arcade cards, VS, and fighters. The page grid lives in poster.css so it wins the shared rows. */
 
-.skin-root--arcade .sb {
-  grid-template-columns: minmax(0, 1fr) minmax(16vh, auto) minmax(0, 1fr);
-  grid-template-rows: 8vh minmax(0, 1fr);
-  gap: 1.2vh 1.6vh;
-  padding-left: 12vh;
-  padding-right: 12vh;
-}
-
-.skin-root--arcade .hdr { grid-column: 1 / -1; grid-row: 1; }
-
-.skin-root--arcade .row.c1 { grid-column: 1; grid-row: 2; }
-.skin-root--arcade .band { grid-column: 2; grid-row: 2; }
-.skin-root--arcade .row.c2 { grid-column: 3; grid-row: 2; }
-
-.skin-root--arcade .row {
-  display: flex;
-  flex-direction: column;
-  gap: 1.2vh;
-  padding: 1.2vh;
-  background: #0a0a16;
-  border: 0.55vh solid #1c46cc;
+.skin-root.skin-root--arcade .row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto 1fr;
+  grid-template-rows: auto 1fr auto;
+  align-content: stretch;
+  gap: 0.8vh 0.6vh;
+  padding: 1vh;
   min-height: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
-.skin-root--arcade .row.c2 { border-color: #f4f6fb; }
-
-.skin-root--arcade .id {
+.skin-root.skin-root--arcade .id {
+  grid-column: 1 / -1;
+  grid-row: 1;
   display: grid;
   grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto auto;
-  gap: 0.6vh 1.2vh;
+  gap: 0.5vh 1vh;
   align-items: center;
+  width: 100%;
+  background: rgba(10, 10, 22, 0.88);
+  border: 0.35vh solid #1c46cc;
+  padding: 0.8vh;
 }
 
-.skin-root--arcade .ptag {
-  grid-row: 1;
-  grid-column: 1;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 1.6vh;
-  color: #111;
-  background: #ffd23f;
-  padding: 0.5vh 0.8vh;
+.skin-root.skin-root--arcade .row.c2 .id {
+  border-color: #f4f6fb;
 }
 
-.skin-root--arcade .sil {
+.skin-root.skin-root--arcade .pts { grid-column: 2; grid-row: 3; }
+.skin-root.skin-root--arcade .adv { grid-column: 3; grid-row: 3; }
+.skin-root.skin-root--arcade .pen { grid-column: 4; grid-row: 3; }
+
+.skin-root.skin-root--arcade .tile {
+  width: 11vh;
+  height: auto;
+  min-height: 0;
+  padding: 0.4vh 0.3vh 0.6vh;
+  flex: none;
+}
+
+.skin-root.skin-root--arcade .num,
+.skin-root.skin-root--arcade .row .tile .num {
+  font-size: 7.2vh;
+  line-height: 0.85;
+}
+
+.skin-root.skin-root--arcade .lab {
+  font-size: 1.15vh;
+}
+
+.skin-root.skin-root--arcade .sil {
   grid-row: 1 / span 3;
   grid-column: 1;
   margin-top: 3.2vh;
   width: 7vh;
   height: 9vh;
+  max-height: none;
   background: currentColor;
   clip-path: polygon(30% 0, 70% 0, 78% 18%, 62% 22%, 88% 100%, 12% 100%, 38% 22%, 22% 18%);
 }
 
-.skin-root--arcade .c1 .sil { color: #1c46cc; }
-.skin-root--arcade .c2 .sil { color: #f4f6fb; }
+.skin-root.skin-root--arcade .c1 .sil { color: #1c46cc; }
+.skin-root.skin-root--arcade .c2 .sil { color: #f4f6fb; }
 
-.skin-root--arcade .side { grid-column: 2; grid-row: 1; }
-.skin-root--arcade .name { grid-column: 2; grid-row: 2; }
-.skin-root--arcade .meta { grid-column: 2; grid-row: 3; }
+.skin-root.skin-root--arcade .ptag { grid-row: 1; grid-column: 1; }
+.skin-root.skin-root--arcade .side { grid-column: 2; grid-row: 1; }
+.skin-root.skin-root--arcade .name { grid-column: 2; grid-row: 2; font-size: 3.4vh; }
+.skin-root.skin-root--arcade .meta { grid-column: 2; grid-row: 3; }
 
-.skin-root--arcade .tile { flex: 1; }
-
-.skin-root--arcade .row .tile:nth-of-type(1),
-.skin-root--arcade .row .pts,
-.skin-root--arcade .row .adv,
-.skin-root--arcade .row .pen {
-  width: 100%;
-}
-
-.skin-root--arcade .row {
+.skin-root.skin-root--arcade .band {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-rows: auto minmax(0, 1fr);
-}
-
-.skin-root--arcade .id { grid-column: 1 / -1; }
-
-.skin-root--arcade .band {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    'vs vs'
+    'clock clock'
+    'open paused'
+    'pips pips';
   justify-content: center;
-  gap: 1vh;
+  align-content: center;
+  justify-items: center;
+  gap: 0.8vh 1.2vh;
   padding: 0;
-}
-
-.skin-root--arcade .vs {
-  font-size: 4vh;
-  line-height: 1;
-  color: #ffd23f;
-}
-
-.skin-root--arcade .pips {
-  display: flex;
-  gap: 0.6vh;
-}
-
-.skin-root--arcade .pips i {
-  width: 1.3vh;
-  height: 1.3vh;
-  border-radius: 50%;
-  background: #ffd23f;
-  box-shadow: 0 0 0.6vh #ffd23f;
-}
-
-.skin-root--arcade .band .state,
-.skin-root--arcade .band .status {
   margin: 0;
 }
 
-.skin-root--arcade .fighter {
-  position: absolute;
-  bottom: 1vh;
-  width: 18vh;
-  height: 78vh;
-  background: center bottom / contain no-repeat;
-  z-index: 2;
-  pointer-events: none;
+.skin-root.skin-root--arcade .vs {
+  grid-area: vs;
+  justify-self: center;
+  font-size: 3.6vh;
 }
 
-.skin-root--arcade .fighter.f1 { left: 0; background-image: url(./assets/arcade-fighter/fighter-blue.webp); }
-.skin-root--arcade .fighter.f2 { right: 0; background-image: url(./assets/arcade-fighter/fighter-white.webp); }
+.skin-root.skin-root--arcade .pips {
+  grid-area: pips;
+  justify-self: center;
+}
 
-.skin-root--arcade .plate { height: auto; min-height: 12vh; padding: 0.6vh 1.4vh; }
+.skin-root.skin-root--arcade .plate {
+  grid-area: clock;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+}
+
+.skin-root.skin-root--arcade .band .state {
+  grid-area: open;
+  margin: 0;
+  justify-self: end;
+}
+
+.skin-root.skin-root--arcade .band .status {
+  grid-area: paused;
+  margin: 0;
+  justify-self: start;
+}
+
+.skin-root.skin-root--arcade .fighter {
+  position: absolute;
+  bottom: 0;
+  width: 26vh;
+  height: 86vh;
+  z-index: 2;
+  pointer-events: none;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.skin-root.skin-root--arcade .fighter.f1 {
+  left: 0.4vh;
+  background-image: url(./assets/arcade-fighter/fighter-blue.webp);
+}
+.skin-root.skin-root--arcade .fighter.f2 {
+  right: 0.4vh;
+  background-image: url(./assets/arcade-fighter/fighter-white.webp);
+}
 
 @media (orientation: portrait) {
-  .skin-root.skin-root--arcade .sb {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto auto;
-    padding: calc(0.4rem + 2.6rem) 2.6vw 1.4vw;
+  .skin-root.skin-root--arcade .row {
+    grid-template-rows: auto minmax(25%, 0.35fr) auto;
+    background: #0a0a16;
+    border: 0.4vh solid #1c46cc;
+    overflow: hidden;
   }
 
-  .skin-root.skin-root--arcade .hdr { grid-row: 1; grid-column: 1; }
-  .skin-root.skin-root--arcade .row.c1 { grid-row: 2; grid-column: 1; }
-  .skin-root.skin-root--arcade .band { grid-row: 3; grid-column: 1; }
-  .skin-root.skin-root--arcade .row.c2 { grid-row: 4; grid-column: 1; }
-  .skin-root.skin-root--arcade .fighter { display: none; }
-  .skin-root.skin-root--arcade .row .tile .num { font-size: 14vh; }
+  .skin-root.skin-root--arcade .row.c2 { border-color: #f4f6fb; }
+
+  .skin-root.skin-root--arcade .sil { display: none; }
+
+  .skin-root.skin-root--arcade .row::after {
+    content: '';
+    grid-row: 2;
+    grid-column: 1 / -1;
+    justify-self: center;
+    align-self: center;
+    width: auto;
+    height: 100%;
+    aspect-ratio: 7 / 9;
+    background: #1c46cc;
+    clip-path: polygon(30% 0, 70% 0, 78% 18%, 62% 22%, 88% 100%, 12% 100%, 38% 22%, 22% 18%);
+  }
+
+  .skin-root.skin-root--arcade .row.c2::after { background: #f4f6fb; }
+
+  .skin-root.skin-root--arcade .pts,
+  .skin-root.skin-root--arcade .adv,
+  .skin-root.skin-root--arcade .pen {
+    grid-row: 3;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .row .lab {
+    flex: none;
+    font-size: min(1.6vh, 2.4vw);
+    letter-spacing: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .skin-root.skin-root--poster.skin-root--arcade .row .tile {
+    height: auto;
+    overflow: visible;
+  }
+
+  .skin-root.skin-root--arcade .tile {
+    width: 100%;
+  }
+
+  .skin-root.skin-root--arcade .row .tile .num {
+    font-size: min(8vh, 11vw);
+  }
 }

@@ -18,6 +18,16 @@ function posterPhaseLine(phaseLine: string): ReactNode {
   );
 }
 
+/** Dungeon and Mech use a short pill on a phone so it does not cover the title. */
+function timerPhaseText(slug: PolishedTimerSlug, phaseLine: string, width: number): ReactNode {
+  if ((slug === 'dungeon-quest' || slug === 'mech-battle') && width > 0 && width <= 820) {
+    const rest = /\bREST\b/i.test(phaseLine);
+    const round = /\b(\d+)\b/.exec(phaseLine);
+    return `R${round?.[1] ?? '1'} · ${rest ? 'REST' : 'WORK'}`;
+  }
+  return isPosterSkin(slug) ? posterPhaseLine(phaseLine) : phaseLine;
+}
+
 const STAR =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.8l3.1 6.6 7.1.9-5.2 4.9 1.4 7.1L12 17.8l-6.4 3.5 1.4-7.1L1.8 9.3l7.1-.9z" fill="#fff" stroke="#2A1A7A" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 
@@ -273,7 +283,7 @@ export function PolishedTimer({
         {deco ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: deco }} /> : null}
         <img className="logo" src="/card-logo.png" alt="Advantage" />
         <button type="button" className="phase sk-btn tm-phase" aria-label={phaseLabel} onClick={onPhase}>
-          {isPosterSkin(slug) ? posterPhaseLine(phaseLine) : phaseLine}
+          {timerPhaseText(slug, phaseLine, view.w)}
         </button>
         {inner}
         {children}

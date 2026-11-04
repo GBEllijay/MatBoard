@@ -173,6 +173,41 @@
   z-index: 2;
 }
 
+/* Arcade landscape: header on top, a fighter card in each outer column, the clock in the middle. */
+.skin-root.skin-root--poster.skin-root--arcade .sb {
+  grid-template-columns: minmax(0, 1fr) minmax(22vh, 32vh) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 1.2vh 1.4vh;
+  padding: 1vh 18vh 1.4vh;
+}
+
+.skin-root.skin-root--poster.skin-root--arcade .hdr {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.skin-root.skin-root--poster.skin-root--arcade .row.c1 {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.skin-root.skin-root--poster.skin-root--arcade .band {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.skin-root.skin-root--poster.skin-root--arcade .row.c2 {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.skin-root.skin-root--poster.skin-root--arcade .bg,
+.skin-root.skin-root--poster.skin-root--arcade .fx,
+.skin-root.skin-root--poster.skin-root--arcade .fighter,
+.skin-root.skin-root--poster.skin-root--arcade .crt {
+  position: absolute;
+}
+
 .skin-root--poster .row {
   position: relative;
   z-index: 3;

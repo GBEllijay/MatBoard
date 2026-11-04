@@ -393,4 +393,8 @@ test('poster header keeps the round at full size and only ellipsizes the divisio
   const brasil = await readFile(new URL('../skins/polished/brasil.css', import.meta.url), 'utf8');
   assert.equal(keynote.includes('phase-endless'), false);
   assert.equal(brasil.includes('trail'), false);
+  assert.match(css, /skin-root--arcade \.sb[\s\S]*grid-row:\s*1/);
+  const dungeon = await readFile(new URL('../skins/polished/dungeon-quest.css', import.meta.url), 'utf8');
+  assert.match(dungeon, /\.tm \.phase\s*\{[^}]*font-family:\s*Anton/);
+  assert.match(dungeon, /\.die b\s*\{[^}]*font-family:\s*Grenze/);
 });
