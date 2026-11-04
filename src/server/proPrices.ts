@@ -28,3 +28,32 @@ export function matchesProPrice(priceIds: readonly string[], env: StripeRuntimeE
   const known = proPriceIds(env);
   return priceIds.some((id) => known.has(id));
 }
+
+function dedicatedCloudId(raw: string | undefined, proIds: Set<string>): string | null {
+  const price = raw?.trim() ?? '';
+  if (!price.startsWith('price_') || proIds.has(price)) return null;
+  return price;
+}
+
+/**
+ * Instructor or Media Cloud price, monthly or the reserved half-off price.
+ * A price that is already a Pro price stays Pro. These ids are not added to proPriceIds.
+ */
+export function cloudEditionForPriceIds(
+  priceIds: readonly string[],
+  env: StripeRuntimeEnv,
+): 'media' | 'coach' | null {
+  const present = new Set(priceIds);
+  const proIds = proPriceIds(env);
+  const coach = [
+    dedicatedCloudId(env.STRIPE_PRICE_INSTRUCTOR_CLOUD_MONTHLY, proIds),
+    dedicatedCloudId(env.STRIPE_PRICE_INSTRUCTOR_CLOUD_MONTHLY_DISCOUNT, proIds),
+  ];
+  if (coach.some((id) => id && present.has(id))) return 'coach';
+  const media = [
+    dedicatedCloudId(env.STRIPE_PRICE_MEDIA_CLOUD_MONTHLY, proIds),
+    dedicatedCloudId(env.STRIPE_PRICE_MEDIA_CLOUD_MONTHLY_DISCOUNT, proIds),
+  ];
+  if (media.some((id) => id && present.has(id))) return 'media';
+  return null;
+}

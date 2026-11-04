@@ -9,6 +9,7 @@ import {
 import { normalizeEmail } from './entitlements.ts';
 import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 import type { BillingEventKind } from './subscriptionAccess.ts';
+import { cloudEditionForPriceIds } from './proPrices.ts';
 import { readCurrentPeriodEnd, readPriceIds } from './stripeSubscription.ts';
 
 export type { CheckoutProduct };
@@ -33,6 +34,14 @@ export type StripeRuntimeEnv = {
    * Optional. Not used by Checkout. Reserved for a future discount price id.
    */
   STRIPE_PRICE_PRO_MONTHLY_DISCOUNT?: string;
+  /** Optional Instructor Cloud monthly price. Falls back to STRIPE_PRICE_PRO_MONTHLY. */
+  STRIPE_PRICE_INSTRUCTOR_CLOUD_MONTHLY?: string;
+  /** Optional. Not used by Checkout. Future half-off price for Instructor Cloud. */
+  STRIPE_PRICE_INSTRUCTOR_CLOUD_MONTHLY_DISCOUNT?: string;
+  /** Optional Media Cloud monthly price. Falls back to STRIPE_PRICE_PRO_MONTHLY. */
+  STRIPE_PRICE_MEDIA_CLOUD_MONTHLY?: string;
+  /** Optional. Not used by Checkout. Future half-off price for Media Cloud. */
+  STRIPE_PRICE_MEDIA_CLOUD_MONTHLY_DISCOUNT?: string;
   STRIPE_SUCCESS_URL?: string;
   STRIPE_CANCEL_URL?: string;
 };
@@ -123,8 +132,36 @@ export function readCloudAddon(raw: unknown, product: CheckoutProduct): boolean 
   return true;
 }
 
+const CLOUD_MONTHLY_ENV: Record<CloudAddonProduct, keyof StripeRuntimeEnv> = {
+  coach: 'STRIPE_PRICE_INSTRUCTOR_CLOUD_MONTHLY',
+  media: 'STRIPE_PRICE_MEDIA_CLOUD_MONTHLY',
+  pro: 'STRIPE_PRICE_PRO_MONTHLY',
+};
+
+const CLOUD_DISCOUNT_ENV: Record<CloudAddonProduct, keyof StripeRuntimeEnv> = {
+  coach: 'STRIPE_PRICE_INSTRUCTOR_CLOUD_MONTHLY_DISCOUNT',
+  media: 'STRIPE_PRICE_MEDIA_CLOUD_MONTHLY_DISCOUNT',
+  pro: 'STRIPE_PRICE_PRO_MONTHLY_DISCOUNT',
+};
+
+function listedPrice(raw: string | undefined): string | null {
+  const price = raw?.trim() ?? '';
+  return price.startsWith('price_') ? price : null;
+}
+
 /**
- * Checked Advantage Cloud: the tier's one-time price plus STRIPE_PRICE_PRO_MONTHLY.
+ * Monthly Cloud price for this edition. Instructor and Media use their own env
+ * when it is a price_ id. Otherwise they use STRIPE_PRICE_PRO_MONTHLY.
+ */
+export function readCloudMonthlyPrice(env: StripeRuntimeEnv, product: CloudAddonProduct): string | null {
+  const own = listedPrice(env[CLOUD_MONTHLY_ENV[product]]);
+  if (own) return own;
+  if (product === 'pro') return null;
+  return listedPrice(env.STRIPE_PRICE_PRO_MONTHLY);
+}
+
+/**
+ * Checked Advantage Cloud: the tier's one-time price plus that edition's monthly price.
  * A missing price id returns an error and does not invent a price.
  */
 export function readCloudAddonCart(
@@ -133,14 +170,22 @@ export function readCloudAddonCart(
 ): { secret: string; priceIds: string[]; mode: 'subscription'; productId: string } | { error: string } {
   const base = readStripeConfig(env, product);
   if ('error' in base) return { error: 'Advantage Cloud checkout is not configured. No charge was made.' };
-  const monthly = env.STRIPE_PRICE_PRO_MONTHLY?.trim() ?? '';
-  if (!monthly.startsWith('price_')) return { error: 'Advantage Cloud checkout is not configured. No charge was made.' };
+  const monthly = readCloudMonthlyPrice(env, product);
+  if (!monthly) return { error: 'Advantage Cloud checkout is not configured. No charge was made.' };
   return {
     secret: base.secret,
     priceIds: [base.priceIds[0], monthly],
     mode: 'subscription',
     productId: base.productId,
   };
+}
+
+/**
+ * Future half-off price for this edition's Cloud add-on. Checkout does not call this.
+ * Pro reads STRIPE_PRICE_PRO_MONTHLY_DISCOUNT. Instructor and Media read their own vars.
+ */
+export function readOptionalCloudMonthlyDiscountPrice(env: StripeRuntimeEnv, product: CloudAddonProduct): string | null {
+  return listedPrice(env[CLOUD_DISCOUNT_ENV[product]]);
 }
 
 export const EXPECTED_CLOUD_MONTHLY_CENTS = PRO_MONTHLY_PRICE_CENTS;
@@ -477,6 +522,7 @@ export type StripeEntitlementDecision =
   | { action: 'record-media'; purchase: CheckoutPurchase; cloud?: boolean }
   | { action: 'record-pro'; purchase: CheckoutPurchase }
   | { action: 'grant-pro'; grant: ProCheckoutGrant; cloud?: boolean }
+  | { action: 'sync-cloud'; edition: 'media' | 'coach'; entitled: boolean; subscriptionId: string }
   | { action: 'sync-pro'; sync: ProSubscriptionSync }
   | { action: 'revoke-onetime'; revocation: OneTimeRevocation }
   | { action: 'retry' }
@@ -659,10 +705,20 @@ function billingFields(row: Record<string, unknown>): Pick<ProSubscriptionSync, 
   };
 }
 
-function invoiceDecision(row: Record<string, unknown>, kind: 'paid' | 'failed'): StripeEntitlementDecision {
+function cloudSync(row: Record<string, unknown>, env: StripeRuntimeEnv, entitled: boolean): StripeEntitlementDecision | null {
+  const edition = cloudEditionForPriceIds(readPriceIds(row), env);
+  if (edition !== 'media' && edition !== 'coach') return null;
+  const subscriptionId = readSubscriptionId(row) || (typeof row.id === 'string' && row.id.startsWith('sub_') ? row.id : '');
+  if (!subscriptionId) return { action: 'ignore' };
+  return { action: 'sync-cloud', edition, entitled, subscriptionId };
+}
+
+function invoiceDecision(row: Record<string, unknown>, kind: 'paid' | 'failed', env: StripeRuntimeEnv): StripeEntitlementDecision {
   if (row.object !== 'invoice') return { action: 'invalid' };
   const subscriptionId = readSubscriptionId(row);
   if (!subscriptionId) return { action: 'ignore' };
+  const cloud = cloudSync(row, env, kind === 'paid');
+  if (cloud) return cloud;
   const product = invoiceProduct(row);
   if (product && product !== API_PRODUCT_PRO) return { action: 'ignore' };
   return {
@@ -680,14 +736,17 @@ function invoiceDecision(row: Record<string, unknown>, kind: 'paid' | 'failed'):
   };
 }
 
-function subscriptionDecision(row: Record<string, unknown>, kind: 'deleted' | 'upsert'): StripeEntitlementDecision {
+function subscriptionDecision(row: Record<string, unknown>, kind: 'deleted' | 'upsert', env: StripeRuntimeEnv): StripeEntitlementDecision {
   if (row.object !== 'subscription') return { action: 'invalid' };
   const subscriptionId = typeof row.id === 'string' && row.id.startsWith('sub_') ? row.id : '';
   if (!subscriptionId) return { action: 'invalid' };
+  const status = typeof row.status === 'string' ? row.status : '';
+  const cloudEntitled = kind === 'upsert' && ENTITLED_SUBSCRIPTION_STATUSES.has(status);
+  const cloud = cloudSync(row, env, cloudEntitled);
+  if (cloud) return cloud;
   const product = readMetaProduct(row);
   if (product && product !== API_PRODUCT_PRO) return { action: 'ignore' };
   if (kind === 'upsert') {
-    const status = typeof row.status === 'string' ? row.status : '';
     if (!ENTITLED_SUBSCRIPTION_STATUSES.has(status) && !REVOKED_SUBSCRIPTION_STATUSES.has(status)) {
       return { action: 'ignore' };
     }
@@ -760,7 +819,7 @@ function chargeDecision(row: Record<string, unknown>, type: string): StripeEntit
   };
 }
 
-export function purchaseFromStripeEvent(event: unknown): StripeEntitlementDecision {
+export function purchaseFromStripeEvent(event: unknown, env: StripeRuntimeEnv = {}): StripeEntitlementDecision {
   if (!event || typeof event !== 'object') return { action: 'invalid' };
   const type = (event as { type?: unknown }).type;
   if (typeof type !== 'string') return { action: 'invalid' };
@@ -784,11 +843,11 @@ export function purchaseFromStripeEvent(event: unknown): StripeEntitlementDecisi
   if (type === 'checkout.session.completed' || type === 'checkout.session.async_payment_succeeded') {
     return checkoutDecision(row);
   }
-  if (type === 'invoice.paid' || type === 'invoice.payment_succeeded') return invoiceDecision(row, 'paid');
-  if (type === 'invoice.payment_failed') return invoiceDecision(row, 'failed');
+  if (type === 'invoice.paid' || type === 'invoice.payment_succeeded') return invoiceDecision(row, 'paid', env);
+  if (type === 'invoice.payment_failed') return invoiceDecision(row, 'failed', env);
   if (type === 'charge.refunded' || type === 'charge.dispute.created' || type === 'charge.dispute.closed') {
     return chargeDecision(row, type);
   }
-  if (type === 'customer.subscription.deleted') return subscriptionDecision(row, 'deleted');
-  return subscriptionDecision(row, 'upsert');
+  if (type === 'customer.subscription.deleted') return subscriptionDecision(row, 'deleted', env);
+  return subscriptionDecision(row, 'upsert', env);
 }

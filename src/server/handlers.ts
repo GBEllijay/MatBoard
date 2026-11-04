@@ -284,7 +284,7 @@ export async function handleWebhook(
       .first<{ eventId: string }>();
     if (seen) return json(200, { received: true, duplicate: true });
   }
-  const parsed = purchaseFromStripeEvent(event);
+  const parsed = purchaseFromStripeEvent(event, env);
   if (parsed.action === 'invalid') return json(400, { error: 'Webhook event is not valid.' });
   if (parsed.action === 'ignore') return json(200, { received: true, ignored: true });
   if (parsed.action === 'retry') {
@@ -429,6 +429,16 @@ export async function handleWebhook(
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }
     return json(200, { received: true, sessionId: stored.sessionId, entitled: true, ...(parsed.cloud ? { cloud: true } : {}) });
+  }
+  if (parsed.action === 'sync-cloud') {
+    await rememberEvent(extras, eventId, stamp);
+    return json(200, {
+      received: true,
+      cloud: parsed.entitled,
+      edition: parsed.edition,
+      entitled: parsed.entitled,
+      pro: false,
+    });
   }
   if (parsed.action === 'revoke-onetime') {
     if (!parsed.revocation.revoke) {
