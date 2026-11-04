@@ -152,7 +152,8 @@ export function routeUpload(input: {
   const purpose = input.purpose;
   if (purpose === 'gallery' && input.role === 'student') return { ok: false, reason: 'students-no-gallery' };
   if (purpose === 'gallery' && input.role === 'none') return { ok: false, reason: 'role-hidden' };
-  if (purpose === 'daily-video' && (input.role === 'student' || input.role === 'program-director' || input.role === 'none')) {
+  // A program director may drop a video in the day's daily videos for instructors. Lesson plans stay closed.
+  if (purpose === 'daily-video' && (input.role === 'student' || input.role === 'none')) {
     return { ok: false, reason: input.role === 'student' ? 'students-no-daily-video' : 'role-hidden' };
   }
   if (purpose === 'lesson' && (input.role === 'student' || input.role === 'program-director' || input.role === 'none')) {
