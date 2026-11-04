@@ -87,6 +87,11 @@
     width: 6.4vh;
   }
 
+  .skin-root.skin-root--poster[data-skin='shinobi-anime'] .hdr .crest {
+    width: auto;
+    height: auto;
+  }
+
   .skin-root.skin-root--poster .sb .band.band {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto auto;
@@ -168,21 +173,32 @@
     margin-left: auto;
   }
 
+  .skin-root.skin-root--poster[data-skin='shinobi-anime'] .hdr .crest {
+    width: auto;
+    height: auto;
+  }
+
+  .skin-root.skin-root--poster .trail {
+    order: 5;
+    flex: 1 0 100%;
+    justify-content: center;
+    max-width: 100%;
+  }
+
   .skin-root.skin-root--poster .hdr .mat {
-    order: 4;
-    flex: none;
-    margin-left: 1.4vw;
+    flex: 0 0 auto;
+    min-width: max-content;
+    max-width: none;
+    margin-left: 0;
     font-size: 5.4vw;
-    max-width: 28vw;
+    text-align: center;
   }
 
   .skin-root.skin-root--poster .hdr .div {
-    order: 5;
-    flex-basis: 100%;
-    justify-self: center;
-    text-align: center;
-    margin: 0 auto;
+    flex: 0 1 auto;
+    max-width: 70vw;
     font-size: 3vw;
+    text-align: center;
   }
 
   .skin-root.skin-root--poster .row .name {
@@ -213,5 +229,12 @@
 
   .skin-root.skin-root--poster .plate .clock .sk-btn {
     font-size: 14vw;
+  }
+}
+
+/* The endless tag makes the work pill clip on a phone. The round line stays. */
+@media (max-width: 820px) {
+  .skin-root.skin-root--poster .phase-endless {
+    display: none;
   }
 }

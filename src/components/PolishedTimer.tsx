@@ -6,6 +6,18 @@ import { brasilRing, keynoteRing } from '../skins/polished/ring';
 import { isPosterSkin, posterSplitsNums, posterTimerTitle } from '../skins/polished/posterSkins';
 import { metalTimerTitle, psychedelicTimerTitle, reggaeTimerTitle, timerNextLine, timerProgress, visionaryTimerTitle } from '../skins/polished/timerText';
 
+/** Hide the endless tag on a narrow poster timer. The accessible name stays the full line. */
+function posterPhaseLine(phaseLine: string): ReactNode {
+  const match = /^(.*?)\s*·\s*ENDLESS$/i.exec(phaseLine);
+  if (!match) return phaseLine;
+  return (
+    <>
+      {match[1]}
+      <span className="phase-endless"> · ENDLESS</span>
+    </>
+  );
+}
+
 const STAR =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.8l3.1 6.6 7.1.9-5.2 4.9 1.4 7.1L12 17.8l-6.4 3.5 1.4-7.1L1.8 9.3l7.1-.9z" fill="#fff" stroke="#2A1A7A" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 
@@ -258,7 +270,7 @@ export function PolishedTimer({
         {deco ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: deco }} /> : null}
         <img className="logo" src="/card-logo.png" alt="Advantage" />
         <button type="button" className="phase sk-btn tm-phase" aria-label={phaseLabel} onClick={onPhase}>
-          {phaseLine}
+          {isPosterSkin(slug) ? posterPhaseLine(phaseLine) : phaseLine}
         </button>
         {inner}
         {children}

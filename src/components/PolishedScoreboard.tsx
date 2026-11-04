@@ -180,7 +180,6 @@ export function PolishedScoreboard({
                 Advantage
                 {spec?.wordmarkExtra ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: spec.wordmarkExtra }} /> : null}
               </span>
-              <span className="mat">{round}</span>
             </div>
           ) : (
             <img className="logo" src="/card-logo.png" alt="Advantage" />
@@ -192,8 +191,17 @@ export function PolishedScoreboard({
               <i className="crest" aria-hidden="true" />
             )
           ) : null}
-          {poster ? null : <span className="mat">{mat}</span>}
-          <span className="div">{divisionLine}</span>
+          {poster ? (
+            <div className="trail">
+              <span className="mat">{round}</span>
+              <span className="div">{divisionLine}</span>
+            </div>
+          ) : (
+            <>
+              <span className="mat">{mat}</span>
+              <span className="div">{divisionLine}</span>
+            </>
+          )}
         </header>
         <Row row={rows[0]} cls="c1" extra={extra[0]} poster={poster} />
         <div className={`band${poster && state === 'FINAL' ? ' is-final' : ''}`}>
