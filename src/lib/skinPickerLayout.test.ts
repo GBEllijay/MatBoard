@@ -10,6 +10,7 @@ import {
   skinPickerColumnCount,
   skinPickerPopupWidth,
   skinPickerScrollMax,
+  skinStackFaces,
 } from './skinPickerLayout.ts';
 import { getTrainingSkin, setTrainingSkin, TRAINING_SKIN_KEY, timerPickerSkins } from './trainingSkin.ts';
 
@@ -86,7 +87,8 @@ test('White sees three Advantage skins and My skins stays hidden while empty', (
 test('Media Edition lists the skins it already had, with no empty My skins section', () => {
   const timer = timerPickerSkins(true, false);
   const plain = scoreboardPickerSkins(true, true, false);
-  assert.equal(timer.length, 12);
+  const timerCount = 2 + POLISHED_TIMER_SKINS.length;
+  assert.equal(timer.length, timerCount);
   assert.deepEqual(
     timer.map((skin) => skin.id),
     ['classic', 'themed', ...POLISHED_TIMER_SKINS.map((skin) => skin.slug)],
@@ -97,12 +99,12 @@ test('Media Edition lists the skins it already had, with no empty My skins secti
     groups.map((group) => group.label),
     ['Advantage skins'],
   );
-  assert.equal(groups[0]?.options.length, 12);
+  assert.equal(groups[0]?.options.length, timerCount);
   const coming = groupSkinPickerOptions([
     ...timer.map((skin) => ({ id: skin.id })),
     ...COMING_ANIME.map((label) => ({ id: label })),
   ]);
-  assert.equal(coming[0]?.options.length, 18);
+  assert.equal(coming[0]?.options.length, timerCount + COMING_ANIME.length);
   assert.equal(POLISHED_TIMER_SKINS.some((skin) => COMING_ANIME.includes(skin.label)), false);
 });
 
@@ -166,6 +168,53 @@ test('opening the picker scrolls the selected skin into view', () => {
   assert.deepEqual(calls, ['visionary:nearest']);
   const missing = { querySelector: () => null };
   assert.equal(scrollSkinOptionIntoView(missing as unknown as ParentNode, 'missing'), false);
+});
+
+test('the skin stack puts the current skin on top and stays inside the tier list', () => {
+  const white = [
+    { id: 'MOCK_TOURNAMENT', label: 'Mock-Tournament' },
+    { id: 'OLD_SCHOOL', label: 'Old School' },
+    { id: 'QUICK_RESULT', label: 'Quick Result' },
+  ];
+  const faces = skinStackFaces(white, 'OLD_SCHOOL');
+  assert.deepEqual(
+    faces.map((face) => face.id),
+    ['MOCK_TOURNAMENT', 'QUICK_RESULT', 'OLD_SCHOOL'],
+  );
+  assert.equal(faces.at(-1)?.id, 'OLD_SCHOOL');
+  assert.equal(faces.length, 3);
+  assert.equal(skinStackFaces(white, 'not-a-skin').at(-1)?.id, 'MOCK_TOURNAMENT');
+  assert.deepEqual(
+    skinStackFaces([{ id: 'classic' }], 'classic').map((face) => face.id),
+    ['classic'],
+  );
+  assert.deepEqual(skinStackFaces([], 'classic'), []);
+  const timer = timerPickerSkins(true, false);
+  const stacked = skinStackFaces(timer, 'classic');
+  assert.equal(stacked.at(-1)?.id, 'classic');
+  assert.equal(stacked.length, 3);
+  assert.equal(
+    stacked.every((face) => timer.some((skin) => skin.id === face.id)),
+    true,
+  );
+  const board = scoreboardPickerSkins(true, false, true);
+  assert.equal(skinStackFaces(board, SCOREBOARD_SKIN.QUICK_RESULT).at(-1)?.id, SCOREBOARD_SKIN.QUICK_RESULT);
+  assert.equal(skinStackFaces(board, SCOREBOARD_SKIN.QUICK_RESULT).some((skin) => skin.id === 'KEYNOTE'), false);
+});
+
+test('the Skins tile replaces Preview cues and the separate Skins button', () => {
+  const timer = fs.readFileSync(new URL('../components/TrainingOptions.tsx', import.meta.url), 'utf8');
+  const board = fs.readFileSync(new URL('../pages/MatchController.tsx', import.meta.url), 'utf8');
+  for (const source of [timer, board]) {
+    assert.match(source, /appearance="stack"/);
+    assert.doesNotMatch(source, /cue-with-stack|Preview cues|Preview match cues|data-cleanup="preview-cues"/);
+  }
+  assert.match(timer, /<EndCueControls label="Training end cue" value=\{audio\.endCue\} \/>\s*\{picker \? <TimerSkinPicker appearance="stack" \/> : null\}/);
+  assert.match(board, /<EndCueControls label="Match end cue" value=\{match\.endCue\} \/>\s*\{board\.polishedOpen \|\| board\.whiteBaseSkins \? <ScoreboardSkinPicker appearance="stack" \/> : null\}/);
+  assert.doesNotMatch(timer, /<TimerSkinPicker buttonClassName="preset" \/>/);
+  assert.doesNotMatch(board, /<ScoreboardSkinPicker \/>/);
+  assert.match(timer, /aria-label="Timer skin"/);
+  assert.match(board, /<ScoreboardSkinSwitcher/);
 });
 
 test('the popup scrolls with touch, wheel, and a fade over the peeking row', () => {

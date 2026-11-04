@@ -48,6 +48,10 @@ import {
 } from '../skins/polished/timerText.ts';
 import { metalTimerTitle } from '../skins/polished/heavyMetal.ts';
 import { brasilRing, keynoteRing, lerpHex } from '../skins/polished/ring.ts';
+import { fitNameBox } from '../skins/polished/fitNames.ts';
+import { posterBoardState, posterTimerTitle } from '../skins/polished/posterSkins.ts';
+import { createHash } from 'node:crypto';
+import { readFile, readdir } from 'node:fs/promises';
 
 function memoryStorage() {
   const store = new Map<string, string>();
@@ -78,11 +82,11 @@ const PRODUCTS = [
 test('the nine polished families in picker order; Calçadão is a timer-only option after Brasil', () => {
   assert.deepEqual(
     POLISHED_SKINS.map((s) => s.label),
-    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary'],
+    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime'],
   );
   assert.deepEqual(
     POLISHED_TIMER_SKINS.map((s) => s.label),
-    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Calçadão', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary'],
+    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Calçadão', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime'],
   );
   assert.equal(parseScoreboardSkin('calcadao'), DEFAULT_SCOREBOARD_SKIN, 'no Calçadão scoreboard');
   assert.equal(parseScoreboardSkin('CALCADAO'), DEFAULT_SCOREBOARD_SKIN, 'no Calçadão scoreboard');
@@ -284,4 +288,104 @@ test('Visionary motion runs only when the device allows motion', async () => {
   // No animation before the block, so reduce (or no preference support) means a still screen.
   assert.equal(css.slice(0, at).split('animation:').length - 1, 0);
   assert.equal(css.split('animation:').length - 1, 3);
+});
+
+const POSTER = [
+  ['creature-anime', 'CREATURE_ANIME', 'Creature Anime'],
+  ['idol-hunters', 'IDOL_HUNTERS', 'Idol Hunters'],
+  ['shinobi-anime', 'SHINOBI_ANIME', 'Shinobi Anime'],
+] as const;
+
+test('poster skins are registered once, on both boards, and the gate still hides them below Media', () => {
+  const ids = POLISHED_SKINS.map((skin) => skin.id);
+  const slugs = POLISHED_SKINS.map((skin) => skin.slug);
+  assert.equal(new Set(ids).size, ids.length, 'scoreboard ids are unique');
+  assert.equal(new Set(slugs).size, slugs.length, 'slugs are unique');
+  assert.equal(new Set(POLISHED_TIMER_SKINS.map((skin) => skin.slug)).size, POLISHED_TIMER_SKINS.length);
+  for (const [slug, id, label] of POSTER) {
+    assert.ok(POLISHED_SKINS.some((skin) => skin.slug === slug && skin.id === id && skin.label === label), label);
+    assert.equal(parseScoreboardSkin(id), id);
+    assert.equal(visibleScoreboardSkin(id, false, false, false, true), id, 'Media paints it');
+    assert.equal(visibleScoreboardSkin(id, false, false, false, false), DEFAULT_SCOREBOARD_SKIN, 'locked falls back');
+    assert.equal(visibleTrainingSkin(slug, true), slug);
+    assert.equal(visibleTrainingSkin(slug, false), 'classic');
+    const open = scoreboardPickerSkins(false, true).map((skin) => skin.id);
+    const shut = scoreboardPickerSkins(false, false).map((skin) => skin.id);
+    assert.ok(open.includes(id));
+    assert.equal(shut.includes(id), false, 'absent, not locked');
+    assert.equal(timerPickerSkins(false).some((skin) => skin.id === slug), false);
+  }
+  assert.equal(posterBoardState('heavy-metal', true), null);
+  assert.equal(posterBoardState('creature-anime', false), 'OPEN');
+  assert.equal(posterBoardState('idol-hunters', true), 'FINAL');
+  assert.equal(posterTimerTitle('creature-anime', true, 2), 'Rest Up!');
+  assert.equal(posterTimerTitle('idol-hunters', true, 2), 'Encore Break');
+  assert.equal(posterTimerTitle('shinobi-anime', false, 3), 'Round 3');
+  assert.equal(posterTimerTitle('shinobi-anime', true, 3), 'Rest');
+});
+
+test('long names shrink on one line, then wrap, and stop at the floor', () => {
+  const always = () => true;
+  const never = () => false;
+  assert.deepEqual(fitNameBox(40, never), { size: 40, wrap: false });
+  const shrunk = fitNameBox(40, (size) => size > 30);
+  assert.equal(shrunk.wrap, false);
+  assert.ok(shrunk.size <= 30 && shrunk.size > 40 * 0.72);
+  const wrapped = fitNameBox(40, always, 0.72, 0.86, 0.5);
+  assert.equal(wrapped.wrap, true);
+  assert.ok(wrapped.size <= 40 * 0.5 + 1);
+  const shinobi = fitNameBox(100, always, 0.56, 0.86, 0.5);
+  assert.equal(shinobi.wrap, true);
+  assert.ok(shinobi.size <= 51);
+});
+
+test('Idol Hunters ships the heart-mic crest and not the rejected crescent', async () => {
+  const root = new URL('../skins/polished/', import.meta.url);
+  const names: string[] = [];
+  const walk = async (dir: URL) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      if (entry.name === 'node_modules') continue;
+      const next = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
+      if (entry.isDirectory()) await walk(next);
+      else names.push(entry.name);
+    }
+  };
+  await walk(root);
+  for (const name of names) assert.equal(/crescent/i.test(name), false, name);
+  const idolFiles = ['idol-hunters.css', 'idol-hunters.ts', 'idol-hunters.deco.ts'];
+  for (const file of idolFiles) {
+    const text = await readFile(new URL(file, root), 'utf8');
+    assert.equal(/crescent/i.test(text), false, file);
+  }
+  const crest = await readFile(new URL('assets/idol-hunters/crest.webp', root));
+  assert.equal(createHash('sha256').update(crest).digest('hex'), '6a355217c0100eea2088cec7c407c9f72e9b435c4ae8a1c54de46f9f95d492fd');
+  const shinobi = await readFile(new URL('shinobi-anime.deco.ts', root), 'utf8');
+  assert.match(shinobi, /<span class="seal" lang="ja"[^>]*>忍<\/span>/);
+  const css = await readFile(new URL('shinobi-anime.css', root), 'utf8');
+  assert.equal(css.includes('忍'), false, 'the kanji is live text, not part of the art');
+  assert.match(css, /\.hdr \.seal\s*\{[^}]*width:\s*9vh/);
+});
+
+test('poster header keeps the round at full size and only ellipsizes the division', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const board = await readFile(new URL('../components/PolishedScoreboard.tsx', import.meta.url), 'utf8');
+  const lead = board.slice(board.indexOf('className="lead"'), board.indexOf('className="trail"'));
+  assert.equal(lead.includes('className="mat"'), false, 'the round is not in the wordmark group');
+  assert.match(board, /className="trail"[\s\S]*className="mat"[\s\S]*className="div"/);
+  const css = await readFile(new URL('../skins/polished/poster.css', import.meta.url), 'utf8');
+  assert.match(css, /\.hdr \.mat\s*\{[^}]*flex:\s*0 0 auto/);
+  assert.match(css, /\.hdr \.mat\s*\{[^}]*min-width:\s*max-content/);
+  const fit = await readFile(new URL('../skins/polished/poster-fit.css', import.meta.url), 'utf8');
+  assert.match(fit, /max-width:\s*820px[\s\S]*\.phase-endless\s*\{\s*display:\s*none/);
+  const keynote = await readFile(new URL('../skins/polished/keynote.css', import.meta.url), 'utf8');
+  const brasil = await readFile(new URL('../skins/polished/brasil.css', import.meta.url), 'utf8');
+  assert.equal(keynote.includes('phase-endless'), false);
+  assert.equal(brasil.includes('trail'), false);
+  assert.match(fit, /max-width:\s*1100px\) and \(min-width:\s*901px\)[\s\S]*\.wm\s*\{[^}]*display:\s*none/);
+  assert.match(fit, /max-width:\s*900px[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto\s+minmax\(0,\s*1fr\)/);
+  assert.match(fit, /max-width:\s*900px[\s\S]*\.hdr \.mat\s*\{[^}]*flex-shrink:\s*0/);
+  assert.match(fit, /max-width:\s*900px[\s\S]*\.hdr \.div[\s\S]*min-width:\s*0[\s\S]*text-overflow:\s*ellipsis/);
+  const shinobiCss = await readFile(new URL('../skins/polished/shinobi-anime.css', import.meta.url), 'utf8');
+  assert.match(shinobiCss, /max-width:\s*900px[\s\S]*\.hdr \.kunai\s*\{[^}]*display:\s*none/);
+  assert.match(shinobiCss, /max-width:\s*900px[\s\S]*min\(9vh,\s*20vw\)/);
 });

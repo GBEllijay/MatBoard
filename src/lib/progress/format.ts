@@ -425,7 +425,14 @@ function readCoachCompetitionUpdate(
       }
       const note = typeof match.note === 'string' ? match.note.trim() : '';
       if (note.length > PROGRESS_NOTE_MAX) errors.push('A match note is too long.');
-      matches.push({ opponent, result, method, note: note.slice(0, PROGRESS_NOTE_MAX) });
+      const round = typeof match.round === 'string' ? match.round.trim().slice(0, PROGRESS_NAME_MAX) : '';
+      matches.push({
+        opponent,
+        result,
+        method,
+        note: note.slice(0, PROGRESS_NOTE_MAX),
+        ...(round ? { round } : {}),
+      });
     }
   }
   return {

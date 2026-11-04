@@ -23,6 +23,12 @@ import psychedelicTm from './polished/thumbs/psychedelic-timer.jpg';
 import visionarySb from './polished/thumbs/visionary-scoreboard.jpg';
 import visionaryTm from './polished/thumbs/visionary-timer.jpg';
 import calcadaoTm from './polished/thumbs/calcadao-timer.jpg';
+import creatureSb from './polished/thumbs/creature-anime-scoreboard.jpg';
+import creatureTm from './polished/thumbs/creature-anime-timer.jpg';
+import idolSb from './polished/thumbs/idol-hunters-scoreboard.jpg';
+import idolTm from './polished/thumbs/idol-hunters-timer.jpg';
+import shinobiSb from './polished/thumbs/shinobi-anime-scoreboard.jpg';
+import shinobiTm from './polished/thumbs/shinobi-anime-timer.jpg';
 
 export const EXISTING_SKIN_THUMBS = {
   MOCK_TOURNAMENT: mockTournament,
@@ -44,6 +50,9 @@ const POLISHED: Record<PolishedTimerSlug, { scoreboard: string; timer: string }>
   psychedelic: { scoreboard: psychedelicSb, timer: psychedelicTm },
   visionary: { scoreboard: visionarySb, timer: visionaryTm },
   calcadao: { scoreboard: calcadaoTm, timer: calcadaoTm },
+  'creature-anime': { scoreboard: creatureSb, timer: creatureTm },
+  'idol-hunters': { scoreboard: idolSb, timer: idolTm },
+  'shinobi-anime': { scoreboard: shinobiSb, timer: shinobiTm },
 };
 
 export function polishedThumb(slug: PolishedTimerSlug, kind: 'scoreboard' | 'timer'): string {

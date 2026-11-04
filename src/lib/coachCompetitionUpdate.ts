@@ -10,6 +10,7 @@ import { createUpdateId, shortPromotionDate } from './coachRankUpdate.ts';
 import { competitionOf } from './progress/competition.ts';
 import { exportProgressPacket, parseProgressPacket } from './progress/format.ts';
 import {
+  PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
   PROGRESS_SCHEMA_VERSION,
   type CoachCompetitionUpdatePacket,
@@ -20,6 +21,7 @@ import {
   type StudentProgressReport,
 } from './progress/types.ts';
 import {
+  addBracketNote,
   addCompetitionMatch,
   addCompetitionResult,
   addTournament,
@@ -60,7 +62,7 @@ export function buildCoachCompetitionUpdate(input: {
   location?: string;
   division?: string;
   weightClass?: string;
-  matches: { opponent: string; result: MatchResult; method: MatchMethod; note?: string }[];
+  matches: { opponent: string; result: MatchResult; method: MatchMethod; note?: string; round?: string }[];
   gym?: CoachGymBrand;
   now?: number;
   updateId?: string;
@@ -81,12 +83,16 @@ export function buildCoachCompetitionUpdate(input: {
       location: (input.location ?? '').trim(),
       division: (input.division ?? '').trim(),
       weightClass: (input.weightClass ?? '').trim(),
-      matches: input.matches.map((match) => ({
-        opponent: match.opponent.trim(),
-        result: match.result,
-        method: match.method,
-        note: (match.note ?? '').trim().slice(0, PROGRESS_NOTE_MAX),
-      })),
+      matches: input.matches.map((match) => {
+        const round = (match.round ?? '').trim().slice(0, PROGRESS_NAME_MAX);
+        return {
+          opponent: match.opponent.trim(),
+          result: match.result,
+          method: match.method,
+          note: (match.note ?? '').trim().slice(0, PROGRESS_NOTE_MAX),
+          ...(round ? { round } : {}),
+        };
+      }),
     },
   };
   if (input.gym?.name || input.gym?.logo) packet.gym = input.gym;
@@ -249,6 +255,18 @@ export function acceptCoachCompetitionUpdate(
         },
         now + index,
       );
+      const round = match.round?.trim() ?? '';
+      if (round) {
+        const result = competitionOf(next).results.find((item) => item.id === resultId);
+        const already = result?.bracket.some((note) => sameText(note.round, round) && sameText(note.name, match.opponent));
+        if (!already) {
+          try {
+            next = addBracketNote(next, resultId, round, match.opponent, now + index);
+          } catch {
+            // A full bracket-note list still keeps the match itself.
+          }
+        }
+      }
     });
   }
   if (!next.profile.gymName.trim() && packet.gym?.name) {
