@@ -25,7 +25,7 @@ import { CardLookSetting } from '../components/rosterCard/CardLookSetting';
 import { dismissCardNotice, getCardNotices, subscribeCardSync } from '../lib/cardSync';
 import { coachDoorOpen } from '../lib/productNames';
 import { readRosterCard, recordRosterRankChange, removeRosterCard, subscribeRosterCards } from '../lib/rosterCardStore';
-import { toggleCompetitor } from '../lib/rosterCardActions';
+import { linkedCompetitorForCheckIn, toggleCompetitor, toggleStudentCheckIn } from '../lib/rosterCardActions';
 import { useRosterState } from '../hooks/useStores';
 import { COMPETITOR_SYSTEM_NAME, isCoachStudentRoster } from '../lib/productNames';
 import { competitorPhotoFromFile } from '../lib/competitorPhoto';
@@ -331,6 +331,7 @@ export function RosterPage() {
                   ? { on: readRosterCard(competitor.id).competitorOn, onToggle: () => toggleCompetitor(competitor.id) }
                   : undefined
               }
+              studentCheckIn={studentCheckInFor(competitor.id, studentRoster && competitorRosterOpen)}
               onLink={() => setLinkTarget(competitor)}
               onSamePerson={() => setSamePerson(competitor)}
               onCoachSync={() => setSyncTarget(competitor)}
@@ -561,6 +562,17 @@ function CsvInstructions({ text }: { text: string }) {
   );
 }
 
+/**
+ * Student Roster rows only, where the Competitor Roster is open and the Competitor switch is on:
+ * Check In flips the linked competitor card's checkedIn (the same check-in brackets read).
+ */
+export function studentCheckInFor(rosterId: string, open: boolean): { checkedIn: boolean; onToggle: () => { text: string; error?: true } } | undefined {
+  if (!open) return undefined;
+  const card = linkedCompetitorForCheckIn(rosterId);
+  if (!card) return undefined;
+  return { checkedIn: card.checkedIn, onToggle: () => toggleStudentCheckIn(rosterId) };
+}
+
 export function StudentCard({
   student,
   studentRoster,
@@ -580,6 +592,7 @@ export function StudentCard({
   onCoachSync,
   sendAllowed,
   competitorSwitch,
+  studentCheckIn,
 }: {
   student: Student;
   studentRoster: boolean;
@@ -606,6 +619,8 @@ export function StudentCard({
    * Add to Competitor Roster action as the card's top switch, next to the belt.
    */
   competitorSwitch?: { on: boolean; onToggle: () => { text: string; error?: true } };
+  /** Student Roster only, while Competitor is on: Check In on the linked competitor card. */
+  studentCheckIn?: { checkedIn: boolean; onToggle: () => { text: string; error?: true } };
 }) {
   const [competitorNote, setCompetitorNote] = useState<{ text: string; error?: boolean } | null>(null);
   const promoted = formatPromotion(student.lastPromotion);
@@ -659,6 +674,21 @@ export function StudentCard({
               >
                 <span className="roster-card__competitor-track" aria-hidden="true" />
                 Competitor
+              </button>
+            ) : null}
+            {studentCheckIn ? (
+              <button
+                type="button"
+                className={`btn roster-card__checkin${studentCheckIn.checkedIn ? '' : ' btn--ghost'}`}
+                aria-pressed={studentCheckIn.checkedIn}
+                aria-label={`Check In ${student.name}`}
+                title="Here for today's tournament"
+                onClick={() => {
+                  const result = studentCheckIn.onToggle();
+                  setCompetitorNote({ text: result.text, error: Boolean(result.error) });
+                }}
+              >
+                Check In
               </button>
             ) : null}
           </div>

@@ -10831,6 +10831,36 @@ input.roster-pick__name:focus,
   color: #ff8a8a;
 }
 
+/* Student Roster row Check In: same look as the competitor list's, on the belt line. */
+.roster-card .roster-card__belt-row .btn.roster-card__checkin {
+  min-height: 44px;
+  padding: 0 0.8rem;
+}
+
+/* Phones: belt, Competitor and Check In stay on one line; every tap target stays 44px tall. */
+@media (max-width: 480px) {
+  .roster-card__belt-row {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+  }
+  .roster-card__competitor {
+    gap: 0.3rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.78rem;
+  }
+  .roster-card__competitor-track {
+    width: 26px;
+  }
+  .roster-card__competitor--on .roster-card__competitor-track::after {
+    transform: translateX(8px);
+  }
+  .roster-card .roster-card__belt-row .btn.roster-card__checkin {
+    padding: 0 0.6rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+}
+
 .roster-card .btn.roster-card__checkin.btn--ghost {
   background: transparent;
   color: #f7f4ee;

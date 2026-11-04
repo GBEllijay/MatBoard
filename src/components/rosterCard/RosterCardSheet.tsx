@@ -11,7 +11,7 @@ import { CoachClipboardCard, type AssessmentView } from './CoachClipboardCard';
 import { downloadJsonFile, todayIso } from './fileSave';
 import { assessmentSummary, benchmarkItems, cardBelt, cardDate, coachRankSource, dateFacts, initialsOf, promotionDates } from '../../lib/rosterCard';
 import { readPrivateCoachNotes, readRosterCard, subscribeRosterCards, updateRosterCard, writePrivateCoachNotes } from '../../lib/rosterCardStore';
-import { removeLinkedCompetitorCard, shownCardPhoto, toggleCompetitor as toggleCompetitorAction } from '../../lib/rosterCardActions';
+import { removeLinkedCompetitorCard, shownCardPhoto, toggleCompetitor as toggleCompetitorAction, toggleStudentCheckIn } from '../../lib/rosterCardActions';
 import { beltProgressFromCard, studentSnapshotFromFile } from '../../lib/rosterCardSync';
 import {
   dismissCardNotice,
@@ -29,7 +29,7 @@ import { readPhotoReviews } from '../../lib/rosterPhotoApproval';
 import { ASSESSMENT_AREAS, type AssessmentScore, type AssessmentScores } from '../../lib/studentAssessment';
 import { readGymLogo, subscribeGymLogo } from '../../lib/gymLogo';
 import { readGymName } from '../../lib/gymName';
-import { getRoster, setNoPhotos, type Student } from '../../lib/rosterStore';
+import { getRoster, setNoPhotos, subscribeRoster, type Student } from '../../lib/rosterStore';
 import type { TournamentRegistrationEvent } from '../../lib/studentEvents';
 
 /**
@@ -51,7 +51,7 @@ function useCardTick(): number {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const bump = () => setTick((value) => value + 1);
-    const offs = [subscribeRosterCards(bump), subscribeGymLogo(bump), subscribeCardSync(bump), subscribeCardLook(bump)];
+    const offs = [subscribeRosterCards(bump), subscribeGymLogo(bump), subscribeCardSync(bump), subscribeCardLook(bump), subscribeRoster(bump)];
     return () => offs.forEach((off) => off());
   }, []);
   return tick;
@@ -208,6 +208,10 @@ export function RosterCardBody({
     const result = toggleCompetitorAction(student.id);
     setCompetitorStatus({ text: result.text, error: Boolean(result.error) });
   };
+  const toggleCheckIn = () => {
+    const result = toggleStudentCheckIn(student.id);
+    setCompetitorStatus({ text: result.text, error: Boolean(result.error) });
+  };
 
   const toggleNoPhotos = () => {
     const result = setNoPhotos(student.id, !student.noPhotos, 'coach');
@@ -298,6 +302,18 @@ export function RosterCardBody({
                     <small>Makes a separate competitor card from this card. Turning it off keeps that card.</small>
                   </span>
                 </button>
+                {record.competitorOn && competitorCard && competitorCard.rosterList !== 'student' ? (
+                  <button
+                    type="button"
+                    className={competitorCard.checkedIn ? 'clipboard__btn clipboard__checkin clipboard__checkin--on' : 'clipboard__btn clipboard__checkin'}
+                    aria-pressed={competitorCard.checkedIn}
+                    aria-label={`Check In ${competitorCard.name}`}
+                    title="Here for today's tournament"
+                    onClick={toggleCheckIn}
+                  >
+                    {competitorCard.checkedIn ? 'Checked In' : 'Check In'}
+                  </button>
+                ) : null}
                 {competitorCard ? (
                   <button type="button" className="clipboard__link" onClick={onOpenCompetitorRoster}>
                     Open competitor card ›

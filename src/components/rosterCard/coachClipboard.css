@@ -1199,3 +1199,20 @@
 .clipboard .clipboard__top .clipboard__row {
   margin: 0;
 }
+
+/* Check In in the top block, next to Add to Competitor Roster. Same state as the competitor list. */
+.clipboard .clipboard__top .clipboard__checkin {
+  min-height: 44px;
+  min-width: 44px;
+  color: var(--cb-link);
+}
+.clipboard .clipboard__top .clipboard__checkin--on {
+  background: var(--cb-on);
+  border-color: var(--cb-on);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+.clipboard .clipboard__top .clipboard__checkin:focus-visible {
+  outline: 2px solid var(--cb-link);
+  outline-offset: 2px;
+}

@@ -9,6 +9,7 @@ import {
   getRoster,
   linkRosterCard,
   removeStudent,
+  setCheckedIn,
   setNoPhotos,
   updateStudent,
   type Student,
@@ -94,7 +95,39 @@ export function toggleCompetitor(rosterId: string, storage?: MemoryStore | null)
 
 /** Unchecked: the competitor card and its history stay. Removing it is a separate, confirmed step. */
 export function turnOffCompetitorToggle(rosterId: string, storage?: MemoryStore | null): void {
+  const record = readRosterCard(rosterId, storage ?? undefined);
   updateRosterCard(rosterId, (row) => ({ ...row, competitorOn: false }), storage ?? undefined);
+  // A switched-off student is not here for the tournament: clear the competitor card's
+  // Check In so Fill from check-in never pulls them into a bracket. The card itself stays.
+  const card = record.competitorCardId ? findCard(record.competitorCardId) : undefined;
+  if (card && card.rosterList !== 'student' && card.checkedIn) setCheckedIn(card.id, false);
+}
+
+// ---------- Check In ----------
+
+/**
+ * The competitor card behind a Student Roster card, only while its Competitor switch is on.
+ * Check In for a Student Roster student IS this card's checkedIn (the one Competitor Roster
+ * check-in that brackets read). There is no second check-in store.
+ */
+export function linkedCompetitorForCheckIn(rosterId: string, storage?: MemoryStore | null): Student | undefined {
+  const record = readRosterCard(rosterId, storage ?? undefined);
+  if (!record.competitorOn || !record.competitorCardId) return undefined;
+  const card = findCard(record.competitorCardId);
+  return card && card.rosterList !== 'student' ? card : undefined;
+}
+
+/**
+ * The one Check In action for the Student Roster row and the card's top block. It flips the
+ * linked competitor card's checkedIn with the Competitor Roster's own setCheckedIn, so the
+ * competitor list and Fill from check-in see the same state. Shown only while Competitor is on.
+ */
+export function toggleStudentCheckIn(rosterId: string, storage?: MemoryStore | null): { checkedIn: boolean; text: string; error?: true } {
+  const card = linkedCompetitorForCheckIn(rosterId, storage);
+  if (!card) return { checkedIn: false, text: 'Turn on Competitor first. Brackets only use the Competitor Roster.', error: true };
+  const next = setCheckedIn(card.id, !card.checkedIn);
+  if (!next) return { checkedIn: card.checkedIn, text: 'Could not change Check In.', error: true };
+  return { checkedIn: next.checkedIn, text: next.checkedIn ? `${next.name} is checked in.` : `${next.name} is no longer checked in.` };
 }
 
 /** Only after the coach confirms. Uses the Competitor Roster's own Remove. */
