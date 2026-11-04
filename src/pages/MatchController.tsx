@@ -288,7 +288,10 @@ export function MatchControllerPage() {
             Match end sound
           </label>
           <EndCueControls label="Match end cue" value={match.endCue} />
-          <div className="cue-preview">
+          <div className="cue-with-stack">
+            <ScoreboardSkinPicker appearance="stack" />
+            {/* Preview cues stay in this build. The controller cleanup removes this block. */}
+            <div className="cue-preview" data-cleanup="preview-cues">
             <p className="cue-preview-label">Preview cues</p>
             <div className="presets presets--three" role="group" aria-label="Preview match cues">
               <button
@@ -319,6 +322,7 @@ export function MatchControllerPage() {
               >
                 End
               </button>
+            </div>
             </div>
           </div>
         </fieldset>

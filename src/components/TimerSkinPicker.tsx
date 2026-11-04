@@ -13,7 +13,13 @@ import { SkinPicker, type SkinPickerOption } from './SkinPicker';
  * replaces the Classic / Advantage toggle. Anyone else keeps that toggle (no lock tiles).
  * Remembered on this device.
  */
-export function TimerSkinPicker({ buttonClassName }: { buttonClassName?: string }) {
+export function TimerSkinPicker({
+  buttonClassName,
+  appearance = 'chip',
+}: {
+  buttonClassName?: string;
+  appearance?: 'chip' | 'stack';
+}) {
   const skin = useTrainingSkin();
   const open = usePolishedSkinsUnlocked();
   const whiteBase = useWhiteBaseSkins();
@@ -35,6 +41,7 @@ export function TimerSkinPicker({ buttonClassName }: { buttonClassName?: string 
       value={visibleTrainingSkin(skin, open, whiteBase)}
       options={options}
       buttonClassName={buttonClassName}
+      appearance={appearance}
       showMine={custom.showMine}
       mineExtra={custom.mineExtra}
       renderTileExtra={custom.renderTileExtra}

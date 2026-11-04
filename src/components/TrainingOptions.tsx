@@ -179,7 +179,10 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
           Training end sound
         </label>
         <EndCueControls label="Training end cue" value={audio.endCue} />
-        <div className="cue-preview">
+        <div className="cue-with-stack">
+          <TimerSkinPicker appearance="stack" />
+          {/* Preview cues stay in this build. The controller cleanup removes this block. */}
+          <div className="cue-preview" data-cleanup="preview-cues">
           <p className="cue-preview-label">Preview cues</p>
           <div className="presets presets--three" role="group" aria-label="Preview cues">
             <button
@@ -206,6 +209,7 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
             >
               End
             </button>
+          </div>
           </div>
         </div>
         <label className="toggle">

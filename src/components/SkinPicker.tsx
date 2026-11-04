@@ -3,6 +3,7 @@ import {
   groupSkinPickerOptions,
   scrollSkinOptionIntoView,
   skinPickerColumnCount,
+  skinStackFaces,
   skinPickerPopupWidth,
   skinPickerScrollMax,
   type SkinPickerSectionId,
@@ -39,6 +40,7 @@ export function SkinPicker({
   showMine = false,
   mineExtra = null,
   renderTileExtra,
+  appearance = 'chip',
 }: {
   /** Dialog and radiogroup name, e.g. "Scoreboard skin" or "Timer skin". */
   label: string;
@@ -53,6 +55,8 @@ export function SkinPicker({
   mineExtra?: ReactNode;
   /** Rename and delete for an uploaded skin. Rendered on top of that tile. */
   renderTileExtra?: (option: SkinPickerOption) => ReactNode;
+  /** Chip is the Skins label. Stack is the fanned thumbnails beside Preview cues. */
+  appearance?: 'chip' | 'stack';
 }) {
   const [open, setOpen] = useState(false);
   const [moreBelow, setMoreBelow] = useState(false);
@@ -61,6 +65,7 @@ export function SkinPicker({
   const scrollRef = useRef<HTMLDivElement>(null);
   const pickerId = useId();
   const current = options.find((option) => option.id === value);
+  const stackFaces = appearance === 'stack' ? skinStackFaces(options, value) : [];
   const groups = groupSkinPickerOptions(options, showMine && mineExtra != null);
   const optionKey = options.map((option) => `${option.section ?? 'advantage'}:${option.id}`).join('|');
   const focusedOpen = useRef(false);
@@ -216,14 +221,33 @@ export function SkinPicker({
     <div className={`skin-pick${className ? ` ${className}` : ''}`} ref={rootRef}>
       <button
         type="button"
-        className={`${buttonClassName} skin-pick__btn`}
+        className={appearance === 'stack' ? 'skin-stack' : `${buttonClassName} skin-pick__btn`}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-controls={open ? pickerId : undefined}
-        aria-label={current ? `${label}, ${current.label}` : label}
+        aria-label={
+          appearance === 'stack'
+            ? `Skin stack, ${current ? current.label : label}`
+            : current
+              ? `${label}, ${current.label}`
+              : label
+        }
         onClick={() => setOpen((v) => !v)}
       >
-        Skins
+        {appearance === 'stack' ? (
+          <span className="skin-stack__fan" aria-hidden="true">
+            {stackFaces.map((face, index) => (
+              <img
+                key={`${face.id}-${index}`}
+                className={`skin-stack__card skin-stack__card--${index === stackFaces.length - 1 ? 'front' : index === 0 ? 'back' : 'mid'}`}
+                src={face.thumb}
+                alt=""
+              />
+            ))}
+          </span>
+        ) : (
+          'Skins'
+        )}
       </button>
       {open ? (
         <div id={pickerId} ref={pickerRef} className="skin-pick__picker" role="dialog" aria-label={label}>

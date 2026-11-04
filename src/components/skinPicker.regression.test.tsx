@@ -209,6 +209,45 @@ test('a long catalog scrolls the selected tile into view and fades when more is 
   }
 });
 
+test('the skin stack opens the same chooser and keeps the current skin in front', async () => {
+  setViewport(390, 844);
+  const mounted = mount(
+    <SkinPicker
+      label="Timer skins"
+      value="OLD_SCHOOL"
+      appearance="stack"
+      options={WHITE}
+      onChoose={() => undefined}
+    />,
+  );
+  try {
+    const stack = document.querySelector<HTMLButtonElement>('.skin-stack');
+    assert.ok(stack);
+    assert.equal(stack.getAttribute('aria-label'), 'Skin stack, Old School');
+    const cards = [...document.querySelectorAll<HTMLImageElement>('.skin-stack__card')];
+    assert.equal(cards.length, 3);
+    assert.equal(cards.at(-1)?.classList.contains('skin-stack__card--front'), true);
+    assert.equal(cards.at(-1)?.getAttribute('src'), '/t/old.jpg');
+    assert.equal(document.body.textContent?.includes('Kids Arcade'), false);
+    await act(async () => {
+      stack.click();
+    });
+    const dialog = document.querySelector('.skin-pick__picker');
+    assert.equal(dialog?.getAttribute('role'), 'dialog');
+    assert.equal(dialog?.getAttribute('aria-label'), 'Timer skins');
+    assert.deepEqual(
+      [...document.querySelectorAll('[role="radio"]')].map((radio) => radio.getAttribute('aria-label')),
+      ['Mock-Tournament', 'Old School', 'Quick Result'],
+    );
+    await act(async () => {
+      document.dispatchEvent(new view.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    assert.equal(document.querySelector('.skin-pick__picker'), null);
+  } finally {
+    unmount(mounted);
+  }
+});
+
 function pickerCols(): string {
   return document.querySelector<HTMLElement>('.skin-pick__picker')?.style.getPropertyValue('--skin-cols') ?? '';
 }

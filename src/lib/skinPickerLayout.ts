@@ -97,6 +97,26 @@ export function groupSkinPickerOptions<T extends SkinPickerLayoutOption>(
   return groups;
 }
 
+/**
+ * Faces for the cascaded thumbnail button.
+ * Up to three skins, current one last so it paints on top.
+ * The two behind it are the next skins in the list, wrapping around.
+ */
+export function skinStackFaces<T extends { id: string }>(options: readonly T[], value: string): T[] {
+  if (options.length === 0) return [];
+  const found = options.findIndex((option) => option.id === value);
+  const index = found >= 0 ? found : 0;
+  const count = Math.min(3, options.length);
+  const faces: T[] = [];
+  for (let step = count - 1; step >= 1; step -= 1) {
+    const face = options[(index + step) % options.length];
+    if (face) faces.push(face);
+  }
+  const current = options[index];
+  if (current) faces.push(current);
+  return faces;
+}
+
 /** The open picker scrolls the selected radio into view. Returns false when it is missing. */
 export function scrollSkinOptionIntoView(root: ParentNode, selectedId: string): boolean {
   const escaped = typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(selectedId) : selectedId.replace(/"/g, '');

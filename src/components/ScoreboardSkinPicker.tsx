@@ -13,7 +13,13 @@ import { SkinPicker, type SkinPickerOption } from './SkinPicker';
  * Anyone else keeps the old controls (no Skins button, no lock tiles, no upsell).
  * The pick is stored with the match on this device, so Display and cast follow it.
  */
-export function ScoreboardSkinPicker({ buttonClassName }: { buttonClassName?: string }) {
+export function ScoreboardSkinPicker({
+  buttonClassName,
+  appearance = 'chip',
+}: {
+  buttonClassName?: string;
+  appearance?: 'chip' | 'stack';
+}) {
   const match = useMatchState();
   const board = useMatchBoard();
   const custom = useCustomSkinSection(board.polishedOpen, (id) => {
@@ -36,6 +42,7 @@ export function ScoreboardSkinPicker({ buttonClassName }: { buttonClassName?: st
       value={board.skinFor(match.skin)}
       options={options}
       buttonClassName={buttonClassName}
+      appearance={appearance}
       showMine={custom.showMine}
       mineExtra={custom.mineExtra}
       renderTileExtra={custom.renderTileExtra}

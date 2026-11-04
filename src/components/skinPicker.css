@@ -227,3 +227,74 @@
   border-radius: 0 0 16px 16px;
   background: linear-gradient(to bottom, rgba(14, 22, 36, 0), #0e1624 78%);
 }
+
+/* Fanned thumbnails. The current skin is the front card. */
+.skin-stack {
+  position: relative;
+  width: 4.75rem;
+  height: 3.45rem;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.skin-stack:focus-visible {
+  outline: 3px solid #fcc000;
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+.skin-stack__fan {
+  position: absolute;
+  inset: 0;
+}
+
+.skin-stack__card {
+  position: absolute;
+  width: 2.55rem;
+  height: 1.9rem;
+  object-fit: cover;
+  border-radius: 7px;
+  border: 2px solid #f4f7fb;
+  background: #1a2436;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.38);
+}
+
+.skin-stack__card--back {
+  left: 0;
+  top: 0.05rem;
+  z-index: 1;
+  transform: rotate(-12deg);
+}
+
+.skin-stack__card--mid {
+  right: 0;
+  top: 0.2rem;
+  z-index: 2;
+  transform: rotate(10deg);
+}
+
+.skin-stack__card--front {
+  left: 0.9rem;
+  top: 1.05rem;
+  z-index: 3;
+  width: 2.85rem;
+  height: 2.15rem;
+  transform: rotate(-2deg);
+}
+
+/* Sits in the Preview cues row. Cues stay beside the stack, or below it when the row is narrow. */
+.cue-with-stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.7rem 0.9rem;
+  margin-top: 0.35rem;
+}
+
+.cue-with-stack > .cue-preview {
+  margin-top: 0;
+  flex: 1 1 14rem;
+}
