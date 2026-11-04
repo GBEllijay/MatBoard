@@ -47,6 +47,9 @@ const { getCardSyncState } = await import('../../lib/cardSync.ts');
 const { updateRosterCard } = await import('../../lib/rosterCardStore.ts');
 const { ASSESSMENT_AREAS } = await import('../../lib/studentAssessment.ts');
 const { ProfilePage } = await import('../../pages/student/ProfilePage.tsx');
+const { StudentCard } = await import('../../pages/Roster.tsx');
+const { readRosterCard } = await import('../../lib/rosterCardStore.ts');
+const { toggleCompetitor } = await import('../../lib/rosterCardActions.ts');
 const { blankStudentReport, saveStudentReport } = await import('../../lib/studentEdition.ts');
 const { STUDENT_NO_PHOTOS_KEY } = await import('../../lib/studentPhotoFlag.ts');
 const { saveStudentDriveLink } = await import('../../lib/academyPathway.ts');
@@ -268,4 +271,109 @@ test("My profile: Don't allow photos shows No photos and hides the photo send", 
   assert.ok(document.querySelector('[data-testid="profile-no-photos"]'), 'No photos on the profile photo card');
   assert.equal(buttons(/Send photo to coach|Send to coach/).length, 0, 'photo send hidden');
   unmount(m);
+});
+
+test('Add to Competitor Roster is the first control after the card header, on all four looks', () => {
+  for (const look of CARD_LOOKS) {
+    localStorage.clear();
+    resetRoster();
+    writeCardLook(look);
+    const card = studentCard();
+    const m = mount(sheet(fresh(card.id)));
+    const header = document.querySelector('.clipboard__hdr');
+    assert.ok(header, `${look.style}-${look.skin}: header`);
+    const top = header?.nextElementSibling;
+    assert.equal(top?.getAttribute('data-testid'), 'clipboard-top', `${look.style}-${look.skin}: top block right under the header`);
+    const first = top?.querySelector('button, input, select, textarea');
+    assert.equal(first?.getAttribute('role'), 'switch');
+    assert.match(first?.textContent ?? '', /Add to Competitor Roster/);
+    assert.equal(document.querySelectorAll('[role="switch"]').length >= 1, true);
+    assert.equal([...document.querySelectorAll('.clipboard__extras [role="switch"]')].filter((b) => /Competitor Roster/.test(b.textContent ?? '')).length, 0, 'not lower down any more');
+    click(first as Element);
+    assert.equal(readRosterCard(card.id).competitorOn, true);
+    assert.match(text(), /was added to the Competitor Roster as a new card/);
+    const competitorId = readRosterCard(card.id).competitorCardId as string;
+    assert.ok(buttons(/Open competitor card ›/).length, 'Open competitor card next to it');
+    assert.ok(top?.textContent?.includes('Open competitor card ›'));
+    click(top?.querySelector('[role="switch"]') as Element);
+    assert.equal(readRosterCard(card.id).competitorOn, false);
+    assert.ok(fresh(competitorId), 'turning it off keeps the competitor card');
+    unmount(m);
+  }
+});
+
+test('the card switch stays hidden where the Competitor Roster is locked', () => {
+  localStorage.clear();
+  resetRoster();
+  const card = studentCard();
+  const m = mount(
+    <RosterCardSheet student={fresh(card.id)} onClose={() => undefined} onEditBelt={() => undefined} onLink={() => undefined} competitorRosterOpen={false} onOpenCompetitorRoster={() => undefined} />,
+  );
+  assert.equal(document.querySelector('[data-testid="clipboard-top"]'), null);
+  assert.equal(buttons(/Add to Competitor Roster/).length, 0);
+  unmount(m);
+});
+
+function row(student: Student, competitorSwitch?: { on: boolean; onToggle: () => { text: string; error?: true } }) {
+  const noop = () => undefined;
+  return (
+    <ul>
+      <StudentCard
+        student={student}
+        studentRoster
+        pending={false}
+        onEdit={noop}
+        onAskRemove={noop}
+        onCancelRemove={noop}
+        onConfirmRemove={noop}
+        onToggleCheckIn={noop}
+        onLink={noop}
+        onSamePerson={noop}
+        onSendCompetition={noop}
+        onOpenCard={noop}
+        onCoachSync={noop}
+        sendAllowed={false}
+        competitorSwitch={competitorSwitch}
+      />
+    </ul>
+  );
+}
+
+test('Student Roster row: a Competitor switch next to the belt on the header row flips the student onto the Competitor Roster', () => {
+  localStorage.clear();
+  resetRoster();
+  const card = studentCard();
+  const toggle = () => toggleCompetitor(card.id);
+  let m = mount(row(fresh(card.id), { on: readRosterCard(card.id).competitorOn, onToggle: toggle }));
+  const head = document.querySelector('.roster-card__head');
+  const sw = head?.querySelector('.roster-card__belt-row [role="switch"]') as HTMLButtonElement | null;
+  assert.ok(sw, 'switch in the header row beside the belt');
+  assert.notEqual(head?.querySelector('.roster-card__belt-row')?.firstElementChild, sw, 'the belt comes first, then the switch');
+  assert.equal(sw?.getAttribute('aria-checked'), 'false');
+  assert.equal(sw?.getAttribute('aria-label'), 'Add Ana Lima to Competitor Roster');
+  click(sw as Element);
+  const record = readRosterCard(card.id);
+  assert.equal(record.competitorOn, true, 'the same action as the card switch');
+  const competitor = fresh(record.competitorCardId as string);
+  assert.notEqual(competitor.rosterList, 'student', 'a Competitor Roster card');
+  assert.match(text(), /was added to the Competitor Roster/);
+  unmount(m);
+  m = mount(row(fresh(card.id), { on: readRosterCard(card.id).competitorOn, onToggle: toggle }));
+  const on = document.querySelector('.roster-card__belt-row [role="switch"]') as HTMLButtonElement;
+  assert.equal(on.getAttribute('aria-checked'), 'true');
+  click(on);
+  assert.equal(readRosterCard(card.id).competitorOn, false);
+  assert.ok(fresh(competitor.id), 'off keeps the competitor card');
+  unmount(m);
+  // No switch when the page passes none (Competitor Roster locked, or the Competitor list itself).
+  m = mount(row(fresh(card.id)));
+  assert.equal(document.querySelector('.roster-card__competitor'), null);
+  unmount(m);
+});
+
+test('Roster page passes the row switch only on the Student Roster and behind competitorRosterOpen', async () => {
+  const { readFileSync } = await import('node:fs');
+  const page = readFileSync('src/pages/Roster.tsx', 'utf8');
+  assert.match(page, /studentRoster && competitorRosterOpen\s*\?\s*\{ on: readRosterCard\(competitor\.id\)\.competitorOn, onToggle: \(\) => toggleCompetitor\(competitor\.id\) \}/);
+  assert.match(page, /const competitorRosterOpen = coachDoorOpen\(proUnlocked, coachUnlocked, seat !== null\);/);
 });

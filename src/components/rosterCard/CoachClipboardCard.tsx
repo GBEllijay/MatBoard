@@ -78,7 +78,9 @@ export type ClipboardCardProps = {
   /** Notes tab body. Coach: Training notes & suggestions, Private coach notes. Student: Suggestions from coach. */
   notes: ReactNode;
   notesLabel: string;
-  /** Coach panel under the sheet: Competitor toggle, Registered notices. */
+  /** Coach: first controls directly under the header (Add to Competitor Roster). */
+  topControls?: ReactNode;
+  /** Coach panel under the sheet: status, Registered notices, Link to student. */
   extras?: ReactNode;
   footer: string;
 };
@@ -164,6 +166,8 @@ export function CoachClipboardCard(props: ClipboardCardProps) {
               ) : null}
             </div>
           </header>
+
+          {props.topControls ? <div className="clipboard__top" data-testid="clipboard-top">{props.topControls}</div> : null}
 
           <div className="clipboard__tabs" role="tablist" aria-label="Card sections" id={tabsId}>
             {tabs.map((row) => (

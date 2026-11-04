@@ -24,7 +24,8 @@ import { registrationText, RosterCardSheet, startStudentAppSync } from '../compo
 import { CardLookSetting } from '../components/rosterCard/CardLookSetting';
 import { dismissCardNotice, getCardNotices, subscribeCardSync } from '../lib/cardSync';
 import { coachDoorOpen } from '../lib/productNames';
-import { recordRosterRankChange, removeRosterCard } from '../lib/rosterCardStore';
+import { readRosterCard, recordRosterRankChange, removeRosterCard, subscribeRosterCards } from '../lib/rosterCardStore';
+import { toggleCompetitor } from '../lib/rosterCardActions';
 import { useRosterState } from '../hooks/useStores';
 import { COMPETITOR_SYSTEM_NAME, isCoachStudentRoster } from '../lib/productNames';
 import { competitorPhotoFromFile } from '../lib/competitorPhoto';
@@ -135,6 +136,8 @@ export function RosterPage() {
   const [syncOffer, setSyncOffer] = useState<Student | null>(null);
   const [, setNoticeTick] = useState(0);
   useEffect(() => subscribeCardSync(() => setNoticeTick((value) => value + 1)), []);
+  // The row Competitor switch reads the card store.
+  useEffect(() => subscribeRosterCards(() => setNoticeTick((value) => value + 1)), []);
   const competitorRosterOpen = coachDoorOpen(proUnlocked, coachUnlocked, seat !== null);
   const cardStudent = cardTarget ? roster.students.find((row) => row.id === cardTarget) ?? null : null;
   const listed = useMemo(
@@ -323,6 +326,11 @@ export function RosterPage() {
                 else dismissCardNotice(id);
               }}
               onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
+              competitorSwitch={
+                studentRoster && competitorRosterOpen
+                  ? { on: readRosterCard(competitor.id).competitorOn, onToggle: () => toggleCompetitor(competitor.id) }
+                  : undefined
+              }
               onLink={() => setLinkTarget(competitor)}
               onSamePerson={() => setSamePerson(competitor)}
               onCoachSync={() => setSyncTarget(competitor)}
@@ -553,7 +561,7 @@ function CsvInstructions({ text }: { text: string }) {
   );
 }
 
-function StudentCard({
+export function StudentCard({
   student,
   studentRoster,
   plan,
@@ -571,6 +579,7 @@ function StudentCard({
   onNotice,
   onCoachSync,
   sendAllowed,
+  competitorSwitch,
 }: {
   student: Student;
   studentRoster: boolean;
@@ -592,7 +601,13 @@ function StudentCard({
   onCoachSync: () => void;
   /** False when coach sync is off for this student or this seat cannot send. */
   sendAllowed: boolean;
+  /**
+   * Student Roster only, and only where the Competitor Roster is open: the same
+   * Add to Competitor Roster action as the card's top switch, next to the belt.
+   */
+  competitorSwitch?: { on: boolean; onToggle: () => { text: string; error?: true } };
 }) {
+  const [competitorNote, setCompetitorNote] = useState<{ text: string; error?: boolean } | null>(null);
   const promoted = formatPromotion(student.lastPromotion);
   const promotionDetail = student.lastPromotionDetail.trim();
   const promotionLine = promoted && promotionDetail
@@ -627,8 +642,32 @@ function StudentCard({
               )}
             </div>
           </div>
-          <BeltTip belt={student.belt} />
+          <div className="roster-card__belt-row">
+            <BeltTip belt={student.belt} />
+            {competitorSwitch ? (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={competitorSwitch.on}
+                aria-label={`Add ${student.name} to Competitor Roster`}
+                title="Add to Competitor Roster"
+                className={`roster-card__competitor${competitorSwitch.on ? ' roster-card__competitor--on' : ''}`}
+                onClick={() => {
+                  const result = competitorSwitch.onToggle();
+                  setCompetitorNote({ text: result.text, error: Boolean(result.error) });
+                }}
+              >
+                <span className="roster-card__competitor-track" aria-hidden="true" />
+                Competitor
+              </button>
+            ) : null}
+          </div>
         </header>
+        {competitorNote ? (
+          <p className={`roster-card__meta${competitorNote.error ? ' roster-card__meta--error' : ''}`} role="status">
+            {competitorNote.text}
+          </p>
+        ) : null}
         {student.division ? <p className="roster-card__meta">{student.division}</p> : null}
         {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
         {promotionLine ? <p className="roster-card__meta roster-card__promotion">{promotionLine}</p> : null}

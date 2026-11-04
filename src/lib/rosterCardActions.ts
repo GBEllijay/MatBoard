@@ -74,6 +74,24 @@ export function addToCompetitorRoster(rosterId: string, storage?: MemoryStore | 
   return { ok: true, competitorId: card.id, created: true };
 }
 
+/**
+ * The one Add to Competitor Roster switch action, shared by the card's top switch and
+ * the Student Roster row switch. On: add (or reuse) the competitor card. Off: keep it.
+ * Callers show the switch only where the Competitor Roster is open (competitorRosterOpen).
+ */
+export function toggleCompetitor(rosterId: string, storage?: MemoryStore | null): { on: boolean; text: string; error?: true } {
+  const student = findCard(rosterId);
+  const record = readRosterCard(rosterId, storage ?? undefined);
+  const name = student?.name ?? 'This student';
+  if (record.competitorOn) {
+    turnOffCompetitorToggle(rosterId, storage);
+    return { on: false, text: record.competitorCardId ? 'Off. The competitor card and its history are kept.' : 'Off.' };
+  }
+  const result = addToCompetitorRoster(rosterId, storage);
+  if (!result.ok) return { on: false, text: result.error, error: true };
+  return { on: true, text: result.created ? `${name} was added to the Competitor Roster as a new card.` : `${name} is back on the Competitor Roster.` };
+}
+
 /** Unchecked: the competitor card and its history stay. Removing it is a separate, confirmed step. */
 export function turnOffCompetitorToggle(rosterId: string, storage?: MemoryStore | null): void {
   updateRosterCard(rosterId, (row) => ({ ...row, competitorOn: false }), storage ?? undefined);

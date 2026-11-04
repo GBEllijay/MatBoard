@@ -1190,3 +1190,12 @@
   min-width: 0;
   max-width: 100%;
 }
+
+/* Add to Competitor Roster: first control directly under the header. */
+.clipboard .clipboard__top {
+  padding: 10px 14px 4px;
+  border-bottom: 1px solid var(--cb-line, rgba(255, 255, 255, 0.12));
+}
+.clipboard .clipboard__top .clipboard__row {
+  margin: 0;
+}

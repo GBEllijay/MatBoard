@@ -11,7 +11,7 @@ import { CoachClipboardCard, type AssessmentView } from './CoachClipboardCard';
 import { downloadJsonFile, todayIso } from './fileSave';
 import { assessmentSummary, benchmarkItems, cardBelt, cardDate, coachRankSource, dateFacts, initialsOf, promotionDates } from '../../lib/rosterCard';
 import { readPrivateCoachNotes, readRosterCard, subscribeRosterCards, updateRosterCard, writePrivateCoachNotes } from '../../lib/rosterCardStore';
-import { addToCompetitorRoster, removeLinkedCompetitorCard, shownCardPhoto, turnOffCompetitorToggle } from '../../lib/rosterCardActions';
+import { removeLinkedCompetitorCard, shownCardPhoto, toggleCompetitor as toggleCompetitorAction } from '../../lib/rosterCardActions';
 import { beltProgressFromCard, studentSnapshotFromFile } from '../../lib/rosterCardSync';
 import {
   dismissCardNotice,
@@ -203,18 +203,10 @@ export function RosterCardBody({
     say('Student file imported. Your fields are unchanged.');
   };
 
+  const [competitorStatus, setCompetitorStatus] = useState<{ text: string; error?: boolean } | null>(null);
   const toggleCompetitor = () => {
-    if (record.competitorOn) {
-      turnOffCompetitorToggle(student.id);
-      say(record.competitorCardId ? 'Off. The competitor card and its history are kept.' : 'Off.');
-      return;
-    }
-    const result = addToCompetitorRoster(student.id);
-    if (!result.ok) {
-      say(result.error, true);
-      return;
-    }
-    say(result.created ? `${student.name} was added to the Competitor Roster as a new card.` : `${student.name} is back on the Competitor Roster.`);
+    const result = toggleCompetitorAction(student.id);
+    setCompetitorStatus({ text: result.text, error: Boolean(result.error) });
   };
 
   const toggleNoPhotos = () => {
@@ -292,49 +284,58 @@ export function RosterCardBody({
         </div>
       )}
       {sync?.gateText && studentId ? <small className="clipboard__empty">{sync.gateText}</small> : null}
-      {competitorRosterOpen ? (
-        <div className="clipboard__row">
-          <button type="button" role="switch" aria-checked={record.competitorOn} className={record.competitorOn ? 'sw on' : 'sw'} onClick={toggleCompetitor}>
-            <span className="sw__t" aria-hidden="true" />
-            <span>
-              <b>Add to Competitor Roster</b>
-              <small>Makes a separate competitor card from this card. Turning it off keeps that card.</small>
-            </span>
-          </button>
-          {competitorCard ? (
-            <button type="button" className="clipboard__link" onClick={onOpenCompetitorRoster}>
-              Open competitor card ›
-            </button>
-          ) : null}
-          {!record.competitorOn && competitorCard ? (
-            askRemoveCompetitor ? (
-              <>
-                <span>Remove {competitorCard.name}&apos;s competitor card?</span>
-                <button
-                  type="button"
-                  className="clipboard__btn"
-                  onClick={() => {
-                    removeLinkedCompetitorCard(student.id, true);
-                    setAskRemoveCompetitor(false);
-                    say('Competitor card removed. This student card is unchanged.');
-                  }}
-                >
-                  Yes, remove
-                </button>
-                <button type="button" className="clipboard__btn" onClick={() => setAskRemoveCompetitor(false)}>
-                  Keep
-                </button>
-              </>
-            ) : (
-              <button type="button" className="clipboard__link" onClick={() => setAskRemoveCompetitor(true)}>
-                Remove competitor card…
-              </button>
-            )
-          ) : null}
-        </div>
-      ) : null}
     </>
   );
+
+  // First control under the header, where the competitor card has its own switch. Same gate as before.
+  const topControls = competitorRosterOpen ? (
+    <>
+              <div className="clipboard__row clipboard__competitor">
+                <button type="button" role="switch" aria-checked={record.competitorOn} className={record.competitorOn ? 'sw on' : 'sw'} onClick={toggleCompetitor}>
+                  <span className="sw__t" aria-hidden="true" />
+                  <span>
+                    <b>Add to Competitor Roster</b>
+                    <small>Makes a separate competitor card from this card. Turning it off keeps that card.</small>
+                  </span>
+                </button>
+                {competitorCard ? (
+                  <button type="button" className="clipboard__link" onClick={onOpenCompetitorRoster}>
+                    Open competitor card ›
+                  </button>
+                ) : null}
+                {!record.competitorOn && competitorCard ? (
+                  askRemoveCompetitor ? (
+                    <>
+                      <span>Remove {competitorCard.name}&apos;s competitor card?</span>
+                      <button
+                        type="button"
+                        className="clipboard__btn"
+                        onClick={() => {
+                          removeLinkedCompetitorCard(student.id, true);
+                          setAskRemoveCompetitor(false);
+                          setCompetitorStatus({ text: 'Competitor card removed. This student card is unchanged.' });
+                        }}
+                      >
+                        Yes, remove
+                      </button>
+                      <button type="button" className="clipboard__btn" onClick={() => setAskRemoveCompetitor(false)}>
+                        Keep
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="clipboard__link" onClick={() => setAskRemoveCompetitor(true)}>
+                      Remove competitor card…
+                    </button>
+                  )
+                ) : null}
+              </div>
+      {competitorStatus ? (
+        <p className={competitorStatus.error ? 'clipboard__status clipboard__status--error' : 'clipboard__status'} role="status">
+          {competitorStatus.text}
+        </p>
+      ) : null}
+    </>
+  ) : null;
 
   return (
     <>
@@ -422,6 +423,7 @@ export function RosterCardBody({
         notes={coachNotes}
         notesLabel="Notes"
         extras={extras}
+        topControls={topControls}
         footer={record.updatedAt ? `Updated by Coach · ${cardDate(new Date(record.updatedAt).toISOString().slice(0, 10))}` : 'Not updated yet'}
       />
       <NewAssessmentSheet
