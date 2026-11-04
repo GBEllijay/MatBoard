@@ -49,9 +49,10 @@ const { ASSESSMENT_AREAS } = await import('../../lib/studentAssessment.ts');
 const { ProfilePage } = await import('../../pages/student/ProfilePage.tsx');
 const { StudentCard } = await import('../../pages/Roster.tsx');
 const { readRosterCard } = await import('../../lib/rosterCardStore.ts');
-const { toggleCompetitor, toggleStudentCheckIn, linkedCompetitorForCheckIn } = await import('../../lib/rosterCardActions.ts');
-const { setCheckedIn } = await import('../../lib/rosterStore.ts');
-const { checkedInCompetitors, competitorsForBracketFill } = await import('../../lib/checkInSeeds.ts');
+const { toggleCompetitor, toggleStudentCheckIn, setPersonCheckedIn, personCheckedIn } = await import('../../lib/rosterCardActions.ts');
+const { competitorCards } = await import('../../lib/rosterStore.ts');
+const { checkedInCompetitors, competitorsForBracketFill, orderCheckedInByRanking } = await import('../../lib/checkInSeeds.ts');
+const { CheckInFillSheet } = await import('../CheckInFillSheet.tsx');
 const { studentCheckInFor } = await import('../../pages/Roster.tsx');
 const { blankStudentReport, saveStudentReport } = await import('../../lib/studentEdition.ts');
 const { STUDENT_NO_PHOTOS_KEY } = await import('../../lib/studentPhotoFlag.ts');
@@ -330,7 +331,7 @@ function row(student: Student, competitorSwitch?: { on: boolean; onToggle: () =>
         onAskRemove={noop}
         onCancelRemove={noop}
         onConfirmRemove={noop}
-        onToggleCheckIn={() => setCheckedIn(student.id, !student.checkedIn)}
+        onToggleCheckIn={() => setPersonCheckedIn(student.id, !student.checkedIn)}
         onLink={noop}
         onSamePerson={noop}
         onSendCompetition={noop}
@@ -393,101 +394,183 @@ function rowFor(id: string) {
   return row(student, { on: readRosterCard(id).competitorOn, onToggle: () => toggleCompetitor(id) }, studentCheckInFor(id, true));
 }
 
-test('Check In shows only while Competitor is on, beside the belt and the Competitor switch, and in the card top block', () => {
+function rowCheckIn(): HTMLButtonElement | null {
+  return checkInButton(document.querySelector('.roster-card__head .roster-card__belt-row') as ParentNode);
+}
+function cardCheckIn(): HTMLButtonElement | null {
+  return checkInButton(document.querySelector('[data-testid="clipboard-top"]') as ParentNode);
+}
+const filledIds = () => checkedInCompetitors(getRoster().students).map((s) => s.id);
+
+test('Check In shows on every Student Roster row and the card top block, Competitor on or off', () => {
   localStorage.clear();
   resetRoster();
   const card = studentCard();
   let m = mount(rowFor(card.id));
-  assert.equal(checkInButton(), null, 'no Check In before the student is a competitor');
+  const rowButton = rowCheckIn();
+  assert.ok(rowButton, 'Check In on a non-competitor row, on the same top line as the belt');
+  assert.equal(rowButton?.previousElementSibling?.getAttribute('role'), 'switch', 'after the Competitor switch');
+  assert.ok(rowButton?.classList.contains('roster-card__checkin'), 'the same Check In style as the competitor list');
+  assert.equal(rowButton?.getAttribute('aria-pressed'), 'false');
+  assert.equal(rowButton?.getAttribute('aria-label'), 'Check In Ana Lima');
   unmount(m);
   m = mount(sheet(fresh(card.id)));
-  assert.equal(checkInButton(document.querySelector('[data-testid="clipboard-top"]') as ParentNode), null);
-  click(document.querySelector('[data-testid="clipboard-top"] [role="switch"]') as Element);
-  const top = document.querySelector('[data-testid="clipboard-top"]') as HTMLElement;
-  const cardButton = checkInButton(top);
-  assert.ok(cardButton, 'Check In appears in the top block once Competitor is on');
+  const cardButton = cardCheckIn();
+  assert.ok(cardButton, 'Check In in the top block with Competitor off');
   assert.equal(cardButton?.previousElementSibling?.getAttribute('role'), 'switch', 'right after Add to Competitor Roster');
-  assert.equal(cardButton?.getAttribute('aria-pressed'), 'false');
+  assert.equal(readRosterCard(card.id).competitorOn, false);
+  click(document.querySelector('[data-testid="clipboard-top"] [role="switch"]') as Element);
+  assert.ok(cardCheckIn(), 'still there once Competitor is on');
   unmount(m);
   m = mount(rowFor(card.id));
-  const beltRow = document.querySelector('.roster-card__head .roster-card__belt-row') as HTMLElement;
-  const rowButton = checkInButton(beltRow);
-  assert.ok(rowButton, 'Check In on the same top line as the belt');
-  assert.equal(rowButton?.previousElementSibling?.getAttribute('role'), 'switch', 'after the Competitor switch');
-  assert.ok(rowButton?.classList.contains('roster-card__checkin'), 'the same 48px Check In style as the competitor list');
+  assert.ok(rowCheckIn(), 'and on the row once Competitor is on');
   unmount(m);
 });
 
-test('Check In from the row, the card and the competitor list is one state, and the bracket fill sees it', () => {
+test('a checked-in non-competitor student goes in Fill from check-in; no competitor card is made', () => {
   localStorage.clear();
   resetRoster();
   const card = studentCard();
+  const m = mount(rowFor(card.id));
+  click(rowCheckIn() as Element);
+  assert.match(text(), /Ana Lima is checked in/);
+  unmount(m);
+  assert.equal(fresh(card.id).checkedIn, true, 'unlinked: Check In lives on the Student Roster card');
+  assert.equal(competitorCards(getRoster().students).length, 0, 'Check In never makes a competitor card');
+  assert.equal(readRosterCard(card.id).competitorOn, false);
+  assert.deepEqual(filledIds(), [card.id], 'Fill from check-in sees the student');
+  assert.deepEqual(competitorsForBracketFill(getRoster().students, 'Any bracket').competitors.map((s) => s.id), [card.id]);
+  assert.deepEqual(orderCheckedInByRanking(getRoster().students, []).map((seed) => [seed.name, seed.place]), [['Ana Lima', null]], 'Unranked');
+  const sheetM = mount(sheet(fresh(card.id)));
+  assert.equal(cardCheckIn()?.getAttribute('aria-pressed'), 'true', 'the card shows the row check-in');
+  click(cardCheckIn() as Element);
+  assert.equal(fresh(card.id).checkedIn, false);
+  assert.equal(cardCheckIn()?.getAttribute('aria-pressed'), 'false', 'the card re-renders from the roster store');
+  unmount(sheetM);
+  assert.deepEqual(filledIds(), []);
+});
+
+test('a linked pair is one person: row, card and competitor list stay in sync, and the fill lists them once', () => {
+  localStorage.clear();
+  resetRoster();
+  const card = studentCard();
+  // Checked in first, then made a competitor: the new card starts checked in too.
+  assert.equal(toggleStudentCheckIn(card.id).checkedIn, true);
   assert.equal(toggleCompetitor(card.id).on, true);
   const competitorId = readRosterCard(card.id).competitorCardId as string;
-  assert.equal(linkedCompetitorForCheckIn(card.id)?.id, competitorId);
+  assert.equal(fresh(competitorId).checkedIn, true, 'linking keeps one check-in');
+  assert.deepEqual(filledIds(), [competitorId], 'one entry for the pair');
 
-  // 1. From the Student Roster row.
+  // 1. Row unchecks both.
   let m = mount(rowFor(card.id));
-  click(checkInButton(document.querySelector('.roster-card__belt-row') as ParentNode) as Element);
-  assert.equal(fresh(competitorId).checkedIn, true, 'the row writes the competitor card checkedIn');
-  assert.equal(fresh(card.id).checkedIn, false, 'no second check-in on the student card');
-  assert.match(text(), /Ana Lima is checked in/);
-  assert.deepEqual(checkedInCompetitors(getRoster().students).map((s) => s.id), [competitorId], 'Fill from check-in sees it');
-  assert.deepEqual(competitorsForBracketFill(getRoster().students, 'Any bracket').competitors.map((s) => s.id), [competitorId]);
+  assert.equal(rowCheckIn()?.getAttribute('aria-pressed'), 'true');
+  click(rowCheckIn() as Element);
   unmount(m);
+  assert.equal(fresh(card.id).checkedIn, false);
+  assert.equal(fresh(competitorId).checkedIn, false);
+  assert.deepEqual(filledIds(), []);
 
-  // 2. The card top block and the competitor list show the same state.
+  // 2. Card top checks both.
   m = mount(sheet(fresh(card.id)));
-  const cardButton = checkInButton(document.querySelector('[data-testid="clipboard-top"]') as ParentNode) as HTMLButtonElement;
-  assert.equal(cardButton.getAttribute('aria-pressed'), 'true');
-  assert.equal(cardButton.textContent, 'Checked In');
-  click(cardButton);
-  assert.equal(fresh(competitorId).checkedIn, false, 'the card unchecks the same state');
-  assert.equal(checkInButton(document.querySelector('[data-testid="clipboard-top"]') as ParentNode)?.getAttribute('aria-pressed'), 'false', 'the card re-renders from the roster store');
-  assert.equal(checkedInCompetitors(getRoster().students).length, 0);
+  click(cardCheckIn() as Element);
+  assert.equal(cardCheckIn()?.textContent, 'Checked In');
   unmount(m);
-
-  // 3. From the competitor list's own Check In.
-  m = mount(row(fresh(competitorId), undefined, undefined, true));
-  const listButton = buttons('Check In')[0];
-  assert.equal(listButton.getAttribute('aria-pressed'), 'false');
-  click(listButton);
+  assert.equal(fresh(card.id).checkedIn, true);
   assert.equal(fresh(competitorId).checkedIn, true);
+  assert.deepEqual(filledIds(), [competitorId], 'still once');
+
+  // 3. The competitor list unchecks both; the row and the card show it.
+  m = mount(row(fresh(competitorId), undefined, undefined, true));
+  const listButton = buttons(/^Check(ed)? In$/)[0] ?? buttons('Check In')[0];
+  click(listButton);
   unmount(m);
+  assert.equal(fresh(competitorId).checkedIn, false);
+  assert.equal(fresh(card.id).checkedIn, false, 'the list writes the Student Roster card too');
   m = mount(rowFor(card.id));
-  assert.equal(checkInButton(document.querySelector('.roster-card__belt-row') as ParentNode)?.getAttribute('aria-pressed'), 'true', 'the row shows the list check-in');
+  assert.equal(rowCheckIn()?.getAttribute('aria-pressed'), 'false');
   unmount(m);
   m = mount(sheet(fresh(card.id)));
-  assert.equal(checkInButton(document.querySelector('[data-testid="clipboard-top"]') as ParentNode)?.getAttribute('aria-pressed'), 'true', 'the card shows it too');
+  assert.equal(cardCheckIn()?.getAttribute('aria-pressed'), 'false');
   unmount(m);
-  assert.deepEqual(checkedInCompetitors(getRoster().students).map((s) => s.id), [competitorId]);
+
+  // 4. The list checks both back in.
+  m = mount(row(fresh(competitorId), undefined, undefined, true));
+  click(buttons('Check In')[0]);
+  unmount(m);
+  assert.equal(personCheckedIn(card.id), true);
+  m = mount(rowFor(card.id));
+  assert.equal(rowCheckIn()?.getAttribute('aria-pressed'), 'true', 'the row shows the list check-in');
+  unmount(m);
+  assert.deepEqual(filledIds(), [competitorId]);
 });
 
-test('switching Competitor off clears Check In, so Fill from check-in skips the student; the card stays', () => {
+test('switching Competitor off keeps Check In; the person stays in the fill once; the card stays', () => {
   localStorage.clear();
   resetRoster();
   const card = studentCard();
   toggleCompetitor(card.id);
   const competitorId = readRosterCard(card.id).competitorCardId as string;
   assert.equal(toggleStudentCheckIn(card.id).checkedIn, true);
-  assert.equal(checkedInCompetitors(getRoster().students).length, 1);
   assert.equal(toggleCompetitor(card.id).on, false);
   assert.ok(fresh(competitorId), 'the competitor card is kept');
-  assert.equal(fresh(competitorId).checkedIn, false);
-  assert.equal(checkedInCompetitors(getRoster().students).length, 0, 'not pulled into a bracket');
-  const refused = toggleStudentCheckIn(card.id);
-  assert.equal(refused.error, true, 'no Check In while Competitor is off');
-  assert.equal(fresh(competitorId).checkedIn, false);
-  // Back on: still not checked in until the coach taps Check In again.
-  toggleCompetitor(card.id);
-  assert.equal(fresh(competitorId).checkedIn, false);
+  assert.equal(fresh(competitorId).checkedIn, true, 'off does not clear Check In');
+  assert.equal(fresh(card.id).checkedIn, true);
+  assert.deepEqual(filledIds(), [competitorId], 'still one entry while off');
+  const result = toggleStudentCheckIn(card.id);
+  assert.equal(result.error, undefined, 'no "Turn on Competitor first" refusal');
+  assert.equal(result.checkedIn, false);
+  assert.equal(fresh(competitorId).checkedIn, false, 'still one state while off');
 });
 
-test('Check In is hidden where the Competitor Roster is locked', async () => {
+test('Fill from check-in sheet lists checked-in students and competitors, once each, and never writes the roster', () => {
+  localStorage.clear();
+  resetRoster();
+  const solo = studentCard('Ana Lima');
+  const paired = studentCard('Bia Souza');
+  toggleCompetitor(paired.id);
+  const pairedCompetitor = readRosterCard(paired.id).competitorCardId as string;
+  const competitorOnly = addStudent({ name: 'Caio Reis', belt: 'Purple', division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', note: '', photo: '' }) as Student;
+  studentCard('Duda Melo'); // not checked in
+  setPersonCheckedIn(solo.id, true);
+  setPersonCheckedIn(paired.id, true);
+  setPersonCheckedIn(competitorOnly.id, true);
+  const before = JSON.stringify(getRoster().students);
+  const applied: string[][] = [];
+  const m = mount(
+    <CheckInFillSheet open onClose={() => undefined} students={getRoster().students} files={[]} bracketTitle="" hasNames={false} hasResults={false} sizeMax={16} onApply={(names) => applied.push(names)} />,
+    '/tournament',
+  );
+  const seeds = [...document.querySelectorAll('.checkin-seeds__place')].map((el) => el.parentElement?.querySelector('strong')?.textContent);
+  assert.deepEqual([...seeds].sort(), ['Ana Lima', 'Bia Souza', 'Caio Reis'], 'student, pair once, competitor');
+  assert.equal(document.querySelectorAll('.checkin-seeds__place').length, 3);
+  assert.ok([...document.querySelectorAll('.checkin-seeds__place')].every((el) => el.textContent === 'Unranked'));
+  assert.doesNotMatch(text(), /Duda Melo/);
+  click(buttons('Fill bracket')[0]);
+  assert.equal(applied.length, 1);
+  assert.deepEqual([...applied[0]].filter(Boolean).sort(), ['Ana Lima', 'Bia Souza', 'Caio Reis']);
+  assert.equal(JSON.stringify(getRoster().students), before, 'Fill never writes the roster');
+  assert.equal(fresh(pairedCompetitor).checkedIn, true);
+  unmount(m);
+});
+
+test('the empty Fill from check-in sheet points at both rosters', () => {
+  localStorage.clear();
+  resetRoster();
+  studentCard();
+  const m = mount(
+    <CheckInFillSheet open onClose={() => undefined} students={getRoster().students} files={[]} bracketTitle="" hasNames={false} hasResults={false} sizeMax={16} onApply={() => undefined} />,
+    '/tournament',
+  );
+  assert.match(text(), /Nobody is checked in\. On the Student Roster or the Competitor Roster, tap Check In/);
+  assert.ok([...document.querySelectorAll('a')].some((a) => a.textContent === 'Open Student Roster'));
+  assert.ok([...document.querySelectorAll('a')].some((a) => a.textContent === 'Open Competitor Roster'));
+  unmount(m);
+});
+
+test('Check In is hidden where brackets are locked (the same coach door as Tournament)', async () => {
   localStorage.clear();
   resetRoster();
   const card = studentCard();
-  toggleCompetitor(card.id);
   assert.equal(studentCheckInFor(card.id, false), undefined, 'the row gets no Check In when locked');
   let m = mount(row(fresh(card.id), undefined, studentCheckInFor(card.id, false)));
   assert.equal(checkInButton(), null);
@@ -500,5 +583,9 @@ test('Check In is hidden where the Competitor Roster is locked', async () => {
   const { readFileSync } = await import('node:fs');
   const page = readFileSync('src/pages/Roster.tsx', 'utf8');
   assert.match(page, /studentCheckIn=\{studentCheckInFor\(competitor\.id, studentRoster && competitorRosterOpen\)\}/);
-  assert.match(page, /onToggleCheckIn=\{\(\) => setCheckedIn\(competitor\.id, !competitor\.checkedIn\)\}/, 'the competitor list keeps its own Check In');
+  assert.match(page, /const competitorRosterOpen = coachDoorOpen\(proUnlocked, coachUnlocked, seat !== null\);/);
+  assert.match(page, /onToggleCheckIn=\{\(\) => setPersonCheckedIn\(competitor\.id, !competitor\.checkedIn\)\}/, 'the competitor list uses the same person check-in');
+  const app = readFileSync('src/App.tsx', 'utf8');
+  assert.match(app, /path="\/tournament"\s*element=\{\s*<CoachRoute>/, 'Tournament (Fill from check-in) sits behind CoachRoute');
+  assert.match(app, /if \(!coachDoorOpen\(pro, coach, seated\)\)/, 'CoachRoute is the same coachDoorOpen as competitorRosterOpen');
 });

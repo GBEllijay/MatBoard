@@ -1,9 +1,11 @@
 /**
- * Seed a bracket from competitors who are checked in today.
+ * Seed a bracket from everyone who is checked in today: Competitor Roster cards and
+ * Student Roster cards. A Student Roster card linked to a competitor card is one person.
  * Check-in is selection only. This module does not write the roster.
  */
 
-import { clipName, competitorCards, type Student } from './rosterStore.ts';
+import { clipName, isStudentRosterCard, type Student } from './rosterStore.ts';
+import { competitorCardLinks } from './rosterCardStore.ts';
 import type { RankingFile, RankingRow } from './rankingStore.ts';
 import { clampCompetitorCount } from './tournamentStore.ts';
 
@@ -19,8 +21,93 @@ export function rosterNameKey(name: string): string {
   return clipName(name).toLowerCase();
 }
 
+/**
+ * Student Roster card id -> competitor card id, for every pair that is one person:
+ * the card's Add to Competitor Roster link (`links`, from the roster card store), or a
+ * competitor marked "Same person as a roster student" (one shared Student Edition id).
+ */
+export function checkInPairs(
+  students: readonly Student[],
+  links: ReadonlyMap<string, string> = competitorCardLinks(),
+): Map<string, string> {
+  const byId = new Map(students.map((student) => [student.id, student]));
+  const pairs = new Map<string, string>();
+  const pairedCompetitors = new Set<string>();
+  for (const [studentId, competitorId] of links) {
+    const student = byId.get(studentId);
+    const competitor = byId.get(competitorId);
+    if (!student || !competitor || !isStudentRosterCard(student) || isStudentRosterCard(competitor)) continue;
+    if (pairedCompetitors.has(competitorId)) continue;
+    pairs.set(studentId, competitorId);
+    pairedCompetitors.add(competitorId);
+  }
+  const byLinkedId = new Map<string, { students: Student[]; competitors: Student[] }>();
+  for (const student of students) {
+    const linked = student.linkedStudentId?.trim();
+    if (!linked || student.guestId) continue;
+    const group = byLinkedId.get(linked) ?? { students: [], competitors: [] };
+    (isStudentRosterCard(student) ? group.students : group.competitors).push(student);
+    byLinkedId.set(linked, group);
+  }
+  for (const group of byLinkedId.values()) {
+    // Only an unambiguous one-to-one match is the same person.
+    if (group.students.length !== 1 || group.competitors.length !== 1) continue;
+    const [student] = group.students;
+    const [competitor] = group.competitors;
+    if (pairs.has(student.id) || pairedCompetitors.has(competitor.id)) continue;
+    pairs.set(student.id, competitor.id);
+    pairedCompetitors.add(competitor.id);
+  }
+  return pairs;
+}
+
+/** The other card of the same person (Student Roster <-> Competitor Roster), if any. */
+export function checkInPartnerId(
+  students: readonly Student[],
+  id: string,
+  links: ReadonlyMap<string, string> = competitorCardLinks(),
+): string | undefined {
+  for (const [studentId, competitorId] of checkInPairs(students, links)) {
+    if (studentId === id) return competitorId;
+    if (competitorId === id) return studentId;
+  }
+  return undefined;
+}
+
+/**
+ * Everyone checked in, once per person. A linked pair is listed by its competitor card
+ * (checked in when either card is). An unlinked Student Roster student uses its own card.
+ * Never writes the roster.
+ */
+export function checkedInPeople(
+  students: readonly Student[],
+  links: ReadonlyMap<string, string> = competitorCardLinks(),
+): Student[] {
+  const pairs = checkInPairs(students, links);
+  const studentOf = new Map<string, string>();
+  for (const [studentId, competitorId] of pairs) studentOf.set(competitorId, studentId);
+  const byId = new Map(students.map((student) => [student.id, student]));
+  const out: Student[] = [];
+  for (const student of students) {
+    if (!rosterNameKey(student.name)) continue;
+    if (isStudentRosterCard(student)) {
+      if (pairs.has(student.id)) continue;
+      if (student.checkedIn) out.push(student);
+      continue;
+    }
+    if (student.checkedIn) {
+      out.push(student);
+      continue;
+    }
+    const partnerId = studentOf.get(student.id);
+    if (partnerId && byId.get(partnerId)?.checkedIn) out.push({ ...student, checkedIn: true });
+  }
+  return out;
+}
+
+/** Kept name for existing callers: now everyone checked in, not only the Competitor Roster. */
 export function checkedInCompetitors(students: readonly Student[]): Student[] {
-  return competitorCards(students as Student[]).filter((student) => student.checkedIn && rosterNameKey(student.name));
+  return checkedInPeople(students);
 }
 
 /**

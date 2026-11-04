@@ -25,7 +25,7 @@ import { CardLookSetting } from '../components/rosterCard/CardLookSetting';
 import { dismissCardNotice, getCardNotices, subscribeCardSync } from '../lib/cardSync';
 import { coachDoorOpen } from '../lib/productNames';
 import { readRosterCard, recordRosterRankChange, removeRosterCard, subscribeRosterCards } from '../lib/rosterCardStore';
-import { linkedCompetitorForCheckIn, toggleCompetitor, toggleStudentCheckIn } from '../lib/rosterCardActions';
+import { personCheckedIn, setPersonCheckedIn, toggleCompetitor } from '../lib/rosterCardActions';
 import { useRosterState } from '../hooks/useStores';
 import { COMPETITOR_SYSTEM_NAME, isCoachStudentRoster } from '../lib/productNames';
 import { competitorPhotoFromFile } from '../lib/competitorPhoto';
@@ -80,7 +80,6 @@ import {
   formatPromotion,
   removeStudent,
   searchStudents,
-  setCheckedIn,
   studentRosterCards,
   updateStudent,
   type Student,
@@ -325,7 +324,7 @@ export function RosterPage() {
                 else if (status === 'applied') setEditor({ id: competitor.id, draft: draftFromStudent(competitor) });
                 else dismissCardNotice(id);
               }}
-              onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
+              onToggleCheckIn={() => setPersonCheckedIn(competitor.id, !competitor.checkedIn)}
               competitorSwitch={
                 studentRoster && competitorRosterOpen
                   ? { on: readRosterCard(competitor.id).competitorOn, onToggle: () => toggleCompetitor(competitor.id) }
@@ -563,14 +562,21 @@ function CsvInstructions({ text }: { text: string }) {
 }
 
 /**
- * Student Roster rows only, where the Competitor Roster is open and the Competitor switch is on:
- * Check In flips the linked competitor card's checkedIn (the same check-in brackets read).
+ * Every Student Roster row, where brackets are open (the same coach door as Tournament):
+ * Check In is the person's one check-in. Linked to a competitor card, both cards change
+ * together; unlinked, it lives on the Student Roster card. Competitor on or off.
  */
 export function studentCheckInFor(rosterId: string, open: boolean): { checkedIn: boolean; onToggle: () => { text: string; error?: true } } | undefined {
   if (!open) return undefined;
-  const card = linkedCompetitorForCheckIn(rosterId);
-  if (!card) return undefined;
-  return { checkedIn: card.checkedIn, onToggle: () => toggleStudentCheckIn(rosterId) };
+  const checkedIn = personCheckedIn(rosterId);
+  return {
+    checkedIn,
+    onToggle: () => {
+      const next = setPersonCheckedIn(rosterId, !checkedIn);
+      if (!next) return { text: 'Could not change Check In.', error: true };
+      return { text: next.checkedIn ? `${next.name} is checked in.` : `${next.name} is no longer checked in.` };
+    },
+  };
 }
 
 export function StudentCard({

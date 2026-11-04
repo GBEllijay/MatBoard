@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useRosterState } from '../hooks/useStores';
 import { workingOnLine } from '../lib/progress/competition';
-import { COMPETITOR_ROSTER_LABEL } from '../lib/coachCopy';
+import { COMPETITOR_ROSTER_LABEL, STUDENT_ROSTER_LABEL } from '../lib/coachCopy';
 import {
   bracketDivisionFilter,
   checkedInCompetitors,
@@ -14,7 +14,7 @@ import {
   type SeededCompetitor,
 } from '../lib/checkInSeeds';
 import type { RankingFile } from '../lib/rankingStore';
-import { COMPETITOR_ROSTER_PATH } from '../lib/productNames';
+import { COMPETITOR_ROSTER_PATH, STUDENT_ROSTER_PATH } from '../lib/productNames';
 import type { Student } from '../lib/rosterStore';
 import { byeCountFor, firstRoundLabel } from '../lib/tournamentStore';
 import { Sheet } from './Sheet';
@@ -107,12 +107,19 @@ export function CheckInFillSheet({
       {allChecked.length === 0 ? (
         <>
           <p className="tournament__sheet-copy">
-            Nobody is checked in. On the {COMPETITOR_ROSTER_LABEL}, tap Check In for each person who is
-            here today. That list is the only selection for this fill. It does not change the roster.
+            Nobody is checked in. On the {STUDENT_ROSTER_LABEL} or the {COMPETITOR_ROSTER_LABEL}, tap Check In
+            for each person who is here today. Check-in is the only selection for this fill. It does not change
+            the roster.
           </p>
-          <Link className="text-link" to={COMPETITOR_ROSTER_PATH}>
-            Open {COMPETITOR_ROSTER_LABEL}
-          </Link>
+          <p className="tournament__sheet-copy">
+            <Link className="text-link" to={STUDENT_ROSTER_PATH}>
+              Open {STUDENT_ROSTER_LABEL}
+            </Link>{' '}
+            ·{' '}
+            <Link className="text-link" to={COMPETITOR_ROSTER_PATH}>
+              Open {COMPETITOR_ROSTER_LABEL}
+            </Link>
+          </p>
         </>
       ) : checked.length === 0 ? (
         <p className="tournament__sheet-copy">

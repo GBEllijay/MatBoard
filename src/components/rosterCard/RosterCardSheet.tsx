@@ -11,7 +11,7 @@ import { CoachClipboardCard, type AssessmentView } from './CoachClipboardCard';
 import { downloadJsonFile, todayIso } from './fileSave';
 import { assessmentSummary, benchmarkItems, cardBelt, cardDate, coachRankSource, dateFacts, initialsOf, promotionDates } from '../../lib/rosterCard';
 import { readPrivateCoachNotes, readRosterCard, subscribeRosterCards, updateRosterCard, writePrivateCoachNotes } from '../../lib/rosterCardStore';
-import { removeLinkedCompetitorCard, shownCardPhoto, toggleCompetitor as toggleCompetitorAction, toggleStudentCheckIn } from '../../lib/rosterCardActions';
+import { removeLinkedCompetitorCard, shownCardPhoto, personCheckedIn, toggleCompetitor as toggleCompetitorAction, toggleStudentCheckIn } from '../../lib/rosterCardActions';
 import { beltProgressFromCard, studentSnapshotFromFile } from '../../lib/rosterCardSync';
 import {
   dismissCardNotice,
@@ -208,6 +208,7 @@ export function RosterCardBody({
     const result = toggleCompetitorAction(student.id);
     setCompetitorStatus({ text: result.text, error: Boolean(result.error) });
   };
+  const checkedIn = personCheckedIn(student.id);
   const toggleCheckIn = () => {
     const result = toggleStudentCheckIn(student.id);
     setCompetitorStatus({ text: result.text, error: Boolean(result.error) });
@@ -302,18 +303,17 @@ export function RosterCardBody({
                     <small>Makes a separate competitor card from this card. Turning it off keeps that card.</small>
                   </span>
                 </button>
-                {record.competitorOn && competitorCard && competitorCard.rosterList !== 'student' ? (
-                  <button
-                    type="button"
-                    className={competitorCard.checkedIn ? 'clipboard__btn clipboard__checkin clipboard__checkin--on' : 'clipboard__btn clipboard__checkin'}
-                    aria-pressed={competitorCard.checkedIn}
-                    aria-label={`Check In ${competitorCard.name}`}
-                    title="Here for today's tournament"
-                    onClick={toggleCheckIn}
-                  >
-                    {competitorCard.checkedIn ? 'Checked In' : 'Check In'}
-                  </button>
-                ) : null}
+                {/* One Check In per person, Competitor on or off. Fill from check-in reads it. */}
+                <button
+                  type="button"
+                  className={checkedIn ? 'clipboard__btn clipboard__checkin clipboard__checkin--on' : 'clipboard__btn clipboard__checkin'}
+                  aria-pressed={checkedIn}
+                  aria-label={`Check In ${student.name}`}
+                  title="Here today. Fill from check-in can put them in a bracket."
+                  onClick={toggleCheckIn}
+                >
+                  {checkedIn ? 'Checked In' : 'Check In'}
+                </button>
                 {competitorCard ? (
                   <button type="button" className="clipboard__link" onClick={onOpenCompetitorRoster}>
                     Open competitor card ›
