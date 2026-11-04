@@ -22,7 +22,10 @@ import { SendCompetitionSheet, type CompetitionSendDraft } from '../components/S
 import { Sheet } from '../components/Sheet';
 import { registrationText, RosterCardSheet, startStudentAppSync } from '../components/rosterCard/RosterCardSheet';
 import { CardLookSetting } from '../components/rosterCard/CardLookSetting';
-import { readCardLook } from '../lib/cardLook';
+import { readCardLook, type CardLook } from '../lib/cardLook';
+import { CompetitionCard } from '../components/rosterCard/CompetitionCard';
+import { initialsOf } from '../lib/rosterCard';
+import '../components/rosterCard/rolodex.css';
 import '../components/rosterCard/coachClipboard.css';
 import '../components/rosterCard/cardEntry.css';
 import { dismissCardNotice, getCardNotices, subscribeCardSync } from '../lib/cardSync';
@@ -135,12 +138,15 @@ export function RosterPage() {
   const [competitionSend, setCompetitionSend] = useState<{ studentId: string; draft: CompetitionSendDraft } | null>(null);
   const [linkNote, setLinkNote] = useState('');
   const [cardTarget, setCardTarget] = useState<string | null>(null);
+  const [compCardTarget, setCompCardTarget] = useState<string | null>(null);
   const [syncOffer, setSyncOffer] = useState<Student | null>(null);
   const [, setNoticeTick] = useState(0);
   useEffect(() => subscribeCardSync(() => setNoticeTick((value) => value + 1)), []);
   // The row Competitor switch reads the card store.
   useEffect(() => subscribeRosterCards(() => setNoticeTick((value) => value + 1)), []);
   const competitorRosterOpen = coachDoorOpen(proUnlocked, coachUnlocked, seat !== null);
+  const look = readCardLook();
+  const compStudent = compCardTarget ? roster.students.find((row) => row.id === compCardTarget) ?? null : null;
   const cardStudent = cardTarget ? roster.students.find((row) => row.id === cardTarget) ?? null : null;
   const listed = useMemo(
     () => (studentRoster ? studentRosterCards(roster.students) : competitorCards(roster.students)),
@@ -299,7 +305,11 @@ export function RosterPage() {
       ) : null}
 
       {competitors.length ? (
-        <ul className="roster__list">
+        <div className="clipboard rolodex" data-style={look.style} data-skin={look.skin} data-testid="rolodex">
+        <ul
+          className="roster__list rolodex__list"
+          aria-label={studentRoster ? 'Student roster cards' : 'Competitor Roster cards'}
+        >
           {competitors.map((competitor) => (
             <StudentCard
               key={competitor.id}
@@ -316,6 +326,7 @@ export function RosterPage() {
                 setPendingRemove(null);
               }}
               onOpenCard={studentRoster ? () => setCardTarget(competitor.id) : undefined}
+              onOpenFace={studentRoster ? () => setCardTarget(competitor.id) : () => setCompCardTarget(competitor.id)}
               notices={
                 competitor.linkedStudentId && !competitor.guestId
                   ? getCardNotices(competitor.id, { roster: roster.students }).map((notice) => ({ id: notice.eventId, text: registrationText(notice) }))
@@ -357,6 +368,7 @@ export function RosterPage() {
             />
           ))}
         </ul>
+        </div>
       ) : (
         <EmptyHint
           title={
@@ -450,6 +462,20 @@ export function RosterPage() {
           onOpenCompetitorRoster={() => {
             setCardTarget(null);
             navigate('/roster');
+          }}
+        />
+      ) : null}
+      {!studentRoster && compStudent ? (
+        <CompetitionCardSheet
+          student={compStudent}
+          plan={roster.competitionPlans[compStudent.id] ?? null}
+          rosterStudents={roster.students}
+          look={look}
+          onClose={() => setCompCardTarget(null)}
+          onToggleCheckIn={() => setPersonCheckedIn(compStudent.id, !compStudent.checkedIn)}
+          onChangeDetails={() => {
+            setCompCardTarget(null);
+            setEditor({ id: compStudent.id, draft: draftFromStudent(compStudent) });
           }}
         />
       ) : null}
@@ -582,6 +608,47 @@ export function studentCheckInFor(rosterId: string, open: boolean): { checkedIn:
   };
 }
 
+/** Competitor Roster: the full Competition card, opened from the Rolodex face. */
+function CompetitionCardSheet({
+  student,
+  plan,
+  rosterStudents,
+  look,
+  onClose,
+  onToggleCheckIn,
+  onChangeDetails,
+}: {
+  student: Student;
+  plan: ReturnType<typeof useRosterState>['competitionPlans'][string] | null;
+  rosterStudents: readonly Student[];
+  look: CardLook;
+  onClose: () => void;
+  onToggleCheckIn: () => void;
+  onChangeDetails: () => void;
+}) {
+  // The Student roster card this competitor card was made from, if any, carries the coach's assessments.
+  const source = rosterStudents.find(
+    (row) => row.rosterList === 'student' && readRosterCard(row.id).competitorCardId === student.id,
+  );
+  const latest = source
+    ? [...readRosterCard(source.id).coachAssessments].sort((a, b) => b.date.localeCompare(a.date))[0]
+    : undefined;
+  return (
+    <Sheet open title={`${student.name} · Competition card`} onClose={onClose} className="sheet--clipboard sheet--comp-card" portal>
+      <CompetitionCard
+        student={student}
+        plan={plan}
+        look={look}
+        gymName={readGymName()}
+        coachScores={latest ? latest.scores : null}
+        coachScoredOn={latest?.date}
+        checkIn={{ checkedIn: student.checkedIn, onToggle: onToggleCheckIn }}
+        onChangeDetails={onChangeDetails}
+      />
+    </Sheet>
+  );
+}
+
 export function StudentCard({
   student,
   studentRoster,
@@ -602,6 +669,7 @@ export function StudentCard({
   sendAllowed,
   competitorSwitch,
   studentCheckIn,
+  onOpenFace,
 }: {
   student: Student;
   studentRoster: boolean;
@@ -630,6 +698,8 @@ export function StudentCard({
   competitorSwitch?: { on: boolean; onToggle: () => { text: string; error?: true } };
   /** Student Roster only, while Competitor is on: Check In on the linked competitor card. */
   studentCheckIn?: { checkedIn: boolean; onToggle: () => { text: string; error?: true } };
+  /** Rolodex: the face (photo slot and name) opens the full card. */
+  onOpenFace?: () => void;
 }) {
   const [competitorNote, setCompetitorNote] = useState<{ text: string; error?: boolean } | null>(null);
   const promoted = formatPromotion(student.lastPromotion);
@@ -644,14 +714,34 @@ export function StudentCard({
 
   return (
     <li>
-      <article className="roster-card">
+      <article className={`roster-card${onOpenFace ? ' rolodex-card' : ''}`}>
         <header className="roster-card__head">
           <div className="roster-card__identity">
-            {studentRoster || !student.photo ? null : (
+            {onOpenFace ? (
+              <button
+                type="button"
+                className="rolodex-card__face"
+                aria-label={`Open ${student.name} ${studentRoster ? 'Student roster card' : 'Competition card'}`}
+                onClick={onOpenFace}
+              >
+                {studentRoster || !student.photo || student.noPhotos ? (
+                  <span className="rolodex-card__initials" aria-hidden="true">
+                    {initialsOf(student.name)}
+                  </span>
+                ) : (
+                  <img className="roster-card__photo" src={student.photo} alt={`${student.name} photo`} />
+                )}
+              </button>
+            ) : studentRoster || !student.photo ? null : (
               <img className="roster-card__photo" src={student.photo} alt={`${student.name} photo`} />
             )}
             <div className="roster-card__who">
-              <h2>{student.name}</h2>
+              {onOpenFace ? (
+                <span className="rolodex-card__kicker" aria-hidden="true">
+                  {studentRoster ? 'Student roster card' : 'Competition card'}
+                </span>
+              ) : null}
+              <h2 onClick={onOpenFace}>{student.name}</h2>
               {studentRoster ? null : (
                 <button
                   type="button"

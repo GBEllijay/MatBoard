@@ -511,7 +511,7 @@ function shape(scores: Record<string, AssessmentScore> | null): string {
   return ASSESSMENT_AREAS.map((area, index) => point(index, scores[area.id] ?? 0)).join(' ');
 }
 
-function CardRadar({ coach, self }: { coach: Record<string, AssessmentScore> | null; self: Record<string, AssessmentScore> | null }) {
+export function CardRadar({ coach, self }: { coach: Record<string, AssessmentScore> | null; self: Record<string, AssessmentScore> | null }) {
   return (
     <svg viewBox="0 0 310 194" className="clipboard__radar" role="img" aria-label="Assessment shape">
       {[1, 2, 3, 4, 5].map((ring) => (

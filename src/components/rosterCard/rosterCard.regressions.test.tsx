@@ -589,3 +589,181 @@ test('Check In is hidden where brackets are locked (the same coach door as Tourn
   assert.match(app, /path="\/tournament"\s*element=\{\s*<CoachRoute>/, 'Tournament (Fill from check-in) sits behind CoachRoute');
   assert.match(app, /if \(!coachDoorOpen\(pro, coach, seated\)\)/, 'CoachRoute is the same coachDoorOpen as competitorRosterOpen');
 });
+
+// ---------- Rolodex rows and the Competition card ----------
+
+const { CompetitionCard } = await import('./CompetitionCard.tsx');
+const { competitionPlanFixture } = await import('../../lib/testFixtures/competitionPlan.ts');
+
+function rolodexRow(student: Student, competitorList: boolean, onOpenFace: () => void) {
+  const noop = () => undefined;
+  return (
+    <ul>
+      <StudentCard
+        student={student}
+        studentRoster={!competitorList}
+        pending={false}
+        onEdit={noop}
+        onAskRemove={noop}
+        onCancelRemove={noop}
+        onConfirmRemove={noop}
+        onToggleCheckIn={() => setPersonCheckedIn(student.id, !student.checkedIn)}
+        onLink={noop}
+        onSamePerson={noop}
+        onSendCompetition={noop}
+        onOpenCard={competitorList ? undefined : noop}
+        onCoachSync={noop}
+        sendAllowed={false}
+        competitorSwitch={competitorList ? undefined : { on: false, onToggle: () => toggleCompetitor(student.id) }}
+        studentCheckIn={competitorList ? undefined : studentCheckInFor(student.id, true)}
+        onOpenFace={onOpenFace}
+      />
+    </ul>
+  );
+}
+
+test('Rolodex mini card: every row control stays, in order, and the face opens the full card', () => {
+  localStorage.clear();
+  resetRoster();
+  const card = studentCard();
+  let opened = 0;
+  const m = mount(rolodexRow(fresh(card.id), false, () => { opened += 1; }));
+  const article = document.querySelector('article.roster-card') as HTMLElement;
+  assert.ok(article.classList.contains('rolodex-card'), 'rolodex class');
+  const face = document.querySelector('button.rolodex-card__face') as HTMLButtonElement;
+  assert.equal(face.getAttribute('aria-label'), 'Open Ana Lima Student roster card');
+  assert.ok(!/edit/i.test(face.getAttribute('aria-label') ?? ''), 'no "edit" in the face name (e2e Edit match)');
+  click(face);
+  assert.equal(opened, 1, 'face opens the card');
+  click(document.querySelector('.roster-card h2') as Element);
+  assert.equal(opened, 2, 'the name opens the card too');
+  const beltRow = document.querySelector('.roster-card__head .roster-card__belt-row') as HTMLElement;
+  const kids = [...beltRow.children];
+  assert.ok(kids[0].matches('.belt-mark, .belt-tip, [class*="belt"]'), 'belt first');
+  assert.ok(kids.some((k) => k.matches('[role="switch"], .roster-card__competitor')), 'switch on the belt row');
+  assert.ok(beltRow.querySelector('.roster-card__checkin'), 'Check In on the belt row');
+  const actions = [...document.querySelectorAll('.roster-card__actions button')].map((b) => b.textContent?.trim());
+  assert.deepEqual(actions, ['Edit', 'Open card', 'Link to student', 'Remove']);
+  assert.equal(document.querySelector('.rolodex-card__kicker')?.getAttribute('aria-hidden'), 'true');
+  assert.equal(document.querySelector('.roster-card h2')?.textContent, 'Ana Lima', 'heading text unchanged');
+  unmount(m);
+});
+
+test('Rolodex on the Competitor Roster: the face names the Competition card and shows initials when No photos is on', () => {
+  localStorage.clear();
+  resetRoster();
+  const card = addStudent({ name: 'Maya Alvarez', belt: 'purple', division: 'Adult', gym: 'Advantage', lastPromotion: '', lastPromotionDetail: '', note: '', photo: 'data:image/png;base64,AAAA' });
+  assert.ok(card);
+  let m = mount(rolodexRow(fresh(card.id), true, () => undefined));
+  const face = document.querySelector('button.rolodex-card__face') as HTMLButtonElement;
+  assert.equal(face.getAttribute('aria-label'), 'Open Maya Alvarez Competition card');
+  assert.ok(face.querySelector('img.roster-card__photo'), 'photo on the face');
+  unmount(m);
+  setNoPhotos(card.id, true);
+  m = mount(rolodexRow(fresh(card.id), true, () => undefined));
+  assert.equal(document.querySelector('button.rolodex-card__face img'), null, 'no photo when No photos is on');
+  assert.match(document.querySelector('button.rolodex-card__face')?.textContent ?? '', /MA/);
+  unmount(m);
+});
+
+function compCard(student: Student, extra: Partial<{ plan: ReturnType<typeof competitionPlanFixture> | null; onToggle: () => void; onChange: () => void; scores: Record<string, number> | null; look: { style: 'clipboard' | 'fighter'; skin: 'dark' | 'light' } }> = {}) {
+  return (
+    <CompetitionCard
+      student={student}
+      plan={extra.plan === undefined ? competitionPlanFixture() : extra.plan}
+      look={extra.look}
+      gymName="Advantage BJJ"
+      coachScores={(extra.scores ?? null) as never}
+      coachScoredOn="2026-10-20"
+      checkIn={{ checkedIn: Boolean(student.checkedIn), onToggle: extra.onToggle ?? (() => undefined) }}
+      onChangeDetails={extra.onChange ?? (() => undefined)}
+      today="2026-11-04"
+    />
+  );
+}
+
+test('Competition card: sections in order, record and upcoming from the imported plan, every look', () => {
+  for (const look of CARD_LOOKS) {
+    localStorage.clear();
+    resetRoster();
+    const card = addStudent({ name: 'Maya Alvarez', belt: 'purple', division: 'Adult Featherweight', gym: 'Ellijay Academy', lastPromotion: '2026-06-01', lastPromotionDetail: 'Purple belt', note: '', photo: '' });
+    assert.ok(card);
+    const scores = Object.fromEntries(ASSESSMENT_AREAS.map((a) => [a.id, 4]));
+    const m = mount(compCard(fresh(card.id), { look, scores }));
+    const root = document.querySelector('[data-testid="competition-card"]') as HTMLElement;
+    assert.equal(root.dataset.style, look.style);
+    assert.equal(root.dataset.skin, look.skin);
+    assert.ok(!root.classList.contains('roster-card'), 'not a .roster-card (e2e counts rows)');
+    assert.equal(document.querySelector('.comp-card__sheet')?.getAttribute('aria-label'), 'Maya Alvarez Competition card');
+    const order = [...document.querySelectorAll('[data-testid^="comp-"]')].map((el) => (el as HTMLElement).dataset.testid);
+    assert.deepEqual(order.filter((id) => id !== 'comp-archive'), ['comp-record', 'comp-upcoming', 'comp-assessment', 'comp-results', 'comp-scouting']);
+    const body = text();
+    assert.match(body, /Competition card/);
+    assert.match(body, /60% win rate/);
+    assert.match(body, /Appalachian Grappling Open/);
+    assert.ok(!body.includes('Peach State Spring Open · Registered'), 'past event is not upcoming');
+    assert.match(body, /139\.6 lb/);
+    assert.match(body, /141\.5 lb/);
+    assert.match(body, /Riley Thompson/);
+    assert.ok(document.querySelector('.clipboard__radar'), 'assessment radar');
+    unmount(m);
+  }
+});
+
+test('Competition card: Results, Scouting and Archive fold on phone; Record, Upcoming, Assessment never fold', () => {
+  localStorage.clear();
+  resetRoster();
+  const card = addStudent({ name: 'Maya Alvarez', belt: 'purple', division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', note: '', photo: '' });
+  assert.ok(card);
+  const m = mount(compCard(fresh(card.id)));
+  for (const id of ['comp-results', 'comp-scouting']) {
+    const details = document.querySelector(`[data-testid="${id}"]`)?.closest('details') ?? document.querySelector(`[data-testid="${id}"] details, details[data-testid="${id}"]`);
+    assert.ok(details, `${id} folds`);
+    assert.equal((details as HTMLDetailsElement).open, false, `${id} starts closed on phone`);
+  }
+  for (const id of ['comp-record', 'comp-upcoming', 'comp-assessment']) {
+    const el = document.querySelector(`[data-testid="${id}"]`) as HTMLElement;
+    assert.equal(el.tagName === 'DETAILS' || Boolean(el.querySelector('details')), false, `${id} never folds`);
+  }
+  unmount(m);
+});
+
+test('Competition card: Check in toggles, Change details calls back, Calendar downloads, and empty plans read plainly', () => {
+  localStorage.clear();
+  resetRoster();
+  downloads.length = 0;
+  const card = addStudent({ name: 'Maya Alvarez', belt: 'purple', division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', note: '', photo: '' });
+  assert.ok(card);
+  let toggled = 0;
+  let changed = 0;
+  let m = mount(compCard(fresh(card.id), { onToggle: () => { toggled += 1; }, onChange: () => { changed += 1; } }));
+  const check = buttons(/^Check(ed)? in$/)[0];
+  assert.equal(check.getAttribute('aria-pressed'), 'false');
+  click(check);
+  assert.equal(toggled, 1);
+  click(buttons('Change details')[0]);
+  assert.equal(changed, 1);
+  assert.equal(buttons(/edit/i).length, 0, 'no button named Edit on the Competition card');
+  const cal = buttons(/Calendar/)[0];
+  assert.equal(cal.disabled, false);
+  click(cal);
+  assert.equal(downloads.length, 1);
+  assert.match(downloads[0], /\.ics$/);
+  unmount(m);
+  m = mount(compCard(fresh(card.id), { plan: null }));
+  assert.equal(buttons(/Calendar/)[0].disabled, true, 'Calendar off with nothing upcoming');
+  assert.equal(document.querySelector('[data-testid="comp-archive"]'), null, 'no archive without belt history');
+  assert.ok(document.querySelector('[data-testid="comp-record"]'), 'record still shows');
+  unmount(m);
+});
+
+test('Roster page: Rolodex wraps both lists in the card look and opens the right full card', async () => {
+  const { readFileSync } = await import('node:fs');
+  const page = readFileSync('src/pages/Roster.tsx', 'utf8');
+  assert.match(page, /className="clipboard rolodex"/);
+  assert.match(page, /onOpenFace=\{studentRoster \? \(\) => setCardTarget\([^)]*\) : \(\) => setCompCardTarget\([^)]*\)\}/);
+  assert.match(page, /<CompetitionCard\b/);
+  const css = readFileSync('src/components/rosterCard/rolodex.css', 'utf8');
+  assert.match(css, /scroll-snap-type: y/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
+});

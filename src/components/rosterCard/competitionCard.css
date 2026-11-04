@@ -1,0 +1,369 @@
+/* Competition card v1: fight-poster face from comp-dark / comp-light. Paint comes from
+   the gym card look (--cb-*). Every text is 12px or larger; every control is 44px tall. */
+.comp-card {
+  margin: 0 -2px;
+}
+.comp-card__sheet {
+  background: var(--cb-navy);
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px var(--cb-line), 0 18px 40px -26px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+.comp-card[data-style='fighter'] .comp-card__sheet {
+  box-shadow: inset 0 0 0 2px var(--cb-on), 0 18px 40px -26px rgba(0, 0, 0, 0.6);
+}
+.comp-card__poster {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 3px solid var(--cb-on);
+  background-image: repeating-linear-gradient(115deg, var(--cb-chip-bg) 0 2px, transparent 2px 22px);
+}
+.comp-card__photo {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+.comp-card__photo img,
+.comp-card__initials {
+  width: 112px;
+  height: 132px;
+  border-radius: 14px;
+  object-fit: cover;
+  object-position: center 18%;
+  border: 2px solid var(--cb-on-ring);
+  background: var(--cb-initials-bg);
+}
+.comp-card__initials {
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  font-weight: 800;
+}
+.comp-card__who {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.comp-card__kicker {
+  margin: 0;
+  justify-self: start;
+  padding: 4px 12px;
+  background: var(--cb-on);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+.comp-card .comp-card__name {
+  margin: 0;
+  font-size: clamp(26px, 5vw, 44px);
+  line-height: 0.98;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  color: var(--cb-ink);
+}
+.comp-card__info {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cb-muted);
+}
+.comp-card__beltline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+}
+.comp-card__chip,
+.comp-card__tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--cb-chip-ring);
+  background: var(--cb-chip-bg);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.comp-card__tag--on {
+  background: var(--cb-on);
+  border-color: var(--cb-on);
+  color: #fff;
+}
+.comp-card__controls {
+  display: grid;
+  gap: 8px;
+  align-self: start;
+}
+.comp-card__btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid var(--cb-on);
+  background: var(--cb-on);
+  color: #fff !important;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.comp-card__btn--ghost,
+.comp-card__btn:not(.comp-card__btn--on)[aria-pressed='false'] {
+  background: transparent;
+  color: var(--cb-ink) !important;
+  border-color: var(--cb-btn-ring);
+}
+.comp-card__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.comp-card__btn:focus-visible,
+.comp-card__summary:focus-visible {
+  outline: 3px solid var(--cb-on-ring);
+  outline-offset: 2px;
+}
+.comp-card__facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  border-bottom: 1px solid var(--cb-line);
+}
+.comp-card__facts > div {
+  padding: 10px 16px;
+  border-right: 1px solid var(--cb-line);
+  border-top: 1px solid var(--cb-line);
+  margin-top: -1px;
+}
+.comp-card__facts dt {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cb-label);
+}
+.comp-card__facts dd {
+  margin: 2px 0 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+.comp-card__facts small,
+.comp-card__quiet {
+  display: block;
+  font-size: 13px;
+  color: var(--cb-muted);
+  margin: 0;
+}
+.comp-card__sec {
+  padding: 12px 16px 14px;
+  border-bottom: 1px solid var(--cb-line);
+}
+.comp-card__h {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.comp-card__sec-head {
+  display: inline-flex;
+  align-items: stretch;
+}
+.comp-card__num {
+  padding: 4px 10px;
+  background: var(--cb-on);
+  color: #fff;
+  font-weight: 900;
+  font-size: 14px;
+}
+.comp-card__sec-title {
+  padding: 4px 18px 4px 12px;
+  background: var(--cb-ink);
+  color: var(--cb-navy);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 14px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+.comp-card__summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  cursor: pointer;
+  list-style: none;
+}
+.comp-card__summary::-webkit-details-marker {
+  display: none;
+}
+.comp-card__summary::after {
+  content: 'Show';
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--cb-link);
+}
+.comp-card__fold[open] > .comp-card__summary {
+  margin-bottom: 10px;
+}
+.comp-card__fold[open] > .comp-card__summary::after {
+  content: 'Hide';
+}
+.comp-card__record {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 6px 18px;
+  align-items: center;
+}
+.comp-card__score {
+  margin: 0;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 52px;
+  font-weight: 900;
+  line-height: 1;
+}
+.comp-card__w {
+  color: var(--cb-strong);
+}
+.comp-card__l {
+  color: var(--cb-weak);
+}
+.comp-card__rate {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--cb-link);
+}
+.comp-card__methods,
+.comp-card__scores,
+.comp-card__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.comp-card__methods li,
+.comp-card__scores li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+  border-bottom: 1px dashed var(--cb-dash);
+  padding: 4px 0;
+}
+.comp-card__scores {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  column-gap: 16px;
+  margin-bottom: 6px;
+}
+.comp-card__list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--cb-well);
+  border: 1px solid var(--cb-line);
+  font-size: 13px;
+}
+.comp-card__list li.comp-card__result {
+  grid-template-columns: minmax(0, 1fr);
+}
+.comp-card__date {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--cb-link);
+  white-space: nowrap;
+}
+.comp-card__event {
+  display: grid;
+  min-width: 0;
+  color: var(--cb-muted);
+  overflow-wrap: anywhere;
+}
+.comp-card__event b {
+  color: var(--cb-ink);
+  font-size: 15px;
+}
+.comp-card__list li > .comp-card__event:first-child {
+  grid-column: 1 / 3;
+}
+.comp-card__list li.comp-card__result > .comp-card__event:first-child {
+  grid-column: auto;
+}
+.comp-card__matches {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.comp-card .clipboard__radar {
+  display: block;
+  overflow: visible;
+  width: calc(100% - 56px);
+  max-width: 420px;
+  margin: 0 auto 8px;
+}
+.comp-card .clipboard__radar text {
+  font-size: 14px;
+}
+.comp-card__foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+.comp-card__infoline {
+  margin: 0;
+  font-size: 13px;
+  color: var(--cb-muted);
+}
+.comp-card__foot [role='status'] {
+  grid-column: 1 / -1;
+}
+@media (max-width: 600px) {
+  .comp-card__poster {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 14px 12px;
+  }
+  .comp-card__photo img,
+  .comp-card__initials {
+    width: 88px;
+    height: 104px;
+  }
+  .comp-card__controls {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
+  }
+  .comp-card__sec {
+    padding: 10px 12px 12px;
+  }
+  .comp-card__score {
+    font-size: 44px;
+  }
+  .comp-card__record {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .comp-card__methods {
+    grid-column: 1 / -1;
+  }
+  .comp-card__foot {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.comp-card .belt-mark__name {
+  font-size: 12px;
+  color: var(--cb-ink);
+}
