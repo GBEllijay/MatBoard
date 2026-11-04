@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { GymCoachPulse } from '../components/GymCoachPulse';
 import { BeltHeader } from '../components/BeltHeader';
 import { EditionLadder } from '../components/EditionLadder';
 import { BeltRail } from '../components/BeltRail';
@@ -27,6 +28,7 @@ export function CoachPage() {
         <HomeMark to={PRODUCTS_PATH} />
 
         <InviteAccept />
+        <GymCoachPulse />
         <nav className="home__modes" aria-label="Advantage Coach">
           <BeltHeader
             kind="blue"

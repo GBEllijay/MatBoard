@@ -50,6 +50,9 @@ export type BackupStudent = {
    * student is kept in any backup, gym folder or Advantage Cloud copy.
    */
   noPhotos?: 'coach' | 'family';
+  /** Set when the card was archived. A working roster hides it. Omitted while active. */
+  archivedAt?: string;
+  archivedReason?: 'left' | 'paused' | 'moved' | 'other';
 };
 
 /** Same shape as BackupRoster in rosterStore.ts. Plan maps are keyed by roster id. */
@@ -96,6 +99,12 @@ export function lightNormalizeRoster(raw: unknown): BackupRoster {
       student.noPhotos = s.noPhotos;
       student.photo = '';
       delete student.cardPhotoId;
+    }
+    if (typeof s.archivedAt === 'string' && /^\d{4}-\d{2}-\d{2}/.test(s.archivedAt)) {
+      student.archivedAt = s.archivedAt;
+      if (s.archivedReason === 'left' || s.archivedReason === 'paused' || s.archivedReason === 'moved' || s.archivedReason === 'other') {
+        student.archivedReason = s.archivedReason;
+      }
     }
     out.students.push(student);
   }
@@ -428,6 +437,10 @@ function fillStudent(local: BackupStudent, incoming: BackupStudent): BackupStude
   if (!next.linkedStudentId && incoming.linkedStudentId) next.linkedStudentId = incoming.linkedStudentId;
   if (!next.guestId && incoming.guestId) next.guestId = incoming.guestId;
   if (next.stripes === undefined && incoming.stripes !== undefined) next.stripes = incoming.stripes;
+  if (!next.archivedAt && incoming.archivedAt) {
+    next.archivedAt = incoming.archivedAt;
+    if (incoming.archivedReason) next.archivedReason = incoming.archivedReason;
+  }
   // No photos is only ever added, never cleared by a file. A family flag outranks a coach flag.
   if (incoming.noPhotos === 'family' || (incoming.noPhotos === 'coach' && !next.noPhotos)) next.noPhotos = incoming.noPhotos;
   if (next.noPhotos) {

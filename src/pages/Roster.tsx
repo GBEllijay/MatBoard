@@ -3,6 +3,7 @@ import { PendingCardShares } from '../components/CoachStudentInbox';
 import { syncActorFromToken, syncSendGate } from '../lib/coachSync';
 import { readStoredEntitlementToken } from '../lib/studentInboxClient';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ensureGymBackfill } from '../lib/gymBackfill';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { RosterBackupTools } from '../components/RosterBackupTools';
@@ -31,7 +32,7 @@ import '../components/rosterCard/coachClipboard.css';
 import '../components/rosterCard/cardEntry.css';
 import { dismissCardNotice, getCardNotices, subscribeCardSync } from '../lib/cardSync';
 import { coachDoorOpen } from '../lib/productNames';
-import { readRosterCard, recordRosterRankChange, removeRosterCard, subscribeRosterCards } from '../lib/rosterCardStore';
+import { readRosterCard, recordRosterRankChange, removeRosterCard, subscribeRosterCards, writePrivateCoachNotes } from '../lib/rosterCardStore';
 import { personCheckedIn, setPersonCheckedIn, toggleCompetitor } from '../lib/rosterCardActions';
 import { useRosterState } from '../hooks/useStores';
 import { COMPETITOR_SYSTEM_NAME, isCoachStudentRoster } from '../lib/productNames';
@@ -79,6 +80,8 @@ import {
   NOTE_MAX,
   addStudent,
   addStudents,
+  archiveStudent,
+  archivedStudents,
   competitorCards,
   isKnownBelt,
   draftFromStudent,
@@ -86,6 +89,7 @@ import {
   linkCompetitorToRosterStudent,
   formatPromotion,
   removeStudent,
+  restoreStudent,
   searchStudents,
   studentRosterCards,
   updateStudent,
@@ -129,6 +133,10 @@ export function RosterPage() {
   const [query, setQuery] = useState('');
   const [editor, setEditor] = useState<{ id: string | null; draft: StudentDraft } | null>(null);
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  useEffect(() => {
+    ensureGymBackfill();
+  }, []);
   const [csvNote, setCsvNote] = useState('');
   const [saveError, setSaveError] = useState('');
   const [linkTarget, setLinkTarget] = useState<Student | null>(null);
@@ -321,9 +329,14 @@ export function RosterPage() {
               onEdit={() => setEditor({ id: competitor.id, draft: draftFromStudent(competitor) })}
               onAskRemove={() => setPendingRemove(competitor.id)}
               onCancelRemove={() => setPendingRemove(null)}
-              onConfirmRemove={() => {
+              onConfirmRemove={(reason) => {
+                archiveStudent(competitor.id, reason ?? 'left');
+                setPendingRemove(null);
+              }}
+              onDeletePermanently={() => {
+                writePrivateCoachNotes(competitor.id, '');
+                removeRosterCard(competitor.id);
                 removeStudent(competitor.id);
-                if (studentRoster) removeRosterCard(competitor.id);
                 setPendingRemove(null);
               }}
               onOpenCard={studentRoster ? () => setCardTarget(competitor.id) : undefined}
@@ -397,6 +410,48 @@ export function RosterPage() {
           }
         />
       )}
+
+      {archivedStudents(roster.students, studentRoster ? 'student' : 'competitor').length ? (
+        <details className="roster__archived">
+          <summary>
+            Archived ({archivedStudents(roster.students, studentRoster ? 'student' : 'competitor').length})
+          </summary>
+          <ul>
+            {archivedStudents(roster.students, studentRoster ? 'student' : 'competitor').map((student) => (
+              <li key={student.id}>
+                <span>{student.name}</span>
+                <button type="button" className="btn btn--ghost" onClick={() => restoreStudent(student.id)}>
+                  Restore
+                </button>
+                {pendingDelete === student.id ? (
+                  <span className="roster__erase">
+                    <span>Delete {student.name} permanently?</span>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        writePrivateCoachNotes(student.id, '');
+                        removeRosterCard(student.id);
+                        removeStudent(student.id);
+                        setPendingDelete(null);
+                      }}
+                    >
+                      Yes, delete permanently
+                    </button>
+                    <button type="button" className="btn btn--ghost" onClick={() => setPendingDelete(null)}>
+                      Keep
+                    </button>
+                  </span>
+                ) : (
+                  <button type="button" className="btn btn--ghost" onClick={() => setPendingDelete(student.id)}>
+                    Delete permanently
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
 
       <StudentEditor
         open={Boolean(editor)}
@@ -659,6 +714,7 @@ export function StudentCard({
   onAskRemove,
   onCancelRemove,
   onConfirmRemove,
+  onDeletePermanently,
   onToggleCheckIn,
   onLink,
   onSamePerson,
@@ -679,7 +735,8 @@ export function StudentCard({
   onEdit: () => void;
   onAskRemove: () => void;
   onCancelRemove: () => void;
-  onConfirmRemove: () => void;
+  onConfirmRemove: (reason?: 'left' | 'paused' | 'moved' | 'other') => void;
+  onDeletePermanently?: () => void;
   onToggleCheckIn: () => void;
   onLink: () => void;
   onSamePerson: () => void;
@@ -703,6 +760,8 @@ export function StudentCard({
   onOpenFace?: () => void;
 }) {
   const [competitorNote, setCompetitorNote] = useState<{ text: string; error?: boolean } | null>(null);
+  const [archiveReason, setArchiveReason] = useState<'left' | 'paused' | 'moved' | 'other'>('left');
+  const [eraseArmed, setEraseArmed] = useState(false);
   const promoted = formatPromotion(student.lastPromotion);
   const promotionDetail = student.lastPromotionDetail.trim();
   const promotionLine = promoted && promotionDetail
@@ -877,13 +936,41 @@ export function StudentCard({
         {studentRoster ? null : <ImportStudentProgress competitorId={student.id} competitorName={student.name} />}
         {pending ? (
           <div className="roster-card__actions">
-            <span className="roster-card__confirm">Remove {student.name}?</span>
-            <button type="button" className="btn" onClick={onConfirmRemove}>
-              Yes, remove
-            </button>
-            <button type="button" className="btn btn--ghost" onClick={onCancelRemove}>
-              Keep
-            </button>
+            {eraseArmed ? (
+              <>
+                <span className="roster-card__confirm">Delete {student.name} permanently? This erases their academy record on this device.</span>
+                <button type="button" className="btn" onClick={() => onDeletePermanently?.()}>
+                  Yes, delete permanently
+                </button>
+                <button type="button" className="btn btn--ghost" onClick={() => setEraseArmed(false)}>
+                  Back
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="roster-card__confirm">Archive {student.name}? They leave this roster. The academy record stays until you delete it permanently.</span>
+                <label className="roster-card__confirm">
+                  Reason
+                  <select value={archiveReason} onChange={(event) => setArchiveReason(event.target.value as 'left' | 'paused' | 'moved' | 'other')}>
+                    <option value="left">Left</option>
+                    <option value="paused">Paused</option>
+                    <option value="moved">Moved</option>
+                    <option value="other">Other</option>
+                  </select>
+                </label>
+                <button type="button" className="btn" onClick={() => onConfirmRemove(archiveReason)}>
+                  Archive
+                </button>
+                {onDeletePermanently ? (
+                  <button type="button" className="btn btn--ghost" onClick={() => setEraseArmed(true)}>
+                    Delete permanently
+                  </button>
+                ) : null}
+                <button type="button" className="btn btn--ghost" onClick={onCancelRemove}>
+                  Keep
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="roster-card__actions">
