@@ -78,10 +78,20 @@ export function TournamentOutbox() {
 }
 
 export function ShareCardWithCoach({
+  withPhoto = true,
   label = 'Share my card with my coach',
+  buttonClassName = 'ink-btn ink-btn--save',
+  note = 'Sends your name, belt, stripes, and gym. Your journal and notes stay on this phone.',
+  onNoChannel,
 }: {
+  /** Send my ID to coach sends no photo. */
+  withPhoto?: boolean;
   /** Button text. My profile uses 'Upload for coach approval to add to student card'. */
   label?: string;
+  buttonClassName?: string;
+  note?: string;
+  /** No cloud and no gym folder: the caller shows the ID/QR instead. */
+  onNoChannel?: () => void;
 } = {}) {
   const [share, setShare] = useState<StudentCardShare | null>(null);
   const [pin, setPin] = useState('');
@@ -89,12 +99,17 @@ export function ShareCardWithCoach({
   const [busy, setBusy] = useState(false);
 
   const start = () => {
-    // Don't allow photos: the share goes without a photo.
-    const portrait = readStudentNoPhotos(localStorage).on ? null : readProfilePortrait();
+    // Send my ID sends no photo; Don't allow photos also sends none.
+    const portrait = withPhoto && !readStudentNoPhotos(localStorage).on ? readProfilePortrait() : null;
     const draft = studentCardShareDraft(localStorage, loadStudentReport(localStorage), {
       photo: portrait && photoImageFits(portrait) ? portrait : null,
     });
     if (!draft.ok) {
+      if (draft.error === 'not-eligible' && onNoChannel) {
+        setStatus('Show this ID to your coach. They add it on your roster card.');
+        onNoChannel();
+        return;
+      }
       setStatus(draft.error === 'not-eligible' ? 'Your gym needs Pro, Plus Cloud, or a gym Drive folder for this.' : 'Add your name first.');
       return;
     }
@@ -125,9 +140,7 @@ export function ShareCardWithCoach({
 
   return (
     <section className="ink" aria-label={label}>
-      <p className="student-quiet">
-        Sends your name, belt, stripes, and gym. Your journal and notes stay on this phone.
-      </p>
+      <p className="student-quiet">{note}</p>
       {share && share.parent.required && !share.parent.approvedAt ? (
         <label className="ink">
           <span className="ink__label">Parent PIN</span>
@@ -151,7 +164,7 @@ export function ShareCardWithCoach({
           </button>
         </label>
       ) : (
-        <button type="button" className="ink-btn ink-btn--save" disabled={busy} onClick={start}>
+        <button type="button" className={buttonClassName} disabled={busy} onClick={start}>
           {label}
         </button>
       )}

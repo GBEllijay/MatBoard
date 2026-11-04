@@ -13,6 +13,7 @@ import {
   type AcademyProvider,
   type StudentDriveLink,
 } from './academyPathway.ts';
+import { confirmAcademyLinkStale } from './academyMembership.ts';
 import { publishGymFile } from './gymPublish.ts';
 import { safePathSegment } from './gymTree.ts';
 import {
@@ -65,6 +66,22 @@ function driveSignInError(provider: AcademyProvider): string {
   return `${name} needs a sign-in on this phone before a file can be saved there.`;
 }
 
+/** A failed academy save: check whether the academy link went stale. Best effort, no sign-in popup. */
+async function noteAcademyFailure(link: StudentDriveLink): Promise<void> {
+  if (link.role !== 'academy' || typeof localStorage === 'undefined') return;
+  try {
+    const token =
+      link.provider === 'googleDrive' ? await requestDriveToken('silent') : readOneDriveSession()?.token ?? null;
+    if (await confirmAcademyLinkStale(localStorage, link, token)) {
+      window.dispatchEvent(new Event(ACADEMY_STALE_EVENT));
+    }
+  } catch {
+    /* the save error already shows */
+  }
+}
+
+export const ACADEMY_STALE_EVENT = 'matboard-academy-stale';
+
 export async function uploadStudentFilm(input: {
   link: StudentDriveLink;
   film: StudentFilm;
@@ -86,7 +103,10 @@ export async function uploadStudentFilm(input: {
   if (published.home === 'phone') {
     return { error: driveSignInError(input.link.provider) };
   }
-  if (published.failed || !published.remoteId) return { error: FILM_DRIVE_FAIL_ERROR };
+  if (published.failed || !published.remoteId) {
+    await noteAcademyFailure(input.link);
+    return { error: FILM_DRIVE_FAIL_ERROR };
+  }
   return { driveFileId: published.remoteId };
 }
 
@@ -130,6 +150,7 @@ export async function copyFilesToStudentDrive(
       }
       return { saved, error: '' };
     } catch (error) {
+      await noteAcademyFailure(link);
       const message = error instanceof Error ? error.message : 'Google Drive did not take the copy.';
       return { saved, error: message };
     }
@@ -144,6 +165,7 @@ export async function copyFilesToStudentDrive(
     }
     return { saved, error: '' };
   } catch (error) {
+    await noteAcademyFailure(link);
     const message = error instanceof Error ? error.message : 'OneDrive did not take the copy.';
     return { saved, error: message };
   }

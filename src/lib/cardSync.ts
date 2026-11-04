@@ -40,6 +40,13 @@
  * call (a coach button press). Saving or editing a card never sends.
  */
 import {
+  applyStudentCoachUpdate,
+  dismissStudentCoachUpdate,
+  pendingStudentCoachUpdates,
+  type StudentCoachUpdate,
+  type UpdateApply,
+} from './coachProgressFile.ts';
+import {
   buildCoachAssessmentUpdate,
   buildCoachBeltProgressUpdate,
   buildCoachNoteUpdate,
@@ -549,6 +556,31 @@ export async function declineCardShare(
 export function importStudentFile(text: string, storage: MemoryStore | null = defaultStorage()) {
   if (!storage) return { kind: 'not-student-file' as const };
   return importStudentToCoachText(storage, text, getRoster().students);
+}
+
+/** "Make a file for my coach" updates waiting on this coach phone. */
+export function getPendingStudentUpdates(storage: MemoryStore | null = defaultStorage()): StudentCoachUpdate[] {
+  return storage ? pendingStudentCoachUpdates(storage) : [];
+}
+
+/** Fill blanks on the linked card. Belt and stripes only with `approveRank`. */
+export function applyStudentUpdate(
+  updateId: string,
+  approveRank: boolean,
+  deps: { actor?: SyncActor; storage?: MemoryStore | null } = {},
+): UpdateApply {
+  const storage = deps.storage === undefined ? defaultStorage() : deps.storage;
+  if (!storage) return { ok: false, reason: 'not-pending' };
+  return applyStudentCoachUpdate(
+    storage,
+    updateId,
+    { students: getRoster().students, update: updateStudent },
+    { actor: deps.actor ?? currentActor(), approveRank },
+  );
+}
+
+export function dismissStudentUpdate(updateId: string, storage: MemoryStore | null = defaultStorage()): void {
+  if (storage) dismissStudentCoachUpdate(storage, updateId);
 }
 
 export { COACH_STUDENT_INBOX_EVENT };

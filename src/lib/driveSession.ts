@@ -4,6 +4,7 @@
  * Lesson plans, rosters, journals, OneDrive, and Google Photos are left in place.
  */
 
+import { forgetAcademyFolder } from './academyMembership.ts';
 import {
   ACADEMY_BINDING_KEY,
   PERSONAL_DRIVE_KEY,
@@ -121,7 +122,8 @@ export async function clearDriveIndexedFileLists(): Promise<void> {
 function clearGoogleStudentFolderLinks(): void {
   if (typeof localStorage === 'undefined') return;
   const academy = loadAcademyLink(localStorage);
-  if (academy?.provider === 'googleDrive') clearStudentDriveLink(localStorage, 'academy');
+  // Signing out of Google is not leaving the gym, but the folder and its license id go.
+  if (academy?.provider === 'googleDrive') forgetAcademyFolder(localStorage);
   const personal = loadPersonalDrive(localStorage);
   if (personal?.provider === 'googleDrive') clearStudentDriveLink(localStorage, 'personal');
 }

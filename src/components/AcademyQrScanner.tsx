@@ -25,7 +25,22 @@ function readSource(source: CanvasImageSource, width: number, height: number, ca
  * Camera scan for the academy QR, plus a photo of that QR when the live
  * camera does not open. The pasted link stays beside this control.
  */
-export function AcademyQrScanner({ onScan }: Props) {
+export function AcademyQrScanner({
+  onScan,
+  scanLabel = 'Scan academy QR',
+  scanClassName = 'ink-btn',
+  buttonClassName = 'ink-btn',
+  photoId = 'academy-qr-photo',
+  startSignal = 0,
+}: Props & {
+  scanLabel?: string;
+  scanClassName?: string;
+  buttonClassName?: string;
+  /** Unique when two scanners share a page. */
+  photoId?: string;
+  /** Bump to open the camera from another button (Rescan). */
+  startSignal?: number;
+}) {
   const photoRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -98,6 +113,12 @@ export function AcademyQrScanner({ onScan }: Props) {
     }
   };
 
+  useEffect(() => {
+    if (startSignal > 0) void start();
+    // start is recreated each render; only a new signal opens the camera.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startSignal]);
+
   const onPhoto = async (files: readonly File[]) => {
     const file = files[0];
     if (!file) return;
@@ -121,21 +142,21 @@ export function AcademyQrScanner({ onScan }: Props) {
   return (
     <div className="academy-scan">
       <div className="academy-scan__actions">
-        <button type="button" className="ink-btn" onClick={() => void start()} disabled={live}>
-          Scan academy QR
+        <button type="button" className={scanClassName} onClick={() => void start()} disabled={live}>
+          {scanLabel}
         </button>
         <DeviceMediaInput
           inputRef={photoRef}
-          id="academy-qr-photo"
+          id={photoId}
           accept="image/*"
           capture="environment"
           onFiles={(files) => void onPhoto(files)}
         />
-        <label className="ink-btn" htmlFor="academy-qr-photo">
+        <label className={buttonClassName} htmlFor={photoId}>
           Take a photo of the QR
         </label>
         {live ? (
-          <button type="button" className="ink-btn" onClick={stop}>
+          <button type="button" className={buttonClassName} onClick={stop}>
             Stop camera
           </button>
         ) : null}

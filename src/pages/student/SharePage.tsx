@@ -5,13 +5,22 @@ import type { CoachGymBrand, StudentProgressReport } from '../../lib/progress/ty
 import {
   mergeOwnStudentFile,
   OWN_SEND_FILE_MESSAGE,
-  progressReportFiles,
   sampleCoachPlanFile,
   SEND_TO_COACH_MERGE_PROMPT,
   SHARE_SUBJECT,
 } from '../../lib/studentTools';
 import { COACH_FILE_HINT, COACH_FILE_LABEL } from '../../lib/studentHubMenu';
 import { setStudentProfile } from '../../lib/studentEdition';
+import { buildCoachUpdateFile, markCoachFileSent, readShareWeightWithCoach, writeShareWeightWithCoach, type CoachUpdateSection } from '../../lib/coachProgressFile';
+import { loadAssessments } from '../../lib/studentAssessment';
+import { readStableStudentId } from '../../lib/studentIdentity';
+
+export const COACH_UPDATE_FILE_COPY =
+  'The file stays on this device until you send it. Advantage does not host it. It has what changed since your last file: profile, belt and stripes, A/B/C game, tournaments you entered (not ones you are considering), new self-assessments, and weight updates when you turn on sharing below. It never has promotion photos or any photo, your journal, or move permissions. Your coach adds it to your card; belt and stripes wait for your coach to approve. For a full copy of your journal, use Back up my journal or the spreadsheet in Connections.';
+
+function sectionLabel(section: CoachUpdateSection): string {
+  return { profile: 'profile', card: 'belt and stripes', competition: 'A/B/C game and tournaments', weight: 'weight updates', assessments: 'self-assessments' }[section];
+}
 import { writeStudentGymLogo } from '../../lib/studentGymMark';
 import { LeatherHeader, StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
 
@@ -29,13 +38,17 @@ export function SharePage() {
   const to = useStudentPath();
   const { report, commit } = useStudentFile();
   useScrollToHash();
-  const [includeCsv, setIncludeCsv] = useState(false);
   const [sendNote, setSendNote] = useState('');
+  const [shareWeight, setShareWeight] = useState(() => readShareWeightWithCoach(localStorage));
   const [importNote, setImportNote] = useState('');
   const [error, setError] = useState('');
   const [pendingOwn, setPendingOwn] = useState<StudentProgressReport | null>(null);
   const [pendingGym, setPendingGym] = useState<CoachGymBrand | null>(null);
-  const files = progressReportFiles(report);
+  const files = {
+    mailto: `mailto:?subject=${encodeURIComponent(SHARE_SUBJECT)}&body=${encodeURIComponent(
+      'My update file for you is on my phone. I will attach that JSON. Advantage does not host the file.',
+    )}`,
+  };
 
   const mergeOwn = () => {
     if (!pendingOwn) return;
@@ -58,22 +71,28 @@ export function SharePage() {
   const send = async () => {
     setError('');
     setImportNote('');
-    const jsonFile = new File([files.json], files.jsonName, { type: 'application/json' });
+    const built = buildCoachUpdateFile(report, {
+      storage: localStorage,
+      assessments: loadAssessments(localStorage).entries,
+      studentId: readStableStudentId(localStorage) ?? report.studentId,
+    });
+    const jsonFile = new File([built.json], built.name, { type: 'application/json' });
     const sharedFiles = [jsonFile];
-    if (includeCsv) sharedFiles.push(new File([files.csv], files.csvName, { type: 'text/csv' }));
+    const what = built.included.length ? `Includes: ${built.included.map(sectionLabel).join(', ')}.` : 'Nothing changed since your last file.';
     const nav = navigator as Navigator & { canShare?: (data?: ShareData) => boolean };
     if (typeof nav.share === 'function' && nav.canShare?.({ files: sharedFiles })) {
       try {
-        await nav.share({ files: sharedFiles, title: SHARE_SUBJECT, text: 'Student progress report' });
-        setSendNote('Shared from this device. Advantage does not host the file.');
+        await nav.share({ files: sharedFiles, title: SHARE_SUBJECT, text: 'Update for my coach' });
+        markCoachFileSent(localStorage, built);
+        setSendNote(`Shared from this device. ${what} Advantage does not host the file.`);
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
       }
     }
-    downloadText(files.jsonName, files.json, 'application/json');
-    if (includeCsv) downloadText(files.csvName, files.csv, 'text/csv');
-    setSendNote('Downloaded the progress file on this device. Email it from your mail app, or put it in the gym Drive folder.');
+    downloadText(built.name, built.json, 'application/json');
+    markCoachFileSent(localStorage, built);
+    setSendNote(`Downloaded the file on this device. ${what} Email it from your mail app, or put it in the gym Drive folder.`);
   };
 
   const downloadSample = () => {
@@ -95,12 +114,17 @@ export function SharePage() {
           <section className="student-share-card" aria-label={COACH_FILE_LABEL}>
             <h2>{COACH_FILE_LABEL}</h2>
             <p>{COACH_FILE_HINT}</p>
-            <p>
-              The progress file stays on this device. Advantage does not host it. It includes your journal, tournaments, A/B/C game, weights, competition results, video library links, rank, and lineage. Promotion photos are included when the file has room. The ones that do not fit stay on this device, and the file says so. A bracket photo stays on this device and is not in the file. The gym logo is included when Gym logo on reports and backups is on. Your photo stays on this phone and is not in this file. Share it with your mail app or the gym Google Drive folder.
-            </p>
+            <p>{COACH_UPDATE_FILE_COPY}</p>
             <label className="student-share-check">
-              <input type="checkbox" checked={includeCsv} onChange={(event) => setIncludeCsv(event.target.checked)} />
-              <span>Also include the spreadsheet</span>
+              <input
+                type="checkbox"
+                checked={shareWeight}
+                onChange={(event) => {
+                  writeShareWeightWithCoach(localStorage, event.target.checked);
+                  setShareWeight(event.target.checked);
+                }}
+              />
+              <span>Share my weight updates with my coach</span>
             </label>
             <button type="button" className="ink-btn ink-btn--save" onClick={() => void send()}>
               {COACH_FILE_LABEL}

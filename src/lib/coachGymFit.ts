@@ -24,6 +24,8 @@ export function readTravelingGym(raw: unknown): CoachGymBrand | null {
   const logo = typeof gym.logo === 'string' && coachGymLogoFits(gym.logo) ? gym.logo : undefined;
   if (!name && !logo) return null;
   const brand: CoachGymBrand = logo ? { name, logo } : { name };
+  const ids = readGymIds(gym.ids);
+  if (ids.length) brand.ids = ids;
   const look = typeof gym.cardLook === 'string' && /^(clipboard|fighter)-(dark|light)$/.test(gym.cardLook) ? gym.cardLook : '';
   if (look) brand.cardLook = look;
   return brand;
@@ -37,4 +39,17 @@ export function softenOversizedGymLogo(record: Record<string, unknown>): void {
   const gym = asRecord(record.gym);
   if (!gym || typeof gym.logo !== 'string' || coachGymLogoFits(gym.logo)) return;
   delete gym.logo;
+}
+
+const GYM_ID_RE = /^(folder:)?[A-Za-z0-9_!.-]{6,200}$/;
+
+/** Sender ids on a packet's `gym`. Bad entries are dropped. At most 6. */
+export function readGymIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item === 'string' && GYM_ID_RE.test(item) && !out.includes(item)) out.push(item);
+    if (out.length >= 6) break;
+  }
+  return out;
 }

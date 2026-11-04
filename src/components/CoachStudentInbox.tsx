@@ -5,6 +5,9 @@
 import { useEffect, useState } from 'react';
 import {
   acceptCardShare,
+  applyStudentUpdate,
+  dismissStudentUpdate,
+  getPendingStudentUpdates,
   declineCardShare,
   dismissCardNotice,
   getCardNotices,
@@ -67,6 +70,7 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
   useTick();
   const [status, setStatus] = useState('');
   const [mergeInto, setMergeInto] = useState<Record<string, string>>({});
+  const [, setTick] = useState(0);
   const shares = getPendingCardShares();
   const targets = roster.filter((row) => !row.guestId);
   return (
@@ -151,10 +155,81 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
             }
             const result = importStudentFile(text);
             setStatus(result.kind === 'not-student-file' ? 'That is not a student file.' : `Imported (${result.result}).`);
+            setTick((value) => value + 1);
           }}
         />
       </label>
+      <PendingStudentUpdates roster={roster} onStatus={setStatus} />
       {status ? <p role="status">{status}</p> : null}
     </section>
+  );
+}
+
+/** Update files from "Make a file for my coach". Blanks fill; belt and stripes need approval. */
+export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly Student[]; onStatus: (text: string) => void }) {
+  const [, setTick] = useState(0);
+  const updates = getPendingStudentUpdates();
+  if (!updates.length) return null;
+  const done = (text: string) => {
+    onStatus(text);
+    setTick((value) => value + 1);
+  };
+  return (
+    <div aria-label="Student updates waiting">
+      <h3>Student updates waiting</h3>
+      <p>Adding fills only blank fields on the linked card, including a blank bout division from an entered tournament. Tournaments and weight are kept with the student's updates. Belt and stripes change only when you approve them.</p>
+      {updates.map((update) => {
+        const card = roster.find((row) => row.linkedStudentId === update.studentId && !row.guestId);
+        const tournaments = update.competition?.tournaments ?? [];
+        return (
+          <div key={update.updateId}>
+            <p>
+              {card ? card.name : 'No linked card yet'}
+              {update.profile ? ' · profile' : ''}
+              {update.card ? ` · belt ${update.card.belt}${update.card.stripes ? `, ${update.card.stripes} stripes` : ''}` : ''}
+              {update.competition?.games.length ? ' · A/B/C game' : ''}
+              {tournaments.length ? ` · entered ${tournaments.map((t) => `${t.name} ${t.date}`).join(', ')}` : ''}
+              {update.assessments?.length ? ` · ${update.assessments.length} self-assessment(s)` : ''}
+              {update.weight?.weighIns.length ? ` · weigh-ins ${update.weight.weighIns.map((w) => `${w.weight} ${w.unit} ${w.date}`).join(', ')}` : ''}
+              {update.weight?.goalWeight ? ` · goal ${update.weight.goalWeight} ${update.weight.goalUnit || update.weight.unit}` : ''}
+            </p>
+            <button
+              type="button"
+              className="btn"
+              disabled={!card}
+              onClick={() => {
+                const result = applyStudentUpdate(update.updateId, false);
+                done(result.ok ? `Added. Filled: ${result.filled.join(', ') || 'nothing blank'}.` : `Could not add (${result.reason}).`);
+              }}
+            >
+              Add (fill blanks)
+            </button>
+            {update.card ? (
+              <button
+                type="button"
+                className="btn"
+                disabled={!card}
+                onClick={() => {
+                  const result = applyStudentUpdate(update.updateId, true);
+                  done(result.ok ? 'Added. Belt and stripes approved.' : result.reason === 'not-allowed' ? 'Only a Coach seat or the owner can approve belt changes.' : `Could not add (${result.reason}).`);
+                }}
+              >
+                Add and approve belt
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                dismissStudentUpdate(update.updateId);
+                done('Dismissed.');
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        );
+      })}
+    </div>
   );
 }
