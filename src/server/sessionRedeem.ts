@@ -16,6 +16,7 @@ import { API_PRODUCT_PRO } from './routes.ts';
 import { stripeErrorMessage, type StripeRuntimeEnv } from './stripeCheckout.ts';
 import { appVersionOf } from '../lib/appCapability.ts';
 import { issueToken } from './tokenIssue.ts';
+import { cloudEditionForProduct, recordCloudGrant } from './cloudSubscription.ts';
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -142,6 +143,13 @@ export async function handleSessionRedeem(
       status: 'active',
     });
     licenseId = recorded.licenseId;
+    const cloudEdition = session.metadata?.cloud === '1' ? cloudEditionForProduct(product) : null;
+    const cloudSub = subscriptionId(session);
+    if (cloudEdition && cloudSub) {
+      // Media or Instructor Cloud: mark the subscription as the add-on, so
+      // its end clears Cloud only and never reads as Pro.
+      await recordCloudGrant(db, { licenseId, edition: cloudEdition, subscriptionId: cloudSub, now: stamp });
+    }
   }
   const deviceId = typeof body.deviceId === 'string' && body.deviceId.trim() ? body.deviceId.trim().slice(0, 80) : crypto.randomUUID();
   const publicJwk = readPublicJwk(body.publicJwk);

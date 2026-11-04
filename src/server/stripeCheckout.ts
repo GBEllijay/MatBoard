@@ -523,14 +523,23 @@ export type OneTimeRevocation = {
   reason: 'refund' | 'dispute';
 };
 
+/** What a Media or Instructor Cloud event says, before the handler re-reads Stripe. */
+export type CloudSubscriptionSync = {
+  status: string;
+  billingEvent: BillingEventKind;
+  priceIds: string[];
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+};
+
 export type StripeEntitlementDecision =
   | { action: 'record'; purchase: CheckoutPurchase }
   | { action: 'record-student'; purchase: CheckoutPurchase }
-  | { action: 'record-coach'; purchase: CheckoutPurchase; cloud?: boolean }
-  | { action: 'record-media'; purchase: CheckoutPurchase; cloud?: boolean }
+  | { action: 'record-coach'; purchase: CheckoutPurchase; cloud?: boolean; subscriptionId?: string }
+  | { action: 'record-media'; purchase: CheckoutPurchase; cloud?: boolean; subscriptionId?: string }
   | { action: 'record-pro'; purchase: CheckoutPurchase }
   | { action: 'grant-pro'; grant: ProCheckoutGrant; cloud?: boolean }
-  | { action: 'sync-cloud'; edition: 'media' | 'coach'; entitled: boolean; subscriptionId: string }
+  | { action: 'sync-cloud'; edition: 'media' | 'coach'; entitled: boolean; subscriptionId: string; cloud: CloudSubscriptionSync }
   | { action: 'sync-pro'; sync: ProSubscriptionSync }
   | { action: 'revoke-onetime'; revocation: OneTimeRevocation }
   | { action: 'retry' }
@@ -681,9 +690,10 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
       amountTotal: money(row, 'amount_total'),
       currency: currencyOf(row),
     };
+    const subscriptionId = readSubscriptionId(row) || undefined;
     return product === API_PRODUCT_MEDIA
-      ? { action: 'record-media', purchase, cloud: true }
-      : { action: 'record-coach', purchase, cloud: true };
+      ? { action: 'record-media', purchase, cloud: true, subscriptionId }
+      : { action: 'record-coach', purchase, cloud: true, subscriptionId };
   }
   if (row.mode === 'subscription' && product === API_PRODUCT_PRO) {
     if (!paid) return { action: 'ignore' };
@@ -713,21 +723,42 @@ function billingFields(row: Record<string, unknown>): Pick<ProSubscriptionSync, 
   };
 }
 
-function cloudSync(row: Record<string, unknown>, env: StripeRuntimeEnv, entitled: boolean): StripeEntitlementDecision | null {
-  const edition = cloudEditionForPriceIds(readPriceIds(row), env);
+/**
+ * Media or Instructor Cloud, by its own monthly price, or by the edition in the
+ * subscription metadata when the price is not one of ours. Pro is never matched.
+ */
+function cloudSync(
+  row: Record<string, unknown>,
+  env: StripeRuntimeEnv,
+  entitled: boolean,
+  input: { metaProduct: string; status: string; billingEvent: CloudSubscriptionSync['billingEvent'] },
+): StripeEntitlementDecision | null {
+  const priced = cloudEditionForPriceIds(readPriceIds(row), env);
+  const byMeta = input.metaProduct === API_PRODUCT_MEDIA ? 'media' : input.metaProduct === API_PRODUCT_COACH ? 'coach' : null;
+  const edition = priced ?? byMeta;
   if (edition !== 'media' && edition !== 'coach') return null;
   const subscriptionId = readSubscriptionId(row) || (typeof row.id === 'string' && row.id.startsWith('sub_') ? row.id : '');
   if (!subscriptionId) return { action: 'ignore' };
-  return { action: 'sync-cloud', edition, entitled, subscriptionId };
+  return {
+    action: 'sync-cloud',
+    edition,
+    entitled,
+    subscriptionId,
+    cloud: { status: input.status, billingEvent: input.billingEvent, ...billingFields(row) },
+  };
 }
 
 function invoiceDecision(row: Record<string, unknown>, kind: 'paid' | 'failed', env: StripeRuntimeEnv): StripeEntitlementDecision {
   if (row.object !== 'invoice') return { action: 'invalid' };
   const subscriptionId = readSubscriptionId(row);
   if (!subscriptionId) return { action: 'ignore' };
-  const cloud = cloudSync(row, env, kind === 'paid');
-  if (cloud) return cloud;
   const product = invoiceProduct(row);
+  const cloud = cloudSync(row, env, kind === 'paid', {
+    metaProduct: product,
+    status: kind === 'paid' ? 'active' : 'past_due',
+    billingEvent: kind,
+  });
+  if (cloud) return cloud;
   if (product && product !== API_PRODUCT_PRO) return { action: 'ignore' };
   return {
     action: 'sync-pro',
@@ -749,10 +780,14 @@ function subscriptionDecision(row: Record<string, unknown>, kind: 'deleted' | 'u
   const subscriptionId = typeof row.id === 'string' && row.id.startsWith('sub_') ? row.id : '';
   if (!subscriptionId) return { action: 'invalid' };
   const status = typeof row.status === 'string' ? row.status : '';
-  const cloudEntitled = kind === 'upsert' && ENTITLED_SUBSCRIPTION_STATUSES.has(status);
-  const cloud = cloudSync(row, env, cloudEntitled);
-  if (cloud) return cloud;
   const product = readMetaProduct(row);
+  const cloudEntitled = kind === 'upsert' && ENTITLED_SUBSCRIPTION_STATUSES.has(status);
+  const cloud = cloudSync(row, env, cloudEntitled, {
+    metaProduct: product,
+    status: kind === 'deleted' ? 'canceled' : status,
+    billingEvent: kind,
+  });
+  if (cloud) return cloud;
   if (product && product !== API_PRODUCT_PRO) return { action: 'ignore' };
   if (kind === 'upsert') {
     if (!ENTITLED_SUBSCRIPTION_STATUSES.has(status) && !REVOKED_SUBSCRIPTION_STATUSES.has(status)) {

@@ -11,6 +11,7 @@ import { recordPurchase } from './purchaseRecords.ts';
 import { ensureHalfOffCode } from './proBundle.ts';
 import { lookupCheckoutSessionId, revokeOneTimePurchase } from './refundRevoke.ts';
 import { applySubscriptionSnapshot } from './subscriptionSync.ts';
+import { applyCloudSnapshot, cloudEditionForSnapshot, recordCloudGrant } from './cloudSubscription.ts';
 import { canceledSnapshot, fetchStripeSubscription, type StripeSubscriptionSnapshot } from './stripeSubscription.ts';
 import { isHalfOffCheckoutFlag } from '../lib/halfOff.ts';
 import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
@@ -37,6 +38,7 @@ import {
   isCloudAddonProduct,
   readCloudAddon,
   readCloudAddonCart,
+  type CloudSubscriptionSync,
   readStripeConfig,
   verifyStripeSignature,
   type StripeRuntimeEnv,
@@ -255,6 +257,70 @@ async function mirrorPurchase(
   return saved.licenseId;
 }
 
+/**
+ * Apply one Media or Instructor Cloud subscription state to D1 and KV.
+ * Clears Cloud only. The one-time edition and any R2 files stay.
+ */
+async function syncCloudSubscription(
+  store: EntitlementStore,
+  extras: WebhookExtras,
+  input: {
+    edition: 'media' | 'coach';
+    subscriptionId: string;
+    entitled: boolean;
+    hint: CloudSubscriptionSync;
+    fresh: StripeSubscriptionSnapshot | null;
+    eventAt: Date;
+    eventId: string;
+    stamp: string;
+  },
+): Promise<Response> {
+  const { fresh } = input;
+  const snapshot = fresh ?? {
+    id: input.subscriptionId,
+    status: input.hint.status,
+    cancelAtPeriodEnd: input.hint.cancelAtPeriodEnd,
+    currentPeriodEnd: input.hint.currentPeriodEnd,
+    priceIds: input.hint.priceIds,
+  };
+  const openStatus = (status: string) => status === 'active' || status === 'trialing' || status === 'past_due';
+  let entitled = fresh ? openStatus(fresh.status) : input.entitled;
+  let state: string | undefined;
+  let lapsedAt: string | null = null;
+  if (extras.db) {
+    const applied = await applyCloudSnapshot(extras.db, {
+      snapshot,
+      edition: input.edition,
+      eventKind: input.hint.billingEvent,
+      now: input.eventAt,
+    });
+    if (applied.applied) {
+      entitled = applied.access.entitled;
+      state = applied.access.state;
+      lapsedAt = applied.lapsedAt;
+    }
+  }
+  if (store.saveCloud) {
+    await store.saveCloud({
+      subscriptionId: input.subscriptionId,
+      edition: input.edition,
+      status: entitled ? 'active' : 'inactive',
+      cloudLapsedAt: entitled ? null : (lapsedAt ?? input.stamp),
+      createdAt: input.stamp,
+      updatedAt: input.stamp,
+    });
+  }
+  await rememberEvent(extras, input.eventId, input.stamp);
+  return json(200, {
+    received: true,
+    cloud: entitled,
+    edition: input.edition,
+    entitled,
+    ...(state ? { state } : {}),
+    pro: false,
+  });
+}
+
 export async function handleWebhook(
   request: Request,
   env: StripeRuntimeEnv,
@@ -353,7 +419,7 @@ export async function handleWebhook(
       createdAt: stamp,
     };
     const stored = await store.saveCoach(record);
-    await mirrorPurchase(extras, {
+    const licenseId = await mirrorPurchase(extras, {
       email: stored.email,
       product: stored.product,
       source: 'stripe_payment',
@@ -361,6 +427,22 @@ export async function handleWebhook(
       sessionId: stored.sessionId,
       now: now(),
     });
+    if (parsed.cloud && parsed.subscriptionId) {
+      if (extras.db && licenseId) {
+        await recordCloudGrant(extras.db, { licenseId, edition: 'coach', subscriptionId: parsed.subscriptionId, now: now() });
+      }
+      if (store.saveCloud && !(store.findCloudBySubscriptionId && (await store.findCloudBySubscriptionId(parsed.subscriptionId)))) {
+        await store.saveCloud({
+          subscriptionId: parsed.subscriptionId,
+          edition: 'coach',
+          sessionId: stored.sessionId,
+          status: 'active',
+          cloudLapsedAt: null,
+          createdAt: stamp,
+          updatedAt: stamp,
+        });
+      }
+    }
     if (eventId && extras.db) {
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }
@@ -390,7 +472,7 @@ export async function handleWebhook(
       createdAt: stamp,
     };
     const stored = await store.saveMedia(record);
-    await mirrorPurchase(extras, {
+    const licenseId = await mirrorPurchase(extras, {
       email: stored.email,
       product: stored.product,
       source: 'stripe_payment',
@@ -398,6 +480,22 @@ export async function handleWebhook(
       sessionId: stored.sessionId,
       now: now(),
     });
+    if (parsed.cloud && parsed.subscriptionId) {
+      if (extras.db && licenseId) {
+        await recordCloudGrant(extras.db, { licenseId, edition: 'media', subscriptionId: parsed.subscriptionId, now: now() });
+      }
+      if (store.saveCloud && !(store.findCloudBySubscriptionId && (await store.findCloudBySubscriptionId(parsed.subscriptionId)))) {
+        await store.saveCloud({
+          subscriptionId: parsed.subscriptionId,
+          edition: 'media',
+          sessionId: stored.sessionId,
+          status: 'active',
+          cloudLapsedAt: null,
+          createdAt: stamp,
+          updatedAt: stamp,
+        });
+      }
+    }
     if (eventId && extras.db) {
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }
@@ -432,13 +530,21 @@ export async function handleWebhook(
     return json(200, { received: true, sessionId: stored.sessionId, entitled: true, ...(parsed.cloud ? { cloud: true } : {}) });
   }
   if (parsed.action === 'sync-cloud') {
-    await rememberEvent(extras, eventId, stamp);
-    return json(200, {
-      received: true,
-      cloud: parsed.entitled,
+    // Media or Instructor Cloud. Only Cloud moves. The one-time edition grant,
+    // the Pro record, and the R2 files are not touched.
+    const fresh = await freshSubscription(env, extras, parsed.subscriptionId);
+    if (fresh === 'error') {
+      return json(500, { error: 'Could not read the subscription from Stripe. Stripe will retry.' });
+    }
+    return syncCloudSubscription(store, extras, {
       edition: parsed.edition,
+      subscriptionId: parsed.subscriptionId,
       entitled: parsed.entitled,
-      pro: false,
+      hint: parsed.cloud,
+      fresh,
+      eventAt: eventInstant(event, now()),
+      eventId,
+      stamp,
     });
   }
   if (parsed.action === 'revoke-onetime') {
@@ -472,6 +578,26 @@ export async function handleWebhook(
     return json(500, { error: 'Could not read the subscription from Stripe. Stripe will retry.' });
   }
   if (fresh && extras.db) {
+    // A bare invoice can name a Cloud add-on with no price on it. Send it to Cloud.
+    const cloudEdition = await cloudEditionForSnapshot(extras.db, fresh, env);
+    if (cloudEdition) {
+      return syncCloudSubscription(store, extras, {
+        edition: cloudEdition,
+        subscriptionId: parsed.sync.subscriptionId,
+        entitled: parsed.sync.entitled,
+        hint: {
+          status: fresh.status,
+          billingEvent: parsed.sync.billingEvent,
+          priceIds: fresh.priceIds,
+          cancelAtPeriodEnd: fresh.cancelAtPeriodEnd,
+          currentPeriodEnd: fresh.currentPeriodEnd,
+        },
+        fresh,
+        eventAt: eventInstant(event, now()),
+        eventId,
+        stamp,
+      });
+    }
     const applied = await applySubscriptionSnapshot(extras.db, {
       snapshot: fresh,
       eventKind: parsed.sync.billingEvent,

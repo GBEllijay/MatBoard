@@ -1,6 +1,7 @@
 import type { D1Database } from './d1.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
 import { matchesProPrice } from './proPrices.ts';
+import { CLOUD_SUBSCRIPTION_IDS_SQL, cloudEditionForSnapshot } from './cloudSubscription.ts';
 import { recordPurchase } from './purchaseRecords.ts';
 import {
   accessForSubscription,
@@ -36,9 +37,11 @@ export async function readSubscriptionForLicense(db: D1Database, licenseId: stri
       `SELECT stripe_subscription_id AS subscriptionId, license_id AS licenseId, status, price_id AS priceId,
         cancel_at_period_end AS cancelAtPeriodEnd, current_period_end AS currentPeriodEnd,
         past_due_since AS pastDueSince, last_synced_at AS lastSyncedAt
-       FROM subscriptions WHERE license_id = ? ORDER BY last_synced_at DESC LIMIT 1`,
+       FROM subscriptions WHERE license_id = ?
+       AND stripe_subscription_id NOT IN (${CLOUD_SUBSCRIPTION_IDS_SQL})
+       ORDER BY last_synced_at DESC LIMIT 1`,
     )
-    .bind(licenseId)
+    .bind(licenseId, licenseId)
     .first<SubscriptionRow & { subscriptionId: string }>();
 }
 
@@ -52,6 +55,14 @@ export function subscriptionIsPro(input: {
   if (input.alreadyKnown || input.productKnown) return true;
   if (input.snapshot.metadataProduct === API_PRODUCT_PRO) return true;
   return matchesProPrice([...input.snapshot.priceIds, ...input.extraPriceIds], input.env);
+}
+
+async function isCloudAddonSubscription(
+  db: D1Database,
+  snapshot: StripeSubscriptionSnapshot,
+  env: StripeRuntimeEnv,
+): Promise<boolean> {
+  return (await cloudEditionForSnapshot(db, snapshot, env)) !== null;
 }
 
 export function priceIdList(ids: readonly string[]): string | null {
@@ -77,6 +88,8 @@ export async function applySubscriptionSnapshot(
     productKnown?: boolean;
   },
 ): Promise<{ ignored: true } | { ignored: false; licenseId: string; access: SubscriptionAccess; pastDueSince: string | null }> {
+  // A Media or Instructor Cloud add-on is never Pro, even when its row is already on file.
+  if (await isCloudAddonSubscription(db, input.snapshot, input.env)) return { ignored: true };
   const previous = await readSubscription(db, input.snapshot.id);
   const known = Boolean(previous) || Boolean(input.alreadyKnown);
   if (
