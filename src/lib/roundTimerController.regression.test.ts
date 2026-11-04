@@ -38,6 +38,10 @@ test('round timer keeps every control that was not replaced by a wheel', () => {
   }
   assert.match(options, /<EndCueControls label="Training end cue" value=\{audio\.endCue\} begin \/>/);
   assert.doesNotMatch(options, /WORK_PRESETS|BREAK_PRESETS|type="number"|Custom round length/);
+  assert.doesNotMatch(options, /aria-label="3 minutes"|aria-label="5 minutes"|aria-label="10 minutes"|TIME_PRESETS/);
+  const picker = readFileSync(new URL('../components/WheelPicker.tsx', import.meta.url), 'utf8');
+  assert.match(picker, /event\.key === 'ArrowDown' \? 1 : -1/);
+  assert.match(picker, /precise\.current = true/);
 });
 
 test('Begin plays the owner Combate file through the shared cue bus', () => {

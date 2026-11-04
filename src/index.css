@@ -4735,6 +4735,7 @@ main.tree:has(> .tier-home) > .tree__bar {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.55rem;
   width: 100%;
   height: 48px;
   margin: 0;
@@ -4750,13 +4751,33 @@ main.tree:has(> .tier-home) > .tree__bar {
   cursor: pointer;
 }
 
+.wheel-tick {
+  width: 8px;
+  height: 1px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.4;
+  flex: 0 0 auto;
+}
+
+.wheel-item--mark {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.wheel-item--mark .wheel-tick {
+  width: 22px;
+  height: 2px;
+  opacity: 1;
+}
+
 .wheel-item--on {
   color: var(--ink);
   font-size: 1.7rem;
   font-weight: 800;
 }
 
-.wheel-item--snap {
+.wheel-item--snap:not(.wheel-item--on) {
   color: var(--gold-2);
 }
 
