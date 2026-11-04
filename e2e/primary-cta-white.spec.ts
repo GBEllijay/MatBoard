@@ -253,7 +253,7 @@ test('instructor issue invite is the white primary', async ({ page }) => {
 test('owner unlock, roster Save, and student Sign in are white, and Win calls are green', async ({ page }) => {
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/products');
-  await page.getByRole('button', { name: 'Advantage Pro, coming soon' }).click();
+  await page.getByRole('button', { name: 'Advantage Pro, This product is in alpha' }).click();
   await page.getByRole('button', { name: 'Owner unlock' }).click();
   const unlockPro = page.getByRole('button', { name: 'Unlock Pro' });
   await expect(unlockPro).toBeVisible();
@@ -286,7 +286,7 @@ test('owner unlock, roster Save, and student Sign in are white, and Win calls ar
 
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/products');
-  await page.getByRole('button', { name: 'Advantage Instructor Edition, coming soon' }).click();
+  await page.getByRole('button', { name: 'Advantage Instructor Edition, This product is in alpha' }).click();
   await page.getByRole('button', { name: 'Owner unlock' }).click();
   const unlockCoach = page.getByRole('button', { name: 'Unlock Coach' });
   await page.mouse.move(0, 0);
@@ -297,7 +297,7 @@ test('owner unlock, roster Save, and student Sign in are white, and Win calls ar
 
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/products');
-  await page.getByRole('button', { name: 'Advantage Student Edition, coming soon' }).click();
+  await page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' }).click();
   await page.getByRole('button', { name: 'Owner unlock' }).click();
   const unlockStudent = page.getByRole('button', { name: 'Unlock Student Edition' });
   await page.mouse.move(0, 0);

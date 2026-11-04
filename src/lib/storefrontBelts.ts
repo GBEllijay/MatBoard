@@ -114,7 +114,7 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     learnTo: MEDIA_INFO_PATH,
     // Display only: there is no Media (id academy) product in Stripe.
     cardPrice: '$29.99 one-time',
-    status: 'Coming soon',
+    status: 'This product is in alpha',
     // Public Media Edition page. Still not for sale: its CTA is the alpha-code email.
     to: MEDIA_EDITION_PATH,
   },
@@ -157,7 +157,7 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     title: PRO_PLUS_CLOUD_NAME,
     blurb: PRO_PLUS_CLOUD_DESCRIPTION,
     cardPrice: PRO_PLUS_CLOUD_PRICE_LINE,
-    status: 'Coming soon',
+    status: 'This product is in alpha',
     to: PRO_PLUS_CLOUD_INFO_PATH,
     learnLabel: LEARN_MORE.proCloud.label,
   },

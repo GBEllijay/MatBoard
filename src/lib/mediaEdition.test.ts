@@ -86,9 +86,10 @@ test('purple belt is the Media Console cloth #6b2d91', () => {
   assert.match(indexCss, /\.belt-header--purple \.belt-header__belt \{\s*--cloth: #6b2d91;/);
 });
 
-test('not for sale: no checkout, Stripe, code kind or entitlement; CTA is the alpha email', () => {
-  const code = page.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-  assert.doesNotMatch(code, /checkout|stripe|redeem|entitle|WHITE_CHECKOUT_API|fetch\(/i);
+test('Media buy page keeps the alpha email and can check out with optional Cloud', () => {
+  assert.match(page, /<CloudAddonChoice/);
+  assert.match(page, /product: 'media'/);
+  assert.match(page, /cloud: includeCloud/);
   assert.match(page, /<AlphaCodeEntry tier="media" \/>/);
   const entry = readFileSync(new URL('../components/AlphaCodeEntry.tsx', import.meta.url), 'utf8');
   assert.match(entry, /href=\{alphaRequestMailto\(\)\}/);

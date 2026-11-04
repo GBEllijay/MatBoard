@@ -12,7 +12,7 @@
  *    (Photo interval, Play order, Pro Shop / Events on the TV, Video sound,
  *    GymLogoControl), and the Google Photos / Google Drive pickers.
  */
-import { alphaAccessNote } from './productPrices.ts';
+import { MEDIA_LIST_PRICE_CENTS, alphaAccessNote } from './productPrices.ts';
 import { MEDIA_CONSOLE_NAME } from './productNames.ts';
 import { WHITE_INCLUDED } from './whitePurchase.ts';
 
@@ -27,7 +27,7 @@ export const MEDIA_EDITION_NAME = 'Advantage Media Edition';
 export const MEDIA_EDITION_BELT_CLOTH = '#6b2d91';
 
 /** Display price only. Matches the homepage ladder card. */
-export const MEDIA_EDITION_LIST_PRICE_CENTS = 2999;
+export const MEDIA_EDITION_LIST_PRICE_CENTS = MEDIA_LIST_PRICE_CENTS;
 export const MEDIA_EDITION_PRICE_LINE = '$29.99 one-time';
 export const MEDIA_EDITION_PRICE_DETAIL = 'USD — one-time, when it launches';
 

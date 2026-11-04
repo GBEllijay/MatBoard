@@ -83,6 +83,7 @@ import {
   menuCloudSharing,
   seatMenuAllowed,
   visibleCoachControl,
+  canCaptureReplay as replayCanCapture,
 } from '../lib/instructorSeats';
 import {
   LESSON_TEMPLATE_LABELS,
@@ -90,18 +91,27 @@ import {
   MAX_GAMES,
   activeLessonTemplate,
   addLessonGame,
+  addLessonReplay,
   addLessonTechnique,
   applyLessonTemplate,
   blockHeading,
   blockKey,
   lessonBlocks,
   moveLessonBlock,
+  moveReplayAmongReplays,
   removeLessonBlock,
+  removeLessonReplay,
+  replayCount,
   templateAlreadyApplied,
   templateChangeNeedsConfirm,
   type GameBlock,
   type LessonTemplateId,
+  updateLessonReplay,
 } from '../lib/lessonTemplates';
+import { ADD_REPLAY_LABEL, MAX_REPLAYS, replayHeading } from '../lib/replayAnalysis';
+import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
+import { ReviewSlotControls } from '../components/ReviewSlotControls';
+import { blockOffersReviewToggle } from '../lib/competitionCurriculum';
 import { INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
 import { classHistoryHref } from '../lib/submenuNav';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -572,6 +582,10 @@ export function TrainingNotesPage() {
   const orderedBlocks = lessonBlocks(plan);
   const atMax = orderedBlocks.filter((block) => block.kind === 'technique').length >= MAX_TECHNIQUES;
   const atMaxGames = orderedBlocks.filter((block) => block.kind === 'game').length >= MAX_GAMES;
+  const atMaxReplays = replayCount(plan) >= MAX_REPLAYS;
+  /** Recording or picking a replay clip follows the existing upload switch for seats. */
+  const canCaptureReplay = replayCanCapture({ owner: true, seat });
+  const competitionReplays = orderedBlocks.filter((block) => block.kind === 'replay');
   const canRemoveClass = editingToday && (planHasContent(plan) || classPlans.length > 1);
 
   const requestTemplate = (template: LessonTemplateId) => {
@@ -754,7 +768,65 @@ export function TrainingNotesPage() {
             {OPEN_DRIVE_CLASS_LABEL}
           </Link>
         ) : null}
-        {showCompetition ? <CompetitionCurriculumPage embedded /> : (
+        {showCompetition ? (
+          <>
+            <CompetitionCurriculumPage embedded />
+            {/* Competition shows its curriculum instead of the block list, so replay cards sit under it. */}
+            <section className="notes__competition-replays" aria-label="Video replay analysis">
+              {competitionReplays.map((block, index) => {
+                const replay = plan.replays?.find((item) => item.id === block.id);
+                if (!replay) return null;
+                const heading = replayHeading(index + 1);
+                const key = blockKey(block, index);
+                return (
+                  <div key={key} className="notes__block">
+                    <ReplayAnalysisCard
+                      replay={replay}
+                      heading={heading}
+                      dateKey={viewKey}
+                      readOnly={!editingToday}
+                      canCapture={canCaptureReplay}
+                      onChange={(patch) => commit(updateLessonReplay(plan, replay.id, patch))}
+                    />
+                    {editingToday ? (
+                      <BlockTools
+                        heading={heading}
+                        index={index}
+                        count={competitionReplays.length}
+                        confirming={removeBlockKey === key}
+                        onMove={(direction) => {
+                          setRemoveBlockKey(null);
+                          commit(moveReplayAmongReplays(plan, replay.id, direction));
+                        }}
+                        onAskRemove={() => setRemoveBlockKey(key)}
+                        onCancelRemove={() => setRemoveBlockKey(null)}
+                        onRemove={() => {
+                          commit(removeLessonReplay(plan, replay.id));
+                          setRemoveBlockKey(null);
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
+              {editingToday ? (
+                <div className="notes__add-row">
+                  <button
+                    type="button"
+                    className="btn notes__add"
+                    disabled={atMaxReplays}
+                    onClick={() => {
+                      setRemoveBlockKey(null);
+                      commit(addLessonReplay(plan));
+                    }}
+                  >
+                    {ADD_REPLAY_LABEL}
+                  </button>
+                </div>
+              ) : null}
+            </section>
+          </>
+        ) : (
         <>
         <section className="notes__archive" aria-label="Saved days">
           <PlanDateNav
@@ -1093,9 +1165,11 @@ export function TrainingNotesPage() {
           const key = blockKey(block, index);
           const techniqueOrdinal = orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'technique').length;
           const gameOrdinal = orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'game').length;
-          const heading = blockHeading(block, techniqueOrdinal, gameOrdinal);
+          const replayOrdinal = orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'replay').length;
+          const heading = blockHeading(block, techniqueOrdinal, gameOrdinal, replayOrdinal);
           const tech = block.kind === 'technique' ? plan.techniques.find((item) => item.id === block.id) : undefined;
           const game = block.kind === 'game' ? plan.games?.find((item) => item.id === block.id) : undefined;
+          const replay = block.kind === 'replay' ? plan.replays?.find((item) => item.id === block.id) : undefined;
           return (
             <div key={key} className="notes__block">
               {block.kind === 'intro' ? (
@@ -1126,6 +1200,20 @@ export function TrainingNotesPage() {
                       onChange={(event) => commit({ ...plan, intro: event.target.value })}
                     />
                   </div>
+                  {blockOffersReviewToggle('intro') ? (
+                    <ReviewSlotControls
+                      id={`${plan.id}-intro`}
+                      heading="Intro"
+                      slot={plan.introReview}
+                      dateKey={viewKey}
+                      readOnly={!editingToday}
+                      canCapture={canCaptureReplay}
+                      onChange={(introReview) => {
+                        const { introReview: _drop, ...rest } = plan;
+                        commit(introReview ? { ...rest, introReview } : rest);
+                      }}
+                    />
+                  ) : null}
                 </section>
               ) : null}
               {block.kind === 'warmup' ? (
@@ -1164,6 +1252,16 @@ export function TrainingNotesPage() {
                   }
                 />
               ) : null}
+              {block.kind === 'replay' && replay ? (
+                <ReplayAnalysisCard
+                  replay={replay}
+                  heading={heading}
+                  dateKey={viewKey}
+                  readOnly={!editingToday}
+                  canCapture={canCaptureReplay}
+                  onChange={(patch) => commit(updateLessonReplay(plan, replay.id, patch))}
+                />
+              ) : null}
               {block.kind === 'specific' ? (
                 <NoteSection
                   id="notes-specific"
@@ -1176,6 +1274,22 @@ export function TrainingNotesPage() {
                   onChange={(specificNote) => commit({ ...plan, specificNote })}
                   onExpected={(specificExpected) => commit({ ...plan, specificExpected })}
                 />
+              ) : null}
+              {block.kind === 'specific' && blockOffersReviewToggle('specific') ? (
+                <div className="notes__card notes__review-slot" data-review-slot="specific">
+                  <ReviewSlotControls
+                    id={`${plan.id}-specific`}
+                    heading="Specific Training / Rounds"
+                    slot={plan.specificReview}
+                    dateKey={viewKey}
+                    readOnly={!editingToday}
+                    canCapture={canCaptureReplay}
+                    onChange={(specificReview) => {
+                      const { specificReview: _drop, ...rest } = plan;
+                      commit(specificReview ? { ...rest, specificReview } : rest);
+                    }}
+                  />
+                </div>
               ) : null}
               {block.kind === 'cooldown' ? (
                 <NoteSection
@@ -1211,6 +1325,20 @@ export function TrainingNotesPage() {
                       onChange={(event) => commit({ ...plan, closing: event.target.value })}
                     />
                   </div>
+                  {blockOffersReviewToggle('closing') ? (
+                    <ReviewSlotControls
+                      id={`${plan.id}-closing`}
+                      heading="Closing"
+                      slot={plan.closingReview}
+                      dateKey={viewKey}
+                      readOnly={!editingToday}
+                      canCapture={canCaptureReplay}
+                      onChange={(closingReview) => {
+                        const { closingReview: _drop, ...rest } = plan;
+                        commit(closingReview ? { ...rest, closingReview } : rest);
+                      }}
+                    />
+                  ) : null}
                 </section>
               ) : null}
               {editingToday ? (
@@ -1258,6 +1386,17 @@ export function TrainingNotesPage() {
               }}
             >
               Add game
+            </button>
+            <button
+              type="button"
+              className="btn notes__add"
+              disabled={atMaxReplays}
+              onClick={() => {
+                setRemoveBlockKey(null);
+                commit(addLessonReplay(plan));
+              }}
+            >
+              {ADD_REPLAY_LABEL}
             </button>
           </div>
         ) : null}
@@ -1655,6 +1794,9 @@ function templateConfirmCopy(template: LessonTemplateId): string {
   }
   if (template === 'kids') {
     return 'Apply the Kids class template? This sets the starting blocks: Technique 1, a Game, then Technique 2. Notes on the blocks that remain stay. You can reorder them after.';
+  }
+  if (template === 'private') {
+    return 'Apply the Private lesson template? This sets the starting blocks: Intro, Warm-up, two techniques, Specific training, and Closing. Notes on the blocks that remain stay. You can add or reorder after.';
   }
   return 'Apply the Adult class template? This sets the starting blocks: Intro, three techniques, Cool down, Closing, and the other sections. Notes on the blocks that remain stay.';
 }

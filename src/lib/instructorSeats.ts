@@ -47,6 +47,12 @@ export type InstructorPermissions = {
   uploadForDistribution: boolean;
   eventsAccess: boolean;
   proShopAccess: boolean;
+  /**
+   * Media Console: record or pick a video and send it to the day's Daily
+   * Videos folder (`videos/daily/{date}/`) for instructors to add to their
+   * own lesson plans. Does not open lesson plans or Record for Review.
+   */
+  dailyVideoUpload: boolean;
 };
 
 /** Used when the owner has not picked a preset yet. Events and Pro Shop stay off. */
@@ -59,6 +65,7 @@ export const DEFAULT_INSTRUCTOR_PERMISSIONS: InstructorPermissions = {
   uploadForDistribution: true,
   eventsAccess: false,
   proShopAccess: false,
+  dailyVideoUpload: false,
 };
 
 export const INSTRUCTOR_PERMISSION_FIELDS: readonly {
@@ -73,6 +80,7 @@ export const INSTRUCTOR_PERMISSION_FIELDS: readonly {
   { key: 'uploadForDistribution', label: 'Upload for instructor distribution' },
   { key: 'eventsAccess', label: 'Events access' },
   { key: 'proShopAccess', label: 'Pro Shop access' },
+  { key: 'dailyVideoUpload', label: "Send videos to today's videos" },
 ];
 
 export type InstructorPresetId = 'assistant-coach' | 'coach' | 'program-director' | 'instructors';
@@ -115,6 +123,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
       uploadForDistribution: true,
       eventsAccess: false,
       proShopAccess: false,
+      dailyVideoUpload: false,
     },
   },
   {
@@ -131,6 +140,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
       uploadForDistribution: false,
       eventsAccess: true,
       proShopAccess: true,
+      dailyVideoUpload: true,
     },
   },
   {
@@ -147,6 +157,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
       uploadForDistribution: true,
       eventsAccess: false,
       proShopAccess: false,
+      dailyVideoUpload: false,
     },
   },
   {
@@ -166,6 +177,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
       uploadForDistribution: true,
       eventsAccess: true,
       proShopAccess: true,
+      dailyVideoUpload: true,
     },
   },
 ];
@@ -268,10 +280,16 @@ export function instructorSeatAdjusted(
 }
 
 /** Missing keys use the soft-beta defaults. Only real booleans are kept. */
+/**
+ * A saved switch set. A switch missing from an older save takes the
+ * preset's value when the seat has one, so adding a switch does not
+ * mark an untouched preset as adjusted.
+ */
 export function normalizeInstructorPermissions(
   value: Partial<InstructorPermissions> | null | undefined,
+  presetId?: InstructorPresetId | null,
 ): InstructorPermissions {
-  const next = defaultInstructorPermissions();
+  const next = presetId ? instructorPresetPermissions(presetId) : defaultInstructorPermissions();
   if (!value) return next;
   for (const field of INSTRUCTOR_PERMISSION_FIELDS) {
     const flag = value[field.key];
@@ -393,6 +411,30 @@ export function visibleCoachControl(
   return access.owner;
 }
 
+export type ReplayCaptureAccess = 'direct' | 'pending' | 'none';
+
+/**
+ * Record for Review / replay clips only. Owner, Coach and Instructors save
+ * directly. Assistant coach and Program director record, and their Cloud saves
+ * wait for the head coach. A revoked seat records nothing. Presets and
+ * `uploadForDistribution` are not changed by this.
+ */
+export function replayCaptureAccess(access: {
+  owner: boolean;
+  seat: Pick<InstructorSeat, 'status' | 'permissions' | 'presetId'> | null;
+}): ReplayCaptureAccess {
+  const seat = access.seat;
+  if (!seat) return access.owner ? 'direct' : 'none';
+  if (seat.status === 'revoked') return 'none';
+  if (seat.presetId === 'coach' || seat.presetId === 'instructors') return 'direct';
+  if (seat.presetId === 'assistant-coach' || seat.presetId === 'program-director') return 'pending';
+  return seatPermissionAllows(seat.permissions, 'uploadForDistribution') ? 'direct' : 'none';
+}
+
+export function canCaptureReplay(access: Parameters<typeof replayCaptureAccess>[0]): boolean {
+  return replayCaptureAccess(access) !== 'none';
+}
+
 function emptyArchive(): SeatArchive {
   return { version: 1, deviceGymId: `device-${newId()}`, seats: [] };
 }
@@ -418,7 +460,7 @@ function readSeat(value: unknown): InstructorSeat | null {
     status: row.status,
     issuedAt: row.issuedAt,
     presetId: normalizeInstructorPresetId(row.presetId),
-    permissions: normalizeInstructorPermissions(row.permissions),
+    permissions: normalizeInstructorPermissions(row.permissions, normalizeInstructorPresetId(row.presetId)),
     inviteToken: row.inviteToken,
   };
 }

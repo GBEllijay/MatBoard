@@ -41,5 +41,6 @@ test('/products locked cards: Media Learn more, Student demo stays, no Pro Plus 
   await expect(page.getByRole('link', { name: 'Try the demo' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Pro Cloud Plus Console' })).toHaveCount(0);
   await expect(page.locator('.mode-card--cloud')).toContainText('$5.99/month');
-  await expect(page.getByRole('link', { name: 'Advantage Pro + Cloud, coming soon' })).toBeVisible();
+  await expect(page.getByText('+ optional Advantage Cloud $5.99/month').first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Advantage Pro + Cloud, coming soon' })).toHaveCount(0);
 });

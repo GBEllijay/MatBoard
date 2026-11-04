@@ -1,7 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { AlphaCodeEntry } from '../components/AlphaCodeEntry';
+import { CloudAddonChoice, CloudAddonLine } from '../components/CloudAddon';
+import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
+import { useHalfOffArrival } from '../hooks/useHalfOffArrival';
+import { buyCheckoutBody } from '../lib/halfOff';
+import { withCheckoutNonce } from '../lib/codeRedeemClient';
+import { ALPHA_PRODUCT_STATUS } from '../lib/productPrices';
+import { WHITE_CHECKOUT_API } from '../lib/whitePurchase';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { HigherTierList } from '../components/TierBuyParts';
@@ -27,6 +34,37 @@ import './mediaEdition.css';
  * Not for sale: no checkout, code kind, or entitlement. The CTA is the alpha-code email.
  */
 export function MediaEditionPage() {
+  const halfOff = useHalfOffArrival();
+  const [includeCloud, setIncludeCloud] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending) return;
+    setError(null);
+    setPending(true);
+    try {
+      const response = await fetch(WHITE_CHECKOUT_API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(
+          await withCheckoutNonce(buyCheckoutBody({ product: 'media', halfOffActive: halfOff, cloud: includeCloud })),
+        ),
+      });
+      const body = (await response.json()) as { url?: string; error?: string };
+      if (!response.ok || !body.url) {
+        setError(body.error || 'Checkout could not start.');
+        setPending(false);
+        return;
+      }
+      window.location.assign(body.url);
+    } catch {
+      setError('Checkout could not start. Check your connection and try again.');
+      setPending(false);
+    }
+  }
+
   useEffect(() => {
     const previous = document.title;
     document.title = MEDIA_EDITION_NAME;
@@ -44,17 +82,29 @@ export function MediaEditionPage() {
             <span className="belt-tip belt-tip--purple buy__belt" aria-hidden="true">
               <span className="belt-tip__bar" />
             </span>
-            <p className="buy__kicker">Coming soon</p>
+            <p className="buy__kicker">{ALPHA_PRODUCT_STATUS}</p>
             <h2>{MEDIA_EDITION_NAME}</h2>
             <p className="media-edition__lead">{MEDIA_EDITION_LEAD}</p>
             <p className="buy__price">
               {formatUsdFromCents(MEDIA_EDITION_LIST_PRICE_CENTS)} <span>{MEDIA_EDITION_PRICE_DETAIL}</span>
             </p>
-            <p>Not for sale on this page.</p>
+            <CloudAddonLine />
           </header>
 
           <section className="buy__card media-edition__cta" aria-label="Alpha access">
             <AlphaCodeEntry tier="media" />
+            {error ? (
+              <p className="buy__status buy__status--bad" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <form onSubmit={(event) => void onSubmit(event)}>
+              <HalfOffCheckoutNote active={halfOff} />
+              <CloudAddonChoice checked={includeCloud} onChange={setIncludeCloud} />
+              <button className="btn btn--white" type="submit" disabled={pending}>
+                {pending ? 'Opening checkout…' : `Continue to checkout — ${formatUsdFromCents(MEDIA_EDITION_LIST_PRICE_CENTS)}`}
+              </button>
+            </form>
             <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
           </section>
         </article>

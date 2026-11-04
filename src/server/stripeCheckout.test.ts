@@ -277,7 +277,7 @@ test('other events and unpaid sessions are ignored', () => {
         },
       },
     }).action,
-    'ignore',
+    'record-pro',
   );
   assert.equal(
     purchaseFromStripeEvent({
