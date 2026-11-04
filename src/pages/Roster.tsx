@@ -18,9 +18,9 @@ import { LinkStudentSheet, SendRankUpdateSheet } from '../components/CoachStuden
 import { GuestArchive } from '../components/GuestArchive';
 import { SendCompetitionSheet, type CompetitionSendDraft } from '../components/SendCompetitionSheet';
 import { Sheet } from '../components/Sheet';
-import { RosterCardSheet, startStudentAppSync } from '../components/rosterCard/RosterCardSheet';
-import { NewStudentCardsInbox, useCoachInbox } from '../components/rosterCard/NewStudentCardsInbox';
-import { decideItem, pendingNotices, registrationNoticeText, writeCoachInbox, readCoachInbox } from '../lib/studentToCoach';
+import { registrationText, RosterCardSheet, startStudentAppSync } from '../components/rosterCard/RosterCardSheet';
+import { CardLookSetting } from '../components/rosterCard/CardLookSetting';
+import { dismissCardNotice, getCardNotices, subscribeCardSync } from '../lib/cardSync';
 import { coachDoorOpen } from '../lib/productNames';
 import { recordRosterRankChange, removeRosterCard } from '../lib/rosterCardStore';
 import { useRosterState } from '../hooks/useStores';
@@ -131,7 +131,8 @@ export function RosterPage() {
   const [linkNote, setLinkNote] = useState('');
   const [cardTarget, setCardTarget] = useState<string | null>(null);
   const [syncOffer, setSyncOffer] = useState<Student | null>(null);
-  const coachInbox = useCoachInbox();
+  const [, setNoticeTick] = useState(0);
+  useEffect(() => subscribeCardSync(() => setNoticeTick((value) => value + 1)), []);
   const competitorRosterOpen = coachDoorOpen(proUnlocked, coachUnlocked, seat !== null);
   const cardStudent = cardTarget ? roster.students.find((row) => row.id === cardTarget) ?? null : null;
   const listed = useMemo(
@@ -272,7 +273,7 @@ export function RosterPage() {
 
       {showCsv ? csvTools : null}
 
-      {studentRoster ? <NewStudentCardsInbox seat={seat} students={studentRosterCards(roster.students)} /> : null}
+      {studentRoster ? <CardLookSetting /> : null}
 
       {listed.length ? (
       <label className="roster__search">
@@ -305,15 +306,16 @@ export function RosterPage() {
                 setPendingRemove(null);
               }}
               onOpenCard={studentRoster ? () => setCardTarget(competitor.id) : undefined}
-              notices={pendingNotices(coachInbox, competitor.linkedStudentId ?? '')
-                .filter((item) => item.packet.type === 'registration')
-                .map((item) => ({
-                  id: item.packet.updateId,
-                  text: item.packet.type === 'registration' ? registrationNoticeText(item.packet.registration) : '',
-                }))}
+              notices={
+                competitor.linkedStudentId && !competitor.guestId
+                  ? getCardNotices(competitor.id, { roster: roster.students }).map((notice) => ({ id: notice.eventId, text: registrationText(notice) }))
+                  : []
+              }
               onNotice={(id, status) => {
-                if (typeof localStorage === 'undefined') return;
-                writeCoachInbox(localStorage, decideItem(readCoachInbox(localStorage), id, status, competitor.id));
+                // Got it opens the card where the coach acts; neither choice writes coach data.
+                if (status === 'applied' && studentRoster) setCardTarget(competitor.id);
+                else if (status === 'applied') setEditor({ id: competitor.id, draft: draftFromStudent(competitor) });
+                else dismissCardNotice(id);
               }}
               onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
               onLink={() => setLinkTarget(competitor)}
@@ -379,6 +381,7 @@ export function RosterPage() {
               : 'Add competitor'
         }
         studentRoster={studentRoster}
+        noPhotos={Boolean(editor?.id && roster.students.find((row) => row.id === editor.id)?.noPhotos)}
         draft={editor?.draft ?? emptyDraft()}
         saveError={saveError}
         onChange={(draft) => setEditor((current) => (current ? { ...current, draft } : current))}
@@ -417,7 +420,7 @@ export function RosterPage() {
           }
         }}
       />
-      {studentRoster ? <PendingCardShares roster={roster.students} /> : <GuestArchive />}
+      {studentRoster ? <PendingCardShares roster={roster.students} title="New student cards" /> : <GuestArchive />}
       <LinkStudentSheet key={linkTarget?.id ?? 'link'} student={linkTarget} onClose={() => setLinkTarget(null)} />
       <SendRankUpdateSheet key={sendTarget?.id ?? 'send'} student={sendTarget} onClose={() => setSendTarget(null)} />
       {studentRoster ? (
@@ -426,6 +429,7 @@ export function RosterPage() {
           onClose={() => setCardTarget(null)}
           onEditBelt={(student) => setEditor({ id: student.id, draft: draftFromStudent(student) })}
           onLink={(student) => setLinkTarget(student)}
+          onOpenPhotos={(student) => setSyncTarget(student)}
           competitorRosterOpen={competitorRosterOpen}
           onOpenCompetitorRoster={() => {
             setCardTarget(null);
@@ -707,6 +711,7 @@ function StudentEditor({
   open,
   title,
   studentRoster,
+  noPhotos = false,
   draft,
   saveError,
   onChange,
@@ -716,6 +721,8 @@ function StudentEditor({
   open: boolean;
   title: string;
   studentRoster: boolean;
+  /** Per-student No photos: the photo field shows the badge and no picker. */
+  noPhotos?: boolean;
   draft: StudentDraft;
   saveError: string;
   onChange: (draft: StudentDraft) => void;
@@ -776,7 +783,12 @@ function StudentEditor({
           </>
         )}
       </p>
-      {studentRoster ? null : <div className="roster-edit__photo">
+      {studentRoster || !noPhotos ? null : (
+        <p className="roster-edit__hint" data-testid="editor-no-photos">
+          <strong>No photos</strong> · photos are off for this student.
+        </p>
+      )}
+      {studentRoster || noPhotos ? null : <div className="roster-edit__photo">
         {draft.photo ? (
           <img className="roster-edit__photo-img" src={draft.photo} alt="Competitor face photo" />
         ) : (

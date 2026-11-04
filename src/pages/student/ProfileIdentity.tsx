@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { DeviceMediaInput } from '../../components/DeviceMediaInput';
 import { SendPhotoToCoach } from '../../components/SendPhotoToCoach';
+import { useStudentNoPhotos } from '../../components/rosterCard/StudentNoPhotos';
 import { beltModeOf } from '../../lib/beltBook';
 import { PHOTO_PICKER_ACCEPT } from '../../lib/mediaPicker';
 import { headerVisibility, readProfileMarks, writeProfileMark, type ProfileMark } from '../../lib/profileMarks';
@@ -135,6 +136,7 @@ export function ProfileCornerMarks({
 
 export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof useProfileMedia>; kids?: boolean }) {
   const { portrait, logo, note, error, onPortrait, onLogo, removePortrait, removeLogo } = media;
+  const noPhotos = useStudentNoPhotos();
   return (
     <div className="profile-identity">
       <section className="profile-card profile-photo" aria-label="Profile photo">
@@ -160,7 +162,13 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
             </button>
           ) : null}
         </div>
-        <SendPhotoToCoach portrait={portrait} />
+        {noPhotos.on ? (
+          <p className="profile-nophotos" data-testid="profile-no-photos">
+            <strong>No photos</strong> · nothing is sent to your coach.
+          </p>
+        ) : (
+          <SendPhotoToCoach portrait={portrait} />
+        )}
       </section>
 
       <section className="profile-card profile-logo" aria-label="Gym logo">

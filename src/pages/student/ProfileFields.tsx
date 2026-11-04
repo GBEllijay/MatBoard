@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { PROGRESS_NAME_MAX, type StudentProgressReport, type TrainingStyle } from '../../lib/progress/types';
 import { benchmarkView } from '../../lib/studentBenchmarks';
 import { beltModeOf } from '../../lib/beltBook';
@@ -9,12 +10,19 @@ export function StudentProfileFields({
   report,
   commit,
   variant = 'inline',
+  saveSlot = null,
+  onSaved,
 }: {
   report: StudentProgressReport;
   commit: (next: StudentProgressReport) => StudentProgressReport;
   /** `page` is the My profile screen. `inline` is the print prompt and My rank. */
   variant?: 'inline' | 'page';
+  /** Page only: where Save profile renders (the bottom of My profile). Inline under the fields when absent. */
+  saveSlot?: HTMLElement | null;
+  /** Page only: after a successful Save profile. */
+  onSaved?: () => void;
 }) {
+  const formId = useId();
   const [name, setName] = useState(report.profile.displayName);
   const [gym, setGym] = useState(report.profile.gymName);
   const [started, setStarted] = useState(report.profile.startedOn);
@@ -33,13 +41,17 @@ export function StudentProfileFields({
       if (next !== report) commit(next);
       if (next !== report || confirm) setStatus('Saved on this phone.');
       setError('');
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save that.');
       setStatus('');
+      return false;
     }
   };
 
-  const saveAll = () => save({ displayName: name, gymName: gym, startedOn: started }, true);
+  const saveAll = () => {
+    if (save({ displayName: name, gymName: gym, startedOn: started }, true)) onSaved?.();
+  };
   const page = variant === 'page';
   const fields = (
     <>
@@ -86,17 +98,11 @@ export function StudentProfileFields({
   );
 
   if (page) {
-    return (
-      <form
-        className="profile-fields"
-        aria-label="My profile"
-        onSubmit={(event) => {
-          event.preventDefault();
-          saveAll();
-        }}
-      >
-        <div className="profile-card">{fields}</div>
-        <button type="submit" className="ink-btn ink-btn--save profile-save">
+    // Save profile submits this form from wherever it renders (form= attribute),
+    // so it can sit at the bottom of My profile, below every other section.
+    const saveBar = (
+      <div className="profile-savebar">
+        <button type="submit" form={formId} className="ink-btn ink-btn--save profile-save">
           Save profile
         </button>
         {error ? <p role="alert">{error}</p> : null}
@@ -105,7 +111,23 @@ export function StudentProfileFields({
             {status}
           </p>
         ) : null}
-      </form>
+      </div>
+    );
+    return (
+      <>
+        <form
+          id={formId}
+          className="profile-fields"
+          aria-label="My profile"
+          onSubmit={(event) => {
+            event.preventDefault();
+            saveAll();
+          }}
+        >
+          <div className="profile-card">{fields}</div>
+        </form>
+        {saveSlot ? createPortal(saveBar, saveSlot) : saveBar}
+      </>
     );
   }
 

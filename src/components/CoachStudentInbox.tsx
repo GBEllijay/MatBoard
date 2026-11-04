@@ -15,6 +15,7 @@ import {
   subscribeCardSync,
 } from '../lib/cardSync';
 import type { Student } from '../lib/rosterStore';
+import { applyStudentPhotoFlag, parseStudentPhotoFlag } from '../lib/studentPhotoFlag';
 
 function useTick(): number {
   const [tick, setTick] = useState(0);
@@ -62,15 +63,15 @@ export function CoachStudentNotices({ student, roster }: { student: Student; ros
 }
 
 /** Student card shares from QR sign-ups, waiting for an Instructor or Coach seat. */
-export function PendingCardShares({ roster }: { roster: readonly Student[] }) {
+export function PendingCardShares({ roster, title = 'Student cards waiting' }: { roster: readonly Student[]; title?: string }) {
   useTick();
   const [status, setStatus] = useState('');
   const [mergeInto, setMergeInto] = useState<Record<string, string>>({});
   const shares = getPendingCardShares();
   const targets = roster.filter((row) => !row.guestId);
   return (
-    <section aria-label="Student cards waiting">
-      <h3>Student cards waiting</h3>
+    <section aria-label={title}>
+      <h3>{title}</h3>
       <p>A merge fills only blank fields. A shared photo waits for the head coach.</p>
       {shares.map((share) => (
         <div key={share.shareId}>
@@ -141,7 +142,14 @@ export function PendingCardShares({ roster }: { roster: readonly Student[] }) {
             const file = event.target.files?.[0];
             event.target.value = '';
             if (!file) return;
-            const result = importStudentFile(await file.text());
+            const text = await file.text();
+            const flag = parseStudentPhotoFlag(text);
+            if (flag) {
+              const applied = applyStudentPhotoFlag(flag);
+              setStatus(applied ? (flag.noPhotos ? 'No photos is on for this student. Set by family.' : 'The family cleared No photos.') : 'No linked card for that student file.');
+              return;
+            }
+            const result = importStudentFile(text);
             setStatus(result.kind === 'not-student-file' ? 'That is not a student file.' : `Imported (${result.result}).`);
           }}
         />

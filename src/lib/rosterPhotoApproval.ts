@@ -132,6 +132,8 @@ type ReviewCard = {
   guestId?: string;
   coachSync?: 'off';
   parentPhotoApproval?: true;
+  /** No photos (coach or family). Every photo is refused while set. */
+  noPhotos?: 'coach' | 'family';
 };
 
 /**
@@ -141,8 +143,9 @@ type ReviewCard = {
 export function intakePhotoSubmission(
   card: ReviewCard,
   submission: StudentPhotoSubmission,
-): { ok: true; review: PhotoReview } | { ok: false; reason: 'guest' | 'unlinked' | 'sync-off' | 'wrong-student' } {
+): { ok: true; review: PhotoReview } | { ok: false; reason: 'guest' | 'unlinked' | 'sync-off' | 'wrong-student' | 'no-photos' } {
   if (card.guestId) return { ok: false, reason: 'guest' };
+  if (card.noPhotos) return { ok: false, reason: 'no-photos' };
   if (!card.linkedStudentId) return { ok: false, reason: 'unlinked' };
   if (card.coachSync === 'off') return { ok: false, reason: 'sync-off' };
   if (card.linkedStudentId !== submission.studentId) return { ok: false, reason: 'wrong-student' };

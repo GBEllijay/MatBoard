@@ -7,6 +7,46 @@
   --cb-link: #8fb6ff;
   --cb-on: #004eba;
   --cb-ink: #eef2f8;
+  --cb-clipdark: #0b1220;
+  --cb-dash: #33456d;
+  --cb-photo-a: #3b4a66;
+  --cb-photo-b: #1d2840;
+  --cb-initials-bg: #1d2b4a;
+  --cb-initials-ring: #2f4370;
+  --cb-pending-bg: #2a1418;
+  --cb-pending-ring: #ff8a7a;
+  --cb-pending-ink: #ffc2b8;
+  --cb-chip-bg: rgba(255, 255, 255, 0.08);
+  --cb-chip-ring: rgba(255, 255, 255, 0.22);
+  --cb-tabs: #101a2e;
+  --cb-count-bg: #22325a;
+  --cb-count-ink: #dfe6f2;
+  --cb-well: #0a1120;
+  --cb-seg-ring: rgba(255, 255, 255, 0.14);
+  --cb-label: #c4cddb;
+  --cb-coach: #6ea8ff;
+  --cb-self: #f1eee5;
+  --cb-rule: #1f2c4a;
+  --cb-weak: #ffb4a8;
+  --cb-strong: #9fe0b5;
+  --cb-btn-ring: rgba(255, 255, 255, 0.32);
+  --cb-primary-glow: rgba(255, 255, 255, 0.35);
+  --cb-ctl: #8291ad;
+  --cb-track: #3a4154;
+  --cb-private-bg: #1a1420;
+  --cb-private-ring: #5a3a50;
+  --cb-notice-bg: #12203c;
+  --cb-notice-ring: #2f4a80;
+  --cb-info-bg: #13284a;
+  --cb-info-ring: #2f5aa0;
+  --cb-primary-bg: #fff;
+  --cb-primary-ink: #0e1726;
+  --cb-scheme: dark;
+  --cb-radar-ring: rgba(255, 255, 255, 0.1);
+  --cb-radar-ring-out: rgba(255, 255, 255, 0.22);
+  --cb-coach-fill: rgba(110, 168, 255, 0.22);
+  --cb-on-ring: #6ea8ff;
+  --cb-paper: none;
   color: var(--cb-ink);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -38,7 +78,7 @@
   height: 18px;
   border-radius: 0 0 10px 10px;
   background: linear-gradient(#5b6a86, #2e3a52);
-  box-shadow: 0 2px 0 #0b1220;
+  box-shadow: 0 2px 0 var(--cb-clipdark);
 }
 .clipboard__clip::after {
   content: '';
@@ -49,7 +89,7 @@
   width: 44px;
   height: 6px;
   border-radius: 3px;
-  background: #0b1220;
+  background: var(--cb-clipdark);
 }
 .clipboard__sheet {
   background: var(--cb-navy);
@@ -63,7 +103,7 @@
   row-gap: 0;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px dashed #33456d;
+  border-bottom: 1px dashed var(--cb-dash);
 }
 .clipboard__idc {
   grid-column: 1;
@@ -83,14 +123,14 @@
 }
 .clipboard__photo {
   object-fit: cover;
-  background: linear-gradient(160deg, #3b4a66, #1d2840);
+  background: linear-gradient(160deg, var(--cb-photo-a), var(--cb-photo-b));
 }
 .clipboard__initials {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #1d2b4a;
-  box-shadow: inset 0 0 0 2px #2f4370;
+  background: var(--cb-initials-bg);
+  box-shadow: inset 0 0 0 2px var(--cb-initials-ring);
   font-weight: 700;
   font-size: 28px;
   letter-spacing: 0.02em;
@@ -101,9 +141,9 @@
   gap: 5px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #2a1418;
-  box-shadow: inset 0 0 0 1px #ff8a7a;
-  color: #ffc2b8;
+  background: var(--cb-pending-bg);
+  box-shadow: inset 0 0 0 1px var(--cb-pending-ring);
+  color: var(--cb-pending-ink);
   font: 700 10.5px/1.2 Inter, sans-serif;
   white-space: nowrap;
 }
@@ -112,7 +152,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #ff8a7a;
+  background: var(--cb-pending-ring);
 }
 .clipboard__choose {
   background: none;
@@ -206,8 +246,8 @@
   border-radius: 9px;
   border: 0;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  background: var(--cb-chip-bg);
+  box-shadow: inset 0 0 0 1px var(--cb-chip-ring);
   flex: none;
 }
 .clipboard__pencil svg {
@@ -219,7 +259,7 @@
   gap: 4px;
   padding: 0 16px;
   border-bottom: 1px solid var(--cb-line);
-  background: #101a2e;
+  background: var(--cb-tabs);
   overflow-x: auto;
 }
 .clipboard__tabs button {
@@ -234,7 +274,7 @@
   cursor: pointer;
 }
 .clipboard__tabs button.on {
-  color: #fff !important;
+  color: var(--cb-ink) !important;
   border-color: var(--cb-on);
 }
 .clipboard__tabs .cnt {
@@ -242,15 +282,15 @@
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 9px;
-  background: #22325a;
-  color: #dfe6f2;
+  background: var(--cb-count-bg);
+  color: var(--cb-count-ink);
 }
 .clipboard .seg {
   display: inline-flex;
   padding: 3px;
   border-radius: 11px;
-  background: #0a1120;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  background: var(--cb-well);
+  box-shadow: inset 0 0 0 1px var(--cb-seg-ring);
   gap: 2px;
 }
 .clipboard .seg button {
@@ -259,7 +299,7 @@
   padding: 6px 11px;
   border-radius: 8px;
   font: 600 12px/1.1 Inter, sans-serif;
-  color: #c4cddb !important;
+  color: var(--cb-label) !important;
   white-space: nowrap;
   cursor: pointer;
   text-transform: none;
@@ -306,12 +346,12 @@
 .clipboard__facts dd input[type='date'] {
   font: 600 13px/1.2 Inter, sans-serif;
   color: var(--cb-ink);
-  background: #0a1120;
+  background: var(--cb-well);
   border: 1px solid var(--cb-line);
   border-radius: 8px;
   padding: 3px 6px;
   max-width: 100%;
-  color-scheme: dark;
+  color-scheme: var(--cb-scheme);
 }
 .clipboard__facts .nost {
   display: block;
@@ -384,10 +424,10 @@
   display: inline-block;
 }
 .clipboard__legend i.coach {
-  background: #6ea8ff;
+  background: var(--cb-coach);
 }
 .clipboard__legend i.self {
-  background: repeating-linear-gradient(90deg, #f1eee5 0 4px, transparent 4px 7px);
+  background: repeating-linear-gradient(90deg, var(--cb-self) 0 4px, transparent 4px 7px);
 }
 .clipboard table {
   border-collapse: collapse;
@@ -407,7 +447,7 @@
 }
 .clipboard td {
   padding: 3.5px 0;
-  border-top: 1px solid #1f2c4a;
+  border-top: 1px solid var(--cb-rule);
   text-align: right;
   font-weight: 700;
 }
@@ -424,7 +464,7 @@
   color: var(--cb-muted);
 }
 .clipboard td.d.hi {
-  color: #ffb4a8;
+  color: var(--cb-weak);
 }
 .clipboard__sw3 {
   margin: 8px 0 0;
@@ -438,10 +478,10 @@
   margin-right: 6px;
 }
 .clipboard__sw3 .str {
-  color: #9fe0b5;
+  color: var(--cb-strong);
 }
 .clipboard__sw3 .weak {
-  color: #ffb4a8;
+  color: var(--cb-weak);
 }
 .clipboard__act {
   display: flex;
@@ -482,12 +522,12 @@
   white-space: nowrap;
   cursor: pointer;
   background: transparent;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 0 0 1px var(--cb-btn-ring);
 }
 .clipboard__btn--primary {
-  background: #fff;
-  color: #0e1726 !important;
-  box-shadow: 0 8px 20px -10px rgba(255, 255, 255, 0.35), inset 0 -2px 0 rgba(14, 23, 38, 0.12);
+  background: var(--cb-primary-bg);
+  color: var(--cb-primary-ink) !important;
+  box-shadow: 0 8px 20px -10px var(--cb-primary-glow), inset 0 -2px 0 rgba(14, 23, 38, 0.12);
 }
 .clipboard__btn:disabled {
   opacity: 0.55;
@@ -511,7 +551,7 @@
   flex: 1;
   height: 10px;
   border-radius: 3px;
-  background: #1f2c4a;
+  background: var(--cb-rule);
 }
 .clipboard__mtr i.on {
   background: var(--cb-on);
@@ -543,7 +583,7 @@
   height: 17px;
   border-radius: 5px;
   margin-top: 1px;
-  box-shadow: inset 0 0 0 1.5px #8291ad;
+  box-shadow: inset 0 0 0 1.5px var(--cb-ctl);
   position: relative;
 }
 .clipboard .chk.done i {
@@ -564,14 +604,14 @@
 .clipboard .chk em {
   font-style: normal;
   font-size: 11px;
-  color: #ffc2b8;
+  color: var(--cb-pending-ink);
   font-weight: 600;
   margin-left: 4px;
 }
 .clipboard__syncrow {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px dashed #33456d;
+  border-top: 1px dashed var(--cb-dash);
 }
 .clipboard .sw {
   display: flex;
@@ -591,7 +631,7 @@
   width: 44px;
   height: 26px;
   border-radius: 13px;
-  background: #3a4154;
+  background: var(--cb-track);
   flex: none;
 }
 .clipboard .sw__t::after {
@@ -637,7 +677,7 @@
   gap: 10px;
   flex-wrap: wrap;
   padding: 4px 0;
-  border-top: 1px solid #1f2c4a;
+  border-top: 1px solid var(--cb-rule);
 }
 .clipboard__history small {
   flex-basis: 100%;
@@ -669,11 +709,11 @@
   width: 100%;
   font: 500 14px/1.4 Inter, sans-serif;
   color: var(--cb-ink);
-  background: #0a1120;
+  background: var(--cb-well);
   border: 1px solid var(--cb-line);
   border-radius: 10px;
   padding: 8px 10px;
-  color-scheme: dark;
+  color-scheme: var(--cb-scheme);
 }
 .clipboard__note textarea {
   min-height: 88px;
@@ -682,8 +722,8 @@
 .clipboard__note--private {
   padding: 10px;
   border-radius: 10px;
-  background: #1a1420;
-  box-shadow: inset 0 0 0 1px #5a3a50;
+  background: var(--cb-private-bg);
+  box-shadow: inset 0 0 0 1px var(--cb-private-ring);
 }
 .clipboard__row {
   display: flex;
@@ -694,17 +734,17 @@
 .clipboard__row input[type='date'] {
   font: 600 13px/1.2 Inter, sans-serif;
   color: var(--cb-ink);
-  background: #0a1120;
+  background: var(--cb-well);
   border: 1px solid var(--cb-line);
   border-radius: 8px;
   padding: 6px 8px;
-  color-scheme: dark;
+  color-scheme: var(--cb-scheme);
 }
 .clipboard__latest {
   padding: 10px;
   border-radius: 10px;
-  background: #12203c;
-  box-shadow: inset 0 0 0 1px #2f4a80;
+  background: var(--cb-notice-bg);
+  box-shadow: inset 0 0 0 1px var(--cb-notice-ring);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -728,10 +768,10 @@
 .clipboard__status {
   margin: 0;
   font-size: 12.5px;
-  color: #9fe0b5;
+  color: var(--cb-strong);
 }
 .clipboard__status--error {
-  color: #ffb4a8;
+  color: var(--cb-weak);
 }
 .clipboard__extras {
   margin-top: 10px;
@@ -749,8 +789,8 @@
   flex-wrap: wrap;
   padding: 8px 10px;
   border-radius: 10px;
-  background: #13284a;
-  box-shadow: inset 0 0 0 1px #2f5aa0;
+  background: var(--cb-info-bg);
+  box-shadow: inset 0 0 0 1px var(--cb-info-ring);
   font-size: 13px;
 }
 .clipboard__notice strong {
@@ -894,4 +934,259 @@
   .clipboard__act .clipboard__btn {
     width: 100%;
   }
+}
+
+/* ---------- Skin: Light (warm paper). Same markup, colours only. ---------- */
+.clipboard[data-skin='light'] {
+  --cb-navy: #faf8f3;
+  --cb-board: #e7e2d5;
+  --cb-line: rgba(14, 23, 38, 0.16);
+  --cb-muted: #3e4a5f;
+  --cb-link: #004eba;
+  --cb-on: #004eba;
+  --cb-ink: #0e1726;
+  --cb-clipdark: #2e3a52;
+  --cb-dash: rgba(14, 23, 38, 0.22);
+  --cb-photo-a: #eef1f6;
+  --cb-photo-b: #dde3ee;
+  --cb-initials-bg: #e8eef9;
+  --cb-initials-ring: #004eba;
+  --cb-pending-bg: #fdecea;
+  --cb-pending-ring: #c0392b;
+  --cb-pending-ink: #a3251a;
+  --cb-chip-bg: rgba(14, 23, 38, 0.05);
+  --cb-chip-ring: rgba(14, 23, 38, 0.18);
+  --cb-tabs: #f1ede3;
+  --cb-count-bg: #e3e8f2;
+  --cb-count-ink: #0e1726;
+  --cb-well: #f1ede3;
+  --cb-seg-ring: rgba(14, 23, 38, 0.18);
+  --cb-label: #3e4a5f;
+  --cb-coach: #004eba;
+  --cb-self: #0e1726;
+  --cb-rule: rgba(14, 23, 38, 0.12);
+  --cb-weak: #b3261e;
+  --cb-strong: #004eba;
+  --cb-btn-ring: rgba(14, 23, 38, 0.25);
+  --cb-primary-glow: rgba(14, 23, 38, 0.35);
+  --cb-ctl: #6b7280;
+  --cb-track: #c9c3b5;
+  --cb-private-bg: #f6ecec;
+  --cb-private-ring: rgba(160, 60, 60, 0.3);
+  --cb-notice-bg: #e8eef9;
+  --cb-notice-ring: #9db6e0;
+  --cb-info-bg: #e3ecfb;
+  --cb-info-ring: #7fa3dd;
+  --cb-primary-bg: #0e1726;
+  --cb-primary-ink: #fff;
+  --cb-scheme: light;
+  --cb-radar-ring: rgba(14, 23, 38, 0.14);
+  --cb-radar-ring-out: rgba(14, 23, 38, 0.3);
+  --cb-coach-fill: rgba(0, 78, 186, 0.14);
+  --cb-on-ring: transparent;
+  --cb-paper: radial-gradient(rgba(14, 23, 38, 0.035) 1px, transparent 1px);
+}
+.clipboard__sheet {
+  background-image: var(--cb-paper);
+  background-size: 4px 4px;
+}
+.clipboard[data-skin='light'] .clipboard__sheet {
+  background-color: var(--cb-navy);
+}
+.clipboard[data-skin='light'] .clipboard__extras,
+.clipboard[data-skin='light'] .clipboard__foot {
+  color: var(--cb-muted);
+}
+/* Thin navy outline so light belts read on paper. */
+.clipboard[data-skin='light'] .clipboard__belt {
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px rgba(14, 23, 38, 0.55);
+}
+/* Dark: a light ring on toggles that are on. */
+.clipboard .seg button.on,
+.clipboard .sw.on .sw__t {
+  box-shadow: 0 0 0 1.5px var(--cb-on-ring);
+}
+.clipboard__radar .ring {
+  fill: none;
+  stroke: var(--cb-radar-ring);
+}
+.clipboard__radar .ring--out {
+  stroke: var(--cb-radar-ring-out);
+}
+.clipboard__radar .coach {
+  fill: var(--cb-coach-fill);
+  stroke: var(--cb-coach);
+}
+.clipboard__radar .self {
+  fill: none;
+  stroke: var(--cb-self);
+}
+.clipboard__radar text {
+  fill: var(--cb-label);
+}
+.clipboard__spark {
+  stroke: var(--cb-coach);
+}
+
+/* ---------- No photos ---------- */
+.clipboard__nophotos {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font: 700 11px/1.4 Inter, sans-serif;
+  background: var(--cb-chip-bg);
+  box-shadow: inset 0 0 0 1px var(--cb-chip-ring);
+  color: var(--cb-ink);
+}
+.clipboard__nophotos small {
+  font-weight: 600;
+  color: var(--cb-muted);
+}
+.clipboard__nophotos-toggle {
+  margin-top: 4px;
+  font: 600 12px/1.3 Inter, sans-serif;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--cb-link);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.clipboard__nophotos-toggle:disabled {
+  color: var(--cb-muted);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+/* ---------- Style: Fighter Card (C). Same fields, card layout. ---------- */
+.clipboard[data-style='fighter'] .clipboard__clip {
+  display: none;
+}
+.clipboard[data-style='fighter'] .clipboard__board {
+  padding: 0;
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 2px var(--cb-on), 0 20px 40px -24px rgba(0, 0, 0, 0.5);
+}
+.clipboard[data-style='fighter'] .clipboard__sheet {
+  border-radius: 16px 16px 0 0;
+  box-shadow: none;
+  background-image: var(--cb-paper), repeating-linear-gradient(135deg, var(--cb-chip-bg) 0 2px, transparent 2px 14px);
+  background-size: 4px 4px, auto;
+}
+.clipboard[data-style='fighter'] .clipboard__idc {
+  width: 150px;
+}
+.clipboard .clipboard__choose,
+.clipboard .clipboard__nophotos-toggle {
+  font-size: 11px;
+  max-width: 100%;
+}
+.clipboard[data-style='fighter'] .clipboard__idc .clipboard__photo,
+.clipboard[data-style='fighter'] .clipboard__idc .clipboard__initials {
+  width: 150px;
+  height: 178px;
+  border-radius: 14px;
+}
+.clipboard[data-style='fighter'] .clipboard__k {
+  color: var(--cb-link);
+  letter-spacing: 0.16em;
+}
+.clipboard[data-style='fighter'] .clipboard__n {
+  text-transform: uppercase;
+  font-size: clamp(28px, 5vw, 44px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.clipboard[data-style='fighter'] .clipboard__tabs {
+  background: transparent;
+}
+
+.clipboard[data-style='fighter'] .clipboard__facts {
+  gap: 8px;
+  padding: 10px 16px;
+  border: 0;
+}
+.clipboard[data-style='fighter'] .clipboard__facts .f {
+  border: 1px solid var(--cb-line);
+  border-radius: 10px;
+  background: var(--cb-well);
+  padding: 8px 10px;
+}
+.clipboard[data-style='fighter'] .clipboard__foot {
+  padding: 10px 16px;
+  border-top: 1px solid var(--cb-line);
+}
+.clipboard__bars {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.clipboard__bars li {
+  display: grid;
+  grid-template-columns: 110px 1fr 28px;
+  gap: 10px;
+  align-items: center;
+  font: 500 14px/1.2 Inter, sans-serif;
+}
+.clipboard__bars .bar {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--cb-well);
+  box-shadow: inset 0 0 0 1px var(--cb-line);
+}
+.clipboard__bars .bar .self {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 6px;
+  background: var(--cb-self);
+  opacity: 0.85;
+}
+.clipboard__bars .bar .coachfill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 6px;
+  background: var(--cb-coach);
+}
+.clipboard__bars .bar .mark {
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--cb-coach);
+}
+.clipboard__bars b {
+  text-align: right;
+}
+@media (max-width: 600px) {
+  .clipboard[data-style='fighter'] .clipboard__idc {
+    width: 96px;
+  }
+  .clipboard[data-style='fighter'] .clipboard__idc .clipboard__photo,
+  .clipboard[data-style='fighter'] .clipboard__idc .clipboard__initials {
+    width: 96px;
+    height: 114px;
+  }
+  .clipboard__bars li {
+    grid-template-columns: 92px 1fr 24px;
+  }
+}
+
+/* Student preview: keep the card inside the sheet at 390px. */
+.student-card-preview {
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  gap: 12px;
+}
+.student-card-preview > .clipboard {
+  min-width: 0;
+  max-width: 100%;
 }

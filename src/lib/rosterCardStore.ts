@@ -4,7 +4,8 @@
  * so older roster saves load exactly as before. No migration.
  *
  * Private coach notes live under their own key. No sync payload, packet, or
- * export file reads that key. See `rosterCardSync.ts` and `lockedExport.ts`.
+ * student-facing file reads that key. The coach's own full backup does (see `rosterCardBackup.ts`).
+ * Sync, comms, sends, and card shares go through `cardSync.ts`.
  */
 
 import type { AssessmentEntry } from './studentAssessment.ts';
@@ -15,19 +16,8 @@ export const ROSTER_CARD_PRIVATE_KEY = 'matboard.rosterCard.private.v1';
 export const ROSTER_CARD_EVENT = 'matboard-roster-card';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const PHOTO_MAX = 6;
 const ASSESS_MAX = 60;
 const NOTE_MAX = 4000;
-
-/** A card image. Every image needs head coach approval. Student uploads also need a parent when the gate is on. */
-export type CardPhoto = {
-  id: string;
-  src: string;
-  from: 'coach' | 'student';
-  addedAt: number;
-  parent: 'not-needed' | 'pending' | 'approved';
-  coach: 'pending' | 'approved' | 'rejected';
-};
 
 /** Coach copy of the belt dates, kept when the coach saves a belt or stripe from the roster editor. */
 export type CoachRankLog = {
@@ -50,29 +40,15 @@ export type StudentSnapshot = {
   checkpoints: RubricCheckpoint[];
 };
 
-export type SentCardUpdate = {
-  updateId: string;
-  type: 'note' | 'assessment';
-  /** Training day for a note, assessment id for an assessment. */
-  ref: string;
-  issuedAt: number;
-  via: 'cloud' | 'file';
-};
-
 export type RosterCardRecord = {
   trainingStartedOn: string;
   trainingStyle: TrainingStyle | '';
   coachRank?: CoachRankLog;
-  photos: CardPhoto[];
-  shownPhotoId: string;
   coachAssessments: AssessmentEntry[];
   /** Checkpoint id → the coach confirmed it. */
   benchmarkChecks: Record<string, boolean>;
-  /** Sync with student app. Benchmarks only. Notes and assessments never ride on this. */
-  benchmarkSync: boolean;
   /** Training notes & suggestions. Sent only by the explicit Send button. */
   trainingNotes: string;
-  sent: SentCardUpdate[];
   snapshot?: StudentSnapshot;
   /** Add to Competitor Roster. Turning it off keeps the competitor card and its history. */
   competitorOn: boolean;
@@ -81,12 +57,7 @@ export type RosterCardRecord = {
   updatedAt: number;
 };
 
-export type RosterCardSettings = {
-  /** Student-uploaded card photos wait for a parent first. */
-  parentPhotoGate: boolean;
-};
-
-type CardFile = { cards: Record<string, RosterCardRecord>; settings: RosterCardSettings };
+type CardFile = { cards: Record<string, RosterCardRecord> };
 
 type MemoryStore = {
   getItem: (key: string) => string | null;
@@ -97,13 +68,9 @@ export function emptyCardRecord(): RosterCardRecord {
   return {
     trainingStartedOn: '',
     trainingStyle: '',
-    photos: [],
-    shownPhotoId: '',
     coachAssessments: [],
     benchmarkChecks: {},
-    benchmarkSync: false,
     trainingNotes: '',
-    sent: [],
     competitorOn: false,
     competitorCardId: '',
     updatedAt: 0,
@@ -144,13 +111,9 @@ function cleanRecord(value: unknown): RosterCardRecord {
           },
         }
       : {}),
-    photos: Array.isArray(row.photos) ? row.photos.filter((p) => p && typeof p.src === 'string' && typeof p.id === 'string').slice(-PHOTO_MAX) : [],
-    shownPhotoId: typeof row.shownPhotoId === 'string' ? row.shownPhotoId : '',
     coachAssessments: Array.isArray(row.coachAssessments) ? row.coachAssessments.slice(-ASSESS_MAX) : [],
     benchmarkChecks: row.benchmarkChecks && typeof row.benchmarkChecks === 'object' ? { ...row.benchmarkChecks } : {},
-    benchmarkSync: row.benchmarkSync === true,
     trainingNotes: typeof row.trainingNotes === 'string' ? row.trainingNotes.slice(0, NOTE_MAX) : '',
-    sent: Array.isArray(row.sent) ? row.sent.slice(-100) : [],
     ...(row.snapshot && typeof row.snapshot === 'object' ? { snapshot: row.snapshot } : {}),
     competitorOn: row.competitorOn === true,
     competitorCardId: typeof row.competitorCardId === 'string' ? row.competitorCardId : '',
@@ -159,7 +122,7 @@ function cleanRecord(value: unknown): RosterCardRecord {
 }
 
 function readFile(storage: Pick<MemoryStore, 'getItem'> | null): CardFile {
-  const empty: CardFile = { cards: {}, settings: { parentPhotoGate: true } };
+  const empty: CardFile = { cards: {} };
   if (!storage) return empty;
   try {
     const raw = storage.getItem(ROSTER_CARD_KEY);
@@ -167,7 +130,7 @@ function readFile(storage: Pick<MemoryStore, 'getItem'> | null): CardFile {
     const parsed = JSON.parse(raw) as Partial<CardFile>;
     const cards: Record<string, RosterCardRecord> = {};
     for (const [id, row] of Object.entries(parsed.cards ?? {})) cards[id] = cleanRecord(row);
-    return { cards, settings: { parentPhotoGate: parsed.settings?.parentPhotoGate !== false } };
+    return { cards };
   } catch {
     return empty;
   }
@@ -180,16 +143,6 @@ function writeFile(storage: MemoryStore, file: CardFile): void {
 
 export function readRosterCard(rosterId: string, storage: Pick<MemoryStore, 'getItem'> | null = defaultStorage()): RosterCardRecord {
   return readFile(storage).cards[rosterId] ?? emptyCardRecord();
-}
-
-export function readRosterCardSettings(storage: Pick<MemoryStore, 'getItem'> | null = defaultStorage()): RosterCardSettings {
-  return readFile(storage).settings;
-}
-
-export function writeRosterCardSettings(settings: RosterCardSettings, storage: MemoryStore | null = defaultStorage()): void {
-  if (!storage) return;
-  const file = readFile(storage);
-  writeFile(storage, { ...file, settings: { parentPhotoGate: settings.parentPhotoGate !== false } });
 }
 
 export function updateRosterCard(
@@ -316,10 +269,3 @@ export function recordRosterRankChange(
   updateRosterCard(rosterId, (record) => ({ ...record, coachRank: log }), storage);
 }
 
-/**
- * Sync with student app. One action, used by the card toggle and by the Add student offer.
- * Shares benchmarks only. Notes and assessments still need their own Send.
- */
-export function setStudentAppSync(rosterId: string, on: boolean, storage: MemoryStore | null = defaultStorage()): RosterCardRecord {
-  return updateRosterCard(rosterId, (record) => ({ ...record, benchmarkSync: on }), storage);
-}

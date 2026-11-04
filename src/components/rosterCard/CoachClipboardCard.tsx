@@ -13,6 +13,7 @@ import type { TrainingStyle } from '../../lib/progress/types';
 import type { WornBeltPreview } from '../../lib/studentRank';
 import { ADVANTAGE_MARK_SRC } from '../../lib/gymLogo';
 import { WornBeltMark } from '../../pages/student/wornBelt';
+import { DEFAULT_CARD_LOOK, type CardLook } from '../../lib/cardLook';
 import '../../pages/student/beltWeave.css';
 import './coachClipboard.css';
 
@@ -26,10 +27,26 @@ export type CardPhotoView = {
   pending: boolean;
   /** Head coach or head instructor: Choose photo. */
   onChoose?: () => void;
+  /**
+   * Per-student 'No photos'. When set the card draws initials only, hides
+   * Choose photo and shows the badge, on every style and skin.
+   */
+  noPhotos?: NoPhotosView;
+};
+
+export type NoPhotosView = {
+  on: boolean;
+  /** Who set it. A family flag is locked for the coach. */
+  setBy?: 'coach' | 'family';
+  /** Coach switch. Missing or locked means read-only. */
+  onToggle?: () => void;
+  locked?: boolean;
 };
 
 export type ClipboardCardProps = {
   mode: 'coach' | 'student';
+  /** Gym-level style and skin. Defaults to Coach Clipboard, Dark. */
+  look?: CardLook;
   kicker: string;
   name: string;
   photo: CardPhotoView;
@@ -56,6 +73,8 @@ export type ClipboardCardProps = {
   benchmarkSync: boolean;
   onBenchmarkSync?: (on: boolean) => void;
   benchmarkEmpty?: ReactNode;
+  /** Coach: explicit Send benchmarks, shown while sync is on. */
+  benchmarkSend?: ReactNode;
   /** Notes tab body. Coach: Training notes & suggestions, Private coach notes. Student: Suggestions from coach. */
   notes: ReactNode;
   notesLabel: string;
@@ -76,6 +95,7 @@ export function CoachClipboardCard(props: ClipboardCardProps) {
   const [tab, setTab] = useState<Tab>('overview');
   const tabsId = useId();
   const coach = props.mode === 'coach';
+  const noPhotos = Boolean(props.photo.noPhotos?.on);
   const tabs: { id: Tab; label: string; count?: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'assessments', label: 'Assessments', count: String(props.coachAssessments.length) },
@@ -83,23 +103,42 @@ export function CoachClipboardCard(props: ClipboardCardProps) {
     { id: 'notes', label: props.notesLabel },
   ];
   return (
-    <div className="clipboard" data-mode={props.mode}>
+    <div className="clipboard" data-mode={props.mode} data-style={(props.look ?? DEFAULT_CARD_LOOK).style} data-skin={(props.look ?? DEFAULT_CARD_LOOK).skin}>
       <div className="clipboard__board">
         <div className="clipboard__clip" aria-hidden="true" />
         <article className="clipboard__sheet" aria-label={`${props.name || 'Student'} card`}>
           <header className="clipboard__hdr">
             <div className="clipboard__idc">
-              {props.photo.src ? (
+              {props.photo.src && !noPhotos ? (
                 <img className="clipboard__photo" src={props.photo.src} alt={`${props.name} photo`} />
               ) : (
                 <span className="clipboard__initials" aria-label="No photo yet">
                   {props.photo.initials}
                 </span>
               )}
-              {props.photo.pending ? <span className="clipboard__pending">Pending approval</span> : null}
-              {props.photo.onChoose ? (
+              {props.photo.pending && !noPhotos ? <span className="clipboard__pending">Pending approval</span> : null}
+              {noPhotos ? (
+                <span className="clipboard__nophotos" data-testid="no-photos-badge">
+                  No photos
+                  {props.photo.noPhotos?.setBy === 'family' ? <small>· Set by family</small> : null}
+                </span>
+              ) : null}
+              {props.photo.onChoose && !noPhotos ? (
                 <button type="button" className="clipboard__choose" onClick={props.photo.onChoose}>
                   Choose photo ›<span>head instructor picks</span>
+                </button>
+              ) : null}
+              {props.photo.noPhotos?.onToggle || (coach && props.photo.noPhotos) ? (
+                <button
+                  type="button"
+                  className="clipboard__nophotos-toggle"
+                  role="switch"
+                  aria-checked={noPhotos}
+                  disabled={!props.photo.noPhotos?.onToggle || props.photo.noPhotos?.locked}
+                  title={props.photo.noPhotos?.locked ? 'Set by family. Only the family can clear it.' : undefined}
+                  onClick={props.photo.noPhotos?.onToggle}
+                >
+                  {noPhotos ? (props.photo.noPhotos?.locked ? 'No photos · Set by family' : 'Allow photos') : 'Mark No photos'}
                 </button>
               ) : null}
             </div>
@@ -215,7 +254,7 @@ export function CoachClipboardCard(props: ClipboardCardProps) {
           ) : null}
           {tab === 'notes' ? <div className="clipboard__notes">{props.notes}</div> : null}
         </article>
-        {coach && props.extras ? <div className="clipboard__extras">{props.extras}</div> : null}
+        {props.extras ? <div className="clipboard__extras">{props.extras}</div> : null}
         <div className="clipboard__foot">
           <span className="clipboard__amark">
             <img src={ADVANTAGE_MARK_SRC} alt="" />
@@ -256,10 +295,17 @@ function AssessmentColumn(props: ClipboardCardProps) {
         <>
           <div className="clipboard__as">
             <div>
-              <CardRadar
-                coach={showCoach ? assessment.coachLatest?.scores ?? null : null}
-                self={showSelf ? assessment.selfLatest?.scores ?? null : null}
-              />
+              {(props.look ?? DEFAULT_CARD_LOOK).style === 'fighter' ? (
+                <CardBars
+                  coach={showCoach ? assessment.coachLatest?.scores ?? null : null}
+                  self={showSelf ? assessment.selfLatest?.scores ?? null : null}
+                />
+              ) : (
+                <CardRadar
+                  coach={showCoach ? assessment.coachLatest?.scores ?? null : null}
+                  self={showSelf ? assessment.selfLatest?.scores ?? null : null}
+                />
+              )}
               <div className="clipboard__legend">
                 {showCoach && assessment.coachLatest ? (
                   <span>
@@ -437,9 +483,10 @@ function BenchmarkColumn(props: ClipboardCardProps) {
           <span className="sw__t" aria-hidden="true" />
           <span>
             <b>Sync with student app</b>
-            <small>{coach ? `Benchmarks only. ${props.name || 'The student'} sees this list and can mark items done.` : 'Your coach sees the marks you make.'}</small>
+            <small>{coach ? `${props.name || 'The student'} gets your sends and can mark items done. Nothing goes out until you tap Send.` : 'Your coach sees the marks you make.'}</small>
           </span>
         </button>
+        {props.benchmarkSend}
       </div>
     </section>
   );
@@ -464,17 +511,17 @@ function CardRadar({ coach, self }: { coach: Record<string, AssessmentScore> | n
   return (
     <svg viewBox="0 0 310 194" className="clipboard__radar" role="img" aria-label="Assessment shape">
       {[1, 2, 3, 4, 5].map((ring) => (
-        <polygon key={ring} points={ASSESSMENT_AREAS.map((_, index) => point(index, ring)).join(' ')} fill="none" stroke={ring === 5 ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.1)'} />
+        <polygon key={ring} className={ring === 5 ? 'ring ring--out' : 'ring'} points={ASSESSMENT_AREAS.map((_, index) => point(index, ring)).join(' ')} />
       ))}
-      {coach ? <polygon points={shape(coach)} fill="rgba(110,168,255,.22)" stroke="#6ea8ff" strokeWidth="2.2" strokeLinejoin="round" /> : null}
-      {self ? <polygon points={shape(self)} fill="none" stroke="#f1eee5" strokeWidth="2.2" strokeDasharray="5 4" strokeLinejoin="round" /> : null}
+      {coach ? <polygon className="coach" points={shape(coach)} strokeWidth="2.2" strokeLinejoin="round" /> : null}
+      {self ? <polygon className="self" points={shape(self)} strokeWidth="2.2" strokeDasharray="5 4" strokeLinejoin="round" /> : null}
       {ASSESSMENT_AREAS.map((area, index) => {
         const theta = -Math.PI / 2 + (index * 2 * Math.PI) / ASSESSMENT_AREAS.length;
         const x = R_CX + Math.cos(theta) * (R_R + 14);
         const y = R_CY + Math.sin(theta) * (R_R + 12) + 3;
         const anchor = Math.abs(Math.cos(theta)) < 0.2 ? 'middle' : Math.cos(theta) > 0 ? 'start' : 'end';
         return (
-          <text key={area.id} x={x.toFixed(1)} y={y.toFixed(1)} textAnchor={anchor} fontSize="10" fontWeight="600" fill="#c4cddb">
+          <text key={area.id} x={x.toFixed(1)} y={y.toFixed(1)} textAnchor={anchor} fontSize="10" fontWeight="600">
             {area.label}
           </text>
         );
@@ -489,7 +536,30 @@ function Spark({ points }: { points: number[] }) {
   const coords = points.map((value, index) => `${(4 + index * step).toFixed(1)},${(26 - (value / 5) * 22).toFixed(1)}`);
   return (
     <svg width="90" height="28" viewBox="0 0 90 28" aria-hidden="true">
-      <polyline points={coords.join(' ')} fill="none" stroke="#6ea8ff" strokeWidth="2.2" strokeLinejoin="round" />
+      <polyline className="clipboard__spark" points={coords.join(' ')} fill="none" strokeWidth="2.2" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+/** Fighter Card (C): horizontal bars. Coach score is the mark, self is the fill. */
+function CardBars({ coach, self }: { coach: Record<string, AssessmentScore> | null; self: Record<string, AssessmentScore> | null }) {
+  return (
+    <ul className="clipboard__bars" aria-label="Scouting report">
+      {ASSESSMENT_AREAS.map((area) => {
+        const c = coach ? coach[area.id] ?? null : null;
+        const v = self ? self[area.id] ?? null : null;
+        return (
+          <li key={area.id}>
+            <span>{area.label}</span>
+            <span className="bar" aria-hidden="true">
+              {v !== null ? <i className="self" style={{ width: `${(v / 5) * 100}%` }} /> : null}
+              {v === null && c !== null ? <i className="coachfill" style={{ width: `${(c / 5) * 100}%` }} /> : null}
+              {v !== null && c !== null ? <i className="mark" style={{ left: `calc(${(c / 5) * 100}% - 1.5px)` }} /> : null}
+            </span>
+            <b>{c ?? v ?? NO_DATE}</b>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

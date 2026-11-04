@@ -12,11 +12,11 @@
  */
 
 import { ROSTER_CARD_KEY, ROSTER_CARD_PRIVATE_KEY } from './rosterCardStore.ts';
-import { COACH_INBOX_KEY } from './studentToCoach.ts';
+import { CARD_LOOK_KEY } from './cardLook.ts';
 
 type MemoryStore = { getItem: (key: string) => string | null; setItem: (key: string, value: string) => void };
 
-export const COACH_CARD_BACKUP_KEYS = [ROSTER_CARD_KEY, ROSTER_CARD_PRIVATE_KEY, COACH_INBOX_KEY] as const;
+export const COACH_CARD_BACKUP_KEYS = [ROSTER_CARD_KEY, ROSTER_CARD_PRIVATE_KEY, CARD_LOOK_KEY] as const;
 
 export type CoachCardBackup = { kind: 'advantage-coach-card-backup'; version: 1; data: Record<string, string> };
 

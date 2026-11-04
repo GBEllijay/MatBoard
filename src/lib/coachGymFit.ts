@@ -23,7 +23,10 @@ export function readTravelingGym(raw: unknown): CoachGymBrand | null {
   const name = typeof gym.name === 'string' ? gym.name.trim().slice(0, PROGRESS_NAME_MAX) : '';
   const logo = typeof gym.logo === 'string' && coachGymLogoFits(gym.logo) ? gym.logo : undefined;
   if (!name && !logo) return null;
-  return logo ? { name, logo } : { name };
+  const brand: CoachGymBrand = logo ? { name, logo } : { name };
+  const look = typeof gym.cardLook === 'string' && /^(clipboard|fighter)-(dark|light)$/.test(gym.cardLook) ? gym.cardLook : '';
+  if (look) brand.cardLook = look;
+  return brand;
 }
 
 /**
