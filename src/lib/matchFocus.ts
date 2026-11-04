@@ -8,6 +8,7 @@ export const DISPLAY_FOCUS_IDS = {
   'white-gym': 'match-field-white-gym',
   round: 'match-field-round',
   division: 'match-field-division',
+  weight: 'match-field-weight',
   outcome: 'match-field-outcome',
 } as const;
 

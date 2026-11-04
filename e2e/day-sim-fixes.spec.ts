@@ -51,7 +51,7 @@ async function shot(page: Page, name: string) {
 
 /** Media and up pick Classic and Advantage from the Skins button. This test is signed in as Pro. */
 const skinControl = (page: Page) =>
-  page.getByRole('radio', { name: 'Classic' }).or(page.getByRole('button', { name: /^Timer skins/ }));
+  page.getByRole('radio', { name: 'Classic' }).or(page.getByRole('button', { name: /^Skins, / }));
 
 async function openTrainingOptions(page: Page) {
   const control = skinControl(page);
@@ -71,11 +71,11 @@ async function boardStyle(page: Page, selector: string) {
 }
 
 async function pickSkin(page: Page, skin: 'Classic' | 'Advantage') {
-  const popup = page.getByRole('button', { name: /^Timer skins/ });
+  const popup = page.getByRole('button', { name: /^Skins, / });
   if (await popup.isVisible()) {
     await popup.click();
     await page.getByRole('dialog', { name: 'Timer skins' }).getByRole('radio', { name: skin }).click();
-    await expect(page.getByRole('button', { name: `Timer skins, ${skin}` })).toBeVisible();
+    await expect(page.getByRole('button', { name: `Skins, ${skin}` })).toBeVisible();
     return;
   }
   await page.getByRole('radio', { name: skin }).click();

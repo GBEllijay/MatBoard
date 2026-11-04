@@ -1,0 +1,467 @@
+/* Shinobi Anime. The seal glyph is live text. Digits stay solid white Anton, including inside headings. */
+.skin-root[data-skin='shinobi-anime'] {
+  --pts: #3df2dc;
+  --adv: #ff9ccb;
+  --pen: #ff7a85;
+  --teal: #2ee6d6;
+  --vio: #9b6bff;
+  --sak: #ff6fa8;
+  --seal: #a30d24;
+  font-family: 'Big Shoulders Display', Oswald, sans-serif;
+  background: #05060e;
+}
+
+.skin-root[data-skin='shinobi-anime'] .sb .bg {
+  background-image: radial-gradient(62% 60% at 50% 54%, rgba(5, 6, 16, 0.8), rgba(5, 6, 16, 0.42) 78%, rgba(5, 6, 16, 0.15)),
+    url(./assets/shinobi-anime/bg@2560.webp);
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm .bg {
+  background-image: radial-gradient(55% 50% at 56% 56%, rgba(4, 5, 14, 0.72), rgba(4, 5, 14, 0.3) 80%, rgba(4, 5, 14, 0.1)),
+    url(./assets/shinobi-anime/timer-bg@2560.webp);
+}
+
+.skin-root[data-skin='shinobi-anime'] .num,
+.skin-root[data-skin='shinobi-anime'] .clock,
+.skin-root[data-skin='shinobi-anime'] .digits,
+.skin-root[data-skin='shinobi-anime'] .tm-clock,
+.skin-root[data-skin='shinobi-anime'] .plate .clock .sk-btn,
+.skin-root[data-skin='shinobi-anime'] .n {
+  font-family: Anton, sans-serif;
+  font-weight: 400;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: none;
+  letter-spacing: 0;
+}
+
+.skin-root[data-skin='shinobi-anime'] .name {
+  font-family: 'Big Shoulders Display', sans-serif;
+  font-weight: 900;
+  font-size: 6.4vh;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 0.3vh 0 #000;
+}
+
+.skin-root[data-skin='shinobi-anime'] .wm,
+.skin-root[data-skin='shinobi-anime'] .hdr .mat,
+.skin-root[data-skin='shinobi-anime'] .tm .title {
+  font-family: 'Dela Gothic One', sans-serif;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  text-shadow: 0.28vh 0.28vh 0 #05060e, 0 0 1.2vh rgba(46, 230, 214, 0.65);
+}
+
+.skin-root[data-skin='shinobi-anime'] .wm {
+  font-size: 4.2vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .wmbrush,
+.skin-root[data-skin='shinobi-anime'] .titlebrush {
+  position: absolute;
+  left: 50%;
+  width: 120%;
+  height: 2.4vh;
+  margin-left: -60%;
+  bottom: -1.2vh;
+  opacity: 0.7;
+  z-index: -1;
+}
+
+.skin-root[data-skin='shinobi-anime'] .titlebrush {
+  color: var(--teal);
+  width: 42vh;
+  margin-left: -21vh;
+  top: 2.2vh;
+  bottom: auto;
+  height: 4vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm.rest .titlebrush {
+  color: var(--sak);
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm.rest .title {
+  text-shadow: 0.28vh 0.28vh 0 #05060e, 0 0 1.4vh rgba(255, 111, 168, 0.75);
+}
+
+.skin-root[data-skin='shinobi-anime'] .side,
+.skin-root[data-skin='shinobi-anime'] .lab,
+.skin-root[data-skin='shinobi-anime'] .gym,
+.skin-root[data-skin='shinobi-anime'] .belt,
+.skin-root[data-skin='shinobi-anime'] .hdr .div,
+.skin-root[data-skin='shinobi-anime'] .band .state,
+.skin-root[data-skin='shinobi-anime'] .band .sk-btn,
+.skin-root[data-skin='shinobi-anime'] .tm .phase,
+.skin-root[data-skin='shinobi-anime'] .tm .next {
+  font-family: Oswald, sans-serif;
+}
+
+.skin-root[data-skin='shinobi-anime'] .hdr .div {
+  color: #dce3f2;
+  background: none;
+  border-radius: 0;
+  padding-left: 1.6vh;
+  border-left: 0.25vh solid rgba(255, 255, 255, 0.35);
+  box-shadow: none;
+}
+
+.skin-root[data-skin='shinobi-anime'] .hdr .crest {
+  width: auto;
+  height: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.8vh;
+  background: none;
+}
+
+.skin-root[data-skin='shinobi-anime'] .seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Ma Shan Zheng', serif;
+  color: #fff4ee;
+  background: var(--seal);
+  border-radius: 0.7vh;
+  box-shadow: inset 0 0 0 0.35vh #fff4ee, inset 0 0 0 0.6vh var(--seal);
+  line-height: 1;
+}
+
+.skin-root[data-skin='shinobi-anime'] .hdr .seal {
+  width: 9vh;
+  height: 9vh;
+  font-size: 6.6vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .hdr .kunai {
+  width: 9vh;
+  height: 2vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .row {
+  background:
+    linear-gradient(180deg, rgba(10, 12, 30, 0.55), rgba(4, 5, 14, 0.82)),
+    url(./assets/shinobi-anime/ink@2560.webp) center / cover;
+  border-radius: 0.5vh;
+  box-shadow: 0 0.8vh 2vh #000, inset 0 0 0 0.25vh rgba(255, 255, 255, 0.08);
+  padding-left: 3.2vh;
+  padding-right: 3.2vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .rod {
+  position: absolute;
+  top: -1vh;
+  bottom: -1vh;
+  width: 2.2vh;
+  z-index: 4;
+  border-radius: 1.2vh;
+  background: linear-gradient(90deg, #1a0f0a, #5b3a26 30%, #8a5e3e 45%, #3e2618 70%, #120a06);
+}
+
+.skin-root[data-skin='shinobi-anime'] .rod::before,
+.skin-root[data-skin='shinobi-anime'] .rod::after {
+  content: '';
+  position: absolute;
+  left: -0.4vh;
+  right: -0.4vh;
+  height: 1.6vh;
+  border-radius: 0.5vh;
+  background: linear-gradient(90deg, #3a0a12, #c8102e 40%, #7a0a1a);
+}
+
+.skin-root[data-skin='shinobi-anime'] .rod::before {
+  top: -0.3vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .rod::after {
+  bottom: -0.3vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .rod.l {
+  left: -0.4vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .rod.r {
+  right: -0.4vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .rowbrush {
+  position: absolute;
+  left: 28%;
+  right: 3vh;
+  top: -1.6vh;
+  height: 2.6vh;
+  opacity: 0.55;
+  mix-blend-mode: screen;
+}
+
+.skin-root[data-skin='shinobi-anime'] .c1 .id {
+  background: linear-gradient(90deg, rgba(31, 91, 255, 0.4), rgba(31, 91, 255, 0.08) 75%, transparent);
+}
+
+.skin-root[data-skin='shinobi-anime'] .c2 .id {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 75%, transparent);
+}
+
+.skin-root[data-skin='shinobi-anime'] .c1 .side b {
+  background: #1c46cc;
+  color: #fff;
+  border-radius: 0.45vh;
+  box-shadow: inset 0 0 0 0.18vh #9dbbff;
+}
+
+.skin-root[data-skin='shinobi-anime'] .c2 .side b {
+  background: #fff;
+  color: #0e1726;
+  border-radius: 0.45vh;
+  box-shadow: inset 0 0 0 0.18vh #0e1726;
+}
+
+.skin-root[data-skin='shinobi-anime'] .gym {
+  color: #dce3f2;
+  font-weight: 600;
+}
+
+.skin-root[data-skin='shinobi-anime'] .belt {
+  background: #1c46cc;
+  color: #fff;
+  border-radius: 0.5vh;
+  font-weight: 700;
+}
+
+.skin-root[data-skin='shinobi-anime'] .tile {
+  background: #06070f;
+  border-radius: 0.5vh;
+  box-shadow: inset 0 0 0 0.25vh #22263a;
+}
+
+.skin-root[data-skin='shinobi-anime'] .pts .lab {
+  color: var(--pts);
+}
+
+.skin-root[data-skin='shinobi-anime'] .adv .lab {
+  color: var(--adv);
+}
+
+.skin-root[data-skin='shinobi-anime'] .pen .lab {
+  color: var(--pen);
+}
+
+.skin-root[data-skin='shinobi-anime'] .lab {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.skin-root[data-skin='shinobi-anime'] .num {
+  font-size: 18vh;
+  text-shadow: 0 0.4vh 0 #000;
+}
+
+.skin-root[data-skin='shinobi-anime'] .tile::after {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 0.6vh;
+  height: 0.7vh;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.skin-root[data-skin='shinobi-anime'] .pts {
+  --c: var(--pts);
+}
+
+.skin-root[data-skin='shinobi-anime'] .adv {
+  --c: var(--adv);
+}
+
+.skin-root[data-skin='shinobi-anime'] .pen {
+  --c: var(--pen);
+}
+
+.skin-root[data-skin='shinobi-anime'] .plate {
+  background: #05060e;
+  border-radius: 0.7vh;
+  box-shadow: inset 0 0 0 0.35vh var(--teal), inset 0 0 0 0.7vh #05060e, inset 0 0 0 0.9vh rgba(155, 107, 255, 0.8);
+}
+
+.skin-root[data-skin='shinobi-anime'] .band .state {
+  background: #06070f;
+  color: #e9eef7;
+  border-radius: 0.5vh;
+  box-shadow: inset 0 0 0 0.2vh #4a5170;
+}
+
+.skin-root[data-skin='shinobi-anime'] .band .status .sk-btn {
+  background: var(--seal);
+  color: #fff;
+  border-radius: 0.5vh;
+  box-shadow: inset 0 0 0 0.2vh #ff9aa6;
+}
+
+.skin-root[data-skin='shinobi-anime'] .chakra,
+.skin-root[data-skin='shinobi-anime'] .shu {
+  position: absolute;
+  top: 50%;
+}
+
+.skin-root[data-skin='shinobi-anime'] .chakra {
+  height: 8vh;
+  margin-top: -4vh;
+  width: calc(50% - 28vh);
+}
+
+.skin-root[data-skin='shinobi-anime'] .chakra.l {
+  left: 8vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .chakra.r {
+  right: 8vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .shu {
+  width: 6vh;
+  height: 6vh;
+  margin-top: -3vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .shu.l {
+  left: calc(50% - 26vh);
+}
+
+.skin-root[data-skin='shinobi-anime'] .shu.r {
+  right: calc(50% - 26vh);
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm .mascot {
+  left: 0;
+  bottom: -1vh;
+  height: 78vh;
+  width: 36vh;
+  background-image: url(./assets/shinobi-anime/mascot.webp);
+  filter: drop-shadow(0 0 1.8vh rgba(46, 230, 214, 0.45));
+}
+
+.skin-root[data-skin='shinobi-anime'] .tseal {
+  position: absolute;
+  left: calc(50% + 10vw);
+  top: 2.4vh;
+  z-index: 5;
+}
+
+.skin-root[data-skin='shinobi-anime'] .tseal .seal {
+  width: 12vh;
+  height: 12vh;
+  font-size: 9vh;
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm .title {
+  left: 16vw;
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm .dplate {
+  left: calc(16vw + 4vh);
+  right: 3vh;
+  transform: none;
+  width: auto;
+  background: rgba(4, 5, 12, 0.86);
+  border-radius: 0.8vh;
+  box-shadow: inset 0 0 0 0.35vh rgba(46, 230, 214, 0.9), inset 0 0 0 0.8vh rgba(4, 5, 12, 0.9),
+    inset 0 0 0 1vh rgba(155, 107, 255, 0.65);
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm.rest .dplate {
+  box-shadow: inset 0 0 0 0.35vh rgba(255, 111, 168, 0.95), inset 0 0 0 0.8vh rgba(4, 5, 12, 0.9),
+    inset 0 0 0 1vh rgba(155, 107, 255, 0.65);
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm .phase {
+  background: var(--seal);
+  color: #fff;
+  border-radius: 0.5vh;
+  box-shadow: inset 0 0 0 0.22vh #ff9aa6;
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm.rest .phase {
+  background: #08594f;
+  box-shadow: inset 0 0 0 0.22vh #7ff5ea;
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm .meter {
+  left: calc(16vw + 4vh);
+  right: 5vh;
+  width: auto;
+  transform: none;
+  overflow: visible;
+  background: #06070f;
+  border-radius: 1.4vh;
+  box-shadow: inset 0 0 0 0.25vh #2f3550;
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm .meter .fill {
+  background: linear-gradient(90deg, #2ee6d6, #6fa8ff 55%, #9b6bff);
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm.rest .meter .fill {
+  background: linear-gradient(90deg, #ff6fa8, #ffb3d3);
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm .meter .knob {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--p) * 100%);
+  width: 6vh;
+  height: 6vh;
+  transform: translate(-50%, -50%) rotate(18deg);
+}
+
+.skin-root[data-skin='shinobi-anime'] .tm .next {
+  left: 16vw;
+  color: #e9eef7;
+  letter-spacing: 0.2em;
+}
+
+/* The kunai pair is wider than the centre column on a tablet, so the seal stands alone. */
+@media (max-width: 900px) {
+  .skin-root[data-skin='shinobi-anime'] .hdr .kunai {
+    display: none;
+  }
+
+  .skin-root[data-skin='shinobi-anime'] .hdr .crest {
+    max-width: min(9vh, 20vw);
+    max-height: min(9vh, 20vw);
+  }
+
+  .skin-root[data-skin='shinobi-anime'] .hdr .seal {
+    width: min(9vh, 20vw);
+    height: min(9vh, 20vw);
+    font-size: min(6.6vh, 14vw);
+  }
+}
+
+@media (orientation: portrait) and (max-width: 520px) {
+  .skin-root[data-skin='shinobi-anime'] .kunai {
+    display: none;
+  }
+
+  .skin-root[data-skin='shinobi-anime'] .tm .mascot {
+    height: 42vh;
+    width: 28vh;
+    opacity: 0.85;
+  }
+
+  .skin-root[data-skin='shinobi-anime'] .tm .title,
+  .skin-root[data-skin='shinobi-anime'] .tm .dplate,
+  .skin-root[data-skin='shinobi-anime'] .tm .meter,
+  .skin-root[data-skin='shinobi-anime'] .tm .next {
+    left: 4vw;
+    right: 4vw;
+  }
+
+  .skin-root[data-skin='shinobi-anime'] .tm .dplate,
+  .skin-root[data-skin='shinobi-anime'] .tm .meter {
+    width: auto;
+  }
+}

@@ -1,0 +1,262 @@
+/* Creature Anime. Sunny cel-shaded HUD. Digits stay solid white Baloo 2. */
+.skin-root[data-skin='creature-anime'] {
+  --pts: #7cf06a;
+  --adv: #5fd8ff;
+  --pen: #ffa8a8;
+  --ink: #10204a;
+  --crest: url(./assets/creature-anime/crest.webp);
+  font-family: 'Baloo 2', sans-serif;
+  background: #10204a;
+}
+
+.skin-root[data-skin='creature-anime'] .sb .bg {
+  background-image: linear-gradient(180deg, rgba(16, 32, 74, 0.1), rgba(16, 32, 74, 0) 30%, rgba(16, 32, 74, 0.18)),
+    url(./assets/creature-anime/meadow@2560.webp);
+}
+
+.skin-root[data-skin='creature-anime'] .tm .bg {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(16, 32, 74, 0.12)),
+    url(./assets/creature-anime/sky@2560.webp);
+}
+
+.skin-root[data-skin='creature-anime'] .num,
+.skin-root[data-skin='creature-anime'] .clock,
+.skin-root[data-skin='creature-anime'] .digits,
+.skin-root[data-skin='creature-anime'] .tm-clock,
+.skin-root[data-skin='creature-anime'] .plate .clock .sk-btn {
+  font-family: 'Baloo 2', sans-serif;
+  font-weight: 800;
+}
+
+.skin-root[data-skin='creature-anime'] .wm,
+.skin-root[data-skin='creature-anime'] .hdr .mat,
+.skin-root[data-skin='creature-anime'] .tm .title {
+  font-family: 'Lilita One', sans-serif;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  letter-spacing: 0.02em;
+  -webkit-text-stroke: 0.35vh var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 0.45vh 0 var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .hdr .logo {
+  box-shadow: 0 0 0 0.35vh #fff, 0 0 0 0.7vh var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .hdr .div {
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 0 0 0.35vh #fff;
+}
+
+.skin-root[data-skin='creature-anime'] .hdr .crest,
+.skin-root[data-skin='creature-anime'] .tm .crest {
+  filter: drop-shadow(0 0.5vh 0 rgba(16, 32, 74, 0.55));
+}
+
+.skin-root[data-skin='creature-anime'] .row {
+  border-radius: 3.2vh;
+  border: 0.6vh solid var(--ink);
+  box-shadow: inset 0 0 0 0.45vh rgba(255, 255, 255, 0.95), 0 0.8vh 0 var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .c1 {
+  background: linear-gradient(180deg, #1a48cc 0%, #1846c4 55%, #1238a6 100%);
+}
+
+.skin-root[data-skin='creature-anime'] .c2 {
+  background: linear-gradient(180deg, #ffffff 0%, #f2f5ff 60%, #dce4f7 100%);
+}
+
+.skin-root[data-skin='creature-anime'] .c1 .rail {
+  background: #fff;
+  border: 0.25vh solid var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .c2 .rail {
+  background: #1846c4;
+  border: 0.25vh solid var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .c1 .side b {
+  background: #fff;
+  color: #1846c4;
+  box-shadow: 0 0.35vh 0 var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .c2 .side b {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 0.3vh var(--ink), 0 0.35vh 0 var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .c1 .name {
+  color: #fff;
+  text-shadow: 0 0.4vh 0 var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .c2 .name {
+  color: var(--ink);
+  text-shadow: none;
+}
+
+.skin-root[data-skin='creature-anime'] .c1 .gym {
+  color: #fff;
+}
+
+.skin-root[data-skin='creature-anime'] .c2 .gym {
+  color: #2a3a66;
+}
+
+.skin-root[data-skin='creature-anime'] .belt {
+  background: #153fc4;
+  color: #fff;
+  box-shadow: 0 0.3vh 0 var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .c1 .belt {
+  box-shadow: 0 0 0 0.25vh #fff, 0 0.3vh 0 var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .tile {
+  background: linear-gradient(180deg, #1a2c63, #10204a 60%, #0b1738);
+  border-radius: 2.2vh;
+  border: 0.45vh solid var(--ink);
+  box-shadow: inset 0 0.4vh 0 rgba(255, 255, 255, 0.14);
+}
+
+.skin-root[data-skin='creature-anime'] .pts .lab {
+  color: var(--pts);
+}
+
+.skin-root[data-skin='creature-anime'] .adv .lab {
+  color: var(--adv);
+}
+
+.skin-root[data-skin='creature-anime'] .pen .lab {
+  color: var(--pen);
+}
+
+.skin-root[data-skin='creature-anime'] .num,
+.skin-root[data-skin='creature-anime'] .plate .clock .sk-btn,
+.skin-root[data-skin='creature-anime'] .tm .tm-clock {
+  text-shadow: 0 0.55vh 0 #050c24;
+}
+
+.skin-root[data-skin='creature-anime'] .tile::after {
+  content: '';
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: 0;
+  height: 0.7vh;
+  border-radius: 1vh 1vh 0 0;
+}
+
+.skin-root[data-skin='creature-anime'] .pts::after {
+  background: var(--pts);
+}
+
+.skin-root[data-skin='creature-anime'] .adv::after {
+  background: var(--adv);
+}
+
+.skin-root[data-skin='creature-anime'] .pen::after {
+  background: var(--pen);
+}
+
+.skin-root[data-skin='creature-anime'] .plate {
+  background: linear-gradient(180deg, #1a2c63, #10204a);
+  border-radius: 6vh;
+  border: 0.55vh solid #fff;
+  box-shadow: 0 0 0 0.55vh var(--ink), 0 0.8vh 0 0.55vh var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .band .state {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 0.3vh var(--ink), 0 0.4vh 0 var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .band .status .sk-btn {
+  background: #a8102c;
+  color: #fff;
+  box-shadow: inset 0 0 0 0.3vh var(--ink), 0 0.4vh 0 var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .band .mascot {
+  top: 50%;
+  height: 22vh;
+  width: 16vh;
+  transform: translateY(-50%);
+}
+
+.skin-root[data-skin='creature-anime'] .band .m-l {
+  left: -0.6vh;
+  background-image: url(./assets/creature-anime/foxbadger.webp);
+}
+
+.skin-root[data-skin='creature-anime'] .band .m-r {
+  right: -0.6vh;
+  background-image: url(./assets/creature-anime/turtlebear.webp);
+}
+
+
+.skin-root[data-skin='creature-anime'] .tm .phase {
+  background: #a8102c;
+  color: #fff;
+  box-shadow: inset 0 0 0 0.35vh var(--ink), 0 0.5vh 0 var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .tm.rest .phase {
+  background: #1846c4;
+}
+
+.skin-root[data-skin='creature-anime'] .tm .dplate {
+  background: linear-gradient(180deg, #1a2c63, #10204a 60%, #0b1738);
+  border-radius: 6vh;
+  border: 0.8vh solid #fff;
+  box-shadow: 0 0 0 0.8vh var(--ink), 0 1.2vh 0 0.8vh var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .tm .meter {
+  background: #0e1b42;
+  border: 0.5vh solid #fff;
+  box-shadow: 0 0 0 0.45vh var(--ink);
+}
+
+.skin-root[data-skin='creature-anime'] .tm .meter .fill {
+  background: linear-gradient(180deg, #b4ff8e, #56d63e 55%, #2fae2a);
+}
+
+.skin-root[data-skin='creature-anime'] .tm.rest .meter .fill {
+  background: linear-gradient(180deg, #b8eeff, #4cc4ff 55%, #1e8fe0);
+}
+
+.skin-root[data-skin='creature-anime'] .tm .next {
+  color: #fff;
+  -webkit-text-stroke: 0.35vh var(--ink);
+  paint-order: stroke fill;
+}
+
+.skin-root[data-skin='creature-anime'] .tm .t-l {
+  background-image: url(./assets/creature-anime/puffcub.webp);
+}
+
+.skin-root[data-skin='creature-anime'] .tm .t-r {
+  background-image: url(./assets/creature-anime/foxbadger.webp);
+}
+
+.skin-root[data-skin='creature-anime'] .tm.rest .t-l {
+  background-image: url(./assets/creature-anime/turtlebear.webp);
+  height: 31vh;
+}
+
+.skin-root[data-skin='creature-anime'] .tm.rest .t-r {
+  background-image: url(./assets/creature-anime/puffcub.webp);
+}
+
+.skin-root[data-skin='creature-anime'] .num {
+  font-size: 18vh;
+}

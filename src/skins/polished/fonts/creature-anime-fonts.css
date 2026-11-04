@@ -1,0 +1,15 @@
+/* Creature Anime. Baloo 2 for every numeral and label. Lilita One for headings only. OFL. */
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./baloo-2/baloo-2-latin-800-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lilita One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./lilita-one/lilita-one-latin-400-normal.woff2') format('woff2');
+}

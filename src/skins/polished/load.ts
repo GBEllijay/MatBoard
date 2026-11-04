@@ -1,4 +1,5 @@
 import type { PolishedTimerSlug } from '../../lib/polishedSkins.ts';
+import type { PosterSpec } from './posterSkins.ts';
 
 export type PolishedSkinModule = {
   /** null for the timer-only Calçadão. */
@@ -12,6 +13,8 @@ export type PolishedSkinModule = {
   /** Visionary: third-eye knob on the ring and the Flower-of-Life watermark in the disc. */
   VIS_KNOB_EYE?: string;
   VIS_DISC_FLOWER?: string;
+  /** Poster skins: crest, side chips, and the clock plate. Absent on the older families. */
+  POSTER?: PosterSpec;
 };
 
 /** Each skin is its own chunk (fonts, CSS, art), so the main bundle does not grow. */
@@ -26,6 +29,9 @@ const LOADERS: Record<PolishedTimerSlug, () => Promise<PolishedSkinModule>> = {
   psychedelic: () => import('./psychedelic.ts'),
   calcadao: () => import('./calcadao.ts'),
   visionary: () => import('./visionary.ts'),
+  'creature-anime': () => import('./creature-anime.ts'),
+  'idol-hunters': () => import('./idol-hunters.ts'),
+  'shinobi-anime': () => import('./shinobi-anime.ts'),
 };
 
 const cache = new Map<PolishedTimerSlug, PolishedSkinModule>();

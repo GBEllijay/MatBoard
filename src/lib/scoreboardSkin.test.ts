@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import { customSkinValue } from './customSkin.ts';
 import {
   DEFAULT_SCOREBOARD_SKIN,
   MOCK_TOURNAMENT_COLORS,
@@ -21,6 +22,9 @@ import {
   withMatchOrigin,
 } from './scoreboardSkin.ts';
 
+import './customSkin.test.ts';
+import './customSkinStore.test.ts';
+
 test('Mock-Tournament Skin is the default Match scoreboard', () => {
   assert.equal(MOCK_TOURNAMENT_SKIN_NAME, 'Mock-Tournament Skin');
   assert.equal(DEFAULT_SCOREBOARD_SKIN, SCOREBOARD_SKIN.MOCK_TOURNAMENT);
@@ -28,7 +32,9 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
   assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.MOCK_TOURNAMENT), 'scoreboard-skin--mock-tournament');
   assert.deepEqual(Object.keys(SCOREBOARD_SKIN).sort(), [
     'BRASIL',
+    'CREATURE_ANIME',
     'HEAVY_METAL',
+    'IDOL_HUNTERS',
     'KEYNOTE',
     'KIDS',
     'KIDS_ARCADE',
@@ -39,6 +45,7 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
     'PSYCHEDELIC',
     'QUICK_RESULT',
     'REGGAE',
+    'SHINOBI_ANIME',
     'VISIONARY',
     'WOODBLOCK',
   ]);
@@ -163,4 +170,16 @@ test('Old School phone landscape fills the panel with the portrait Adv/Pen heade
   assert.match(block, /\.score--points \{\s*height:\s*100%;/);
   // The TV block (min-width 900px and min-height 560px) still comes after and is untouched.
   assert.ok(css.lastIndexOf('(min-width: 900px) and (min-height: 560px)') > start);
+});
+
+test('a custom scoreboard skin keeps the Mock-Tournament board and the saved id', () => {
+  const id = customSkinValue('skinabc12345');
+  assert.ok(id);
+  assert.equal(parseScoreboardSkin(id), id);
+  assert.equal(parseScoreboardSkin('custom:nope'), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
+  assert.equal(scoreboardSkinClass(id), 'scoreboard-skin--mock-tournament scoreboard-skin--custom');
+  assert.equal(visibleScoreboardSkin(id, false, false, false, true, false), id);
+  assert.equal(visibleScoreboardSkin(id, false, false, false, false, true), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
+  assert.equal(visibleScoreboardSkin(id, false, false, false, false, false), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
+  assert.equal(parseScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL), SCOREBOARD_SKIN.OLD_SCHOOL);
 });

@@ -14,7 +14,9 @@ import {
   type DqDisappointedPrefs,
 } from './dqDisappointed';
 import { clamp, minutesToMs, secondsToMs } from './format';
-import { DEFAULT_SCOREBOARD_SKIN, parseScoreboardSkin, type ScoreboardSkinId } from './scoreboardSkin';
+import { canonicalRoundValue } from './matchRound';
+import { DEFAULT_SCOREBOARD_SKIN, parseScoreboardSkin, type StoredScoreboardSkin } from './scoreboardSkin';
+import { DEFAULT_MATCH_MS, MATCH_LENGTH_RANGE, snapDurationMs } from './timeWheel';
 import {
   ensureAudioRunning,
   getAudioPrefs,
@@ -65,6 +67,8 @@ export type MatchState = {
   white: Competitor;
   round: string;
   division: string;
+  /** Optional weight. Empty stays off the display and out of the competition packet. */
+  weight: string;
   durationMs: number;
   remainingMs: number;
   running: boolean;
@@ -85,7 +89,7 @@ export type MatchState = {
    */
   autoAnnounce: boolean;
   /** Mock-Tournament, Quick Result, or Old School. Travels with the match so Display follows the controller. */
-  skin: ScoreboardSkinId;
+  skin: StoredScoreboardSkin;
   /** Optional grandmaster cheer on the scoreboard. Off until the controller turns it on. */
   grandmaster: GrandmasterCelebrationPrefs;
   /** Optional one-shot reaction when a DQ is recorded. Off until the controller turns it on. */
@@ -105,7 +109,7 @@ export type MatchAction =
   | { type: 'adjustClock'; deltaMs: number }
   | { type: 'resetScores' }
   | { type: 'setDuration'; durationMs: number }
-  | { type: 'setField'; field: 'round' | 'division'; value: string }
+  | { type: 'setField'; field: 'round' | 'division' | 'weight'; value: string }
   | { type: 'setCompetitor'; side: Side; field: 'name' | 'gym' | 'rank'; value: string }
   | { type: 'setStartBeep'; value: boolean }
   | { type: 'setWarningBeep'; value: boolean }
@@ -114,7 +118,7 @@ export type MatchAction =
   | { type: 'setEndCue'; value: EndCue }
   | { type: 'setBracketMatchId'; value: string | null }
   | { type: 'setAutoAnnounce'; value: boolean }
-  | { type: 'setSkin'; value: ScoreboardSkinId }
+  | { type: 'setSkin'; value: StoredScoreboardSkin }
   | { type: 'setGrandmaster'; value: Partial<GrandmasterCelebrationPrefs> }
   | { type: 'setDqDisappointed'; value: Partial<DqDisappointedPrefs> }
   | { type: 'setOutcomeFlash'; value: OutcomeFlash | null }
@@ -168,13 +172,29 @@ function defaultCompetitor(name: string): Competitor {
   return { name, gym: '', rank: '', points: 0, advantages: 0, disadvantages: 0 };
 }
 
+/** Saved match length snaps to the 10-second wheel. A full clock follows the snapped length. */
+export function normalizeMatchClock(
+  durationMs: unknown,
+  remainingMs: unknown,
+): { durationMs: number; remainingMs: number } {
+  const rawDuration = typeof durationMs === 'number' ? durationMs : DEFAULT_MATCH_MS;
+  const nextDuration = snapDurationMs(rawDuration, MATCH_LENGTH_RANGE, DEFAULT_MATCH_MS);
+  const rawRemaining = typeof remainingMs === 'number' ? remainingMs : nextDuration;
+  if (rawRemaining === rawDuration) return { durationMs: nextDuration, remainingMs: nextDuration };
+  return {
+    durationMs: nextDuration,
+    remainingMs: clamp(Math.round(rawRemaining), 0, Math.max(nextDuration, remainingCapMs(nextDuration))),
+  };
+}
+
 export function defaultMatch(): MatchState {
-  const durationMs = minutesToMs(5);
+  const durationMs = DEFAULT_MATCH_MS;
   return {
     blue: defaultCompetitor('Competitor 1'),
     white: defaultCompetitor('Competitor 2'),
     round: '',
     division: '',
+    weight: '',
     durationMs,
     remainingMs: durationMs,
     running: false,
@@ -223,6 +243,10 @@ function loadState(): MatchState {
       warningBeep: parsed.warningBeep === true,
       warned: Boolean(parsed.warned),
       endBuzzer: typeof parsed.endBuzzer === 'boolean' ? parsed.endBuzzer : true,
+      round: canonicalRoundValue(typeof parsed.round === 'string' ? parsed.round : ''),
+      division: typeof parsed.division === 'string' ? parsed.division : '',
+      weight: typeof parsed.weight === 'string' ? parsed.weight : '',
+      ...normalizeMatchClock(parsed.durationMs, parsed.remainingMs),
       endCue: parsed.endCue != null ? parseEndCue(parsed.endCue) : getAudioPrefs().endCue,
       bracketMatchId: typeof parsed.bracketMatchId === 'string' ? parsed.bracketMatchId : null,
       autoAnnounce: parsed.autoAnnounce !== false,
@@ -256,6 +280,8 @@ function clone(s: MatchState): MatchState {
     ...s,
     blue: { ...s.blue },
     white: { ...s.white },
+    round: canonicalRoundValue(typeof s.round === 'string' ? s.round : ''),
+    weight: typeof s.weight === 'string' ? s.weight : '',
     skin: incoming.skin == null ? state.skin : parseScoreboardSkin(incoming.skin),
     grandmaster:
       incoming.grandmaster == null && legacyCheer == null
@@ -434,20 +460,24 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
           white: { ...current.white, points: 0, advantages: 0, disadvantages: 0 },
         }),
       );
-    case 'setDuration':
+    case 'setDuration': {
+      const durationMs = snapDurationMs(action.durationMs, MATCH_LENGTH_RANGE, DEFAULT_MATCH_MS);
       return bumpRevision(
         withoutOutcome({
           ...current,
           grandmaster: advanceGrandmasterBout(current.grandmaster),
-          durationMs: action.durationMs,
-          remainingMs: action.durationMs,
+          durationMs,
+          remainingMs: durationMs,
           running: false,
           startedAt: null,
           warned: false,
         }),
       );
-    case 'setField':
-      return bumpRevision({ ...current, [action.field]: action.value });
+    }
+    case 'setField': {
+      const value = action.field === 'round' ? canonicalRoundValue(action.value) : action.value;
+      return bumpRevision({ ...current, [action.field]: value });
+    }
     case 'setCompetitor': {
       const competitor = { ...current[action.side], [action.field]: action.value };
       if (action.field === 'name' && !action.value.trim()) {
@@ -526,8 +556,9 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
           grandmaster: advanceGrandmasterBout(current.grandmaster),
           blue: { name: action.blueName, gym: action.blueGym, rank: '', points: 0, advantages: 0, disadvantages: 0 },
           white: { name: action.whiteName, gym: action.whiteGym, rank: '', points: 0, advantages: 0, disadvantages: 0 },
-          round: action.round,
+          round: canonicalRoundValue(action.round),
           division: action.division,
+          weight: action.matchId === current.bracketMatchId ? current.weight : '',
           remainingMs: current.durationMs,
           running: false,
           startedAt: null,

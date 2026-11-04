@@ -1,4 +1,4 @@
-import { endCueFollowMs, playSelectedEndCue, playStartCue, playWarningCue } from './audio.ts';
+import { endCueFollowMs, playSelectedEndCue, playTrainingStart, playWarningCue } from './audio.ts';
 import {
   DEFAULT_REST_MS,
   DEFAULT_ROUNDS,
@@ -203,16 +203,16 @@ function playTrainEndCue(): void {
 
 function playTrainStartCue(): void {
   if (!state.startSound) return;
-  playStartCue();
+  playTrainingStart();
 }
 
 function followWithStartCue(): void {
   if (!state.startSound) return;
   if (state.endSound) {
-    window.setTimeout(() => playStartCue(), endCueFollowMs());
+    window.setTimeout(() => playTrainingStart(), endCueFollowMs());
     return;
   }
-  playStartCue();
+  playTrainingStart();
 }
 
 function nextAfterWork(): void {

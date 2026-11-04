@@ -4271,6 +4271,27 @@ main.tree:has(> .tier-home) > .tree__bar {
   margin: 0.35rem 0 0.15rem;
 }
 
+.clock-seconds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 0.35rem 0 0.15rem;
+}
+
+.clock-second {
+  min-height: 72px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.clock-second:disabled {
+  opacity: 0.35;
+}
+
 .clock-nudge {
   min-height: 64px;
   border: 1px solid var(--line);
@@ -4714,6 +4735,7 @@ main.tree:has(> .tier-home) > .tree__bar {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.55rem;
   width: 100%;
   height: 48px;
   margin: 0;
@@ -4729,13 +4751,33 @@ main.tree:has(> .tier-home) > .tree__bar {
   cursor: pointer;
 }
 
+.wheel-tick {
+  width: 8px;
+  height: 1px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.4;
+  flex: 0 0 auto;
+}
+
+.wheel-item--mark {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.wheel-item--mark .wheel-tick {
+  width: 22px;
+  height: 2px;
+  opacity: 1;
+}
+
 .wheel-item--on {
   color: var(--ink);
   font-size: 1.7rem;
   font-weight: 800;
 }
 
-.wheel-item--snap {
+.wheel-item--snap:not(.wheel-item--on) {
   color: var(--gold-2);
 }
 
@@ -4853,9 +4895,26 @@ label {
 }
 
 .controller__meta input,
+.controller__meta select,
 .custom-time input {
   font-size: 1.05rem;
   font-weight: 700;
+}
+
+.controller__meta select {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--ink);
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+}
+
+.display__class {
+  display: flex;
+  flex-direction: column;
+  align-items: inherit;
+  gap: 0.15rem;
 }
 
 .controller .cue-preview-label {
@@ -18486,4 +18545,48 @@ a.plan-pick {
 .btn--danger:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* Uploaded skin: the picture is only the background. Mock-Tournament text and controls stay on top. */
+.display__skin-bg,
+.display__skin-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.display__skin-bg {
+  background-color: #10182a;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: brightness(0.55) saturate(0.85);
+}
+
+.display__skin-scrim {
+  background:
+    linear-gradient(180deg, rgba(6, 10, 18, 0.42), rgba(6, 10, 18, 0.62)),
+    radial-gradient(ellipse 80% 70% at 50% 45%, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.55));
+}
+
+.display--custom-skin > .bout,
+.display--custom-skin > .display__mid {
+  position: relative;
+  z-index: 1;
+}
+
+.display--custom-skin .clock-btn,
+.display--custom-skin .display__meta,
+.display--custom-skin .display__clock-hint {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7), 0 8px 24px rgba(0, 0, 0, 0.75);
+}
+
+.training--skin-auto-scrim .training__backdrop {
+  filter: brightness(0.62) saturate(0.88);
+}
+
+.training--skin-auto-scrim .training__scrim {
+  --scrim-edge: 0.62;
+  --scrim-core: 0.78;
 }
