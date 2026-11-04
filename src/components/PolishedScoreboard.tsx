@@ -18,14 +18,14 @@ export type PolishedRow = {
   disadvantages: number;
 };
 
-const LABELS: Record<ScoreKind, { short: string; lab: string; cls: string }> = {
-  points: { short: 'Points', lab: 'POINTS', cls: 'pts' },
-  advantages: { short: 'Adv', lab: 'ADVANTAGES', cls: 'adv' },
-  disadvantages: { short: 'Pen', lab: 'PENALTIES', cls: 'pen' },
+const LABELS: Record<ScoreKind, { short: string; lab: string; tiny: string; cls: string }> = {
+  points: { short: 'Points', lab: 'POINTS', tiny: 'PTS', cls: 'pts' },
+  advantages: { short: 'Adv', lab: 'ADVANTAGES', tiny: 'ADV', cls: 'adv' },
+  disadvantages: { short: 'Pen', lab: 'PENALTIES', tiny: 'PEN', cls: 'pen' },
 };
 
 /** Same control as ScoreBox: tap adds one, hold subtracts one. Same accessible name. */
-function PolishedTile({ side, kind, value }: { side: Side; kind: ScoreKind; value: number }) {
+function PolishedTile({ side, kind, value, poster = false }: { side: Side; kind: ScoreKind; value: number; poster?: boolean }) {
   const handlers = useHoldPress(
     () => dispatchMatch({ type: 'bump', side, kind, delta: 1 }),
     () => dispatchMatch({ type: 'bump', side, kind, delta: -1 }),
@@ -38,7 +38,16 @@ function PolishedTile({ side, kind, value }: { side: Side; kind: ScoreKind; valu
       aria-label={`${l.short} ${value}. Tap to add, hold to subtract.`}
       {...handlers}
     >
-      <span className="lab">{l.lab}</span>
+      {poster ? (
+        <span className="lab">
+          <span className="lab-full">{l.lab}</span>
+          <span className="lab-tiny" aria-hidden="true">
+            {l.tiny}
+          </span>
+        </span>
+      ) : (
+        <span className="lab">{l.lab}</span>
+      )}
       <span className="num">
         <span className={Math.abs(value) >= 10 ? 'digit digit--pair' : 'digit'}>{value}</span>
       </span>
@@ -140,9 +149,9 @@ function Row({ row, cls, extra, metal, poster }: { row: PolishedRow; cls: string
           <span className="gym">{row.gym}</span>
         </div>
       </div>
-      <PolishedTile side={row.side} kind="points" value={row.points} />
-      <PolishedTile side={row.side} kind="advantages" value={row.advantages} />
-      <PolishedTile side={row.side} kind="disadvantages" value={row.disadvantages} />
+      <PolishedTile side={row.side} kind="points" value={row.points} poster={poster} />
+      <PolishedTile side={row.side} kind="advantages" value={row.advantages} poster={poster} />
+      <PolishedTile side={row.side} kind="disadvantages" value={row.disadvantages} poster={poster} />
     </section>
   );
 }

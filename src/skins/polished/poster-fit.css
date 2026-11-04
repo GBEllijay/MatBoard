@@ -140,15 +140,16 @@
   }
 }
 
-/* Between a tablet and a laptop, drop the wordmark down to the logo so the
-   division can use the freed width. The round still does not shrink. */
+/* Between a tablet and a laptop, drop the wordmark down to the logo only.
+   The header keeps the 1fr auto 1fr grid so the crest stays centred.
+   The round does not shrink; the division caps at 40vw and ellipsizes. */
 @media (max-width: 1100px) and (min-width: 901px) {
   .skin-root.skin-root--poster .wm {
     display: none;
   }
 
   .skin-root.skin-root--poster .hdr {
-    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
 
   .skin-root.skin-root--poster .hdr .mat {
@@ -157,13 +158,34 @@
     min-width: max-content;
   }
 
-  .skin-root.skin-root--poster .hdr .div,
-  .skin-root.skin-root--poster .hdr .div a {
-    flex: 1 1 auto;
+  .skin-root.skin-root--poster .hdr .div {
+    flex: 0 1 auto;
     min-width: 0;
+    max-width: 40vw;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+
+  .skin-root.skin-root--poster .hdr .div a {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+/* One header row (wider than a tablet): keep at least 40px between the crest and the
+   round, so a long division ellipsizes instead of pushing the round into the crest. */
+@media (min-width: 901px) {
+  .skin-root.skin-root--poster .trail {
+    padding-left: 40px;
+  }
+
+  .skin-root.skin-root--poster .hdr .div {
+    flex: 0 1 auto;
+    min-width: 0;
   }
 }
 
@@ -318,5 +340,26 @@
 @media (max-width: 820px) {
   .skin-root.skin-root--poster .phase-endless {
     display: none;
+  }
+}
+
+/* Short tile labels on a narrow phone so ADVANTAGES and PENALTIES never clip.
+   The button's accessible name keeps the full word. */
+.skin-root.skin-root--poster .lab .lab-tiny {
+  display: none;
+}
+
+@media (max-width: 479px) {
+  .skin-root.skin-root--poster .lab .lab-full {
+    display: none;
+  }
+
+  .skin-root.skin-root--poster .lab .lab-tiny {
+    display: inline;
+  }
+
+  .skin-root.skin-root--poster .row .tile .lab {
+    font-size: clamp(9px, 3.4vw, 14px);
+    letter-spacing: 0.06em;
   }
 }

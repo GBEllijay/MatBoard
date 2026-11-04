@@ -389,3 +389,41 @@ test('poster header keeps the round at full size and only ellipsizes the divisio
   assert.match(shinobiCss, /max-width:\s*900px[\s\S]*\.hdr \.kunai\s*\{[^}]*display:\s*none/);
   assert.match(shinobiCss, /max-width:\s*900px[\s\S]*min\(9vh,\s*20vw\)/);
 });
+
+test('poster header keeps the crest centred at 1024, caps the division, and keeps 40px off the crest', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const fit = await readFile(new URL('../skins/polished/poster-fit.css', import.meta.url), 'utf8');
+  const band = fit.slice(fit.indexOf('(max-width: 1100px) and (min-width: 901px)'), fit.indexOf('@media (min-width: 901px) {'));
+  assert.ok(band.length > 0, 'the 901 to 1100 band exists');
+  assert.match(band, /\.wm\s*\{[^}]*display:\s*none/, 'only the wordmark collapses');
+  assert.match(band, /\.hdr\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto\s+minmax\(0,\s*1fr\)/, 'logo | crest | round stays 1fr auto 1fr');
+  assert.equal(/grid-template-columns:\s*auto auto/.test(band), false, 'the crest is not pushed next to the logo');
+  assert.match(band, /\.hdr \.div\s*\{[^}]*max-width:\s*40vw[^}]*text-overflow:\s*ellipsis/, 'the division pill caps at 40vw');
+  assert.equal(/\.hdr \.div[^{]*\{[^}]*flex:\s*1 1 auto/.test(band), false, 'the division does not stretch across the row');
+  assert.match(band, /\.hdr \.mat\s*\{[^}]*min-width:\s*max-content/, 'the round keeps its size');
+  const wide = fit.slice(fit.indexOf('@media (min-width: 901px) {'));
+  assert.match(wide, /^@media \(min-width: 901px\) \{[\s\S]*?\.trail\s*\{[^}]*padding-left:\s*40px/, 'at least 40px between the round and the crest');
+});
+
+test('poster tiles show PTS / ADV / PEN below 480px; full labels and accessible names stay', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const board = await readFile(new URL('../components/PolishedScoreboard.tsx', import.meta.url), 'utf8');
+  assert.match(board, /points:\s*\{\s*short:\s*'Points',\s*lab:\s*'POINTS',\s*tiny:\s*'PTS'/);
+  assert.match(board, /advantages:\s*\{\s*short:\s*'Adv',\s*lab:\s*'ADVANTAGES',\s*tiny:\s*'ADV'/);
+  assert.match(board, /disadvantages:\s*\{\s*short:\s*'Pen',\s*lab:\s*'PENALTIES',\s*tiny:\s*'PEN'/);
+  assert.match(board, /aria-label=\{`\$\{l\.short\} \$\{value\}\. Tap to add, hold to subtract\.`\}/, 'accessible name unchanged');
+  assert.match(board, /className="lab-full">\{l\.lab\}/);
+  assert.match(board, /className="lab-tiny" aria-hidden="true"/);
+  assert.match(board, /<span className="lab">\{l\.lab\}<\/span>/, 'non-poster skins keep the single full label');
+  assert.equal((board.match(/<PolishedTile [^>]*poster=\{poster\} \/>/g) ?? []).length, 3, 'all three tiles get the poster flag');
+  const fit = await readFile(new URL('../skins/polished/poster-fit.css', import.meta.url), 'utf8');
+  assert.match(fit, /\.skin-root--poster \.lab \.lab-tiny\s*\{\s*display:\s*none/, 'short label hidden by default');
+  const phone = fit.slice(fit.indexOf('@media (max-width: 479px)'));
+  assert.match(phone, /\.lab \.lab-full\s*\{\s*display:\s*none/);
+  assert.match(phone, /\.lab \.lab-tiny\s*\{\s*display:\s*inline/);
+  assert.match(phone, /font-size:\s*clamp\(9px,/);
+  for (const other of ['keynote.css', 'brasil.css']) {
+    const css = await readFile(new URL(`../skins/polished/${other}`, import.meta.url), 'utf8');
+    assert.equal(css.includes('lab-tiny'), false, `${other} untouched`);
+  }
+});
