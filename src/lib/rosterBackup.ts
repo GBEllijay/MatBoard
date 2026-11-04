@@ -40,12 +40,16 @@ export type BackupStudent = {
   linkedStudentId?: string;
   guestId?: string;
   stripes?: number;
+  /** Roster sync layer: 'off' keeps the card local. */
+  coachSync?: 'off';
+  parentPhotoApproval?: true;
+  cardPhotoId?: string;
 };
 
 /** Same shape as BackupRoster in rosterStore.ts. Plan maps are keyed by roster id. */
 export type BackupRoster = {
   version: 1;
-  students: BackupBackupStudent[];
+  students: BackupStudent[];
   ready: Record<string, unknown>;
   gamePlans: Record<string, unknown>;
   competitionPlans: Record<string, unknown>;
@@ -79,6 +83,9 @@ export function lightNormalizeRoster(raw: unknown): BackupRoster {
     if (typeof s.linkedStudentId === 'string' && ID_RE.test(s.linkedStudentId)) student.linkedStudentId = s.linkedStudentId;
     if (typeof s.guestId === 'string' && ID_RE.test(s.guestId)) student.guestId = s.guestId;
     if (typeof s.stripes === 'number' && Number.isInteger(s.stripes) && s.stripes >= 0 && s.stripes <= 4) student.stripes = s.stripes;
+    if (s.coachSync === 'off') student.coachSync = 'off';
+    if (s.parentPhotoApproval === true) student.parentPhotoApproval = true;
+    if (typeof s.cardPhotoId === 'string' && ID_RE.test(s.cardPhotoId)) student.cardPhotoId = s.cardPhotoId;
     out.students.push(student);
   }
   for (const map of ['ready', 'gamePlans', 'competitionPlans'] as const) {
@@ -115,6 +122,8 @@ export type RosterBackup = {
   inbox: CoachInboxItemLike[];
   /** Private coach notes keyed by roster id. Only on scope coach-private. */
   privateNotes?: Record<string, string>;
+  /** Coach sync stores. Shared copies leave out card shares and photo reviews (student photos, parent contact). */
+  coachStores?: CoachSyncStores;
 };
 
 export type RosterBackupSources = {
@@ -122,7 +131,28 @@ export type RosterBackupSources = {
   cardFile: RosterCardFile;
   privateNotes: Record<string, string>;
   inbox: CoachInboxItemLike[];
+  /** Coach sync stores from the roster sync layer (#392). Optional so older callers still work. */
+  coachStores?: CoachSyncStores;
 };
+
+/**
+ * Coach-side stores from the roster sync layer:
+ * - studentInbox: `matboard.coach.studentInbox.v1` — tournament registration notices,
+ *   dismissed notices, student card shares (QR sign-up), and share decisions.
+ * - photoReviews: `matboard.coach.photoReviews.v1` — student photos waiting on a parent or head coach.
+ * - cardSyncSent: `matboard.coach.cardSyncSent.v1` — what the coach already sent each student.
+ */
+export type CoachSyncStores = {
+  studentInbox: { notices: unknown[]; dismissed: string[]; shares: unknown[]; decided: unknown[] };
+  photoReviews: unknown[];
+  cardSyncSent: unknown[];
+};
+
+export const COACH_STORE_CAPS = { notices: 300, dismissed: 300, shares: 60, decided: 240, photoReviews: 40, cardSyncSent: 400 } as const;
+
+export function emptyCoachStores(): CoachSyncStores {
+  return { studentInbox: { notices: [], dismissed: [], shares: [], decided: [] }, photoReviews: [], cardSyncSent: [] };
+}
 
 export type AmbiguousMatch = { name: string; belt: string; list: 'student' | 'competitor'; reason: 'linked-student' | 'name-belt'; matches: number };
 
@@ -136,6 +166,8 @@ export type RosterMergeReport = {
   privateNotesAdded: number;
   plansAdded: number;
   inboxAdded: number;
+  /** Notices, card shares, decisions, photo reviews and sent-log rows from the roster sync layer. */
+  coachItemsAdded: number;
   /** The file came from a newer Advantage. Known fields were read; the rest were left out. */
   newerSchema: boolean;
 };
@@ -156,19 +188,72 @@ export function buildRosterBackup(
     inbox: structuredClone(sources.inbox),
   };
   if (settings) backup.cardSettings = structuredClone(settings);
-  if (options.scope === 'coach-private') backup.privateNotes = { ...sources.privateNotes };
-  return backup;
+  if (sources.coachStores) backup.coachStores = structuredClone(sources.coachStores);
+  if (options.scope === 'coach-private') {
+    backup.privateNotes = { ...sources.privateNotes };
+    return backup;
+  }
+  return sharedRosterBackup(backup);
 }
 
 export function serializeRosterBackup(backup: RosterBackup): string {
   return `${JSON.stringify(backup, null, 2)}\n`;
 }
 
-/** The shared copy of a backup: the same file without private coach notes. */
+const CARD_PHOTO_FIELDS = ['photos', 'shownPhotoId'];
+
+/**
+ * The shared copy of a backup for a gym folder or Advantage Cloud.
+ * Leaves out private coach notes, face photos (they stay on the device),
+ * student card shares (parent contact, photo), and photo reviews.
+ */
 export function sharedRosterBackup(backup: RosterBackup): RosterBackup {
   const shared: RosterBackup = { ...backup, scope: 'shared' };
   delete shared.privateNotes;
+  shared.roster = {
+    ...backup.roster,
+    students: backup.roster.students.map((row) => {
+      const copy: BackupStudent = { ...row, photo: '' };
+      delete copy.cardPhotoId;
+      return copy;
+    }),
+  };
+  const cards: Record<string, RosterCardRecordLike> = {};
+  for (const [id, card] of Object.entries(backup.cards)) {
+    const copy: RosterCardRecordLike = { ...card };
+    for (const field of CARD_PHOTO_FIELDS) delete copy[field];
+    cards[id] = copy;
+  }
+  shared.cards = cards;
+  if (backup.coachStores) {
+    shared.coachStores = {
+      studentInbox: { ...backup.coachStores.studentInbox, shares: [] },
+      photoReviews: [],
+      cardSyncSent: backup.coachStores.cardSyncSent,
+    };
+  }
   return shared;
+}
+
+function arrayOf(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+export function readCoachStores(raw: unknown): CoachSyncStores | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const row = raw as Record<string, unknown>;
+  const inbox = (row.studentInbox && typeof row.studentInbox === 'object' ? row.studentInbox : {}) as Record<string, unknown>;
+  const objects = (value: unknown) => arrayOf(value).filter((item) => item && typeof item === 'object');
+  return {
+    studentInbox: {
+      notices: objects(inbox.notices),
+      dismissed: arrayOf(inbox.dismissed).filter((item): item is string => typeof item === 'string'),
+      shares: objects(inbox.shares),
+      decided: objects(inbox.decided),
+    },
+    photoReviews: objects(row.photoReviews),
+    cardSyncSent: objects(row.cardSyncSent),
+  };
 }
 
 export type ParsedRosterBackup = { ok: true; backup: RosterBackup; newerSchema: boolean } | { ok: false; error: string };
@@ -211,6 +296,8 @@ export function parseRosterBackup(text: string, normalize: RosterNormalizer = li
     cards,
     inbox,
   };
+  const coachStores = readCoachStores(row.coachStores);
+  if (coachStores) backup.coachStores = coachStores;
   if (row.cardSettings && typeof row.cardSettings === 'object') backup.cardSettings = row.cardSettings as Record<string, unknown>;
   if (scope === 'coach-private' && row.privateNotes && typeof row.privateNotes === 'object') {
     const notes: Record<string, string> = {};
@@ -233,7 +320,7 @@ function key(value: string): string {
 type MatchResult = { kind: 'match'; id: string } | { kind: 'none' } | { kind: 'ambiguous'; reason: AmbiguousMatch['reason']; matches: number };
 
 /** Find the local card for an incoming one. Exported for tests. */
-export function matchStudent(local: readonly BackupStudent[], incoming: Student): MatchResult {
+export function matchStudent(local: readonly BackupStudent[], incoming: BackupStudent): MatchResult {
   const list = listOf(incoming);
   const same = local.filter((row) => listOf(row) === list);
   const byId = same.find((row) => row.id === incoming.id);
@@ -258,11 +345,14 @@ export function matchStudent(local: readonly BackupStudent[], incoming: Student)
 
 const FILL_STUDENT_FIELDS = ['division', 'gym', 'photo', 'lastPromotion', 'lastPromotionDetail', 'note'] as const;
 
-function fillStudent(local: BackupStudent, incoming: Student): Student {
+function fillStudent(local: BackupStudent, incoming: BackupStudent): BackupStudent {
   const next: BackupStudent = { ...local };
   for (const field of FILL_STUDENT_FIELDS) {
     if (!next[field] && incoming[field]) next[field] = incoming[field];
   }
+  // The chosen card photo id travels with the photo it names.
+  if (!local.photo && next.photo && incoming.cardPhotoId && !next.cardPhotoId) next.cardPhotoId = incoming.cardPhotoId;
+  // coachSync and parentPhotoApproval stay as this device has them for a card already here.
   if (!next.linkedStudentId && incoming.linkedStudentId) next.linkedStudentId = incoming.linkedStudentId;
   if (!next.guestId && incoming.guestId) next.guestId = incoming.guestId;
   if (next.stripes === undefined && incoming.stripes !== undefined) next.stripes = incoming.stripes;
@@ -323,7 +413,7 @@ export function mergeRosterBackup(
   local: RosterBackupSources,
   backup: RosterBackup,
   options: { now?: number; newerSchema?: boolean; normalize?: RosterNormalizer } = {},
-): { next: RosterBackupSources; report: RosterMergeReport; changed: { roster: boolean; cards: boolean; privateNotes: boolean; inbox: boolean } } {
+): { next: RosterBackupSources; report: RosterMergeReport; changed: RosterMergeChanged } {
   const now = options.now ?? Date.now();
   const report: RosterMergeReport = {
     studentsAdded: 0,
@@ -335,6 +425,7 @@ export function mergeRosterBackup(
     privateNotesAdded: 0,
     plansAdded: 0,
     inboxAdded: 0,
+    coachItemsAdded: 0,
     newerSchema: Boolean(options.newerSchema),
   };
   const students = local.roster.students.map((row) => ({ ...row }));
@@ -442,13 +533,81 @@ export function mergeRosterBackup(
     cardFile.settings = fillBlankDeep(local.cardFile.settings, backup.cardSettings);
   }
 
+  const coachStores = mergeCoachStores(local.coachStores ?? emptyCoachStores(), backup.coachStores, idMap, report);
+
   const changed = {
     roster: report.studentsAdded + report.studentsFilled + report.plansAdded > 0,
     cards: report.cardsAdded + report.cardsFilled > 0 || !same(cardFile.settings, local.cardFile.settings),
     privateNotes: report.privateNotesAdded > 0,
     inbox: report.inboxAdded > 0,
+    coachStores: report.coachItemsAdded > 0,
   };
-  return { next: { roster, cardFile, privateNotes, inbox }, report, changed };
+  return { next: { roster, cardFile, privateNotes, inbox, coachStores }, report, changed };
+}
+
+export type RosterMergeChanged = { roster: boolean; cards: boolean; privateNotes: boolean; inbox: boolean; coachStores: boolean };
+
+function field(row: unknown, name: string): string {
+  if (!row || typeof row !== 'object') return '';
+  const value = (row as Record<string, unknown>)[name];
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * Add rows from `incoming` whose key is not here yet, up to `cap` rows total.
+ * Rows already here are never dropped to make room.
+ */
+function addMissing(here: unknown[], incoming: unknown[], keyOf: (row: unknown) => string, cap: number, map?: (row: unknown) => unknown | null): { rows: unknown[]; added: number } {
+  const keys = new Set(here.map(keyOf).filter(Boolean));
+  const rows = [...here];
+  let added = 0;
+  for (const row of incoming) {
+    if (rows.length >= cap) break;
+    const k = keyOf(row);
+    if (!k || keys.has(k)) continue;
+    const copy = map ? map(structuredClone(row)) : structuredClone(row);
+    if (copy === null) continue;
+    keys.add(k);
+    rows.push(copy);
+    added += 1;
+  }
+  return { rows, added };
+}
+
+function mergeCoachStores(
+  local: CoachSyncStores,
+  incoming: CoachSyncStores | undefined,
+  idMap: ReadonlyMap<string, string>,
+  report: RosterMergeReport,
+): CoachSyncStores {
+  if (!incoming) return local;
+  const caps = COACH_STORE_CAPS;
+  const notices = addMissing(local.studentInbox.notices, incoming.studentInbox.notices, (row) => {
+    const eventId = field(row, 'eventId');
+    return eventId ? `${field(row, 'studentId')}:${eventId}:${field(row, 'status')}` : '';
+  }, caps.notices);
+  const dismissed = addMissing(local.studentInbox.dismissed, incoming.studentInbox.dismissed, (row) => (typeof row === 'string' ? row : ''), caps.dismissed);
+  const shares = addMissing(local.studentInbox.shares, incoming.studentInbox.shares, (row) => field(row, 'shareId'), caps.shares);
+  const decided = addMissing(local.studentInbox.decided, incoming.studentInbox.decided, (row) => field(row, 'shareId'), caps.decided, (row) => {
+    const copy = row as Record<string, unknown>;
+    if (typeof copy.cardId === 'string') copy.cardId = idMap.get(copy.cardId) ?? null;
+    return copy;
+  });
+  const photoReviews = addMissing(local.photoReviews, incoming.photoReviews, (row) => field((row as { submission?: unknown })?.submission, 'photoId'), caps.photoReviews, (row) => {
+    const copy = row as Record<string, unknown>;
+    const cardId = typeof copy.cardId === 'string' ? idMap.get(copy.cardId) : undefined;
+    // A review for a card that did not come across (ambiguous) is left out.
+    if (!cardId) return null;
+    copy.cardId = cardId;
+    return copy;
+  });
+  const cardSyncSent = addMissing(local.cardSyncSent, incoming.cardSyncSent, (row) => field(row, 'updateId'), caps.cardSyncSent);
+  report.coachItemsAdded += notices.added + dismissed.added + shares.added + decided.added + photoReviews.added + cardSyncSent.added;
+  return {
+    studentInbox: { notices: notices.rows, dismissed: dismissed.rows as string[], shares: shares.rows, decided: decided.rows },
+    photoReviews: photoReviews.rows,
+    cardSyncSent: cardSyncSent.rows,
+  };
 }
 
 export function formatRosterMergeReport(report: RosterMergeReport): string {
@@ -460,6 +619,7 @@ export function formatRosterMergeReport(report: RosterMergeReport): string {
   if (report.cardsAdded || report.cardsFilled) parts.push(`${report.cardsAdded + report.cardsFilled} cards updated`);
   if (report.privateNotesAdded) parts.push(`${report.privateNotesAdded} private notes added`);
   if (report.inboxAdded) parts.push(`${report.inboxAdded} inbox items added`);
+  if (report.coachItemsAdded) parts.push(`${report.coachItemsAdded} coach sync items added`);
   let text = parts.join(', ') + '.';
   if (report.ambiguous.length) {
     const names = report.ambiguous.slice(0, 4).map((row) => `${row.name} (${row.belt})`).join('; ');

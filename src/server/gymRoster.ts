@@ -9,8 +9,8 @@
  *
  * Who can do what:
  * - Plus Cloud is required. Revoked seats are refused by readGymCloudActor.
- * - Owner, Coach, Instructors, and seats with no preset can read the master roster and submit.
- *   Assistant Coach and Program Director seats are refused, matching rosterSubmit/rosterPull.
+ * - Owner, Coach, and Instructors seats can read the master roster and submit.
+ *   Assistant Coach, Program Director, and custom (no preset) seats are refused.
  * - The owner's submissions apply at once. A seat's submissions are pending unless trust mode is on.
  * - The owner and an Instructors seat approve or reject. A seat never decides its own submission.
  * - Only the owner turns trust mode on or off.
@@ -31,7 +31,6 @@ import {
   type RosterBackup,
   type RosterMergeReport,
 } from '../lib/rosterBackup.ts';
-import { defaultRoster } from '../lib/rosterStore.ts';
 import { gymBytesUnder, readGymCloudActor, type GymCloudActor, type GymCloudEnv } from './gymCloud.ts';
 
 export const ROSTER_MASTER_MAX_BYTES = 20_000_000;
@@ -66,7 +65,9 @@ export function rosterRole(actor: Pick<GymCloudActor, 'kind' | 'preset' | 'plusC
   if (!actor.plusCloud) return { canRead: false, canSubmit: false, canApprove: false, isOwner: false };
   if (actor.kind === 'owner') return { canRead: true, canSubmit: true, canApprove: true, isOwner: true };
   const preset = actor.preset ?? '';
-  if (preset === 'assistant-coach' || preset === 'program-director') {
+  // Only the Coach and Instructors presets use the gym roster. Assistant Coach, Program Director,
+  // and custom seats (no preset) are refused so no preset gains roster reach it did not have.
+  if (preset !== 'coach' && preset !== 'instructors') {
     return { canRead: false, canSubmit: false, canApprove: false, isOwner: false };
   }
   return { canRead: true, canSubmit: true, canApprove: preset === 'instructors', isOwner: false };
@@ -117,7 +118,7 @@ async function readMaster(env: GymCloudEnv, actor: GymCloudActor): Promise<Roste
 
 function emptyShared(now: Date): RosterBackup {
   return buildRosterBackup(
-    { roster: defaultRoster(), cardFile: { cards: {} }, privateNotes: {}, inbox: [] },
+    { roster: { version: 1, students: [], ready: {}, gamePlans: {}, competitionPlans: {} }, cardFile: { cards: {} }, privateNotes: {}, inbox: [] },
     { scope: 'shared', now },
   );
 }
@@ -125,7 +126,7 @@ function emptyShared(now: Date): RosterBackup {
 async function applyToMaster(env: GymCloudEnv, actor: GymCloudActor, incoming: RosterBackup, now: Date): Promise<{ report: RosterMergeReport } | Response> {
   const master = (await readMaster(env, actor)) ?? emptyShared(now);
   const { next, report } = mergeRosterBackup(
-    { roster: master.roster, cardFile: { cards: master.cards, settings: master.cardSettings }, privateNotes: {}, inbox: master.inbox },
+    { roster: master.roster, cardFile: { cards: master.cards, settings: master.cardSettings }, privateNotes: {}, inbox: master.inbox, coachStores: master.coachStores },
     sharedRosterBackup(incoming),
     { now: now.getTime() },
   );

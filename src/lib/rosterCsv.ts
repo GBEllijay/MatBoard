@@ -30,8 +30,12 @@ export const ROSTER_CSV_HEADERS = [
   'Last promotion detail',
   'Competitor Notes',
   'Check In',
-  ...ROSTER_CSV_CARD_HEADERS,
 ] as const;
+/**
+ * What Export CSV writes: the base columns, then the optional card columns.
+ * ROSTER_CSV_HEADERS stays the base eight because the scouting CSV appends its own columns after them.
+ */
+export const ROSTER_CSV_EXPORT_HEADERS = [...ROSTER_CSV_HEADERS, ...ROSTER_CSV_CARD_HEADERS] as const;
 export const ROSTER_CSV_SEP_LINE = 'sep=,';
 export const ROSTER_CSV_WORKBOOK_ERROR =
   'That looks like an Excel workbook. Save as CSV UTF-8 (comma-separated), then import.';
@@ -168,7 +172,6 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
   'gi no gi': 'trainingStyle',
   'gi nogi': 'trainingStyle',
   'training style': 'trainingStyle',
-  style: 'trainingStyle',
 };
 
 /** CSV stripes: a whole number 0–4. Anything else is left blank. */
@@ -426,7 +429,7 @@ export function serializeRosterCsv(
   notesHeader: string = ROSTER_CSV_HEADERS[6],
   cardFor: (row: RosterCsvRow) => CardCsvFields | null | undefined = () => null,
 ): string {
-  const headers = ROSTER_CSV_HEADERS.map((header, index) => (index === 6 ? notesHeader : header));
+  const headers = ROSTER_CSV_EXPORT_HEADERS.map((header, index) => (index === 6 ? notesHeader : header));
   const lines = [
     headers.join(','),
     ...rows.map((row) =>
@@ -731,7 +734,7 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
       Object.assign(cardFields, nested.cardFields ?? {});
       return nested.students;
     }
-    const headed = importRosterCsvInternal(`${ROSTER_CSV_HEADERS.join(',')}\r\n${text}`, { salvage: false });
+    const headed = importRosterCsvInternal(`${ROSTER_CSV_EXPORT_HEADERS.join(',')}\r\n${text}`, { salvage: false });
     if (!headed.imported) return [];
     Object.assign(cardFields, headed.cardFields ?? {});
     return headed.students;

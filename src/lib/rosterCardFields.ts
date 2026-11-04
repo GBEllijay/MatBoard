@@ -215,3 +215,31 @@ export function applyCsvCardFields(
   if (changed) writeCardFile(storage, { ...file, cards });
   return changed;
 }
+
+/** CSV export: card fields for a roster row, read once from the card store. */
+export function csvCardLookup(
+  storage: Pick<KeyValueStore, 'getItem'> | null = defaultCardStorage(),
+): (row: { id?: string; belt: string }) => CardCsvFields | null {
+  const { cards } = readCardFile(storage);
+  return (row) => (row.id ? cardCsvFields(cards[row.id], row.belt) : null);
+}
+
+/**
+ * CSV import: pair the parsed rows with the cards addStudents returned (same order)
+ * so card fields land on the new roster ids.
+ */
+export function csvCardRows(
+  parsed: readonly { id: string }[],
+  added: readonly { id: string; belt: string; stripes?: number }[],
+  cardFields: Readonly<Record<string, CardCsvFields>> | undefined,
+): { rosterId: string; belt: string; stripes?: number; fields: CardCsvFields }[] {
+  if (!cardFields) return [];
+  const rows: { rosterId: string; belt: string; stripes?: number; fields: CardCsvFields }[] = [];
+  parsed.forEach((row, index) => {
+    const fields = cardFields[row.id];
+    const card = added[index];
+    if (!fields || !card) return;
+    rows.push({ rosterId: card.id, belt: card.belt, stripes: card.stripes, fields });
+  });
+  return rows;
+}
