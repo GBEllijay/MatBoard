@@ -60,6 +60,7 @@ test('the install saves the whole app: shell, fonts, images and sounds are preca
   const sounds = saved.filter((path) => path.startsWith('/sounds/') && path.endsWith('.mp3'));
   expect(sounds.length).toBeGreaterThanOrEqual(9);
   expect(sounds).toContain('/sounds/parou-stop-gaming-mic.mp3');
+  expect(sounds).toContain('/sounds/combate.mp3');
   expect(saved.some((path) => /^\/assets\/.+\.js$/.test(path))).toBe(true);
   expect(saved.some((path) => path.startsWith('/paid/'))).toBe(false);
   // No 24-hour page cache any more: app routes are served from the install.
