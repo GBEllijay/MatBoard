@@ -30,6 +30,7 @@ import {
 } from '../hooks/useStores';
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
+import { scoreboardCompetitionFields } from '../lib/matchRound';
 import { DEFAULT_BRACKET_THEME, setBracketTheme } from '../lib/bracketTheme';
 import {
   KIDS_BRACKETS_SKINS_LABEL,
@@ -919,6 +920,7 @@ function usePlainCoachBoard(): boolean {
 
 function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }) {
   const tournament = useTournamentState();
+  const live = useMatchState();
   const plainCoach = usePlainCoachBoard();
   const id = slotId(matchId, side);
   const bye = isByeSlot(tournament, id);
@@ -1036,8 +1038,9 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
             tournamentName: tournament.headline || tournament.title || 'In-house',
             date: new Date().toISOString().slice(0, 10),
             location: '',
-            division: tournament.title,
-            weightClass: '',
+            division: (live.bracketMatchId === matchId ? scoreboardCompetitionFields(live).division : '') || tournament.title,
+            weightClass: live.bracketMatchId === matchId ? scoreboardCompetitionFields(live).weightClass : '',
+            round: live.bracketMatchId === matchId ? scoreboardCompetitionFields(live).round : roundLabel(matchId),
             opponent: otherName,
             result: sent.result,
             method: sent.method,

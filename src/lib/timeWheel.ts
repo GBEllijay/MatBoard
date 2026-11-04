@@ -52,6 +52,19 @@ export const REST_RANGE: WheelRange = {
   tensDetent: true,
 };
 
+/**
+ * Match length. 10-second steps from 0:10 through the existing 180:00 custom ceiling.
+ * 3:00, 5:00, and 10:00 are snap points on that grid.
+ */
+export const MATCH_LENGTH_RANGE: WheelRange = {
+  minMs: WHEEL_STEP_MS,
+  maxMs: 180 * 60_000,
+  stepMs: WHEEL_STEP_MS,
+  snapsMs: [3 * 60_000, 5 * 60_000, 10 * 60_000],
+};
+
+export const DEFAULT_MATCH_MS = 5 * 60_000;
+
 export const DEFAULT_WORK_MS = 5 * 60_000;
 export const DEFAULT_REST_MS = 30_000;
 export const DEFAULT_ROUNDS = 5;

@@ -4271,6 +4271,27 @@ main.tree:has(> .tier-home) > .tree__bar {
   margin: 0.35rem 0 0.15rem;
 }
 
+.clock-seconds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 0.35rem 0 0.15rem;
+}
+
+.clock-second {
+  min-height: 72px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.clock-second:disabled {
+  opacity: 0.35;
+}
+
 .clock-nudge {
   min-height: 64px;
   border: 1px solid var(--line);
@@ -4874,9 +4895,26 @@ label {
 }
 
 .controller__meta input,
+.controller__meta select,
 .custom-time input {
   font-size: 1.05rem;
   font-weight: 700;
+}
+
+.controller__meta select {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--ink);
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+}
+
+.display__class {
+  display: flex;
+  flex-direction: column;
+  align-items: inherit;
+  gap: 0.15rem;
 }
 
 .controller .cue-preview-label {
