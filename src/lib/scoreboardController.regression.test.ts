@@ -6,6 +6,7 @@ const board = readFileSync(new URL('../pages/MatchController.tsx', import.meta.u
 const display = readFileSync(new URL('../pages/MatchDisplay.tsx', import.meta.url), 'utf8');
 const bout = readFileSync(new URL('./bracketBout.ts', import.meta.url), 'utf8');
 const store = readFileSync(new URL('./matchStore.ts', import.meta.url), 'utf8');
+const wheel = readFileSync(new URL('./timeWheel.ts', import.meta.url), 'utf8');
 
 test('scoreboard controller keeps every control that was not part of this redesign', () => {
   for (const needle of [
@@ -51,4 +52,11 @@ test('a bracket launch still links the bout and fills the round from that slot',
   assert.match(store, /normalizeMatchClock\(parsed\.durationMs, parsed\.remainingMs\)/);
   assert.match(store, /snapDurationMs\(action\.durationMs, MATCH_LENGTH_RANGE, DEFAULT_MATCH_MS\)/);
   assert.match(store, /weight: action\.matchId === current\.bracketMatchId \? current\.weight : ''/);
+});
+
+test('scoreboard keeps the 3:00, 5:00, and 10:00 length presets', () => {
+  assert.match(wheel, /snapsMs: \[3 \* 60_000, 5 \* 60_000, 10 \* 60_000\]/);
+  assert.match(wheel, /stepMs: WHEEL_STEP_MS/);
+  assert.match(board, /MATCH_LENGTH_RANGE/);
+  assert.doesNotMatch(board, /ROUND_LENGTH_RANGE|SECOND_STEP_MS|tensDetent/);
 });
