@@ -59,3 +59,6 @@
 .bs-switch input[type='checkbox'] { appearance: auto; -webkit-appearance: auto; flex: 0 0 22px; width: 22px; height: 22px; min-width: 0; min-height: 0; padding: 0; margin: 0; border: 0; box-shadow: none; }
 .bs-switch span { white-space: nowrap; }
 .bs button.bs-help { flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; padding: 0; border-radius: 50%; border: 1.5px solid #5fd8ff; background: rgba(61, 139, 255, 0.12); color: #c9f8ff; font-size: 18px; line-height: 1; }
+
+.bs .bs-status-open { min-height: 44px; justify-self: start; }
+.bs-sheet .bs-legend__btn { min-height: 44px; }

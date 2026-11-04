@@ -1,7 +1,7 @@
 /**
  * Student home (character sheet) and the private body scan.
  * Controls touched: home menu links, streak badge, Show body scan switch (home + settings), body zones,
- * peek Open journal entry, See on body scan, Body type 1/2, What the colors mean (?) + Close/Esc,
+ * peek Open journal entry, See on body scan, Injury status (N) drop-down + Close/Esc, What the colors mean (?) + Close/Esc,
  * journal Body zone select and Injury status chips.
  */
 import assert from 'node:assert/strict';
@@ -15,8 +15,8 @@ import { exportProgressPacket, parseProgressPacket } from '../../lib/progress/fo
 import { StudentEditionPage } from '../StudentEdition.tsx';
 import { MatHoursStat } from './MatTime.tsx';
 import {
-  BODY_SCAN_KEY, BODY_TYPE_KEY, BODY_ZONES, HEAL_DAYS, bodyScan, bodyScanHref, healColor, injuryMarks, journalEntryHref,
-  readBodyScanOn, readBodyType, setInjuryStatus, zoneFromText, zoneMarks, zoneTrend,
+  BODY_FRAME, BODY_SCAN_KEY, BODY_ZONES, HEAL_DAYS, bodyScan, bodyScanHref, healColor, injuryMarks, journalEntryHref,
+  readBodyScanOn, setInjuryStatus, zoneFromText, zoneMarks, zoneTrend,
 } from '../../lib/bodyScan.ts';
 import { FORMER_HUB_ITEMS, formerHubItemReachable, studentPageBack } from '../../lib/studentHubMenu.ts';
 import { buildCoachUpdateFile } from '../../lib/coachProgressFile.ts';
@@ -276,7 +276,7 @@ test('body scan: zones come from injury marks (picker zone wins; free text uses 
   const m = mount(<StudentEditionPage />, '/student?student=1');
   const flagged = [...m.host.querySelectorAll('[data-testid="body-zone"]')].filter((z) => z.getAttribute('data-status'));
   assert.deepEqual([...new Set(flagged.map((z) => z.getAttribute('data-zone')))].sort(), ['kneeL', 'wristR']);
-  assert.equal(m.host.querySelectorAll('[data-testid="body-legend-row"]').length, 3);
+  assert.equal(q(m.host, '[data-testid="injury-status-open"]')!.textContent, 'Injury status (3)');
   unmount(m);
 });
 
@@ -407,21 +407,50 @@ test('linking: journal "See on body scan" opens the scan with the zone and peek,
   unmount(m);
 });
 
-// ── Body types ────────────────────────────────────────────────────────────
-test('body type: default 1, choice persists, every zone renders on both types', () => {
+// ── Single body ───────────────────────────────────────────────────────────
+test('single body: no body type control; one androgynous frame; old stored type ignored; every zone renders', () => {
   seedNamed([{ date: daysAgo(2), injury: { area: 'Left knee', note: '' } }]);
   localStorage.setItem(BODY_SCAN_KEY, 'on');
-  assert.equal(readBodyType(localStorage), 1);
-  let m = mount(<StudentEditionPage />, '/student?student=1');
-  const count = (host: HTMLElement) => new Set([...host.querySelectorAll('[data-testid="body-zone"]')].map((z) => z.getAttribute('data-zone')));
-  assert.equal(count(m.host).size, BODY_ZONES.length);
-  click(q(m.host, '[data-testid="body-type-2"]')!);
-  assert.equal(localStorage.getItem(BODY_TYPE_KEY), '2');
-  assert.equal(q(m.host, '[data-testid="body-figure-front"]')!.getAttribute('data-type'), '2');
-  assert.equal(count(m.host).size, BODY_ZONES.length);
+  localStorage.setItem('advantage.student.bodyType.v1', '1');
+  const m = mount(<StudentEditionPage />, '/student?student=1');
+  assert.equal(q(m.host, '[data-testid^="body-type"]'), null);
+  assert.equal(q(m.host, '[aria-label="Body type"]'), null);
+  assert.equal(m.host.textContent?.includes('Body type'), false);
+  assert.deepEqual({ ...BODY_FRAME }, { shoulder: 23, hip: 21 });
+  for (const side of ['front', 'back']) assert.equal(q(m.host, `[data-testid="body-figure-${side}"]`)!.getAttribute('data-frame'), '23/21');
+  const zones = new Set([...m.host.querySelectorAll('[data-testid="body-zone"]')].map((z) => z.getAttribute('data-zone')));
+  assert.equal(zones.size, BODY_ZONES.length);
   unmount(m);
-  m = mount(<StudentEditionPage />, '/student?student=1');
-  assert.equal(q(m.host, '[data-testid="body-type-2"]')!.getAttribute('aria-pressed'), 'true');
+});
+
+// ── Injury status drop-down ───────────────────────────────────────────────
+test('injury status: closed by default, opens a list of every flagged zone, item opens the peek, Esc and Close shut it', () => {
+  seedNamed([
+    { date: daysAgo(1), injury: { area: 'Left knee', note: '' } },
+    { date: daysAgo(3), injury: { area: 'Right wrist', note: '' } },
+    { date: daysAgo(4), injury: { area: 'earlobe', note: '' } },
+  ]);
+  localStorage.setItem(BODY_SCAN_KEY, 'on');
+  const m = mount(<StudentEditionPage />, '/student?student=1');
+  assert.equal(q(document.body, '[data-testid="body-legend-row"]'), null, 'no permanent status lines');
+  const open = q(m.host, '[data-testid="injury-status-open"]')!;
+  assert.equal(open.textContent, 'Injury status (3)');
+  assert.equal(open.getAttribute('aria-expanded'), 'false');
+  click(open);
+  const dlg = q(document.body, '[data-testid="injury-status"] [role="dialog"]')!;
+  assert.equal(dlg.getAttribute('aria-modal'), 'true');
+  assert.deepEqual([...dlg.querySelectorAll('[data-testid="body-legend-row"]')].map((r) => r.getAttribute('data-zone')).sort(), ['kneeL', 'other', 'wristR']);
+  act(() => { dlg.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(q(document.body, '[data-testid="injury-status"]'), null);
+  click(open);
+  click(control(q(document.body, '[data-testid="injury-status"]')!, 'button', 'Close'));
+  assert.equal(q(document.body, '[data-testid="injury-status"]'), null);
+  click(open);
+  click(q(document.body, '[data-testid="injury-status"] [data-zone="wristR"] button')!);
+  assert.equal(q(document.body, '[data-testid="injury-status"]'), null);
+  const peek = q(m.host, '[data-testid="body-peek"]')!;
+  assert.equal(peek.getAttribute('data-zone'), 'wristR');
+  assert.ok(q(peek, '[data-testid="open-journal-entry"]'));
   unmount(m);
 });
 

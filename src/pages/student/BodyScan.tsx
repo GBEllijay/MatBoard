@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import {
-  BODY_FRAMES,
+  BODY_FRAME,
   BODY_ZONES,
   COLOR_MEANINGS,
   INJURY_STATUSES,
@@ -15,15 +15,12 @@ import {
   bodyScan,
   journalEntryHref,
   readBodyScanOn,
-  readBodyType,
   saveBodyScanOn,
-  saveBodyType,
   setInjuryStatus,
   trendLine,
   zoneLabel,
   zoneMarks,
   zonePoint,
-  type BodyType,
   type BodyZone,
   type ZoneScan,
 } from '../../lib/bodyScan';
@@ -53,8 +50,8 @@ export function BodyScanSetting() {
   );
 }
 
-function figurePath(type: BodyType): string {
-  const { shoulder, hip } = BODY_FRAMES[type];
+function figurePath(): string {
+  const { shoulder, hip } = BODY_FRAME;
   const cx = 60;
   const waist = (shoulder + hip) / 2 - 2;
   return [
@@ -70,13 +67,11 @@ function figurePath(type: BodyType): string {
 }
 
 export function BodyFigure({
-  type,
   side,
   zones,
   selected,
   onPick,
 }: {
-  type: BodyType;
   side: 'front' | 'back';
   zones: readonly ZoneScan[];
   selected: string;
@@ -84,13 +79,13 @@ export function BodyFigure({
 }) {
   const byZone = new Map(zones.map((z) => [z.zone, z]));
   return (
-    <svg className="bs-figure" viewBox="0 0 120 260" role="group" aria-label={`${side === 'front' ? 'Front' : 'Back'} · Body type ${type}`} data-testid={`body-figure-${side}`} data-type={type}>
+    <svg className="bs-figure" viewBox="0 0 120 260" role="group" aria-label={side === 'front' ? 'Front' : 'Back'} data-testid={`body-figure-${side}`} data-frame={`${BODY_FRAME.shoulder}/${BODY_FRAME.hip}`}>
       <ellipse className="bs-floor" cx="60" cy="250" rx="44" ry="7" />
       <circle className="bs-body" cx="60" cy="24" r="14" />
-      <path className="bs-body" d={figurePath(type)} />
+      <path className="bs-body" d={figurePath()} />
       <line className="bs-scanline" x1="10" x2="110" y1="0" y2="0" />
       {BODY_ZONES.filter((z) => z.side === side).map((z) => {
-        const p = zonePoint(type, z.id);
+        const p = zonePoint(z.id);
         const hit = byZone.get(z.id);
         return (
           <g key={z.id} className={`bs-zone${hit ? ' bs-zone--flagged' : ''}${selected === z.id ? ' bs-zone--selected' : ''}`} data-testid="body-zone" data-zone={z.id} data-status={hit?.status ?? ''}>
@@ -116,7 +111,7 @@ export function BodyFigure({
 }
 
 /** Bottom sheet explaining the colors. Esc and Close dismiss; focus stays inside while open. */
-export function ColorHelp({ onClose }: { onClose: () => void }) {
+function Sheet({ title, testId, onClose, children }: { title: string; testId: string; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
@@ -134,23 +129,31 @@ export function ColorHelp({ onClose }: { onClose: () => void }) {
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   };
   return (
-    <div className="bs-overlay" data-testid="color-help" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bs-sheet" ref={ref} role="dialog" aria-modal="true" aria-labelledby="bs-help-title" tabIndex={-1} onKeyDown={onKeyDown}>
+    <div className="bs-overlay" data-testid={testId} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bs-sheet" ref={ref} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onKeyDown={onKeyDown}>
         <div className="bs-peek__hd">
-          <h3 id="bs-help-title">What the colors mean</h3>
+          <h3>{title}</h3>
           <button type="button" className="ink-btn bs-btn bs-close" onClick={onClose} aria-label="Close">Close</button>
         </div>
-        <ul className="bs-meanings">
-          {COLOR_MEANINGS.map((m) => (
-            <li key={m.id} data-testid="color-meaning" data-kind={m.id}>
-              <span className="bs-swatch" style={{ background: m.color, color: m.color }} aria-hidden="true" />
-              <span><b>{m.name}</b><br />{m.text}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="bs-small">Untouched marks drift from red to green over about 28 days. Set Hurt, Healing or Healed by tapping a zone.</p>
+        {children}
       </div>
     </div>
+  );
+}
+
+export function ColorHelp({ onClose }: { onClose: () => void }) {
+  return (
+    <Sheet title="What the colors mean" testId="color-help" onClose={onClose}>
+        <ul className="bs-meanings">
+        {COLOR_MEANINGS.map((m) => (
+          <li key={m.id} data-testid="color-meaning" data-kind={m.id}>
+            <span className="bs-swatch" style={{ background: m.color, color: m.color }} aria-hidden="true" />
+            <span><b>{m.name}</b><br />{m.text}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="bs-small">Untouched marks drift from red to green over about 28 days. Set Hurt, Healing or Healed by tapping a zone.</p>
+    </Sheet>
   );
 }
 
@@ -213,9 +216,9 @@ export function BodyScanSection({
   forceOpen?: boolean;
 }) {
   const [on, setOn] = useState(() => readBodyScanOn(store()));
-  const [type, setType] = useState<BodyType>(() => readBodyType(store()));
   const [peek, setPeek] = useState(focusZone);
   const [help, setHelp] = useState(false);
+  const [list, setList] = useState(false);
   const shown = on || forceOpen;
   const toggle = (next: boolean) => {
     const s = store();
@@ -238,34 +241,34 @@ export function BodyScanSection({
       <div className="bs__hd">
         <BodyScanSwitch on={on} onChange={toggle} />
         <button type="button" className="bs-help" aria-label="What the colors mean" data-testid="color-help-open" onClick={() => setHelp(true)}>?</button>
-        <div className="bs-seg" role="group" aria-label="Body type">
-          {([1, 2] as const).map((t) => (
-            <button key={t} type="button" aria-pressed={type === t} data-testid={`body-type-${t}`} onClick={() => { const s = store(); if (s) saveBodyType(s, t); setType(t); }}>
-              {`Body type ${t}`}
-            </button>
-          ))}
-        </div>
       </div>
       {!on ? <p className="bs-small">Showing for this view. Your switch stays off.</p> : null}
       {status.current?.kind === 'hiatus' ? <p className="bs-status" data-testid="body-scan-break">{status.current.text}</p> : null}
       <div className="bs-stage">
-        <BodyFigure type={type} side="front" zones={scan.zones} selected={peek} onPick={setPeek} />
-        <BodyFigure type={type} side="back" zones={scan.zones} selected={peek} onPick={setPeek} />
+        <BodyFigure side="front" zones={scan.zones} selected={peek} onPick={setPeek} />
+        <BodyFigure side="back" zones={scan.zones} selected={peek} onPick={setPeek} />
       </div>
       {flagged.length ? (
-        <ul className="bs-legend" aria-label="Flagged areas" data-testid="body-zone-list">
-          {flagged.map((z, i) => (
-            <li key={`${z.zone}-${i}`} data-testid="body-legend-row" data-zone={z.zone || 'other'}>
-              <button type="button" className="bs-legend__btn" onClick={() => setPeek(z.zone || 'other')}>
-                <span className="bs-legend__line">{z.zone ? trendLine(z) : `Other · ${z.label} · ${STATUS_LABEL[z.status]} · day ${z.day}`}</span>
-                <span className="bs-bar" aria-hidden="true"><i style={{ left: `${Math.round(z.heal * 100)}%` }} /></span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <button type="button" className="ink-btn bs-btn bs-status-open" aria-haspopup="dialog" aria-expanded={list} data-testid="injury-status-open" onClick={() => setList(true)}>
+          {`Injury status (${flagged.length})`}
+        </button>
       ) : (
         <p className="bs-small" data-testid="body-scan-clear">No injury marks in the last few weeks.</p>
       )}
+      {list ? (
+        <Sheet title="Injury status" testId="injury-status" onClose={() => setList(false)}>
+          <ul className="bs-legend" aria-label="Flagged areas" data-testid="body-zone-list">
+            {flagged.map((z, i) => (
+              <li key={`${z.zone}-${i}`} data-testid="body-legend-row" data-zone={z.zone || 'other'}>
+                <button type="button" className="bs-legend__btn" onClick={() => { setList(false); setPeek(z.zone || 'other'); }}>
+                  <span className="bs-legend__line">{z.zone ? trendLine(z) : `Other · ${z.label} · ${STATUS_LABEL[z.status]} · day ${z.day}`}</span>
+                  <span className="bs-bar" aria-hidden="true"><i style={{ left: `${Math.round(z.heal * 100)}%` }} /></span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Sheet>
+      ) : null}
       {help ? <ColorHelp onClose={() => setHelp(false)} /> : null}
       {peek ? <ZonePeek report={report} commit={commit} zone={peek} onClose={() => setPeek('')} to={to} /> : null}
     </section>

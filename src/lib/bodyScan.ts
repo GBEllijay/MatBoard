@@ -203,28 +203,16 @@ export function bodyScanHref(zone: string): string {
   return `/student?zone=${encodeURIComponent(zone || 'other')}&scan=1#body-scan`;
 }
 
-/** Hologram silhouette. Both are generic, androgynous outlines; only proportions differ. */
-export type BodyType = 1 | 2;
-export const BODY_TYPE_KEY = 'advantage.student.bodyType.v1';
-export function readBodyType(storage: Pick<Storage, 'getItem'> | null): BodyType {
-  return storage?.getItem(BODY_TYPE_KEY) === '2' ? 2 : 1;
-}
-export function saveBodyType(storage: Pick<Storage, 'setItem'>, type: BodyType): void {
-  storage.setItem(BODY_TYPE_KEY, type === 2 ? '2' : '1');
-}
-
-/** Zone centers in a 120×260 figure box. Same zone ids on both types; x shifts with shoulder/hip width. */
+/** Hologram silhouette: one generic, androgynous outline (no body-type picker). */
+/** Zone centers in a 120×260 figure box. x follows the shoulder/hip width. */
 const BASE_Y: Record<BodyZone, number> = {
   neck: 44, shoulderL: 58, shoulderR: 58, elbowL: 100, elbowR: 100, wristL: 138, wristR: 138,
   ribs: 86, hips: 128, kneeL: 186, kneeR: 186, ankleL: 238, ankleR: 238, upperBack: 70, lowerBack: 112,
 };
-export const BODY_FRAMES: Record<BodyType, { shoulder: number; hip: number }> = {
-  1: { shoulder: 25, hip: 19 },
-  2: { shoulder: 23, hip: 21 },
-};
+export const BODY_FRAME = { shoulder: 23, hip: 21 } as const;
 /** Viewer's left = student's right on the front view. */
-export function zonePoint(type: BodyType, zone: BodyZone): { x: number; y: number } {
-  const { shoulder, hip } = BODY_FRAMES[type];
+export function zonePoint(zone: BodyZone): { x: number; y: number } {
+  const { shoulder, hip } = BODY_FRAME;
   const cx = 60;
   const arm = shoulder + 6;
   const legX = hip * 0.55;
