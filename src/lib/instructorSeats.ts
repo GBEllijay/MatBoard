@@ -411,6 +411,30 @@ export function visibleCoachControl(
   return access.owner;
 }
 
+export type ReplayCaptureAccess = 'direct' | 'pending' | 'none';
+
+/**
+ * Record for Review / replay clips only. Owner, Coach and Instructors save
+ * directly. Assistant coach and Program director record, and their Cloud saves
+ * wait for the head coach. A revoked seat records nothing. Presets and
+ * `uploadForDistribution` are not changed by this.
+ */
+export function replayCaptureAccess(access: {
+  owner: boolean;
+  seat: Pick<InstructorSeat, 'status' | 'permissions' | 'presetId'> | null;
+}): ReplayCaptureAccess {
+  const seat = access.seat;
+  if (!seat) return access.owner ? 'direct' : 'none';
+  if (seat.status === 'revoked') return 'none';
+  if (seat.presetId === 'coach' || seat.presetId === 'instructors') return 'direct';
+  if (seat.presetId === 'assistant-coach' || seat.presetId === 'program-director') return 'pending';
+  return seatPermissionAllows(seat.permissions, 'uploadForDistribution') ? 'direct' : 'none';
+}
+
+export function canCaptureReplay(access: Parameters<typeof replayCaptureAccess>[0]): boolean {
+  return replayCaptureAccess(access) !== 'none';
+}
+
 function emptyArchive(): SeatArchive {
   return { version: 1, deviceGymId: `device-${newId()}`, seats: [] };
 }

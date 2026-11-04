@@ -586,6 +586,183 @@ test('custom skins sync under the license cap and the existing byte cap', async 
   assert.match(await overCap.text(), /full/);
 });
 
+async function seatToken(secret: string, sid: string, preset: string): Promise<string> {
+  return token(secret, {
+    licenseId: 'owner-test',
+    grants: ['pro'],
+    tier: 'seat',
+    src: 'seat',
+    deviceId: `device-${sid}`,
+    now,
+    kind: 'seat',
+    gym: 'owner-test',
+    sid,
+    preset,
+  } as Parameters<typeof issueToken>[1]);
+}
+
+function cloudFetcher(env: GymCloudEnv): typeof fetch {
+  return async (input, init) => {
+    const raw = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    return handleGymCloud(new Request(raw, init), env, () => now);
+  };
+}
+
+async function pendingFor(env: GymCloudEnv, bearer: string): Promise<{ status: number; rows: { path: string; status: string; seatId: string }[] }> {
+  const response = await call(env, '/api/gym/cloud?op=pending', {}, bearer);
+  const body = (await response.json()) as { pending?: { path: string; status: string; seatId: string }[] };
+  return { status: response.status, rows: body.pending ?? [] };
+}
+
+function decide(env: GymCloudEnv, bearer: string, action: 'approve' | 'decline', key: string): Promise<Response> {
+  return call(env, '/api/gym/cloud', { method: 'POST', body: JSON.stringify({ action, key }) }, bearer);
+}
+
+test('replay uploads from an assistant coach and a program director land pending; only the owner decides', async () => {
+  const secret = await signingSecret();
+  const bucket = new MemoryBucket();
+  const env: GymCloudEnv = { GYM_MEDIA: bucket, ENTITLEMENT_SIGNING_KEY: secret, ENTITLEMENT_KEY_ID: 'k1' };
+  const owner = await token(secret, {
+    licenseId: 'owner-test',
+    grants: ['white', 'student', 'coach', 'pro'],
+    tier: 'pro',
+    src: 'code',
+    deviceId: 'device-owner',
+    now,
+    kind: 'code',
+  });
+  const assistant = await seatToken(secret, 'seat-assistant', 'assistant-coach');
+  const director = await seatToken(secret, 'seat-pd', 'program-director');
+  const coach = await seatToken(secret, 'seat-coach', 'coach');
+  const fetcher = cloudFetcher(env);
+
+  const assistantStatus = (await (await call(env, '/api/gym/cloud?op=status', {}, assistant)).json()) as { canUpload: boolean; replayUpload: string };
+  assert.equal(assistantStatus.canUpload, false);
+  assert.equal(assistantStatus.replayUpload, 'pending');
+  const pdStatus = (await (await call(env, '/api/gym/cloud?op=status', {}, director)).json()) as { cloud: boolean; replayUpload: string };
+  assert.equal(pdStatus.cloud, false, 'PD still has no Cloud library');
+  assert.equal(pdStatus.replayUpload, 'pending');
+
+  // Assistant: pending, not lesson media.
+  const sent = await uploadAdvantageCloudFile({
+    purpose: 'replay-pending',
+    dateKey: '2026-11-03',
+    file: new Blob([Uint8Array.from([1, 2, 3])], { type: 'video/mp4' }),
+    fileName: 'round2.mp4',
+    mime: 'video/mp4',
+    token: assistant,
+    fetcher,
+  });
+  assert.equal(sent.ok, true);
+  if (!sent.ok) return;
+  assert.equal(sent.path, 'pending/replays/seat-assistant/2026-11-03/round2.mp4');
+  assert.equal([...bucket.objects.keys()].some((key) => key.includes('/media/')), false);
+
+  // PD: pending too (replay only).
+  const pdSent = await uploadAdvantageCloudFile({
+    purpose: 'replay-pending',
+    dateKey: '2026-11-03',
+    file: new Blob([Uint8Array.from([7, 7])], { type: 'image/png' }),
+    fileName: 'frame.png',
+    mime: 'image/png',
+    token: director,
+    fetcher,
+  });
+  assert.equal(pdSent.ok, true);
+  if (!pdSent.ok) return;
+  assert.equal(pdSent.path, 'pending/replays/seat-pd/2026-11-03/frame.png');
+
+  // Pending seats cannot use any other upload purpose.
+  for (const bearer of [assistant, director]) {
+    const other = await uploadAdvantageCloudFile({
+      purpose: 'lesson-media',
+      dateKey: '2026-11-03',
+      file: new Blob([Uint8Array.from([1])], { type: 'video/mp4' }),
+      fileName: 'sneak.mp4',
+      mime: 'video/mp4',
+      token: bearer,
+      fetcher,
+    });
+    assert.equal(other.ok, false);
+  }
+  // A pending seat cannot PUT into another seat's pending folder.
+  const crossKey = encodeURIComponent('groups/owner-test/pending/replays/seat-assistant/2026-11-03/x.mp4');
+  const cross = await call(env, `/api/gym/cloud?key=${crossKey}`, { method: 'PUT', body: new Uint8Array([1]) }, director);
+  assert.notEqual(cross.status, 200);
+
+  // Visibility: owner sees both, each seat only its own, Coach none; the lesson list shows neither.
+  assert.deepEqual((await pendingFor(env, owner)).rows.map((row) => row.seatId).sort(), ['seat-assistant', 'seat-pd']);
+  assert.deepEqual((await pendingFor(env, assistant)).rows.map((row) => row.path), [sent.path]);
+  assert.deepEqual((await pendingFor(env, director)).rows.map((row) => row.path), [pdSent.path]);
+  assert.equal((await pendingFor(env, coach)).status, 403);
+  const lessonList = (await (await call(env, '/api/gym/cloud?op=list&purpose=lesson&date=2026-11-03', {}, coach)).json()) as { files: unknown[] };
+  assert.equal(lessonList.files.length, 0);
+  assert.equal((await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent(sent.path)}`, {}, coach)).status, 404);
+  assert.equal((await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent(sent.path)}`, {}, director)).status, 404);
+  assert.equal((await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent(sent.path)}`, {}, assistant)).status, 200);
+  assert.equal((await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent(sent.path)}`, {}, owner)).status, 200);
+
+  // Only the owner decides.
+  assert.equal((await decide(env, assistant, 'approve', sent.path)).status, 403);
+  assert.equal((await decide(env, coach, 'approve', sent.path)).status, 403);
+
+  // Approve: normal lesson media.
+  const approved = await decide(env, owner, 'approve', sent.path);
+  assert.equal(approved.status, 200);
+  const approvedBody = (await approved.json()) as { path: string };
+  assert.match(approvedBody.path, /^lessons\/current\/.+\/media\/2026-11-03\/round2\.mp4$/);
+  assert.equal(bucket.objects.has(`groups/owner-test/${approvedBody.path}`), true);
+  const afterApprove = (await (await call(env, '/api/gym/cloud?op=list&purpose=lesson&date=2026-11-03', {}, coach)).json()) as { files: { name: string }[] };
+  assert.deepEqual(afterApprove.files.map((file) => file.name), ['round2.mp4']);
+
+  // Decline: marked, never deleted.
+  const declined = await decide(env, owner, 'decline', pdSent.path);
+  assert.equal(declined.status, 200);
+  assert.equal(bucket.objects.has(`groups/owner-test/${pdSent.path}`), true);
+  assert.equal([...bucket.objects.keys()].some((key) => key.endsWith('/media/2026-11-03/frame.png')), false);
+  const statuses = Object.fromEntries((await pendingFor(env, owner)).rows.map((row) => [row.seatId, row.status]));
+  assert.deepEqual(statuses, { 'seat-assistant': 'approved', 'seat-pd': 'declined' });
+
+  // Coach keeps direct upload.
+  const direct = await uploadAdvantageCloudFile({
+    purpose: 'lesson-media',
+    dateKey: '2026-11-03',
+    file: new Blob([Uint8Array.from([5])], { type: 'video/mp4' }),
+    fileName: 'coach.mp4',
+    mime: 'video/mp4',
+    token: coach,
+    fetcher,
+  });
+  assert.equal(direct.ok, true);
+  if (direct.ok) assert.match(direct.path, /^lessons\/current\/.+\/media\/2026-11-03\/coach\.mp4$/);
+});
+
+test('a revoked program director seat cannot send a pending replay', async () => {
+  const secret = await signingSecret();
+  const env: GymCloudEnv = {
+    GYM_MEDIA: new MemoryBucket(),
+    ENTITLEMENT_SIGNING_KEY: secret,
+    ENTITLEMENT_KEY_ID: 'k1',
+    ENTITLEMENTS_DB: fakeDb({
+      grants: [
+        { licenseId: 'owner-test', product: 'advantage-pro', source: 'code', sourceRef: 'code:1', status: 'active', endsAt: null, revokedAt: null },
+      ],
+      seat: { status: 'claimed', revokedAt: '2026-11-01T00:00:00.000Z' },
+    }),
+  };
+  const director = await seatToken(secret, 'seat-pd', 'program-director');
+  const sent = await uploadAdvantageCloudFile({
+    purpose: 'replay-pending',
+    dateKey: '2026-11-03',
+    file: new Blob([Uint8Array.from([1])], { type: 'video/mp4' }),
+    fileName: 'late.mp4',
+    mime: 'video/mp4',
+    token: director,
+    fetcher: cloudFetcher(env),
+  });
+  assert.equal(sent.ok, false);
+});
+
 test('a program director can only drop a video into today\'s daily videos, and a revoked or non-Plus-Cloud PD is refused', async () => {
   const secret = await signingSecret();
   const bucket = new MemoryBucket();
