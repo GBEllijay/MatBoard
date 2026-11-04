@@ -852,6 +852,15 @@ export function getRoster(): RosterState {
   return state;
 }
 
+/**
+ * Save a whole roster that a full-backup import already merged. The merge only
+ * adds cards or fills blanks; this writes it in one save with the usual checks.
+ */
+export function replaceRosterState(next: RosterState): void {
+  const clean = normalizeRoster(next);
+  commit(clean.students, clean.gamePlans, clean.ready, clean.competitionPlans);
+}
+
 export function subscribeRoster(fn: () => void): () => void {
   listeners.add(fn);
   return () => {

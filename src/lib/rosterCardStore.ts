@@ -4,7 +4,7 @@
  * so older roster saves load exactly as before. No migration.
  *
  * Private coach notes live under their own key. No sync payload, packet, or
- * student-facing file reads that key. The coach's own full backup does (see `rosterCardBackup.ts`).
+ * student-facing file reads that key. The coach-private roster backup (`rosterBackup.ts`, advantage-roster-backup) does.
  * Sync, comms, sends, and card shares go through `cardSync.ts`.
  */
 
@@ -57,7 +57,8 @@ export type RosterCardRecord = {
   updatedAt: number;
 };
 
-type CardFile = { cards: Record<string, RosterCardRecord> };
+/** Top-level keys other than `cards` (for example `settings`, used by the roster backup) ride along untouched. */
+type CardFile = { cards: Record<string, RosterCardRecord>; [key: string]: unknown };
 
 type MemoryStore = {
   getItem: (key: string) => string | null;
@@ -96,7 +97,11 @@ function cleanRecord(value: unknown): RosterCardRecord {
   if (!value || typeof value !== 'object') return base;
   const row = value as Partial<RosterCardRecord>;
   const style = row.trainingStyle;
+  // Fields this store does not know (added by the roster backup or a newer app) ride along.
+  const extras: Record<string, unknown> = {};
+  for (const [key, field] of Object.entries(value as Record<string, unknown>)) if (!(key in base) && key !== 'coachRank' && key !== 'snapshot') extras[key] = field;
   return {
+    ...(extras as Partial<RosterCardRecord>),
     ...base,
     trainingStartedOn: typeof row.trainingStartedOn === 'string' && DATE_RE.test(row.trainingStartedOn) ? row.trainingStartedOn : '',
     trainingStyle: style === 'gi' || style === 'nogi' || style === 'both' ? style : '',
@@ -128,9 +133,10 @@ function readFile(storage: Pick<MemoryStore, 'getItem'> | null): CardFile {
     const raw = storage.getItem(ROSTER_CARD_KEY);
     if (!raw) return empty;
     const parsed = JSON.parse(raw) as Partial<CardFile>;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return empty;
     const cards: Record<string, RosterCardRecord> = {};
     for (const [id, row] of Object.entries(parsed.cards ?? {})) cards[id] = cleanRecord(row);
-    return { cards };
+    return { ...parsed, cards };
   } catch {
     return empty;
   }

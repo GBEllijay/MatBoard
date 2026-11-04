@@ -7,7 +7,8 @@ import assert from 'node:assert/strict';
 import { beforeEach, describe, it } from 'node:test';
 import { addStudent, getRoster, linkRosterCard, noPhotosChange, normalizeRoster, resetRoster, setNoPhotos, updateStudent, type Student } from './rosterStore.ts';
 import { importRosterCsv, serializeRosterCsv, NO_PHOTOS_HEADER } from './rosterCsv.ts';
-import { coachCardBackup, restoreCoachCardBackup, COACH_CARD_BACKUP_KEYS } from './rosterCardBackup.ts';
+import { buildRosterBackup, mergeRosterBackup, parseRosterBackup, serializeRosterBackup, sharedRosterBackup, type RosterBackupSources } from './rosterBackup.ts';
+import { readCardFile, readPrivateNotes } from './rosterCardFields.ts';
 import { readPrivateCoachNotes, readRosterCard, updateRosterCard, writePrivateCoachNotes, ROSTER_CARD_PRIVATE_KEY } from './rosterCardStore.ts';
 import { CARD_LOOKS, CARD_LOOK_KEY, DEFAULT_CARD_LOOK, cardLookCode, parseCardLookCode, readCardLook, studentCardLook, writeCardLook } from './cardLook.ts';
 import { applyStudentPhotoFlag, parseStudentPhotoFlag, readStudentNoPhotos, setStudentNoPhotos, studentPhotoFlagFile } from './studentPhotoFlag.ts';
@@ -37,6 +38,20 @@ function studentCard(name = 'Ana Lima'): Student {
 }
 
 beforeEach(() => resetRoster());
+
+/** The one roster backup (advantage-roster-backup) built from this device's stores. */
+function sourcesFrom(store: MemoryStorage, includePrivate: boolean): RosterBackupSources {
+  return {
+    roster: JSON.parse(JSON.stringify(getRoster())),
+    cardFile: readCardFile(store),
+    privateNotes: includePrivate ? readPrivateNotes(store) : {},
+    inbox: [],
+  };
+}
+
+function emptySources(): RosterBackupSources {
+  return { roster: { version: 1, students: [], ready: [], gamePlans: [], competitionPlans: [] } as unknown as RosterBackupSources['roster'], cardFile: { cards: {} }, privateNotes: {}, inbox: [] };
+}
 
 describe('No photos (per student)', () => {
   it('coach sets and clears; the photo is blanked and shownCardPhoto is empty', () => {
@@ -96,6 +111,71 @@ describe('No photos (per student)', () => {
     const saved = JSON.parse(JSON.stringify(getRoster()));
     const restored = normalizeRoster(saved);
     assert.equal(restored.students.find((s) => s.id === a.id)?.noPhotos, 'family');
+  });
+
+  it('the roster backup keeps the flag and the family lock, in both scopes, with no photo', () => {
+    const store = new MemoryStorage();
+    const a = studentCard('Ana Lima');
+    const b = studentCard('Bo Chen');
+    const c = studentCard('Cy Park');
+    setNoPhotos(a.id, true, 'family');
+    setNoPhotos(b.id, true, 'coach');
+    updateRosterCard(a.id, (row) => ({ ...row, photos: [{ id: 'p1', dataUrl: PHOTO }], shownPhotoId: 'p1' }) as typeof row, store);
+    for (const scope of ['coach-private', 'shared'] as const) {
+      const backup = buildRosterBackup(sourcesFrom(store, scope === 'coach-private'), { scope });
+      assert.equal(backup.kind, 'advantage-roster-backup');
+      assert.equal(backup.schemaVersion, 1);
+      const parsed = parseRosterBackup(serializeRosterBackup(backup));
+      assert.ok(parsed.ok);
+      const by = Object.fromEntries(parsed.backup.roster.students.map((s) => [s.name, s]));
+      assert.equal(by['Ana Lima'].noPhotos, 'family');
+      assert.equal(by['Bo Chen'].noPhotos, 'coach');
+      assert.equal(by['Cy Park'].noPhotos, undefined);
+      assert.equal(by['Ana Lima'].photo, '');
+      assert.equal(by['Bo Chen'].photo, '');
+      assert.equal(parsed.backup.cards[a.id]?.photos, undefined);
+      assert.equal(parsed.backup.cards[a.id]?.shownPhotoId, undefined);
+      assert.ok(!serializeRosterBackup(backup).includes(PHOTO) || scope === 'coach-private');
+      if (scope === 'coach-private') assert.equal(by['Cy Park'].photo, PHOTO);
+    }
+    assert.ok(c);
+  });
+
+  it('a shared gym folder or cloud copy never carries a photo of a No photos student', () => {
+    const store = new MemoryStorage();
+    const a = studentCard('Ana Lima');
+    setNoPhotos(a.id, true, 'family');
+    // Even a hand-made file with a photo is cleaned on the shared path the cloud uses.
+    const backup = buildRosterBackup(sourcesFrom(store, true), { scope: 'coach-private' });
+    backup.roster.students[0].photo = PHOTO;
+    backup.cards[a.id] = { photos: [{ id: 'p1', dataUrl: PHOTO }], shownPhotoId: 'p1' };
+    backup.coachStores = { studentInbox: { notices: [], dismissed: [], shares: [], decided: [] }, photoReviews: [{ id: 'r1', cardId: a.id, photo: PHOTO }], cardSyncSent: [] };
+    const parsed = parseRosterBackup(JSON.stringify(backup));
+    assert.ok(parsed.ok);
+    const shared = sharedRosterBackup(parsed.backup);
+    assert.equal(shared.roster.students[0].noPhotos, 'family');
+    assert.ok(!JSON.stringify(shared).includes(PHOTO));
+  });
+
+  it('importing a backup never clears a flag, and a family flag outranks a coach flag', () => {
+    const store = new MemoryStorage();
+    const a = studentCard('Ana Lima');
+    setNoPhotos(a.id, true, 'family');
+    const file = buildRosterBackup(sourcesFrom(store, false), { scope: 'shared' });
+    resetRoster();
+    const here = studentCard('Ana Lima');
+    setNoPhotos(here.id, true, 'coach');
+    const local = sourcesFrom(new MemoryStorage(), false);
+    const { next } = mergeRosterBackup(local, file);
+    const row = next.roster.students.find((s) => s.name === 'Ana Lima');
+    assert.equal(row?.noPhotos, 'family');
+    assert.equal(row?.photo, '');
+    // A file without the flag leaves this device's flag alone.
+    const plain = buildRosterBackup(emptySources(), { scope: 'shared' });
+    plain.roster.students = [{ ...file.roster.students[0], noPhotos: undefined, photo: PHOTO }];
+    const again = mergeRosterBackup(next, plain).next.roster.students.find((s) => s.name === 'Ana Lima');
+    assert.equal(again?.noPhotos, 'family');
+    assert.equal(again?.photo, '');
   });
 
   it('the flag follows the student onto a new competitor card, without a photo', () => {
@@ -173,19 +253,34 @@ describe('card look (gym setting)', () => {
     assert.deepEqual(look, { style: 'clipboard', skin: 'light' });
   });
 
-  it('the look is in the coach card backup and restores', () => {
+  it('the look rides in the roster backup cardSettings and restores', () => {
     const store = new MemoryStorage();
     writeCardLook({ style: 'fighter', skin: 'light' }, store);
-    const backup = coachCardBackup(store);
-    assert.ok(COACH_CARD_BACKUP_KEYS.includes(CARD_LOOK_KEY));
+    const backup = buildRosterBackup(sourcesFrom(store, true), { scope: 'coach-private' });
+    assert.deepEqual(backup.cardSettings?.cardLook, { style: 'fighter', skin: 'light' });
+    const { next } = mergeRosterBackup(emptySources(), JSON.parse(serializeRosterBackup(backup)));
     const fresh = new MemoryStorage();
-    restoreCoachCardBackup(fresh, JSON.parse(JSON.stringify(backup)));
+    fresh.setItem('matboard.rosterCard.v1', JSON.stringify(next.cardFile));
     assert.deepEqual(readCardLook(fresh), { style: 'fighter', skin: 'light' });
+  });
+
+  it('a card save keeps the look and other settings in the card file', () => {
+    const store = new MemoryStorage();
+    writeCardLook({ style: 'fighter', skin: 'dark' }, store);
+    const card = studentCard();
+    updateRosterCard(card.id, (row) => ({ ...row, benchmarkChecks: { a: true } }), store);
+    assert.deepEqual(readCardLook(store), { style: 'fighter', skin: 'dark' });
+  });
+
+  it('reads the legacy look key from the first card build', () => {
+    const store = new MemoryStorage();
+    store.setItem(CARD_LOOK_KEY, JSON.stringify({ style: 'fighter', skin: 'light' }));
+    assert.deepEqual(readCardLook(store), { style: 'fighter', skin: 'light' });
   });
 });
 
 describe('private coach notes', () => {
-  it('only reach the coach backup: never the CSV, the competitor draft, or the belt sync payload', () => {
+  it('only reach the coach-private roster backup: never the CSV, the shared copy, the competitor draft, or the belt sync payload', () => {
     const store = new MemoryStorage();
     const card = studentCard();
     writePrivateCoachNotes(card.id, 'SECRET-PRIVATE-NOTE', store);
@@ -196,11 +291,14 @@ describe('private coach notes', () => {
     assert.ok(!JSON.stringify(competitorDraftFromStudentCard(card, record)).includes('SECRET'));
     assert.ok(!JSON.stringify(beltProgressFromCard(record, [{ id: 'a', name: 'Guard' }])).includes('SECRET'));
     assert.ok(!JSON.stringify(record).includes('SECRET'));
-    const backup = coachCardBackup(store);
-    assert.ok(backup.data[ROSTER_CARD_PRIVATE_KEY]?.includes('SECRET-PRIVATE-NOTE'));
+    const shared = buildRosterBackup(sourcesFrom(store, true), { scope: 'shared' });
+    assert.ok(!serializeRosterBackup(shared).includes('SECRET'));
+    const backup = buildRosterBackup(sourcesFrom(store, true), { scope: 'coach-private' });
+    assert.equal(backup.privateNotes?.[card.id], 'SECRET-PRIVATE-NOTE');
+    const { next } = mergeRosterBackup(emptySources(), JSON.parse(serializeRosterBackup(backup)));
     const fresh = new MemoryStorage();
-    restoreCoachCardBackup(fresh, backup);
-    assert.equal(readPrivateCoachNotes(card.id, fresh), 'SECRET-PRIVATE-NOTE');
+    fresh.setItem(ROSTER_CARD_PRIVATE_KEY, JSON.stringify(next.privateNotes));
+    assert.equal(readPrivateCoachNotes(next.roster.students[0].id, fresh), 'SECRET-PRIVATE-NOTE');
   });
 });
 

@@ -16,7 +16,13 @@ export type CardLook = { style: CardStyle; skin: CardSkin };
 /** Wire form on `CoachGymBrand.cardLook`. */
 export type CardLookCode = `${CardStyle}-${CardSkin}`;
 
+/** Legacy key from the first card build. Read as a fallback only. */
 export const CARD_LOOK_KEY = 'matboard.gymCardLook.v1';
+/**
+ * The look is saved in the roster card file's `settings.cardLook`, so the one roster
+ * backup (advantage-roster-backup, cardSettings) carries it to a new device.
+ */
+const ROSTER_CARD_FILE_KEY = 'matboard.rosterCard.v1';
 export const CARD_LOOK_EVENT = 'matboard-card-look';
 export const DEFAULT_CARD_LOOK: CardLook = { style: 'clipboard', skin: 'dark' };
 export const CARD_STYLES: readonly { id: CardStyle; label: string }[] = [
@@ -65,6 +71,12 @@ export function parseCardLookCode(value: unknown): CardLook | null {
 
 export function readCardLook(storage: Pick<MemoryStore, 'getItem'> | null = defaultStorage()): CardLook {
   try {
+    const file = JSON.parse(storage?.getItem(ROSTER_CARD_FILE_KEY) ?? 'null') as { settings?: { cardLook?: unknown } } | null;
+    if (file && typeof file === 'object' && file.settings?.cardLook) return cleanCardLook(file.settings.cardLook);
+  } catch {
+    /* fall through to the legacy key */
+  }
+  try {
     const text = storage?.getItem(CARD_LOOK_KEY);
     return text ? cleanCardLook(JSON.parse(text)) : { ...DEFAULT_CARD_LOOK };
   } catch {
@@ -75,7 +87,17 @@ export function readCardLook(storage: Pick<MemoryStore, 'getItem'> | null = defa
 export function writeCardLook(look: CardLook, storage: MemoryStore | null = defaultStorage()): CardLook {
   const clean = cleanCardLook(look);
   try {
-    storage?.setItem(CARD_LOOK_KEY, JSON.stringify(clean));
+    if (storage) {
+      let file: Record<string, unknown> = {};
+      try {
+        const parsed: unknown = JSON.parse(storage.getItem(ROSTER_CARD_FILE_KEY) ?? 'null');
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) file = parsed as Record<string, unknown>;
+      } catch {
+        file = {};
+      }
+      const settings = file.settings && typeof file.settings === 'object' ? (file.settings as Record<string, unknown>) : {};
+      storage.setItem(ROSTER_CARD_FILE_KEY, JSON.stringify({ cards: {}, ...file, settings: { ...settings, cardLook: clean } }));
+    }
   } catch {
     /* quota / private mode */
   }

@@ -1,9 +1,26 @@
 /** Roster CSV. Browser file in/out — UTF-8 (BOM), Excel CRLF, Windows-1252 fallback. */
 
 import { COMPETITOR_GYM_LABEL } from './coachCopy.ts';
-import { formatCheckedIn, studentFromInput, type Student } from './rosterStore.ts';
+import {
+  formatTrainingStyle,
+  parseTrainingStyle,
+  type CardCsvFields,
+} from './rosterCardFields.ts';
+import { clipStripes, formatCheckedIn, studentFromInput, type Student } from './rosterStore.ts';
 
-/** Face photos stay on the device. They are not a CSV column. */
+/**
+ * Optional columns after Check In. Older CSVs without them still import.
+ * Private coach notes are never a CSV column.
+ */
+export const ROSTER_CSV_CARD_HEADERS = [
+  'Belt achieved',
+  'Last stripe awarded',
+  'Stripes',
+  'Training start date',
+  'Gi / No-Gi / Both',
+] as const;
+
+/** Face photos stay on the device. They are not a CSV column. Private coach notes never are. */
 export const ROSTER_CSV_HEADERS = [
   'Name',
   'Belt',
@@ -14,6 +31,13 @@ export const ROSTER_CSV_HEADERS = [
   'Competitor Notes',
   'Check In',
 ] as const;
+/**
+ * What Export CSV writes: the base columns, then the optional card columns.
+ * ROSTER_CSV_HEADERS stays the base eight because the scouting CSV appends its own columns after them.
+ */
+/** Last column of a roster export. Family = the student or a parent set it; Coach = the coach did. */
+export const NO_PHOTOS_HEADER = 'No photos';
+export const ROSTER_CSV_EXPORT_HEADERS = [...ROSTER_CSV_HEADERS, ...ROSTER_CSV_CARD_HEADERS, NO_PHOTOS_HEADER] as const;
 export const ROSTER_CSV_SEP_LINE = 'sep=,';
 export const ROSTER_CSV_WORKBOOK_ERROR =
   'That looks like an Excel workbook. Save as CSV UTF-8 (comma-separated), then import.';
@@ -27,16 +51,15 @@ export const ROSTER_CSV_TEMPLATE_HEADERS = [
   'Last promotion detail',
   'Notes',
   'Check In',
+  ...ROSTER_CSV_CARD_HEADERS,
 ] as const;
 const ROSTER_CSV_TEMPLATE_BLANK_ROWS = 3;
 
 export type RosterCsvRow = Pick<
   Student,
   'name' | 'belt' | 'division' | 'gym' | 'lastPromotion' | 'lastPromotionDetail' | 'note' | 'checkedIn'
-> & Partial<Pick<Student, 'noPhotos'>>;
-
-/** Last column of a roster export. Family = the student or a parent set it; Coach = the coach did. */
-export const NO_PHOTOS_HEADER = 'No photos';
+> &
+  Partial<Pick<Student, 'id' | 'stripes' | 'noPhotos'>>;
 
 export function formatNoPhotos(value: Student['noPhotos']): string {
   if (value === 'family') return 'Family';
@@ -53,6 +76,11 @@ export function parseNoPhotos(value: string): Student['noPhotos'] {
 
 export type RosterCsvImport = {
   students: Student[];
+  /**
+   * Card columns by imported student id (Belt achieved, Last stripe awarded,
+   * Training start date, Gi / No-Gi / Both). Rows with none of them are left out.
+   */
+  cardFields?: Record<string, CardCsvFields>;
   imported: number;
   skipped: number;
   error?: string;
@@ -70,6 +98,11 @@ type HeaderField =
   | 'lastPromotionDetail'
   | 'note'
   | 'checkedIn'
+  | 'beltAchievedOn'
+  | 'lastStripeOn'
+  | 'stripes'
+  | 'trainingStartedOn'
+  | 'trainingStyle'
   | 'noPhotos';
 
 const HEADER_ALIASES: Record<string, HeaderField> = {
@@ -125,10 +158,47 @@ const HEADER_ALIASES: Record<string, HeaderField> = {
   'checked in': 'checkedIn',
   checkedin: 'checkedIn',
   present: 'checkedIn',
+  'belt achieved': 'beltAchievedOn',
+  'belt achieved on': 'beltAchievedOn',
+  'belt achieved date': 'beltAchievedOn',
+  'belt date': 'beltAchievedOn',
+  'belt awarded': 'beltAchievedOn',
+  'belt awarded on': 'beltAchievedOn',
+  'date belt achieved': 'beltAchievedOn',
+  'last stripe': 'lastStripeOn',
+  'last stripe awarded': 'lastStripeOn',
+  'last stripe date': 'lastStripeOn',
+  'last stripe on': 'lastStripeOn',
+  'stripe date': 'lastStripeOn',
+  stripes: 'stripes',
+  stripe: 'stripes',
+  'stripe count': 'stripes',
+  'number of stripes': 'stripes',
+  'training start date': 'trainingStartedOn',
+  'training start': 'trainingStartedOn',
+  'training started': 'trainingStartedOn',
+  'training started on': 'trainingStartedOn',
+  'start date': 'trainingStartedOn',
+  'started training': 'trainingStartedOn',
+  'started on': 'trainingStartedOn',
+  'member since': 'trainingStartedOn',
+  'gi no gi both': 'trainingStyle',
+  'gi nogi both': 'trainingStyle',
+  'gi or no gi': 'trainingStyle',
+  'gi no gi': 'trainingStyle',
+  'gi nogi': 'trainingStyle',
+  'training style': 'trainingStyle',
   'no photos': 'noPhotos',
   'no photo': 'noPhotos',
   nophotos: 'noPhotos',
 };
+
+/** CSV stripes: a whole number 0–4. Anything else is left blank. */
+export function parseCsvStripes(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return undefined;
+  return clipStripes(Number(trimmed));
+}
 
 const DELIMITERS = [',', ';', '\t'] as const;
 
@@ -376,8 +446,9 @@ export function csvField(value: string): string {
 export function serializeRosterCsv(
   rows: RosterCsvRow[],
   notesHeader: string = ROSTER_CSV_HEADERS[6],
+  cardFor: (row: RosterCsvRow) => CardCsvFields | null | undefined = () => null,
 ): string {
-  const headers = [...ROSTER_CSV_HEADERS.map((header, index) => (index === 6 ? notesHeader : header)), NO_PHOTOS_HEADER];
+  const headers = ROSTER_CSV_EXPORT_HEADERS.map((header, index) => (index === 6 ? notesHeader : header));
   const lines = [
     headers.join(','),
     ...rows.map((row) =>
@@ -390,6 +461,7 @@ export function serializeRosterCsv(
         row.lastPromotionDetail,
         row.note,
         formatCheckedIn(row.checkedIn),
+        ...cardColumns(row, cardFor(row)),
         formatNoPhotos(row.noPhotos),
       ]
         .map(csvField)
@@ -397,6 +469,16 @@ export function serializeRosterCsv(
     ),
   ];
   return `${lines.join('\r\n')}\r\n`;
+}
+
+function cardColumns(row: RosterCsvRow, card: CardCsvFields | null | undefined): string[] {
+  return [
+    card?.beltAchievedOn ?? '',
+    card?.lastStripeOn ?? '',
+    row.stripes === undefined ? '' : String(row.stripes),
+    card?.trainingStartedOn ?? '',
+    formatTrainingStyle(card?.trainingStyle),
+  ];
 }
 
 /** Header row, then blank rows. No example person, so a filled file cannot import a sample name. */
@@ -523,6 +605,7 @@ function peopleFromCells(
   lastPromotionDetail: string,
   note: string,
   checkedInCell: string,
+  extraCells: CardCells = EMPTY_CARD_CELLS,
 ): Array<{
   name: string;
   belt: string;
@@ -532,6 +615,7 @@ function peopleFromCells(
   lastPromotionDetail: string;
   note: string;
   checkedIn: string;
+  extra: CardCells;
 }> {
   const names = splitLines(nameCell);
   const belts = splitLines(beltCell);
@@ -547,7 +631,35 @@ function peopleFromCells(
     lastPromotionDetail: alignedField(lastPromotionDetail, names, index),
     note,
     checkedIn: alignedField(checkedInCell, names, index),
+    extra: {
+      beltAchievedOn: alignedField(extraCells.beltAchievedOn, names, index),
+      lastStripeOn: alignedField(extraCells.lastStripeOn, names, index),
+      stripes: alignedField(extraCells.stripes, names, index),
+      trainingStartedOn: alignedField(extraCells.trainingStartedOn, names, index),
+      trainingStyle: alignedField(extraCells.trainingStyle, names, index),
+    },
   }));
+}
+
+type CardCells = {
+  beltAchievedOn: string;
+  lastStripeOn: string;
+  stripes: string;
+  trainingStartedOn: string;
+  trainingStyle: string;
+};
+
+const EMPTY_CARD_CELLS: CardCells = { beltAchievedOn: '', lastStripeOn: '', stripes: '', trainingStartedOn: '', trainingStyle: '' };
+
+function cardFieldsFromCells(cells: CardCells): CardCsvFields | null {
+  const fields: CardCsvFields = {
+    beltAchievedOn: parseImportDate(cells.beltAchievedOn),
+    lastStripeOn: parseImportDate(cells.lastStripeOn),
+    trainingStartedOn: parseImportDate(cells.trainingStartedOn),
+    trainingStyle: parseTrainingStyle(cells.trainingStyle),
+  };
+  const blank = !fields.beltAchievedOn && !fields.lastStripeOn && !fields.trainingStartedOn && !fields.trainingStyle;
+  return blank ? null : fields;
 }
 
 export function formatRosterCsvSummary(imported: number, skipped: number, skippedDetail?: string): string {
@@ -605,6 +717,7 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
   const start = header.index + 1;
 
   const students: Student[] = [];
+  const cardFields: Record<string, CardCsvFields> = {};
   const skippedReasons: string[] = [];
   let skipped = 0;
 
@@ -617,10 +730,15 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
     lastPromotionDetail: string;
     note: string;
     checkedIn: string;
+    extra?: CardCells;
     noPhotos?: Student['noPhotos'];
   }) => {
     const next = studentFromInput(input);
     if (next) {
+      const stripes = input.extra ? parseCsvStripes(input.extra.stripes) : undefined;
+      if (stripes !== undefined) next.stripes = stripes;
+      const card = input.extra ? cardFieldsFromCells(input.extra) : null;
+      if (card) cardFields[next.id] = card;
       if (input.noPhotos) {
         next.noPhotos = input.noPhotos;
         next.photo = '';
@@ -637,9 +755,14 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
   const salvageChunk = (text: string): Student[] => {
     if (!options.salvage || !chunkLooksLikeRosterCsv(text)) return [];
     const nested = importRosterCsvInternal(text, { salvage: false });
-    if (nested.imported) return nested.students;
-    const headed = importRosterCsvInternal(`${ROSTER_CSV_HEADERS.join(',')}\r\n${text}`, { salvage: false });
-    return headed.imported ? headed.students : [];
+    if (nested.imported) {
+      Object.assign(cardFields, nested.cardFields ?? {});
+      return nested.students;
+    }
+    const headed = importRosterCsvInternal(`${ROSTER_CSV_EXPORT_HEADERS.join(',')}\r\n${text}`, { salvage: false });
+    if (!headed.imported) return [];
+    Object.assign(cardFields, headed.cardFields ?? {});
+    return headed.students;
   };
 
   for (const row of expanded.slice(start)) {
@@ -687,6 +810,13 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
       lastPromotionDetail,
       note,
       checkedInCell,
+      {
+        beltAchievedOn: cell(row, columns.beltAchievedOn),
+        lastStripeOn: cell(row, columns.lastStripeOn),
+        stripes: cell(row, columns.stripes),
+        trainingStartedOn: cell(row, columns.trainingStartedOn),
+        trainingStyle: cell(row, columns.trainingStyle),
+      },
     );
     if (!people.length) {
       skipped += 1;
@@ -700,7 +830,9 @@ function importParsedRows(rows: string[][], options: ImportOptions): RosterCsvIm
   const skippedDetail = skippedReasons.length
     ? skippedReasons.slice(0, 4).join('; ') + (skippedReasons.length > 4 ? '…' : '')
     : undefined;
-  return { students, imported: students.length, skipped, skippedDetail };
+  const result: RosterCsvImport = { students, imported: students.length, skipped, skippedDetail };
+  if (Object.keys(cardFields).length) result.cardFields = cardFields;
+  return result;
 }
 
 function importRosterCsvInternal(text: string, options: ImportOptions): RosterCsvImport {
