@@ -91,25 +91,11 @@ export const PRO_PLUS_CLOUD_OPEN_LABEL = 'Open Pro Cloud Plus Console';
  */
 export const PRO_PLUS_CLOUD_BELT_BLURB = 'Gym Owner and Instructors Console, with Advantage Cloud.';
 
-/** Heading of the static block under the four hubs. */
+/** Heading of the Advantage Cloud block under the four hubs. */
 export const ADVANTAGE_CLOUD_HEADING = 'Advantage Cloud';
 
-/** Status beside that heading. Plain text, not a control. */
-export const ADVANTAGE_CLOUD_STATUS = 'Coming soon';
-
-/** Lead above the four upload steps. */
-export const ADVANTAGE_CLOUD_UPLOAD_LEAD = 'How uploading will work';
-
-/** The four upload steps. No button runs them yet. */
-export const ADVANTAGE_CLOUD_UPLOAD_STEPS = [
-  'Pick a photo or video on this phone.',
-  'Add it from Media Console, Gallery, Events, or Pro Shop.',
-  'Advantage saves that file in Advantage Cloud.',
-  'The gym TV plays it from Advantage Cloud.',
-] as const;
-
 /**
- * Note under the steps. This plan does not use the gym's own drive,
+ * Note under the live status. This plan does not use the gym's own drive,
  * and Advantage App LLC does not host a drive the gym owns.
  */
 export const ADVANTAGE_CLOUD_DRIVE_NOTE =

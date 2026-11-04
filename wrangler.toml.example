@@ -10,5 +10,12 @@ pages_build_output_dir = "dist"
 binding = "GYM_MEDIA"
 bucket_name = "advantage-gym-media"
 
+# Optional. Total bytes in the bucket before an upload is refused.
+# Default 8000000000 (8 GB), under the 10 GB R2 free tier.
+# [vars]
+# GYM_MEDIA_CAP_BYTES = "8000000000"
+# Largest one file, in bytes. Default 512000000.
+# GYM_MEDIA_MAX_UPLOAD_BYTES = "512000000"
+
 # The D1 database already exists: advantage-entitlements, binding ENTITLEMENTS_DB.
 # database_id is on the dashboard. Do not invent one here.

@@ -31,6 +31,7 @@ import {
 } from '../lib/instructorSeats';
 import { issueSeatWithServer, syncLegacySeats } from '../lib/seatClient';
 import { GalleryApprovalSwitch } from './GalleryApprovalSwitch';
+import { qrDataUrl } from '../lib/qr';
 
 type IssuedLink = {
   email: string;
@@ -69,6 +70,21 @@ function issueError(reason: IssueInviteFailure): string {
   if (reason === 'cap') return proSeatCapBlockedCopy();
   if (reason === 'owner') return 'Only the gym owner can issue invites.';
   return "Enter the instructor's email.";
+}
+
+function InviteQr({ link, email }: { link: string; email: string }) {
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    let alive = true;
+    void qrDataUrl(link).then((url) => {
+      if (alive) setSrc(url);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [link]);
+  if (!src) return null;
+  return <img className="invite-link__qr" src={src} alt={`QR for the invite to ${email}`} width={180} height={180} />;
 }
 
 function SeatCapRequestNote() {
@@ -205,6 +221,7 @@ export function InstructorInvitePanel() {
           </div>
           {issued ? (
             <div className="invite-link" role="status" ref={issuedRef}>
+              <InviteQr link={issued.link} email={issued.email} />
               <div className="invite-link__copy">
               <p>Invite for {issued.email}. Status is invited.</p>
               <PlanBadge presetId={issued.presetId} />
@@ -589,6 +606,7 @@ function SeatRow({
         {statusLabel(seat.status)} · {issuedLabel(seat.issuedAt)}
       </span>
       <span>{permissionSummary(shown)}</span>
+      {seat.status === 'revoked' ? null : <InviteQr link={link} email={seat.email} />}
       {editing && draft ? null : confirming ? (
         <div className="invite-confirm" role="group" aria-label={`Revoke ${seat.email}`}>
           <span>Revoke the binder for {seat.email}?</span>

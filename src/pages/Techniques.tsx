@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { AdvantageCloudPanel } from '../components/AdvantageCloudMedia';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { DriveMediaPicker } from '../components/DriveMediaPicker';
@@ -87,6 +88,7 @@ import {
   type TechniqueClip,
 } from '../lib/techniqueStore';
 import { lessonPlanVideoOverlay, planVideoRefsFromVideoPlan, videoPlanWithPlanVideos, writeLessonPlanVideos } from '../lib/planVideos';
+import { CLOUD_SAVED_MESSAGE, cloudUploadSelected, notifyCloudMedia, uploadAdvantageCloudFile } from '../lib/advantageCloudMedia';
 
 async function loadSharedCurriculumCards(clips: readonly TechniqueClip[]): Promise<{
   cards: CurriculumVideoCard[];
@@ -634,7 +636,20 @@ export function TechniquesPage() {
       }
       setPickerNote(file.size >= LARGE_MEDIA_BYTES ? LARGE_MEDIA_NOTE : '');
       if (result.status === 'added' || result.status === 'replaced') {
-        syncTodayTrainingVideos(result.plan, shareDay);
+        if (cloudUploadSelected()) {
+          void uploadAdvantageCloudFile({
+            purpose: 'daily-video',
+            dateKey: boardDateRef.current,
+            file,
+            fileName: file.name,
+            mime: file.type || 'video/mp4',
+          }).then((uploaded) => {
+            setPickerNote(uploaded.ok ? CLOUD_SAVED_MESSAGE : uploaded.message);
+            if (uploaded.ok) notifyCloudMedia();
+          });
+        } else {
+          syncTodayTrainingVideos(result.plan, shareDay);
+        }
       }
       const slot = result.plan.slots.find((item) => item.slotId === slotId);
       if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
@@ -766,6 +781,7 @@ export function TechniquesPage() {
           <p className="techniques__handoff-warn">{handoff.warning}</p>
         </section>
       )}
+      {playback ? null : <AdvantageCloudPanel purpose="daily-video" dateKey={boardDate} />}
       {playback || !shareDay || !driveNotice.text ? null : (
         <p className="techniques__note" role="status">
           {driveNotice.text}

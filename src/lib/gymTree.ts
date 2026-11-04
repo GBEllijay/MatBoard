@@ -112,6 +112,19 @@ export function archiveWeekPath(weekId: string): string | null {
   return `lessons/archive/${match[1]}/${weekId}`;
 }
 
+/**
+ * Photos and videos attached to a lesson plan.
+ * The plan text stays `lessons/current/{week}/{date}.json`.
+ * These files sit beside that plan, under the same week.
+ */
+export function lessonMediaPath(dateKey: string, fileName: string): string | null {
+  const week = lessonWeekId(dateKey);
+  if (!week) return null;
+  const base = fileName.split(/[/\\]/).pop() ?? '';
+  const name = safePathSegment(base, 'lesson-media');
+  return `lessons/current/${week}/media/${dateKey}/${name}`;
+}
+
 function fileNameOf(value: string, fallback: string): string {
   const base = value.split(/[/\\]/).pop() ?? '';
   return safePathSegment(base, fallback);

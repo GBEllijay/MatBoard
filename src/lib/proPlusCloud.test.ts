@@ -113,23 +113,33 @@ test('the cloud gate does not read a Pro unlock as the whole check', () => {
   assert.doesNotMatch(gate, /alpha-pro-plus-cloud|advantage-pro-plus-cloud|CODE_KINDS|CHECKOUT_PRODUCTS/);
 });
 
-test('Pro Plus Cloud page is the owner menu, and the cloud block is plain text', () => {
+test('Pro Plus Cloud page is the head instructor home', () => {
   assert.match(page, /<main className="home home--pro"/);
   assert.match(page, /<PlayExitMark to=\{PRODUCTS_PATH\} \/>/);
   assert.match(page, /<HomeMark to=\{PRODUCTS_PATH\} \/>/);
+  assert.match(page, /<PlusCloudConduct \/>/);
   assert.match(page, /<BeltHeader kind="black" worn title=\{PRO_PLUS_CLOUD_NAME\} blurb=\{PRO_PLUS_CLOUD_BELT_BLURB\} \/>/);
   assert.match(page, /consoleHubs\(door/);
   assert.match(page, /<ProToolboxCard hubs=\{hubs\}/);
+  assert.match(page, /<AdvantageCloudHome \/>/);
+  assert.match(page, /<InstructorInvitePanel \/>/);
+  assert.doesNotMatch(page, /Coming soon|How uploading will work|ADVANTAGE_CLOUD_UPLOAD_STEPS/);
   assert.doesNotMatch(page, /AcademyPathwayPanel|DriveConnectCard/);
   assert.doesNotMatch(page, /fetch\(|stripe\.com|oauth|WHITE_CHECKOUT|Continue to checkout|lockPro|lockMedia/i);
-  assert.match(page, /ADVANTAGE_CLOUD_UPLOAD_STEPS/);
-  assert.match(page, /ADVANTAGE_CLOUD_DRIVE_NOTE/);
-  const blockStart = page.indexOf('data-cloud-block="advantage-cloud"');
-  const blockEnd = page.indexOf('</section>', blockStart);
-  assert.ok(blockStart > 0 && blockEnd > blockStart);
-  const block = page.slice(blockStart, blockEnd);
-  assert.match(block, /plan-card__kicker/);
-  assert.doesNotMatch(block, /<button|<a |disabled|Link /);
+  const home = readFileSync(new URL('../components/AdvantageCloudHome.tsx', import.meta.url), 'utf8');
+  assert.match(home, /data-cloud-block="advantage-cloud"/);
+  assert.match(home, /CLOUD_HOME_UNBOUND/);
+  assert.match(home, /CLOUD_ROLE_HOME/);
+  assert.match(home, /ADVANTAGE_CLOUD_DRIVE_NOTE/);
+  assert.match(home, /Upload daily videos/);
+  assert.match(home, /Upload lesson-plan media/);
+  assert.match(home, /UNLIMITED_VIDEOS_PATH/);
+  assert.match(home, /UNLIMITED_LESSON_PATH/);
+  assert.doesNotMatch(home, /Coming soon/);
+  const invite = readFileSync(new URL('../components/InstructorInvitePanel.tsx', import.meta.url), 'utf8');
+  assert.match(invite, /qrDataUrl/);
+  assert.match(invite, /Copy invite link/);
+  assert.match(invite, /InviteQr/);
   assert.match(pro, /AcademyPathwayPanel/);
   assert.match(pro, /kind=\{mediaSeat \? 'purple' : 'black'\}/);
   assert.match(pro, /worn=\{!mediaSeat\}/);

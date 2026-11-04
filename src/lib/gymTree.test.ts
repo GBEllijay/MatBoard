@@ -7,6 +7,7 @@ import {
   GALLERY_ROUTE_NOTE,
   archiveWeekPath,
   lessonWeekId,
+  lessonMediaPath,
   routeUpload,
   treeFolderForConsole,
   weeksReadyToArchive,
@@ -116,6 +117,8 @@ test('daily videos, lessons, and student files use their own lanes', () => {
   assert.equal(daily.ok && daily.path, 'videos/daily/2026-09-28/armbar.mp4');
   assert.equal(lessonWeekId('2026-09-28'), '2026-W40');
   assert.equal(lesson.ok && lesson.path, 'lessons/current/2026-W40/2026-09-28.json');
+  assert.equal(lessonMediaPath('2026-09-28', 'armbar demo.mp4'), 'lessons/current/2026-W40/media/2026-09-28/armbar-demo.mp4');
+  assert.equal(lessonMediaPath('not-a-date', 'clip.mp4'), null);
   assert.equal(film.ok && film.path, 'students/STU-14/inbox/2026-09-28/knee-slice.mp4');
   assert.equal(assessment.ok && assessment.path, 'students/STU-14/assessments/2026-09-28.json');
   assert.match(GALLERY_ROUTE_NOTE, /gallery/);
