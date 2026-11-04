@@ -13,6 +13,7 @@ import { exportProgressPacket, parseProgressPacket } from './progress/format.ts'
 import {
   PROGRESS_NOTE_MAX,
   PROGRESS_SCHEMA_VERSION,
+  type CoachCompetitionUpdatePacket,
   type CoachGymBrand,
   type CoachRankUpdatePacket,
   type ProgressBelt,
@@ -50,6 +51,8 @@ export type UpdateLedger = {
   accepted: string[];
   dismissed: string[];
 };
+
+export type CoachInboxPacket = CoachRankUpdatePacket | CoachCompetitionUpdatePacket;
 
 export function rosterBeltToProgress(belt: string): ProgressBelt | null {
   const canonical = canonicalBelt(belt);
@@ -182,16 +185,17 @@ function notifyCoachUpdate(): void {
   window.dispatchEvent(new Event(COACH_UPDATE_EVENT));
 }
 
-export function readCoachQueue(storage: Pick<MemoryStore, 'getItem'>): CoachRankUpdatePacket[] {
+export function readCoachQueue(storage: Pick<MemoryStore, 'getItem'>): CoachInboxPacket[] {
   try {
     const raw = storage.getItem(COACH_INBOX_QUEUE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    const packets: CoachRankUpdatePacket[] = [];
+    const packets: CoachInboxPacket[] = [];
     for (const item of parsed) {
       const check = parseProgressPacket(JSON.stringify(item));
-      if (check.ok && check.value.kind === 'coach-rank-update') packets.push(check.value);
+      if (!check.ok) continue;
+      if (check.value.kind === 'coach-rank-update' || check.value.kind === 'coach-competition-update') packets.push(check.value);
     }
     return packets;
   } catch {
@@ -199,12 +203,12 @@ export function readCoachQueue(storage: Pick<MemoryStore, 'getItem'>): CoachRank
   }
 }
 
-export function writeCoachQueue(storage: MemoryStore, packets: readonly CoachRankUpdatePacket[]): void {
+export function writeCoachQueue(storage: MemoryStore, packets: readonly CoachInboxPacket[]): void {
   storage.setItem(COACH_INBOX_QUEUE_KEY, JSON.stringify(packets));
   notifyCoachUpdate();
 }
 
-export function queueCoachUpdate(storage: MemoryStore, packet: CoachRankUpdatePacket): void {
+export function queueCoachUpdate(storage: MemoryStore, packet: CoachInboxPacket): void {
   const ledger = readUpdateLedger(storage);
   if (ledger.accepted.includes(packet.updateId) || ledger.dismissed.includes(packet.updateId)) return;
   const current = readCoachQueue(storage);
@@ -278,7 +282,7 @@ export function acceptCoachRankUpdate(
 
 export function dismissCoachRankUpdate(
   report: StudentProgressReport,
-  packet: CoachRankUpdatePacket,
+  packet: CoachInboxPacket,
   ledger: UpdateLedger,
 ): { report: StudentProgressReport; ledger: UpdateLedger; applied: boolean } {
   if (packet.studentId !== report.studentId || seen(ledger, packet.updateId)) {

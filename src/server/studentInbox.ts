@@ -11,7 +11,7 @@
 import { readSignedJson, signJson, verifyToken, type EntitlementClaims } from '../lib/entitlementToken.ts';
 import { signingMaterial } from './tokenIssue.ts';
 
-export const INBOX_PACKET_KINDS = ['coach-rank-update'] as const;
+export const INBOX_PACKET_KINDS = ['coach-rank-update', 'coach-competition-update'] as const;
 
 const RANK_BELTS = new Set([
   'white',
@@ -166,7 +166,7 @@ export function readStoredRankUpdate(value: unknown): StoredRankUpdate | null {
   if (!value || typeof value !== 'object' || carriesBannedKey(value)) return null;
   const row = value as Record<string, unknown>;
   if (row.schemaVersion !== 1 && row.schemaVersion !== 2) return null;
-  if (typeof row.kind !== 'string' || !(INBOX_PACKET_KINDS as readonly string[]).includes(row.kind)) return null;
+  if (row.kind !== 'coach-rank-update') return null;
   if (typeof row.id !== 'string' || !ID_RE.test(row.id)) return null;
   if (typeof row.studentId !== 'string' || !ID_RE.test(row.studentId)) return null;
   if (typeof row.updateId !== 'string' || !ID_RE.test(row.updateId)) return null;
@@ -191,14 +191,85 @@ export function readStoredRankUpdate(value: unknown): StoredRankUpdate | null {
     updateId: row.updateId,
     rankUpdate: { belt: rank.belt, stripeCount: rank.stripeCount, promotionDate: rank.promotionDate, note },
   };
-  if (row.gym && typeof row.gym === 'object') {
-    const gym = row.gym as Record<string, unknown>;
-    const name = typeof gym.name === 'string' ? gym.name.trim().slice(0, 80) : '';
-    const logo = typeof gym.logo === 'string' && /^data:image\/(?:jpeg|png|webp);base64,/.test(gym.logo) && gym.logo.length <= 350_000
-      ? gym.logo
+  attachStoredGym(stored, row.gym);
+  return stored;
+}
+
+function attachStoredGym(stored: { gym?: { name: string; logo?: string } }, gym: unknown): void {
+  if (!gym || typeof gym !== 'object') return;
+  const row = gym as Record<string, unknown>;
+  const name = typeof row.name === 'string' ? row.name.trim().slice(0, 80) : '';
+  const logo =
+    typeof row.logo === 'string' && /^data:image\/(?:jpeg|png|webp);base64,/.test(row.logo) && row.logo.length <= 350_000
+      ? row.logo
       : undefined;
-    if (name) stored.gym = logo ? { name, logo } : { name };
+  if (name) stored.gym = logo ? { name, logo } : { name };
+}
+
+export type StoredCompetitionUpdate = {
+  schemaVersion: 1 | 2;
+  kind: 'coach-competition-update';
+  id: string;
+  studentId: string;
+  updatedAt: number;
+  issuedAt: number;
+  updateId: string;
+  competitionUpdate: {
+    tournamentName: string;
+    date: string;
+    location: string;
+    division: string;
+    weightClass: string;
+    matches: { opponent: string; result: string; method: string; note: string }[];
+  };
+  gym?: { name: string; logo?: string };
+};
+
+export function readStoredCompetitionUpdate(value: unknown): StoredCompetitionUpdate | null {
+  if (!value || typeof value !== 'object' || carriesBannedKey(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (row.schemaVersion !== 1 && row.schemaVersion !== 2) return null;
+  if (row.kind !== 'coach-competition-update') return null;
+  if (typeof row.id !== 'string' || !ID_RE.test(row.id)) return null;
+  if (typeof row.studentId !== 'string' || !ID_RE.test(row.studentId)) return null;
+  if (typeof row.updateId !== 'string' || !ID_RE.test(row.updateId)) return null;
+  if (typeof row.updatedAt !== 'number' || typeof row.issuedAt !== 'number') return null;
+  if (!row.competitionUpdate || typeof row.competitionUpdate !== 'object') return null;
+  const event = row.competitionUpdate as Record<string, unknown>;
+  const tournamentName = typeof event.tournamentName === 'string' ? event.tournamentName.trim().slice(0, 80) : '';
+  if (!tournamentName || typeof event.date !== 'string' || !realDay(event.date)) return null;
+  if (!Array.isArray(event.matches) || event.matches.length > 40) return null;
+  const matches: StoredCompetitionUpdate['competitionUpdate']['matches'] = [];
+  for (const item of event.matches) {
+    if (!item || typeof item !== 'object') return null;
+    const match = item as Record<string, unknown>;
+    const opponent = typeof match.opponent === 'string' ? match.opponent.trim().slice(0, 80) : '';
+    if (!opponent) return null;
+    if (match.result !== 'win' && match.result !== 'loss' && match.result !== 'draw') return null;
+    if (match.method !== '' && match.method !== 'points' && match.method !== 'sub' && match.method !== 'advantage' && match.method !== 'dq') {
+      return null;
+    }
+    const note = typeof match.note === 'string' ? match.note.trim().slice(0, 500) : '';
+    matches.push({ opponent, result: match.result, method: match.method, note });
   }
+  const stored: StoredCompetitionUpdate = {
+    schemaVersion: row.schemaVersion,
+    kind: 'coach-competition-update',
+    id: row.id,
+    studentId: row.studentId,
+    updatedAt: row.updatedAt,
+    issuedAt: row.issuedAt,
+    updateId: row.updateId,
+    competitionUpdate: {
+      tournamentName,
+      date: event.date,
+      location: typeof event.location === 'string' ? event.location.trim().slice(0, 500) : '',
+      division: typeof event.division === 'string' ? event.division.trim().slice(0, 80) : '',
+      weightClass: typeof event.weightClass === 'string' ? event.weightClass.trim().slice(0, 80) : '',
+      matches,
+    },
+  };
+  attachStoredGym(stored, row.gym);
   return stored;
 }
 
@@ -246,7 +317,7 @@ export async function handleStudentInbox(
       material.privateJwk,
     );
     if (body.action === 'pass') return json(200, { ok: true, studentPass });
-    const parsed = readStoredRankUpdate(body.packet);
+    const parsed = readStoredRankUpdate(body.packet) ?? readStoredCompetitionUpdate(body.packet);
     if (!parsed) return json(400, { ok: false, error: 'That file is not a coach update for a student inbox.' });
     if (parsed.studentId !== studentId || !ID_RE.test(parsed.updateId)) {
       return json(400, { ok: false, error: 'The update is for a different student.' });

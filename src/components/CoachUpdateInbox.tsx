@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
 import {
+  acceptCoachCompetitionUpdate,
+  competitionConflicts,
+  competitionUpdateSentence,
+  type MatchKeep,
+} from '../lib/coachCompetitionUpdate';
+import {
   acceptCoachRankUpdate,
   COACH_UPDATE_EVENT,
   dismissCoachRankUpdate,
@@ -9,15 +15,15 @@ import {
   removeQueuedUpdate,
   rankUpdateSentence,
   writeUpdateLedger,
+  type CoachInboxPacket,
 } from '../lib/coachRankUpdate';
 import { parseProgressPacket } from '../lib/progress/format';
-import type { CoachRankUpdatePacket } from '../lib/progress/types';
 import { writeStudentGymLogo } from '../lib/studentGymMark';
 import { assignStudentId, readStableStudentId } from '../lib/studentIdentity';
 import { clearStudentInboxItem, pullStudentInbox, readInboxPass } from '../lib/studentInboxClient';
 import { useStudentFile } from '../pages/student/chrome';
 
-function matchingPacket(reportStudentId: string, packets: readonly CoachRankUpdatePacket[]): CoachRankUpdatePacket | null {
+function matchingPacket(reportStudentId: string, packets: readonly CoachInboxPacket[]): CoachInboxPacket | null {
   const stable = readStableStudentId(localStorage);
   const studentId = reportStudentId === 'student-local' ? stable : reportStudentId;
   if (!studentId) return null;
@@ -30,7 +36,8 @@ function matchingPacket(reportStudentId: string, packets: readonly CoachRankUpda
  */
 export function CoachUpdateInbox() {
   const { report, commit } = useStudentFile();
-  const [packets, setPackets] = useState<CoachRankUpdatePacket[]>(() => readCoachQueue(localStorage));
+  const [packets, setPackets] = useState<CoachInboxPacket[]>(() => readCoachQueue(localStorage));
+  const [choices, setChoices] = useState<Record<number, MatchKeep>>({});
   const [note, setNote] = useState('');
 
   useEffect(() => {
@@ -47,7 +54,9 @@ export function CoachUpdateInbox() {
       if (!alive || !result.ok) return;
       for (const item of result.packets) {
         const parsed = parseProgressPacket(JSON.stringify(item));
-        if (parsed.ok && parsed.value.kind === 'coach-rank-update') queueCoachUpdate(localStorage, parsed.value);
+        if (parsed.ok && (parsed.value.kind === 'coach-rank-update' || parsed.value.kind === 'coach-competition-update')) {
+          queueCoachUpdate(localStorage, parsed.value);
+        }
       }
     });
     return () => {
@@ -70,9 +79,11 @@ export function CoachUpdateInbox() {
     }
     const ledger = readUpdateLedger(localStorage);
     const result =
-      kind === 'accept'
-        ? acceptCoachRankUpdate(current, packet, ledger)
-        : dismissCoachRankUpdate(current, packet, ledger);
+      kind === 'dismiss'
+        ? dismissCoachRankUpdate(current, packet, ledger)
+        : packet.kind === 'coach-rank-update'
+          ? acceptCoachRankUpdate(current, packet, ledger)
+          : acceptCoachCompetitionUpdate(current, packet, ledger, choices);
     if (result.applied && kind === 'accept') {
       commit(result.report);
       if (packet.gym?.logo) writeStudentGymLogo(packet.gym.logo);
@@ -84,13 +95,52 @@ export function CoachUpdateInbox() {
     setNote('');
   };
 
+  const conflicts = packet.kind === 'coach-competition-update' ? competitionConflicts(report, packet) : [];
   return (
-    <section className="coach-update" aria-label="Coach rank update">
+    <section className="coach-update" aria-label="Coach update">
       <h2>From your coach</h2>
-      <p>{rankUpdateSentence(packet)}</p>
-      {packet.rankUpdate.note ? <p>{packet.rankUpdate.note}</p> : null}
+      <p>{packet.kind === 'coach-rank-update' ? rankUpdateSentence(packet) : competitionUpdateSentence(packet)}</p>
+      {packet.kind === 'coach-rank-update' && packet.rankUpdate.note ? <p>{packet.rankUpdate.note}</p> : null}
+      {packet.kind === 'coach-competition-update'
+        ? packet.competitionUpdate.matches.map((match) => (
+            <p key={`${match.opponent}-${match.result}-${match.method}`}>
+              {match.opponent}: {match.result}
+              {match.method ? ` by ${match.method}` : ''}
+              {match.note ? `. ${match.note}` : ''}
+            </p>
+          ))
+        : null}
+      {conflicts.map((conflict) => (
+        <fieldset key={conflict.index}>
+          <legend>
+            You already have {conflict.opponent} ({conflict.studentSummary}). Coach recorded {conflict.coachSummary}.
+          </legend>
+          <label>
+            <input
+              type="radio"
+              name={`keep-${conflict.index}`}
+              checked={(choices[conflict.index] ?? 'both') === 'mine'}
+              onChange={() => setChoices((current) => ({ ...current, [conflict.index]: 'mine' }))}
+            />
+            Keep my match
+          </label>
+          <label>
+            <input
+              type="radio"
+              name={`keep-${conflict.index}`}
+              checked={(choices[conflict.index] ?? 'both') === 'both'}
+              onChange={() => setChoices((current) => ({ ...current, [conflict.index]: 'both' }))}
+            />
+            Keep both
+          </label>
+        </fieldset>
+      ))}
       {packet.gym?.name ? <p>{packet.gym.name}</p> : null}
-      <p>Accept adds this to My rank and a journal card. Dismiss leaves your rank and journal as they are. Your checklist is not changed.</p>
+      <p>
+        {packet.kind === 'coach-rank-update'
+          ? 'Accept adds this to My rank and a journal card. Dismiss leaves your rank and journal as they are. Your checklist is not changed.'
+          : 'Accept adds this tournament and these matches. A match you already wrote stays. Dismiss leaves your results alone.'}
+      </p>
       {note ? (
         <p role="alert">{note}</p>
       ) : null}

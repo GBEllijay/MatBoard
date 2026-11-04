@@ -149,8 +149,9 @@ export function SharePage() {
                     setSendNote('');
                     return;
                   }
-                  if (result.pendingRankUpdate) {
-                    queueCoachUpdate(localStorage, result.pendingRankUpdate);
+                  if (result.pendingRankUpdate || result.pendingCompetitionUpdate) {
+                    const pending = result.pendingRankUpdate ?? result.pendingCompetitionUpdate;
+                    if (pending) queueCoachUpdate(localStorage, pending);
                     if (result.inboxPass) saveInboxPass(localStorage, result.inboxPass);
                     setPendingOwn(null);
                     setPendingGym(null);

@@ -34,6 +34,7 @@ import {
   type CalendarEvent,
   type CalendarKind,
   type CalendarRepeat,
+  type CoachCompetitionUpdatePacket,
   type CoachFeedbackPacket,
   type CoachGymBrand,
   type CoachRankUpdatePacket,
@@ -1035,7 +1036,9 @@ export type CoachImportResult = {
    * The report is unchanged until the student accepts.
    */
   pendingRankUpdate?: CoachRankUpdatePacket;
-  /** Student inbox code carried beside a rank file, when the coach had one. */
+  /** A competition update waiting for Accept or Dismiss. The report is unchanged until Accept. */
+  pendingCompetitionUpdate?: CoachCompetitionUpdatePacket;
+  /** Student inbox code carried beside a coach file, when the coach had one. */
   inboxPass?: string;
 };
 
@@ -1116,6 +1119,31 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       error: '',
       pendingReport: parsed.value,
       gym,
+    };
+  }
+  if (record.kind === 'coach-competition-update') {
+    const parsed = parseProgressPacket(text);
+    if (!parsed.ok || parsed.value.kind !== 'coach-competition-update') {
+      if (!parsed.ok && parsed.errors.some((line) => line.includes('cannot set student marks'))) {
+        return refusedCoachFile(
+          report,
+          shelf,
+          'This coach file tries to set student marks, checkpoints, journal, or goals. A coach file cannot do that, so it was not imported.',
+        );
+      }
+      const detail = parsed.ok ? 'It could not be read.' : parsed.errors.join(' ');
+      return refusedCoachFile(report, shelf, `${detail} It was not imported.`);
+    }
+    if (parsed.value.studentId !== report.studentId) {
+      return refusedCoachFile(report, shelf, 'A coach file for a different student was left out.');
+    }
+    return {
+      report,
+      shelf,
+      message: 'Your coach recorded a competition update. Accept or dismiss it. Matches you already wrote stay.',
+      error: '',
+      gym,
+      pendingCompetitionUpdate: parsed.value,
     };
   }
   if (record.kind === 'coach-rank-update') {
