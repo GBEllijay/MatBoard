@@ -12,6 +12,7 @@ import { wornBeltPreview, type WornBeltPreview } from '../../lib/studentRank';
 import { readStreakTarget, streakLabel, streakWeekLine, trainingStreak } from '../../lib/trainingStreak';
 import { MEDAL_LABEL, recentMedals, type CardMedal, type MedalKind } from '../../lib/cardMedals';
 import type { StudentProgressReport } from '../../lib/progress/types';
+import { WIN_METHOD_LONG, winsBreakdownLine, winsSummary } from '../../lib/winsSummary';
 import { MatQuickAddSheet } from './MatQuickAdd';
 import { useStudentFile } from './chrome';
 import { ProfileCardFace } from './ProfileCardFace';
@@ -229,21 +230,96 @@ export function MatHoursDetails({ report, to }: { report: StudentProgressReport;
   );
 }
 
+function hoursValue(minutes: number): string {
+  const h = minutes / 60;
+  return Number.isInteger(h) ? String(h) : h.toFixed(1);
+}
+
+/** Stripes or degrees on the worn belt, when the belt carries them. */
+export function stripeCount(preview: WornBeltPreview): number | null {
+  const m = /(\d+)\s+(stripe|degree)/i.exec(preview.meta);
+  return m ? Number(m[1]) : null;
+}
+
+/** Stat strip: each tile is one number that opens its page; MAT TIME keeps the stopwatch add control. */
+export function SheetStats({ report, to, onAdd }: { report: StudentProgressReport; to: (path: string) => string; onAdd: () => void }) {
+  const target = typeof localStorage === 'undefined' ? 2 : readStreakTarget(localStorage);
+  const streak = trainingStreak(report.journal, todayIso(), target);
+  const minutes = matHoursTotal(report.journal).minutes;
+  const wins = winsSummary(report.competition).wins;
+  const preview = wornBeltPreview(report);
+  const stripes = stripeCount(preview);
+  const stripeNoun = /degree/i.test(preview.meta) ? 'Degrees' : 'Stripes';
+  return (
+    <div className="sheet-stats" data-testid="sheet-stats">
+      <div className="sheet-stat sheet-stat--mat" data-testid="stat-mat-time">
+        <Link className="sheet-stat__open" to={to('/student/report')} aria-label={`Mat time, ${hoursValue(minutes)} hours. Open mat hours`} data-testid="mat-hours-frame" data-belt={preview.belt}>
+          <span className="sheet-cap">Mat time</span>
+          <span className="sheet-stat__num">{hoursValue(minutes)}<small>h</small></span>
+        </Link>
+        <MatTimerButton onClick={onAdd} />
+      </div>
+      <Link className="sheet-stat" to={to('/student/calendar')} data-testid="streak-badge" data-weeks={streak.weeks} data-target={streak.target} title={streakWeekLine(streak)} aria-label={`${streakLabel(streak)}. ${streakWeekLine(streak)}. Open calendar`}>
+        <span className="sheet-cap">Training streak</span>
+        <span className="sheet-stat__num">{streak.weeks}<small>{streak.weeks === 1 ? ' week' : ' weeks'}</small></span>
+        <span className="sheet-stat__bar" aria-hidden="true"><i style={{ width: `${Math.round((Math.min(streak.thisWeek, streak.target) / streak.target) * 100)}%` }} /></span>
+      </Link>
+      <Link className="sheet-stat" to={to('/student/results')} data-testid="stat-wins" aria-label={`Wins, ${wins}. Open results`}>
+        <span className="sheet-cap">Wins</span>
+        <span className="sheet-stat__num">{wins}</span>
+      </Link>
+      {stripes !== null ? (
+        <Link className="sheet-stat sheet-stat--stripes" to={to('/student/rank')} data-testid="stat-stripes" aria-label={`${stripeNoun}, ${stripes}. Open my rank`}>
+          <span className="sheet-cap">{stripeNoun}</span>
+          <span className="sheet-stat__num">{stripes}</span>
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+/** Wins zone: how the student wins (method breakdown) plus the three most recent medals (tap = match log). */
+export function WinsZone({ report, to }: { report: StudentProgressReport; to: (path: string) => string }) {
+  const summary = winsSummary(report.competition);
+  const line = winsBreakdownLine(summary);
+  return (
+    <div className="sheet-wins" data-testid="wins-zone">
+      <p className="sheet-wins__methods" data-testid="wins-breakdown" aria-label={summary.byMethod.map((m) => `${WIN_METHOD_LONG[m.key]} ${m.count}`).join(', ') || 'No wins yet'}>
+        {line || 'No wins recorded yet'}
+      </p>
+      <CardMedals report={report} to={to} rail />
+    </div>
+  );
+}
+
 /** The whole card column on the profile page. `home` = the /student order with `streak` beside mat hours. */
-export function StudentCardLayout({ portrait, logo, to, home = false, streak }: { portrait: string | null; logo: string | null; to: (path: string) => string; home?: boolean; streak?: React.ReactNode }) {
+export function StudentCardLayout({ portrait, logo, to, home = false, bodyScan }: { portrait: string | null; logo: string | null; to: (path: string) => string; home?: boolean; bodyScan?: React.ReactNode }) {
   const { report, commit } = useStudentFile();
   const [adding, setAdding] = useState(false);
   if (home) {
     return (
-      <div className="student-card-layout student-card-layout--home" data-testid="student-card-layout">
-        <ProfileCardFace report={report} portrait={portrait} logo={logo} to={to} editHref={to('/student/profile')} />
-        <CardRadar to={to} />
-        <CardMedals report={report} to={to} rail />
-        <div className="mh-row mh-row--home" data-testid="mat-hours-row">
-          <MatHoursFrame report={report} />
-          <MatTimerButton onClick={() => setAdding(true)} />
-          {streak}
-        </div>
+      <div className="cs-sheet student-card-layout student-card-layout--home" data-testid="student-card-layout" role="group" aria-label="Character sheet">
+        <section className="sheet-zone sheet-zone--identity" data-testid="sheet-zone" data-zone="identity" aria-label="Identity">
+          <h3 className="sheet-cap">Identity</h3>
+          <ProfileCardFace report={report} portrait={portrait} logo={logo} to={to} editHref={to('/student/profile')} />
+        </section>
+        <section className="sheet-zone sheet-zone--stats" data-testid="sheet-zone" data-zone="stats" aria-label="Stats">
+          <SheetStats report={report} to={to} onAdd={() => setAdding(true)} />
+        </section>
+        <section className="sheet-zone sheet-zone--radar" data-testid="sheet-zone" data-zone="radar" aria-label="Shape">
+          <h3 className="sheet-cap">Shape</h3>
+          <CardRadar to={to} />
+        </section>
+        <section className="sheet-zone sheet-zone--wins" data-testid="sheet-zone" data-zone="wins" aria-label="Wins">
+          <h3 className="sheet-cap">Wins</h3>
+          <WinsZone report={report} to={to} />
+        </section>
+        {bodyScan ? (
+          <section className="sheet-zone sheet-zone--body" data-testid="sheet-zone" data-zone="body" aria-label="Body scan zone">
+            <h3 className="sheet-cap">Body scan</h3>
+            {bodyScan}
+          </section>
+        ) : null}
         {adding ? <MatQuickAddSheet report={report} commit={commit} onClose={() => setAdding(false)} /> : null}
       </div>
     );

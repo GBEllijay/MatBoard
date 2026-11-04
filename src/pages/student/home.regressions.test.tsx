@@ -187,18 +187,69 @@ test('home: /student keeps the live branded header, then card → radar → meda
   assert.equal(q(nav, '.s-profile, [aria-label="My profile"]'), null, 'no My profile card; the sheet is the profile');
   assert.match(q(m.host, '[data-testid="profile-edit-link"]')?.getAttribute('href') ?? '', /\/student\/profile/, 'edit link keeps the profile reachable');
   assert.equal(text.includes('MatBoard'), false, 'no internal name');
-  const order = ['.belt-header', '[data-testid="student-home"]', '[data-testid="profile-card-face"]', '[data-testid="card-radar"]', '[data-testid="card-medals"]', '[data-testid="mat-hours-row"]', '[data-testid="body-scan"]', '.s-journal'];
+  const order = ['.belt-header', '[data-testid="student-home"]', '.s-journal'];
   const els = order.map((sel) => { const el = nav.querySelector(sel); assert.ok(el, `present: ${sel}`); return el!; });
-  for (let i = 1; i < els.length; i++) {
-    if (i === 2) continue; // card face sits inside student-home
-    const prev = i === 3 ? els[2] : els[i - 1];
-    assert.ok(prev.compareDocumentPosition(els[i]) & 4, `${order[i]} after ${order[i === 3 ? 2 : i - 1]}`);
-  }
-  assert.ok(q(m.host, '[data-testid="card-medals"].card-medals--rail'), 'medals use the rail');
-  const row = q(m.host, '[data-testid="mat-hours-row"]')!;
-  assert.ok(q(row, '[data-testid="mat-hours-frame"]') && q(row, '[data-testid="mat-timer"]') && q(row, '[data-testid="streak-badge"]'), 'mat hours + stopwatch + streak together');
+  for (let i = 1; i < els.length; i++) assert.ok(els[i - 1].compareDocumentPosition(els[i]) & 4, `${order[i]} after ${order[i - 1]}`);
+  // ONE sheet frame holding every zone, in order.
+  const sheets = m.host.querySelectorAll('[data-testid="student-card-layout"]');
+  assert.equal(sheets.length, 1, 'one character sheet');
+  const zones = [...sheets[0].querySelectorAll(':scope > [data-testid="sheet-zone"]')].map((z) => z.getAttribute('data-zone'));
+  assert.deepEqual(zones, ['identity', 'stats', 'radar', 'wins', 'body']);
+  const zone = (id: string) => q(sheets[0], `[data-zone="${id}"]`)!;
+  assert.ok(q(zone('identity'), '[data-testid="profile-card-face"]'), 'card face in identity');
+  assert.ok(q(zone('identity'), '[data-testid="profile-edit-link"]'), 'edit link in identity');
+  assert.ok(q(zone('stats'), '[data-testid="stat-mat-time"] [data-testid="mat-timer"]'), 'stopwatch inside MAT TIME');
+  assert.ok(q(zone('stats'), '[data-testid="streak-badge"]') && q(zone('stats'), '[data-testid="stat-wins"]'), 'streak + wins tiles');
+  assert.ok(q(zone('radar'), '[data-testid="card-radar"]'), 'radar zone');
+  assert.ok(q(zone('wins'), '[data-testid="wins-breakdown"]') && q(zone('wins'), '[data-testid="card-medals"].card-medals--rail'), 'wins zone: breakdown + medals');
+  assert.ok(q(zone('body'), '[data-testid="body-scan"]'), 'body scan at the bottom of the sheet');
+  for (const cap of ['Identity', 'Mat time', 'Training streak', 'Wins', 'Shape', 'Body scan']) assert.ok([...sheets[0].querySelectorAll('.sheet-cap')].some((c) => c.textContent === cap), `caption ${cap}`);
   assert.equal(q(m.host, '[data-testid="student-home-top"]'), null, 'no streak bar at the very top');
-  assert.ok(q(m.host, '[data-testid="body-scan"], [data-testid^="body-scan"]'), 'body scan below');
+  unmount(m);
+});
+
+function seedWins() {
+  const report = seedNamed([{ date: daysAgo(1) }]);
+  const m = (id: string, result: 'win' | 'loss', method: string) => ({ id, opponent: `Opp ${id}`, result, method, note: '', date: '2026-10-01' });
+  report.competition = {
+    ...report.competition!,
+    results: [
+      { id: 'r1', tournamentId: '', tournamentName: 'Sample Open', division: 'Teen', bracket: [], bracketPhoto: false, matches: [m('a', 'win', 'sub'), m('b', 'win', 'sub'), m('c', 'win', 'points')] },
+      { id: 'r2', tournamentId: '', tournamentName: 'Example Cup', division: 'Teen', bracket: [], bracketPhoto: false, matches: [m('d', 'win', 'sub'), m('e', 'win', 'advantage'), m('f', 'loss', 'points')] },
+      { id: 'r3', tournamentId: '', tournamentName: 'Demo Classic', division: 'Teen', bracket: [], bracketPhoto: false, matches: [m('g', 'win', 'points'), m('h', 'loss', 'sub')] },
+    ],
+  } as typeof report.competition;
+  saveStudentReport(localStorage, report);
+  return report;
+}
+
+test('sheet: wins breakdown comes from match results; WINS tile counts every win', () => {
+  seedWins();
+  const m = mount(<StudentEditionPage />, '/student?student=1');
+  assert.equal(q(m.host, '[data-testid="wins-breakdown"]')?.textContent, 'Sub 3 · Pts 2 · Adv 1');
+  assert.match(q(m.host, '[data-testid="stat-wins"]')?.textContent ?? '', /Wins6/);
+  assert.ok(m.host.querySelectorAll('[data-zone="wins"] [data-testid="card-medal"]').length >= 1, 'recent medals in the wins zone');
+  act(() => (q(m.host, '[data-zone="wins"] [data-testid="card-medal"]') as HTMLElement).dispatchEvent(new window.MouseEvent('click', { bubbles: true })));
+  assert.ok(q(m.host, '[data-testid="match-log"]'), 'medal opens the match log');
+  unmount(m);
+});
+
+test('sheet: each stat tile opens its page; the stopwatch opens quick add', () => {
+  const pages: Array<[string, RegExp]> = [['[data-testid="mat-hours-frame"]', /^\/student\/report/], ['[data-testid="streak-badge"]', /^\/student\/calendar/], ['[data-testid="stat-wins"]', /^\/student\/results/]];
+  for (const [sel, path] of pages) {
+    seedWins();
+    const m = mount(<StudentEditionPage />, '/student?student=1');
+    const tile = q(m.host, sel)!;
+    assert.equal(tile.tagName, 'A', `${sel} is a link`);
+    act(() => tile.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })));
+    assert.match(here, path, `${sel} → ${path}`);
+    unmount(m);
+  }
+  seedWins();
+  const m = mount(<StudentEditionPage />, '/student?student=1');
+  act(() => (q(m.host, '[data-testid="mat-timer"]') as HTMLElement).dispatchEvent(new window.MouseEvent('click', { bubbles: true })));
+  assert.ok(m.host.querySelector('[role="dialog"], form, .mat-quick'), 'quick add opens');
+  assert.match(here, /^\/student(\?|$)/, 'stopwatch stays on the home');
   unmount(m);
 });
 
@@ -237,8 +288,10 @@ test('home: streak is always on (no toggle) and follows the weekly goal', () => 
   const m = mount(<StudentEditionPage />, '/student?student=1');
   const badge = q(m.host, '[data-testid="streak-badge"]')!;
   assert.ok(badge);
-  assert.match(badge.textContent ?? '', /3/);
-  assert.equal(m.host.querySelector('[data-testid="streak-badge"] input, [data-testid="mat-hours-row"] [role="switch"]') === null, true, 'no hide toggle');
+  assert.equal(badge.getAttribute('data-target'), '3');
+  assert.match(badge.textContent ?? '', /^Training streak\d+ weeks?$/);
+  assert.match(badge.getAttribute("aria-label") ?? "", /^Training streak: \d+ weeks?\. This week: 1 of 3 sessions/);
+  assert.equal(m.host.querySelector('[data-testid="streak-badge"] input, [data-testid="sheet-stats"] [role="switch"]') === null, true, 'no hide toggle');
   unmount(m);
 });
 

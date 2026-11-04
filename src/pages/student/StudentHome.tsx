@@ -1,8 +1,8 @@
 /**
  * Student Edition home: the branded hub header (tiled navy, Parent approvals, clock logo,
- * Advantage title, Student Edition belt bar, photo + description), then the character sheet
- * (card face with belt → radar → medals rail → mat hours frame + stopwatch + streak), the private
- * body scan, then the usual hub tiles. No profile yet → profile setup first.
+ * Advantage title, Student Edition belt bar), then ONE character sheet frame with zones:
+ * identity → stat strip (mat time + stopwatch, streak, wins, stripes) → radar | wins → body scan,
+ * then the usual hub tiles. No profile yet → profile setup first.
  */
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { studentDemoRequested } from '../../lib/studentDemo';
@@ -49,8 +49,13 @@ export function StudentHome() {
     <StudentHub
       sheet={
         <section className="student-home" aria-label="My character sheet" data-testid="student-home">
-          <StudentCardLayout home portrait={media.portrait} logo={media.logo} to={to} streak={<StreakBadge journal={report.journal} />} />
-          <BodyScanSection key={zone} report={report} commit={commit} to={to} focusZone={zone} forceOpen={params.get('scan') === '1'} />
+          <StudentCardLayout
+            home
+            portrait={media.portrait}
+            logo={media.logo}
+            to={to}
+            bodyScan={<BodyScanSection key={zone} report={report} commit={commit} to={to} focusZone={zone} forceOpen={params.get('scan') === '1'} />}
+          />
         </section>
       }
     />
