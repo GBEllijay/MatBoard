@@ -15,6 +15,9 @@ import { clearEntitlementToken, setEntitlementConfigForTests } from '../lib/enti
 import { DRIVE_BINDING_KEY } from '../lib/googleDrive.ts';
 import { acceptInstructorInvite, instructorInviteLink, issueInstructorInvite } from '../lib/instructorSeats.ts';
 import { INSTRUCTOR_SHARE_HEADER, SHARE_NO_FOLDER, SHARE_NO_INVITE, SHARE_OWNER_ONLY, STUDENT_SHARE_HEADER } from '../lib/licenseShare.ts';
+import { GYM_LOGO_STORAGE_KEY } from '../lib/gymLogo.ts';
+import { resolveShareLogo } from '../lib/licenseShare.ts';
+import { clearGymLogo, getGymLogo, writeGymLogo } from '../lib/gymLogo.ts';
 import { applyOwnerTestGrant, clearOwnerTestGrant } from '../lib/ownerTestGrant.ts';
 
 const dom = new Window({ url: 'http://localhost/coach-unlimited' });
@@ -155,6 +158,9 @@ test('Instructor page wears its header and shares the issued seat invite link', 
   await settle();
   assert.deepEqual(clipboard, [instructorInviteLink('tok-coach', ORIGIN)]);
   assert.equal(button.textContent, 'Copied');
+  // One confirmation: check icon on the button, no duplicate helper line.
+  assert.ok(button.querySelector('svg.license-share__check'));
+  assert.ok(!(m.host.textContent ?? '').includes('Link copied.'));
   m.done();
 });
 
@@ -180,5 +186,82 @@ test('Student page wears its header and shares the academy pathway link', async 
   await settle();
   assert.equal(clipboard.at(-1), input?.value);
   assert.equal(button.textContent, 'Copied');
+  // Caption: small 'Student Edition academy link' with the folder / gym name on its own bold line.
+  assert.equal(m.host.querySelector('.license-share__cap')?.textContent, 'Student Edition academy link');
+  assert.equal(m.host.querySelector('.license-share__cap-title')?.textContent, 'Gym Academy');
   m.done();
+});
+
+test('share pages use one logo (in the card), no wordmark, and keep Back / Home links', async () => {
+  reset();
+  grant(['pro']);
+  issueInstructorInvite({ email: 'coach@gym.test', presetId: 'coach', origin: ORIGIN, token: 'tok-one-logo' });
+  localStorage.setItem(DRIVE_BINDING_KEY, JSON.stringify({ folderId: 'driveFolder123', folderName: 'Gym Academy' }));
+  for (const node of [<InstructorSharePage />, <StudentSharePage />]) {
+    const m = await mount(node);
+    assert.equal(m.host.querySelectorAll('img.license-share__logo').length, 1);
+    assert.ok(m.host.querySelector('.license-share__frame img.license-share__logo'));
+    assert.equal(m.host.querySelector('.home__mark'), null);
+    assert.equal(m.host.querySelector('h1'), null);
+    const hrefs = [...m.host.querySelectorAll('.license-share__bar a')].map((a) => a.getAttribute('href'));
+    assert.deepEqual(hrefs, ['/coach-unlimited', '/products']);
+    m.done();
+  }
+});
+
+test('link field uses the page origin (window.location.origin)', async () => {
+  reset();
+  grant(['pro']);
+  issueInstructorInvite({ email: 'coach@gym.test', presetId: 'coach', origin: ORIGIN, token: 'tok-origin' });
+  const m = await mount(<InstructorSharePage />);
+  const input = m.host.querySelector('input[aria-label="Coach invite link"]') as HTMLInputElement | null;
+  assert.ok(input?.value.startsWith(`${window.location.origin}/`));
+  m.done();
+});
+
+const GYM_PNG = 'data:image/png;base64,iVBORw0KGgo=';
+
+function cardLogo(host: HTMLElement): HTMLImageElement {
+  return host.querySelector('.license-share__frame img.license-share__logo') as HTMLImageElement;
+}
+
+test('share card logo falls back to Advantage when no master gym logo is saved', async () => {
+  reset();
+  grant(['pro']);
+  issueInstructorInvite({ email: 'coach@gym.test', presetId: 'coach', origin: ORIGIN, token: 'tok-logo-a' });
+  const m = await mount(<InstructorSharePage />);
+  assert.equal(cardLogo(m.host).getAttribute('src'), '/advantage-icon.png');
+  assert.deepEqual(getGymLogo(), { src: '/advantage-icon.png', kind: 'advantage', dataUrl: null });
+  // No upload on the share page: the master slot lives on the Gallery.
+  assert.equal(m.host.querySelector('input[type="file"]'), null);
+  m.done();
+});
+
+test('master gym logo swaps into the one slot on both pages live, and reset returns Advantage', async () => {
+  reset();
+  grant(['pro']);
+  issueInstructorInvite({ email: 'coach@gym.test', presetId: 'coach', origin: ORIGIN, token: 'tok-logo-b' });
+  localStorage.setItem(DRIVE_BINDING_KEY, JSON.stringify({ folderId: 'driveFolder123', folderName: 'Gym Academy' }));
+  localStorage.setItem(GYM_LOGO_STORAGE_KEY, JSON.stringify({ version: 1, dataUrl: GYM_PNG }));
+  assert.deepEqual(getGymLogo(), { src: GYM_PNG, kind: 'gym', dataUrl: GYM_PNG });
+  for (const node of [<InstructorSharePage />, <StudentSharePage />]) {
+    const m = await mount(node);
+    assert.equal(cardLogo(m.host).getAttribute('src'), GYM_PNG);
+    assert.equal(m.host.querySelectorAll('img.license-share__logo').length, 1);
+    assert.equal(m.host.querySelectorAll('img[src="/advantage-icon.png"]').length, 0);
+    m.done();
+  }
+  const m = await mount(<InstructorSharePage />);
+  await act(async () => clearGymLogo());
+  assert.equal(cardLogo(m.host).getAttribute('src'), '/advantage-icon.png');
+  const next = 'data:image/png;base64,AAAA';
+  await act(async () => writeGymLogo(next));
+  assert.equal(cardLogo(m.host).getAttribute('src'), next);
+  m.done();
+});
+
+test('share logo helper: raster gym logo or Advantage, SVG refused', () => {
+  assert.equal(resolveShareLogo(null), '/advantage-icon.png');
+  assert.equal(resolveShareLogo('data:image/svg+xml;base64,AAAA'), '/advantage-icon.png');
+  assert.equal(resolveShareLogo(GYM_PNG), GYM_PNG);
 });

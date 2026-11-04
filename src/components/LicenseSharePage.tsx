@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { BeltHeader } from './BeltHeader';
-import { HomeMark } from './HomeMark';
-import { PlayExitMark } from './PlayExitMark';
 import { SiteFooter } from './SiteFooter';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { providerLabel } from '../lib/academyPathway';
 import { isCoachUnlimitedUnlocked, subscribeCoachUnlock } from '../lib/coachUnlock';
 import { readDriveBinding, subscribeDriveBinding } from '../lib/googleDrive';
 import { readGymName } from '../lib/gymName';
+import { useGymLogo } from '../hooks/useGymBrand';
 import { listInstructorSeats, subscribeInstructorSeats, type InstructorSeat } from '../lib/instructorSeats';
 import {
   INSTRUCTOR_SHARE_HEADER,
@@ -20,6 +19,7 @@ import {
   SHARE_OWNER_ONLY,
   STUDENT_SHARE_HEADER,
   copyShareLink,
+  resolveShareLogo,
   instructorSeatTicker,
   instructorShareLink,
   licenseShareKinds,
@@ -63,17 +63,28 @@ export function ShareLinkCopy({ link, label }: { link: string; label: string }) 
         <input ref={field} readOnly value={link} aria-label={label} onFocus={(event) => event.currentTarget.select()} />
       </label>
       <button type="button" className="btn license-share__copy" onClick={() => void copy()} data-copy-state={state}>
-        {state === 'copied' ? SHARE_COPIED_LABEL : SHARE_COPY_LABEL}
+        {state === 'copied' ? (
+          <>
+            <svg className="license-share__check" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+              <path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {SHARE_COPIED_LABEL}
+          </>
+        ) : (
+          SHARE_COPY_LABEL
+        )}
       </button>
-      <p className="license-share__status" role="status" aria-live="polite">
-        {state === 'copied' ? 'Link copied. Paste it into a text or message.' : ''}
-      </p>
+      <span className="license-share__sr" role="status" aria-live="polite">
+        {state === 'copied' ? SHARE_COPIED_LABEL : ''}
+      </span>
       {state === 'failed' ? <p role="alert">{SHARE_COPY_FAILED}</p> : null}
     </div>
   );
 }
 
-function FramedQr({ link, kind, caption }: { link: string; kind: ShareKind; caption: string }) {
+function FramedQr({ link, kind, caption, title }: { link: string; kind: ShareKind; caption: string; title?: string }) {
+  // Master gym logo from the Gallery (Media Console) slot; Advantage logo when none.
+  const logo = resolveShareLogo(useGymLogo());
   const [src, setSrc] = useState('');
   useEffect(() => {
     let alive = true;
@@ -86,20 +97,32 @@ function FramedQr({ link, kind, caption }: { link: string; kind: ShareKind; capt
     };
   }, [link]);
   return (
+    <>
     <figure className={`license-share__frame license-share__frame--${kind}`}>
       <span className="license-share__corner license-share__corner--tl" aria-hidden="true" />
       <span className="license-share__corner license-share__corner--tr" aria-hidden="true" />
       <span className="license-share__corner license-share__corner--bl" aria-hidden="true" />
       <span className="license-share__corner license-share__corner--br" aria-hidden="true" />
-      <img className="license-share__logo" src="/advantage-icon.png" alt="" width={56} height={56} />
+      <img
+        className="license-share__logo"
+        src={logo}
+        alt=""
+        width={56}
+        height={56}
+        data-logo={logo.startsWith('data:') ? 'gym' : 'advantage'}
+      />
       <div className="license-share__qr">
-        {src ? <img src={src} alt={caption} width={240} height={240} /> : <span className="license-share__qr-wait">Drawing QR…</span>}
+        {src ? <img src={src} alt={title ? `${caption} · ${title}` : caption} width={240} height={240} /> : <span className="license-share__qr-wait">Drawing QR…</span>}
       </div>
-      <figcaption>{caption}</figcaption>
+      <figcaption>
+        <span className="license-share__cap">{caption}</span>
+        {title ? <strong className="license-share__cap-title">{title}</strong> : null}
+      </figcaption>
       <span className="license-share__belt" aria-hidden="true">
         <span className="license-share__belt-tip" />
       </span>
     </figure>
+    </>
   );
 }
 
@@ -110,8 +133,14 @@ function ShareShell({ kind, children }: { kind: ShareKind; children: ReactNode }
   return (
     <main className={`home home--pro home--suite license-share license-share--${kind}`}>
       <div className="home__inner">
-        <PlayExitMark to={COACH_UNLIMITED_PATH} />
-        <HomeMark to={PRODUCTS_PATH} />
+        <nav className="license-share__bar" aria-label="Share page">
+          <Link className="license-share__bar-link" to={COACH_UNLIMITED_PATH}>
+            ← Back
+          </Link>
+          <Link className="license-share__bar-link" to={PRODUCTS_PATH}>
+            Home
+          </Link>
+        </nav>
         <section className="suite license-share__page" aria-label={header}>
           <BeltHeader kind={kind === 'instructor' ? 'black' : 'blue'} worn={kind === 'instructor'} title={header} />
           {kinds.includes(kind) ? (
@@ -218,7 +247,8 @@ function StudentShareBody() {
           <FramedQr
             kind="student"
             link={row.url}
-            caption={`Student Edition academy link · ${row.pathway.folderName}${row.pathway.gymName ? ` · ${row.pathway.gymName}` : ''}`}
+            caption="Student Edition academy link"
+            title={row.pathway.gymName || row.pathway.folderName}
           />
           <ShareLinkCopy label="Student Edition link" link={row.url} />
         </>

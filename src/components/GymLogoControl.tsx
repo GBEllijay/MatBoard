@@ -64,7 +64,7 @@ export function GymLogoControl() {
               Replace
             </button>
             <button type="button" className="btn btn--ghost" onClick={clear}>
-              Clear
+              Reset to Advantage logo
             </button>
           </div>
         </div>

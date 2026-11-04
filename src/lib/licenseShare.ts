@@ -8,6 +8,7 @@
  * Nothing here mints, signs, or logs a code. Nothing here sends email.
  */
 
+import { ADVANTAGE_MARK_SRC } from './gymLogo.ts';
 import { academyPathway, academyPathwayUrl, type AcademyPathway, type AcademyProvider } from './academyPathway.ts';
 import {
   countOpenInstructorSeats,
@@ -156,4 +157,15 @@ export async function copyShareLink(
       }
     });
   return exec();
+}
+
+/**
+ * One logo slot on the share card: the master gym logo (Gallery "Custom gym
+ * logo" slot, see getGymLogo) when it is a raster data URL, otherwise the
+ * Advantage logo. SVG data URLs are never shown.
+ */
+export function resolveShareLogo(gymLogo: string | null | undefined): string {
+  const gym = gymLogo?.trim() ?? '';
+  if (gym.startsWith('data:image/') && !gym.startsWith('data:image/svg')) return gym;
+  return ADVANTAGE_MARK_SRC;
 }
