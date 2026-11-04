@@ -2,6 +2,9 @@ const STORAGE_KEY = 'matboard.audio.v1';
 
 export type EndCue = 'buzzer' | 'bell' | 'parou';
 
+/** Round-timer start. Beep is the synthesized gym "go". Combate is the owner's recording. */
+export type StartCue = 'beep' | 'combate';
+
 /** Synthesized end sounds (Parou is the recorded voice take). */
 export type BuzzerSound = Exclude<EndCue, 'parou'>;
 
@@ -11,6 +14,8 @@ export type AudioPrefs = {
   vibrate: boolean;
   /** End-of-round / end-of-match cue. One per device; Timer and Scoreboard share it. */
   endCue: EndCue;
+  /** Round-timer start. Missing saves become Combate. */
+  startCue: StartCue;
   /** Drive the limiter harder for loud rooms (denser, slightly grittier). */
   extraLoud: boolean;
 };
@@ -50,6 +55,7 @@ const DEFAULT_PREFS: AudioPrefs = {
   volume: 1,
   vibrate: true,
   endCue: 'buzzer',
+  startCue: 'combate',
   extraLoud: false,
 };
 
@@ -73,6 +79,7 @@ function loadPrefs(): AudioPrefs {
       volume,
       vibrate: parsed.vibrate !== false,
       endCue: migrateEndCue(parsed.endCue, parsed.buzzerSound),
+      startCue: parseStartCue(parsed.startCue),
       extraLoud: parsed.extraLoud === true,
     };
   } catch {
@@ -103,6 +110,11 @@ export function parseEndCue(value: unknown, fallback: EndCue = DEFAULT_PREFS.end
   return value === 'parou' || value === 'buzzer' || value === 'bell' ? value : fallback;
 }
 
+/** A saved Beep stays Beep. Anything else, including a missing field, is Combate. */
+export function parseStartCue(value: unknown): StartCue {
+  return value === 'beep' ? 'beep' : 'combate';
+}
+
 /**
  * Draft builds of the louder-buzzer change saved a separate `buzzerSound`
  * (classic / arena / airhorn / bell / triple). Only the bell survived, so a
@@ -121,6 +133,7 @@ export function patchAudioPrefs(partial: Partial<AudioPrefs>): void {
     ...partial,
     volume: clampVolume(partial.volume ?? prefs.volume),
     endCue: parseEndCue(partial.endCue ?? prefs.endCue),
+    startCue: parseStartCue(partial.startCue ?? prefs.startCue),
     extraLoud: partial.extraLoud ?? prefs.extraLoud,
   };
   persist();
@@ -476,6 +489,12 @@ export function startCueVoices(): Voice[] {
 
 export function playStartCue(): void {
   playCue(startCueVoices(), [18, 30, 18]);
+}
+
+/** Round timer start. Combate uses the same mute, volume, and extra-loud bus as Parou. */
+export function playTrainingStart(): void {
+  if (prefs.startCue === 'beep') playStartCue();
+  else playBeginCue();
 }
 
 /**

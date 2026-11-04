@@ -282,7 +282,7 @@ for (const [vpName, viewport] of VIEWPORTS) {
       });
       await page.goto('/training/control');
       // Pick it from the Skins popup.
-      await page.getByRole('button', { name: /^Timer skins/ }).click();
+      await page.getByRole('button', { name: /^Skins, / }).click();
       await page.getByRole('dialog', { name: 'Timer skins' }).getByRole('radio', { name: label, exact: true }).click();
       expect(await page.evaluate(() => localStorage.getItem('matboard.trainingSkin.v1'))).toBe(skin);
       await page.keyboard.press('Escape');
@@ -357,7 +357,7 @@ for (const [vpName, viewport] of VIEWPORTS) {
 
       // The Skins popup on the display still opens (the chrome is hidden in phone landscape).
       if (viewport === PORTRAIT) {
-        await tap(page, page.getByRole('button', { name: /^Scoreboard skins/ }), 'Skins button');
+        await tap(page, page.getByRole('button', { name: /^Skins, / }), 'Skins button');
         await expect(page.getByRole('dialog', { name: 'Scoreboard skins' })).toBeVisible();
         await page.keyboard.press('Escape');
         await expect(page.getByRole('dialog', { name: 'Scoreboard skins' })).toHaveCount(0);
@@ -374,7 +374,7 @@ for (const [vpName, viewport] of VIEWPORTS) {
         'matboard.match.v1': JSON.stringify(matchState(skin === 'MOCK_TOURNAMENT' ? 'KEYNOTE' : 'MOCK_TOURNAMENT')),
       });
       await page.goto(`/match/control${q}`);
-      await page.getByRole('button', { name: /^Scoreboard skins/ }).first().click();
+      await page.getByRole('button', { name: /^Skins, / }).first().click();
       await page.getByRole('dialog', { name: 'Scoreboard skins' }).getByRole('radio', { name: label, exact: true }).click();
       await page.keyboard.press('Escape');
       const match = () => saved<Match>(page, 'matboard.match.v1');

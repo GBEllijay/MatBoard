@@ -508,3 +508,80 @@ test('a video larger than one part is uploaded in chunks and a revoked seat cann
   assert.equal(hidden.status, 200);
   assert.equal(((await hidden.json()) as { cloud: boolean }).cloud, false);
 });
+
+test('custom skins sync under the license cap and the existing byte cap', async () => {
+  const secret = await signingSecret();
+  const bucket = new MemoryBucket();
+  const env: GymCloudEnv = {
+    GYM_MEDIA: bucket,
+    ENTITLEMENT_SIGNING_KEY: secret,
+    ENTITLEMENT_KEY_ID: 'k1',
+  };
+  const owner = await token(secret, {
+    licenseId: 'lic-owner',
+    grants: ['white', 'student', 'coach', 'pro'],
+    tier: 'pro',
+    src: 'code',
+    deviceId: 'device-owner',
+    now,
+    kind: 'code',
+  });
+  const jpeg = new Uint8Array([1, 2, 3, 4]);
+  async function putSkin(id: string, bytes: Uint8Array = jpeg) {
+    const key = `groups/lic-owner/skins/${id}`;
+    const image = await call(
+      env,
+      `/api/gym/cloud?op=put&key=${encodeURIComponent(key)}`,
+      { method: 'PUT', headers: { 'content-type': 'image/jpeg' }, body: bytes },
+      owner,
+    );
+    const meta = await call(
+      env,
+      `/api/gym/cloud?op=put&key=${encodeURIComponent(`${key}.json`)}`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, name: `Mat ${id}`, updatedAt: 5 }),
+      },
+      owner,
+    );
+    return { image, meta };
+  }
+  for (let i = 0; i < 10; i += 1) {
+    const saved = await putSkin(`skin${String(i).padStart(8, '0')}`);
+    assert.equal(saved.image.status, 200, String(i));
+    assert.equal(saved.meta.status, 200, String(i));
+  }
+  const blocked = await putSkin('skin00000010');
+  assert.equal(blocked.image.status, 409);
+  assert.match(await blocked.image.text(), /Delete one first/);
+  const listed = await call(env, '/api/gym/cloud?op=skins', {}, owner);
+  const skins = ((await listed.json()) as { skins: { id: string; name: string }[] }).skins;
+  assert.equal(skins.length, 10);
+  assert.equal(skins.find((skin) => skin.id === 'skin00000000')?.name, 'Mat skin00000000');
+  const file = await call(env, '/api/gym/cloud?op=file&path=skins%2Fskin00000000', {}, owner);
+  assert.equal(file.status, 200);
+  assert.deepEqual([...new Uint8Array(await file.arrayBuffer())], [1, 2, 3, 4]);
+  const removed = await call(env, '/api/gym/cloud', { method: 'POST', body: JSON.stringify({ action: 'delete-skin', id: 'skin00000000' }) }, owner);
+  assert.equal(removed.status, 200);
+  assert.equal(bucket.objects.has('groups/lic-owner/skins/skin00000000'), false);
+  const again = await putSkin('skin00000011');
+  assert.equal(again.image.status, 200);
+  const gif = await call(
+    env,
+    `/api/gym/cloud?op=put&key=${encodeURIComponent('groups/lic-owner/skins/skin00000012')}`,
+    { method: 'PUT', headers: { 'content-type': 'image/gif' }, body: jpeg },
+    owner,
+  );
+  assert.equal(gif.status, 400);
+  const tightBucket = new MemoryBucket();
+  const tight: GymCloudEnv = { ...env, GYM_MEDIA: tightBucket, GYM_MEDIA_CAP_BYTES: '20' };
+  const overCap = await call(
+    tight,
+    `/api/gym/cloud?op=put&key=${encodeURIComponent('groups/lic-owner/skins/skin00000013')}`,
+    { method: 'PUT', headers: { 'content-type': 'image/jpeg' }, body: new Uint8Array(30) },
+    owner,
+  );
+  assert.equal(overCap.status, 409);
+  assert.match(await overCap.text(), /full/);
+});

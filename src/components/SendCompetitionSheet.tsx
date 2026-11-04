@@ -17,6 +17,8 @@ export type CompetitionSendDraft = {
   result: MatchResult;
   method: MatchMethod;
   note: string;
+  /** Scoreboard round. Empty when this send did not come from a bout. */
+  round?: string;
 };
 
 function downloadText(name: string, text: string): void {
@@ -69,7 +71,13 @@ export function SendCompetitionSheet({
         division: draft.division,
         weightClass: draft.weightClass,
         matches: [
-          { opponent: draft.opponent, result: draft.result, method: draft.method, note: draft.note },
+          {
+            opponent: draft.opponent,
+            result: draft.result,
+            method: draft.method,
+            note: draft.note,
+            round: draft.round,
+          },
         ],
         gym: gymBrand(),
       });
@@ -107,6 +115,7 @@ export function SendCompetitionSheet({
         Location
         <input aria-label="Tournament location" value={draft.location} onChange={(event) => patch({ location: event.target.value })} />
       </label>
+      {draft.round ? <p>Round: {draft.round}</p> : null}
       <label>
         Division
         <input aria-label="Competition division" value={draft.division} onChange={(event) => patch({ division: event.target.value })} />

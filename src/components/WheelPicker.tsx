@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import type { WheelOption } from '../lib/timeWheel';
+import { detentIndex, wheelGestureSpeed, type WheelOption, type WheelSample } from '../lib/timeWheel';
 import { Sheet } from './Sheet';
 
 const ITEM_PX = 48;
@@ -24,6 +24,9 @@ export function WheelPicker({
   const [wheelNode, setWheelNode] = useState<HTMLDivElement | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const valueRef = useRef(value);
+  const samples = useRef<WheelSample[]>([]);
+  /** Keyboard and a tapped row land on that second. A scroll may catch a tens mark. */
+  const precise = useRef(false);
   const listId = useId();
   valueRef.current = value;
   const selected = options.find((option) => option.value === value) ?? options[0];
@@ -36,6 +39,7 @@ export function WheelPicker({
 
   useEffect(() => {
     if (!wheelNode) return;
+    precise.current = true;
     const index = Math.max(0, options.findIndex((option) => option.value === valueRef.current));
     wheelNode.scrollTop = index * ITEM_PX;
   }, [wheelNode, options]);
@@ -44,11 +48,18 @@ export function WheelPicker({
     if (!wheelNode) return;
     let timer = 0;
     const commit = () => {
-      const index = Math.min(options.length - 1, Math.max(0, Math.round(wheelNode.scrollTop / ITEM_PX)));
+      const centered = Math.min(options.length - 1, Math.max(0, Math.round(wheelNode.scrollTop / ITEM_PX)));
+      const index = precise.current ? centered : detentIndex(centered, options, wheelGestureSpeed(samples.current));
+      precise.current = false;
+      samples.current = [];
+      if (index !== centered) wheelNode.scrollTop = index * ITEM_PX;
       const next = options[index];
       if (next && next.value !== valueRef.current) onChange(next.value);
     };
     const onScroll = () => {
+      samples.current.push({ t: performance.now(), top: wheelNode.scrollTop });
+      const cutoff = performance.now() - 320;
+      while (samples.current.length > 2 && samples.current[0].t < cutoff) samples.current.shift();
       window.clearTimeout(timer);
       timer = window.setTimeout(commit, 80);
     };
@@ -122,6 +133,7 @@ export function WheelPicker({
                 const step = event.key === 'ArrowDown' ? 1 : -1;
                 const next = options[Math.min(options.length - 1, Math.max(0, index + step))];
                 if (!next) return;
+                precise.current = true;
                 onChange(next.value);
                 scrollTo(next.value, 'auto');
               }
@@ -158,13 +170,15 @@ export function WheelPicker({
                 type="button"
                 role="option"
                 aria-selected={option.value === value}
-                className={`wheel-item${option.value === value ? ' wheel-item--on' : ''}${option.snap ? ' wheel-item--snap' : ''}`}
+                className={`wheel-item${option.value === value ? ' wheel-item--on' : ''}${option.detent ? ' wheel-item--mark' : ''}${option.snap ? ' wheel-item--snap' : ''}`}
                 onClick={() => {
+                  precise.current = true;
                   onChange(option.value);
-                  scrollTo(option.value, 'smooth');
+                  scrollTo(option.value, 'auto');
                 }}
               >
-                {option.label}
+                <span className="wheel-tick" aria-hidden="true" />
+                <span className="wheel-item__label">{option.label}</span>
               </button>
             ))}
           </div>

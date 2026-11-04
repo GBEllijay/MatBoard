@@ -824,6 +824,8 @@ export type CoachCompetitionMatch = {
   result: MatchResult;
   method: MatchMethod;
   note: string;
+  /** Scoreboard round. Omitted when that bout had no round. Older packets omit it. */
+  round?: string;
 };
 
 export type CoachCompetitionUpdate = {

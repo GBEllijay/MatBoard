@@ -9,7 +9,7 @@ import {
   isPlainWhiteScoreboard,
   visibleScoreboardSkin,
   withMatchOrigin,
-  type ScoreboardSkinId,
+  type StoredScoreboardSkin,
 } from '../lib/scoreboardSkin';
 import { useCoachUnlocked } from './useCoachUnlocked';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from './usePolishedSkins';
@@ -48,7 +48,7 @@ export function useMatchBoard() {
       kidsSkin,
     );
 
-  const skinFor = (skin: ScoreboardSkinId) =>
+  const skinFor = (skin: StoredScoreboardSkin) =>
     visibleScoreboardSkin(skin, suite.fromSuite, Boolean(linkedId), whiteBoard, polishedOpen, whiteBaseSkins);
 
   return { suite, linkedId, plainWhite, showGrandmaster, whiteBoard, kidsSkin, polishedOpen, whiteBaseSkins, originPath, skinFor };

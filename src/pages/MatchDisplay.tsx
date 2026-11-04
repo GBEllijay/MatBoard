@@ -13,6 +13,7 @@ import { ScoreBox } from '../components/ScoreBox';
 import { ScoreboardSkinPicker } from '../components/ScoreboardSkinPicker';
 import { useBoutQuerySync, useBracketOutcomeReturn } from '../hooks/useBracketBoutReturn';
 import { useInterval } from '../hooks/useClock';
+import { useCustomSkinUrl } from '../hooks/useCustomSkinUrl';
 import { useMatchBoard } from '../hooks/useMatchBoard';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
@@ -29,6 +30,7 @@ import { dqDisappointedShouldPlay } from '../lib/dqDisappointed';
 import { grandmasterCheerKey, grandmasterMatchComplete, matchGrandmasterView } from '../lib/grandmasterCelebration';
 import { resolveGrandmasterId } from '../lib/grandmasters';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
+import { customSkinRecordId, isCustomSkinId } from '../lib/customSkin';
 import { polishedSkinById } from '../lib/polishedSkins';
 import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
 
@@ -88,8 +90,11 @@ export function MatchDisplayPage() {
   const skin = board.skinFor(match.skin);
   const flap = skin === SCOREBOARD_SKIN.OLD_SCHOOL;
   const boardCalls = skin === SCOREBOARD_SKIN.QUICK_RESULT;
+  /** A custom skin is the Mock-Tournament board with the uploaded picture behind it. */
+  const customRecordId = isCustomSkinId(skin) ? customSkinRecordId(skin) : null;
+  const customUrl = useCustomSkinUrl(customRecordId);
   /** Media Edition and above. skinFor already fell back to the default when locked here. */
-  const polished = board.kidsSkin ? null : polishedSkinById(skin);
+  const polished = customRecordId || board.kidsSkin ? null : polishedSkinById(skin);
   const grandmaster = board.showGrandmaster
     ? matchGrandmasterView({
         prefs: match.grandmaster,
@@ -148,7 +153,7 @@ export function MatchDisplayPage() {
 
   return (
     <main
-      className={`display ${scoreboardSkinClass(skin)}${polished ? ' display--polished' : ''}${board.kidsSkin ? ` ${kidsBoardClass(board.kidsSkin)}` : ''}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
+      className={`display ${scoreboardSkinClass(skin)}${customUrl ? ' display--custom-skin' : ''}${polished ? ' display--polished' : ''}${board.kidsSkin ? ` ${kidsBoardClass(board.kidsSkin)}` : ''}${linkedId ? ' display--linked' : ''}${splash ? ' display--splash' : ''}${
         suite.fromSuite ? ' origin-suite' : ''
       }${fs.className ? ` ${fs.className}` : ''}`}
       onPointerDown={() => {
@@ -156,6 +161,12 @@ export function MatchDisplayPage() {
       }}
       onClick={onBoardClick}
     >
+      {customUrl ? (
+        <>
+          <div className="display__skin-bg" data-custom-skin-bg="" aria-hidden="true" style={{ backgroundImage: `url("${customUrl}")` }} />
+          <div className="display__skin-scrim" data-custom-skin-scrim="" aria-hidden="true" />
+        </>
+      ) : null}
       <div className="display__chrome">
         <div className="display__chrome-start">
           {linkedId ? null : (
@@ -213,9 +224,7 @@ export function MatchDisplayPage() {
             )
           }
           division={
-            <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={openController}>
-              {match.division || 'Open'}
-            </ControllerFocusLink>
+            <ClassLine division={match.division} weight={match.weight} onOpen={openController} />
           }
           state={
             posterBoardState(polished.slug, match.outcome?.call === 'win' || match.outcome?.call === 'dq') ?? 'Match'
@@ -307,9 +316,7 @@ export function MatchDisplayPage() {
                   {roundLine}
                 </ControllerFocusLink>
               ) : null}
-              <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={openController}>
-                {match.division || 'Open'}
-              </ControllerFocusLink>
+              <ClassLine division={match.division} weight={match.weight} onOpen={openController} />
             </div>
             {flap ? null : clockControl}
             {statusControl}
@@ -447,6 +454,30 @@ function CompetitorBand({
         <ScoreBox side={side} kind="disadvantages" value={disadvantages} flap={flap} />
       </div>
     </section>
+  );
+}
+
+function ClassLine({
+  division,
+  weight,
+  onOpen,
+}: {
+  division: string;
+  weight: string;
+  onOpen: (focus: DisplayFocus) => void;
+}) {
+  const weightText = weight.trim();
+  return (
+    <span className="display__class">
+      <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={onOpen}>
+        {division.trim() || 'Open'}
+      </ControllerFocusLink>
+      {weightText ? (
+        <ControllerFocusLink focus="weight" label="Edit weight on Controller" onOpen={onOpen}>
+          {weightText}
+        </ControllerFocusLink>
+      ) : null}
+    </span>
   );
 }
 
