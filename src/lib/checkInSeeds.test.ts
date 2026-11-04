@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   bracketDivisionFilter,
+  checkInPairs,
+  checkInPartnerId,
   checkedInCompetitors,
+  checkedInPeople,
   competitorsForBracketFill,
   namesForBracket,
   obviousRankingFile,
@@ -79,9 +82,11 @@ test('ranked checked-in competitors lead in place order, then unranked division 
       ['Dee', 2],
       ['Ada', 3],
       ['Bea', null],
+      ['Eve', null],
     ],
   );
-  assert.equal(checkedInCompetitors(students).some((student) => student.name === 'Eve'), false);
+  // A checked-in Student Roster student is in the fill too (unranked here).
+  assert.equal(checkedInCompetitors(students).some((student) => student.name === 'Eve'), true);
   assert.equal(checkedInCompetitors(students).some((student) => student.name === 'Cam'), false);
 });
 
@@ -278,4 +283,50 @@ test('filling from check-in clears an older result and does not touch check-in',
   assert.equal(Object.keys(next.results).length, 0);
   assert.equal(canUndoLast(next), false);
   assert.deepEqual(students, snapshot);
+});
+
+test('everyone checked in, once per person: a linked pair is one entry, by its competitor card', () => {
+  const students = [
+    card({ id: 's1', name: 'Ana', checkedIn: true, rosterList: 'student' }),
+    card({ id: 'c1', name: 'Ana', checkedIn: false }),
+    card({ id: 's2', name: 'Bia', checkedIn: false, rosterList: 'student' }),
+    card({ id: 'c2', name: 'Bia', checkedIn: true }),
+    card({ id: 's3', name: 'Cai', checkedIn: true, rosterList: 'student' }),
+    card({ id: 'c4', name: 'Duda', checkedIn: true }),
+    card({ id: 's5', name: 'Eli', checkedIn: false, rosterList: 'student' }),
+  ];
+  const links = new Map([
+    ['s1', 'c1'],
+    ['s2', 'c2'],
+  ]);
+  const before = structuredClone(students);
+  const people = checkedInPeople(students, links);
+  assert.deepEqual(students, before, 'never writes the roster');
+  assert.deepEqual(people.map((s) => s.id), ['c1', 'c2', 's3', 'c4']);
+  assert.equal(people[0].checkedIn, true, 'a pair is checked in when either card is');
+  assert.equal(checkInPartnerId(students, 's1', links), 'c1');
+  assert.equal(checkInPartnerId(students, 'c2', links), 's2');
+  assert.equal(checkInPartnerId(students, 's3', links), undefined);
+  // The filtered list still seeds the pair (Fill passes it back in).
+  assert.deepEqual(
+    orderCheckedInByRanking(people, [row(1, 'Duda')]).map((seed) => [seed.name, seed.place]),
+    [
+      ['Duda', 1],
+      ['Ana', null],
+      ['Bia', null],
+      ['Cai', null],
+    ],
+  );
+});
+
+test('a competitor marked Same person as a roster student pairs by its Student Edition id', () => {
+  const students = [
+    card({ id: 's1', name: 'Ana', checkedIn: true, rosterList: 'student', linkedStudentId: 'stu-1' }),
+    card({ id: 'c1', name: 'Ana L', checkedIn: false, linkedStudentId: 'stu-1' }),
+    card({ id: 'g1', name: 'Guest', checkedIn: true, guestId: 'guest-1', linkedStudentId: 'stu-1' }),
+  ];
+  assert.deepEqual([...checkInPairs(students, new Map())], [['s1', 'c1']]);
+  assert.deepEqual(checkedInPeople(students, new Map()).map((s) => s.id), ['c1', 'g1']);
+  // A link to a missing or Student Roster card is ignored.
+  assert.deepEqual([...checkInPairs([card({ id: 's9', name: 'X', rosterList: 'student' })], new Map([['s9', 'gone']]))], []);
 });

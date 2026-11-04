@@ -147,6 +147,18 @@ function writeFile(storage: MemoryStore, file: CardFile): void {
   emit();
 }
 
+/**
+ * Student Roster card id -> its linked competitor card id (Add to Competitor Roster),
+ * whether or not the Competitor switch is on now. Check In treats a pair as one person.
+ */
+export function competitorCardLinks(storage: Pick<MemoryStore, 'getItem'> | null = defaultStorage()): Map<string, string> {
+  const links = new Map<string, string>();
+  for (const [id, row] of Object.entries(readFile(storage).cards)) {
+    if (row.competitorCardId) links.set(id, row.competitorCardId);
+  }
+  return links;
+}
+
 export function readRosterCard(rosterId: string, storage: Pick<MemoryStore, 'getItem'> | null = defaultStorage()): RosterCardRecord {
   return readFile(storage).cards[rosterId] ?? emptyCardRecord();
 }
