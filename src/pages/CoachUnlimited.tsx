@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
+import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
 import { BeltRail } from '../components/BeltRail';
 import { DriveConnectCard } from '../components/DriveConnectCard';
@@ -107,6 +108,7 @@ export function CoachUnlimitedPage() {
             </Link>
           </p>
         </section>
+        <EditionLadder page="instructor" />
         <SiteFooter />
       </div>
     </main>

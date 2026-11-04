@@ -4,7 +4,7 @@ import { AlphaCodeEntry, redeemAlphaCode } from '../components/AlphaCodeEntry';
 import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
-import { HigherTierList } from '../components/TierBuyParts';
+import { HigherTierList, ProCloudBuyCard } from '../components/TierBuyParts';
 import { useHalfOffArrival } from '../hooks/useHalfOffArrival';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
@@ -318,6 +318,7 @@ export function BuyWhitePage() {
               ),
             }}
           />
+          <ProCloudBuyCard />
         </article>
         <SiteFooter />
       </div>

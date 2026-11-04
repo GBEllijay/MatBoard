@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
+import { EditionLadder } from '../components/EditionLadder';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { SuiteMenuLinks } from '../components/SuiteMenuLinks';
@@ -58,6 +59,7 @@ export function MediaEditionHubPage() {
             </p>
           </div>
         ) : null}
+        <EditionLadder page="media" />
         <SiteFooter />
       </div>
     </main>

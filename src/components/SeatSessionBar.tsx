@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { SignedInUpgradeBar } from './EditionLadder';
 import {
   acceptInstructorInvite,
   readCurrentSeat,
@@ -28,7 +29,7 @@ export function SeatSignedOutToast() {
 }
 
 export function SeatSessionChrome() {
-  return null;
+  return <SignedInUpgradeBar />;
 }
 
 export function InviteAccept() {

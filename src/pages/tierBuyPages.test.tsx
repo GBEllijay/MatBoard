@@ -74,6 +74,12 @@ test('/buy: White checkout stays; other products are Student, Media, Instructor,
   assert.doesNotMatch(m.host.textContent ?? '', /Advantage Coach/);
   const links = [...m.host.querySelectorAll('[data-higher-tiers] a.buy__more')].map((a) => a.getAttribute('href'));
   assert.deepEqual(links, ['/editions/student', '/media', '/editions/instructor', '/editions/pro']);
+  const cloud = m.host.querySelector('[data-tier="pro-cloud"]');
+  assert.equal(cloud?.querySelector('.buy__kicker')?.textContent, 'Coming soon');
+  assert.match(cloud?.textContent ?? '', /Advantage Pro \+ Cloud/);
+  assert.equal(cloud?.querySelector('a.buy__more')?.getAttribute('href'), '/editions/pro-cloud');
+  assert.equal(m.host.querySelector('[data-higher-tiers] [data-tier="pro-cloud"]'), null);
+  assert.equal(cloud?.querySelector('form, button'), null);
   // White checkout stays. Restore is still a button to /restore. The email sits with the code.
   assert.ok([...m.host.querySelectorAll('button')].some((b) => /checkout/i.test(b.textContent ?? '')));
   const restore = m.host.querySelector('.buy__restore');

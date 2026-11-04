@@ -5,6 +5,8 @@ import { InstructionsButton } from '../components/InstructionsButton';
 import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
 import { WhiteRosterCard } from '../components/WhiteRosterCard';
+import { EditionLadder } from '../components/EditionLadder';
+import { WhiteUpgradePrompt } from '../components/WhiteUpgradePrompt';
 import { SiteFooter } from '../components/SiteFooter';
 import { PRODUCTS_PATH } from '../lib/productNames';
 import { lockWhite } from '../lib/whiteUnlock';
@@ -25,6 +27,8 @@ export function WhitePage() {
           <LiveBoutCard />
           <RoundsCard />
           <WhiteRosterCard />
+          <WhiteUpgradePrompt />
+          <EditionLadder page="white" />
         </nav>
 
         <div className="home__hints">

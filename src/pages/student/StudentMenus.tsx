@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltHeader } from '../../components/BeltHeader';
+import { EditionLadder } from '../../components/EditionLadder';
 import { HomeMark } from '../../components/HomeMark';
 import { SiteFooter } from '../../components/SiteFooter';
 import { loadAcademyLink } from '../../lib/academyPathway';
@@ -160,6 +161,7 @@ export function StudentHub() {
               {`Last backup: ${stamp}`}
             </span>
           </Link>
+          <EditionLadder page="student" />
         </nav>
         <div className="home__hints">
           <p className="home__soon">
