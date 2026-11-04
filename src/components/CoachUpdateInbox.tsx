@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { gymPacketAllowed } from '../lib/academyMembership';
 import {
   acceptCoachCompetitionUpdate,
   competitionConflicts,
@@ -72,7 +73,10 @@ export function CoachUpdateInbox() {
     };
   }, []);
 
-  const packet = matchingPacket(report.studentId, packets);
+  const packet = matchingPacket(
+    report.studentId,
+    packets.filter((item) => gymPacketAllowed(localStorage, item)),
+  );
   if (!packet) return null;
 
   const finish = (kind: 'accept' | 'dismiss') => {

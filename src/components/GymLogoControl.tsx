@@ -1,4 +1,5 @@
 import { useRef, useState, useSyncExternalStore } from 'react';
+import { coachGymIds } from '../lib/coachGymIdentity';
 import { createPortal } from 'react-dom';
 import { DeviceMediaInput } from './DeviceMediaInput';
 import { OpenMyDrive } from './OpenMyDrive';
@@ -97,7 +98,7 @@ export function GymLogoControl() {
         type="button"
         className="btn btn--ghost"
         onClick={() => {
-          const json = buildGymBrandFile({ name: gymName, logo: logoUrl, issuedOn: todayIso() });
+          const json = buildGymBrandFile({ name: gymName, logo: logoUrl, issuedOn: todayIso(), ids: coachGymIds() });
           const blob = new Blob([json], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');

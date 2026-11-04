@@ -1,28 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { AcademyQrScanner } from '../../components/AcademyQrScanner';
-import { StudentIdentityPanel } from '../../components/StudentIdentityPanel';
+import { Link } from 'react-router-dom';
 import { GoogleDriveFolderTools } from '../../components/GoogleDriveFolderTools';
 import { loadBracketPhotos } from '../../lib/bracketPhoto';
 import {
-  ACADEMY_ACCESS_ERROR,
   ACADEMY_CONNECT_LABEL,
-  ACADEMY_FREE_NOTE,
   STUDENT_ONEDRIVE_INTENT_KEY,
-  clearPendingPathway,
   clearStudentDriveLink,
-  loadAcademyLink,
   loadPersonalDrive,
-  parseAcademyInput,
-  probeGoogleFolder,
-  probeOneDriveFolder,
   providerLabel,
-  readPendingPathway,
-  rememberPendingPathway,
   rememberStudentOneDriveIntent,
   saveStudentDriveLink,
   takeStudentOneDriveIntent,
-  type AcademyPathway,
   type StudentDriveLink,
 } from '../../lib/academyPathway';
 import { subscribeGoogleDriveDisconnect } from '../../lib/driveSession';
@@ -36,8 +24,6 @@ import {
 } from '../../lib/oneDrive';
 import { requestOneDriveConsent } from '../../lib/oneDriveAuth';
 import { loadRankPictures } from '../../lib/rankPhotos';
-import { saveAcademyLicense } from '../../lib/studentInboxClient';
-import { ShareCardWithCoach } from '../../components/StudentToCoachShare';
 import {
   BACKUP_BEFORE_CLEAR,
   BACK_UP_FIRST_LABEL,
@@ -58,18 +44,29 @@ import {
 import { runStudentEditionExport } from '../../lib/studentBackupExport';
 import { backupStampLabel, readStudentBackupStamp } from '../../lib/studentBackupStamp';
 import { clearFilmBlobs, putFilmBlob } from '../../lib/studentFilm';
-import { LeatherHeader, StudentMarks, useStudentPath } from './chrome';
+import { StudentMarks, useStudentPath } from './chrome';
+import { AcademyConnect } from './AcademyConnect';
 import { ExportChoices } from './ExportChoices';
+
+function AcademyTop({ title }: { title: string }) {
+  return (
+    <header className="am-top">
+      <span className="am-brand" aria-hidden="true" />
+      <div>
+        <h1>{title}</h1>
+        <div className="am-sub">Student Edition · Coach &amp; Academy</div>
+      </div>
+    </header>
+  );
+}
 
 export function AcademyConnectPage() {
   return (
-    <main className="student student-frame">
+    <main className="student academy-modern">
       <StudentMarks />
-      <LeatherHeader title={ACADEMY_CONNECT_LABEL} />
-      <div className="student-paper">
-        <div className="student-sheet student-connections">
-          <AcademyConnect showHeading={false} />
-        </div>
+      <AcademyTop title={ACADEMY_CONNECT_LABEL} />
+      <div className="am-wrap">
+        <AcademyConnect showHeading={false} />
       </div>
     </main>
   );
@@ -95,12 +92,11 @@ export function ConnectionsPage() {
     }
   };
   return (
-    <main className="student student-frame">
+    <main className="student academy-modern">
       <StudentMarks />
-      <LeatherHeader title="Connections" />
-      <div className="student-paper">
-        <div className="student-sheet student-connections">
-          <AcademyConnect />
+      <AcademyTop title="Connections" />
+      <div className="am-wrap student-connections">
+        <AcademyConnect />
           <PersonalDrive />
           <ExportAndPrint
             to={to}
@@ -124,187 +120,8 @@ export function ConnectionsPage() {
             onBackup={() => exportFile('json')}
             onCleared={() => setStamp(backupStampLabel(readStudentBackupStamp(localStorage)))}
           />
-        </div>
       </div>
     </main>
-  );
-}
-
-function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
-  const [params] = useSearchParams();
-  const [text, setText] = useState('');
-  const [pathway, setPathway] = useState<AcademyPathway | null>(null);
-  const [linked, setLinked] = useState<StudentDriveLink | null>(() => loadAcademyLink(localStorage));
-  const [error, setError] = useState('');
-  const [status, setStatus] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => subscribeGoogleDriveDisconnect(() => setLinked(loadAcademyLink(localStorage))), []);
-
-  const useLink = (value: string) => {
-    const parsed = parseAcademyInput(value);
-    if (!parsed) {
-      setPathway(null);
-      setError('That is not an academy link. Paste the link from your coach, or open the QR on this phone.');
-      return;
-    }
-    setPathway(parsed);
-    setError('');
-    setStatus(`${parsed.folderName} on ${providerLabel(parsed.provider)}. ${ACADEMY_FREE_NOTE}`);
-  };
-
-  const finish = async (next: AcademyPathway) => {
-    setBusy(true);
-    setError('');
-    try {
-      if (next.provider === 'googleDrive') {
-        const auth = await requestDriveConsent();
-        if (!auth.ok) {
-          setError(driveSignInFailureCopy(auth));
-          return;
-        }
-        const probed = await probeGoogleFolder(auth.token, next.folderId);
-        if (!probed.ok) {
-          setError(probed.error || ACADEMY_ACCESS_ERROR);
-          return;
-        }
-        const email = await driveAccountEmail(auth.token).catch(() => null);
-        const saved = saveStudentDriveLink(localStorage, {
-          role: 'academy',
-          provider: 'googleDrive',
-          folderId: next.folderId,
-          folderName: probed.name || next.folderName,
-          accountLabel: email,
-          gymName: next.gymName,
-        });
-        setLinked(saved);
-        saveAcademyLicense(localStorage, next.license);
-        setStatus(`Connected to ${saved.folderName}. ${ACADEMY_FREE_NOTE}`);
-        clearPendingPathway();
-        return;
-      }
-      rememberPendingPathway(next);
-      rememberStudentOneDriveIntent('academy');
-      const auth = await requestOneDriveConsent();
-      if (!auth.ok) {
-        if (auth.code === 'redirecting') return;
-        setError(oneDriveSignInFailureCopy(auth));
-        return;
-      }
-      const probed = await probeOneDriveFolder(auth.token, next.folderId);
-      if (!probed.ok) {
-        setError(probed.error || ACADEMY_ACCESS_ERROR);
-        return;
-      }
-      const saved = saveStudentDriveLink(localStorage, {
-        role: 'academy',
-        provider: 'oneDrive',
-        folderId: next.folderId,
-        folderName: probed.name || next.folderName,
-        accountLabel: auth.accountLabel,
-        gymName: next.gymName,
-      });
-      setLinked(saved);
-      saveAcademyLicense(localStorage, next.license);
-      setStatus(`Connected to ${saved.folderName}. ${ACADEMY_FREE_NOTE}`);
-      clearPendingPathway();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  useEffect(() => {
-    const fromQuery = params.get('academy');
-    if (fromQuery) useLink(fromQuery);
-    let intent: string | null = null;
-    try {
-      intent = sessionStorage.getItem(STUDENT_ONEDRIVE_INTENT_KEY);
-    } catch {
-      intent = null;
-    }
-    if (intent !== 'academy') return;
-    takeStudentOneDriveIntent();
-    dismissOneDriveResume();
-    const pending = readPendingPathway();
-    if (pending) {
-      setPathway(pending);
-      void finish(pending);
-    }
-    // finish is recreated each render; this resume runs once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <section className="ink" aria-label={ACADEMY_CONNECT_LABEL}>
-      {showHeading ? <h2>{ACADEMY_CONNECT_LABEL}</h2> : null}
-      <p className="student-quiet">
-        Scan the academy QR, take a photo of it, or paste the academy link. You sign in to that Google Drive or OneDrive folder. {ACADEMY_FREE_NOTE}
-      </p>
-      <AcademyQrScanner onScan={useLink} />
-      {linked ? (
-        <p role="status">
-          Connected to {linked.folderName} on {providerLabel(linked.provider)}
-          {linked.gymName ? ` · ${linked.gymName}` : ''}.
-        </p>
-      ) : null}
-      {linked ? <ShareCardWithCoach /> : null}
-      <label className="ink">
-        <span className="ink__label">Academy link</span>
-        <input
-          aria-label="Academy link"
-          value={text}
-          placeholder="Paste the academy link"
-          onChange={(event) => setText(event.target.value)}
-        />
-      </label>
-      <div className="student-clip__actions">
-        <button type="button" className="ink-btn" onClick={() => useLink(text)}>
-          Use this academy link
-        </button>
-        {pathway ? (
-          <button type="button" className="ink-btn ink-btn--save ink-btn--keep" disabled={busy} onClick={() => void finish(pathway)}>
-            {busy ? 'Connecting…' : `Sign in to ${providerLabel(pathway.provider)}`}
-          </button>
-        ) : null}
-        {linked ? (
-          <button
-            type="button"
-            className="ink-btn"
-            onClick={() => {
-              clearStudentDriveLink(localStorage, 'academy');
-              setLinked(null);
-              setStatus('Academy folder disconnected on this phone. The folder itself is unchanged.');
-            }}
-          >
-            Disconnect academy folder
-          </button>
-        ) : null}
-      </div>
-      {linked?.provider === 'googleDrive' ? (
-        <GoogleDriveFolderTools
-          folderId={linked.folderId}
-          buttonClassName="ink-btn"
-          primaryClassName="ink-btn ink-btn--save ink-btn--keep"
-          picker="inline"
-          onPick={(folder) => {
-            const saved = saveStudentDriveLink(localStorage, {
-              ...linked,
-              folderId: folder.id,
-              folderName: folder.name,
-            });
-            setLinked(saved);
-            setStatus(`Connected to ${saved.folderName}. ${ACADEMY_FREE_NOTE}`);
-          }}
-          onDisconnected={() => {
-            setLinked(loadAcademyLink(localStorage));
-            setStatus('Google Drive is disconnected on this device. Connect again to pick a folder or account.');
-          }}
-        />
-      ) : null}
-      {status ? <p role="status">{status}</p> : null}
-      {error ? <p role="alert">{error}</p> : null}
-      <StudentIdentityPanel connected={Boolean(linked)} />
-    </section>
   );
 }
 

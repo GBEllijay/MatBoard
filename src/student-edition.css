@@ -2703,3 +2703,380 @@ input.sr-only.student-film-file {
   color: inherit;
   font-weight: 700;
 }
+
+/* ── Connect to my academy / Connections: dark card look (Design Critic mock, Nov 2026) ── */
+.academy-modern {
+  --am-page: #070b14;
+  --am-s1: #0e1726;
+  --am-s2: #14203a;
+  --am-tx: #eef2f8;
+  --am-mu: #b9c3d4;
+  --am-bd: #2a3a60;
+  --am-ac: #004eba;
+  --am-ring: #6ea8ff;
+  --am-red: #ff8a8a;
+  min-height: 100vh;
+  background: var(--am-page);
+  color: var(--am-tx);
+  font: 15px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+}
+body:has(main.academy-modern) {
+  background: #070b14;
+}
+/* No yellow chrome here: the demo note is navy with a blue dot. */
+body:has(main.academy-modern) .student-demo-banner {
+  background: #14203a;
+  color: #eef2f8;
+  border-color: #2a3a60;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+}
+body:has(main.academy-modern) .student-demo-banner p::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #6ea8ff;
+  vertical-align: middle;
+}
+.academy-modern * {
+  box-sizing: border-box;
+}
+.academy-modern .am-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 16px 40px;
+  display: grid;
+  gap: 16px;
+}
+.academy-modern .am-top {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.academy-modern .am-brand {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(#0a4fc0 50%, #f5c400 50% 60%, #0a4fc0 60%);
+  border: 2px solid #fff;
+}
+.academy-modern .am-top h1 {
+  margin: 0;
+  font: 700 22px/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--am-tx);
+}
+.academy-modern .am-sub {
+  color: var(--am-mu);
+  font-size: 13px;
+}
+.academy-modern .am {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.academy-modern .am-title {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--am-mu);
+  font-weight: 600;
+  margin: 6px 0 0;
+}
+.academy-modern .am-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 16px;
+}
+.academy-modern .am-card,
+.academy-modern .am-wrap > section.ink,
+.academy-modern .am-wrap > .student-clear-zone {
+  background: var(--am-s1);
+  border: 1px solid var(--am-bd);
+  border-radius: 16px;
+  padding: 20px;
+  min-width: 0;
+  color: var(--am-tx);
+  box-shadow: none;
+}
+.academy-modern h2,
+.academy-modern h3 {
+  font: 700 18px/1.3 Inter, ui-sans-serif, system-ui, sans-serif;
+  margin: 10px 0 6px;
+  color: var(--am-tx);
+}
+.academy-modern p,
+.academy-modern .student-quiet,
+.academy-modern li {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--am-mu);
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+.academy-modern [role='alert'] {
+  color: var(--am-red);
+}
+.academy-modern .am-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: var(--am-s2);
+  color: var(--am-mu);
+  border: 1px solid var(--am-bd);
+}
+.academy-modern .am-tag--on {
+  color: #9fe3b4;
+  border-color: #2f6b47;
+  background: #0f2a1d;
+}
+.academy-modern .am-label,
+.academy-modern .ink__label {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--am-mu);
+  font-weight: 600;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  margin: 12px 0 6px;
+}
+.academy-modern .am-btn,
+.academy-modern .ink-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  margin: 10px 0 0;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--am-bd);
+  background: var(--am-s2);
+  color: var(--am-tx);
+  font: 600 15px Inter, ui-sans-serif, system-ui, sans-serif;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: none;
+  transform: none;
+}
+.academy-modern .am-btn:focus-visible,
+.academy-modern .ink-btn:focus-visible {
+  outline: 3px solid var(--am-ring);
+  outline-offset: 2px;
+}
+.academy-modern .am-btn:disabled,
+.academy-modern .ink-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.academy-modern .am-btn--primary {
+  background: #fff;
+  color: #0e1726;
+  border-color: #fff;
+}
+.academy-modern .am-btn--danger,
+.academy-modern .ink-btn--danger {
+  background: transparent;
+  color: var(--am-red);
+  border-color: #5a2a35;
+}
+.academy-modern input,
+.academy-modern textarea,
+.academy-modern select {
+  width: 100%;
+  min-width: 0;
+  background: var(--am-page);
+  border: 1px solid var(--am-bd);
+  border-radius: 10px;
+  padding: 12px;
+  color: var(--am-tx);
+  font: 14px Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.academy-modern input[type='checkbox'],
+.academy-modern input[type='radio'] {
+  width: auto;
+}
+.academy-modern input::placeholder,
+.academy-modern textarea::placeholder {
+  color: #8e9ab0;
+}
+.academy-modern section.ink,
+.academy-modern label.ink {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.academy-modern .am-wrap > section.ink {
+  padding: 20px;
+}
+.academy-modern .student-clip__actions,
+.academy-modern .academy-scan__actions,
+.academy-modern .student-export {
+  display: grid;
+  gap: 0;
+}
+.academy-modern .academy-scan__video {
+  width: 100%;
+  border-radius: 12px;
+  margin-top: 10px;
+}
+.academy-modern .am-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 6px;
+}
+.academy-modern .am-steps li {
+  display: flex;
+  gap: 10px;
+  margin: 8px 0;
+}
+.academy-modern .am-steps b {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--am-ac);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+}
+.academy-modern .am-gym {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-top: 12px;
+  min-width: 0;
+}
+.academy-modern .am-gym h2 {
+  margin: 4px 0 2px;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+.academy-modern .am-crest {
+  flex: none;
+  width: 64px;
+  height: 72px;
+  background: var(--am-s2);
+  border: 2px solid var(--am-ring);
+  clip-path: polygon(50% 0, 100% 15%, 100% 60%, 50% 100%, 0 60%, 0 15%);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--am-tx);
+}
+.academy-modern .am-crest--img {
+  object-fit: contain;
+  clip-path: none;
+  border-radius: 12px;
+  background: #fff;
+}
+.academy-modern .am-kv {
+  font-size: 13px;
+  color: var(--am-mu);
+  overflow-wrap: anywhere;
+}
+.academy-modern .am-share {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+.academy-modern .am-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--am-s2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+.academy-modern .am-row span:last-child {
+  color: var(--am-mu);
+  font-size: 13px;
+  text-align: right;
+}
+.academy-modern .am-note {
+  border-left: 3px solid var(--am-ac);
+  padding: 2px 0 2px 10px;
+  font-size: 13px;
+  color: var(--am-mu);
+  margin-top: 14px;
+}
+.academy-modern .am-paste {
+  display: grid;
+}
+.academy-modern .am-sheet {
+  background: var(--am-s2);
+  border: 1px solid var(--am-bd);
+  border-radius: 18px 18px 12px 12px;
+  padding: 18px;
+}
+.academy-modern .am-sheet::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--am-bd);
+  margin: -6px auto 12px;
+}
+.academy-modern .am-sheet h2 {
+  margin-top: 0;
+}
+.academy-modern .am-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.academy-modern .am-stale {
+  background: #2a1620;
+  border: 1px solid #5a2a35;
+  border-radius: 16px;
+  padding: 16px 20px;
+}
+.academy-modern .am-stale p {
+  color: var(--am-tx);
+  margin: 0;
+}
+.academy-modern .student-connections__later li,
+.academy-modern .student-clear-list li {
+  color: var(--am-mu);
+}
+.academy-modern .student-clear-zone h2 {
+  color: var(--am-red);
+}
+.academy-modern .student-confirm {
+  background: var(--am-s2);
+  border: 1px solid var(--am-bd);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 12px;
+}
+.academy-modern.am-inline {
+  min-height: 0;
+  background: transparent;
+  margin: 0 0 12px;
+}
+.academy-modern.am-inline:empty {
+  display: none;
+}
+
+/* Clear the pinned Home mark like the other tier pages do. */
+main.student.academy-modern {
+  padding-top: calc(var(--mark-home-clear) + var(--safe-t));
+}

@@ -291,7 +291,7 @@ test('every Google Drive connection surface keeps connect and adds change folder
   const card = read('../components/DriveConnectCard.tsx');
   const open = read('../components/OpenMyDrive.tsx');
   const tools = read('../components/GoogleDriveFolderTools.tsx');
-  const connections = read('../pages/student/ConnectionsPage.tsx');
+  const connections = read('../pages/student/ConnectionsPage.tsx') + read('../pages/student/AcademyConnect.tsx');
   const academy = read('../components/AcademyPathwayPanel.tsx');
   const techniques = read('../pages/Techniques.tsx');
   const notes = read('../pages/TrainingNotes.tsx');

@@ -33,6 +33,7 @@ import {
   type StudentFilm,
 } from '../../lib/studentFilm';
 import { originCanStore } from '../../lib/storageQuota';
+import { AcademyStaleBanner } from './AcademyConnect';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 
 export function VideoLibraryPage() {
@@ -78,6 +79,9 @@ export function VideoLibraryPage() {
       <LeatherHeader title="Video Library" />
       <div className="student-paper">
         <div className="student-sheet">
+          <div className="academy-modern am-inline">
+            <AcademyStaleBanner rescanHref={to('/student/academy#rescan')} />
+          </div>
           <section className="student-clips" aria-label="Video Library">
             <p className="student-quiet">
               Each link opens in a new tab. Any http or https address is fine, including YouTube, Instagram, and Facebook.

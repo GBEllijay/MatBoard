@@ -17,6 +17,8 @@
  *    only the cloud route; the folder and the file keep working.
  */
 
+import { gymTextAllowed } from './academyMembership.ts';
+import { stampGymIds } from './coachGymIdentity.ts';
 import {
   COACH_INBOX_KINDS,
   COACH_UPDATE_EVENT,
@@ -548,6 +550,8 @@ export function receiveSyncPacket(
   if (expectStudentId && packet.studentId !== expectStudentId) return 'ignored';
   if (!isCoachInboxPacket(packet) && packet.kind !== 'coach-gym-logo-update') return 'ignored';
   if (isCoachInboxPacket(packet) && decided(readUpdateLedger(storage), packet.updateId)) return 'ignored';
+  // After Leave academy, nothing from the old gym is accepted.
+  if (!gymTextAllowed(storage, text)) return 'ignored';
   // Parent approvals: one gate for every kind, before the student sees anything.
   if (!options.parentApproved && parentGateOn(storage)) {
     const held = holdForParent(storage, { route: 'sync', raw: text });
@@ -623,9 +627,13 @@ export async function deliverSyncPacket(
   options: {
     deliver?: (packet: SyncPacket) => Promise<InboxDelivery>;
     folder?: HandoffFolder | null;
+    /** Defaults to this phone's license and gym folders. */
+    gymIds?: readonly string[];
   } = {},
 ): Promise<SyncDelivery | { mode: 'folder'; name: string }> {
   if (gate !== 'send') return { mode: 'blocked', gate, reason: SYNC_GATE_COPY[gate] };
+  // Sign with this gym's ids so a student who left can refuse it.
+  packet = stampGymIds(packet, options.gymIds);
   const delivery = await (options.deliver ?? ((item: SyncPacket) => deliverRankUpdate(item)))(packet);
   if (delivery.mode === 'cloud' || !options.folder) return delivery;
   // Cloud is off or lapsed: try the gym's own Drive / OneDrive folder before a download.

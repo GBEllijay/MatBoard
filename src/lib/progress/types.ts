@@ -777,6 +777,12 @@ export type CoachGymBrand = {
   name: string;
   /** Downscaled data URL. Absent when the file has no logo. */
   logo?: string;
+  /**
+   * Who sent it: the gym's Plus Cloud license id and `folder:<id>` for its
+   * Drive / OneDrive folders. Older files omit this. A student who left a gym
+   * uses it to refuse that gym's packets.
+   */
+  ids?: string[];
 };
 
 export type CoachPlanPacket = PacketBase & {
