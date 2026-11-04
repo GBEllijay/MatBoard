@@ -122,12 +122,20 @@
 .skin-root[data-skin="heavy-metal"] .hdr {
   position: relative;
   z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 1.4vh;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.skin-root[data-skin="heavy-metal"] .lead {
   display: flex;
-  flex-wrap: nowrap;
   align-items: center;
   gap: 1.2vh;
   min-width: 0;
-  height: 100%;
   overflow: hidden;
 }
 
@@ -155,15 +163,15 @@
   left: auto;
   top: auto;
   transform: none;
-  flex: none;
+  justify-self: center;
   height: 9vh;
   width: 18vh;
   z-index: 2;
 }
 
 .skin-root[data-skin="heavy-metal"] .hdr .mat {
-  flex: 1 1 0;
-  margin-left: 0;
+  flex: 1 1 auto;
+  margin-left: auto;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
@@ -203,7 +211,7 @@
 }
 
 .skin-root[data-skin="heavy-metal"] .hdr .div {
-  flex: 1 1 0;
+  justify-self: start;
   max-width: 100%;
   font-family: Oswald, sans-serif;
   font-weight: 600;
@@ -754,12 +762,12 @@
 /* Phone portrait. Clears the Home / Skin / Fullscreen / Controller row unless the board is fullscreen. */
 @media (orientation: portrait) {
   .skin-root.skin-root[data-skin="heavy-metal"] .sb {
-    padding: calc(2.4vw + 3.2rem) 3vw 3vw;
-    grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    padding: calc(1vw + 2.6rem) 2.4vw 1.2vw;
+    grid-template-rows: auto minmax(26vh, 1fr) auto minmax(26vh, 1fr);
     height: 100%;
     max-height: 100%;
     overflow: hidden;
-    gap: 3.4vw;
+    gap: 1vh;
   }
 
   .play--fs .skin-root[data-skin="heavy-metal"] .sb,
@@ -770,44 +778,46 @@
   .skin-root[data-skin="heavy-metal"] .hdr {
     display: flex;
     flex-wrap: wrap;
-    row-gap: 1vw;
+    row-gap: 0.4vh;
     height: auto;
-    padding: 1vw 0;
+    padding: 0;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .lead {
+    flex: 1 1 auto;
+    gap: 1vw;
   }
 
   .skin-root[data-skin="heavy-metal"] .hdr .logo {
-    height: 10vw;
-    width: 10vw;
+    height: 6vh;
+    width: 6vh;
   }
 
   .skin-root[data-skin="heavy-metal"] .wm {
-    font-size: 7.4vw;
+    font-size: 3.2vh;
   }
 
   .skin-root[data-skin="heavy-metal"] .hdr .crest {
     position: static;
     transform: none;
-    height: 11vw;
-    width: 22vw;
-    order: 3;
-    margin-left: auto;
+    height: 5.5vh;
+    width: 12vh;
+    margin-left: 1vw;
   }
 
   .skin-root[data-skin="heavy-metal"] .hdr .mat {
-    font-size: 6.6vw;
-    margin-left: 0;
-    order: 4;
-    max-width: 36vw;
+    font-size: 2.8vh;
+    margin-left: auto;
+    max-width: 28vw;
   }
 
   .skin-root[data-skin="heavy-metal"] .hdr .div {
-    order: 5;
     flex-basis: 100%;
     max-width: none;
     text-align: center;
     border: 0;
     padding: 0;
-    font-size: 3.2vw;
+    font-size: 1.8vh;
   }
 
   .skin-root[data-skin="heavy-metal"] .row {
@@ -815,14 +825,14 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: 1.4vw;
-    padding: 1.6vw 2.2vw 1.4vw 5vw;
+    grid-template-rows: auto minmax(20vh, 1fr);
+    gap: 0.6vh;
+    padding: 0.8vh 2vw 0.6vh 4vw;
   }
 
   .skin-root[data-skin="heavy-metal"] .id {
     grid-column: 1 / -1;
-    gap: 0.8vw;
+    gap: 0.4vh;
     padding-left: 1vw;
     overflow: visible;
   }
@@ -840,7 +850,7 @@
   }
 
   .skin-root[data-skin="heavy-metal"] .side {
-    font-size: 3.4vw;
+    font-size: 1.7vh;
   }
 
   .skin-root[data-skin="heavy-metal"] .side b {
@@ -849,21 +859,22 @@
 
   .skin-root[data-skin="heavy-metal"] .row .name {
     flex: none;
-    font-size: min(7.2vw, 5vh);
+    font-size: 3.6vh;
+    line-height: 1;
   }
 
   .skin-root[data-skin="heavy-metal"] .belt {
-    height: 5vw;
-    font-size: 3.4vw;
+    height: 3vh;
+    font-size: 1.6vh;
     padding: 0 2.4vw 0 1.6vw;
   }
 
   .skin-root[data-skin="heavy-metal"] .gym {
-    font-size: 3.8vw;
+    font-size: 1.7vh;
   }
 
   .skin-root[data-skin="heavy-metal"] .row .tile .lab {
-    font-size: 3.4vw;
+    font-size: 1.6vh;
     letter-spacing: 0.08em;
   }
 
@@ -874,8 +885,8 @@
   }
 
   .skin-root[data-skin="heavy-metal"] .row .tile .num {
-    font-size: min(12vw, 4.2vh);
-    line-height: 0.82;
+    font-size: 15vh;
+    line-height: 0.78;
   }
 
   .skin-root[data-skin="heavy-metal"] .tile {
@@ -906,7 +917,7 @@
   .skin-root[data-skin="heavy-metal"] .plate .clock .sk-btn {
     height: auto;
     width: auto;
-    font-size: min(14vw, 8vh);
+    font-size: 6.5vh;
   }
 
   .skin-root[data-skin="heavy-metal"] .band .state.state,

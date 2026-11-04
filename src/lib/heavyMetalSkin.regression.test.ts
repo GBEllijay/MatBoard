@@ -68,10 +68,11 @@ test('Metal Mania headings put numerals in Anton, and clocks stay plain Anton', 
   assert.match(css, /\.n \{[^}]*margin-left: 0\.3em/);
   assert.match(css, /\.id \{[^}]*min-width: 0;[^}]*overflow: hidden/);
   assert.match(css, /\.name a \{[^}]*overflow: hidden;[^}]*text-overflow: ellipsis/);
-  assert.match(css, /font-size: min\(12vw, 4\.2vh\)/);
-  assert.match(css, /grid-template-rows: auto minmax\(0, 1fr\) auto minmax\(0, 1fr\)/);
+  assert.match(css, /font-size: 15vh/);
+  assert.match(css, /grid-template-rows: auto minmax\(20vh, 1fr\)/);
+  assert.match(css, /grid-template-rows: auto minmax\(26vh, 1fr\) auto minmax\(26vh, 1fr\)/);
   assert.doesNotMatch(css, /min-height: 14vh/);
-  assert.match(css, /\.hdr \{[^}]*flex-wrap: nowrap/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) auto minmax\(0, 1fr\)/);
   assert.match(css, /\.hdr \.div a \{[^}]*min-width: 0;[^}]*text-overflow: ellipsis/);
   assert.match(css, /grid-template-columns: minmax\(0, 2\.1fr\)/);
   assert.match(css, /\.belt \{[^}]*gap: 0\.55em/);

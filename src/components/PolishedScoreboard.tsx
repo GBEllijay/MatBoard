@@ -139,10 +139,19 @@ export function PolishedScoreboard({
       <div className="sb">
         {mod ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: mod.SCOREBOARD_DECO ?? '' }} /> : null}
         <header className="hdr">
-          <img className="logo" src="/card-logo.png" alt="Advantage" />
-          {metal ? <span className="wm">Advantage</span> : null}
+          {metal ? (
+            <div className="lead">
+              <img className="logo" src="/card-logo.png" alt="Advantage" />
+              <span className="wm">Advantage</span>
+              <span className="mat">
+                <MetalFace>{mat}</MetalFace>
+              </span>
+            </div>
+          ) : (
+            <img className="logo" src="/card-logo.png" alt="Advantage" />
+          )}
           {metal ? <i className="crest" aria-hidden="true" /> : null}
-          <span className="mat">{metal ? <MetalFace>{mat}</MetalFace> : mat}</span>
+          {metal ? null : <span className="mat">{mat}</span>}
           <span className="div">{division}</span>
         </header>
         <Row row={rows[0]} cls="c1" extra={extra[0]} chip={metal} />
