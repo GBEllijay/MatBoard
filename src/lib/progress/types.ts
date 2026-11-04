@@ -777,6 +777,8 @@ export type CoachGymBrand = {
   name: string;
   /** Downscaled data URL. Absent when the file has no logo. */
   logo?: string;
+  /** Gym's roster card look, e.g. 'clipboard-dark'. The student's card follows it. */
+  cardLook?: string;
 };
 
 export type CoachPlanPacket = PacketBase & {

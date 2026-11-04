@@ -20,6 +20,12 @@ import { LinkStudentSheet, SendRankUpdateSheet } from '../components/CoachStuden
 import { GuestArchive } from '../components/GuestArchive';
 import { SendCompetitionSheet, type CompetitionSendDraft } from '../components/SendCompetitionSheet';
 import { Sheet } from '../components/Sheet';
+import { registrationText, RosterCardSheet, startStudentAppSync } from '../components/rosterCard/RosterCardSheet';
+import { CardLookSetting } from '../components/rosterCard/CardLookSetting';
+import { dismissCardNotice, getCardNotices, subscribeCardSync } from '../lib/cardSync';
+import { coachDoorOpen } from '../lib/productNames';
+import { readRosterCard, recordRosterRankChange, removeRosterCard, subscribeRosterCards } from '../lib/rosterCardStore';
+import { linkedCompetitorForCheckIn, toggleCompetitor, toggleStudentCheckIn } from '../lib/rosterCardActions';
 import { useRosterState } from '../hooks/useStores';
 import { COMPETITOR_SYSTEM_NAME, isCoachStudentRoster } from '../lib/productNames';
 import { competitorPhotoFromFile } from '../lib/competitorPhoto';
@@ -126,6 +132,14 @@ export function RosterPage() {
   const [samePerson, setSamePerson] = useState<Student | null>(null);
   const [competitionSend, setCompetitionSend] = useState<{ studentId: string; draft: CompetitionSendDraft } | null>(null);
   const [linkNote, setLinkNote] = useState('');
+  const [cardTarget, setCardTarget] = useState<string | null>(null);
+  const [syncOffer, setSyncOffer] = useState<Student | null>(null);
+  const [, setNoticeTick] = useState(0);
+  useEffect(() => subscribeCardSync(() => setNoticeTick((value) => value + 1)), []);
+  // The row Competitor switch reads the card store.
+  useEffect(() => subscribeRosterCards(() => setNoticeTick((value) => value + 1)), []);
+  const competitorRosterOpen = coachDoorOpen(proUnlocked, coachUnlocked, seat !== null);
+  const cardStudent = cardTarget ? roster.students.find((row) => row.id === cardTarget) ?? null : null;
   const listed = useMemo(
     () => (studentRoster ? studentRosterCards(roster.students) : competitorCards(roster.students)),
     [roster.students, studentRoster],
@@ -267,6 +281,8 @@ export function RosterPage() {
 
       {showCsv ? csvTools : null}
 
+      {studentRoster ? <CardLookSetting /> : null}
+
       {listed.length ? (
       <label className="roster__search">
         Find
@@ -294,9 +310,28 @@ export function RosterPage() {
               onCancelRemove={() => setPendingRemove(null)}
               onConfirmRemove={() => {
                 removeStudent(competitor.id);
+                if (studentRoster) removeRosterCard(competitor.id);
                 setPendingRemove(null);
               }}
+              onOpenCard={studentRoster ? () => setCardTarget(competitor.id) : undefined}
+              notices={
+                competitor.linkedStudentId && !competitor.guestId
+                  ? getCardNotices(competitor.id, { roster: roster.students }).map((notice) => ({ id: notice.eventId, text: registrationText(notice) }))
+                  : []
+              }
+              onNotice={(id, status) => {
+                // Got it opens the card where the coach acts; neither choice writes coach data.
+                if (status === 'applied' && studentRoster) setCardTarget(competitor.id);
+                else if (status === 'applied') setEditor({ id: competitor.id, draft: draftFromStudent(competitor) });
+                else dismissCardNotice(id);
+              }}
               onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
+              competitorSwitch={
+                studentRoster && competitorRosterOpen
+                  ? { on: readRosterCard(competitor.id).competitorOn, onToggle: () => toggleCompetitor(competitor.id) }
+                  : undefined
+              }
+              studentCheckIn={studentCheckInFor(competitor.id, studentRoster && competitorRosterOpen)}
               onLink={() => setLinkTarget(competitor)}
               onSamePerson={() => setSamePerson(competitor)}
               onCoachSync={() => setSyncTarget(competitor)}
@@ -360,6 +395,7 @@ export function RosterPage() {
               : 'Add competitor'
         }
         studentRoster={studentRoster}
+        noPhotos={Boolean(editor?.id && roster.students.find((row) => row.id === editor.id)?.noPhotos)}
         draft={editor?.draft ?? emptyDraft()}
         saveError={saveError}
         onChange={(draft) => setEditor((current) => (current ? { ...current, draft } : current))}
@@ -377,6 +413,7 @@ export function RosterPage() {
             if (saved) {
               setSaveError('');
               setEditor(null);
+              if (studentRoster && before) recordRosterRankChange(saved.id, before, saved);
               if (
                 studentRoster &&
                 before &&
@@ -385,6 +422,7 @@ export function RosterPage() {
               ) {
                 setSendTarget(saved);
               }
+              if (studentRoster && !before) setSyncOffer(saved);
             }
           } catch (error) {
             setSaveError(
@@ -396,9 +434,47 @@ export function RosterPage() {
           }
         }}
       />
-      {studentRoster ? <PendingCardShares roster={roster.students} /> : <GuestArchive />}
+      {studentRoster ? <PendingCardShares roster={roster.students} title="New student cards" /> : <GuestArchive />}
       <LinkStudentSheet key={linkTarget?.id ?? 'link'} student={linkTarget} onClose={() => setLinkTarget(null)} />
       <SendRankUpdateSheet key={sendTarget?.id ?? 'send'} student={sendTarget} onClose={() => setSendTarget(null)} />
+      {studentRoster ? (
+        <RosterCardSheet
+          student={cardStudent}
+          onClose={() => setCardTarget(null)}
+          onEditBelt={(student) => setEditor({ id: student.id, draft: draftFromStudent(student) })}
+          onLink={(student) => setLinkTarget(student)}
+          onOpenPhotos={(student) => setSyncTarget(student)}
+          competitorRosterOpen={competitorRosterOpen}
+          onOpenCompetitorRoster={() => {
+            setCardTarget(null);
+            navigate('/roster');
+          }}
+        />
+      ) : null}
+      <Sheet open={Boolean(syncOffer)} title="Sync with student app" onClose={() => setSyncOffer(null)} portal>
+        {syncOffer ? (
+          <>
+            <p>
+              {syncOffer.name} is saved on the Student Roster. Sync their belt benchmarks with the student app now, or skip.
+              You can turn it on later from their card.
+            </p>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                const target = syncOffer;
+                setSyncOffer(null);
+                startStudentAppSync(target, true, () => setLinkTarget(target));
+              }}
+            >
+              Sync with student app
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setSyncOffer(null)}>
+              Skip for now
+            </button>
+          </>
+        ) : null}
+      </Sheet>
       <CoachSyncSheet
         key={syncTarget?.id ?? 'sync'}
         student={syncTarget ? roster.students.find((row) => row.id === syncTarget.id) ?? null : null}
@@ -486,7 +562,18 @@ function CsvInstructions({ text }: { text: string }) {
   );
 }
 
-function StudentCard({
+/**
+ * Student Roster rows only, where the Competitor Roster is open and the Competitor switch is on:
+ * Check In flips the linked competitor card's checkedIn (the same check-in brackets read).
+ */
+export function studentCheckInFor(rosterId: string, open: boolean): { checkedIn: boolean; onToggle: () => { text: string; error?: true } } | undefined {
+  if (!open) return undefined;
+  const card = linkedCompetitorForCheckIn(rosterId);
+  if (!card) return undefined;
+  return { checkedIn: card.checkedIn, onToggle: () => toggleStudentCheckIn(rosterId) };
+}
+
+export function StudentCard({
   student,
   studentRoster,
   plan,
@@ -499,8 +586,13 @@ function StudentCard({
   onLink,
   onSamePerson,
   onSendCompetition,
+  onOpenCard,
+  notices = [],
+  onNotice,
   onCoachSync,
   sendAllowed,
+  competitorSwitch,
+  studentCheckIn,
 }: {
   student: Student;
   studentRoster: boolean;
@@ -514,10 +606,23 @@ function StudentCard({
   onLink: () => void;
   onSamePerson: () => void;
   onSendCompetition: () => void;
+  /** Student Roster only: the Coach Clipboard card. */
+  onOpenCard?: () => void;
+  /** Registered: <event>, <date> from the linked student. Never changes coach fields. */
+  notices?: { id: string; text: string }[];
+  onNotice?: (id: string, status: 'applied' | 'dismissed') => void;
   onCoachSync: () => void;
   /** False when coach sync is off for this student or this seat cannot send. */
   sendAllowed: boolean;
+  /**
+   * Student Roster only, and only where the Competitor Roster is open: the same
+   * Add to Competitor Roster action as the card's top switch, next to the belt.
+   */
+  competitorSwitch?: { on: boolean; onToggle: () => { text: string; error?: true } };
+  /** Student Roster only, while Competitor is on: Check In on the linked competitor card. */
+  studentCheckIn?: { checkedIn: boolean; onToggle: () => { text: string; error?: true } };
 }) {
+  const [competitorNote, setCompetitorNote] = useState<{ text: string; error?: boolean } | null>(null);
   const promoted = formatPromotion(student.lastPromotion);
   const promotionDetail = student.lastPromotionDetail.trim();
   const promotionLine = promoted && promotionDetail
@@ -552,8 +657,47 @@ function StudentCard({
               )}
             </div>
           </div>
-          <BeltTip belt={student.belt} />
+          <div className="roster-card__belt-row">
+            <BeltTip belt={student.belt} />
+            {competitorSwitch ? (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={competitorSwitch.on}
+                aria-label={`Add ${student.name} to Competitor Roster`}
+                title="Add to Competitor Roster"
+                className={`roster-card__competitor${competitorSwitch.on ? ' roster-card__competitor--on' : ''}`}
+                onClick={() => {
+                  const result = competitorSwitch.onToggle();
+                  setCompetitorNote({ text: result.text, error: Boolean(result.error) });
+                }}
+              >
+                <span className="roster-card__competitor-track" aria-hidden="true" />
+                Competitor
+              </button>
+            ) : null}
+            {studentCheckIn ? (
+              <button
+                type="button"
+                className={`btn roster-card__checkin${studentCheckIn.checkedIn ? '' : ' btn--ghost'}`}
+                aria-pressed={studentCheckIn.checkedIn}
+                aria-label={`Check In ${student.name}`}
+                title="Here for today's tournament"
+                onClick={() => {
+                  const result = studentCheckIn.onToggle();
+                  setCompetitorNote({ text: result.text, error: Boolean(result.error) });
+                }}
+              >
+                Check In
+              </button>
+            ) : null}
+          </div>
         </header>
+        {competitorNote ? (
+          <p className={`roster-card__meta${competitorNote.error ? ' roster-card__meta--error' : ''}`} role="status">
+            {competitorNote.text}
+          </p>
+        ) : null}
         {student.division ? <p className="roster-card__meta">{student.division}</p> : null}
         {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
         {promotionLine ? <p className="roster-card__meta roster-card__promotion">{promotionLine}</p> : null}
@@ -562,6 +706,17 @@ function StudentCard({
           <p className="roster-card__meta">Linked to {student.linkedStudentId}</p>
         ) : null}
         {student.note ? <p className="roster-card__note">{student.note}</p> : null}
+        {notices.map((notice) => (
+          <div className="roster-card__notice" key={notice.id} role="note">
+            <strong>{notice.text}</strong>
+            <button type="button" className="btn btn--ghost" onClick={() => onNotice?.(notice.id, 'applied')}>
+              Got it
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => onNotice?.(notice.id, 'dismissed')}>
+              Dismiss
+            </button>
+          </div>
+        ))}
         {plan ? <StudentCompetitionPlan plan={plan} /> : null}
         {studentRoster ? null : <ImportStudentProgress competitorId={student.id} competitorName={student.name} />}
         {pending ? (
@@ -579,6 +734,11 @@ function StudentCard({
             <button type="button" className="btn" onClick={onEdit}>
               Edit
             </button>
+            {onOpenCard ? (
+              <button type="button" className="btn btn--ghost" onClick={onOpenCard}>
+                Open card
+              </button>
+            ) : null}
             {studentRoster ? (
               <button type="button" className="btn btn--ghost" onClick={onLink}>
                 Link to student
@@ -625,6 +785,7 @@ function StudentEditor({
   open,
   title,
   studentRoster,
+  noPhotos = false,
   draft,
   saveError,
   onChange,
@@ -634,6 +795,8 @@ function StudentEditor({
   open: boolean;
   title: string;
   studentRoster: boolean;
+  /** Per-student No photos: the photo field shows the badge and no picker. */
+  noPhotos?: boolean;
   draft: StudentDraft;
   saveError: string;
   onChange: (draft: StudentDraft) => void;
@@ -694,7 +857,12 @@ function StudentEditor({
           </>
         )}
       </p>
-      {studentRoster ? null : <div className="roster-edit__photo">
+      {studentRoster || !noPhotos ? null : (
+        <p className="roster-edit__hint" data-testid="editor-no-photos">
+          <strong>No photos</strong> · photos are off for this student.
+        </p>
+      )}
+      {studentRoster || noPhotos ? null : <div className="roster-edit__photo">
         {draft.photo ? (
           <img className="roster-edit__photo-img" src={draft.photo} alt="Competitor face photo" />
         ) : (

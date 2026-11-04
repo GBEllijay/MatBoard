@@ -103,7 +103,16 @@ export type Student = {
   parentPhotoApproval?: true;
   /** Approved photo the head coach chose for this card. Omitted until one is chosen. */
   cardPhotoId?: string;
+  /**
+   * No photos: the student or a parent declined photo use, or the coach set it.
+   * 'family' came from the student's phone (student, or parent when the gate is on);
+   * only the family clears it. 'coach' is the coach's own toggle. Omitted means photos allowed.
+   * While set, the card shows initials and every photo upload, share, and approval is blocked.
+   */
+  noPhotos?: NoPhotosBy;
 };
+
+export type NoPhotosBy = 'coach' | 'family';
 
 /** Weekend checklist items. Missing or false means Off. */
 export const READY_ITEMS = [
@@ -582,6 +591,47 @@ function copySyncSettings(from: Partial<Student>, to: Student): void {
   if (from.coachSync === 'off') to.coachSync = 'off';
   if (from.parentPhotoApproval === true) to.parentPhotoApproval = true;
   if (typeof from.cardPhotoId === 'string' && CARD_PHOTO_ID_RE.test(from.cardPhotoId)) to.cardPhotoId = from.cardPhotoId;
+  if (from.noPhotos === 'coach' || from.noPhotos === 'family') to.noPhotos = from.noPhotos;
+}
+
+export type NoPhotosChange = { ok: true; student: Student } | { ok: false; reason: 'unknown-card' | 'set-by-family' };
+
+/**
+ * No photos on or off. Restricting always applies. A flag the family set can only be
+ * cleared by the family (`by: 'family'`); the coach sees it locked as Set by family.
+ * Turning it on also takes the photo off the card. Nothing else changes.
+ */
+export function noPhotosChange(current: Student, on: boolean, by: NoPhotosBy): NoPhotosChange {
+  const next: Student = { ...current };
+  if (on) {
+    // Family wins: a coach toggle never downgrades a family flag.
+    next.noPhotos = current.noPhotos === 'family' || by === 'family' ? 'family' : 'coach';
+    next.photo = '';
+    delete next.cardPhotoId;
+    return { ok: true, student: next };
+  }
+  if (current.noPhotos === 'family' && by !== 'family') return { ok: false, reason: 'set-by-family' };
+  // The family clears only their own flag. A coach's No photos stays until the coach clears it.
+  if (current.noPhotos === 'coach' && by === 'family') return { ok: true, student: current };
+  delete next.noPhotos;
+  return { ok: true, student: next };
+}
+
+export function setNoPhotos(id: string, on: boolean, by: NoPhotosBy): NoPhotosChange {
+  const current = state.students.find((row) => row.id === id);
+  if (!current) return { ok: false, reason: 'unknown-card' };
+  const result = noPhotosChange(current, on, by);
+  if (result.ok) commit(state.students.map((row) => (row.id === id ? result.student : row)));
+  return result;
+}
+
+/** Every card for one Student Edition id (student card and linked competitor cards). */
+export function setNoPhotosForLinkedStudent(linkedStudentId: string, on: boolean, by: NoPhotosBy): number {
+  let changed = 0;
+  for (const row of state.students.filter((card) => card.linkedStudentId === linkedStudentId && !card.guestId)) {
+    if (setNoPhotos(row.id, on, by).ok) changed += 1;
+  }
+  return changed;
 }
 
 function readyIsBlank(ready: CompetitorReady): boolean {
@@ -896,6 +946,8 @@ function preserveRosterCard(current: Student, next: Student, draft: Partial<Stud
   const stripes = draft.stripes !== undefined ? clipStripes(draft.stripes) : current.stripes;
   if (stripes !== undefined) card.stripes = stripes;
   copySyncSettings(current, card);
+  // No photos: an editor upload never lands on the card.
+  if (card.noPhotos) card.photo = '';
   return card;
 }
 
@@ -922,6 +974,7 @@ export function setCardSyncSettings(
 export function setCardPhoto(id: string, photoId: string, image: string): Student | null {
   const current = state.students.find((row) => row.id === id);
   if (!current || !CARD_PHOTO_ID_RE.test(photoId)) return null;
+  if (current.noPhotos) return null;
   if (!/^data:image\/(?:jpeg|png|webp);base64,/.test(image)) return null;
   const next: Student = { ...current, photo: image, cardPhotoId: photoId };
   commit(state.students.map((row) => (row.id === id ? next : row)));

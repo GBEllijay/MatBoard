@@ -10764,6 +10764,103 @@ input.roster-pick__name:focus,
   flex: 0 0 auto;
 }
 
+/* Student Roster row: belt and the compact Competitor switch on the header row. */
+.roster-card__belt-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.roster-card__competitor {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(252, 192, 0, 0.35);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.roster-card__competitor-track {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  flex: 0 0 auto;
+}
+
+.roster-card__competitor-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s ease;
+}
+
+.roster-card__competitor--on {
+  border-color: #fcc000;
+  background: rgba(252, 192, 0, 0.14);
+}
+
+.roster-card__competitor--on .roster-card__competitor-track {
+  background: #fcc000;
+}
+
+.roster-card__competitor--on .roster-card__competitor-track::after {
+  transform: translateX(12px);
+}
+
+.roster-card__competitor:focus-visible {
+  outline: 2px solid #fcc000;
+  outline-offset: 2px;
+}
+
+.roster-card__meta--error {
+  color: #ff8a8a;
+}
+
+/* Student Roster row Check In: same look as the competitor list's, on the belt line. */
+.roster-card .roster-card__belt-row .btn.roster-card__checkin {
+  min-height: 44px;
+  padding: 0 0.8rem;
+}
+
+/* Phones: belt, Competitor and Check In stay on one line; every tap target stays 44px tall. */
+@media (max-width: 480px) {
+  .roster-card__belt-row {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+  }
+  .roster-card__competitor {
+    gap: 0.3rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.78rem;
+  }
+  .roster-card__competitor-track {
+    width: 26px;
+  }
+  .roster-card__competitor--on .roster-card__competitor-track::after {
+    transform: translateX(8px);
+  }
+  .roster-card .roster-card__belt-row .btn.roster-card__checkin {
+    padding: 0 0.6rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+}
+
 .roster-card .btn.roster-card__checkin.btn--ghost {
   background: transparent;
   color: #f7f4ee;

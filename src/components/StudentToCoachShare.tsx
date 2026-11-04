@@ -23,6 +23,14 @@ import {
   tournamentRegistrationFile,
 } from '../lib/studentEvents';
 import { loadStudentReport } from '../lib/studentEdition';
+import { loadAcademyLink } from '../lib/academyPathway';
+import { readAcademyLicense } from '../lib/studentInboxClient';
+import { readStudentNoPhotos } from '../lib/studentPhotoFlag';
+
+/** The gym takes card shares: Pro or Plus Cloud (academy license) or a gym Drive folder link. */
+export function cardShareAvailable(storage: Pick<Storage, 'getItem'> = localStorage): boolean {
+  return Boolean(loadAcademyLink(storage)) || Boolean(readAcademyLicense(storage));
+}
 
 function saveFile(file: { name: string; json: string }): void {
   const url = URL.createObjectURL(new Blob([file.json], { type: 'application/json' }));
@@ -69,14 +77,20 @@ export function TournamentOutbox() {
   );
 }
 
-export function ShareCardWithCoach() {
+export function ShareCardWithCoach({
+  label = 'Share my card with my coach',
+}: {
+  /** Button text. My profile uses 'Upload for coach approval to add to student card'. */
+  label?: string;
+} = {}) {
   const [share, setShare] = useState<StudentCardShare | null>(null);
   const [pin, setPin] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
 
   const start = () => {
-    const portrait = readProfilePortrait();
+    // Don't allow photos: the share goes without a photo.
+    const portrait = readStudentNoPhotos(localStorage).on ? null : readProfilePortrait();
     const draft = studentCardShareDraft(localStorage, loadStudentReport(localStorage), {
       photo: portrait && photoImageFits(portrait) ? portrait : null,
     });
@@ -110,7 +124,7 @@ export function ShareCardWithCoach() {
   };
 
   return (
-    <section className="ink" aria-label="Share my card with my coach">
+    <section className="ink" aria-label={label}>
       <p className="student-quiet">
         Sends your name, belt, stripes, and gym. Your journal and notes stay on this phone.
       </p>
@@ -138,7 +152,7 @@ export function ShareCardWithCoach() {
         </label>
       ) : (
         <button type="button" className="ink-btn ink-btn--save" disabled={busy} onClick={start}>
-          Share my card with my coach
+          {label}
         </button>
       )}
       {status ? <p role="status">{status}</p> : null}

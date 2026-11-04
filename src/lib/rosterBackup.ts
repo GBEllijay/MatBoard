@@ -44,6 +44,12 @@ export type BackupStudent = {
   coachSync?: 'off';
   parentPhotoApproval?: true;
   cardPhotoId?: string;
+  /**
+   * No photos for this student. 'family' = the student or a parent set it and only
+   * the family can clear it; 'coach' = the coach set it. While set, no photo of this
+   * student is kept in any backup, gym folder or Advantage Cloud copy.
+   */
+  noPhotos?: 'coach' | 'family';
 };
 
 /** Same shape as BackupRoster in rosterStore.ts. Plan maps are keyed by roster id. */
@@ -86,6 +92,11 @@ export function lightNormalizeRoster(raw: unknown): BackupRoster {
     if (s.coachSync === 'off') student.coachSync = 'off';
     if (s.parentPhotoApproval === true) student.parentPhotoApproval = true;
     if (typeof s.cardPhotoId === 'string' && ID_RE.test(s.cardPhotoId)) student.cardPhotoId = s.cardPhotoId;
+    if (s.noPhotos === 'coach' || s.noPhotos === 'family') {
+      student.noPhotos = s.noPhotos;
+      student.photo = '';
+      delete student.cardPhotoId;
+    }
     out.students.push(student);
   }
   for (const map of ['ready', 'gamePlans', 'competitionPlans'] as const) {
@@ -191,9 +202,70 @@ export function buildRosterBackup(
   if (sources.coachStores) backup.coachStores = structuredClone(sources.coachStores);
   if (options.scope === 'coach-private') {
     backup.privateNotes = { ...sources.privateNotes };
-    return backup;
+    return withoutBlockedPhotos(backup);
   }
   return sharedRosterBackup(backup);
+}
+
+/** Roster ids whose No photos flag is set. */
+export function noPhotosIds(roster: BackupRoster): Set<string> {
+  return new Set(roster.students.filter((row) => row.noPhotos === 'coach' || row.noPhotos === 'family').map((row) => row.id));
+}
+
+/**
+ * No photos: blank the student's photo and card photo id, drop the card's photo
+ * fields, and drop photo reviews and card-share photos for that card. Used on
+ * every scope, so a coach-private file, a gym folder copy and an Advantage Cloud
+ * copy never hold a photo of a No photos student. The flag itself stays.
+ */
+export function withoutBlockedPhotos<T extends Pick<RosterBackup, 'roster' | 'cards'> & { coachStores?: CoachSyncStores }>(backup: T): T {
+  const blocked = noPhotosIds(backup.roster);
+  if (!blocked.size) return backup;
+  const out = { ...backup };
+  out.roster = {
+    ...backup.roster,
+    students: backup.roster.students.map((row) => {
+      if (!blocked.has(row.id)) return row;
+      const copy: BackupStudent = { ...row, photo: '' };
+      delete copy.cardPhotoId;
+      return copy;
+    }),
+  };
+  const cards: Record<string, RosterCardRecordLike> = {};
+  for (const [id, card] of Object.entries(backup.cards)) {
+    if (!blocked.has(id)) {
+      cards[id] = card;
+      continue;
+    }
+    const copy: RosterCardRecordLike = { ...card };
+    for (const field of CARD_PHOTO_FIELDS) delete copy[field];
+    cards[id] = copy;
+  }
+  out.cards = cards;
+  if (backup.coachStores) {
+    const cardOf = (row: unknown) => (row && typeof row === 'object' && typeof (row as { cardId?: unknown }).cardId === 'string' ? (row as { cardId: string }).cardId : '');
+    const decidedCard = new Map<string, string>();
+    for (const row of backup.coachStores.studentInbox.decided) {
+      const shareId = field(row, 'shareId');
+      const cardId = cardOf(row);
+      if (shareId && cardId) decidedCard.set(shareId, cardId);
+    }
+    out.coachStores = {
+      ...backup.coachStores,
+      studentInbox: {
+        ...backup.coachStores.studentInbox,
+        shares: backup.coachStores.studentInbox.shares.map((row) => {
+          const cardId = decidedCard.get(field(row, 'shareId'));
+          if (!cardId || !blocked.has(cardId) || !row || typeof row !== 'object') return row;
+          const copy = { ...(row as Record<string, unknown>) };
+          delete copy.photo;
+          return copy;
+        }),
+      },
+      photoReviews: backup.coachStores.photoReviews.filter((row) => !blocked.has(cardOf(row))),
+    };
+  }
+  return out;
 }
 
 export function serializeRosterBackup(backup: RosterBackup): string {
@@ -208,7 +280,7 @@ const CARD_PHOTO_FIELDS = ['photos', 'shownPhotoId'];
  * student card shares (parent contact, photo), and photo reviews.
  */
 export function sharedRosterBackup(backup: RosterBackup): RosterBackup {
-  const shared: RosterBackup = { ...backup, scope: 'shared' };
+  const shared: RosterBackup = { ...withoutBlockedPhotos(backup), scope: 'shared' };
   delete shared.privateNotes;
   shared.roster = {
     ...backup.roster,
@@ -356,6 +428,12 @@ function fillStudent(local: BackupStudent, incoming: BackupStudent): BackupStude
   if (!next.linkedStudentId && incoming.linkedStudentId) next.linkedStudentId = incoming.linkedStudentId;
   if (!next.guestId && incoming.guestId) next.guestId = incoming.guestId;
   if (next.stripes === undefined && incoming.stripes !== undefined) next.stripes = incoming.stripes;
+  // No photos is only ever added, never cleared by a file. A family flag outranks a coach flag.
+  if (incoming.noPhotos === 'family' || (incoming.noPhotos === 'coach' && !next.noPhotos)) next.noPhotos = incoming.noPhotos;
+  if (next.noPhotos) {
+    next.photo = '';
+    delete next.cardPhotoId;
+  }
   // checkedIn and rosterList are never taken from a file.
   return next;
 }
@@ -533,7 +611,14 @@ export function mergeRosterBackup(
     cardFile.settings = fillBlankDeep(local.cardFile.settings, backup.cardSettings);
   }
 
-  const coachStores = mergeCoachStores(local.coachStores ?? emptyCoachStores(), backup.coachStores, idMap, report);
+  const merged = withoutBlockedPhotos({
+    roster,
+    cards: cardFile.cards,
+    coachStores: mergeCoachStores(local.coachStores ?? emptyCoachStores(), backup.coachStores, idMap, report),
+  });
+  cardFile.cards = merged.cards;
+  const coachStores = merged.coachStores ?? emptyCoachStores();
+  if (merged.roster !== roster) roster.students = merged.roster.students;
 
   const changed = {
     roster: report.studentsAdded + report.studentsFilled + report.plansAdded > 0,

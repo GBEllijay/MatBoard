@@ -345,10 +345,10 @@ export function buildCoachGymLogoUpdate(input: {
 /* Student side: coach overlay                                         */
 /* ------------------------------------------------------------------ */
 
-export type CoachOverlayAssessment = CoachAssessment & { updateId: string; gymName: string };
+export type CoachOverlayAssessment = CoachAssessment & { updateId: string; gymName: string; cardLook?: string };
 export type CoachOverlayBelt = CoachBeltProgress & { updateId: string };
 /** An accepted coach note, shown under Suggestions from coach. */
-export type CoachOverlayNote = { updateId: string; issuedOn: string; journalDate: string; note: string; gymName: string };
+export type CoachOverlayNote = { updateId: string; issuedOn: string; journalDate: string; note: string; gymName: string; cardLook?: string };
 
 /** Coach views beside the student's own data. Never merged into it. */
 export type CoachOverlay = {
@@ -454,6 +454,7 @@ export function acceptCoachSyncUpdate(
       journalDate: coachNoteDay(packet),
       note: packet.coachNote.note,
       gymName: packet.gym?.name ?? '',
+      ...(packet.gym?.cardLook ? { cardLook: packet.gym.cardLook } : {}),
     };
     next = { ...overlay, notes: [...(overlay.notes ?? []), entry].slice(-OVERLAY_NOTE_MAX) };
   } else if (packet.kind === 'coach-belt-progress-update') {
@@ -473,6 +474,7 @@ export function acceptCoachSyncUpdate(
       ...packet.assessment,
       updateId: packet.updateId,
       gymName: packet.gym?.name ?? '',
+      ...(packet.gym?.cardLook ? { cardLook: packet.gym.cardLook } : {}),
     };
     const assessments = [...overlay.assessments, entry]
       .sort((left, right) => left.date.localeCompare(right.date))
