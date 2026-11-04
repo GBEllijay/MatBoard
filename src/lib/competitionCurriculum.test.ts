@@ -73,16 +73,21 @@ test('a fresh curriculum is the suggested class order and does not write storage
   assert.equal(localStorage.getItem(CURRICULUM_STORAGE_KEY), null);
 });
 
-test('expected duration is whole minutes and sets the timer default', () => {
+test('expected duration keeps whole minutes and halves, and sets the timer', () => {
   assert.equal(normalizeExpectedDuration('5:00'), '5');
   assert.equal(normalizeExpectedDuration('5'), '5');
   assert.equal(normalizeExpectedDuration('8:00'), '8');
-  assert.equal(normalizeExpectedDuration('1:30'), '2');
+  assert.equal(normalizeExpectedDuration('8'), '8');
+  assert.equal(normalizeExpectedDuration('8.5'), '8.5');
+  assert.equal(normalizeExpectedDuration('1:30'), '1.5');
+  assert.equal(normalizeExpectedDuration('200'), '60');
   assert.equal(normalizeExpectedDuration(''), '');
   assert.equal(expectedToWorkMs('5:00'), 5 * 60_000);
   assert.equal(expectedToWorkMs('5'), 5 * 60_000);
   assert.equal(expectedToWorkMs('8:00'), 8 * 60_000);
-  assert.equal(expectedToWorkMs('1:30'), 2 * 60_000);
+  assert.equal(expectedToWorkMs('8'), 8 * 60_000);
+  assert.equal(expectedToWorkMs('8.5'), 8 * 60_000 + 30_000);
+  assert.equal(expectedToWorkMs('1:30'), 90_000);
   assert.equal(expectedToWorkMs(''), 5 * 60_000);
   assert.equal(expectedToWorkMs('soon'), 5 * 60_000);
 });

@@ -1,14 +1,16 @@
 /**
  * Expected duration on a Daily Lesson Plan or Competition Class block.
- * Whole minutes, 1 through 60. The coach picks them on the shared scroll wheel
- * (`WheelPicker`), the same wheel the round timer uses.
- * No quick-pick chips: the wheel alone, to keep the block uncluttered.
- * 5, 10, and 15 are slow-scroll detents. A fast flick passes through them.
+ * Half minutes, 0:30 through 60:00 (120 rows). The coach picks them on the
+ * shared scroll wheel (`WheelPicker`). No quick-pick chips.
+ * 5, 10, and 15 minute rows are slow-scroll detents. A fast flick passes
+ * through them. The coast still settles with the shared two-row catch.
  *
- * Stored value is a minute count such as "8". Older saves used free text:
- * "8:00", "1:30", "8 min", "10 minutes". Those migrate to a whole minute.
- * Blank stays blank and means the 5-minute default, so an untouched plan is
- * not saved just because every block shows 5.
+ * Stored value is a minute count: "8" or "8.5". Whole minutes stay whole, so
+ * an existing save of "8" still reads as 8. Older free text migrates onto the
+ * 30-second grid: "8:00" becomes "8", "1:30" becomes "1.5", "8 min" becomes
+ * "8". Under 30 seconds lands on 0.5. Above 60 clamps to 60. Blank stays
+ * blank and means the 5-minute default, so an untouched plan is not saved
+ * just because every block shows 5.
  *
  * Loop length precedence when a block has a looping video:
  * 1. A manual length on the Daily Training Videos card wins. That is the
@@ -22,15 +24,20 @@
  *    there is no loop to drive.
  * Competition class "Looping video" cards have no separate length control.
  * Their loop is the expected minutes (`expectedToWorkMs`). The round timer
- * opened from a block still starts at those minutes, then its own wheel
- * clamps the work period to 1:00–60:00.
+ * opened from a block starts at those minutes (8.5 is 8:30). Its own wheel
+ * still clamps the work period to 1:00–60:00, so 0:30 opens at 1:00.
  */
 
 import { DEFAULT_DRILL_SEC } from './techniqueLogic.ts';
 
-export const EXPECTED_MIN_MINUTES = 1;
+/** Shortest row: 0:30. */
+export const EXPECTED_MIN_MINUTES = 0.5;
 export const EXPECTED_MAX_MINUTES = 60;
+export const EXPECTED_STEP_MINUTES = 0.5;
 export const DEFAULT_EXPECTED_MINUTES = 5;
+
+const MIN_HALVES = 1;
+const MAX_HALVES = EXPECTED_MAX_MINUTES * 2;
 
 export type ExpectedMinuteOption = {
   value: number;
@@ -50,29 +57,49 @@ export const EXPECTED_DETENT_MINUTES = [5, 10, 15] as const;
 const EXPECTED_SNAP_SET = new Set<number>(EXPECTED_SNAP_MINUTES);
 const EXPECTED_DETENT_SET = new Set<number>(EXPECTED_DETENT_MINUTES);
 
-/** One row per minute. Labels are "5 min", never m:ss. */
+const MINUTE_WORD = /^(?:(\d{1,3})\s*)?½(?:\s*(?:minutes|minute|mins|min|m))?$/i;
+const MINUTE_COUNT = /^(\d{1,3}(?:\.\d+)?)(?:\s*(?:minutes|minute|mins|min|m))?$/i;
+
+function clampHalves(halves: number): number {
+  if (!Number.isFinite(halves)) return MIN_HALVES;
+  return Math.min(MAX_HALVES, Math.max(MIN_HALVES, Math.round(halves)));
+}
+
+/** "8" for a whole minute, "8.5" or "0.5" for a half. */
+export function formatExpectedDuration(minutes: number): string {
+  const halves = clampHalves(Math.round(minutes * 2));
+  const whole = Math.floor(halves / 2);
+  if (halves % 2 === 0) return String(whole);
+  return whole === 0 ? '0.5' : `${whole}.5`;
+}
+
+/** Wheel label. "8 min", "8½ min", and "½ min" for 0:30. Never m:ss. */
+export function expectedDurationLabel(minutes: number): string {
+  const halves = clampHalves(Math.round(minutes * 2));
+  const whole = Math.floor(halves / 2);
+  if (halves % 2 === 0) return `${whole} min`;
+  if (whole === 0) return '½ min';
+  return `${whole}½ min`;
+}
+
+/** One row per 30 seconds. Labels are "8 min" or "8½ min", never m:ss. */
 export const EXPECTED_MINUTE_OPTIONS: readonly ExpectedMinuteOption[] = Array.from(
-  { length: EXPECTED_MAX_MINUTES - EXPECTED_MIN_MINUTES + 1 },
+  { length: MAX_HALVES - MIN_HALVES + 1 },
   (_, index) => {
-    const value = EXPECTED_MIN_MINUTES + index;
+    const value = (MIN_HALVES + index) / 2;
     return {
       value,
-      label: `${value} min`,
+      label: expectedDurationLabel(value),
       snap: EXPECTED_SNAP_SET.has(value),
       detent: EXPECTED_DETENT_SET.has(value),
     };
   },
 );
 
-function clampMinute(minutes: number): number {
-  return Math.min(EXPECTED_MAX_MINUTES, Math.max(EXPECTED_MIN_MINUTES, minutes));
-}
-
 /**
- * Whole minutes, or null when the text is not a duration.
- * "8:00" and "1:30" are m:ss (8 minutes, 1 minute 30 seconds).
- * Seconds round to the nearest minute. Under 30 seconds lands on 1, the
- * shortest row. "8 min" and "10 minutes" are minute counts.
+ * Minutes on the 30-second grid, or null when the text is not a duration.
+ * "8:00" is 8. "1:30" is 1.5. Seconds snap to the nearest 30, then clamp
+ * from 0.5 through 60. "8 min", "8.5", and "8½ min" are minute counts.
  */
 export function parseExpectedMinutes(value: string): number | null {
   const trimmed = value.trim();
@@ -80,25 +107,28 @@ export function parseExpectedMinutes(value: string): number | null {
   const clock = /^(\d{1,3}):([0-5]\d)$/.exec(trimmed);
   if (clock) {
     const totalSeconds = Number(clock[1]) * 60 + Number(clock[2]);
-    return clampMinute(Math.round(totalSeconds / 60));
+    return clampHalves(Math.round(totalSeconds / 30)) / 2;
   }
-  const words = /^(\d{1,3})(?:\s*(?:minutes|minute|mins|min|m))?$/i.exec(trimmed);
-  if (words) return clampMinute(Math.round(Number(words[1])));
-  const decimal = /^(\d{1,3}\.\d+)$/.exec(trimmed);
-  if (decimal) return clampMinute(Math.round(Number(decimal[1])));
-  return null;
+  const fraction = MINUTE_WORD.exec(trimmed);
+  if (fraction) {
+    const whole = fraction[1] ? Number(fraction[1]) : 0;
+    return clampHalves(whole * 2 + 1) / 2;
+  }
+  const words = MINUTE_COUNT.exec(trimmed);
+  if (!words) return null;
+  return clampHalves(Math.round(Number(words[1]) * 2)) / 2;
 }
 
 /**
- * Value to store. A clock or minute phrase becomes "8". Blank stays blank.
- * Text that is not a duration is kept (trimmed) so a note is not thrown away.
+ * Value to store. A clock or minute phrase becomes "8" or "8.5".
+ * Blank stays blank. Text that is not a duration is kept (trimmed).
  */
 export function migrateExpectedDuration(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return '';
   const minutes = parseExpectedMinutes(trimmed);
   if (minutes == null) return trimmed;
-  return String(minutes);
+  return formatExpectedDuration(minutes);
 }
 
 /** Minutes the wheel and the loop use. Blank or unreadable text is 5. */
@@ -124,10 +154,10 @@ export function loopSecondsForSlot(slot: LoopSlot, expected: string | null): num
   if (slot.kind === 'technique') {
     const manual = slot.drillManual === true || slot.drillSec !== DEFAULT_DRILL_SEC;
     if (manual || expected == null) return slot.drillSec;
-    return expectedMinutes(expected) * 60;
+    return Math.round(expectedMinutes(expected) * 60);
   }
   if (expected == null) return 0;
-  return expectedMinutes(expected) * 60;
+  return Math.round(expectedMinutes(expected) * 60);
 }
 
 type LessonDurationPlan = {

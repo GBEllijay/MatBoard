@@ -1,9 +1,10 @@
 import { WheelPicker } from './WheelPicker';
-import { EXPECTED_MINUTE_OPTIONS, expectedMinutes } from '../lib/expectedDuration';
+import { EXPECTED_MINUTE_OPTIONS, expectedMinutes, formatExpectedDuration } from '../lib/expectedDuration';
 
 /**
  * Expected duration for one lesson or curriculum block.
- * Whole minutes on the shared scroll wheel. Blank shows 5, the default.
+ * Half minutes on the shared scroll wheel, ½ min through 60 min.
+ * Blank shows 5 min, the default, and stays blank until the wheel moves.
  */
 export function ExpectedDurationField({
   id,
@@ -25,7 +26,7 @@ export function ExpectedDurationField({
         value={minutes}
         options={EXPECTED_MINUTE_OPTIONS}
         disabled={readOnly}
-        onChange={(next) => onChange(String(next))}
+        onChange={(next) => onChange(formatExpectedDuration(next))}
       />
     </div>
   );

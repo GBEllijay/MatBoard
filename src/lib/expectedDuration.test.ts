@@ -8,14 +8,22 @@ import {
   EXPECTED_MIN_MINUTES,
   EXPECTED_MINUTE_OPTIONS,
   EXPECTED_SNAP_MINUTES,
+  EXPECTED_STEP_MINUTES,
+  expectedDurationLabel,
   expectedMinutes,
+  formatExpectedDuration,
   lessonExpectedText,
   loopSecondsForSlot,
   migrateExpectedDuration,
   parseExpectedMinutes,
 } from './expectedDuration.ts';
 import { settleRowIndex, WHEEL_FLICK_PX_PER_MS, WHEEL_ITEM_PX } from './timeWheel.ts';
+import { coachPlanRecordDocument } from './coachPlanExport.ts';
 import { emptyCurriculum, expectedToWorkMs, normalizeExpectedDuration, saveCurriculum } from './competitionCurriculum.ts';
+import { classMinutes, minutesFromExpected, sanitizeGymEvent } from './gymEvents.ts';
+import { lessonPlanForDrive } from './lessonDrive.ts';
+import { parseLessonPayload } from './lessonPackage.ts';
+import { clampWorkMs } from './trainingStore.ts';
 import { curriculumVideoCards } from './curriculumVideos.ts';
 import { emptyVideoPlan, sanitizeVideoPlan, setSlotDrill } from './techniqueLogic.ts';
 import { createGame } from './lessonTemplates.ts';
@@ -52,37 +60,69 @@ Object.defineProperty(globalThis, 'localStorage', {
 
 const TODAY = '2026-11-04';
 
-test('expected duration is whole minutes from 1 to 60, default 5', () => {
-  assert.equal(EXPECTED_MIN_MINUTES, 1);
+test('expected duration is 30-second rows from 0:30 to 60:00, default 5', () => {
+  assert.equal(EXPECTED_MIN_MINUTES, 0.5);
   assert.equal(EXPECTED_MAX_MINUTES, 60);
+  assert.equal(EXPECTED_STEP_MINUTES, 0.5);
   assert.equal(DEFAULT_EXPECTED_MINUTES, 5);
-  assert.equal(EXPECTED_MINUTE_OPTIONS.length, 60);
-  assert.equal(EXPECTED_MINUTE_OPTIONS[0]?.label, '1 min');
-  assert.equal(EXPECTED_MINUTE_OPTIONS[4]?.value, 5);
+  assert.equal(EXPECTED_MINUTE_OPTIONS.length, 120);
+  assert.equal(EXPECTED_MINUTE_OPTIONS[0]?.value, 0.5);
+  assert.equal(EXPECTED_MINUTE_OPTIONS[0]?.label, '½ min');
+  assert.equal(EXPECTED_MINUTE_OPTIONS[1]?.label, '1 min');
+  assert.equal(EXPECTED_MINUTE_OPTIONS.find((option) => option.value === 8)?.label, '8 min');
+  assert.equal(EXPECTED_MINUTE_OPTIONS.find((option) => option.value === 8.5)?.label, '8½ min');
+  assert.equal(EXPECTED_MINUTE_OPTIONS.at(-1)?.value, 60);
   assert.equal(EXPECTED_MINUTE_OPTIONS.at(-1)?.label, '60 min');
   assert.equal(EXPECTED_MINUTE_OPTIONS.some((option) => option.label.includes(':')), false);
+  for (let index = 1; index < EXPECTED_MINUTE_OPTIONS.length; index += 1) {
+    const previous = EXPECTED_MINUTE_OPTIONS[index - 1]?.value ?? 0;
+    const value = EXPECTED_MINUTE_OPTIONS[index]?.value ?? 0;
+    assert.equal(Math.round((value - previous) * 2), 1);
+  }
   assert.equal(expectedMinutes(''), 5);
+  assert.equal(expectedMinutes('8'), 8);
+  assert.equal(expectedMinutes('8.5'), 8.5);
   assert.equal(expectedMinutes(createTechnique().expected), 5);
   assert.equal(expectedMinutes(emptyPlan().warmupExpected), 5);
   assert.equal(expectedToWorkMs(''), 5 * 60_000);
+  assert.equal(expectedToWorkMs('8'), 8 * 60_000);
+  assert.equal(expectedToWorkMs('8.5'), 8 * 60_000 + 30_000);
+  assert.equal(formatExpectedDuration(8), '8');
+  assert.equal(formatExpectedDuration(8.5), '8.5');
+  assert.equal(formatExpectedDuration(0.5), '0.5');
+  assert.equal(expectedDurationLabel(8), '8 min');
+  assert.equal(expectedDurationLabel(8.5), '8½ min');
+  assert.equal(expectedDurationLabel(0.5), '½ min');
   const fresh = emptyCurriculum();
   assert.equal(fresh.blocks[0]?.expected, '');
   assert.equal(expectedMinutes(fresh.blocks[0]?.expected ?? ''), 5);
 });
 
-test('old m:ss and minute phrases migrate to whole minutes', () => {
+test('old m:ss and minute phrases migrate onto 30-second steps', () => {
   assert.equal(migrateExpectedDuration('8:00'), '8');
   assert.equal(migrateExpectedDuration('08:00'), '8');
-  assert.equal(migrateExpectedDuration('1:30'), '2');
-  assert.equal(migrateExpectedDuration('0:04'), '1');
-  assert.equal(migrateExpectedDuration('0:30'), '1');
-  assert.equal(migrateExpectedDuration('8:29'), '8');
+  assert.equal(migrateExpectedDuration('1:30'), '1.5');
+  assert.equal(migrateExpectedDuration('0:30'), '0.5');
+  assert.equal(migrateExpectedDuration('0:04'), '0.5');
+  assert.equal(migrateExpectedDuration('0:14'), '0.5');
+  assert.equal(migrateExpectedDuration('0:15'), '0.5');
+  assert.equal(migrateExpectedDuration('8:14'), '8');
+  assert.equal(migrateExpectedDuration('8:15'), '8.5');
+  assert.equal(migrateExpectedDuration('8:29'), '8.5');
   assert.equal(migrateExpectedDuration('5'), '5');
   assert.equal(migrateExpectedDuration('5 min'), '5');
   assert.equal(migrateExpectedDuration('10 minutes'), '10');
   assert.equal(migrateExpectedDuration('3 mins'), '3');
-  assert.equal(migrateExpectedDuration('8.5'), '9');
-  assert.equal(migrateExpectedDuration('0'), '1');
+  assert.equal(migrateExpectedDuration('8.5'), '8.5');
+  assert.equal(migrateExpectedDuration('8.5 min'), '8.5');
+  assert.equal(migrateExpectedDuration('8.50'), '8.5');
+  assert.equal(migrateExpectedDuration('8.0'), '8');
+  assert.equal(migrateExpectedDuration('8.2'), '8');
+  assert.equal(migrateExpectedDuration('8.4'), '8.5');
+  assert.equal(migrateExpectedDuration('8½ min'), '8.5');
+  assert.equal(migrateExpectedDuration('½ min'), '0.5');
+  assert.equal(migrateExpectedDuration('0'), '0.5');
+  assert.equal(migrateExpectedDuration('60.5'), '60');
   assert.equal(migrateExpectedDuration('200'), '60');
   assert.equal(migrateExpectedDuration('90:00'), '60');
   assert.equal(migrateExpectedDuration(''), '');
@@ -91,8 +131,13 @@ test('old m:ss and minute phrases migrate to whole minutes', () => {
   assert.equal(parseExpectedMinutes('soon'), null);
   assert.equal(parseExpectedMinutes('8:60'), null);
   assert.equal(expectedMinutes('8:00'), 8);
+  assert.equal(expectedMinutes('8'), 8);
+  assert.equal(expectedMinutes('8.5'), 8.5);
+  assert.equal(expectedMinutes('1:30'), 1.5);
   assert.equal(expectedMinutes('soon'), 5);
-  assert.equal(normalizeExpectedDuration('1:30'), '2');
+  assert.equal(normalizeExpectedDuration('1:30'), '1.5');
+  assert.equal(normalizeExpectedDuration('8'), '8');
+  assert.equal(normalizeExpectedDuration('8.5'), '8.5');
 });
 
 test('a saved lesson plan migrates 8:00 without dropping the block', () => {
@@ -111,9 +156,9 @@ test('a saved lesson plan migrates 8:00 without dropping the block', () => {
   plan.games = [game];
   const saved = saveTrainingNotes(plan, TODAY);
   assert.equal(saved.introExpected, '8');
-  assert.equal(saved.warmupExpected, '2');
+  assert.equal(saved.warmupExpected, '1.5');
   assert.equal(saved.specificExpected, '15');
-  assert.equal(saved.cooldownExpected, '1');
+  assert.equal(saved.cooldownExpected, '0.5');
   assert.equal(saved.techniques[0].expected, '10');
   assert.equal(saved.techniques[1].expected, 'soon');
   assert.equal(saved.games?.[0]?.expected, '8');
@@ -121,15 +166,20 @@ test('a saved lesson plan migrates 8:00 without dropping the block', () => {
   assert.equal(saved.techniques[1].title, '');
   const loaded = plansOnDay(loadTrainingArchive(TODAY), TODAY)[0];
   assert.equal(loaded?.introExpected, '8');
+  assert.equal(loaded?.warmupExpected, '1.5');
   assert.equal(loaded?.techniques[0].expected, '10');
   assert.equal(loaded?.techniques[1].expected, 'soon');
-  assert.equal(localStorage.getItem(TRAINING_NOTES_STORAGE_KEY)?.includes('8:00'), false);
+  const raw = localStorage.getItem(TRAINING_NOTES_STORAGE_KEY) ?? '';
+  assert.equal(raw.includes('8:00'), false);
+  assert.equal(raw.includes('1:30'), false);
 });
 
 test('the lesson duration is the video loop unless a manual length wins', () => {
   const technique = { kind: 'technique' as const, drillSec: 300 };
   assert.equal(loopSecondsForSlot(technique, '8'), 8 * 60);
+  assert.equal(loopSecondsForSlot(technique, '8.5'), 8 * 60 + 30);
   assert.equal(loopSecondsForSlot(technique, '8:00'), 8 * 60);
+  assert.equal(loopSecondsForSlot(technique, '1:30'), 90);
   assert.equal(loopSecondsForSlot(technique, ''), 5 * 60);
   assert.equal(loopSecondsForSlot(technique, null), 300);
   assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 150 }, '12'), 150);
@@ -137,6 +187,7 @@ test('the lesson duration is the video loop unless a manual length wins', () => 
   assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 300, drillManual: true }, '8'), 300);
   assert.equal(loopSecondsForSlot({ kind: 'warmup', drillSec: 300 }, null), 0);
   assert.equal(loopSecondsForSlot({ kind: 'warmup', drillSec: 300 }, '8:00'), 8 * 60);
+  assert.equal(loopSecondsForSlot({ kind: 'warmup', drillSec: 300 }, '8.5'), 8 * 60 + 30);
   assert.equal(loopSecondsForSlot({ kind: 'cooldown', drillSec: 300 }, ''), 5 * 60);
 
   const plan = emptyVideoPlan();
@@ -151,22 +202,34 @@ test('the lesson duration is the video loop unless a manual length wins', () => 
   assert.equal(customSlot ? loopSecondsForSlot(customSlot, '8') : 0, 150);
 
   const lesson = emptyPlan();
-  lesson.warmupExpected = '8';
+  lesson.warmupExpected = '8.5';
   lesson.cooldownExpected = '';
   lesson.techniques[0].expected = '12';
-  assert.equal(lessonExpectedText(lesson, { kind: 'warmup' }, 0), '8');
+  assert.equal(lessonExpectedText(lesson, { kind: 'warmup' }, 0), '8.5');
   assert.equal(lessonExpectedText(lesson, { kind: 'technique' }, 0), '12');
   assert.equal(lessonExpectedText(lesson, { kind: 'cooldown' }, 0), '');
   assert.equal(lessonExpectedText(null, { kind: 'warmup' }, 0), null);
+  assert.equal(
+    loopSecondsForSlot({ kind: 'warmup', drillSec: 300 }, lessonExpectedText(lesson, { kind: 'warmup' }, 0)),
+    8 * 60 + 30,
+  );
 
   const curriculum = emptyCurriculum();
   curriculum.blocks[0]!.timing = 'video';
   curriculum.blocks[0]!.expected = '8:00';
   curriculum.blocks[0]!.clipId = 'clip-warm';
   assert.equal(curriculumVideoCards([curriculum])[0]?.durationMs, 8 * 60_000);
+  curriculum.blocks[0]!.expected = '8.5';
+  assert.equal(curriculumVideoCards([curriculum])[0]?.durationMs, 8 * 60_000 + 30_000);
+  curriculum.blocks[0]!.expected = '1:30';
+  assert.equal(curriculumVideoCards([curriculum])[0]?.durationMs, 90_000);
   storage.clear();
+  curriculum.blocks[0]!.expected = '8.5';
   const stored = saveCurriculum(TODAY, curriculum, TODAY);
-  assert.equal(stored.plan.blocks[0]?.expected, '8');
+  assert.equal(stored.plan.blocks[0]?.expected, '8.5');
+  const whole = emptyCurriculum();
+  whole.blocks[0]!.expected = '8';
+  assert.equal(saveCurriculum(TODAY, whole, TODAY).plan.blocks[0]?.expected, '8');
 });
 
 test('expected duration has no chips, and 5, 10, 15 catch a slow scroll', () => {
@@ -180,32 +243,41 @@ test('expected duration has no chips, and 5, 10, 15 catch a slow scroll', () => 
   );
   assert.deepEqual([...EXPECTED_SNAP_MINUTES], []);
   assert.deepEqual([...EXPECTED_DETENT_MINUTES], [5, 10, 15]);
-  for (const minute of [1, 8, 9, 12, 16, 18, 20, 25, 30, 40, 45, 60]) {
+  for (const minute of [0.5, 1, 1.5, 8, 8.5, 9, 9.5, 12, 16, 18, 20, 25, 30, 40, 45, 60]) {
     const option = EXPECTED_MINUTE_OPTIONS.find((row) => row.value === minute);
-    assert.equal(option?.snap, false, `${minute} min chip`);
-    assert.equal(option?.detent, false, `${minute} min detent`);
-    assert.equal(option?.label, `${minute} min`);
+    assert.equal(option?.snap, false, `${minute} chip`);
+    assert.equal(option?.detent, false, `${minute} detent`);
+    assert.equal(option?.label, expectedDurationLabel(minute));
   }
   const at = (minute: number) => EXPECTED_MINUTE_OPTIONS.findIndex((option) => option.value === minute);
   const top = (minute: number) => at(minute) * WHEEL_ITEM_PX;
-  assert.equal(settleRowIndex(top(8), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
-  assert.equal(settleRowIndex(top(9) + 10, EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
-  assert.equal(settleRowIndex(top(7), EXPECTED_MINUTE_OPTIONS, 0.2, false), at(5));
+  // Two rows is one minute when each row is 30 seconds.
   assert.equal(settleRowIndex(top(4), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(5));
-  assert.equal(settleRowIndex(top(3), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(5));
+  assert.equal(settleRowIndex(top(4.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(5));
+  assert.equal(settleRowIndex(top(6), EXPECTED_MINUTE_OPTIONS, 0.2, false), at(5));
+  assert.equal(settleRowIndex(top(3.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(3.5));
   assert.equal(settleRowIndex(top(2), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(2));
-  assert.equal(settleRowIndex(top(12), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
-  assert.equal(settleRowIndex(top(13), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(15));
+  assert.equal(settleRowIndex(top(8), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(8));
+  assert.equal(settleRowIndex(top(8.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(8.5));
+  assert.equal(settleRowIndex(top(9), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(9) + 10, EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(9.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
   assert.equal(settleRowIndex(top(11), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(12), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(12));
+  assert.equal(settleRowIndex(top(14), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(15));
+  assert.equal(settleRowIndex(top(13.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(13.5));
   assert.equal(settleRowIndex(top(16), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(15));
+  assert.equal(settleRowIndex(top(16.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(16.5));
   assert.equal(settleRowIndex(top(18), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(18));
   assert.equal(settleRowIndex(top(9), EXPECTED_MINUTE_OPTIONS, WHEEL_FLICK_PX_PER_MS + 0.2, false), at(9));
+  assert.equal(settleRowIndex(top(9.5), EXPECTED_MINUTE_OPTIONS, 2, false), at(9.5));
   assert.equal(settleRowIndex(top(14), EXPECTED_MINUTE_OPTIONS, 2, false), at(14));
   assert.equal(settleRowIndex(top(30), EXPECTED_MINUTE_OPTIONS, 3, false), at(30));
   assert.equal(settleRowIndex(top(8) + 23, EXPECTED_MINUTE_OPTIONS, 2, false), at(8));
-  assert.equal(settleRowIndex(top(8) + 24, EXPECTED_MINUTE_OPTIONS, 2, false), at(9));
+  assert.equal(settleRowIndex(top(8) + 24, EXPECTED_MINUTE_OPTIONS, 2, false), at(8.5));
   assert.equal(settleRowIndex(top(8), EXPECTED_MINUTE_OPTIONS, 0.1, true), at(8));
   assert.equal(settleRowIndex(top(9) + 20, EXPECTED_MINUTE_OPTIONS, 0.05, true), at(9));
+  assert.equal(settleRowIndex(top(8.5) + 20, EXPECTED_MINUTE_OPTIONS, 0.05, true), at(8.5));
 });
 
 test('the minute wheel is the expected-duration control and the loop uses it', () => {
@@ -217,13 +289,133 @@ test('the minute wheel is the expected-duration control and the loop uses it', (
   assert.match(field, /WheelPicker/);
   assert.match(field, /EXPECTED_MINUTE_OPTIONS/);
   assert.match(field, /expectedMinutes/);
+  assert.match(field, /formatExpectedDuration/);
   assert.doesNotMatch(field, /<input/);
   assert.doesNotMatch(field, /spellCheck/);
   assert.match(notes, /ExpectedDurationField/);
   assert.match(curriculum, /ExpectedDurationField/);
+  assert.match(curriculum, /setWorkMs\(expectedToWorkMs\(block\.expected\)\)/);
   assert.doesNotMatch(notes, /function ExpectedTime/);
   assert.doesNotMatch(curriculum, /placeholder=\{EXPECTED_PLACEHOLDER\}/);
   assert.match(videos, /loopSecondsForSlot/);
   assert.match(videos, /lessonExpectedText/);
   assert.match(picker, /disabled/);
+  const roundWheel = readFileSync(new URL('./timeWheel.ts', import.meta.url), 'utf8');
+  assert.match(roundWheel, /stepMs: SECOND_STEP_MS/);
+  assert.match(roundWheel, /stepMs: WHEEL_STEP_MS/);
+});
+
+test('halves flow through export, class totals, and the round timer', () => {
+  storage.clear();
+  const plan = emptyPlan();
+  plan.coachName = 'Bell';
+  plan.intro = 'Grip';
+  plan.introExpected = '8';
+  plan.warmupExpected = '8.5';
+  plan.specificExpected = '1:30';
+  plan.cooldownExpected = '';
+  plan.techniques[0].expected = '0.5';
+  const saved = saveTrainingNotes(plan, TODAY);
+  assert.equal(saved.introExpected, '8');
+  assert.equal(saved.warmupExpected, '8.5');
+  assert.equal(saved.specificExpected, '1.5');
+  assert.equal(saved.cooldownExpected, '');
+  assert.equal(saved.techniques[0].expected, '0.5');
+  const loaded = plansOnDay(loadTrainingArchive(TODAY), TODAY)[0];
+  assert.equal(loaded?.introExpected, '8');
+  assert.equal(loaded?.warmupExpected, '8.5');
+
+  const drive = lessonPlanForDrive(saved);
+  assert.equal(drive.introExpected, '8');
+  assert.equal(drive.warmupExpected, '8.5');
+  assert.equal(drive.specificExpected, '1.5');
+  assert.equal(drive.techniques[0].expected, '0.5');
+  const record = coachPlanRecordDocument({ dateKey: TODAY, savedAt: 1, plan: saved });
+  assert.equal(record.plan.introExpected, '8');
+  assert.equal(record.plan.warmupExpected, '8.5');
+  const packed = JSON.stringify(record);
+  assert.equal(packed.includes('"8.5"'), true);
+  assert.equal(packed.includes('1:30'), false);
+
+  const legacy = emptyPlan();
+  legacy.coachName = 'Bell';
+  legacy.intro = 'Grip';
+  legacy.introExpected = '8';
+  legacy.warmupNote = 'Shrimps';
+  legacy.warmupExpected = '1:30';
+  const doc = parseLessonPayload(
+    JSON.stringify({
+      advantage: 'lesson-plan',
+      version: 1,
+      date: TODAY,
+      coachName: 'Bell',
+      savedAt: 1,
+      plan: legacy,
+    }),
+  );
+  assert.equal(doc?.plan.introExpected, '8');
+  assert.equal(doc?.plan.warmupExpected, '1.5');
+
+  assert.equal(minutesFromExpected('8'), 8);
+  assert.equal(minutesFromExpected('8.5'), 8.5);
+  assert.equal(minutesFromExpected('8.5 min'), 8.5);
+  assert.equal(minutesFromExpected('1:30'), 1.5);
+  assert.equal(minutesFromExpected('10 minutes'), 10);
+  assert.equal(minutesFromExpected('1 hr'), 60);
+  assert.equal(minutesFromExpected(''), 0);
+  assert.equal(minutesFromExpected('soon'), 0);
+  assert.equal(
+    classMinutes({
+      introExpected: '8.5',
+      warmupExpected: '8',
+      specificExpected: '',
+      cooldownExpected: '0.5',
+      techniques: [{ expected: '1.5' }],
+      games: [{ expected: '1:30' }],
+    }),
+    20,
+  );
+  assert.equal(classMinutes({ introExpected: '', warmupExpected: '8.5' }), 8.5);
+  assert.equal(classMinutes({}), 60);
+
+  const taught = sanitizeGymEvent({
+    id: 'half-class',
+    type: 'class_taught',
+    planId: 'plan-half',
+    date: TODAY,
+    template: 'adult',
+    classDesignation: 'GB1',
+    minutes: 8.5,
+    instructorSeat: 'seat-coach',
+    actor: { seatId: 'seat-coach', name: 'Coach' },
+    source: 'live',
+    v: 1,
+    at: `${TODAY}T12:00:00.000Z`,
+    recordedAt: 1,
+    licenseId: 'gym-1',
+  });
+  assert.equal(taught && taught.type === 'class_taught' ? taught.minutes : 0, 8.5);
+  const wholeTaught = sanitizeGymEvent({
+    id: 'whole-class',
+    type: 'class_taught',
+    planId: 'plan-whole',
+    date: TODAY,
+    template: 'adult',
+    classDesignation: 'GB1',
+    minutes: 8,
+    instructorSeat: 'seat-coach',
+    actor: { seatId: 'seat-coach', name: 'Coach' },
+    source: 'live',
+    v: 1,
+    at: `${TODAY}T12:00:00.000Z`,
+    recordedAt: 1,
+    licenseId: 'gym-1',
+  });
+  assert.equal(wholeTaught && wholeTaught.type === 'class_taught' ? wholeTaught.minutes : 0, 8);
+
+  assert.equal(clampWorkMs(expectedToWorkMs('8.5')), 8 * 60_000 + 30_000);
+  assert.equal(clampWorkMs(expectedToWorkMs('8')), 8 * 60_000);
+  assert.equal(clampWorkMs(expectedToWorkMs('1:30')), 90_000);
+  assert.equal(clampWorkMs(expectedToWorkMs('0.5')), 60_000);
+  assert.equal(clampWorkMs(expectedToWorkMs('')), 5 * 60_000);
 });
