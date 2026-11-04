@@ -70,12 +70,13 @@ test('Metal Mania headings put numerals in Anton, and clocks stay plain Anton', 
   assert.match(css, /\.id \{[^}]*min-width: 0;[^}]*overflow: hidden/);
   assert.match(css, /\.name a \{[^}]*overflow: hidden;[^}]*text-overflow: ellipsis/);
   assert.match(css, /\.lead \{[^}]*min-width: 0/);
-  assert.match(css, /\.trail \{[^}]*justify-content: flex-end/);
+  assert.match(css, /\.hdr \.mat \{[^}]*margin-left: auto/);
   assert.match(css, /\.hdr \.mat a \{[^}]*overflow: hidden;[^}]*white-space: nowrap;[^}]*text-overflow: ellipsis/);
   assert.match(css, /font-size: 92cqh/);
   assert.match(css, /\.digit--pair \{[^}]*font-size: min\(92cqh, 86cqi\)/);
   assert.match(css, /padding: 0\.6vh max\(6px, 0\.6vw\)/);
-  assert.match(css, /\.hdr \.mat \{[^}]*min-width: 8\.5em/);
+  assert.match(css, /\.hdr \.mat \{[^}]*flex: 0 1 auto;[^}]*margin-left: auto;[^}]*min-width: 0;[^}]*max-width: 22%;[^}]*text-align: right/);
+  assert.match(css, /\.hdr \.div \{[^}]*flex: 1 1 auto;[^}]*flex-grow: 0;[^}]*min-width: max\(30%, min-content\)/);
   assert.equal(metalRoundLabel('Round 1'), 'Round 1');
   assert.equal(metalRoundLabel('Round Semifinal'), 'Semifinal');
   assert.equal(metalRoundLabel('Round Final'), 'Final');
@@ -136,16 +137,27 @@ test('the Chrome Inferno meter is 30 live segments and 04:40 of 05:00 lights 28'
   assert.match(timer, /className=\{i < lit \? 'on' : undefined\}/);
 });
 
+const skinCss = () => {
+  const embed = (url: URL) => {
+    const dir = new URL('./', url);
+    return read(url.pathname).replace(/url\(([^)]+)\)/g, (_all, raw: string) => {
+      const cleaned = raw.trim().replace(/^['"]|['"]$/g, '');
+      if (/^(?:data:|https?:|file:)/.test(cleaned)) return `url(${cleaned})`;
+      return `url(${new URL(cleaned, dir).href})`;
+    });
+  };
+  const root = new URL('../skins/polished/', import.meta.url);
+  return `${embed(new URL('fonts/chrome-inferno-fonts.css', root))}\n${embed(new URL('heavy-metal.css', root))}`;
+};
+
 test('two-digit scores fit a 109px tile at 390', async () => {
   const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  const root = new URL('../skins/polished/', import.meta.url);
   const tile = (score: string, pair: boolean) =>
     `<button class="tile pts" style="width:109px;height:160px"><span class="lab">POINTS</span><span class="num"><span class="digit${pair ? ' digit--pair' : ''}">${score}</span></span></button>`;
   await page.setContent(`<!doctype html>
-    <link rel="stylesheet" href="${new URL('fonts/chrome-inferno-fonts.css', root)}">
-    <link rel="stylesheet" href="${new URL('heavy-metal.css', root)}">
+    <style>${skinCss()}</style>
     <div class="skin-root" data-skin="heavy-metal" style="width:390px;height:844px">
       <div class="sb"><section class="row c1" style="height:220px">
         ${tile('12', true)}${tile('10', true)}${tile('4', false)}
@@ -174,4 +186,49 @@ test('two-digit scores fit a 109px tile at 390', async () => {
   const pair = fit.find((row) => row.score === '12');
   assert.ok(single && pair);
   assert.ok(single.font + 0.5 >= pair.font, 'a single digit stays on the height size');
+});
+
+test('a typical division stays whole at 1024 beside the round', async () => {
+  const { chromium } = await import('@playwright/test');
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 } });
+  const oswald = new URL('../../node_modules/@fontsource/oswald/files/oswald-latin-600-normal.woff2', import.meta.url);
+  const header = (round: string) => `<header class="hdr">
+      <div class="lead"><img class="logo" alt=""><span class="wm">Advantage</span></div>
+      <i class="crest"></i>
+      <div class="trail"><span class="mat"><a href="#"><span class="metal-face">${round}</span></a></span>
+      <span class="div"><a href="#">Adult · Middleweight</a></span></div>
+    </header>`;
+  await page.setContent(`<!doctype html>
+    <style>
+      @font-face { font-family: Oswald; font-weight: 600; src: url('${oswald.href}') format('woff2'); }
+      ${skinCss()}
+      body { margin: 0; }
+    </style>
+    <div class="skin-root" data-skin="heavy-metal" style="width:1024px;height:768px">
+      <div class="sb">${header('Round 1')}${header('Semifinal')}</div>
+    </div>`);
+  await page.evaluate(() => document.fonts.ready);
+  const rows = await page.evaluate(() =>
+    [...document.querySelectorAll('.hdr')].map((hdr) => {
+      const box = hdr.getBoundingClientRect();
+      const div = hdr.querySelector('.div a');
+      const mat = hdr.querySelector('.mat').getBoundingClientRect();
+      const division = hdr.querySelector('.div').getBoundingClientRect();
+      const crest = hdr.querySelector('.crest').getBoundingClientRect();
+      return {
+        round: hdr.querySelector('.mat').textContent,
+        division: div.textContent,
+        truncated: div.scrollWidth > div.clientWidth + 1,
+        gap: Math.round(division.left - mat.right),
+        crestOff: Math.round(crest.left + crest.width / 2 - (box.left + box.width / 2)),
+      };
+    }),
+  );
+  await browser.close();
+  for (const row of rows) {
+    assert.equal(row.truncated, false, `${row.round} truncated the division (${row.division})`);
+    assert.ok(row.gap >= -2 && row.gap < 48, `${row.round} round sits beside the division, gap ${row.gap}px`);
+    assert.ok(Math.abs(row.crestOff) <= 2, `${row.round} crest off center by ${row.crestOff}px`);
+  }
 });

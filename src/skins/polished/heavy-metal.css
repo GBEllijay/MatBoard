@@ -122,8 +122,7 @@
 .skin-root[data-skin="heavy-metal"] .hdr {
   position: relative;
   z-index: 4;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  display: flex;
   align-items: center;
   column-gap: 1.4vh;
   min-width: 0;
@@ -159,32 +158,26 @@
 }
 
 .skin-root[data-skin="heavy-metal"] .hdr .crest {
-  position: relative;
-  left: auto;
-  top: auto;
-  transform: none;
-  justify-self: center;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   height: 9vh;
   width: 18vh;
   z-index: 2;
 }
 
 .skin-root[data-skin="heavy-metal"] .trail {
-  grid-column: 3;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-width: 0;
-  overflow: hidden;
+  display: contents;
 }
 
 .skin-root[data-skin="heavy-metal"] .hdr .mat {
   display: flex;
   flex: 0 1 auto;
-  margin-left: 0;
-  /* Floor so "Semifinal" and "Round 1" are not squeezed into "Round…". */
-  min-width: 8.5em;
-  max-width: 100%;
+  margin-left: auto;
+  min-width: 0;
+  max-width: 22%;
+  text-align: right;
   overflow: hidden;
   font-family: "Metal Mania", cursive;
   font-size: 5.2vh;
@@ -204,6 +197,7 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  text-align: right;
 }
 
 /* Inline, so the link's ellipsis can clip the whole label. A flex face hard-clips and hides the ellipsis. */
@@ -225,9 +219,12 @@
 }
 
 .skin-root[data-skin="heavy-metal"] .hdr .div {
-  flex: 0 1 auto;
+  /* Do not grow: a growing division eats the free space and the round's auto margin stays put. */
+  flex: 1 1 auto;
+  flex-grow: 0;
   justify-self: start;
-  max-width: 70%;
+  min-width: max(30%, min-content);
+  max-width: none;
   font-family: Oswald, sans-serif;
   font-weight: 600;
   font-size: 2.4vh;
