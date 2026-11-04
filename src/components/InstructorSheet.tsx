@@ -92,7 +92,7 @@ export function InstructorSheet() {
       <div className="sheet-zone sheet-zone--identity" data-zone="identity">
         <h3 className="sheet-cap">Identity</h3>
         <div className="gym-id">
-          <img src={logo || ADVANTAGE_MARK_SRC} alt="" />
+          <img className="gym-id__logo" src={logo || ADVANTAGE_MARK_SRC} alt="" />
           <div>
             <h2>{name}</h2>
             <p>
