@@ -156,7 +156,7 @@ test('/student-roster stays on the Coach Unlimited gate and opens the real stude
   assert.match(roster, /const showCsv = rosterCsvAvailable\(proUnlocked, coachUnlocked\)/);
   assert.doesNotMatch(roster, /showCsv = !studentRoster/);
   assert.match(roster, /addStudents\(result\.students, \{ rosterList: studentRoster \? 'student' : 'competitor' \}\)/);
-  assert.match(roster, /serializeRosterCsv\(listed, studentRoster \? STUDENT_NOTES_LABEL : undefined\)/);
+  assert.match(roster, /serializeRosterCsv\(listed, studentRoster \? STUDENT_NOTES_LABEL : undefined(, csvCardLookup\(\))?\)/);
   assert.doesNotMatch(roster, /Coming soon/);
   assert.equal(existsSync(new URL('../pages/StudentRosterPlaceholder.tsx', import.meta.url)), false);
 });
