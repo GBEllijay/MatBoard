@@ -36,7 +36,7 @@ export const CLOUD_HOME_CONNECTED =
 export const CLOUD_ROLE_HOME =
   'The gym owner, a Coach, and Instructors can upload daily videos and lesson-plan media. An assistant coach can play and download them. A program director can send videos to today\'s daily videos, without opening lesson plans.';
 
-export type CloudMediaPurpose = 'daily-video' | 'lesson' | 'lesson-media';
+export type CloudMediaPurpose = 'daily-video' | 'lesson' | 'lesson-media' | 'replay-pending';
 export type CloudMediaHome = 'device' | 'advantage-cloud';
 
 export type CloudAccess = { read: boolean; upload: boolean };
@@ -204,6 +204,8 @@ export function cloudPartPlan(size: number, partSize = CLOUD_CHUNK_BYTES): {
 const LICENSE_ID = /^[A-Za-z0-9_-]{4,80}$/;
 const DAILY_KEY = /^videos\/daily\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
 const LESSON_JSON_KEY = /^lessons\/current\/\d{4}-W\d{2}\/\d{4}-\d{2}-\d{2}\.json$/;
+const PENDING_REPLAY_KEY = /^pending\/replays\/[A-Za-z0-9_-]{1,80}\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
+const PENDING_STATUS_KEY = /^pending\/status\/[A-Za-z0-9_-]{1,80}\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}\.json$/;
 const LESSON_MEDIA_KEY = /^lessons\/current\/\d{4}-W\d{2}\/media\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
 const SKIN_IMAGE_KEY = /^skins\/[a-z0-9]{8,40}$/;
 const SKIN_META_KEY = /^skins\/[a-z0-9]{8,40}\.json$/;
@@ -236,7 +238,9 @@ export function cloudObjectKey(licenseId: string, relativePath: string): string 
     !LESSON_JSON_KEY.test(relativePath) &&
     !LESSON_MEDIA_KEY.test(relativePath) &&
     !SKIN_IMAGE_KEY.test(relativePath) &&
-    !SKIN_META_KEY.test(relativePath)
+    !SKIN_META_KEY.test(relativePath) &&
+    !PENDING_REPLAY_KEY.test(relativePath) &&
+    !PENDING_STATUS_KEY.test(relativePath)
   ) {
     return null;
   }
@@ -249,6 +253,7 @@ export function cloudRelativePath(input: {
   dateKey: string;
   fileName: string;
 }): { ok: true; path: string } | { ok: false; error: string } {
+  if (input.purpose === 'replay-pending') return { ok: false, error: CLOUD_ROLE_MESSAGE };
   if (input.purpose === 'lesson-media') {
     if (input.role === 'student' || input.role === 'program-director' || input.role === 'none') {
       return { ok: false, error: CLOUD_ROLE_MESSAGE };
@@ -350,6 +355,7 @@ export type CloudStatusBody = {
   bucketUsedBytes?: number;
   capBytes?: number;
   maxUploadBytes?: number;
+  replayUpload?: ReplayCloudUpload;
 };
 
 export type CloudUploadResult = { ok: true; path: string } | { ok: false; message: string };
@@ -475,4 +481,73 @@ export function scheduleCloudLessonSave(input: { dateKey: string; json: string; 
       if (result.ok) notifyCloudMedia();
     });
   }, 500);
+}
+
+/**
+ * Replay clips only (Record for replay / Record for Review). Owner, Coach and
+ * Instructors upload straight to lesson media. Assistant coaches and program
+ * directors upload as pending: only the uploader and the owner see it until
+ * the owner approves. This does not change `cloudMediaAccess` or any preset.
+ */
+export type ReplayCloudUpload = 'direct' | 'pending' | 'none';
+
+export function cloudReplayUpload(input: { plusCloud: boolean; kind: 'owner' | 'seat'; preset?: string | null }): ReplayCloudUpload {
+  if (!input.plusCloud) return 'none';
+  if (input.kind === 'owner') return 'direct';
+  const preset = input.preset ?? '';
+  if (preset === 'coach' || preset === 'instructors') return 'direct';
+  if (preset === 'assistant-coach' || preset === 'program-director') return 'pending';
+  return 'none';
+}
+
+export type PendingReplayStatus = 'pending' | 'approved' | 'declined';
+export type PendingReplayRow = {
+  path: string;
+  seatId: string;
+  dateKey: string;
+  name: string;
+  size: number;
+  mime: string;
+  status: PendingReplayStatus;
+};
+
+const SEAT_SEGMENT = /^[A-Za-z0-9_-]{1,80}$/;
+
+/** `pending/replays/{seatId}/{date}/{file}` for one seat's clip, or null. */
+export function pendingReplayPath(seatId: string, dateKey: string, fileName: string): string | null {
+  if (!SEAT_SEGMENT.test(seatId) || !isCalendarDateKey(dateKey)) return null;
+  const media = lessonMediaPath(dateKey, fileName);
+  const name = media?.split('/').pop() ?? '';
+  const path = `pending/replays/${seatId}/${dateKey}/${name}`;
+  return PENDING_REPLAY_KEY.test(path) ? path : null;
+}
+
+/** Status marker beside a pending clip. Decline writes a marker; the clip object is never deleted. */
+export function pendingStatusPath(pendingPath: string): string | null {
+  const m = /^pending\/replays\/(.+)$/.exec(pendingPath);
+  if (!m || !PENDING_REPLAY_KEY.test(pendingPath)) return null;
+  return `pending/status/${m[1]}.json`;
+}
+
+export function parsePendingReplayPath(path: string): { seatId: string; dateKey: string; name: string } | null {
+  if (!PENDING_REPLAY_KEY.test(path)) return null;
+  const [, , seatId, dateKey, name] = path.split('/');
+  return { seatId, dateKey, name };
+}
+
+/** Where an approved clip lands: the normal lesson-media path for that date. */
+export function approvedReplayPath(pendingPath: string): string | null {
+  const parsed = parsePendingReplayPath(pendingPath);
+  return parsed ? lessonMediaPath(parsed.dateKey, parsed.name) : null;
+}
+
+let replayPending = false;
+
+/** Set by the Cloud status check when this seat uploads replay clips as pending. */
+export function setCloudReplayPending(pending: boolean): void {
+  replayPending = pending;
+}
+
+export function cloudReplayPendingSelected(): boolean {
+  return replayPending;
 }

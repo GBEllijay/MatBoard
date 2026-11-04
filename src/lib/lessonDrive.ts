@@ -30,6 +30,7 @@
  */
 
 import { publishLessonToDrive, publishTrainingVideos, readDriveBinding } from './googleDrive.ts';
+import { replayForDrive } from './replayAnalysis.ts';
 import type { DriveLessonDocument, TrainingVideoUpload, TrainingVideoUploadResult } from './googleDrive.ts';
 import {
   clampDriveFileId,
@@ -144,6 +145,7 @@ export function lessonPlanForDrive(plan: TrainingNotesPlan): TrainingNotesPlan {
           })),
         }
       : {}),
+    ...(plan.replays ? { replays: plan.replays.map(replayForDrive) } : {}),
   };
 }
 

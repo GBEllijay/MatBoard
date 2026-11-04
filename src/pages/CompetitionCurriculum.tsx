@@ -3,6 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { PlanDateNav } from '../components/PlanDateNav';
 import { LessonMediaRail } from '../components/LessonMediaRail';
+import { ReviewSlotControls } from '../components/ReviewSlotControls';
+import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
+import { useCurrentSeat } from '../components/SeatSessionBar';
+import { canCaptureReplay as replayCanCapture } from '../lib/instructorSeats';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -21,6 +25,9 @@ import {
   CURRICULUM_PATH,
   CURRICULUM_SAVE_LEAD,
   CURRICULUM_SAVE_LINK,
+  CURRICULUM_TIMINGS,
+  CURRICULUM_TIMING_LABELS,
+  RECORD_FOR_REVIEW_LABEL,
   CURRICULUM_UNLOCK_LABEL,
   DESIGNATION_PLACEHOLDER,
   EXPECTED_PLACEHOLDER,
@@ -33,7 +40,9 @@ import {
   blockOffersClock,
   blockOffersExpected,
   blockOffersNotes,
+  blockOffersReviewToggle,
   blockOffersTree,
+  blockWantsReplay,
   copyCurriculum,
   curriculumBrowseFolders,
   curriculumHasContent,
@@ -116,6 +125,9 @@ export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boo
   const [treeArchive, setTreeArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
   const [clipUrls, setClipUrls] = useState<Record<string, string>>({});
   const [driveNote, setDriveNote] = useState('');
+  /** Recording or picking a replay clip follows the existing upload switch for seats (same as the lesson replay card). */
+  const seat = useCurrentSeat();
+  const canCaptureReplay = replayCanCapture({ owner: true, seat });
   const [connectOpen, setConnectOpen] = useState(false);
   const planRef = useRef(plan);
   const viewKeyRef = useRef(viewKey);
@@ -610,6 +622,8 @@ export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boo
             onAdd={() => commit(insertBlockAfter(planRef.current, block.id))}
             onOpenTimer={() => openTimer(block)}
             onOpenVideo={() => navigate(techniquesPathForCurriculum(block.id, returnPath))}
+            dateKey={viewKey}
+            canCaptureReplay={canCaptureReplay}
           />
         ))}
 
@@ -637,6 +651,20 @@ export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boo
               onChange={(event) => commit({ ...plan, closing: event.target.value })}
             />
           </label>
+          {blockOffersReviewToggle('closing') ? (
+            <ReviewSlotControls
+              id={`${plan.id}-closing`}
+              heading="Closing"
+              slot={plan.closingReview}
+              dateKey={viewKey}
+              readOnly={!editingToday}
+              canCapture={canCaptureReplay}
+              onChange={(closingReview) => {
+                const { closingReview: _drop, ...rest } = plan;
+                commit(closingReview ? { ...rest, closingReview } : rest);
+              }}
+            />
+          ) : null}
         </section>
 
         {editingToday ? (
@@ -724,6 +752,8 @@ function CurriculumCard({
   onAdd,
   onOpenTimer,
   onOpenVideo,
+  dateKey,
+  canCaptureReplay,
 }: {
   block: CurriculumBlock;
   index: number;
@@ -739,6 +769,8 @@ function CurriculumCard({
   onAdd: () => void;
   onOpenTimer: () => void;
   onOpenVideo: () => void;
+  dateKey: string;
+  canCaptureReplay: boolean;
 }) {
   const heading = blockHeading(block);
   const showWater = showStructure || block.waterBreak;
@@ -764,28 +796,53 @@ function CurriculumCard({
           </label>
         ) : null}
         {blockOffersClock(block.kind) ? (
-          <div className="presets curriculum__modes" role="radiogroup" aria-label={`Timer or video for ${heading}`}>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={block.timing === 'timer'}
-              className={`preset${block.timing === 'timer' ? ' preset--on' : ''}`}
-              disabled={readOnly}
-              onClick={() => onChange({ timing: 'timer' })}
-            >
-              Timer only
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={block.timing === 'video'}
-              className={`preset${block.timing === 'video' ? ' preset--on' : ''}`}
-              disabled={readOnly}
-              onClick={() => onChange({ timing: 'video' })}
-            >
-              Looping video
-            </button>
+          <div className="presets curriculum__modes" role="radiogroup" aria-label={`Timer, video, or replay for ${heading}`}>
+            {CURRICULUM_TIMINGS.map((timing) => (
+              <button
+                key={timing}
+                type="button"
+                role="radio"
+                aria-checked={block.timing === timing}
+                className={`preset${block.timing === timing ? ' preset--on' : ''}`}
+                disabled={readOnly}
+                onClick={() => onChange({ timing })}
+              >
+                {CURRICULUM_TIMING_LABELS[timing]}
+              </button>
+            ))}
           </div>
+        ) : null}
+        {blockOffersReviewToggle(block.kind) && !(blockOffersClock(block.kind) && block.timing === 'replay') ? (
+          <button
+            type="button"
+            className={block.recordReview ? 'notes__break notes__break--on' : 'notes__break'}
+            role="switch"
+            data-record-review=""
+            aria-checked={block.recordReview === true}
+            aria-label={`${RECORD_FOR_REVIEW_LABEL} for ${heading}`}
+            disabled={readOnly}
+            onClick={() => onChange({ recordReview: !block.recordReview })}
+          >
+            <span className="notes__switch" aria-hidden="true" />
+            <span className="notes__break-copy">
+              <span className="notes__break-label">{RECORD_FOR_REVIEW_LABEL}</span>
+              {block.recordReview ? <span className="notes__break-hint">Record or pick a clip to review after</span> : null}
+            </span>
+            <span className="notes__break-state">{block.recordReview ? 'On' : 'Off'}</span>
+          </button>
+        ) : null}
+        {blockWantsReplay(block) ? (
+          <ReplayAnalysisCard
+            embedded
+            replay={{ id: block.id, title: block.kind === 'custom' ? block.title : '', notes: '', clip: block.replayClip }}
+            heading={heading}
+            dateKey={dateKey}
+            readOnly={readOnly}
+            canCapture={canCaptureReplay}
+            onChange={(patch) => {
+              if ('clip' in patch) onChange({ replayClip: patch.clip });
+            }}
+          />
         ) : null}
         {blockOffersClock(block.kind) && block.timing === 'video' ? (
           <LessonMediaRail
