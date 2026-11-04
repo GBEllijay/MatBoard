@@ -1,15 +1,20 @@
-/* Skin picker popup for the scoreboard and round timer. Same look as the brackets Skin picker. */
+/* Skin picker popup for the scoreboard and round timer.
+   Fixed tiles, 3 columns on a phone and 4 or 5 on a wide screen.
+   The list scrolls vertically; the next row peeks under a bottom fade. */
 .skin-pick {
   position: relative;
   flex: 0 0 auto;
   justify-self: start;
+  --skin-tile-w: 5.6rem;
+  --skin-tile-img: 4.15rem;
+  --skin-tile-name: 2.15rem;
+  --skin-gap: 0.45rem;
 }
 
 .skin-pick__picker {
   position: fixed;
   z-index: 60;
-  overflow: auto;
-  padding: 0.65rem;
+  overflow: hidden;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: #0e1624;
@@ -22,17 +27,57 @@
   text-transform: none;
 }
 
+.skin-pick__scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scroll-padding-bottom: 3rem;
+  padding: 0.65rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(247, 244, 238, 0.5) transparent;
+}
+
+.skin-pick__scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.skin-pick__scroll::-webkit-scrollbar-thumb {
+  background: rgba(247, 244, 238, 0.45);
+  border-radius: 8px;
+}
+
+.skin-pick__section + .skin-pick__section {
+  margin-top: 0.55rem;
+}
+
+.skin-pick__heading {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(247, 244, 238, 0.72);
+  -webkit-text-fill-color: rgba(247, 244, 238, 0.72);
+}
+
 .skin-pick__grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.4rem;
+  grid-template-columns: repeat(var(--skin-cols, 3), var(--skin-tile-w));
+  justify-content: start;
+  gap: var(--skin-gap);
 }
 
 .skin-pick__thumb {
   position: relative;
   display: grid;
+  grid-template-rows: var(--skin-tile-img) var(--skin-tile-name);
+  align-content: start;
   gap: 0.22rem;
-  min-height: 0;
+  width: var(--skin-tile-w);
+  height: calc(var(--skin-tile-img) + var(--skin-tile-name) + 0.66rem);
+  box-sizing: border-box;
   padding: 0.22rem;
   border-radius: 12px;
   border: 2px solid transparent;
@@ -46,30 +91,46 @@
   background: rgba(0, 78, 186, 0.35);
 }
 
+.skin-pick__thumb:focus-visible {
+  outline: 3px solid #fcc000;
+  outline-offset: 2px;
+}
 
 .skin-pick__img {
   position: relative;
   display: block;
+  height: var(--skin-tile-img);
 }
 
 .skin-pick__thumb img {
   display: block;
   width: 100%;
-  height: 3.35rem;
+  height: var(--skin-tile-img);
   object-fit: cover;
   border-radius: 8px;
   background: #1a2436;
 }
 
-
-
-
 .skin-pick__name {
+  height: var(--skin-tile-name);
+  overflow: hidden;
   font-size: 0.68rem;
   font-weight: 800;
   line-height: 1.15;
   text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-
-
+/* The next row peeks through this fade while more skins sit below. */
+.skin-pick__fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.75rem;
+  pointer-events: none;
+  border-radius: 0 0 16px 16px;
+  background: linear-gradient(to bottom, rgba(14, 22, 36, 0), #0e1624 78%);
+}
