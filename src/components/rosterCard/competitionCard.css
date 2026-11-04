@@ -104,7 +104,8 @@
   color: #fff;
 }
 .comp-card__controls {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-self: start;
 }

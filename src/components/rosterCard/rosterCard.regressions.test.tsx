@@ -3,6 +3,7 @@
  * blocked photo actions, Save profile last on My profile, the card preview after
  * Save, the upload offer, and sync on add.
  */
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Window } from 'happy-dom';
@@ -41,7 +42,7 @@ view.HTMLAnchorElement.prototype.click = function click() {
 
 const { RosterCardSheet, registrationText, sendResultText, startStudentAppSync } = await import('./RosterCardSheet.tsx');
 const { CardLookSetting } = await import('./CardLookSetting.tsx');
-const { addStudent, getRoster, linkRosterCard, resetRoster, setNoPhotos } = await import('../../lib/rosterStore.ts');
+const { addStudent, getRoster, linkRosterCard, resetRoster, setNoPhotos, updateStudent } = await import('../../lib/rosterStore.ts');
 const { CARD_LOOKS, readCardLook, writeCardLook } = await import('../../lib/cardLook.ts');
 const { getCardSyncState } = await import('../../lib/cardSync.ts');
 const { updateRosterCard } = await import('../../lib/rosterCardStore.ts');
@@ -52,6 +53,7 @@ const { readRosterCard } = await import('../../lib/rosterCardStore.ts');
 const { toggleCompetitor, toggleStudentCheckIn, setPersonCheckedIn, personCheckedIn } = await import('../../lib/rosterCardActions.ts');
 const { competitorCards } = await import('../../lib/rosterStore.ts');
 const { checkedInCompetitors, competitorsForBracketFill, orderCheckedInByRanking } = await import('../../lib/checkInSeeds.ts');
+const { RankBelt } = await import('./RankBelt.tsx');
 const { CheckInFillSheet } = await import('../CheckInFillSheet.tsx');
 const { studentCheckInFor } = await import('../../pages/Roster.tsx');
 const { blankStudentReport, saveStudentReport } = await import('../../lib/studentEdition.ts');
@@ -637,11 +639,23 @@ test('Rolodex mini card: every row control stays, in order, and the face opens t
   assert.equal(opened, 1, 'face opens the card');
   click(document.querySelector('.roster-card h2') as Element);
   assert.equal(opened, 2, 'the name opens the card too');
-  const beltRow = document.querySelector('.roster-card__head .roster-card__belt-row') as HTMLElement;
-  const kids = [...beltRow.children];
-  assert.ok(kids[0].matches('.belt-mark, .belt-tip, [class*="belt"]'), 'belt first');
-  assert.ok(kids.some((k) => k.matches('[role="switch"], .roster-card__competitor')), 'switch on the belt row');
-  assert.ok(beltRow.querySelector('.roster-card__checkin'), 'Check In on the belt row');
+  assert.equal(document.querySelector('.roster-card__belt-row'), null, 'no small belt tile row on the mini card');
+  assert.equal(document.querySelector('.belt-tip'), null, 'the small belt tile is gone');
+  const who = document.querySelector('.roster-card__who') as HTMLElement;
+  const h2 = who.querySelector('h2') as HTMLElement;
+  const belt = h2.nextElementSibling as HTMLElement;
+  assert.ok(belt?.matches('[data-testid="rank-belt"]'), 'the full belt sits directly under the name');
+  assert.ok(belt.querySelector('.s-belt-mark .belt__bar'), 'full belt with its rank bar');
+  const buttons = belt.nextElementSibling as HTMLElement;
+  assert.ok(buttons?.classList.contains('rolodex-card__buttons'), 'the letter buttons sit under the belt');
+  const sw = buttons.querySelector('[role="switch"]') as HTMLButtonElement;
+  const checkIn = buttons.querySelector('.roster-card__checkin') as HTMLButtonElement;
+  assert.ok(sw && checkIn, 'Competitor then Check In');
+  assert.equal(checkIn.previousElementSibling, sw);
+  click(sw);
+  assert.equal(readRosterCard(card.id).competitorOn, true, 'Competitor still toggles');
+  click(checkIn);
+  assert.ok(filledIds().includes(card.id) || filledIds().includes(readRosterCard(card.id).competitorCardId as string), 'Check In still feeds Fill from check-in');
   const actions = [...document.querySelectorAll('.roster-card__actions button')].map((b) => b.textContent?.trim());
   assert.deepEqual(actions, ['Edit', 'Open card', 'Link to student', 'Remove']);
   assert.equal(document.querySelector('.rolodex-card__kicker')?.getAttribute('aria-hidden'), 'true');
@@ -894,3 +908,28 @@ test('My profile CSS: inline links and Exit demo reach 44px', async () => {
   const se = readFileSync('src/student-edition.css', 'utf8');
   assert.match(se, /\.student-demo-banner a\s*\{[^}]*min-height:\s*44px/);
 });
+
+test('Rolodex and Competition card: the belt under the name shows the rank stripes', () => {
+  localStorage.clear();
+  resetRoster();
+  const card = addStudent({ name: 'Maya Alvarez', belt: 'Purple', stripes: 3, division: 'Adult', gym: 'Advantage', lastPromotion: '', lastPromotionDetail: '', note: '', photo: '' });
+  assert.ok(card);
+  updateStudent(card.id, { stripes: 3 });
+  assert.equal(fresh(card.id).stripes, 3);
+  let m = mount(<ul><RankBeltProbe id={card.id} /></ul>);
+  const belt = document.querySelector('[data-testid="rank-belt"]') as HTMLElement;
+  assert.equal(belt.getAttribute('data-stripes'), '3');
+  assert.equal(belt.querySelector('.s-belt-mark')?.getAttribute('data-stripes'), '3', 'three stripes filled on the bar');
+  assert.equal(belt.getAttribute('aria-label'), 'Purple belt, 3 stripes');
+  unmount(m);
+  const source = readFileSync('src/components/rosterCard/CompetitionCard.tsx', 'utf8');
+  assert.match(source, /<h3 className="comp-card__name">[\s\S]*<RankBelt student=\{student\} \/>[\s\S]*comp-card__controls/, 'Competition card: name, belt, then the buttons');
+  assert.doesNotMatch(source, /BeltTip/, 'no small belt tile on the Competition card');
+  const coach = readFileSync('src/components/rosterCard/CoachClipboardCard.tsx', 'utf8');
+  assert.doesNotMatch(coach, /RankBelt/, 'the coach card keeps its own tappable belt');
+  assert.match(coach, /className="clipboard__belt clipboard__tap" aria-label="Change belt and stripes" onClick=\{props\.onEditBelt\}/);
+});
+
+function RankBeltProbe({ id }: { id: string }) {
+  return <li><RankBelt student={fresh(id)} /></li>;
+}

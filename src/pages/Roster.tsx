@@ -16,6 +16,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { BeltTip } from '../components/BeltTip';
+import { RankBelt } from '../components/rosterCard/RankBelt';
 import { LinkStudentSheet, SendRankUpdateSheet } from '../components/CoachStudentLink';
 import { GuestArchive } from '../components/GuestArchive';
 import { SendCompetitionSheet, type CompetitionSendDraft } from '../components/SendCompetitionSheet';
@@ -742,6 +743,10 @@ export function StudentCard({
                 </span>
               ) : null}
               <h2 onClick={onOpenFace}>{student.name}</h2>
+              {onOpenFace ? (
+                <>
+                  <RankBelt student={student} />
+                  <div className="rolodex-card__buttons">
               {studentRoster ? null : (
                 <button
                   type="button"
@@ -754,10 +759,6 @@ export function StudentCard({
                   Check In
                 </button>
               )}
-            </div>
-          </div>
-          <div className="roster-card__belt-row">
-            <BeltTip belt={student.belt} />
             {competitorSwitch ? (
               <button
                 type="button"
@@ -790,7 +791,63 @@ export function StudentCard({
                 Check In
               </button>
             ) : null}
+                  </div>
+                </>
+              ) : (
+                <>
+              {studentRoster ? null : (
+                <button
+                  type="button"
+                  className={`btn roster-card__checkin${student.checkedIn ? '' : ' btn--ghost'}`}
+                  aria-pressed={student.checkedIn}
+                  aria-label={`Check In ${student.name}`}
+                  title="Here for today's tournament"
+                  onClick={onToggleCheckIn}
+                >
+                  Check In
+                </button>
+              )}
+                </>
+              )}
+            </div>
           </div>
+          {onOpenFace ? null : (
+            <div className="roster-card__belt-row">
+              <BeltTip belt={student.belt} />
+              {competitorSwitch ? (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={competitorSwitch.on}
+                  aria-label={`Add ${student.name} to Competitor Roster`}
+                  title="Add to Competitor Roster"
+                  className={`roster-card__competitor${competitorSwitch.on ? ' roster-card__competitor--on' : ''}`}
+                  onClick={() => {
+                    const result = competitorSwitch.onToggle();
+                    setCompetitorNote({ text: result.text, error: Boolean(result.error) });
+                  }}
+                >
+                  <span className="roster-card__competitor-track" aria-hidden="true" />
+                  Competitor
+                </button>
+              ) : null}
+              {studentCheckIn ? (
+                <button
+                  type="button"
+                  className={`btn roster-card__checkin${studentCheckIn.checkedIn ? '' : ' btn--ghost'}`}
+                  aria-pressed={studentCheckIn.checkedIn}
+                  aria-label={`Check In ${student.name}`}
+                  title="Here for today's tournament"
+                  onClick={() => {
+                    const result = studentCheckIn.onToggle();
+                    setCompetitorNote({ text: result.text, error: Boolean(result.error) });
+                  }}
+                >
+                  Check In
+                </button>
+              ) : null}
+            </div>
+          )}
         </header>
         {competitorNote ? (
           <p className={`roster-card__meta${competitorNote.error ? ' roster-card__meta--error' : ''}`} role="status">

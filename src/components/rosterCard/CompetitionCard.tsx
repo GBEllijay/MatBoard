@@ -14,7 +14,7 @@ import { ASSESSMENT_AREAS } from '../../lib/studentAssessment';
 import { cardDate, initialsOf } from '../../lib/rosterCard';
 import { METHOD_LABELS, competitionRecord, latestWeighIn, opponentsFaced, tournamentsIcs, upcomingTournaments } from '../../lib/competitionCard';
 import { DEFAULT_CARD_LOOK, type CardLook } from '../../lib/cardLook';
-import { BeltTip } from '../BeltTip';
+import { RankBelt } from './RankBelt';
 import { CardRadar } from './CoachClipboardCard';
 import { todayIso } from './fileSave';
 import './coachClipboard.css';
@@ -116,22 +116,21 @@ export function CompetitionCard({
             <h3 className="comp-card__name">{student.name}</h3>
             {info ? <p className="comp-card__info">{info}</p> : null}
             <div className="comp-card__beltline">
-              <BeltTip belt={student.belt} />
-              {typeof student.stripes === 'number' ? <span className="comp-card__chip">Stripe {student.stripes}</span> : null}
+              <RankBelt student={student} />
             </div>
-          </div>
-          <div className="comp-card__controls">
-            <button
-              type="button"
-              className={`comp-card__btn${checkIn.checkedIn ? ' comp-card__btn--on' : ''}`}
-              aria-pressed={checkIn.checkedIn}
-              onClick={checkIn.onToggle}
-            >
-              {checkIn.checkedIn ? 'Checked in' : 'Check in'}
-            </button>
-            <button type="button" className="comp-card__btn comp-card__btn--ghost" onClick={onChangeDetails}>
-              Change details
-            </button>
+            <div className="comp-card__controls">
+              <button
+                type="button"
+                className={`comp-card__btn${checkIn.checkedIn ? ' comp-card__btn--on' : ''}`}
+                aria-pressed={checkIn.checkedIn}
+                onClick={checkIn.onToggle}
+              >
+                {checkIn.checkedIn ? 'Checked in' : 'Check in'}
+              </button>
+              <button type="button" className="comp-card__btn comp-card__btn--ghost" onClick={onChangeDetails}>
+                Change details
+              </button>
+            </div>
           </div>
         </header>
 
