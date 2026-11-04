@@ -17,6 +17,11 @@ import {
   cloudObjectKey,
   cloudRelativePath,
   cloudTooLargeMessage,
+  CUSTOM_SKIN_CLOUD_CAP,
+  CUSTOM_SKIN_META_MAX_BYTES,
+  customSkinIdFromPath,
+  isCustomSkinImagePath,
+  isCustomSkinMetaPath,
   claimsOpenPlusCloud,
   grantRowOpensPlusCloud,
   gymActorForCloud,
@@ -254,6 +259,7 @@ type StartBody = {
   mime?: string;
   key?: string;
   uploadId?: string;
+  id?: string;
   parts?: { partNumber?: number; etag?: string }[];
 };
 
@@ -265,6 +271,67 @@ function mimeAllowed(purpose: CloudMediaPurpose, mime: string): boolean {
   if (purpose === 'lesson') return mime === 'application/json';
   if (purpose === 'daily-video') return mime.startsWith('video/') || mime === 'application/octet-stream';
   return mime.startsWith('video/') || mime.startsWith('image/') || mime === 'application/octet-stream';
+}
+
+const SKIN_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+function relativePath(licenseId: string, key: string): string {
+  const prefix = `groups/${licenseId}/`;
+  return key.startsWith(prefix) ? key.slice(prefix.length) : '';
+}
+
+async function countCustomSkins(bucket: GymMediaBucket, licenseId: string): Promise<number> {
+  let count = 0;
+  let cursor: string | undefined;
+  const prefix = `groups/${licenseId}/skins/`;
+  for (let page = 0; page < 20; page += 1) {
+    const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+    for (const object of listed.objects) {
+      if (isCustomSkinImagePath(relativePath(licenseId, object.key))) count += 1;
+    }
+    if (!listed.truncated || !listed.cursor) break;
+    cursor = listed.cursor;
+  }
+  return count;
+}
+
+async function listCustomSkins(bucket: GymMediaBucket, licenseId: string): Promise<{ id: string; name: string; mime: string; bytes: number; updatedAt: number }[]> {
+  const skins: { id: string; name: string; mime: string; bytes: number; updatedAt: number }[] = [];
+  let cursor: string | undefined;
+  const prefix = `groups/${licenseId}/skins/`;
+  for (let page = 0; page < 20; page += 1) {
+    const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+    for (const object of listed.objects) {
+      const relative = relativePath(licenseId, object.key);
+      const id = isCustomSkinImagePath(relative) ? customSkinIdFromPath(relative) : null;
+      if (!id) continue;
+      let name = 'My skin';
+      let updatedAt = 0;
+      const metaKey = cloudObjectKey(licenseId, `skins/${id}.json`);
+      if (metaKey) {
+        const meta = await bucket.get(metaKey);
+        if (meta) {
+          try {
+            const parsed = JSON.parse(await new Response(meta.body).text()) as { name?: unknown; updatedAt?: unknown };
+            if (typeof parsed.name === 'string' && parsed.name.trim()) name = parsed.name.trim().slice(0, 40);
+            if (typeof parsed.updatedAt === 'number' && Number.isFinite(parsed.updatedAt)) updatedAt = parsed.updatedAt;
+          } catch {
+            /* a missing or broken name file still leaves the picture */
+          }
+        }
+      }
+      skins.push({
+        id,
+        name,
+        mime: object.httpMetadata?.contentType || 'image/jpeg',
+        bytes: object.size,
+        updatedAt,
+      });
+    }
+    if (!listed.truncated || !listed.cursor) break;
+    cursor = listed.cursor;
+  }
+  return skins;
 }
 
 export async function handleGymCloud(request: Request, env: GymCloudEnv, now: () => Date = () => new Date()): Promise<Response> {
@@ -309,6 +376,9 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
       return fileResponse(object);
     }
+    if (op === 'skins') {
+      return json(200, { ok: true, skins: await listCustomSkins(bucket, actor.licenseId) });
+    }
     return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
   }
 
@@ -337,9 +407,20 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       }
     }
     if (bytes.byteLength > maxUpload) return json(413, { ok: false, error: cloudTooLargeMessage(maxUpload) });
+    const relative = relativePath(actor.licenseId, key);
+    const mime = safeCloudMime(request.headers.get('content-type') ?? '', 'application/octet-stream');
+    if (isCustomSkinImagePath(relative)) {
+      if (!SKIN_IMAGE_MIME.has(mime)) return json(400, { ok: false, error: 'Use a JPG, PNG, or WebP.' });
+      const existing = await bucket.head(key);
+      if (!existing && (await countCustomSkins(bucket, actor.licenseId)) >= CUSTOM_SKIN_CLOUD_CAP) {
+        return json(409, { ok: false, error: 'Delete one first.' });
+      }
+    }
+    if (isCustomSkinMetaPath(relative) && bytes.byteLength > CUSTOM_SKIN_META_MAX_BYTES) {
+      return json(413, { ok: false, error: 'That skin name is too large.' });
+    }
     const room = await roomFor(bucket, key, bytes.byteLength, cap);
     if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.bucketUsed, cap) });
-    const mime = safeCloudMime(request.headers.get('content-type') ?? '', 'application/octet-stream');
     await bucket.put(key, bytes, { httpMetadata: { contentType: mime } });
     return json(200, { ok: true });
   }
@@ -352,6 +433,16 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     body = JSON.parse(raw) as StartBody;
   } catch {
     return json(400, { ok: false, error: 'Advantage Cloud could not read that upload.' });
+  }
+
+  if (body.action === 'delete-skin') {
+    const id = typeof body.id === 'string' ? body.id : '';
+    const imageKey = cloudObjectKey(actor.licenseId, `skins/${id}`);
+    const metaKey = cloudObjectKey(actor.licenseId, `skins/${id}.json`);
+    if (!imageKey || !metaKey) return json(400, { ok: false, error: 'That skin is not in this license.' });
+    await bucket.delete(imageKey);
+    await bucket.delete(metaKey);
+    return json(200, { ok: true });
   }
 
   if (body.action === 'abort') {

@@ -38,6 +38,7 @@ export function SkinPicker({
   className = '',
   showMine = false,
   mineExtra = null,
+  renderTileExtra,
 }: {
   /** Dialog and radiogroup name, e.g. "Scoreboard skin" or "Timer skin". */
   label: string;
@@ -50,6 +51,8 @@ export function SkinPicker({
   showMine?: boolean;
   /** First cell of My skins. Used by the upload tile. */
   mineExtra?: ReactNode;
+  /** Rename and delete for an uploaded skin. Rendered on top of that tile. */
+  renderTileExtra?: (option: SkinPickerOption) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [moreBelow, setMoreBelow] = useState(false);
@@ -230,31 +233,44 @@ export function SkinPicker({
                 <h2 className="skin-pick__heading" id={`${pickerId}-${group.id}`}>
                   {group.label}
                 </h2>
-                <div className="skin-pick__grid" role="radiogroup" aria-labelledby={`${pickerId}-${group.id}`}>
+                <div className="skin-pick__grid">
                   {group.id === 'mine' ? mineExtra : null}
-                  {group.options.map((option) => {
-                    const selected = option.id === value;
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        tabIndex={selected ? 0 : -1}
-                        data-skin-option={option.id}
-                        className={`skin-pick__thumb${selected ? ' is-on' : ''}`}
-                        onClick={() => {
-                          onChoose(option.id);
-                          setOpen(false);
-                        }}
-                      >
-                        <span className="skin-pick__img">
-                          <img src={option.thumb} alt="" loading="lazy" />
+                  <div className="skin-pick__radios" role="radiogroup" aria-labelledby={`${pickerId}-${group.id}`}>
+                    {group.options.map((option) => {
+                      const selected = option.id === value;
+                      const extra = group.id === 'mine' ? renderTileExtra?.(option) : null;
+                      const button = (
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          aria-label={option.label}
+                          tabIndex={selected ? 0 : -1}
+                          data-skin-option={option.id}
+                          className={`skin-pick__thumb${selected ? ' is-on' : ''}`}
+                          onClick={() => {
+                            onChoose(option.id);
+                            setOpen(false);
+                          }}
+                        >
+                          <span className="skin-pick__img">
+                            <img src={option.thumb} alt="" loading="lazy" />
+                          </span>
+                          <span className="skin-pick__name">{option.label}</span>
+                        </button>
+                      );
+                      return extra ? (
+                        <div key={option.id} className="skin-pick__cell">
+                          {button}
+                          {extra}
+                        </div>
+                      ) : (
+                        <span key={option.id} className="skin-pick__cell">
+                          {button}
                         </span>
-                        <span className="skin-pick__name">{option.label}</span>
-                      </button>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </section>
             ))}

@@ -185,11 +185,41 @@ const LICENSE_ID = /^[A-Za-z0-9_-]{4,80}$/;
 const DAILY_KEY = /^videos\/daily\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
 const LESSON_JSON_KEY = /^lessons\/current\/\d{4}-W\d{2}\/\d{4}-\d{2}-\d{2}\.json$/;
 const LESSON_MEDIA_KEY = /^lessons\/current\/\d{4}-W\d{2}\/media\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
+const SKIN_IMAGE_KEY = /^skins\/[a-z0-9]{8,40}$/;
+const SKIN_META_KEY = /^skins\/[a-z0-9]{8,40}\.json$/;
+
+/** Uploaded skins per license. The bytes still use the bucket cap below. */
+export const CUSTOM_SKIN_CLOUD_CAP = 10;
+/** Name file beside the picture. Kept tiny on purpose. */
+export const CUSTOM_SKIN_META_MAX_BYTES = 4_000;
+
+export function isCustomSkinImagePath(relativePath: string): boolean {
+  return SKIN_IMAGE_KEY.test(relativePath);
+}
+
+export function isCustomSkinMetaPath(relativePath: string): boolean {
+  return SKIN_META_KEY.test(relativePath);
+}
+
+export function customSkinIdFromPath(relativePath: string): string | null {
+  const image = /^skins\/([a-z0-9]{8,40})$/.exec(relativePath);
+  if (image?.[1]) return image[1];
+  const meta = /^skins\/([a-z0-9]{8,40})\.json$/.exec(relativePath);
+  return meta?.[1] ?? null;
+}
 
 export function cloudObjectKey(licenseId: string, relativePath: string): string | null {
   if (!LICENSE_ID.test(licenseId)) return null;
   if (!relativePath || relativePath.startsWith('/') || relativePath.includes('..') || relativePath.includes('\\')) return null;
-  if (!DAILY_KEY.test(relativePath) && !LESSON_JSON_KEY.test(relativePath) && !LESSON_MEDIA_KEY.test(relativePath)) return null;
+  if (
+    !DAILY_KEY.test(relativePath) &&
+    !LESSON_JSON_KEY.test(relativePath) &&
+    !LESSON_MEDIA_KEY.test(relativePath) &&
+    !SKIN_IMAGE_KEY.test(relativePath) &&
+    !SKIN_META_KEY.test(relativePath)
+  ) {
+    return null;
+  }
   return `groups/${licenseId}/${relativePath}`;
 }
 
