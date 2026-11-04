@@ -156,3 +156,16 @@ test('class photos and student films no longer use the instructor video lane', (
   assert.doesNotMatch(films, /uploadTrainingVideos/);
   assert.match(films, /students do not upload class photos|Students have no gallery upload/i);
 });
+
+test('student-photo route: head coach only, into the approved photos folder', () => {
+  const routed = routeUpload({ purpose: 'student-photo', kind: 'photo', dateKey: '2026-11-04', role: 'owner', fileName: 'photo-1.png', studentCode: 'stu-alex' });
+  assert.equal(routed.ok && routed.path, 'students/stu-alex/photos/approved/photo-1.png');
+  const instructor = routeUpload({ purpose: 'student-photo', kind: 'photo', dateKey: '2026-11-04', role: 'instructor', fileName: 'p.png', studentCode: 'stu-alex' });
+  assert.equal(instructor.ok, true);
+  for (const role of ['coach', 'assistant'] as const) {
+    const refused = routeUpload({ purpose: 'student-photo', kind: 'photo', dateKey: '2026-11-04', role, fileName: 'p.png', studentCode: 'stu-alex' });
+    assert.deepEqual(refused, { ok: false, reason: 'role-hidden' });
+  }
+  const noCode = routeUpload({ purpose: 'student-photo', kind: 'photo', dateKey: '2026-11-04', role: 'owner', fileName: 'p.png' });
+  assert.deepEqual(noCode, { ok: false, reason: 'missing-student-code' });
+});

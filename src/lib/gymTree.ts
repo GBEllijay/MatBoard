@@ -26,6 +26,7 @@ export const GYM_PURPOSES = [
   'handoff-review',
   'technique-tree',
   'roster',
+  'student-photo',
 ] as const;
 export type GymPurpose = (typeof GYM_PURPOSES)[number];
 
@@ -233,6 +234,22 @@ export function routeUpload(input: {
       kind: 'json',
       fileName: `${input.dateKey}.json`,
       path: `students/${code}/from-instructor/${input.dateKey}.json`,
+    };
+  }
+
+  if (purpose === 'student-photo') {
+    // Head coach only, after an explicit publish. Never an automatic upload.
+    if (input.role !== 'owner' && input.role !== 'instructor') return { ok: false, reason: 'role-hidden' };
+    const code = safePathSegment(input.studentCode ?? '', '');
+    if (!code) return { ok: false, reason: 'missing-student-code' };
+    const fileName = fileNameOf(input.fileName, 'student-photo');
+    return {
+      ok: true,
+      purpose,
+      lane: null,
+      kind: 'photo',
+      fileName,
+      path: `students/${code}/photos/approved/${fileName}`,
     };
   }
 

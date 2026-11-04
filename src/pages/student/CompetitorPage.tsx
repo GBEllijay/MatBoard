@@ -19,7 +19,9 @@ import {
   updateTournament,
   type TournamentDraft,
 } from '../../lib/studentCompetition';
+import { recordTournamentSave } from '../../lib/studentCoachOutbox';
 import { todayIso } from '../../lib/studentEdition';
+import { TournamentOutbox } from '../../components/StudentToCoachShare';
 import { legacyCompetitorAssessmentPath } from '../../lib/studentHubMenu';
 import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import { JournalGate, RankHero } from './CompetitorLead';
@@ -89,7 +91,9 @@ export function CompetitorPage() {
       const next = editing
         ? updateTournament(report, editing, draft)
         : addTournament(report, draft);
-      commit(next);
+      const saved = commit(next);
+      // Only a tournament newly saved as entered tells the coach. Considering never does.
+      void recordTournamentSave(localStorage, report, saved);
       setDraft(emptyDraft(next.competition?.weightUnit ?? competition.weightUnit));
       setEditing(null);
       setError('');
@@ -141,6 +145,7 @@ export function CompetitorPage() {
             <span className="arena-node" aria-hidden="true" />
             <h2 className="ink__label">Tournaments</h2>
             <p className="student-quiet">Entered and considering dates show on your calendar.</p>
+            <TournamentOutbox />
             {upcoming.length === 0 && earlier.length === 0 ? <p className="student-quiet">No tournaments yet.</p> : null}
             {upcoming.length ? (
               <ul className="comp-list">

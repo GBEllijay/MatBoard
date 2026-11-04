@@ -37,6 +37,7 @@ import {
 import { requestOneDriveConsent } from '../../lib/oneDriveAuth';
 import { loadRankPictures } from '../../lib/rankPhotos';
 import { saveAcademyLicense } from '../../lib/studentInboxClient';
+import { ShareCardWithCoach } from '../../components/StudentToCoachShare';
 import {
   BACKUP_BEFORE_CLEAR,
   BACK_UP_FIRST_LABEL,
@@ -246,6 +247,7 @@ function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
           {linked.gymName ? ` · ${linked.gymName}` : ''}.
         </p>
       ) : null}
+      {linked ? <ShareCardWithCoach /> : null}
       <label className="ink">
         <span className="ink__label">Academy link</span>
         <input

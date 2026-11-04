@@ -34,7 +34,11 @@ import {
   type CalendarEvent,
   type CalendarKind,
   type CalendarRepeat,
+  type CoachAssessmentPacket,
+  type CoachBeltProgressPacket,
   type CoachCompetitionUpdatePacket,
+  type CoachGymLogoPacket,
+  type CoachNotePacket,
   type CoachFeedbackPacket,
   type CoachGymBrand,
   type CoachRankUpdatePacket,
@@ -1038,6 +1042,11 @@ export type CoachImportResult = {
   pendingRankUpdate?: CoachRankUpdatePacket;
   /** A competition update waiting for Accept or Dismiss. The report is unchanged until Accept. */
   pendingCompetitionUpdate?: CoachCompetitionUpdatePacket;
+  /**
+   * Belt progress or a coach assessment (accept or dismiss, kept beside the
+   * student's own data), or a gym logo (optional "Update?" prompt only).
+   */
+  pendingSyncPacket?: CoachBeltProgressPacket | CoachAssessmentPacket | CoachGymLogoPacket | CoachNotePacket;
   /** Student inbox code carried beside a coach file, when the coach had one. */
   inboxPass?: string;
 };
@@ -1120,6 +1129,43 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       pendingReport: parsed.value,
       gym,
     };
+  }
+  if (
+    record.kind === 'coach-belt-progress-update' ||
+    record.kind === 'coach-assessment-update' ||
+    record.kind === 'coach-note-update' ||
+    record.kind === 'coach-gym-logo-update'
+  ) {
+    const parsed = parseProgressPacket(text);
+    if (
+      !parsed.ok ||
+      (parsed.value.kind !== 'coach-belt-progress-update' &&
+        parsed.value.kind !== 'coach-assessment-update' &&
+        parsed.value.kind !== 'coach-note-update' &&
+        parsed.value.kind !== 'coach-gym-logo-update')
+    ) {
+      if (!parsed.ok && parsed.errors.some((line) => line.includes('cannot set student marks'))) {
+        return refusedCoachFile(
+          report,
+          shelf,
+          'This coach file tries to set student marks, checkpoints, journal, or goals. A coach file cannot do that, so it was not imported.',
+        );
+      }
+      const detail = parsed.ok ? 'It could not be read.' : parsed.errors.join(' ');
+      return refusedCoachFile(report, shelf, `${detail} It was not imported.`);
+    }
+    if (parsed.value.studentId !== report.studentId) {
+      return refusedCoachFile(report, shelf, 'A coach file for a different student was left out.');
+    }
+    const message =
+      parsed.value.kind === 'coach-gym-logo-update'
+        ? 'Your gym sent its logo. You can use it or keep your own logo.'
+        : parsed.value.kind === 'coach-belt-progress-update'
+          ? 'Your coach shared belt progress. Accept or dismiss it. Your checklist was not changed.'
+          : parsed.value.kind === 'coach-note-update'
+            ? 'Your coach sent a note. Accept to add it under your journal entry. Your own words are not changed.'
+            : 'Your coach shared an assessment. Accept or dismiss it. Your self-assessment was not changed.';
+    return { report, shelf, message, error: '', gym, pendingSyncPacket: parsed.value };
   }
   if (record.kind === 'coach-competition-update') {
     const parsed = parseProgressPacket(text);
