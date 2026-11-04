@@ -34,11 +34,13 @@ test('custom length fields use a decimal keypad and cue buttons only select', ()
   const rounds = fs.readFileSync(new URL('../components/TrainingOptions.tsx', import.meta.url), 'utf8');
 
   assert.match(match, /Minutes[\s\S]*inputMode="decimal"/);
-  assert.match(rounds, /inputMode="decimal"/);
-  assert.match(rounds, /label="Custom round length"/);
-  assert.match(rounds, /label="Custom break length"/);
-  assert.match(rounds, /aria-label="Subtract one minute"/);
-  assert.match(rounds, /aria-label="Add one second"/);
+  assert.match(rounds, /<WheelPicker label="Round length"/);
+  assert.match(rounds, /<WheelPicker label="Break"/);
+  assert.match(rounds, /label="Rounds"/);
+  assert.doesNotMatch(rounds, /inputMode="decimal"/);
+  assert.doesNotMatch(rounds, /label="Custom round length"/);
+  assert.doesNotMatch(rounds, /label="Custom break length"/);
+  assert.doesNotMatch(rounds, /aria-label="Subtract one minute"/);
 
   const chooseMatch = match.slice(match.indexOf('const chooseMatchEndCue'), match.indexOf('const onCast'));
   const chooseRounds = rounds.slice(rounds.indexOf('const chooseEndCue'), rounds.indexOf('return ('));

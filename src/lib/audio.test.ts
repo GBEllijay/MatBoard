@@ -127,7 +127,8 @@ test('next start cue waits for the whole end cue', async () => {
   audio.patchAudioPrefs({ endCue: 'bell' });
   assert.ok(audio.endCueFollowMs() >= audio.BUZZER_LENGTH_S.bell.training * 1000);
   audio.patchAudioPrefs({ endCue: 'parou' });
-  assert.equal(audio.endCueFollowMs(), 3700);
+  assert.equal(audio.endCueFollowMs(), 2800);
+  assert.equal(audio.PAROU_FOLLOW_MS, 2800);
 });
 
 test('loudness chain: compressor + makeup + soft limiter, volume after the limiter', () => {
@@ -149,7 +150,7 @@ test('one shared end cue + Extra loud control on the Timer and the Scoreboard', 
   assert.doesNotMatch(shared, /import .*(entitle|edition|unlock|tier)|useEdition|whiteBoard|isPro/i);
 
   const timer = readFileSync(new URL('../components/TrainingOptions.tsx', import.meta.url), 'utf8');
-  assert.match(timer, /<EndCueControls label="Training end cue" value=\{audio\.endCue\} \/>/);
+  assert.match(timer, /<EndCueControls label="Training end cue" value=\{audio\.endCue\} begin \/>/);
   assert.doesNotMatch(timer, /Buzzer sound|BUZZER_SOUND_OPTIONS/);
   for (const needle of ['aria-label="Preview cues"', 'Mute', 'Volume', 'Vibrate', "playSelectedEndCue('training', audio.endCue)"]) {
     assert.ok(timer.includes(needle), needle);
