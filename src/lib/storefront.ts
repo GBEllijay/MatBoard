@@ -101,7 +101,7 @@ export type StorefrontStep = {
   to: typeof STOREFRONT_BUY_PATH | typeof PRODUCTS_PATH;
   /** These cards do not start a separate sale. White checkout is the hero route. */
   forSale: false;
-  status: 'Available now' | 'Coming soon';
+  status: 'Available now' | 'This product is in alpha';
 };
 
 /**
@@ -132,7 +132,7 @@ export const STOREFRONT_STEPS: readonly StorefrontStep[] = [
     cardPrice: STUDENT_PRICE_LINE,
     to: PRODUCTS_PATH,
     forSale: false,
-    status: 'Coming soon',
+    status: 'This product is in alpha',
   },
   {
     id: 'coach',
@@ -144,7 +144,7 @@ export const STOREFRONT_STEPS: readonly StorefrontStep[] = [
     cardPrice: COACH_PRICE_LINE,
     to: PRODUCTS_PATH,
     forSale: false,
-    status: 'Coming soon',
+    status: 'This product is in alpha',
   },
   {
     id: 'pro',
@@ -154,10 +154,10 @@ export const STOREFRONT_STEPS: readonly StorefrontStep[] = [
     blurb:
       'Academy management, shared drive, events, pro shop, gallery, instructor collaboration and student seats. Includes Coach.',
     price: PRO_PRICE_LINE,
-    cardPrice: '$99.99 + $5.99/mo',
+    cardPrice: '$99.99 one-time',
     to: PRODUCTS_PATH,
     forSale: false,
-    status: 'Coming soon',
+    status: 'This product is in alpha',
   },
 ];
 

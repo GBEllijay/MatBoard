@@ -48,7 +48,7 @@ test('combined ladder strings and prices are final', () => {
   assert.equal(byId.coach.blurb, 'Daily lesson plans, videos, and enhanced training tools.');
   assert.equal(byId.coach.cardPrice, '$49.99 one-time');
   assert.equal(byId.pro.blurb, 'Academy Enhancement Software for Gym Owners and Jiu-Jitsu Professionals.');
-  assert.equal(byId.pro.cardPrice, '$99.99 + $5.99/mo');
+  assert.equal(byId.pro.cardPrice, '$99.99 one-time');
   assert.equal(byId.pro.detail, 'Requires your own Google Drive or OneDrive. Advantage does not host it.');
   assert.equal(byId['pro-cloud'].title, 'Advantage Pro + Cloud');
   assert.equal(byId['pro-cloud'].cardPrice, '$5.99/month');

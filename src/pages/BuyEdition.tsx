@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
 import { AlphaCodeEntry } from '../components/AlphaCodeEntry';
+import { CloudAddonChoice, CloudAddonLine, InstructorCloudCopy } from '../components/CloudAddon';
 import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
@@ -14,10 +15,10 @@ import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { withCheckoutNonce } from '../lib/codeRedeemClient';
 import { buyCheckoutBody } from '../lib/halfOff';
 import { COACH_UNLIMITED_PATH, INSTRUCTOR_DRIVE_REQUIREMENT, PRODUCTS_PATH } from '../lib/productNames';
-import { STUDENT_LIST_PRICE_CENTS } from '../lib/productPrices';
+import { ALPHA_PRODUCT_STATUS } from '../lib/productPrices';
 import { studentEditionEntitled } from '../lib/studentEdition';
 import { PRO_INCLUDES_ALL, tierEntry } from '../lib/tierBuyPages';
-import { WHITE_CHECKOUT_API, formatUsdFromCents } from '../lib/whitePurchase';
+import { WHITE_CHECKOUT_API } from '../lib/whitePurchase';
 
 export type EditionBuyTier = 'student' | 'instructor' | 'pro';
 
@@ -37,6 +38,8 @@ export function BuyEditionPage({ tier }: { tier: EditionBuyTier }) {
   const studentOpen = tier === 'student' && studentEditionEntitled({ pro, coach, white, student });
   const [studentPending, setStudentPending] = useState(false);
   const [studentError, setStudentError] = useState<string | null>(null);
+  const [includeCloud, setIncludeCloud] = useState(false);
+  const sellTier = tier === 'instructor' || tier === 'pro';
   const owned = tier === 'student' ? student : tier === 'instructor' ? coach : pro;
 
   useEffect(() => {
@@ -50,14 +53,22 @@ export function BuyEditionPage({ tier }: { tier: EditionBuyTier }) {
   // Same request as the Student card's checkout on /buy.
   async function onStudentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (studentPending || !studentOpen) return;
+    if (studentPending || (!studentOpen && !sellTier)) return;
     setStudentError(null);
     setStudentPending(true);
     try {
       const response = await fetch(WHITE_CHECKOUT_API, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(await withCheckoutNonce(buyCheckoutBody({ product: 'student', halfOffActive: halfOff }))),
+        body: JSON.stringify(
+          await withCheckoutNonce(
+            buyCheckoutBody({
+              product: tier === 'instructor' ? 'coach' : tier === 'pro' ? 'pro' : 'student',
+              halfOffActive: halfOff,
+              cloud: sellTier && includeCloud,
+            }),
+          ),
+        ),
       });
       const body = (await response.json()) as { url?: string; error?: string };
       if (!response.ok || !body.url) {
@@ -79,7 +90,7 @@ export function BuyEditionPage({ tier }: { tier: EditionBuyTier }) {
         <article className="buy">
           <header className={`buy__card buy__card--belt buy__card--tier buy__card--tier-${entry.belt}`}>
             <TierBeltIcon belt={entry.belt} big />
-            <p className="buy__kicker">{tier === 'student' ? 'Alpha' : 'Coming soon'}</p>
+            <p className="buy__kicker">{tier === 'student' ? 'Alpha' : ALPHA_PRODUCT_STATUS}</p>
             <h2>{entry.name}</h2>
             <p className="buy__lead">{entry.lead}</p>
             {tier === 'instructor' ? <p>{INSTRUCTOR_DRIVE_REQUIREMENT}</p> : null}
@@ -87,7 +98,9 @@ export function BuyEditionPage({ tier }: { tier: EditionBuyTier }) {
             <p className="buy__price">
               {entry.price} <span>{entry.priceDetail}</span>
             </p>
-            {studentOpen ? null : <p>Not for sale on this page.</p>}
+            {tier === 'instructor' ? <InstructorCloudCopy /> : null}
+            {sellTier ? <CloudAddonLine /> : null}
+            {studentOpen || sellTier ? null : <p>Not for sale on this page.</p>}
           </header>
 
           <section className="buy__card buy__checkout" aria-label={studentOpen ? 'Checkout' : 'Alpha access'}>
@@ -97,13 +110,14 @@ export function BuyEditionPage({ tier }: { tier: EditionBuyTier }) {
               </p>
             ) : null}
             <AlphaCodeEntry tier={tier === 'instructor' ? 'instructor' : tier} />
-            {studentOpen ? (
+            {studentOpen || sellTier ? (
               <form onSubmit={(event) => void onStudentSubmit(event)}>
                 <HalfOffCheckoutNote active={halfOff} />
+                {sellTier ? <CloudAddonChoice checked={includeCloud} onChange={setIncludeCloud} /> : null}
                 <button className="btn btn--white" type="submit" disabled={studentPending}>
                   {studentPending
                     ? 'Opening checkout…'
-                    : `Continue to checkout — ${formatUsdFromCents(STUDENT_LIST_PRICE_CENTS)}`}
+                    : `Continue to checkout — ${entry.price}`}
                 </button>
               </form>
             ) : null}

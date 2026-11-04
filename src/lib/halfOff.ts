@@ -134,9 +134,12 @@ export function buyCheckoutBody(input: {
   product?: HalfOffCheckoutProduct;
   typedPromo?: string;
   halfOffActive: boolean;
+  /** Advantage Cloud add-on. Omitted when unchecked so the one-time cart stays unchanged. */
+  cloud?: boolean;
 }): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   if (input.product && input.product !== 'white') body.product = input.product;
+  if (input.cloud) body.cloud = true;
   const typed = typeof input.typedPromo === 'string' ? input.typedPromo.trim() : '';
   if (typed) {
     if (input.halfOffActive && isAllowlistedHalfOffCode(typed)) {

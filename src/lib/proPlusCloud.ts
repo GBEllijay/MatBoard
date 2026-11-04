@@ -19,6 +19,7 @@ export function proPlusCloudDoorOpen(claims: ProPlusCloudPass): boolean {
   if (claims.src === 'seat' || claims.tier === 'seat') return false;
   if (claims.subs?.state === 'locked') return false;
   if (claims.src === 'owner' || claims.tier === 'owner') return true;
+  if (claims.subs?.cloud === true) return true;
   return claims.src === 'code' && claims.grants.includes('pro');
 }
 

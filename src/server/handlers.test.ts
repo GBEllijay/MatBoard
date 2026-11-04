@@ -139,17 +139,22 @@ test('Coach checkout is a one-time hosted session', async () => {
   assert.equal(body.url, 'https://checkout.stripe.com/c/pay/cs_test_coach');
 });
 
-test('Pro checkout puts the one-time price and the monthly price in one session', async () => {
-  const fetchImpl: typeof fetch = async (_input, init) => {
+test('Pro checkout is the one-time price only until Advantage Cloud is checked', async () => {
+  const fetchImpl: typeof fetch = async (input, init) => {
+    if (String(input).includes('/v1/prices/')) {
+      return new Response(JSON.stringify({ id: 'price_pro', unit_amount: 9999, currency: 'usd', product: 'prod_pro' }), {
+        status: 200,
+      });
+    }
     const fields = new URLSearchParams(String(init?.body ?? ''));
-    assert.equal(fields.get('mode'), 'subscription');
+    assert.equal(fields.get('mode'), 'payment');
     assert.equal(fields.get('line_items[0][price]'), 'price_pro');
-    assert.equal(fields.get('line_items[1][price]'), 'price_pro_monthly');
-    assert.equal(fields.get('line_items[2][price]'), null);
-    assert.doesNotMatch(fields.toString(), /price_kept_monthly/);
+    assert.equal(fields.get('line_items[1][price]'), null);
+    assert.equal(fields.get('metadata[cloud]'), null);
+    assert.doesNotMatch(fields.toString(), /price_kept_monthly|price_pro_monthly/);
     assert.equal(fields.get('metadata[product]'), 'advantage-pro');
-    assert.equal(fields.get('subscription_data[metadata][product]'), 'advantage-pro');
-    assert.equal(fields.get('payment_intent_data[metadata][product]'), null);
+    assert.equal(fields.get('payment_intent_data[metadata][product]'), 'advantage-pro');
+    assert.equal(fields.get('subscription_data[metadata][product]'), null);
     assert.equal(
       fields.get('success_url'),
       'https://advantagebjjtimer.com/buy/pro?checkout=success&session_id={CHECKOUT_SESSION_ID}',
@@ -178,14 +183,69 @@ test('Coach checkout names the missing Price id', async () => {
   assert.match(body.error, /STRIPE_PRICE_INSTRUCTOR/);
 });
 
-test('Pro checkout requires both Price ids', async () => {
+test('Advantage Cloud without STRIPE_PRICE_PRO_MONTHLY makes no charge', async () => {
+  let sessions = 0;
+  const fetchImpl: typeof fetch = async (input) => {
+    if (String(input).includes('/v1/prices/')) {
+      return new Response(JSON.stringify({ id: 'price_pro', unit_amount: 9999, currency: 'usd', product: 'prod_pro' }), {
+        status: 200,
+      });
+    }
+    sessions += 1;
+    return new Response('no', { status: 500 });
+  };
   const response = await handleCheckout(
-    jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: 'pro' }),
+    jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: 'pro', cloud: true }),
     { STRIPE_SECRET_KEY: 'sk_test_123', STRIPE_PRICE_PRO: 'price_pro' },
+    fetchImpl,
   );
   assert.equal(response.status, 503);
   const body = (await response.json()) as { error: string };
-  assert.match(body.error, /STRIPE_PRICE_PRO_MONTHLY/);
+  assert.match(body.error, /No charge was made/);
+  assert.equal(sessions, 0);
+});
+
+test('checked Advantage Cloud sends the one-time price and STRIPE_PRICE_PRO_MONTHLY', async () => {
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = String(input);
+    if (url.includes('/v1/prices/price_pro_monthly')) {
+      return new Response(JSON.stringify({ id: 'price_pro_monthly', unit_amount: 599, currency: 'usd', product: 'prod_cloud' }), {
+        status: 200,
+      });
+    }
+    if (url.includes('/v1/prices/')) {
+      return new Response(JSON.stringify({ id: 'price_coach', unit_amount: 4999, currency: 'usd', product: 'prod_coach' }), {
+        status: 200,
+      });
+    }
+    const fields = new URLSearchParams(String(init?.body ?? ''));
+    assert.equal(fields.get('mode'), 'subscription');
+    assert.equal(fields.get('line_items[0][price]'), 'price_coach');
+    assert.equal(fields.get('line_items[1][price]'), 'price_pro_monthly');
+    assert.equal(fields.get('metadata[product]'), 'advantage-coach');
+    assert.equal(fields.get('metadata[cloud]'), '1');
+    assert.equal(fields.get('subscription_data[metadata][cloud]'), '1');
+    return new Response(JSON.stringify({ id: 'cs_test_cloud', url: 'https://checkout.stripe.com/c/pay/cs_test_cloud' }), {
+      status: 200,
+    });
+  };
+  const response = await handleCheckout(
+    jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: 'coach', cloud: true }),
+    env,
+    fetchImpl,
+  );
+  assert.equal(response.status, 200);
+});
+
+test('White cannot add Advantage Cloud', async () => {
+  const response = await handleCheckout(
+    jsonRequest('https://advantagebjjtimer.com/api/checkout', { cloud: true }),
+    env,
+    async () => new Response('no', { status: 500 }),
+  );
+  assert.equal(response.status, 400);
+  const body = (await response.json()) as { error: string };
+  assert.match(body.error, /No charge was made/);
 });
 
 test('an unknown product does not open Checkout', async () => {
@@ -308,7 +368,7 @@ test('half off discounts White, Student, Coach, and Pro without changing prices'
     {
       product: 'pro',
       price: 'price_pro',
-      mode: 'subscription',
+      mode: 'payment',
       meta: 'advantage-pro',
     },
   ] as const;
@@ -329,19 +389,25 @@ test('half off discounts White, Student, Coach, and Pro without changing prices'
       assert.equal(fields.get('allow_promotion_codes'), null);
       assert.doesNotMatch(fields.toString(), /price_kept_monthly/);
       if (item.product === 'pro') {
-        assert.equal(fields.get('line_items[1][price]'), 'price_pro_monthly');
-        assert.equal(fields.get('subscription_data[metadata][product]'), 'advantage-pro');
-        assert.equal(fields.get('payment_intent_data[metadata][product]'), null);
+        assert.equal(fields.get('line_items[1][price]'), null);
+        assert.equal(fields.get('metadata[cloud]'), null);
       }
       return new Response(
         JSON.stringify({ id: 'cs_test_half', url: 'https://checkout.stripe.com/c/pay/cs_test_half' }),
         { status: 200 },
       );
     };
+    const priced: typeof fetch = async (input, init) => {
+      if (String(input).includes('/v1/prices/')) {
+        const cents = item.product === 'pro' ? 9999 : item.product === 'coach' ? 4999 : 1999;
+        return new Response(JSON.stringify({ unit_amount: cents, currency: 'usd', product: 'prod_item' }), { status: 200 });
+      }
+      return fetchImpl(input, init);
+    };
     const response = await handleCheckout(
       jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: item.product, halfOff: true }),
       env,
-      withInstructorPrice(fetchImpl),
+      priced,
     );
     assert.equal(response.status, 200);
   }

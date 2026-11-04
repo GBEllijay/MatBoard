@@ -294,7 +294,7 @@ export function BuyWhitePage() {
           {/* Higher tiers in ladder order: Student, Media, Instructor Edition, Pro. */}
           <HigherTierList
             from="white"
-            kickers={{ student: studentOpen ? 'Alpha' : 'Coming soon' }}
+            kickers={{ student: studentOpen ? 'Alpha' : 'This product is in alpha' }}
             extras={{
               student: (
                 <>

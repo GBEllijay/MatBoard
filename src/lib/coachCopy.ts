@@ -70,7 +70,7 @@ export const COMPETITOR_ROSTER_CARD =
 
 /** Subtitle on the Rankings / Results button. Copy only — no auto-bracket or seeding yet. */
 export const RANKINGS_RESULTS_CARD =
-  'Save and catalogue your tournament results. Keeps names, dates, divisions, placements, and win records for ranking calculations. Full auto-bracketing and seeding coming soon.';
+  'Save and catalogue your tournament results. Keeps names, dates, divisions, placements, and win records for ranking calculations. Full auto-bracketing and seeding is in alpha.';
 
 /** Hub button under Competitor Management. One checklist per roster competitor. */
 export const COMPETITION_READY_LABEL = 'Competition Ready';

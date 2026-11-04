@@ -146,19 +146,13 @@ test('Pro Plus Cloud page is the head instructor home', () => {
   assert.doesNotMatch(pro, /plain|red-bar|pro-cloud/);
 });
 
-test('the products card still uses this gate, and the open card is a plain link', () => {
+test('the products page points an open Cloud holder at the existing console', () => {
   assert.match(home, /useProPlusCloudUnlocked/);
-  assert.match(home, /\{PRO_PLUS_CLOUD_OPEN_LABEL\}/);
-  assert.match(home, /to=\{PRO_PLUS_CLOUD_PATH\}/);
-  assert.match(home, /aria-label=\{\`\$\{PRO_PLUS_CLOUD_NAME\}, coming soon\`\}/);
-  assert.match(home, /PRO_PLUS_CLOUD_PRICE_LINE/);
+  assert.match(home, /PRO_PLUS_CLOUD_OPEN_LABEL/);
+  assert.match(home, /to=\{cloudOpen \? PRO_PLUS_CLOUD_PATH : '\/pro'\}/);
+  assert.doesNotMatch(home, /function ProPlusCloudCard/);
+  assert.doesNotMatch(home, /mode-card--cloud/);
   assert.doesNotMatch(home, /Continue to checkout/);
-  const card = home.slice(home.indexOf('function ProPlusCloudCard'), home.length);
-  const openCard = card.slice(card.indexOf('if (open)'), card.indexOf('mode-card--locked'));
-  assert.match(openCard, /mode-card mode-card--pro mode-card--cloud"/);
-  assert.doesNotMatch(openCard, /mode-card--locked/);
-  assert.match(openCard, /to=\{PRO_PLUS_CLOUD_PATH\}/);
-  assert.doesNotMatch(card, /disabled/);
 });
 
 test('the cloud route is its own guard, and /pro keeps the worn black belt', () => {

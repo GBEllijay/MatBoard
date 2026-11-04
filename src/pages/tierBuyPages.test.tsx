@@ -70,12 +70,13 @@ test('/buy: White checkout stays; other products are Student, Media, Instructor,
   assert.match(text[0], /\$19\.99/);
   assert.match(text[1], /Advantage Media Edition[\s\S]*\$29\.99/);
   assert.match(text[2], /Advantage Instructor Edition[\s\S]*\$49\.99/);
-  assert.match(text[3], /Advantage Pro[\s\S]*\$99\.99 \+ \$5\.99\/mo/);
+  assert.match(text[3], /Advantage Pro[\s\S]*\$99\.99/);
+  assert.doesNotMatch(text[3], /\$99\.99 \+ \$5\.99/);
   assert.doesNotMatch(m.host.textContent ?? '', /Advantage Coach/);
   const links = [...m.host.querySelectorAll('[data-higher-tiers] a.buy__more')].map((a) => a.getAttribute('href'));
   assert.deepEqual(links, ['/editions/student', '/media', '/editions/instructor', '/editions/pro']);
   const cloud = m.host.querySelector('[data-tier="pro-cloud"]');
-  assert.equal(cloud?.querySelector('.buy__kicker')?.textContent, 'Coming soon');
+  assert.equal(cloud?.querySelector('.buy__kicker')?.textContent, 'This product is in alpha');
   assert.match(cloud?.textContent ?? '', /Advantage Pro \+ Cloud/);
   assert.equal(cloud?.querySelector('a.buy__more')?.getAttribute('href'), '/editions/pro-cloud');
   assert.equal(m.host.querySelector('[data-higher-tiers] [data-tier="pro-cloud"]'), null);
@@ -111,14 +112,16 @@ test('/editions/student: blue belt, $19.99, no checkout unless entitled, demo, r
   m.done();
 });
 
-test('/editions/instructor: brown belt, $49.99, alpha line, no checkout, only Pro above', () => {
+test('/editions/instructor: brown belt, $49.99, optional Cloud, alpha line, only Pro above', () => {
   const m = mount('/editions/instructor');
   const header = m.host.querySelector('header.buy__card--tier');
   assert.ok(header?.querySelector('.belt-tip.buy__belt[data-belt="brown"]'));
   assert.equal(header?.querySelector('h2')?.textContent, 'Advantage Instructor Edition');
   assert.match(header?.textContent ?? '', /\$49\.99/);
+  assert.match(header?.textContent ?? '', /Advantage works best with Google Drive or Advantage Cloud/);
+  assert.match(header?.textContent ?? '', /some sharing features are limited/);
   assert.match(m.host.querySelector('section.buy__checkout')?.textContent ?? '', ALPHA);
-  assert.equal(m.host.querySelector('section.buy__checkout form:not(.alpha-code__form)'), null);
+  assert.ok(m.host.querySelector('input[name="advantageCloud"]'));
   assert.ok(m.host.querySelector('form.alpha-code__form input[name="code"]'));
   assert.ok(m.host.querySelector('a[href^="mailto:advantageappllc@gmail.com"]'));
   assert.match(m.host.textContent ?? '', /Requires gym setup with a third-party drive/);
@@ -127,14 +130,16 @@ test('/editions/instructor: brown belt, $49.99, alpha line, no checkout, only Pr
   m.done();
 });
 
-test('/editions/pro: black belt, $99.99 + $5.99/mo, includes all, alpha line, no higher tiers', () => {
+test('/editions/pro: black belt, $99.99 one-time, optional Cloud checkbox, alpha line, no higher tiers', () => {
   const m = mount('/editions/pro');
   const header = m.host.querySelector('header.buy__card--tier');
   assert.ok(header?.querySelector('.belt-tip.buy__belt[data-belt="black"]'));
-  assert.match(header?.textContent ?? '', /\$99\.99 \+ \$5\.99\/mo/);
+  assert.match(header?.textContent ?? '', /\$99\.99/);
+  assert.doesNotMatch(header?.textContent ?? '', /\$99\.99 \+ \$5\.99/);
+  assert.match(header?.textContent ?? '', /\+ optional Advantage Cloud \$5\.99\/month/);
   assert.match(header?.textContent ?? '', /Includes all Advantage products\./);
   assert.match(m.host.querySelector('section.buy__checkout')?.textContent ?? '', ALPHA);
-  assert.equal(m.host.querySelector('section.buy__checkout form:not(.alpha-code__form)'), null);
+  assert.ok(m.host.querySelector('input[name="advantageCloud"]'));
   assert.ok(m.host.querySelector('form.alpha-code__form input[name="code"]'));
   assert.ok(m.host.querySelector('a[href^="mailto:advantageappllc@gmail.com"]'));
   assert.ok(m.host.querySelector('form.buy__restore'));

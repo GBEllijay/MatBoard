@@ -1,6 +1,11 @@
 import { CHECKOUT_BUY_PATH, isCheckoutProduct, type CheckoutProduct } from '../lib/checkoutProducts.ts';
 import { HALF_OFF_CODE } from '../lib/halfOff.ts';
-import { INSTRUCTOR_LIST_PRICE_CENTS } from '../lib/productPrices.ts';
+import {
+  INSTRUCTOR_LIST_PRICE_CENTS,
+  MEDIA_LIST_PRICE_CENTS,
+  PRO_LIST_PRICE_CENTS,
+  PRO_MONTHLY_PRICE_CENTS,
+} from '../lib/productPrices.ts';
 import { normalizeEmail } from './entitlements.ts';
 import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 import type { BillingEventKind } from './subscriptionAccess.ts';
@@ -61,7 +66,7 @@ const CHECKOUT_MODE: Record<CheckoutProduct, 'payment' | 'subscription'> = {
   white: 'payment',
   student: 'payment',
   coach: 'payment',
-  pro: 'subscription',
+  pro: 'payment',
   media: 'payment',
 };
 
@@ -72,14 +77,14 @@ const CHECKOUT_MODE: Record<CheckoutProduct, 'payment' | 'subscription'> = {
 
 /**
  * Env names for each product, in line-item order.
- * Pro is a mixed cart: one-time price, then the monthly price. Stripe requires
- * mode=subscription when a session has both. payment_intent_data is not valid then.
+ * The base cart is one-time. Advantage Cloud, when the buyer checks it, adds
+ * STRIPE_PRICE_PRO_MONTHLY in subscription mode. That add-on is not part of this list.
  */
 const PRICE_ENV_KEYS: Record<CheckoutProduct, (keyof StripeRuntimeEnv)[]> = {
   white: ['STRIPE_PRICE_WHITE'],
   student: ['STRIPE_PRICE_STUDENT'],
   coach: ['STRIPE_PRICE_INSTRUCTOR'],
-  pro: ['STRIPE_PRICE_PRO', 'STRIPE_PRICE_PRO_MONTHLY'],
+  pro: ['STRIPE_PRICE_PRO'],
   media: ['STRIPE_PRICE_MEDIA'],
 };
 
@@ -97,13 +102,54 @@ export function priceEnvKeys(_env: StripeRuntimeEnv, product: CheckoutProduct): 
  */
 export const EXPECTED_ONE_TIME_CENTS: Partial<Record<CheckoutProduct, number>> = {
   coach: INSTRUCTOR_LIST_PRICE_CENTS,
+  media: MEDIA_LIST_PRICE_CENTS,
+  pro: PRO_LIST_PRICE_CENTS,
 };
+
+export const CLOUD_ADDON_PRODUCTS = ['media', 'coach', 'pro'] as const;
+export type CloudAddonProduct = (typeof CLOUD_ADDON_PRODUCTS)[number];
+
+export function isCloudAddonProduct(product: CheckoutProduct): product is CloudAddonProduct {
+  return (CLOUD_ADDON_PRODUCTS as readonly string[]).includes(product);
+}
+
+/** Buyer checkbox. Absent or false keeps the one-time cart. True is only valid on Media, Instructor, and Pro. */
+export function readCloudAddon(raw: unknown, product: CheckoutProduct): boolean | { error: string } {
+  if (raw === undefined || raw === null || raw === false) return false;
+  if (raw !== true) return { error: 'Advantage Cloud must be on or off. No charge was made.' };
+  if (!isCloudAddonProduct(product)) {
+    return { error: 'Advantage Cloud is an add-on for Media, Instructor, and Pro only. No charge was made.' };
+  }
+  return true;
+}
+
+/**
+ * Checked Advantage Cloud: the tier's one-time price plus STRIPE_PRICE_PRO_MONTHLY.
+ * A missing price id returns an error and does not invent a price.
+ */
+export function readCloudAddonCart(
+  env: StripeRuntimeEnv,
+  product: CloudAddonProduct,
+): { secret: string; priceIds: string[]; mode: 'subscription'; productId: string } | { error: string } {
+  const base = readStripeConfig(env, product);
+  if ('error' in base) return { error: 'Advantage Cloud checkout is not configured. No charge was made.' };
+  const monthly = env.STRIPE_PRICE_PRO_MONTHLY?.trim() ?? '';
+  if (!monthly.startsWith('price_')) return { error: 'Advantage Cloud checkout is not configured. No charge was made.' };
+  return {
+    secret: base.secret,
+    priceIds: [base.priceIds[0], monthly],
+    mode: 'subscription',
+    productId: base.productId,
+  };
+}
+
+export const EXPECTED_CLOUD_MONTHLY_CENTS = PRO_MONTHLY_PRICE_CENTS;
 
 const CONFIG_HINT: Record<CheckoutProduct, string> = {
   white: 'STRIPE_SECRET_KEY and STRIPE_PRICE_WHITE',
   student: 'STRIPE_SECRET_KEY and STRIPE_PRICE_STUDENT',
   coach: 'STRIPE_SECRET_KEY and STRIPE_PRICE_INSTRUCTOR',
-  pro: 'STRIPE_SECRET_KEY, STRIPE_PRICE_PRO, and STRIPE_PRICE_PRO_MONTHLY',
+  pro: 'STRIPE_SECRET_KEY and STRIPE_PRICE_PRO',
   media: 'STRIPE_SECRET_KEY and STRIPE_PRICE_MEDIA',
 };
 
@@ -139,6 +185,8 @@ export function checkoutFormFields(input: {
   couponId?: string;
   /** Set with an upgrade coupon so the receipt goes to the email the credit was quoted for. */
   customerEmail?: string;
+  /** Advantage Cloud add-on. Metadata only; the monthly price is a separate line item. */
+  cloud?: boolean;
 }): URLSearchParams {
   const params = new URLSearchParams();
   params.set('mode', input.mode);
@@ -149,8 +197,10 @@ export function checkoutFormFields(input: {
   params.set('success_url', input.successUrl);
   params.set('cancel_url', input.cancelUrl);
   params.set('metadata[product]', input.productId);
+  if (input.cloud) params.set('metadata[cloud]', '1');
   if (input.mode === 'subscription') {
     params.set('subscription_data[metadata][product]', input.productId);
+    if (input.cloud) params.set('subscription_data[metadata][cloud]', '1');
   } else {
     params.set('payment_intent_data[metadata][product]', input.productId);
     params.set('customer_creation', 'always');
@@ -423,9 +473,10 @@ export type OneTimeRevocation = {
 export type StripeEntitlementDecision =
   | { action: 'record'; purchase: CheckoutPurchase }
   | { action: 'record-student'; purchase: CheckoutPurchase }
-  | { action: 'record-coach'; purchase: CheckoutPurchase }
-  | { action: 'record-media'; purchase: CheckoutPurchase }
-  | { action: 'grant-pro'; grant: ProCheckoutGrant }
+  | { action: 'record-coach'; purchase: CheckoutPurchase; cloud?: boolean }
+  | { action: 'record-media'; purchase: CheckoutPurchase; cloud?: boolean }
+  | { action: 'record-pro'; purchase: CheckoutPurchase }
+  | { action: 'grant-pro'; grant: ProCheckoutGrant; cloud?: boolean }
   | { action: 'sync-pro'; sync: ProSubscriptionSync }
   | { action: 'revoke-onetime'; revocation: OneTimeRevocation }
   | { action: 'retry' }
@@ -440,6 +491,12 @@ export type StripeEntitlementDecision =
  */
 const ENTITLED_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing', 'past_due']);
 const REVOKED_SUBSCRIPTION_STATUSES = new Set(['canceled', 'unpaid', 'incomplete', 'incomplete_expired', 'paused']);
+
+function readMetaCloud(row: Record<string, unknown>): boolean {
+  const metadata = row.metadata;
+  if (!metadata || typeof metadata !== 'object') return false;
+  return (metadata as { cloud?: unknown }).cloud === '1';
+}
 
 function readMetaProduct(row: Record<string, unknown>): string {
   const metadata = row.metadata;
@@ -541,7 +598,8 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
       product !== API_PRODUCT_ID &&
       product !== API_PRODUCT_STUDENT &&
       product !== API_PRODUCT_COACH &&
-      product !== API_PRODUCT_MEDIA
+      product !== API_PRODUCT_MEDIA &&
+      product !== API_PRODUCT_PRO
     ) {
       return { action: 'ignore' };
     }
@@ -556,7 +614,22 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
     if (product === API_PRODUCT_STUDENT) return { action: 'record-student', purchase };
     if (product === API_PRODUCT_COACH) return { action: 'record-coach', purchase };
     if (product === API_PRODUCT_MEDIA) return { action: 'record-media', purchase };
+    if (product === API_PRODUCT_PRO) return { action: 'record-pro', purchase };
     return { action: 'record', purchase };
+  }
+  const cloudOn = readMetaCloud(row);
+  if (row.mode === 'subscription' && cloudOn && (product === API_PRODUCT_MEDIA || product === API_PRODUCT_COACH)) {
+    if (!paid) return { action: 'ignore' };
+    if (typeof row.id !== 'string' || !row.id.startsWith('cs_')) return { action: 'invalid' };
+    const purchase: CheckoutPurchase = {
+      email: readEmail(row),
+      sessionId: row.id,
+      amountTotal: money(row, 'amount_total'),
+      currency: currencyOf(row),
+    };
+    return product === API_PRODUCT_MEDIA
+      ? { action: 'record-media', purchase, cloud: true }
+      : { action: 'record-coach', purchase, cloud: true };
   }
   if (row.mode === 'subscription' && product === API_PRODUCT_PRO) {
     if (!paid) return { action: 'ignore' };
@@ -572,6 +645,7 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
         amountTotal: money(row, 'amount_total'),
         currency: currencyOf(row),
       },
+      cloud: cloudOn,
     };
   }
   return { action: 'ignore' };

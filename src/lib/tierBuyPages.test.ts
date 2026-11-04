@@ -54,7 +54,7 @@ test('ladder order, names, belts and prices match the owner brief', () => {
       ['student', 'blue', '$19.99'],
       ['media', 'purple', '$29.99'],
       ['instructor', 'brown', '$49.99'],
-      ['pro', 'black', '$99.99 + $5.99/mo'],
+      ['pro', 'black', '$99.99'],
     ],
   );
   assert.equal(tierEntry('instructor').name, 'Advantage Instructor Edition');
@@ -119,34 +119,36 @@ test('/buy keeps White checkout, promo, restore and Student checkout; higher tie
   assert.doesNotMatch(buy, /<ComingSoonAd/);
 });
 
-test('Media page: EDITION alpha line, restore link, then Instructor and Pro only; still not for sale', () => {
+test('Media page keeps the alpha line and can start Media checkout with optional Cloud', () => {
   assert.match(EDITION_ALPHA_NOTE, /^In alpha testing\. Email advantageappLLC@gmail\.com for a free alpha code\.$/i);
   assert.match(media, /<AlphaAccessNote note=\{EDITION_ALPHA_NOTE\} display=\{EDITION_EMAIL_DISPLAY\} \/>/);
+  assert.match(media, /<AlphaCodeEntry tier="media" \/>/);
+  assert.match(media, /<CloudAddonChoice/);
+  assert.match(media, /product: 'media'/);
   assert.match(media, /<HigherTierList from="media" \/>/);
   assert.match(media, /to="\/restore"/);
-  assert.doesNotMatch(code(media), /checkout|stripe|fetch\(/i);
 });
 
-test('Instructor and Pro pages have no checkout; Student checkout only when entitled', () => {
+test('Instructor and Pro public pages sell the one-time price with optional Cloud; Student checkout stays gated', () => {
   assert.match(edition, /const studentOpen = tier === 'student' && studentEditionEntitled\(/);
-  assert.match(edition, /if \(studentPending \|\| !studentOpen\) return;/);
-  assert.match(edition, /\{studentOpen \? \(\s*<form/);
-  // The only checkout call is the Student one; product kind is the existing student product.
-  assert.equal(code(edition).match(/fetch\(/g)?.length, 1);
+  assert.match(edition, /const sellTier = tier === 'instructor' \|\| tier === 'pro'/);
+  assert.match(edition, /product: tier === 'instructor' \? 'coach' : tier === 'pro' \? 'pro' : 'student'/);
+  assert.match(edition, /cloud: sellTier && includeCloud/);
+  assert.match(edition, /<InstructorCloudCopy \/>/);
   assert.doesNotMatch(code(edition), /price_|STRIPE|stripe\.com/);
   assert.doesNotMatch(code(parts), /fetch\(WHITE_CHECKOUT_API/);
 });
 
 test('/products: locked Student, Instructor and Pro cards open their tier pages; Learn more is on every card', () => {
-  assert.match(home, /<Link className="mode-card__hit" to=\{TIER_BUY_PATHS\.student\} aria-label="Advantage Student Edition, coming soon" \/>/);
-  assert.match(home, /to=\{TIER_BUY_PATHS\.instructor\}\s*aria-label=\{`\$\{INSTRUCTOR_HOME_TITLE\}, coming soon`\}/);
-  assert.match(home, /<Link className="mode-card__hit" to=\{TIER_BUY_PATHS\.pro\} aria-label="Advantage Pro, coming soon" \/>/);
-  assert.equal(home.match(/<LearnMoreLink tier="white" \/>/g)?.length, 2);
+  assert.match(home, /aria-label=\{`Advantage Student Edition, \$\{ALPHA_PRODUCT_STATUS\}`\}/);
+  assert.match(home, /to=\{TIER_BUY_PATHS\.instructor\}\s*aria-label=\{`\$\{INSTRUCTOR_HOME_TITLE\}, \$\{ALPHA_PRODUCT_STATUS\}`\}/);
+  assert.match(home, /aria-label=\{`Advantage Pro, \$\{ALPHA_PRODUCT_STATUS\}`\}/);
+  assert.equal(home.match(/<LearnMoreLink tier="white" \/>/g)?.length, 1);
   assert.equal(home.match(/<LearnMoreLink tier="student" \/>/g)?.length, 2);
-  assert.equal(home.match(/<LearnMoreLink tier="media" \/>/g)?.length, 2);
-  assert.equal(home.match(/<LearnMoreLink tier="instructor" \/>/g)?.length, 2);
-  assert.equal(home.match(/<LearnMoreLink tier="pro" \/>/g)?.length, 2);
-  assert.equal(home.match(/<LearnMoreLink tier="proCloud" \/>/g)?.length, 2);
+  assert.equal(home.match(/<LearnMoreLink tier="media" \/>/g)?.length, 1);
+  assert.equal(home.match(/<LearnMoreLink tier="instructor" \/>/g)?.length, 1);
+  assert.equal(home.match(/<LearnMoreLink tier="pro" \/>/g)?.length, 1);
+  assert.equal(home.match(/<LearnMoreLink tier="proCloud" \/>/g)?.length ?? 0, 0);
   assert.match(home, /Try the demo/);
   assert.match(home, /Owner test unlock/);
   assert.doesNotMatch(home, /setSoon\(/);

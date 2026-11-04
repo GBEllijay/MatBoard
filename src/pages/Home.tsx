@@ -26,9 +26,6 @@ import {
   MEDIA_HOME_TITLE,
   PRO_DRIVE_NOTE,
   PRO_HOME_LINES,
-  PRO_PLUS_CLOUD_DESCRIPTION,
-  PRO_PLUS_CLOUD_INFO_PATH,
-  PRO_PLUS_CLOUD_NAME,
   PRO_PLUS_CLOUD_OPEN_LABEL,
   PRO_PLUS_CLOUD_PATH,
   STUDENT_EDITION_NAME,
@@ -42,11 +39,12 @@ import {
 import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import {
+  ALPHA_PRODUCT_STATUS,
+  CLOUD_ADDON_LINE,
   INSTRUCTOR_DISPLAY_PRICE_LINE,
   EDITION_ALPHA_NOTE,
   EDITION_EMAIL_DISPLAY,
   MEDIA_PRICE_LINE,
-  PRO_PLUS_CLOUD_PRICE_LINE,
   PRO_PRICE_LINE,
   STUDENT_ALPHA_ACCESS_NOTE,
   STUDENT_PRICE_LINE,
@@ -104,7 +102,6 @@ export function HomePage() {
                 <Link className="btn btn--white" to={whiteEntryPath(true)}>
                   Open White
                 </Link>
-                <LearnMoreLink tier="white" />
               </span>
             </article>
           ) : (
@@ -144,7 +141,6 @@ export function HomePage() {
                 <Link className="btn btn--white" to={instructorOpenTo}>
                   {instructorOpenLabel}
                 </Link>
-                <LearnMoreLink tier="instructor" />
               </div>
             </article>
           ) : (
@@ -152,13 +148,14 @@ export function HomePage() {
               <Link
                 className="mode-card__hit"
                 to={TIER_BUY_PATHS.instructor}
-                aria-label={`${INSTRUCTOR_HOME_TITLE}, coming soon`}
+                aria-label={`${INSTRUCTOR_HOME_TITLE}, ${ALPHA_PRODUCT_STATUS}`}
               />
               <BeltRail kind="brown" />
               <strong>{INSTRUCTOR_HOME_TITLE}</strong>
               <HomeDescription text={COACH_HOME_DESCRIPTION} />
               <HomeDescription text={INSTRUCTOR_DRIVE_REQUIREMENT} />
               <p className="mode-card__price">{INSTRUCTOR_DISPLAY_PRICE_LINE}</p>
+              <p className="mode-card__price">{CLOUD_ADDON_LINE}</p>
               <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
               <div className="mode-card__actions">
                 <LearnMoreLink tier="instructor" />
@@ -166,35 +163,37 @@ export function HomePage() {
             </article>
           )}
 
-          {consoleOpen && consoleLabel ? (
+          {(consoleOpen && consoleLabel) || cloudOpen ? (
             <article className="mode-card mode-card--pro">
               <Link
                 className="mode-card__hit"
-                to="/pro"
+                to={cloudOpen ? PRO_PLUS_CLOUD_PATH : '/pro'}
                 tabIndex={-1}
-                aria-label="Open Pro Console"
+                aria-label={cloudOpen ? PRO_PLUS_CLOUD_OPEN_LABEL : 'Open Pro Console'}
               />
               <ProHomeCopy />
               <div className="mode-card__actions">
-                <Link className="btn btn--white" to="/pro">
-                  Open Pro Console
+                <Link className="btn btn--white" to={cloudOpen ? PRO_PLUS_CLOUD_PATH : '/pro'}>
+                  {cloudOpen ? PRO_PLUS_CLOUD_OPEN_LABEL : 'Open Pro Console'}
                 </Link>
-                <LearnMoreLink tier="pro" />
               </div>
             </article>
           ) : (
             <article className="mode-card mode-card--pro mode-card--locked">
-              <Link className="mode-card__hit" to={TIER_BUY_PATHS.pro} aria-label="Advantage Pro, coming soon" />
+              <Link className="mode-card__hit" to={TIER_BUY_PATHS.pro} aria-label={`Advantage Pro, ${ALPHA_PRODUCT_STATUS}`} />
               <ProHomeCopy />
-              {seated ? null : <p className="mode-card__price">{PRO_PRICE_LINE}</p>}
+              {seated ? null : (
+                <>
+                  <p className="mode-card__price">{PRO_PRICE_LINE}</p>
+                  <p className="mode-card__price">{CLOUD_ADDON_LINE}</p>
+                </>
+              )}
               <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
               <div className="mode-card__actions">
                 <LearnMoreLink tier="pro" />
               </div>
             </article>
           )}
-
-          <ProPlusCloudCard open={cloudOpen} />
         </nav>
 
         <div className="home__hints">
@@ -240,14 +239,14 @@ function StudentHomeCard({
           <Link className="btn btn--white" to={to}>
             {demo ? 'Open demo' : 'Open Student Edition'}
           </Link>
-          <LearnMoreLink tier="student" />
+          {demo ? <LearnMoreLink tier="student" /> : null}
         </div>
       </article>
     );
   }
   return (
     <article className="mode-card mode-card--student mode-card--locked">
-      <Link className="mode-card__hit" to={TIER_BUY_PATHS.student} aria-label="Advantage Student Edition, coming soon" />
+      <Link className="mode-card__hit" to={TIER_BUY_PATHS.student} aria-label={`Advantage Student Edition, ${ALPHA_PRODUCT_STATUS}`} />
       {body}
       <p className="mode-card__price">{STUDENT_PRICE_LINE}</p>
       <div className="mode-card__actions">
@@ -278,54 +277,21 @@ function MediaHomeCard({ open }: { open: boolean }) {
           <Link className="btn btn--white" to={MEDIA_HOME_PATH}>
             Open Media Edition
           </Link>
-          <LearnMoreLink tier="media" />
         </div>
       </article>
     );
   }
   return (
     <article className="mode-card mode-card--media mode-card--locked">
-      <Link className="mode-card__hit" to={TIER_BUY_PATHS.media} aria-label="Advantage Media Edition, coming soon" />
+      <Link className="mode-card__hit" to={TIER_BUY_PATHS.media} aria-label={`Advantage Media Edition, ${ALPHA_PRODUCT_STATUS}`} />
       <BeltRail kind="purple" />
       <strong>{MEDIA_HOME_TITLE}</strong>
       <HomeDescription text={MEDIA_HOME_DESCRIPTION} />
       <p className="mode-card__price">{MEDIA_PRICE_LINE}</p>
+      <p className="mode-card__price">{CLOUD_ADDON_LINE}</p>
       <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
       <div className="mode-card__actions">
         <LearnMoreLink tier="media" />
-      </div>
-    </article>
-  );
-}
-
-/** Hosted-storage plan. Open only for an owner or an alpha pass. Nothing is sold from this card. */
-function ProPlusCloudCard({ open }: { open: boolean }) {
-  if (open) {
-    return (
-      <article className="mode-card mode-card--pro mode-card--cloud">
-        <Link className="mode-card__hit" to={PRO_PLUS_CLOUD_PATH} tabIndex={-1} aria-label={PRO_PLUS_CLOUD_OPEN_LABEL} />
-        <BeltRail kind="black" bar="striped" />
-        <strong>{PRO_PLUS_CLOUD_NAME}</strong>
-        <HomeDescription text={PRO_PLUS_CLOUD_DESCRIPTION} />
-        <div className="mode-card__actions">
-          <Link className="btn btn--white" to={PRO_PLUS_CLOUD_PATH}>
-            {PRO_PLUS_CLOUD_OPEN_LABEL}
-          </Link>
-          <LearnMoreLink tier="proCloud" />
-        </div>
-      </article>
-    );
-  }
-  return (
-    <article className="mode-card mode-card--pro mode-card--cloud mode-card--locked">
-      <Link className="mode-card__hit" to={PRO_PLUS_CLOUD_INFO_PATH} aria-label={`${PRO_PLUS_CLOUD_NAME}, coming soon`} />
-      <BeltRail kind="black" bar="striped" />
-      <strong>{PRO_PLUS_CLOUD_NAME}</strong>
-      <HomeDescription text={PRO_PLUS_CLOUD_DESCRIPTION} />
-      <p className="mode-card__price">{PRO_PLUS_CLOUD_PRICE_LINE}</p>
-      <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
-      <div className="mode-card__actions">
-        <LearnMoreLink tier="proCloud" />
       </div>
     </article>
   );
@@ -352,9 +318,9 @@ function HomeLines({ lines }: { lines: readonly string[] }) {
 function ProHomeCopy() {
   return (
     <>
-      <BeltRail kind="black" bar="red" />
+      <BeltRail kind="black" bar="striped" />
       <strong>Advantage Pro</strong>
-      <HomeLines lines={[...PRO_HOME_LINES, PRO_DRIVE_NOTE]} />
+      <HomeLines lines={[...PRO_HOME_LINES, PRO_DRIVE_NOTE, CLOUD_ADDON_LINE]} />
     </>
   );
 }

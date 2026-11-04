@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { CloudAddonChoice, CloudAddonLine, InstructorCloudCopy } from '../components/CloudAddon';
 import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
@@ -17,7 +18,6 @@ import { PRO_PRODUCT_ID, proPurchaseEntitled } from '../lib/proEntitlement';
 import { setProUnlocked } from '../lib/proUnlock';
 import {
   PRO_LIST_PRICE_CENTS,
-  PRO_MONTHLY_PRICE_CENTS,
   STUDENT_LIST_PRICE_CENTS,
 } from '../lib/productPrices';
 import { COACH_UNLIMITED_PATH, INSTRUCTOR_HOME_TITLE, PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
@@ -34,7 +34,6 @@ import { formatUsdFromCents, WHITE_CHECKOUT_API, WHITE_STRIPE_NOTE } from '../li
 const COACH_PRICE = formatUsdFromCents(INSTRUCTOR_DISPLAY_PRICE_CENTS);
 const MEDIA_PRICE = formatUsdFromCents(MEDIA_EDITION_LIST_PRICE_CENTS);
 const PRO_PRICE = formatUsdFromCents(PRO_LIST_PRICE_CENTS);
-const PRO_MONTHLY = formatUsdFromCents(PRO_MONTHLY_PRICE_CENTS);
 const STUDENT_PRICE = formatUsdFromCents(STUDENT_LIST_PRICE_CENTS);
 
 type TierCopy = {
@@ -81,8 +80,8 @@ const TIERS: Record<TierCopy['product'], TierCopy> = {
     product: 'pro',
     title: 'Advantage Pro',
     priceLabel: PRO_PRICE,
-    priceDetail: `USD — One Time Purchase, plus ${PRO_MONTHLY}/month`,
-    buttonPrice: `${PRO_PRICE} + ${PRO_MONTHLY}/month`,
+    priceDetail: 'USD — One Time Purchase',
+    buttonPrice: PRO_PRICE,
     belt: 'black',
     theme: 'pro',
     openPath: '/pro',
@@ -119,6 +118,8 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
   });
   const mediaDoor = useMediaUnlocked();
   const [upgradeEmail, setUpgradeEmail] = useState(() => readKnownPurchaseEmail(params.toString()) ?? '');
+  const [includeCloud, setIncludeCloud] = useState(false);
+  const cloudTier = tier.product === 'media' || tier.product === 'coach' || tier.product === 'pro';
   const [quote, setQuote] = useState<UpgradeQuoteResult | null>(null);
   const showCheckout =
     tier.product === 'pro'
@@ -185,7 +186,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(
           await withCheckoutNonce({
-            ...buyCheckoutBody({ product: tier.product, halfOffActive: halfOff }),
+            ...buyCheckoutBody({ product: tier.product, halfOffActive: halfOff, cloud: cloudTier && includeCloud }),
             ...(upgradeEmail.trim() ? { email: upgradeEmail.trim() } : {}),
           }),
         ),
@@ -217,6 +218,8 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
               {tier.priceLabel} <span>{tier.priceDetail}</span>
             </p>
             <p>{WHITE_STRIPE_NOTE}</p>
+            {cloudTier ? <CloudAddonLine /> : null}
+            {tier.product === 'coach' ? <InstructorCloudCopy /> : null}
           </header>
 
           <form className="buy__card" onSubmit={(event) => void onSubmit(event)}>
@@ -262,6 +265,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
                 onQuote={setQuote}
               />
             ) : null}
+            {showCheckout && cloudTier ? <CloudAddonChoice checked={includeCloud} onChange={setIncludeCloud} /> : null}
             {showCheckout ? (
               <button className="btn btn--white" type="submit" disabled={pending || quote?.kind === 'owned'}>
                 {pending
