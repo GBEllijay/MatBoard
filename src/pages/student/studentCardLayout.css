@@ -1,0 +1,153 @@
+/* Student card layout: belt → mat hours frame + timer → radar → medals → details. */
+.student-card-layout { display: grid; gap: 14px; margin-bottom: 16px; min-width: 0; }
+.student-card-layout > * { min-width: 0; }
+.student-card-layout .profile-face__stats { margin: 0; }
+
+.mh-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mh-frame {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  min-height: 52px; min-width: 96px; padding: 6px 14px;
+  border: 3px solid var(--frame, #f2f0ea); border-radius: 10px;
+  background: transparent; color: inherit; font: inherit; cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.35), 0 0 0 1px rgba(127, 127, 127, 0.35);
+}
+.mh-frame__value { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.mh-frame__unit { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; opacity: 0.85; }
+.mh-timer {
+  width: 52px; height: 52px; min-width: 44px; min-height: 44px; padding: 0;
+  display: grid; place-items: center; border-radius: 14px; cursor: pointer;
+  background: #0c2344; border: 1.5px solid #004eba;
+  box-shadow: 0 0 10px rgba(110, 168, 255, 0.45), inset 0 0 8px rgba(0, 78, 186, 0.5);
+}
+.mh-timer:focus-visible, .mh-frame:focus-visible, .card-medal:focus-visible { outline: 3px solid #6ea8ff; outline-offset: 2px; }
+
+.card-radar, .card-medals {
+  padding: 14px; border-radius: 12px; display: grid; gap: 8px;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(127, 127, 127, 0.35); color: inherit;
+}
+.card-radar .assess-visual { margin: 0; }
+.card-radar .assess-chart { max-width: 260px; width: 100%; height: auto; justify-self: center; display: block; margin: 0 auto; }
+.card-empty { font-size: 14px; margin: 0; opacity: 0.9; }
+.card-empty h3, .card-medals__k { margin: 0; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
+.card-link { min-height: 44px; display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; color: inherit; }
+
+.card-medals__strip { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.card-medal {
+  width: 100%; min-height: 44px; display: grid; justify-items: center; gap: 2px; text-align: center;
+  padding: 8px 4px 10px; border-radius: 14px; cursor: pointer; font: inherit; color: inherit;
+  background: rgba(12, 35, 68, 0.12); border: 1px solid #2a4a7f;
+}
+.card-medal b { font-size: 13px; line-height: 1.2; overflow-wrap: anywhere; }
+.card-medal span { font-size: 12px; opacity: 0.85; }
+
+.match-log { margin-top: 6px; padding: 12px 14px 16px; border-radius: 16px; border-top: 3px solid #004eba; background: #1c1c1e; color: #f2f2f7; display: grid; gap: 8px; }
+.match-log__hd { display: flex; gap: 12px; align-items: center; }
+.match-log__hd h3 { margin: 0; font-size: 18px; }
+.match-log__hd p, .match-log__k { margin: 0; font-size: 13px; color: #c9d4e6; }
+.match-log__list { list-style: none; margin: 0; padding: 0; }
+.match-log__row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); min-height: 48px; }
+.match-log__row b { display: block; font-size: 15px; overflow-wrap: anywhere; }
+.match-log__sc { display: block; font-size: 13px; color: #c9d4e6; overflow-wrap: anywhere; }
+.match-log__res { text-align: right; font-weight: 800; font-size: 15px; }
+.match-log__res small { display: block; font-weight: 500; font-size: 12px; color: #c9d4e6; }
+.match-log__res--win { color: #7ee2a8; }
+.match-log__res--loss { color: #ff9a90; }
+.match-log__close { min-height: 48px; }
+.card-details__split { margin: 0; font-size: 14px; }
+
+/* Character sheet home */
+.student-home__top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 8px 0 12px; }
+.streak-badge { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 14px; background: rgba(255, 154, 46, 0.12); border: 1px solid rgba(255, 154, 46, 0.5); min-width: 0; flex: 1 1 220px; }
+.streak-badge__text { display: grid; gap: 2px; min-width: 0; }
+.streak-badge__text strong { font-size: 16px; }
+.streak-badge__text small { font-size: 12px; opacity: 0.9; }
+.streak-badge__bar { height: 6px; border-radius: 3px; background: rgba(127, 127, 127, 0.3); overflow: hidden; }
+.streak-badge__bar i { display: block; height: 100%; background: #ff9a2e; }
+.student-home__hours { margin: 0; font-size: 14px; font-weight: 700; }
+.student-home__menu { margin: 16px 0; display: grid; gap: 8px; }
+.student-home__menu h2 { margin: 0; font-size: 18px; }
+.student-home__menu ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.student-home__link { display: grid; gap: 2px; min-height: 48px; padding: 8px 12px; border-radius: 10px; text-decoration: none; color: inherit; border: 1px solid rgba(127, 127, 127, 0.4); }
+.student-home__link strong { font-size: 15px; }
+.student-home__link small { font-size: 12px; opacity: 0.85; }
+.student-home__lock { min-height: 44px; justify-self: start; }
+
+/* /student home: character sheet inside the branded hub. */
+.s-hub .student-home { display: grid; gap: 14px; margin: 4px 0 8px; min-width: 0; }
+.student-card-layout--home { display: grid; gap: 14px; min-width: 0; }
+.card-medals--rail .card-medals__strip { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.card-medals--rail .card-medal { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-items: center; justify-items: start; text-align: left; gap: 0 12px; padding: 8px 12px; min-height: 64px; width: 100%; border: 1px solid rgba(110, 168, 255, 0.35); border-radius: 12px; background: rgba(10, 26, 48, 0.75); }
+.card-medals--rail .card-medal svg { grid-row: span 2; }
+.mh-row--home { align-items: center; gap: 12px; }
+.mh-row--home .mh-frame { width: 96px; height: 96px; flex: 0 0 96px; padding: 6px; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; }
+.mh-row--home .streak-badge { flex: 1 1 140px; min-width: 0; }
+.mh-row--home .streak-badge { padding: 6px 10px; box-shadow: 0 0 0 1px rgba(255, 154, 46, 0.35), 0 0 14px rgba(255, 154, 46, 0.25); }
+.profile-face__edit { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; font-weight: 700; color: #6ea8ff; text-decoration: none; }
+
+/* ── Character sheet (home): ONE outer frame, zones split by thin dividers, numbers are the heroes.
+   Layout only borrows from sheet/squad screens; the paint stays the Advantage navy + logo-blue skin. */
+.s-hub .student-home { gap: 0; }
+.cs-sheet {
+  --sheet-line: rgba(110, 168, 255, 0.35);
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; margin: 0 0 16px;
+  border: 1.5px solid #004eba; border-radius: 6px; overflow: hidden; position: relative;
+  background: linear-gradient(180deg, rgba(0, 78, 186, 0.08), rgba(12, 35, 68, 0.04));
+  box-shadow: 0 0 0 1px rgba(110, 168, 255, 0.18) inset;
+}
+@media (prefers-color-scheme: dark) { .cs-sheet { background: linear-gradient(180deg, rgba(12, 35, 68, 0.85), rgba(6, 16, 31, 0.9)); } }
+.cs-sheet::before, .cs-sheet::after { content: ''; position: absolute; width: 14px; height: 14px; border: 2px solid #6ea8ff; pointer-events: none; z-index: 1; }
+.cs-sheet::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.cs-sheet::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+.sheet-zone { padding: 10px 12px 12px; min-width: 0; display: grid; gap: 6px; align-content: start; border-top: 1px solid var(--sheet-line); }
+.sheet-zone:first-child { border-top: 0; }
+.sheet-cap { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #6ea8ff; line-height: 1.2; }
+.cs-sheet .card-radar, .cs-sheet .card-medals { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; gap: 4px; }
+.cs-sheet .card-radar .card-empty h3 { display: none; }
+.cs-sheet .profile-face { box-shadow: none; margin: 0; }
+.cs-sheet .card-medals__k { font-size: 11px; letter-spacing: 0.14em; opacity: 0.8; }
+.cs-sheet .card-link { min-height: 40px; font-size: 13px; }
+
+.sheet-zone--stats { padding: 0; }
+.sheet-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (min-width: 600px) { .sheet-stats { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-columns: none; } }
+.sheet-stat {
+  min-width: 0; min-height: 76px; padding: 8px 10px; display: grid; align-content: center; gap: 2px;
+  color: inherit; text-decoration: none; border-left: 1px solid var(--sheet-line); border-top: 1px solid var(--sheet-line); margin: -1px 0 0 -1px;
+}
+.sheet-stat:focus-visible, .sheet-stat__open:focus-visible { outline: 3px solid #6ea8ff; outline-offset: -3px; }
+.sheet-stat__num { font-size: 30px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap; }
+.sheet-stat__num small { font-size: 13px; font-weight: 700; opacity: 0.8; margin-left: 2px; letter-spacing: 0; }
+.sheet-stat__bar { height: 4px; border-radius: 2px; background: rgba(127, 127, 127, 0.3); overflow: hidden; margin-top: 4px; }
+.sheet-stat__bar i { display: block; height: 100%; background: #6ea8ff; }
+.sheet-stat--mat { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.sheet-stat__open { display: grid; gap: 2px; color: inherit; text-decoration: none; min-height: 44px; align-content: center; min-width: 0; }
+.sheet-stat--mat .mh-timer { width: 44px; height: 44px; flex: none; }
+.sheet-stat--mat .mh-timer svg { width: 32px; height: 32px; }
+@media (max-width: 420px) {
+  .sheet-stat--mat { display: grid; justify-items: start; }
+  .sheet-stat__num { font-size: 26px; }
+}
+
+.sheet-wins { display: grid; gap: 6px; }
+.sheet-wins__methods { margin: 0; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.cs-sheet .card-medals--rail .card-medal { min-height: 52px; padding: 6px 10px; border-radius: 4px; background: rgba(12, 35, 68, 0.12); border-color: var(--sheet-line); }
+@media (prefers-color-scheme: dark) { .cs-sheet .card-medals--rail .card-medal { background: rgba(10, 26, 48, 0.75); } }
+.cs-sheet .card-medals--rail .card-medal svg { width: 32px; height: 40px; }
+
+@media (max-width: 599px) { .sheet-stats .sheet-stat--stripes { display: none; } }
+.cs-sheet .assess-visual { background: none; padding: 4px 0 0; border-radius: 0; }
+.cs-sheet .card-radar .assess-visual > h3:first-child, .cs-sheet .card-radar .assess-visual > h2:first-child { display: none; }
+.sheet-zone--body .bs { border-radius: 2px; }
+
+@media (min-width: 1024px) {
+  /* Wide: identity | stat block on top, radar | wins below, body scan across the bottom. */
+  .cs-sheet { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .sheet-zone--identity { grid-column: 1; grid-row: 1; border-top: 0; border-right: 1px solid var(--sheet-line); }
+  .sheet-zone--stats { grid-column: 2; grid-row: 1; border-top: 0; }
+  .sheet-zone--stats .sheet-stats { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; height: 100%; }
+  .sheet-zone--stats .sheet-stat__num { font-size: 40px; }
+  .sheet-zone--radar { grid-column: 1; grid-row: 2; border-right: 1px solid var(--sheet-line); }
+  .sheet-zone--wins { grid-column: 2; grid-row: 2; }
+  .sheet-zone--body { grid-column: 1 / -1; }
+}
+}

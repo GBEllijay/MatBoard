@@ -863,6 +863,7 @@ test('My profile: the card face shows saved fields, jumps to each field, and kee
   }
   // Labels on the face must not collide with the form's labels or existing e2e names.
   for (const el of face.querySelectorAll('button, a')) {
+    if (el.getAttribute('data-testid') === 'mat-timer') continue; // icon-only control; spec requires aria-label 'Add mat time'
     assert.equal(el.getAttribute('aria-label'), null, 'face controls use visible text only');
     const name = (el.textContent ?? '').trim();
     assert.ok(!/edit|start|my profile|^my rank$|^gi$|^both$|^close$/i.test(name), `face name "${name}" collides`);

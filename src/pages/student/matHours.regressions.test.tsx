@@ -235,7 +235,7 @@ test('total stat wears the belt cloth on white, blue, purple, black and toggles 
 
 test('hub has no mat hours tile; profile shows stat, streak and report link; report shows streak, status and source labels', () => {
   seed('purple', { minutes: 60, injury: { area: 'Shoulder', note: '' } });
-  const hub = mount(<StudentEditionPage />, '/student?student=1');
+  const hub = mount(<StudentEditionPage />, '/student/hub?student=1');
   assert.equal(hub.host.querySelector('[data-testid="mat-hours"]'), null);
   assert.equal(hub.host.querySelector('[aria-label="My report card"]'), null);
   assert.ok(labeled(hub.host, 'My profile'));
@@ -245,8 +245,8 @@ test('hub has no mat hours tile; profile shows stat, streak and report link; rep
   assert.ok(section);
   const stats = section.closest('[data-testid="profile-face-stats"]') as HTMLElement;
   assert.ok(stats, 'mat hours sit in the card stats (#399 card face)');
-  assert.equal(stats.previousElementSibling?.getAttribute('data-testid'), 'profile-card-face', 'stats directly under the card face');
-  assert.match(section.querySelector('[data-testid="mat-hours"]')?.textContent ?? '', /1 mat hour|1\.0 mat hours|mat hour/);
+  assert.equal(stats.previousElementSibling?.getAttribute('data-testid'), 'card-medals', 'details sit at the bottom, under the medals');
+  assert.match(profile.host.querySelector('[data-testid="mat-hours-frame"]')?.textContent ?? '', /^1mat hrs$/);
   assert.match(section.querySelector('[data-testid="profile-streak"]')?.textContent ?? '', /of 2 sessions|paused/);
   assert.equal(labeled(section, 'My report card').getAttribute('href'), '/student/report?student=1');
   unmount(profile);
@@ -271,14 +271,18 @@ test('backup carries mat time', () => {
   if (parsed.ok) assert.equal(parsed.value.journal[0].minutes, 45);
 });
 
-test('profile card stat: tap opens quick-add; save updates the same day record and the units chip toggles', () => {
+test('profile card: the timer opens quick-add; save updates the same day record; the frame toggles units', () => {
   seed('blue', { minutes: 60 });
   const page = mount(<StudentEditionPage />, '/student/profile?student=1');
-  const stat = page.host.querySelector('[data-testid="profile-mat-hours"]') as HTMLElement;
-  assert.ok(stat);
-  click(labeled(stat, 'Show days and years'));
-  assert.match(stat.querySelector('.mat-hours__value')?.textContent ?? '', /days on the mat/);
-  click(stat.querySelector('.mat-hours__value') as HTMLElement);
+  const frame = page.host.querySelector('[data-testid="mat-hours-frame"]') as HTMLElement;
+  assert.ok(frame);
+  click(frame);
+  assert.match(frame.textContent ?? '', /mat days/);
+  assert.equal(frame.getAttribute('aria-pressed'), 'true');
+  click(frame);
+  assert.match(frame.textContent ?? '', /mat hrs/);
+  assert.equal(page.host.querySelector('[data-testid="mat-quick-add"]'), null, 'frame does not open quick-add');
+  click(labeled(page.host, 'Add mat time'));
   const sheet = page.host.querySelector('[data-testid="mat-quick-add"]') as HTMLElement;
   assert.ok(sheet);
   typeInto(field(sheet, 'Date') as HTMLInputElement, '2026-10-11');
@@ -364,4 +368,116 @@ test('journal search: a typo finds the card and the hit is highlighted', () => {
   const link = [...page.host.querySelectorAll('a')].find((a) => /[?&]q=scisor/.test(a.getAttribute('href') ?? ''));
   assert.ok(link, 'result opens the entry with the query');
   unmount(page);
+});
+
+/* Student card layout (belt → mat hours frame + timer → radar → medals → details).
+ * Controls touched: profile mat hours frame (units toggle), Add mat time timer, card radar link,
+ * medal buttons, match log Close, Results link, My report card. */
+import { recentMedals } from '../../lib/cardMedals.ts';
+import { ASSESSMENT_AREAS, saveAssessment, writeAssessments } from '../../lib/studentAssessment.ts';
+import { beltFrameColor } from './StudentCardLayout.tsx';
+import { wornBeltPreview } from '../../lib/studentRank.ts';
+import type { CompetitionResult, StudentProgressReport } from '../../lib/progress/types.ts';
+
+function result(id: string, name: string, outcomes: Array<'win' | 'loss'>, date = '', notes: string[] = []): CompetitionResult {
+  return {
+    id,
+    tournamentId: '',
+    tournamentName: name,
+    division: 'Adult / Light',
+    bracket: [],
+    bracketPhoto: false,
+    matches: outcomes.map((r, i) => ({ id: `${id}.m${i}`, opponent: `Opp ${i}`, result: r, method: r === 'win' ? 'sub' : 'points', note: notes[i] ?? '', ...(date ? { date } : {}) })),
+  };
+}
+
+function seedResults(results: CompetitionResult[]): StudentProgressReport {
+  const report = seed('purple', { minutes: 60 });
+  const next = { ...report, competition: { ...report.competition!, results } } as StudentProgressReport;
+  saveStudentReport(localStorage, next);
+  return next;
+}
+
+test('card order: belt → mat hours frame + timer → radar → medals → details', () => {
+  seed('blue', { minutes: 60 });
+  const page = mount(<StudentEditionPage />, '/student/profile?student=1');
+  const face = page.host.querySelector('[data-testid="profile-card-face"]') as HTMLElement;
+  const belt = face.querySelector('.profile-face__belt') as HTMLElement;
+  const row = face.querySelector('[data-testid="mat-hours-row"]') as HTMLElement;
+  assert.equal(belt.nextElementSibling, row, 'frame row directly under the belt');
+  const ids = [...(page.host.querySelector('[data-testid="student-card-layout"]') as HTMLElement).children].map((n) => n.getAttribute('data-testid'));
+  assert.deepEqual(ids, ['profile-card-face', 'card-radar', 'card-medals', 'profile-face-stats']);
+  assert.ok(row.querySelector('[data-testid="mat-hours-frame"]'));
+  assert.ok(row.querySelector('[aria-label="Add mat time"]'));
+  unmount(page);
+});
+
+test('mat hours frame: belt-colored border, not the belt cloth', () => {
+  for (const belt of ['white', 'blue', 'purple', 'brown', 'black']) {
+    const report = seed(belt, { minutes: 60 });
+    const page = mount(<StudentEditionPage />, '/student/profile?student=1');
+    const frame = page.host.querySelector('[data-testid="mat-hours-frame"]') as HTMLElement;
+    assert.equal(frame.getAttribute('data-belt'), belt);
+    const color = beltFrameColor(wornBeltPreview(report));
+    assert.ok(frame.getAttribute('style')?.includes(color), `${belt} frame uses ${color}`);
+    assert.equal(frame.querySelector('.belt, .rung, .belt__body'), null, 'no belt shape or weave');
+    assert.equal(page.host.querySelector('[data-testid="mat-hours"]'), null, 'old belt-cloth stat gone from the card');
+    unmount(page);
+  }
+  assert.notEqual(beltFrameColor({ kind: 'striped', belt: 'blue', base: '' } as never), beltFrameColor({ kind: 'striped', belt: 'purple', base: '' } as never));
+  assert.equal(beltFrameColor({ kind: 'kids', belt: 'grey', base: '#9a9a9a' } as never), '#9a9a9a', 'kids frame follows the kids belt');
+});
+
+test('medals: capped at three, most recent first, podium rules', () => {
+  const comp = {
+    tournaments: [],
+    results: [
+      result('a', 'Old Open', ['win'], '2026-01-01'),
+      result('b', 'Spring Cup', ['win', 'loss'], '2026-04-01'),
+      result('c', 'Summer Classic', ['win', 'loss'], '2026-06-01', ['', 'semi final']),
+      result('d', 'Fall Open', ['win', 'win'], '2026-09-01'),
+      result('e', 'Lost Early', ['loss'], '2026-10-01'),
+    ],
+  };
+  const medals = recentMedals(comp);
+  assert.equal(medals.length, 3);
+  assert.deepEqual(medals.map((m) => m.name), ['Fall Open', 'Summer Classic', 'Spring Cup']);
+  assert.deepEqual(medals.map((m) => m.kind), ['gold', 'bronze', 'silver']);
+  assert.deepEqual(recentMedals({ tournaments: [], results: [] }), []);
+});
+
+test('medals on the card open a match log; empty states for medals and radar', () => {
+  seed('white', { minutes: 0 });
+  let page = mount(<StudentEditionPage />, '/student/profile?student=1');
+  assert.ok(page.host.querySelector('[data-testid="card-medals-empty"]'));
+  assert.ok(page.host.querySelector('[data-testid="card-radar-empty"]'));
+  unmount(page);
+  seedResults([result('x', 'Sample Open', ['win', 'win'], '2026-03-14', ['6-2', ''])]);
+  page = mount(<StudentEditionPage />, '/student/profile?student=1');
+  const medals = page.host.querySelectorAll('[data-testid="card-medal"]');
+  assert.equal(medals.length, 1);
+  assert.match(medals[0].textContent ?? '', /Sample Open.*1st/);
+  click(medals[0] as HTMLElement);
+  const log = page.host.querySelector('[data-testid="match-log"]') as HTMLElement;
+  assert.ok(log);
+  assert.equal(log.querySelectorAll('[data-testid="match-log-row"]').length, 2);
+  assert.match(log.textContent ?? '', /Opp 0.*6-2.*Win.*Submission/);
+  click(control(log, 'button', 'Close'));
+  assert.equal(page.host.querySelector('[data-testid="match-log"]'), null);
+  unmount(page);
+});
+
+test('card radar reads the latest check-in; the self-assessment page is unchanged', () => {
+  seed('white', { minutes: 0 });
+  writeAssessments(localStorage, saveAssessment({ entries: [] }, { date: '2026-10-01', note: '', scores: Object.fromEntries(ASSESSMENT_AREAS.map((a) => [a.id, 3])) as never }));
+  const page = mount(<StudentEditionPage />, '/student/profile?student=1');
+  const radar = page.host.querySelector('[data-testid="card-radar"]') as HTMLElement;
+  assert.ok(radar.querySelector('svg.assess-chart polygon.assess-chart__shape'));
+  assert.equal(radar.querySelector('button.assess-tap'), null, 'read-only');
+  unmount(page);
+  const assess = mount(<StudentEditionPage />, '/student/self-assessment?student=1');
+  assert.ok(assess.host.querySelector('#self-assessment .assess-visuals svg.assess-chart'));
+  assert.ok(assess.host.querySelectorAll('button.assess-tap').length >= 5);
+  assert.equal(assess.host.querySelector('[data-testid="card-radar"], [data-testid="card-medals"], [data-testid="mat-hours-frame"]'), null);
+  unmount(assess);
 });

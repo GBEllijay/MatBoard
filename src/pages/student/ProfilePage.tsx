@@ -6,9 +6,9 @@ import { StudentCardPreview } from '../../components/rosterCard/StudentCardPrevi
 import { ShareCardWithCoach, cardShareAvailable } from '../../components/StudentToCoachShare';
 import { ProfileCornerMarks, ProfileMedia, ProfileSwitches, useProfileMedia } from './ProfileIdentity';
 import { StudentProfileFields, TrainingSettings } from './ProfileFields';
-import { ProfileMatHoursStat } from './MatQuickAdd';
 import { StudentCompetitorSwitch } from './StudentCompetitorSwitch';
-import { ProfileCardFace } from './ProfileCardFace';
+import { StudentCardLayout } from './StudentCardLayout';
+import { BodyScanSetting } from './BodyScan';
 import './profile.css';
 
 /** Name, gym, start date, birth year, Kid or Adult, optional photo, and gym logo. Saved on this phone. */
@@ -38,7 +38,7 @@ export function ProfilePage() {
             name={kids && !media.logo && !showPhoto ? gymName : ''}
           />
         </header>
-        <ProfileCardFace report={report} portrait={showPhoto ? media.portrait : null} logo={media.logo} to={to} stats={<ProfileMatHoursStat to={to} />} />
+        <StudentCardLayout portrait={showPhoto ? media.portrait : null} logo={media.logo} to={to} />
         <div className="profile-stack">
           <ProfileMedia media={media} kids={kids} />
           <KidAdultFields report={report} commit={commit} />
@@ -55,6 +55,7 @@ export function ProfilePage() {
           <StudentCompetitorSwitch report={report} />
           <TrainingSettings report={report} commit={commit} />
           <ProfileSwitches report={report} />
+          <BodyScanSetting />
           <StudentNoPhotosSwitch studentId={report.studentId} />
           {/* Save profile renders here: last on the page, reachable at 390px. */}
           <div ref={setSaveSlot} className="profile-save-slot" data-testid="profile-save-slot" />

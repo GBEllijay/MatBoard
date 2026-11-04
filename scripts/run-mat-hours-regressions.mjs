@@ -21,5 +21,5 @@ await build({
   plugins: [paidChunksStub],
 });
 
-const result = spawnSync(process.execPath, ['--test', '--test-force-exit', outfile], { stdio: 'inherit' });
+const result = spawnSync(process.execPath, ['--test', '--test-force-exit', '--test-timeout=20000', ...process.argv.slice(2), outfile], { stdio: 'inherit' });
 process.exit(result.status ?? 1);

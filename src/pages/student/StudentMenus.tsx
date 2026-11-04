@@ -70,7 +70,8 @@ export function ProfileCard() {
   );
 }
 
-export function StudentHub() {
+/** The branded Student Edition hub. `/student` passes the character sheet in `sheet`; `/student/hub` has none. */
+export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
   const to = useStudentPath();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -87,7 +88,7 @@ export function StudentHub() {
   }, []);
   const coachNote = academy ? `Connected to ${academy.folderName}` : 'Academy, a file for your coach, and import';
   const worn = wornBeltPreview(report);
-  const portrait = readProfilePortrait();
+  const portrait = sheet ? null : readProfilePortrait();
 
   return (
     <main className="home home--student student-menu-home">
@@ -95,11 +96,15 @@ export function StudentHub() {
         <HomeMark to={home} />
         <nav className="s-hub" aria-label="Advantage Student Edition">
           <BeltHeader kind="blue" title={STUDENT_EDITION_HUB_TITLE} />
+          {sheet ?? (
+            <>
           <header className={portrait ? 's-hub__intro s-hub__intro--photo' : 's-hub__intro'}>
             {portrait ? <img className="s-hub__avatar" src={portrait} alt="Profile photo" /> : null}
             <p>{STUDENT_HOME_DESCRIPTION}</p>
           </header>
           <ProfileCard />
+            </>
+          )}
           <Link className="s-tile s-journal" to={to('/student/training')} aria-label={TRAINING_GROUP_LABEL}>
             <JournalDecor />
             <span className="s-tile__text">

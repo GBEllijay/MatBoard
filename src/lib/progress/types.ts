@@ -480,7 +480,16 @@ export type JournalEntry = {
   /** Optional 1–5 how the session felt, student-rated. Labels change with belt (lib/sessionQuality). */
   quality?: 1 | 2 | 3 | 4 | 5;
   /** Marks the card as an injury. Private to the student. */
-  injury?: { area: string; note: string };
+  injury?: {
+    area: string;
+    note: string;
+    /** Optional fixed body zone (lib/bodyScan BODY_ZONES). Absent on older marks: matched from `area`. */
+    zone?: string;
+    /** Optional recovery status. Absent on older marks: read as hurt from the card date. */
+    status?: 'hurt' | 'healing' | 'healed';
+    /** Day the status was last set (YYYY-MM-DD). */
+    markedOn?: string;
+  };
   /** Marks a hiatus/break. Starts on `start` (the card date by default). Empty `end` means still on break. */
   hiatus?: { reason: 'medical' | 'other'; start: string; end: string };
 };

@@ -488,7 +488,12 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
   if (draft.session && (JOURNAL_SESSIONS as readonly string[]).includes(draft.session)) entry.session = draft.session;
   const other = (draft.sessionOther ?? '').trim().slice(0, JOURNAL_SESSION_OTHER_MAX);
   if (entry.session === 'other' && other) entry.sessionOther = other;
-  if (draft.injury) entry.injury = { area: draft.injury.area.trim().slice(0, PROGRESS_NAME_MAX), note: draft.injury.note.trim().slice(0, PROGRESS_NAME_MAX * 4) };
+  if (draft.injury) {
+    entry.injury = { area: draft.injury.area.trim().slice(0, PROGRESS_NAME_MAX), note: draft.injury.note.trim().slice(0, PROGRESS_NAME_MAX * 4) };
+    if (draft.injury.zone) entry.injury.zone = draft.injury.zone;
+    if (draft.injury.status) entry.injury.status = draft.injury.status;
+    if (draft.injury.markedOn) entry.injury.markedOn = draft.injury.markedOn;
+  }
   if (draft.hiatus) {
     const start = DATE_RE.test(draft.hiatus.start) ? draft.hiatus.start : draft.date;
     const end = DATE_RE.test(draft.hiatus.end) && draft.hiatus.end >= start ? draft.hiatus.end : '';

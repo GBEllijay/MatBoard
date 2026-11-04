@@ -50,6 +50,8 @@ export function ProfileCardFace({
   logo,
   to,
   stats,
+  beltStat,
+  editHref,
 }: {
   report: StudentProgressReport;
   portrait: string | null;
@@ -57,6 +59,10 @@ export function ProfileCardFace({
   to: (path: string) => string;
   /** Optional card stats (e.g. mat hours), shown under the rows on the face. */
   stats?: ReactNode;
+  /** Shown directly under the belt row (the mat hours frame and timer). */
+  beltStat?: ReactNode;
+  /** Home: the face links to the profile editor instead of jumping to fields on the page. */
+  editHref?: string;
 }) {
   const look = useMemo(() => {
     const overlay = readCoachOverlay(localStorage);
@@ -86,6 +92,11 @@ export function ProfileCardFace({
                 <button type="button" className="profile-face__name" onClick={() => jumpToField('name')}>
                   {name || 'Add your name'}
                 </button>
+                {editHref ? (
+                  <Link className="profile-face__edit" to={editHref} aria-label="Edit profile" data-testid="profile-edit-link">
+                    ✎ Edit profile
+                  </Link>
+                ) : null}
               </div>
               <button type="button" className="profile-face__crest" onClick={() => jumpToField(logo ? 'gym' : 'logo')}>
                 <img src={logo || ADVANTAGE_MARK_SRC} alt="" />
@@ -108,6 +119,7 @@ export function ProfileCardFace({
                 </span>
                 <span className="profile-face__belt-text">{`${belt.summary} · change on the rank page ›`}</span>
               </Link>
+              {beltStat}
             </div>
           </div>
         </div>

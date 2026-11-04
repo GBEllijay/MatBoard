@@ -1,3 +1,5 @@
+import { todayIso } from '../../lib/studentEdition';
+import { BODY_ZONES, INJURY_STATUSES, STATUS_LABEL, zoneFromText, zoneLabel } from '../../lib/bodyScan';
 /**
  * Mat time on a journal card (student-logged), and the Mat hours stat on the
  * student's own card. The stat wears the student's current belt cloth, reusing
@@ -190,6 +192,9 @@ export type SessionExtrasValue = {
   mark: SessionMark;
   area: string;
   injuryNote: string;
+  zone: string;
+  status: '' | 'hurt' | 'healing' | 'healed';
+  markedOn: string;
   reason: 'medical' | 'other';
   start: string;
   end: string;
@@ -197,7 +202,7 @@ export type SessionExtrasValue = {
 
 export function extrasFromCard(card: {
   howItWent: string;
-  injury: { area: string; note: string } | null;
+  injury: { area: string; note: string; zone?: string; status?: 'hurt' | 'healing' | 'healed'; markedOn?: string } | null;
   hiatus: { reason: 'medical' | 'other'; start: string; end: string } | null;
 }): SessionExtrasValue {
   return {
@@ -205,19 +210,29 @@ export function extrasFromCard(card: {
     mark: card.hiatus ? 'hiatus' : card.injury ? 'injury' : 'none',
     area: card.injury?.area ?? '',
     injuryNote: card.injury?.note ?? '',
+    zone: card.injury?.zone ?? '',
+    status: card.injury?.status ?? '',
+    markedOn: card.injury?.markedOn ?? '',
     reason: card.hiatus?.reason ?? 'other',
     start: card.hiatus?.start ?? '',
     end: card.hiatus?.end ?? '',
   };
 }
 
-export const EMPTY_EXTRAS: SessionExtrasValue = { howItWent: '', mark: 'none', area: '', injuryNote: '', reason: 'other', start: '', end: '' };
+export const EMPTY_EXTRAS: SessionExtrasValue = { howItWent: '', mark: 'none', area: '', injuryNote: '', zone: '', status: '', markedOn: '', reason: 'other', start: '', end: '' };
 
 /** Draft fields for addJournalEntry / updateJournalEntry. Null clears on edit. */
 export function extrasDraft(value: SessionExtrasValue, date: string) {
   return {
     howItWent: value.howItWent,
-    injury: value.mark === 'injury' ? { area: value.area, note: value.injuryNote } : null,
+    injury: value.mark === 'injury'
+      ? {
+          area: value.area,
+          note: value.injuryNote,
+          ...(value.zone ? { zone: value.zone } : {}),
+          ...(value.status ? { status: value.status, ...(value.markedOn ? { markedOn: value.markedOn } : {}) } : {}),
+        }
+      : null,
     hiatus: value.mark === 'hiatus' ? { reason: value.reason, start: value.start || date, end: value.end } : null,
   };
 }
@@ -272,6 +287,22 @@ export function SessionExtras({
             <span className="ink__label">Injury note</span>
             <input className="ink__input" aria-label={`${idPrefix}Injury note`} value={value.injuryNote} maxLength={320} onChange={(e) => set({ injuryNote: e.target.value })} />
           </label>
+          <label className="ink">
+            <span className="ink__label">Body zone (optional)</span>
+            <select className="ink__input" aria-label={`${idPrefix}Body zone`} value={value.zone} onChange={(e) => set({ zone: e.target.value })}>
+              <option value="">{value.area && zoneFromText(value.area) ? `Match from area (${zoneLabel(zoneFromText(value.area))})` : 'Pick a zone'}</option>
+              {BODY_ZONES.map((z) => (
+                <option key={z.id} value={z.id}>{z.label}</option>
+              ))}
+            </select>
+          </label>
+          <div className="mat-time__row" role="group" aria-label={`${idPrefix}Injury status`}>
+            {INJURY_STATUSES.map((st) => (
+              <button key={st} type="button" className="mat-time__chip" aria-pressed={(value.status || 'hurt') === st} onClick={() => set({ status: st, markedOn: todayIso() })}>
+                {STATUS_LABEL[st]}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
       {value.mark === 'hiatus' ? (
