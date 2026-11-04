@@ -19,6 +19,7 @@ import {
 } from './rosterPhotoApproval.ts';
 import type { Student, StudentDraft } from './rosterStore.ts';
 import { readStudentCardShare, type StudentCardShare } from './studentCardShare.ts';
+import { readStudentCoachUpdate, receiveStudentCoachUpdate, type UpdateReceive } from './coachProgressFile.ts';
 import { readTournamentRegistration, type TournamentRegistrationEvent } from './studentEvents.ts';
 
 type Store = { getItem(key: string): string | null; setItem(key: string, value: string): void };
@@ -252,7 +253,11 @@ export function importStudentToCoachText(
   storage: Store,
   text: string,
   roster: readonly NoticeCard[],
-): { kind: 'notice'; result: NoticeReceive } | { kind: 'card-share'; result: ShareReceive } | { kind: 'not-student-file' } {
+):
+  | { kind: 'notice'; result: NoticeReceive }
+  | { kind: 'card-share'; result: ShareReceive }
+  | { kind: 'student-update'; result: UpdateReceive }
+  | { kind: 'not-student-file' } {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -261,5 +266,6 @@ export function importStudentToCoachText(
   }
   if (readTournamentRegistration(raw)) return { kind: 'notice', result: receiveTournamentNotice(storage, raw, roster) };
   if (readStudentCardShare(raw)) return { kind: 'card-share', result: receiveCardShare(storage, raw) };
+  if (readStudentCoachUpdate(raw)) return { kind: 'student-update', result: receiveStudentCoachUpdate(storage, raw) };
   return { kind: 'not-student-file' };
 }

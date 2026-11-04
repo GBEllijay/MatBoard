@@ -3,7 +3,7 @@
  * Import from coach reads the name and logo. An older coach file has neither.
  */
 
-import { coachGymLogoFits } from './coachGymFit.ts';
+import { coachGymLogoFits, readGymIds } from './coachGymFit.ts';
 import { exportProgressPacket } from './progress/format.ts';
 import { PROGRESS_SCHEMA_VERSION, type CoachGymBrand, type CoachPlanPacket } from './progress/types.ts';
 
@@ -15,10 +15,19 @@ export function isGymBrandFile(packet: Pick<CoachPlanPacket, 'id' | 'kind' | 'pl
 }
 
 /** Coach plan whose only job is the gym name and logo. It does not replace a lesson plan. */
-export function buildGymBrandFile(input: { name: string; logo?: string | null; issuedOn: string; now?: number }): string {
+export function buildGymBrandFile(input: {
+  name: string;
+  logo?: string | null;
+  issuedOn: string;
+  now?: number;
+  /** Sender ids. Omitted on older callers. */
+  ids?: readonly string[];
+}): string {
   const name = input.name.trim().slice(0, 80);
   const logo = input.logo && coachGymLogoFits(input.logo) ? input.logo : undefined;
   const gym: CoachGymBrand = logo ? { name, logo } : { name };
+  const ids = readGymIds([...(input.ids ?? [])]);
+  if (ids.length) gym.ids = ids;
   const packet: CoachPlanPacket = {
     schemaVersion: PROGRESS_SCHEMA_VERSION,
     kind: 'coach-plan',

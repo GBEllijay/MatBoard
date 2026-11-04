@@ -45,7 +45,7 @@ export type StudentDriveLink = {
   gymName: string;
 };
 
-type MemoryStore = {
+export type MemoryStore = {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
   removeItem?: (key: string) => void;
@@ -265,12 +265,12 @@ export async function probeGoogleFolder(
   token: string,
   folderId: string,
   fetcher: FetchLike = fetch,
-): Promise<{ ok: true; name: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; name: string } | { ok: false; error: string; status?: number }> {
   const response = await fetcher(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,mimeType`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
-  if (!response.ok) return { ok: false, error: ACADEMY_ACCESS_ERROR };
+  if (!response.ok) return { ok: false, error: ACADEMY_ACCESS_ERROR, status: response.status };
   const body = (await response.json()) as { name?: string; mimeType?: string };
   if (body.mimeType && body.mimeType !== 'application/vnd.google-apps.folder') {
     return { ok: false, error: 'That link is not a Google Drive folder.' };
@@ -282,12 +282,12 @@ export async function probeOneDriveFolder(
   token: string,
   folderId: string,
   fetcher: FetchLike = fetch,
-): Promise<{ ok: true; name: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; name: string } | { ok: false; error: string; status?: number }> {
   const response = await fetcher(
     `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(folderId)}?$select=id,name,folder`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
-  if (!response.ok) return { ok: false, error: ACADEMY_ACCESS_ERROR };
+  if (!response.ok) return { ok: false, error: ACADEMY_ACCESS_ERROR, status: response.status };
   const body = (await response.json()) as { name?: string; folder?: unknown };
   if (!body.folder) return { ok: false, error: 'That link is not a OneDrive folder.' };
   return { ok: true, name: body.name?.trim() || 'Academy folder' };

@@ -1,0 +1,206 @@
+/**
+ * Connect to my academy, restyled: every control still works.
+ * Not connected: Scan gym QR, Take a photo of the QR, Paste invite link,
+ * Use this academy link → Sign in, Show my student ID, Save inbox code.
+ * Connected: Send my ID to coach, Share my card, Disconnect academy folder,
+ * Leave academy (confirm sheet + logo prompt), Changing gyms (switch sheet),
+ * stale-link banner with Rescan. One page title, no journal skin.
+ */
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { Window } from 'happy-dom';
+import { act, type ReactNode } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
+
+const dom = new Window({ url: 'http://localhost/student/academy?student=1' });
+const view = dom as unknown as Window & typeof globalThis;
+function installGlobal(key: string, value: unknown) {
+  const desc = Object.getOwnPropertyDescriptor(globalThis, key);
+  if (desc && desc.configurable === false && desc.writable !== true) return;
+  Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+}
+installGlobal('window', view);
+installGlobal('document', view.document);
+installGlobal('localStorage', view.localStorage);
+installGlobal('sessionStorage', view.sessionStorage);
+installGlobal('HTMLElement', view.HTMLElement);
+installGlobal('navigator', view.navigator);
+installGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+installGlobal('indexedDB', view.indexedDB);
+
+const { AcademyConnectPage, ConnectionsPage } = await import('./ConnectionsPage.tsx');
+const { academyPathwayUrl, loadAcademyLink, saveStudentDriveLink } = await import('../../lib/academyPathway.ts');
+const { joinAcademy, markAcademyStale, readMembership, ACADEMY_STALE_COPY, LEAVE_LOGO_PROMPT } = await import('../../lib/academyMembership.ts');
+const { STUDENT_GYM_LOGO_KEY } = await import('../../lib/studentGymMark.ts');
+const { ACADEMY_LICENSE_KEY } = await import('../../lib/studentInboxClient.ts');
+const { addJournalEntry, blankStudentReport, loadStudentReport, saveStudentReport } = await import('../../lib/studentEdition.ts');
+const { readFileSync } = await import('node:fs');
+
+function mount(node: ReactNode, entry: string) {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  act(() => root.render(<MemoryRouter initialEntries={[entry]}>{node}</MemoryRouter>));
+  return { root, host };
+}
+function unmount(mounted: { root: Root; host: HTMLElement }) {
+  act(() => mounted.root.unmount());
+  mounted.host.remove();
+}
+const buttons = (host: ParentNode) => [...host.querySelectorAll('button')].map((node) => node.textContent?.trim() ?? '');
+function button(host: ParentNode, name: string): HTMLButtonElement {
+  const found = [...host.querySelectorAll('button')].find((node) => node.textContent?.trim() === name);
+  assert.equal(found?.tagName, 'BUTTON', name);
+  return found as HTMLButtonElement;
+}
+function reactProps(node: Element): Record<string, (event: unknown) => void> | null {
+  const key = Object.keys(node).find((name) => name.startsWith('__reactProps'));
+  return key ? (node as unknown as Record<string, Record<string, (event: unknown) => void>>)[key] : null;
+}
+async function settle() {
+  for (let i = 0; i < 6; i += 1) await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+}
+async function click(el: Element) {
+  await act(async () => {
+    el.dispatchEvent(new view.MouseEvent('click', { bubbles: true, cancelable: true }));
+  });
+  await settle();
+}
+async function type(input: HTMLInputElement, value: string) {
+  await act(async () => {
+    input.value = value;
+    reactProps(input)?.onChange?.({ target: input, currentTarget: input });
+  });
+}
+
+const link = (folderId: string, gymName: string) =>
+  academyPathwayUrl({ v: 1, provider: 'googleDrive', folderId, folderName: `${gymName} folder`, gymName }, 'https://advantagebjjtimer.com');
+
+function connect(gymName = 'North Side BJJ') {
+  saveStudentDriveLink(localStorage, { role: 'academy', provider: 'googleDrive', folderId: 'gym-folder-aaa', folderName: 'Team folder', accountLabel: null, gymName });
+  joinAcademy(localStorage, { folderId: 'gym-folder-aaa', provider: 'googleDrive', gymName, license: 'licA-1234' }, Date.UTC(2026, 8, 12, 15));
+}
+
+test('not connected: one title, scan first, paste second, student ID card, all controls present', async () => {
+  localStorage.clear();
+  const page = mount(<AcademyConnectPage />, '/student/academy?student=1');
+  const host = page.host;
+  assert.equal(host.querySelectorAll('h1').length, 1);
+  assert.equal(host.querySelector('h1')?.textContent, 'Connect to my academy');
+  assert.ok(host.querySelector('main.academy-modern'));
+  assert.equal(host.querySelector('.student-paper'), null);
+  const names = buttons(host);
+  assert.equal(names[0], 'Scan gym QR');
+  assert.ok(button(host, 'Scan gym QR').className.includes('am-btn--primary'));
+  assert.match(host.textContent ?? '', /Take a photo of the QR/);
+  assert.ok(host.querySelector('input[type="file"][accept="image/*"]'));
+  assert.ok(names.includes('Show my student ID'));
+  assert.ok(names.includes('Save inbox code'));
+  assert.ok(host.querySelector('textarea[aria-label="Coach inbox code"], input[aria-label="Coach inbox code"]'));
+
+  await click(button(host, 'Paste invite link'));
+  const input = host.querySelector('input[aria-label="Academy link"]') as HTMLInputElement;
+  assert.ok(input);
+  await type(input, 'nope');
+  await click(button(host, 'Use this academy link'));
+  assert.match(host.textContent ?? '', /That is not an academy link/);
+  await type(input, link('gym-folder-aaa', 'North Side BJJ'));
+  await click(button(host, 'Use this academy link'));
+  assert.ok(buttons(host).includes('Sign in to Google Drive'));
+
+  await click(button(host, 'Show my student ID'));
+  assert.ok(host.querySelector('input[aria-label="Your student ID"]'));
+  unmount(page);
+});
+
+test('connected: gym card, what is shared, Send my ID, Leave with confirm and logo prompt', async () => {
+  localStorage.clear();
+  saveStudentReport(
+    localStorage,
+    addJournalEntry(blankStudentReport(1), { date: '2026-11-01', className: 'Open mat', gameTag: '', techniques: [], partners: '', drills: '', rolls: '', notes: 'keep me' }, 2),
+  );
+  connect();
+  localStorage.setItem(STUDENT_GYM_LOGO_KEY, 'data:image/png;base64,AAAA');
+  const page = mount(<AcademyConnectPage />, '/student/academy?student=1');
+  const host = page.host;
+  assert.match(host.textContent ?? '', /North Side BJJ/);
+  assert.match(host.textContent ?? '', /Connected since .*2026 · Google Drive/);
+  assert.match(host.textContent ?? '', /Coach updates & notes/);
+  for (const name of ['Send my ID to coach', 'Share my card with my coach', 'Disconnect academy folder', 'Leave academy', 'Scan new gym QR', 'Paste invite link']) {
+    assert.ok(buttons(host).includes(name), name);
+  }
+  assert.ok(button(host, 'Leave academy').className.includes('am-btn--danger'));
+
+  await click(button(host, 'Leave academy'));
+  assert.match(host.textContent ?? '', /Leave North Side BJJ\?/);
+  await click(button(host, 'Keep connected'));
+  assert.ok(loadAcademyLink(localStorage));
+
+  await click(button(host, 'Leave academy'));
+  const sheet = host.querySelector('[role="dialog"]') as HTMLElement;
+  await click(button(sheet, 'Leave academy'));
+  assert.match(host.textContent ?? '', new RegExp(LEAVE_LOGO_PROMPT.replace('?', '\\?')));
+  await click(button(host, 'Keep logo'));
+  assert.equal(loadAcademyLink(localStorage), null);
+  assert.equal(localStorage.getItem(ACADEMY_LICENSE_KEY), null);
+  assert.equal(readMembership(localStorage).current, null);
+  assert.ok(localStorage.getItem(STUDENT_GYM_LOGO_KEY));
+  assert.equal(loadStudentReport(localStorage).journal.length, 1);
+  assert.match(host.textContent ?? '', /You left North Side BJJ/);
+  assert.ok(buttons(host).includes('Scan gym QR'));
+  unmount(page);
+});
+
+test('connected: a different gym link opens the switch sheet; Cancel keeps the old gym', async () => {
+  localStorage.clear();
+  connect();
+  const page = mount(<AcademyConnectPage />, '/student/academy?student=1');
+  const host = page.host;
+  await click(button(host, 'Paste invite link'));
+  await type(host.querySelector('input[aria-label="Academy link"]') as HTMLInputElement, link('gym-folder-bbb', 'Riverside Grappling'));
+  await click(button(host, 'Use this academy link'));
+  assert.match(host.textContent ?? '', /Switch to Riverside Grappling\?/);
+  assert.match(host.textContent ?? '', /This replaces North Side BJJ/);
+  await click(button(host, 'Cancel'));
+  assert.equal(loadAcademyLink(localStorage)?.folderId, 'gym-folder-aaa');
+  unmount(page);
+});
+
+test('stale link shows the warning with Rescan; Disconnect academy folder clears the license', async () => {
+  localStorage.clear();
+  connect();
+  markAcademyStale(localStorage);
+  const page = mount(<AcademyConnectPage />, '/student/academy?student=1');
+  const host = page.host;
+  assert.match(host.textContent ?? '', new RegExp(ACADEMY_STALE_COPY.replace(/[?]/g, '\\?')));
+  assert.ok(buttons(host).includes('Rescan'));
+  await click(button(host, 'Disconnect academy folder'));
+  assert.equal(loadAcademyLink(localStorage), null);
+  assert.equal(localStorage.getItem(ACADEMY_LICENSE_KEY), null);
+  unmount(page);
+});
+
+test('Connections page keeps academy, personal drive, export, import and clear', () => {
+  localStorage.clear();
+  const page = mount(<ConnectionsPage />, '/student/connections?student=1');
+  const text = page.host.textContent ?? '';
+  for (const part of ['Connect to my academy', 'Scan gym QR', 'Export and print', 'Import from coach', 'Clear all Student Edition data']) {
+    assert.match(text, new RegExp(part), part);
+  }
+  assert.equal(page.host.querySelectorAll('h1').length, 1);
+  unmount(page);
+});
+
+test('dark look: tokens, 46px buttons, 12px labels, no yellow demo banner here', () => {
+  const css = readFileSync('src/student-edition.css', 'utf8');
+  const block = css.slice(css.indexOf('/* ── Connect to my academy'));
+  for (const token of ['#070b14', '#0e1726', '#14203a', '#eef2f8', '#b9c3d4', '#2a3a60', '#004eba', '#6ea8ff', '#ff8a8a', '#5a2a35']) {
+    assert.ok(block.includes(token), token);
+  }
+  assert.match(block, /min-height: 46px/);
+  assert.match(block, /border-radius: 16px;\s*padding: 20px/);
+  assert.match(block, /body:has\(main\.academy-modern\) \.student-demo-banner \{\s*background: #14203a/);
+  const sizes = [...block.matchAll(/font-size: (\d+)px/g)].map((match) => Number(match[1]));
+  assert.ok(sizes.every((size) => size >= 12), String(sizes));
+});

@@ -4,6 +4,7 @@
  * alike. With the gate off this does exactly what the import did before.
  */
 
+import { gymTextAllowed, OLD_GYM_REFUSED } from './academyMembership.ts';
 import { receiveSyncPacket } from './coachSync.ts';
 import { holdForParent, parentGateOn } from './parentGate.ts';
 import type { CoachGymBrand, StudentProgressReport } from './progress/types.ts';
@@ -35,6 +36,8 @@ export function importCoachText(
   // The student's own progress file and unreadable files are not coach updates.
   if (result.pendingReport) return { kind: 'own-file', pendingReport: result.pendingReport, gym: result.gym };
   if (result.error) return { kind: 'error', error: result.error };
+  // After Leave academy, a file from the old gym changes nothing.
+  if (!gymTextAllowed(storage, text)) return { kind: 'error', error: OLD_GYM_REFUSED };
   const typed = result.pendingSyncPacket ?? result.pendingRankUpdate ?? result.pendingCompetitionUpdate;
   if (typed) {
     if (result.inboxPass) saveInboxPass(storage, result.inboxPass);

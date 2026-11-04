@@ -13,8 +13,9 @@ import { exportProgressPacket } from '../../lib/progress/format.ts';
 import type { CoachFeedbackPacket } from '../../lib/progress/types.ts';
 import { addJournalEntry, blankStudentReport, loadStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
 import { readStudentGymLogo } from '../../lib/studentGymMark.ts';
-import { COACH_FEEDBACK_STORAGE_KEY, COACH_PLAN_STORAGE_KEY } from '../../lib/studentTools.ts';
+import { COACH_FEEDBACK_STORAGE_KEY, COACH_PLAN_STORAGE_KEY, progressReportFiles } from '../../lib/studentTools.ts';
 import { SharePage } from './SharePage.tsx';
+import { STUDENT_COACH_UPDATE_KIND } from '../../lib/coachProgressFile.ts';
 
 const dom = new Window({ url: 'http://localhost/student/share?student=1' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -130,7 +131,9 @@ test('share page controls still make a file, explain a coach file, and import on
   assert.match(home.getAttribute('href') ?? '', /student=1/);
 
   assert.match(page.host.textContent ?? '', /This makes a file\. You send it yourself\./);
-  assert.match(page.host.textContent ?? '', /Promotion photos are included when the file has room/);
+  // Coach update file (changes since the last file) never carries photos or the journal.
+  assert.match(page.host.textContent ?? '', /what changed since your last file/);
+  assert.match(page.host.textContent ?? '', /It never has promotion photos or any photo, your journal/);
   assert.match(page.host.textContent ?? '', /This takes a coach plan or coach feedback file/);
   assert.match(page.host.textContent ?? '', /It is not the progress file from Make a file for my coach/);
   assert.equal(page.host.querySelector('#import')?.tagName, 'SECTION');
@@ -145,32 +148,18 @@ test('share page controls still make a file, explain a coach file, and import on
   assert.equal(send.closest('[aria-label="Different action"]'), null);
   assert.equal(send.classList.contains('ink-btn--save'), true);
 
-  const box = page.host.querySelector('input[type="checkbox"]') as HTMLInputElement;
-  assert.equal(box.checked, false);
-  assert.match(box.parentElement?.textContent ?? '', /Also include the spreadsheet/);
-
+  // The coach update file replaced the full progress file; the spreadsheet stays in Connections.
+  assert.equal(page.host.querySelector('input[type="checkbox"]'), null);
   saved.length = 0;
   click(send);
   assert.equal(saved.length, 1);
-  assert.match(saved[0].name, /^advantage-handoff-student-progress-report-/);
-  const progressText = await textOf(saved[0].blob);
-  const progress = JSON.parse(progressText) as { kind: string; journal: { body: string }[] };
-  assert.equal(progress.kind, 'student-progress-report');
-  assert.ok(progress.journal.some((entry) => entry.body.includes('only on this phone')));
-  assert.match(page.host.textContent ?? '', /Downloaded the progress file on this device/);
-
-  const boxProps = reactProps(box);
-  act(() => {
-    box.checked = true;
-    boxProps?.onChange?.({ target: box, currentTarget: box });
-  });
-  saved.length = 0;
-  click(button(page.host, 'Make a file for my coach'));
-  assert.equal(saved.length, 2);
   assert.match(saved[0].name, /\.json$/);
-  assert.match(saved[1].name, /\.csv$/);
-  const csvText = await textOf(saved[1].blob);
-  assert.match(csvText, /Sheet,/);
+  const updateText = await textOf(saved[0].blob);
+  const update = JSON.parse(updateText) as Record<string, unknown>;
+  assert.equal(update.kind, STUDENT_COACH_UPDATE_KIND);
+  assert.equal('journal' in update, false);
+  assert.doesNotMatch(updateText, /only on this phone/);
+  assert.match(page.host.textContent ?? '', /Downloaded the file on this device/);
 
   const nav = view.navigator as Navigator & {
     share?: (data: ShareData) => Promise<void>;
@@ -187,7 +176,7 @@ test('share page controls still make a file, explain a coach file, and import on
     await Promise.resolve();
   });
   assert.equal(shared?.title, 'Advantage progress report');
-  assert.equal(shared?.files?.length, 2);
+  assert.equal(shared?.files?.length, 1);
   assert.match(page.host.textContent ?? '', /Shared from this device/);
 
   nav.share = () => Promise.reject(new DOMException('The user aborted a request.', 'AbortError'));
@@ -243,6 +232,8 @@ test('share page controls still make a file, explain a coach file, and import on
   assert.equal(loadStudentReport(localStorage).journal.some((entry) => entry.body.includes('only on this phone')), true);
   assert.equal(loadStudentReport(localStorage).goals.length, beforePlan.goals.length);
 
+  // An older full progress file from this phone still merges after confirm.
+  const progressText = progressReportFiles(phone).json;
   await chooseFile(picker, 'own-progress.json', progressText);
   assert.match(page.host.textContent ?? '', /This file is the one for your coach/);
   assert.match(page.host.textContent ?? '', /not the file to import/);
@@ -272,7 +263,7 @@ test('share page controls still make a file, explain a coach file, and import on
   assert.match(page.host.querySelector('[role="alert"]')?.textContent ?? '', /Student Edition backup from Back up my journal/);
   assert.match(page.host.querySelector('[role="alert"]')?.textContent ?? '', /not a coach plan or coach feedback file/);
 
-  await chooseFile(picker, 'sheet.csv', csvText, 'text/csv');
+  await chooseFile(picker, 'sheet.csv', progressReportFiles(phone).csv, 'text/csv');
   assert.match(page.host.querySelector('[role="alert"]')?.textContent ?? '', /This is a spreadsheet/);
 
   await chooseFile(picker, 'notes.txt', 'hello from class', 'text/plain');
