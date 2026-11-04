@@ -382,4 +382,11 @@ test('poster header keeps the round at full size and only ellipsizes the divisio
   const brasil = await readFile(new URL('../skins/polished/brasil.css', import.meta.url), 'utf8');
   assert.equal(keynote.includes('phase-endless'), false);
   assert.equal(brasil.includes('trail'), false);
+  assert.match(fit, /max-width:\s*1100px\) and \(min-width:\s*901px\)[\s\S]*\.wm\s*\{[^}]*display:\s*none/);
+  assert.match(fit, /max-width:\s*900px[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto\s+minmax\(0,\s*1fr\)/);
+  assert.match(fit, /max-width:\s*900px[\s\S]*\.hdr \.mat\s*\{[^}]*flex-shrink:\s*0/);
+  assert.match(fit, /max-width:\s*900px[\s\S]*\.hdr \.div[\s\S]*min-width:\s*0[\s\S]*text-overflow:\s*ellipsis/);
+  const shinobiCss = await readFile(new URL('../skins/polished/shinobi-anime.css', import.meta.url), 'utf8');
+  assert.match(shinobiCss, /max-width:\s*900px[\s\S]*\.hdr \.kunai\s*\{[^}]*display:\s*none/);
+  assert.match(shinobiCss, /max-width:\s*900px[\s\S]*min\(9vh,\s*20vw\)/);
 });

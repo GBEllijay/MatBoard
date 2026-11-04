@@ -140,6 +140,88 @@
   }
 }
 
+/* Between a tablet and a laptop, drop the wordmark down to the logo so the
+   division can use the freed width. The round still does not shrink. */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .skin-root.skin-root--poster .wm {
+    display: none;
+  }
+
+  .skin-root.skin-root--poster .hdr {
+    grid-template-columns: auto auto minmax(0, 1fr);
+  }
+
+  .skin-root.skin-root--poster .hdr .mat {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    min-width: max-content;
+  }
+
+  .skin-root.skin-root--poster .hdr .div,
+  .skin-root.skin-root--poster .hdr .div a {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Below a tablet width the round and division take their own row.
+   The header track grows with that row. The division ellipsizes only
+   when the row is still too narrow. */
+@media (max-width: 900px) {
+  .skin-root.skin-root--poster .sb {
+    grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+
+  .skin-root.skin-root--poster .hdr {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    height: auto;
+    row-gap: 0.6vh;
+    overflow: visible;
+  }
+
+  .skin-root.skin-root--poster .lead {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .skin-root.skin-root--poster .hdr .crest {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+  }
+
+  .skin-root.skin-root--poster .trail {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .skin-root.skin-root--poster .hdr .mat {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    min-width: max-content;
+  }
+
+  .skin-root.skin-root--poster .hdr .div,
+  .skin-root.skin-root--poster .hdr .div a {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
 /* Phone: the approved wrap. Division takes the second line. Score rows stay protected. */
 @media (orientation: portrait) and (max-width: 520px) {
   .skin-root.skin-root--poster .hdr {

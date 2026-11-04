@@ -423,6 +423,24 @@
   letter-spacing: 0.2em;
 }
 
+/* The kunai pair is wider than the centre column on a tablet, so the seal stands alone. */
+@media (max-width: 900px) {
+  .skin-root[data-skin='shinobi-anime'] .hdr .kunai {
+    display: none;
+  }
+
+  .skin-root[data-skin='shinobi-anime'] .hdr .crest {
+    max-width: min(9vh, 20vw);
+    max-height: min(9vh, 20vw);
+  }
+
+  .skin-root[data-skin='shinobi-anime'] .hdr .seal {
+    width: min(9vh, 20vw);
+    height: min(9vh, 20vw);
+    font-size: min(6.6vh, 14vw);
+  }
+}
+
 @media (orientation: portrait) and (max-width: 520px) {
   .skin-root[data-skin='shinobi-anime'] .kunai {
     display: none;
