@@ -58,3 +58,105 @@
 .roster__archived ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .roster__archived li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .roster__erase { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Instructor and gym sheets. One frame, zones split by thin lines, numbers are the heroes.
+   Layout matches the student character sheet. Paint is Advantage navy and logo blue. */
+.gym-sheet {
+  --sheet-line: rgba(110, 168, 255, 0.35);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin: 0 0 16px;
+  border: 1.5px solid #004eba;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(180deg, rgba(12, 35, 68, 0.92), rgba(6, 16, 31, 0.94));
+  box-shadow: inset 0 0 0 1px rgba(110, 168, 255, 0.18), 0 0 24px rgba(0, 78, 186, 0.25);
+  color: var(--ink, #f5f1e8);
+}
+.gym-sheet::before,
+.gym-sheet::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #6ea8ff;
+  pointer-events: none;
+  z-index: 1;
+}
+.gym-sheet::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.gym-sheet::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+.gym-sheet .sheet-zone {
+  padding: 10px 12px 12px;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  border-top: 1px solid var(--sheet-line);
+}
+.gym-sheet .sheet-zone:first-child { border-top: 0; }
+.gym-sheet .sheet-cap {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6ea8ff;
+}
+.gym-id { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.gym-id img { width: 56px; height: 56px; object-fit: contain; border-radius: 8px; background: rgba(0, 0, 0, 0.25); }
+.gym-id h2 { margin: 0; font-size: 22px; line-height: 1.15; overflow-wrap: anywhere; }
+.gym-id p { margin: 2px 0 0; font-size: 14px; color: var(--muted, #9aa3b5); }
+.gym-sheet .sheet-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gym-sheet .sheet-stat {
+  min-height: 76px;
+  margin: 0;
+  padding: 8px 10px;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  border-top: 1px solid var(--sheet-line);
+  border-left: 1px solid var(--sheet-line);
+}
+.gym-sheet .sheet-stat__num {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.gym-sheet .sheet-stat__num small { font-size: 13px; margin-left: 2px; opacity: 0.8; }
+.gym-sheet .sheet-stat span:last-child { font-size: 13px; color: var(--muted, #9aa3b5); }
+.gym-bars, .gym-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.gym-bars li { display: grid; grid-template-columns: 72px 1fr auto; gap: 8px; align-items: center; min-height: 28px; font-size: 14px; }
+.gym-bars i { display: block; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #004eba, #6ea8ff); }
+.gym-log li { display: grid; gap: 2px; padding-top: 6px; border-top: 1px solid var(--sheet-line); font-size: 14px; }
+.gym-log span, .gym-sheet__note, .gym-sheet__empty { margin: 0; font-size: 14px; color: var(--muted, #9aa3b5); }
+.gym-fields { display: grid; gap: 8px; }
+.gym-fields label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; }
+.gym-fields input, .gym-fields textarea {
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  background: rgba(6, 16, 31, 0.65);
+  color: inherit;
+  font: inherit;
+}
+.gym-fields textarea { min-height: 72px; resize: vertical; }
+@media (max-width: 420px) {
+  .gym-sheet .sheet-stat__num { font-size: 26px; }
+}
+@media (min-width: 1024px) {
+  .gym-sheet { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .gym-sheet .sheet-zone--identity { grid-column: 1; grid-row: 1; border-top: 0; border-right: 1px solid var(--sheet-line); }
+  .gym-sheet .sheet-zone--stats { grid-column: 2; grid-row: 1; border-top: 0; }
+  .gym-sheet .sheet-zone--stats .sheet-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); height: 100%; }
+  .gym-sheet .sheet-zone--stats .sheet-stat__num { font-size: 40px; }
+  .gym-sheet .sheet-zone--radar { grid-column: 1; grid-row: 2; border-right: 1px solid var(--sheet-line); }
+  .gym-sheet .sheet-zone--wins { grid-column: 2; grid-row: 2; }
+  .gym-sheet .sheet-zone--record { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gym-sheet .sheet-stat__num { transition: none; }
+}
