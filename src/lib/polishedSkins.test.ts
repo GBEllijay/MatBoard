@@ -375,4 +375,22 @@ test('Idol Hunters ships the heart-mic crest and not the rejected crescent', asy
   assert.match(shinobi, /<span class="seal" lang="ja"[^>]*>忍<\/span>/);
   const css = await readFile(new URL('shinobi-anime.css', root), 'utf8');
   assert.equal(css.includes('忍'), false, 'the kanji is live text, not part of the art');
+  assert.match(css, /\.hdr \.seal\s*\{[^}]*width:\s*9vh/);
+});
+
+test('poster header keeps the round at full size and only ellipsizes the division', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const board = await readFile(new URL('../components/PolishedScoreboard.tsx', import.meta.url), 'utf8');
+  const lead = board.slice(board.indexOf('className="lead"'), board.indexOf('className="trail"'));
+  assert.equal(lead.includes('className="mat"'), false, 'the round is not in the wordmark group');
+  assert.match(board, /className="trail"[\s\S]*className="mat"[\s\S]*className="div"/);
+  const css = await readFile(new URL('../skins/polished/poster.css', import.meta.url), 'utf8');
+  assert.match(css, /\.hdr \.mat\s*\{[^}]*flex:\s*0 0 auto/);
+  assert.match(css, /\.hdr \.mat\s*\{[^}]*min-width:\s*max-content/);
+  const fit = await readFile(new URL('../skins/polished/poster-fit.css', import.meta.url), 'utf8');
+  assert.match(fit, /max-width:\s*820px[\s\S]*\.phase-endless\s*\{\s*display:\s*none/);
+  const keynote = await readFile(new URL('../skins/polished/keynote.css', import.meta.url), 'utf8');
+  const brasil = await readFile(new URL('../skins/polished/brasil.css', import.meta.url), 'utf8');
+  assert.equal(keynote.includes('phase-endless'), false);
+  assert.equal(brasil.includes('trail'), false);
 });

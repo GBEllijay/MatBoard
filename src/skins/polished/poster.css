@@ -76,7 +76,7 @@
   isolation: isolate;
 }
 
-/* Round on the left of the crest, division on the right. Equal columns keep the crest centered. */
+/* Logo and wordmark on the left, crest centered, round then division on the right. */
 .skin-root--poster .hdr {
   position: relative;
   z-index: 4;
@@ -112,16 +112,33 @@
   white-space: nowrap;
 }
 
-.skin-root--poster .hdr .mat {
-  flex: 1 1 auto;
+.skin-root--poster .trail {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1.2vh;
   min-width: 0;
+  overflow: hidden;
+}
+
+.skin-root--poster .hdr .mat {
+  flex: 0 0 auto;
+  min-width: max-content;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
   font-size: 4.4vh;
   line-height: 1;
   white-space: nowrap;
 }
 
-.skin-root--poster .hdr .mat,
-.skin-root--poster .hdr .mat a,
+.skin-root--poster .hdr .mat a {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  max-width: none;
+}
+
 .skin-root--poster .hdr .div,
 .skin-root--poster .hdr .div a {
   min-width: 0;
