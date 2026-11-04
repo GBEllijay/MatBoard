@@ -1,0 +1,56 @@
+/* Student card layout: belt → mat hours frame + timer → radar → medals → details. */
+.student-card-layout { display: grid; gap: 14px; margin-bottom: 16px; min-width: 0; }
+.student-card-layout > * { min-width: 0; }
+.student-card-layout .profile-face__stats { margin: 0; }
+
+.mh-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mh-frame {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  min-height: 52px; min-width: 96px; padding: 6px 14px;
+  border: 3px solid var(--frame, #f2f0ea); border-radius: 10px;
+  background: transparent; color: inherit; font: inherit; cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.35), 0 0 0 1px rgba(127, 127, 127, 0.35);
+}
+.mh-frame__value { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.mh-frame__unit { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; opacity: 0.85; }
+.mh-timer {
+  width: 52px; height: 52px; min-width: 44px; min-height: 44px; padding: 0;
+  display: grid; place-items: center; border-radius: 14px; cursor: pointer;
+  background: #0c2344; border: 1.5px solid #004eba;
+  box-shadow: 0 0 10px rgba(110, 168, 255, 0.45), inset 0 0 8px rgba(0, 78, 186, 0.5);
+}
+.mh-timer:focus-visible, .mh-frame:focus-visible, .card-medal:focus-visible { outline: 3px solid #6ea8ff; outline-offset: 2px; }
+
+.card-radar, .card-medals {
+  padding: 14px; border-radius: 12px; display: grid; gap: 8px;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(127, 127, 127, 0.35); color: inherit;
+}
+.card-radar .assess-visual { margin: 0; }
+.card-radar .assess-chart { max-width: 260px; width: 100%; height: auto; justify-self: center; display: block; margin: 0 auto; }
+.card-empty { font-size: 14px; margin: 0; opacity: 0.9; }
+.card-empty h3, .card-medals__k { margin: 0; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
+.card-link { min-height: 44px; display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; color: inherit; }
+
+.card-medals__strip { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.card-medal {
+  width: 100%; min-height: 44px; display: grid; justify-items: center; gap: 2px; text-align: center;
+  padding: 8px 4px 10px; border-radius: 14px; cursor: pointer; font: inherit; color: inherit;
+  background: rgba(12, 35, 68, 0.12); border: 1px solid #2a4a7f;
+}
+.card-medal b { font-size: 13px; line-height: 1.2; overflow-wrap: anywhere; }
+.card-medal span { font-size: 12px; opacity: 0.85; }
+
+.match-log { margin-top: 6px; padding: 12px 14px 16px; border-radius: 16px; border-top: 3px solid #004eba; background: #1c1c1e; color: #f2f2f7; display: grid; gap: 8px; }
+.match-log__hd { display: flex; gap: 12px; align-items: center; }
+.match-log__hd h3 { margin: 0; font-size: 18px; }
+.match-log__hd p, .match-log__k { margin: 0; font-size: 13px; color: #c9d4e6; }
+.match-log__list { list-style: none; margin: 0; padding: 0; }
+.match-log__row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); min-height: 48px; }
+.match-log__row b { display: block; font-size: 15px; overflow-wrap: anywhere; }
+.match-log__sc { display: block; font-size: 13px; color: #c9d4e6; overflow-wrap: anywhere; }
+.match-log__res { text-align: right; font-weight: 800; font-size: 15px; }
+.match-log__res small { display: block; font-weight: 500; font-size: 12px; color: #c9d4e6; }
+.match-log__res--win { color: #7ee2a8; }
+.match-log__res--loss { color: #ff9a90; }
+.match-log__close { min-height: 48px; }
+.card-details__split { margin: 0; font-size: 14px; }

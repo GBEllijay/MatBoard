@@ -50,6 +50,7 @@ export function ProfileCardFace({
   logo,
   to,
   stats,
+  beltStat,
 }: {
   report: StudentProgressReport;
   portrait: string | null;
@@ -57,6 +58,8 @@ export function ProfileCardFace({
   to: (path: string) => string;
   /** Optional card stats (e.g. mat hours), shown under the rows on the face. */
   stats?: ReactNode;
+  /** Shown directly under the belt row (the mat hours frame and timer). */
+  beltStat?: ReactNode;
 }) {
   const look = useMemo(() => {
     const overlay = readCoachOverlay(localStorage);
@@ -108,6 +111,7 @@ export function ProfileCardFace({
                 </span>
                 <span className="profile-face__belt-text">{`${belt.summary} · change on the rank page ›`}</span>
               </Link>
+              {beltStat}
             </div>
           </div>
         </div>
