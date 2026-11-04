@@ -8,6 +8,7 @@
  * Sync, comms, sends, and card shares go through `cardSync.ts`.
  */
 
+import { recordRankFacts } from './gymEventLog.ts';
 import type { AssessmentEntry } from './studentAssessment.ts';
 import type { BeltBook, ProgressBelt, RubricCheckpoint, StudentRank, TrainingStyle } from './progress/types.ts';
 
@@ -285,5 +286,7 @@ export function recordRosterRankChange(
   const log = nextCoachRankLog(before, saved, current.coachRank, today);
   if (!log) return;
   updateRosterCard(rosterId, (record) => ({ ...record, coachRank: log }), storage);
+  const dated = DATE_RE.test(saved.lastPromotion) ? saved.lastPromotion : today;
+  recordRankFacts(rosterId, before, saved, dated);
 }
 
