@@ -83,6 +83,7 @@ import {
   menuCloudSharing,
   seatMenuAllowed,
   visibleCoachControl,
+  canCaptureReplay as replayCanCapture,
 } from '../lib/instructorSeats';
 import {
   LESSON_TEMPLATE_LABELS,
@@ -583,7 +584,7 @@ export function TrainingNotesPage() {
   const atMaxGames = orderedBlocks.filter((block) => block.kind === 'game').length >= MAX_GAMES;
   const atMaxReplays = replayCount(plan) >= MAX_REPLAYS;
   /** Recording or picking a replay clip follows the existing upload switch for seats. */
-  const canCaptureReplay = visibleCoachControl('uploadForDistribution', { owner: true, seat });
+  const canCaptureReplay = replayCanCapture({ owner: true, seat });
   const competitionReplays = orderedBlocks.filter((block) => block.kind === 'replay');
   const canRemoveClass = editingToday && (planHasContent(plan) || classPlans.length > 1);
 

@@ -12,7 +12,7 @@
  * A missing token or folder leaves the clip on the device and says so.
  */
 
-import { cloudUploadSelected, notifyCloudMedia, uploadAdvantageCloudFile } from './advantageCloudMedia.ts';
+import { cloudReplayPendingSelected, cloudUploadSelected, notifyCloudMedia, uploadAdvantageCloudFile } from './advantageCloudMedia.ts';
 import { readDriveBinding, requestDriveToken, uploadGymTreeBytes } from './googleDrive.ts';
 import { lessonMediaPath } from './gymTree.ts';
 import { createOneDriveFolder, readOneDriveBinding, readOneDriveSession, saveOneDriveBytes } from './oneDrive.ts';
@@ -20,7 +20,9 @@ import { replaySaveTargets, type ReplaySaveKind } from './replayAnalysis.ts';
 
 export const ONEDRIVE_REPLAY_FOLDER = 'Advantage replays';
 
-export type ReplaySaveResult = { ok: true; kind: ReplaySaveKind; ref: string } | { ok: false; message: string };
+export type ReplaySaveResult = { ok: true; kind: ReplaySaveKind; ref: string; pending?: true } | { ok: false; message: string };
+
+export const REPLAY_PENDING_MESSAGE = 'Sent to the head coach for approval.';
 
 export function availableReplaySaveTargets(): ReplaySaveKind[] {
   let oneDriveConnected = false;
@@ -31,7 +33,7 @@ export function availableReplaySaveTargets(): ReplaySaveKind[] {
   } catch {
     /* Private mode without storage: device only. */
   }
-  return replaySaveTargets({ cloudUpload: cloudUploadSelected(), driveConnected, oneDriveConnected });
+  return replaySaveTargets({ cloudUpload: cloudUploadSelected() || cloudReplayPendingSelected(), driveConnected, oneDriveConnected });
 }
 
 /** `video/webm;codecs=vp9` → `video/webm`; anything odd → `video/mp4`. */
@@ -48,13 +50,18 @@ export async function saveReplayClip(input: {
   mime: string;
   replayId: string;
   onProgress?: (sent: number, total: number) => void;
+  /** A markup picture (PNG) instead of a clip. */
+  picture?: boolean;
 }): Promise<ReplaySaveResult> {
-  const mime = plainVideoMime(input.mime);
+  const mime = input.picture ? (/^image\/[\w.+-]+$/.test(input.mime) ? input.mime : 'image/png') : plainVideoMime(input.mime);
   try {
     if (input.kind === 'advantage-cloud') {
-      if (!cloudUploadSelected()) return { ok: false, message: 'Advantage Cloud is not on for this coach here.' };
+      // Owner, Coach, Instructors: straight to lesson media. Assistant coach / program director: pending approval.
+      const direct = cloudUploadSelected();
+      const pending = !direct && cloudReplayPendingSelected();
+      if (!direct && !pending) return { ok: false, message: 'Advantage Cloud is not on for this coach here.' };
       const result = await uploadAdvantageCloudFile({
-        purpose: 'lesson-media',
+        purpose: pending ? 'replay-pending' : 'lesson-media',
         dateKey: input.dateKey,
         file: input.blob,
         fileName: input.fileName,
@@ -63,7 +70,7 @@ export async function saveReplayClip(input: {
       });
       if (!result.ok) return { ok: false, message: result.message };
       notifyCloudMedia();
-      return { ok: true, kind: 'advantage-cloud', ref: result.path };
+      return pending ? { ok: true, kind: 'advantage-cloud', ref: result.path, pending: true } : { ok: true, kind: 'advantage-cloud', ref: result.path };
     }
     if (input.kind === 'google-drive') {
       const binding = readDriveBinding();

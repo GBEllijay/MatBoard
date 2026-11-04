@@ -505,8 +505,11 @@ export function copyPlan(source: TrainingNotesPlan): TrainingNotesPlan {
   const replays = plan.replays?.map((replay) => {
     const id = createId('replay');
     idMap.set(replay.id, id);
-    // The copy points at the same clip on this device; the clip itself is not duplicated.
-    return { ...replay, id, ...(replay.clip ? { clip: { ...replay.clip } } : {}) };
+    // Owner decision: a copied plan starts with no clips. The card, title and notes copy;
+    // the source keeps its clip and nothing is deleted from the device.
+    const { clip: _clip, ...rest } = replay;
+    void _clip;
+    return { ...rest, id };
   });
   if (replays) next.replays = replays;
   if (plan.blocks) {
@@ -517,7 +520,20 @@ export function copyPlan(source: TrainingNotesPlan): TrainingNotesPlan {
     );
   }
   if (plan.videos) next.videos = plan.videos.map((row) => ({ ...row }));
+  for (const key of ['introReview', 'specificReview', 'closingReview'] as const) {
+    const slot = withoutReviewClip(plan[key]);
+    if (slot) next[key] = slot;
+    else delete next[key];
+  }
   return next;
+}
+
+/** Keep the Record for Review switch; drop the clip. Null when nothing is left. */
+export function withoutReviewClip<T extends { recordReview?: boolean; replayClip?: unknown }>(slot: T | undefined): T | null {
+  if (!slot) return null;
+  const { replayClip: _clip, ...rest } = slot;
+  void _clip;
+  return rest.recordReview ? (rest as T) : null;
 }
 
 function uniquifyPlanIds(plans: TrainingNotesPlan[]): boolean {

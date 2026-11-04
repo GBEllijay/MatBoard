@@ -6,7 +6,7 @@ import { LessonMediaRail } from '../components/LessonMediaRail';
 import { ReviewSlotControls } from '../components/ReviewSlotControls';
 import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
 import { useCurrentSeat } from '../components/SeatSessionBar';
-import { visibleCoachControl } from '../lib/instructorSeats';
+import { canCaptureReplay as replayCanCapture } from '../lib/instructorSeats';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -127,7 +127,7 @@ export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boo
   const [driveNote, setDriveNote] = useState('');
   /** Recording or picking a replay clip follows the existing upload switch for seats (same as the lesson replay card). */
   const seat = useCurrentSeat();
-  const canCaptureReplay = visibleCoachControl('uploadForDistribution', { owner: true, seat });
+  const canCaptureReplay = replayCanCapture({ owner: true, seat });
   const [connectOpen, setConnectOpen] = useState(false);
   const planRef = useRef(plan);
   const viewKeyRef = useRef(viewKey);

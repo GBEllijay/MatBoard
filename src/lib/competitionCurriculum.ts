@@ -396,12 +396,20 @@ export function sanitizeCurriculum(input: unknown): { plan: CurriculumPlan; repa
 }
 
 export function copyCurriculum(source: CurriculumPlan): CurriculumPlan {
-  const { plan } = sanitizeCurriculum(source);
+  const { plan: sanitized } = sanitizeCurriculum(source);
+  const { closingReview: sourceClosing, ...plan } = sanitized;
+  const closingReview = sourceClosing?.recordReview ? { recordReview: true } : undefined;
   return {
     ...plan,
     id: createId('curriculum'),
     locked: false,
-    blocks: plan.blocks.map((block) => ({ ...block, id: createId('block') })),
+    // Owner decision: a copy starts with no replay clips (mode and Record for Review stay).
+    blocks: plan.blocks.map((block) => {
+      const { replayClip: _clip, ...rest } = block;
+      void _clip;
+      return { ...rest, id: createId('block') };
+    }),
+    ...(closingReview ? { closingReview } : {}),
   };
 }
 

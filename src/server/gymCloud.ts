@@ -14,6 +14,14 @@ import {
   cloudListPrefix,
   cloudMaxUploadBytes,
   cloudMediaAccess,
+  cloudReplayUpload,
+  approvedReplayPath,
+  parsePendingReplayPath,
+  pendingReplayPath,
+  pendingStatusPath,
+  type PendingReplayRow,
+  type PendingReplayStatus,
+  type ReplayCloudUpload,
   cloudObjectKey,
   cloudRelativePath,
   cloudTooLargeMessage,
@@ -81,6 +89,10 @@ type Actor = {
   preset: string | null;
   read: boolean;
   upload: boolean;
+  /** Seat id from the token; empty for the owner. */
+  seatId: string;
+  /** Replay clips and markup pictures only: direct, pending owner approval, or none. */
+  replayUpload: ReplayCloudUpload;
 };
 
 const JSON_HEADERS = {
@@ -162,6 +174,8 @@ async function actorForClaims(env: GymCloudEnv, claims: EntitlementClaims, now: 
     preset: claims.preset ?? null,
     read: access.read,
     upload: access.upload,
+    seatId: seat ? claims.sid ?? '' : '',
+    replayUpload: cloudReplayUpload({ plusCloud, kind: seat ? 'seat' : 'owner', preset: claims.preset ?? null }),
   };
 }
 
@@ -264,12 +278,59 @@ type StartBody = {
 };
 
 function isPurpose(value: string): value is CloudMediaPurpose {
-  return value === 'daily-video' || value === 'lesson' || value === 'lesson-media';
+  return value === 'daily-video' || value === 'lesson' || value === 'lesson-media' || value === 'replay-pending';
+}
+
+/** A pending-only seat may only write under its own pending prefix. */
+function ownPendingKey(actor: Actor, key: string): boolean {
+  if (!actor.seatId) return false;
+  return key.startsWith(`groups/${actor.licenseId}/pending/replays/${actor.seatId}/`);
+}
+
+async function readStatus(bucket: GymMediaBucket, licenseId: string, path: string): Promise<PendingReplayStatus> {
+  const statusPath = pendingStatusPath(path);
+  const key = statusPath ? cloudObjectKey(licenseId, statusPath) : null;
+  if (!key) return 'pending';
+  const object = await bucket.get(key);
+  if (!object) return 'pending';
+  try {
+    const parsed = JSON.parse(await new Response(object.body).text()) as { status?: string };
+    return parsed.status === 'approved' || parsed.status === 'declined' ? parsed.status : 'pending';
+  } catch {
+    return 'pending';
+  }
+}
+
+/** Owner: every seat's pending clips. A pending seat: only its own. Nobody else sees them. */
+async function listPending(bucket: GymMediaBucket, actor: Actor): Promise<PendingReplayRow[]> {
+  const base = `groups/${actor.licenseId}/`;
+  const prefix = actor.kind === 'owner' ? `${base}pending/replays/` : `${base}pending/replays/${actor.seatId}/`;
+  const rows: PendingReplayRow[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < 20; page += 1) {
+    const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+    for (const object of listed.objects) {
+      const path = object.key.slice(base.length);
+      const parsed = parsePendingReplayPath(path);
+      if (!parsed) continue;
+      rows.push({
+        path,
+        ...parsed,
+        size: object.size,
+        mime: object.httpMetadata?.contentType || 'application/octet-stream',
+        status: await readStatus(bucket, actor.licenseId, path),
+      });
+    }
+    if (!listed.truncated || !listed.cursor) break;
+    cursor = listed.cursor;
+  }
+  return rows;
 }
 
 function mimeAllowed(purpose: CloudMediaPurpose, mime: string): boolean {
   if (purpose === 'lesson') return mime === 'application/json';
   if (purpose === 'daily-video') return mime.startsWith('video/') || mime === 'application/octet-stream';
+  if (purpose === 'replay-pending') return mime.startsWith('video/') || mime.startsWith('image/');
   return mime.startsWith('video/') || mime.startsWith('image/') || mime === 'application/octet-stream';
 }
 
@@ -347,7 +408,9 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   if (request.method === 'GET') {
     const op = url.searchParams.get('op') ?? 'status';
     if (op === 'status') {
-      if (!actor.read) return json(200, { ok: true, cloud: false });
+      if (!actor.read) {
+        return json(200, actor.replayUpload === 'pending' ? { ok: true, cloud: false, replayUpload: 'pending' } : { ok: true, cloud: false });
+      }
       const [licenseUsedBytes, bucketUsedBytes] = await Promise.all([
         bytesUnder(bucket, `groups/${actor.licenseId}/`),
         bytesUnder(bucket, ''),
@@ -356,11 +419,25 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
         ok: true,
         cloud: true,
         canUpload: actor.upload,
+        replayUpload: actor.replayUpload,
         licenseUsedBytes,
         bucketUsedBytes,
         capBytes: cap,
         maxUploadBytes: maxUpload,
       });
+    }
+    if (op === 'pending') {
+      if (actor.kind !== 'owner' && actor.replayUpload !== 'pending') return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+      return json(200, { ok: true, pending: await listPending(bucket, actor) });
+    }
+    if (op === 'file' && (url.searchParams.get('path') ?? '').startsWith('pending/')) {
+      const path = url.searchParams.get('path') ?? '';
+      const key = cloudObjectKey(actor.licenseId, path);
+      const allowed = actor.kind === 'owner' ? actor.read : actor.replayUpload === 'pending' && key !== null && ownPendingKey(actor, key);
+      if (!key || !allowed || !parsePendingReplayPath(path)) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
+      const object = await bucket.get(key);
+      if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
+      return fileResponse(object);
     }
     if (!actor.read) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
     if (op === 'list') {
@@ -382,13 +459,16 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
   }
 
-  if (!actor.upload) {
+  /** Assistant coach / program director: replay clips and pictures only, and only as pending. */
+  const pendingOnly = !actor.upload && actor.replayUpload === 'pending';
+  if (!actor.upload && !pendingOnly) {
     return json(403, { ok: false, error: actor.read ? CLOUD_ROLE_MESSAGE : CLOUD_UNAVAILABLE_MESSAGE });
   }
 
   if (request.method === 'PUT') {
     const key = ownedKey(actor, url.searchParams.get('key') ?? '');
     if (!key) return json(400, { ok: false, error: 'That file is not in this license.' });
+    if (pendingOnly && !ownPendingKey(actor, key)) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
     const op = url.searchParams.get('op');
     const bytes = new Uint8Array(await request.arrayBuffer());
     if (op === 'part') {
@@ -435,6 +515,37 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     return json(400, { ok: false, error: 'Advantage Cloud could not read that upload.' });
   }
 
+  if (body.action === 'approve' || body.action === 'decline') {
+    if (actor.kind !== 'owner') return json(403, { ok: false, error: 'Only the head coach can approve or decline.' });
+    const path = typeof body.key === 'string' ? body.key : '';
+    const pendingKey = parsePendingReplayPath(path) ? cloudObjectKey(actor.licenseId, path) : null;
+    const statusPath = pendingStatusPath(path);
+    const statusKey = statusPath ? cloudObjectKey(actor.licenseId, statusPath) : null;
+    if (!pendingKey || !statusKey) return json(400, { ok: false, error: 'That clip is not waiting for approval.' });
+    const object = await bucket.get(pendingKey);
+    if (!object) return json(404, { ok: false, error: 'That clip is not waiting for approval.' });
+    let approvedPath: string | null = null;
+    if (body.action === 'approve') {
+      approvedPath = approvedReplayPath(path);
+      const targetKey = approvedPath ? cloudObjectKey(actor.licenseId, approvedPath) : null;
+      if (!approvedPath || !targetKey) return json(400, { ok: false, error: 'That clip cannot be approved.' });
+      const bytes = new Uint8Array(await new Response(object.body).arrayBuffer());
+      const room = await roomFor(bucket, targetKey, bytes.byteLength, cap);
+      if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.bucketUsed, cap) });
+      await bucket.put(targetKey, bytes, { httpMetadata: { contentType: object.httpMetadata?.contentType || 'video/mp4' } });
+    }
+    // Never deletes the pending object: the decision is a small marker beside it.
+    const status: PendingReplayStatus = body.action === 'approve' ? 'approved' : 'declined';
+    await bucket.put(statusKey, new TextEncoder().encode(JSON.stringify({ status, at: new Date().toISOString() })), {
+      httpMetadata: { contentType: 'application/json' },
+    });
+    return json(200, { ok: true, status, ...(approvedPath ? { path: approvedPath } : {}) });
+  }
+
+  if (pendingOnly && body.action !== 'start' && body.action !== 'complete' && body.action !== 'abort') {
+    return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+  }
+
   if (body.action === 'delete-skin') {
     const id = typeof body.id === 'string' ? body.id : '';
     const imageKey = cloudObjectKey(actor.licenseId, `skins/${id}`);
@@ -448,6 +559,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   if (body.action === 'abort') {
     const key = ownedKey(actor, body.key ?? '');
     if (!key || !body.uploadId) return json(400, { ok: false, error: 'That upload is already closed.' });
+    if (pendingOnly && !ownPendingKey(actor, key)) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
     await bucket.resumeMultipartUpload(key, body.uploadId).abort();
     return json(200, { ok: true });
   }
@@ -457,6 +569,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (!key || !body.uploadId || !Array.isArray(body.parts) || body.parts.length === 0) {
       return json(400, { ok: false, error: 'Advantage Cloud could not finish that file.' });
     }
+    if (pendingOnly && !ownPendingKey(actor, key)) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
     const parts = body.parts
       .map((part) => ({ partNumber: Number(part.partNumber), etag: typeof part.etag === 'string' ? part.etag : '' }))
       .filter((part) => Number.isInteger(part.partNumber) && part.partNumber > 0 && part.etag)
@@ -493,7 +606,16 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   if (!mimeAllowed(purpose, mime)) {
     return json(400, { ok: false, error: purpose === 'daily-video' ? 'Daily videos are video files.' : 'That file type cannot go in the lesson plan.' });
   }
-  const relative = cloudRelativePath({
+  if (pendingOnly && purpose !== 'replay-pending') return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+  if (purpose === 'replay-pending' && actor.replayUpload !== 'pending') {
+    return json(403, { ok: false, error: actor.replayUpload === 'direct' ? 'Save replays to lesson media.' : CLOUD_ROLE_MESSAGE });
+  }
+  const relative =
+    purpose === 'replay-pending'
+      ? ((path: string | null) => (path ? { ok: true as const, path } : { ok: false as const, error: 'Choose a real date.' }))(
+          pendingReplayPath(actor.seatId, dateKey, fileName),
+        )
+      : cloudRelativePath({
     purpose,
     role: gymActorForCloud(actor.kind, actor.preset),
     dateKey,

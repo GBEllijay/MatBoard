@@ -246,3 +246,17 @@ test('a file larger than one part is uploaded in chunks', async () => {
   assert.equal(puts.every((call) => call.url.includes('op=part')), true);
   assert.equal(calls.some((call) => call.method === 'POST' && call.url.endsWith('/api/gym/cloud') && call.size > 20), true);
 });
+
+test('replay Cloud uploads: direct for owner/Coach/Instructors, pending for Assistant coach and Program director', async () => {
+  const { cloudReplayUpload, pendingReplayPath, parsePendingReplayPath, cloudObjectKey } = await import('./advantageCloudMedia.ts');
+  assert.equal(cloudReplayUpload({ plusCloud: true, kind: 'owner', preset: null }), 'direct');
+  assert.equal(cloudReplayUpload({ plusCloud: true, kind: 'seat', preset: 'coach' }), 'direct');
+  assert.equal(cloudReplayUpload({ plusCloud: true, kind: 'seat', preset: 'instructors' }), 'direct');
+  assert.equal(cloudReplayUpload({ plusCloud: true, kind: 'seat', preset: 'assistant-coach' }), 'pending');
+  assert.equal(cloudReplayUpload({ plusCloud: true, kind: 'seat', preset: 'program-director' }), 'pending');
+  assert.equal(cloudReplayUpload({ plusCloud: false, kind: 'seat', preset: 'assistant-coach' }), 'none');
+  const path = pendingReplayPath('seat-a', '2026-11-04', 'round 2.mp4');
+  assert.ok(path);
+  assert.deepEqual(parsePendingReplayPath(path!)?.seatId, 'seat-a');
+  assert.ok(cloudObjectKey('owner-test', path!));
+});

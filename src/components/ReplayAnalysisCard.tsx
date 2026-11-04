@@ -12,7 +12,7 @@ import {
   type ReplaySaveKind,
 } from '../lib/replayAnalysis';
 import { newReplayClipId, putReplayClip, readReplayClip } from '../lib/replayClipStore';
-import { availableReplaySaveTargets, plainVideoMime, saveReplayClip } from '../lib/replaySave';
+import { REPLAY_PENDING_MESSAGE, availableReplaySaveTargets, plainVideoMime, saveReplayClip } from '../lib/replaySave';
 import { DeviceMediaInput } from './DeviceMediaInput';
 import { ReplayPlayer } from './ReplayPlayer';
 import { VideoSourceSheet } from './VideoSourceSheet';
@@ -137,6 +137,11 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
     }
     const latest = replayRef.current.clip;
     // A clip replaced during the upload keeps its own (unsaved) state.
+    if (result.pending) {
+      // Not lesson media yet: the head coach approves or declines it.
+      setMessage(`${REPLAY_PENDING_MESSAGE} This device keeps a copy.`);
+      return;
+    }
     if (latest && latest.localId === replay.clip.localId) {
       onChangeRef.current({ clip: { ...latest, saved: { kind: result.kind, ref: result.ref } } });
     }
@@ -181,6 +186,8 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
             src={clip.url}
             label={heading}
             frameName={replayFileName(dateKey, replay.title, 'image/png', replay.id).replace(/\.mp4$/, '.png')}
+            dateKey={dateKey}
+            replayId={replay.id}
           />
         ) : null}
         {clip.status === 'loading' ? <p className="replay-card__note">Opening clip…</p> : null}

@@ -120,7 +120,10 @@ test('the card count is capped', () => {
 test('replay cards survive a template switch and do not block "already applied"', () => {
   let plan = addLessonReplay(emptyPlan());
   const [id] = replayIds(plan);
-  plan = updateLessonReplay(plan, id, { title: 'Keep me' });
+  plan = updateLessonReplay(plan, id, {
+    title: 'Keep me',
+    clip: { localId: 'rclip-day', name: 'd.mp4', mime: 'video/mp4', size: 3, source: 'record' },
+  });
   assert.equal(templateAlreadyApplied(plan, 'adult'), true);
   const kids = applyLessonTemplate(plan, 'kids');
   assert.deepEqual(replayIds(kids), [id]);
@@ -130,6 +133,8 @@ test('replay cards survive a template switch and do not block "already applied"'
   assert.equal(comp.replays?.[0].title, 'Keep me');
   const back = applyLessonTemplate(comp, 'adult');
   assert.equal(back.replays?.[0].title, 'Keep me');
+  // Same day: switching templates and back keeps that day's clip.
+  assert.equal(back.replays?.[0].clip?.localId, 'rclip-day');
 });
 
 test('sanitize keeps replay cards, drops orphans and unknown block ids', () => {
@@ -160,7 +165,7 @@ test('replay cards round-trip through local storage', () => {
   assert.equal(loaded.replays?.[0].clip?.saved?.ref, 'lessons/x/a.mp4');
 });
 
-test('copying a plan gives replay cards fresh ids and keeps the clip', () => {
+test('copying a plan gives replay cards fresh ids and starts with no clips (owner decision)', () => {
   let plan = addLessonReplay(emptyPlan());
   const [id] = replayIds(plan);
   plan = updateLessonReplay(plan, id, {
@@ -171,7 +176,19 @@ test('copying a plan gives replay cards fresh ids and keeps the clip', () => {
   const [copyId] = replayIds(copy);
   assert.notEqual(copyId, id);
   assert.equal(copy.replays?.[0].id, copyId);
-  assert.equal(copy.replays?.[0].clip?.localId, 'rclip-2');
+  assert.equal(copy.replays?.[0].clip, undefined, 'the copy has no clip ref');
+  assert.equal(copy.replays?.[0].title, 'Copy me', 'the card and its text copy');
+  assert.equal(plan.replays?.[0].clip?.localId, 'rclip-2', 'the original keeps its clip');
+  const slotted = copyPlan({
+    ...plan,
+    introReview: { recordReview: true, replayClip: { localId: 'rclip-3', name: 'i.mp4', mime: 'video/mp4', size: 1, source: 'record' } },
+    closingReview: { replayClip: { localId: 'rclip-4', name: 'c.mp4', mime: 'video/mp4', size: 1, source: 'record' } },
+  });
+  assert.deepEqual(slotted.introReview, { recordReview: true }, 'switch stays, clip goes');
+  assert.equal(slotted.closingReview, undefined);
+  assert.ok(!JSON.stringify(slotted).includes('rclip-'), 'no clip refs anywhere in the copy');
+  const fresh = emptyPlan();
+  assert.equal(JSON.stringify(fresh).includes('localId'), false, 'a new plan has no clips');
 });
 
 test('the Drive / Cloud lesson copy lists replay cards', () => {
@@ -284,9 +301,16 @@ test('curriculum sanitize keeps replay mode, review toggle and clip ref; drops t
   const again = sanitizeCurriculum(JSON.parse(JSON.stringify(clean)));
   assert.equal(again.repaired, false);
   assert.deepEqual(again.plan, clean);
-  const copy = copyCurriculum(clean);
+  const copy = copyCurriculum({ ...clean, closingReview: { recordReview: true, replayClip: clean.blocks[0].replayClip } });
   assert.equal(copy.blocks[0].timing, 'replay');
   assert.equal(copy.blocks[4].recordReview, true);
+  assert.equal(copy.blocks[6].recordReview, true);
+  // Owner decision: copies start with no clips; the original keeps them.
+  assert.equal(copy.blocks.some((block) => block.replayClip), false);
+  assert.deepEqual(copy.closingReview, { recordReview: true });
+  assert.equal(clean.blocks[0].replayClip?.localId, 'clip-1');
+  assert.equal(clean.blocks[6].replayClip?.name, 'round.mp4');
+  assert.equal(emptyCurriculum().blocks.some((block) => block.replayClip), false, 'a new curriculum has no clips');
   const broken = sanitizeCurriculum({ ...raw, blocks: [{ ...raw.blocks[0], replayClip: { name: 'x' } }] });
   assert.equal(broken.plan.blocks[0].replayClip, undefined);
   assert.equal(broken.repaired, true);

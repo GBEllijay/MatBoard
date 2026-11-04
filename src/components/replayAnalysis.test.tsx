@@ -9,10 +9,12 @@ import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import { INSTRUCTOR_PRESETS, visibleCoachControl } from '../lib/instructorSeats.ts';
+import { INSTRUCTOR_PRESETS, canCaptureReplay, replayCaptureAccess, visibleCoachControl } from '../lib/instructorSeats.ts';
 import { ADD_REPLAY_LABEL, createReplay, type ReplayBlock } from '../lib/replayAnalysis.ts';
 import { ReplayAnalysisCard } from './ReplayAnalysisCard.tsx';
 import { ReplayPlayer } from './ReplayPlayer.tsx';
+import type { ReplaySaveKind } from '../lib/replayAnalysis.ts';
+import type { ReplaySaveResult } from '../lib/replaySave.ts';
 
 const dom = new Window({ url: 'http://localhost/training-notes' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -229,6 +231,26 @@ test('seat rule: Assistant coach can capture, Program director cannot, owner can
   assert.equal(visibleCoachControl('uploadForDistribution', { owner: true, seat: seat('program-director') }), false);
 });
 
+test('replay capture: owner/Coach/Instructors direct, Assistant coach and Program director pending, revoked none', () => {
+  const preset = (id: string) => INSTRUCTOR_PRESETS.find((p) => p.id === id)!;
+  const seat = (id: string, status: 'active' | 'revoked' = 'active') => ({
+    status,
+    presetId: id as never,
+    permissions: { ...preset(id).permissions },
+  });
+  assert.equal(replayCaptureAccess({ owner: true, seat: null }), 'direct');
+  assert.equal(replayCaptureAccess({ owner: false, seat: null }), 'none');
+  assert.equal(replayCaptureAccess({ owner: true, seat: seat('coach') }), 'direct');
+  assert.equal(replayCaptureAccess({ owner: true, seat: seat('instructors') }), 'direct');
+  assert.equal(replayCaptureAccess({ owner: true, seat: seat('assistant-coach') }), 'pending');
+  assert.equal(replayCaptureAccess({ owner: true, seat: seat('program-director') }), 'pending');
+  assert.equal(replayCaptureAccess({ owner: true, seat: seat('program-director', 'revoked') }), 'none');
+  assert.equal(canCaptureReplay({ owner: true, seat: seat('program-director') }), true);
+  // The PD preset itself is unchanged.
+  assert.equal(preset('program-director').permissions.uploadForDistribution, false);
+  assert.equal(preset('program-director').permissions.dailyLessonPlanAccess, false);
+});
+
 test('Daily Lesson Plan keeps its controls and adds the replay button beside them', () => {
   const src = readFileSync('src/pages/TrainingNotes.tsx', 'utf8');
   for (const needle of ['Add technique', 'Add game', '{ADD_REPLAY_LABEL}', '<BlockTools', 'addLessonTechnique', 'addLessonGame', 'moveLessonBlock', 'removeLessonBlock']) {
@@ -242,8 +264,8 @@ test('Daily Lesson Plan keeps its controls and adds the replay button beside the
   // Private lesson sits in the template picker with its own confirm copy.
   assert.ok(src.includes("template === 'private'"));
   assert.ok(src.includes('LESSON_TEMPLATES.map'));
-  // Capture follows the existing seat permission.
-  assert.ok(src.includes("visibleCoachControl('uploadForDistribution'"));
+  // Capture follows the replay-only seat rule.
+  assert.ok(src.includes('replayCanCapture({ owner: true, seat })'));
 });
 
 // ---------- Competition curriculum: three per-block modes + Record for Review ----------
@@ -363,7 +385,96 @@ test('curriculum source: modes and toggle come from the shared lists; Program di
   const src = readFileSync('src/pages/CompetitionCurriculum.tsx', 'utf8');
   assert.ok(src.includes('CURRICULUM_TIMINGS.map'));
   assert.ok(src.includes('blockOffersReviewToggle(block.kind)'));
-  assert.ok(src.includes("visibleCoachControl('uploadForDistribution'"));
+  assert.ok(src.includes('replayCanCapture({ owner: true, seat })'));
   assert.ok(src.includes('Open round timer'));
   assert.ok(src.includes('<LessonMediaRail'));
+});
+
+
+function pictureHarness(targets: ReplaySaveKind[], result: (kind: ReplaySaveKind) => ReplaySaveResult) {
+  const calls: ReplaySaveKind[] = [];
+  const mounted = mount(
+    <ReplayPlayer
+      src="blob:http://localhost/clip"
+      label="Video replay analysis"
+      frameName="frame.png"
+      dateKey="2026-11-04"
+      pictureTargets={() => targets}
+      captureFrame={async () => new Blob([Uint8Array.from([1])], { type: 'image/png' })}
+      savePicture={async (kind) => {
+        calls.push(kind);
+        return result(kind);
+      }}
+    />,
+  );
+  const video = mounted.host.querySelector('video') as HTMLVideoElement;
+  Object.defineProperty(video, 'duration', { configurable: true, get: () => 60 });
+  act(() => {
+    video.dispatchEvent(new view.Event('durationchange') as unknown as Event);
+  });
+  return { mounted, calls };
+}
+
+function pictureOptions(host: ParentNode): string[] {
+  return [...host.querySelectorAll('[data-picture-target]')].map((el) => el.getAttribute('data-picture-target') ?? '');
+}
+
+async function flush() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+test('Save picture opens a choice; nothing saves until the coach picks', () => {
+  const { mounted, calls } = pictureHarness(['advantage-cloud'], () => ({ ok: true, kind: 'advantage-cloud', ref: 'x' }));
+  assert.deepEqual(pictureOptions(mounted.host), []);
+  click(button(mounted.host, 'Save picture'));
+  assert.deepEqual(pictureOptions(mounted.host), ['device', 'advantage-cloud']);
+  assert.deepEqual(calls, []);
+  unmount(mounted);
+});
+
+test('Save picture options follow access: device always, Cloud and Drives only when available', () => {
+  for (const targets of [[], ['advantage-cloud'], ['google-drive'], ['onedrive'], ['advantage-cloud', 'google-drive', 'onedrive']] as ReplaySaveKind[][]) {
+    const { mounted } = pictureHarness(targets, (kind) => ({ ok: true, kind, ref: 'x' }));
+    click(button(mounted.host, 'Save picture'));
+    assert.deepEqual(pictureOptions(mounted.host), ['device', ...targets]);
+    unmount(mounted);
+  }
+});
+
+test('each Save picture choice calls its own save path and says how it went', async () => {
+  for (const kind of ['advantage-cloud', 'google-drive', 'onedrive'] as ReplaySaveKind[]) {
+    const { mounted, calls } = pictureHarness(['advantage-cloud', 'google-drive', 'onedrive'], (k) => ({ ok: true, kind: k, ref: 'x' }));
+    click(button(mounted.host, 'Save picture'));
+    click(mounted.host.querySelector(`[data-picture-target="${kind}"]`)!);
+    await flush();
+    assert.deepEqual(calls, [kind]);
+    assert.match(mounted.host.querySelector('[data-picture-message]')?.textContent ?? '', /^Picture saved to /);
+    unmount(mounted);
+  }
+  // Pending (assistant coach / program director) and failure messages.
+  const pending = pictureHarness(['advantage-cloud'], () => ({ ok: true, kind: 'advantage-cloud', ref: 'x', pending: true }));
+  click(button(pending.mounted.host, 'Save picture'));
+  click(pending.mounted.host.querySelector('[data-picture-target="advantage-cloud"]')!);
+  await flush();
+  assert.match(pending.mounted.host.querySelector('[data-picture-message]')?.textContent ?? '', /head coach for approval/);
+  unmount(pending.mounted);
+  const failed = pictureHarness(['google-drive'], () => ({ ok: false, message: 'Connect Google Drive in Settings first.' }));
+  click(button(failed.mounted.host, 'Save picture'));
+  click(failed.mounted.host.querySelector('[data-picture-target="google-drive"]')!);
+  await flush();
+  assert.match(failed.mounted.host.querySelector('[data-picture-message]')?.textContent ?? '', /^Picture not saved to Google Drive\./);
+  unmount(failed.mounted);
+  // This device downloads the PNG and never calls a cloud path.
+  const device = pictureHarness(['advantage-cloud'], () => ({ ok: true, kind: 'advantage-cloud', ref: 'x' }));
+  const realCreate = URL.createObjectURL;
+  URL.createObjectURL = () => 'blob:http://localhost/frame';
+  click(button(device.mounted.host, 'Save picture'));
+  click(device.mounted.host.querySelector('[data-picture-target="device"]')!);
+  await flush();
+  URL.createObjectURL = realCreate;
+  assert.deepEqual(device.calls, []);
+  assert.equal(device.mounted.host.querySelector('[data-picture-message]')?.textContent, 'Picture saved to this device.');
+  unmount(device.mounted);
 });

@@ -24,7 +24,9 @@ import {
   type MarkupStroke,
   type MarkupTool,
   type TapMemory,
+  type ReplaySaveKind,
 } from '../lib/replayAnalysis';
+import { REPLAY_PENDING_MESSAGE, availableReplaySaveTargets, saveReplayClip, type ReplaySaveResult } from '../lib/replaySave';
 
 type Props = {
   src: string;
@@ -32,6 +34,20 @@ type Props = {
   label: string;
   /** File name for "Save picture". */
   frameName: string;
+  /** Lesson date for Cloud / Drive picture saves. */
+  dateKey?: string;
+  replayId?: string;
+  /** Test seams; default to the real save targets and helpers. */
+  pictureTargets?: () => ReplaySaveKind[];
+  savePicture?: (kind: ReplaySaveKind, blob: Blob) => Promise<ReplaySaveResult>;
+  captureFrame?: () => Promise<Blob | null>;
+};
+
+export const PICTURE_DEVICE_LABEL = 'This device';
+export const PICTURE_TARGET_LABELS: Record<ReplaySaveKind, string> = {
+  'advantage-cloud': 'Advantage Cloud',
+  'google-drive': 'Google Drive',
+  onedrive: 'OneDrive',
 };
 
 function drawStroke(ctx: CanvasRenderingContext2D, stroke: MarkupStroke, width: number, height: number): void {
@@ -93,7 +109,11 @@ function paint(canvas: HTMLCanvasElement | null, strokes: readonly MarkupStroke[
  * pen line on the frame, with Undo and Clear. Drawings clear when play
  * resumes because the frame under them changes.
  */
-export function ReplayPlayer({ src, label, frameName }: Props) {
+export function ReplayPlayer({ src, label, frameName, dateKey = '', replayId = 'replay', pictureTargets, savePicture, captureFrame }: Props) {
+  const [pictureMenu, setPictureMenu] = useState(false);
+  const [pictureTargetsNow, setPictureTargetsNow] = useState<ReplaySaveKind[]>([]);
+  const [pictureMessage, setPictureMessage] = useState<string | null>(null);
+  const [pictureBusy, setPictureBusy] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
@@ -231,25 +251,58 @@ export function ReplayPlayer({ src, label, frameName }: Props) {
     else paint(canvasRef.current, markup.strokes, null);
   };
 
-  const saveFrame = () => {
+  /** The paused frame with the markup drawn on it, as a PNG. */
+  const renderFrame = (): Promise<Blob | null> => {
+    if (captureFrame) return captureFrame();
     const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
+    if (!video || !video.videoWidth) return Promise.resolve(null);
     const out = document.createElement('canvas');
     out.width = video.videoWidth;
     out.height = video.videoHeight;
     const ctx = out.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return Promise.resolve(null);
     ctx.drawImage(video, 0, 0, out.width, out.height);
     for (const stroke of markup.strokes) drawStroke(ctx, stroke, out.width, out.height);
-    out.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = frameName;
-      a.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 2000);
-    }, 'image/png');
+    return new Promise((resolve) => out.toBlob((blob) => resolve(blob), 'image/png'));
+  };
+
+  /** "Save picture" opens a choice; nothing saves until the coach picks one. */
+  const openPictureMenu = () => {
+    setPictureMessage(null);
+    setPictureTargetsNow((pictureTargets ?? availableReplaySaveTargets)());
+    setPictureMenu((open) => !open);
+  };
+
+  const savePictureTo = async (kind: ReplaySaveKind | 'device') => {
+    setPictureMenu(false);
+    setPictureBusy(true);
+    try {
+      const blob = await renderFrame();
+      if (!blob) {
+        setPictureMessage('That picture could not be made. Pause on a frame and try again.');
+        return;
+      }
+      if (kind === 'device') {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = frameName;
+        a.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+        setPictureMessage('Picture saved to this device.');
+        return;
+      }
+      const save =
+        savePicture ??
+        ((target: ReplaySaveKind, bytes: Blob) =>
+          saveReplayClip({ kind: target, dateKey, fileName: frameName, blob: bytes, mime: 'image/png', replayId, picture: true }));
+      const result = await save(kind, blob);
+      if (!result.ok) setPictureMessage(`Picture not saved to ${PICTURE_TARGET_LABELS[kind]}. ${result.message}`);
+      else if (result.pending) setPictureMessage(`Picture ${REPLAY_PENDING_MESSAGE.charAt(0).toLowerCase()}${REPLAY_PENDING_MESSAGE.slice(1)}`);
+      else setPictureMessage(`Picture saved to ${PICTURE_TARGET_LABELS[kind]}.`);
+    } finally {
+      setPictureBusy(false);
+    }
   };
 
   const progress = duration > 0 ? Math.min(100, (time / duration) * 100) : 0;
@@ -382,11 +435,35 @@ export function ReplayPlayer({ src, label, frameName }: Props) {
           <button type="button" className="btn btn--ghost" disabled={!canClear(markup)} onClick={() => setMarkup(clearMarkup)}>
             Clear
           </button>
-          <button type="button" className="btn btn--ghost" disabled={!duration} onClick={saveFrame}>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={!duration || pictureBusy}
+            aria-expanded={pictureMenu}
+            data-save-picture=""
+            onClick={openPictureMenu}
+          >
             Save picture
           </button>
         </div>
       )}
+      {pictureMenu ? (
+        <div className="replay-player__save-menu" role="group" aria-label="Save picture to">
+          <button type="button" className="btn btn--ghost" data-picture-target="device" onClick={() => void savePictureTo('device')}>
+            {PICTURE_DEVICE_LABEL}
+          </button>
+          {pictureTargetsNow.map((kind) => (
+            <button key={kind} type="button" className="btn btn--ghost" data-picture-target={kind} onClick={() => void savePictureTo(kind)}>
+              {PICTURE_TARGET_LABELS[kind]}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {pictureMessage ? (
+        <p className="replay-card__note" role="status" data-picture-message="">
+          {pictureMessage}
+        </p>
+      ) : null}
     </div>
   );
 }

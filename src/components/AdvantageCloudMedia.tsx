@@ -6,12 +6,15 @@ import {
   readCloudBearer,
   readCloudMediaHome,
   setCloudUploadReady,
+  setCloudReplayPending,
   uploadAdvantageCloudFile,
   writeCloudMediaHome,
   type CloudFileRow,
   type CloudMediaHome,
   type CloudStatusBody,
+  type PendingReplayRow,
 } from '../lib/advantageCloudMedia';
+import { useCurrentSeat } from './SeatSessionBar';
 
 type Purpose = 'daily-video' | 'lesson';
 
@@ -43,6 +46,7 @@ function authHeaders(): HeadersInit | null {
  * Renders nothing unless this signed-in license has Plus Cloud.
  */
 export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) {
+  const ownerSession = useCurrentSeat() === null;
   const [status, setStatus] = useState<CloudStatusBody | null>(null);
   const [files, setFiles] = useState<CloudFileRow[]>([]);
   const [home, setHome] = useState<CloudMediaHome>('device');
@@ -73,6 +77,7 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
         const response = await fetch('/api/gym/cloud?op=status', { headers });
         const body = await readJson<CloudStatusBody>(response);
         if (cancelled) return;
+        setCloudReplayPending(response.ok && body?.replayUpload === 'pending');
         if (!response.ok || !body?.cloud) {
           setStatus(body?.cloud === false ? body : null);
           setCloudUploadReady(false);
@@ -265,6 +270,93 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
       )}
       {player?.kind === 'video' ? <video className="cloud-media__player" src={player.url} controls playsInline /> : null}
       {player?.kind === 'image' ? <img className="cloud-media__player" src={player.url} alt={player.name} /> : null}
+      {purpose === 'lesson' ? <PendingReplayApprovals owner={ownerSession} /> : null}
     </section>
+  );
+}
+
+/**
+ * Replay clips and pictures from an assistant coach or program director wait here.
+ * The head coach sees every one and approves or declines; a seat sees only its own.
+ * Decline never deletes the file.
+ */
+export function PendingReplayApprovals({ owner, fetcher = fetch }: { owner: boolean; fetcher?: typeof fetch }) {
+  const [rows, setRows] = useState<PendingReplayRow[]>([]);
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = async () => {
+    const headers = authHeaders();
+    if (!headers) return;
+    try {
+      const response = await fetcher('/api/gym/cloud?op=pending', { headers });
+      const body = await readJson<{ pending?: PendingReplayRow[] }>(response);
+      setRows(response.ok && body?.pending ? body.pending.filter((row) => row.status === 'pending') : []);
+    } catch {
+      setRows([]);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    const onChange = () => void load();
+    window.addEventListener(CLOUD_MEDIA_EVENT, onChange);
+    return () => window.removeEventListener(CLOUD_MEDIA_EVENT, onChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const decide = async (row: PendingReplayRow, action: 'approve' | 'decline') => {
+    const headers = authHeaders();
+    if (!headers) return;
+    setBusy(row.path);
+    try {
+      const response = await fetcher('/api/gym/cloud', {
+        method: 'POST',
+        headers: { ...headers, 'content-type': 'application/json' },
+        body: JSON.stringify({ action, key: row.path }),
+      });
+      const body = await readJson<{ error?: string }>(response);
+      if (!response.ok) {
+        setNote(body?.error ?? 'That did not save. Try again.');
+        return;
+      }
+      setNote(action === 'approve' ? `Approved ${row.name}. It is in lesson media now.` : `Declined ${row.name}.`);
+      setRows((list) => list.filter((item) => item.path !== row.path));
+    } catch {
+      setNote('That did not save. Try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (!rows.length && !note) return null;
+  return (
+    <div className="cloud-media__pending" data-pending-replays="">
+      <h3 className="cloud-media__title">{owner ? 'Waiting for your approval' : 'Waiting for the head coach'}</h3>
+      {note ? (
+        <p className="cloud-media__note" role="status">
+          {note}
+        </p>
+      ) : null}
+      <ul className="cloud-media__files">
+        {rows.map((row) => (
+          <li key={row.path} className="cloud-media__file" data-pending-replay={row.path}>
+            <span>
+              {row.name} · {row.dateKey}
+            </span>
+            {owner ? (
+              <>
+                <button type="button" className="btn" disabled={busy === row.path} onClick={() => void decide(row, 'approve')}>
+                  Approve
+                </button>
+                <button type="button" className="btn btn--ghost" disabled={busy === row.path} onClick={() => void decide(row, 'decline')}>
+                  Decline
+                </button>
+              </>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
