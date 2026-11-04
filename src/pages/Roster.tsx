@@ -10,6 +10,9 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import { BeltTip } from '../components/BeltTip';
+import { LinkStudentSheet, SendRankUpdateSheet } from '../components/CoachStudentLink';
+import { GuestArchive } from '../components/GuestArchive';
+import { SendCompetitionSheet, type CompetitionSendDraft } from '../components/SendCompetitionSheet';
 import { Sheet } from '../components/Sheet';
 import { useRosterState } from '../hooks/useStores';
 import { COMPETITOR_SYSTEM_NAME, isCoachStudentRoster } from '../lib/productNames';
@@ -46,6 +49,8 @@ import {
   serializeRosterCsv,
   withUtf8Bom,
 } from '../lib/rosterCsv';
+import { competitionSendOffer } from '../lib/coachCompetitionUpdate';
+import { rankSendOffer } from '../lib/coachRankUpdate';
 import { seatPermissionAllows } from '../lib/instructorSeats';
 import { readGymName } from '../lib/gymName';
 import {
@@ -59,6 +64,7 @@ import {
   isKnownBelt,
   draftFromStudent,
   emptyDraft,
+  linkCompetitorToRosterStudent,
   formatPromotion,
   removeStudent,
   searchStudents,
@@ -107,6 +113,11 @@ export function RosterPage() {
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
   const [csvNote, setCsvNote] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [linkTarget, setLinkTarget] = useState<Student | null>(null);
+  const [sendTarget, setSendTarget] = useState<Student | null>(null);
+  const [samePerson, setSamePerson] = useState<Student | null>(null);
+  const [competitionSend, setCompetitionSend] = useState<{ studentId: string; draft: CompetitionSendDraft } | null>(null);
+  const [linkNote, setLinkNote] = useState('');
   const listed = useMemo(
     () => (studentRoster ? studentRosterCards(roster.students) : competitorCards(roster.students)),
     [roster.students, studentRoster],
@@ -275,6 +286,24 @@ export function RosterPage() {
                 setPendingRemove(null);
               }}
               onToggleCheckIn={() => setCheckedIn(competitor.id, !competitor.checkedIn)}
+              onLink={() => setLinkTarget(competitor)}
+              onSamePerson={() => setSamePerson(competitor)}
+              onSendCompetition={() =>
+                setCompetitionSend({
+                  studentId: competitor.linkedStudentId ?? '',
+                  draft: {
+                    tournamentName: '',
+                    date: new Date().toISOString().slice(0, 10),
+                    location: '',
+                    division: competitor.division,
+                    weightClass: '',
+                    opponent: '',
+                    result: 'win',
+                    method: '',
+                    note: '',
+                  },
+                })
+              }
             />
           ))}
         </ul>
@@ -328,12 +357,14 @@ export function RosterPage() {
         onSave={() => {
           if (!editor) return;
           try {
+            const before = editor.id ? roster.students.find((row) => row.id === editor.id) ?? null : null;
             const saved = editor.id
               ? updateStudent(editor.id, editor.draft)
               : addStudent(editor.draft, studentRoster ? { rosterList: 'student' } : undefined);
             if (saved) {
               setSaveError('');
               setEditor(null);
+              if (studentRoster && before && rankSendOffer(before, saved) === 'send') setSendTarget(saved);
             }
           } catch (error) {
             setSaveError(
@@ -345,6 +376,39 @@ export function RosterPage() {
           }
         }}
       />
+      {studentRoster ? null : <GuestArchive />}
+      <LinkStudentSheet key={linkTarget?.id ?? 'link'} student={linkTarget} onClose={() => setLinkTarget(null)} />
+      <SendRankUpdateSheet key={sendTarget?.id ?? 'send'} student={sendTarget} onClose={() => setSendTarget(null)} />
+      <Sheet open={Boolean(samePerson)} title="Same person as a roster student" onClose={() => setSamePerson(null)} portal>
+        <p>This link is one time. Pick the Student Roster card for this competitor. Guests are not listed.</p>
+        {linkNote ? <p role="status">{linkNote}</p> : null}
+        <ul className="roster__list">
+          {studentRosterCards(roster.students).map((student) => (
+            <li key={student.id}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  if (!samePerson) return;
+                  const result = linkCompetitorToRosterStudent(samePerson.id, student.id);
+                  setLinkNote(result.ok ? `${samePerson.name} is linked to ${student.name}.` : result.error);
+                  if (result.ok) setSamePerson(null);
+                }}
+              >
+                This competitor is the same person as roster student {student.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Sheet>
+      {competitionSend ? (
+        <SendCompetitionSheet
+          open
+          studentId={competitionSend.studentId}
+          initial={competitionSend.draft}
+          onClose={() => setCompetitionSend(null)}
+        />
+      ) : null}
     </main>
   );
 }
@@ -406,6 +470,9 @@ function StudentCard({
   onCancelRemove,
   onConfirmRemove,
   onToggleCheckIn,
+  onLink,
+  onSamePerson,
+  onSendCompetition,
 }: {
   student: Student;
   studentRoster: boolean;
@@ -416,6 +483,9 @@ function StudentCard({
   onCancelRemove: () => void;
   onConfirmRemove: () => void;
   onToggleCheckIn: () => void;
+  onLink: () => void;
+  onSamePerson: () => void;
+  onSendCompetition: () => void;
 }) {
   const promoted = formatPromotion(student.lastPromotion);
   const promotionDetail = student.lastPromotionDetail.trim();
@@ -456,6 +526,10 @@ function StudentCard({
         {student.division ? <p className="roster-card__meta">{student.division}</p> : null}
         {student.gym ? <p className="roster-card__meta">{student.gym}</p> : null}
         {promotionLine ? <p className="roster-card__meta roster-card__promotion">{promotionLine}</p> : null}
+        {studentRoster && student.stripes ? <p className="roster-card__meta">Stripe {student.stripes}</p> : null}
+        {studentRoster && student.linkedStudentId ? (
+          <p className="roster-card__meta">Linked to {student.linkedStudentId}</p>
+        ) : null}
         {student.note ? <p className="roster-card__note">{student.note}</p> : null}
         {plan ? <StudentCompetitionPlan plan={plan} /> : null}
         {studentRoster ? null : <ImportStudentProgress competitorId={student.id} competitorName={student.name} />}
@@ -474,6 +548,21 @@ function StudentCard({
             <button type="button" className="btn" onClick={onEdit}>
               Edit
             </button>
+            {studentRoster ? (
+              <button type="button" className="btn btn--ghost" onClick={onLink}>
+                Link to student
+              </button>
+            ) : null}
+            {!studentRoster && !student.guestId && !student.linkedStudentId ? (
+              <button type="button" className="btn btn--ghost" onClick={onSamePerson}>
+                Same person as a roster student
+              </button>
+            ) : null}
+            {!studentRoster && competitionSendOffer(student) === 'send' ? (
+              <button type="button" className="btn" onClick={onSendCompetition}>
+                Send to student
+              </button>
+            ) : null}
             <button type="button" className="btn btn--ghost" onClick={onAskRemove}>
               Remove
             </button>
@@ -692,6 +781,23 @@ function StudentEditor({
             autoComplete="off"
           />
         </label>
+        {studentRoster ? (
+          <label>
+            Stripes
+            <select
+              aria-label="Stripes"
+              value={String(draft.stripes ?? 0)}
+              onChange={(event) => patch({ stripes: Number(event.target.value) })}
+            >
+              <option value={0}>No stripe</option>
+              <option value={1}>Stripe 1</option>
+              <option value={2}>Stripe 2</option>
+              <option value={3}>Stripe 3</option>
+              <option value={4}>Stripe 4</option>
+            </select>
+            <span className="roster-edit__hint">Saving stripes does not check off belt skills. The student owns that list.</span>
+          </label>
+        ) : null}
       </div>
       <label>
         {studentRoster ? STUDENT_NOTES_LABEL : 'Competitor Notes'}

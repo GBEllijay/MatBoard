@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AcademyQrScanner } from '../../components/AcademyQrScanner';
+import { StudentIdentityPanel } from '../../components/StudentIdentityPanel';
 import { GoogleDriveFolderTools } from '../../components/GoogleDriveFolderTools';
 import { loadBracketPhotos } from '../../lib/bracketPhoto';
 import {
@@ -35,6 +36,7 @@ import {
 } from '../../lib/oneDrive';
 import { requestOneDriveConsent } from '../../lib/oneDriveAuth';
 import { loadRankPictures } from '../../lib/rankPhotos';
+import { saveAcademyLicense } from '../../lib/studentInboxClient';
 import {
   BACKUP_BEFORE_CLEAR,
   BACK_UP_FIRST_LABEL,
@@ -110,7 +112,7 @@ export function ConnectionsPage() {
           <section className="ink" aria-label="Import from coach">
             <h2>Import from coach</h2>
             <p className="student-quiet">
-              Import from coach takes a coach plan or coach feedback file, the file a coach sends back. It is a suggestion and does not change your rubric marks, checkpoints, journal, or goals. The progress file you make for your coach is a different file. On that page it is not imported as a coach file. You can merge it after you confirm. A backup restores from Restore from backup above.
+              Import from coach takes a coach plan or coach feedback file, the file a coach sends back. It is a suggestion and does not change your rubric marks, checkpoints, journal, or goals. A rank update file waits for you to accept or dismiss it and does not change your checklist. The progress file you make for your coach is a different file. On that page it is not imported as a coach file. You can merge it after you confirm. A backup restores from Restore from backup above.
             </p>
             <Link className="ink-btn" to={to('/student/share#import')}>
               Import from coach
@@ -175,6 +177,7 @@ function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
           gymName: next.gymName,
         });
         setLinked(saved);
+        saveAcademyLicense(localStorage, next.license);
         setStatus(`Connected to ${saved.folderName}. ${ACADEMY_FREE_NOTE}`);
         clearPendingPathway();
         return;
@@ -201,6 +204,7 @@ function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
         gymName: next.gymName,
       });
       setLinked(saved);
+      saveAcademyLicense(localStorage, next.license);
       setStatus(`Connected to ${saved.folderName}. ${ACADEMY_FREE_NOTE}`);
       clearPendingPathway();
     } finally {
@@ -297,6 +301,7 @@ function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
       ) : null}
       {status ? <p role="status">{status}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
+      <StudentIdentityPanel connected={Boolean(linked)} />
     </section>
   );
 }

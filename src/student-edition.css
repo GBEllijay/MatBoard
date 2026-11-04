@@ -759,6 +759,28 @@ button.student-book .student-mark__press {
   gap: 0.4rem;
 }
 
+.coach-update {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.75rem 1rem 0;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid rgba(92, 48, 12, 0.35);
+  border-radius: 18px;
+  background: rgba(255, 248, 230, 0.96);
+  color: #2a1c0e;
+}
+
+.coach-update h2,
+.coach-update p {
+  margin: 0;
+}
+
+.coach-update__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .student-confirm .ink-btn {
   min-height: 36px;
   padding: 0.05rem 0.7rem;

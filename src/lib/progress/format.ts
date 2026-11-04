@@ -89,6 +89,8 @@ import {
   type CoachFeedbackPacket,
   type CoachGymBrand,
   type CoachPlan,
+  type CoachCompetitionUpdatePacket,
+  type CoachRankUpdatePacket,
   type CoachPlanFocus,
   type CoachPlanPacket,
   type GameTag,
@@ -243,12 +245,12 @@ export function parseProgressValue(raw: unknown): ProgressParse {
   }
   const kind = record.kind;
   if (typeof kind !== 'string' || !(PROGRESS_PACKET_KINDS as readonly string[]).includes(kind)) {
-    errors.push('Packet kind must be student-progress-report, coach-plan, or coach-feedback.');
+    errors.push(`Packet kind must be ${PROGRESS_PACKET_KINDS.join(', ')}.`);
   }
   const id = readId(record.id, 'Packet id', errors);
   const studentId = readId(record.studentId, 'Student id', errors);
   const updatedAt = readTime(record.updatedAt, 'updatedAt', errors);
-  if (errors.length || (kind !== 'student-progress-report' && kind !== 'coach-plan' && kind !== 'coach-feedback')) {
+  if (errors.length || typeof kind !== 'string' || !(PROGRESS_PACKET_KINDS as readonly string[]).includes(kind)) {
     return { ok: false, errors };
   }
   if (kind === 'student-progress-report') {
@@ -275,8 +277,10 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     if (beltBook.book) value.beltBook = beltBook.book;
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
-  if (kind === 'coach-plan' || kind === 'coach-feedback') {
-    if (carriesStudentMark(record)) errors.push('A coach file cannot set student marks, checkpoints, journal, or goals.');
+  if (kind === 'coach-plan' || kind === 'coach-feedback' || kind === 'coach-rank-update' || kind === 'coach-competition-update') {
+    if (carriesStudentMark(record) || ((kind === 'coach-rank-update' || kind === 'coach-competition-update') && carriesChecklist(record))) {
+      errors.push('A coach file cannot set student marks, checkpoints, journal, or goals.');
+    }
   }
   if (kind === 'coach-plan') {
     const value: CoachPlanPacket = {
@@ -290,6 +294,40 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     const gym = attachGym(record);
     if (gym) value.gym = gym;
     return errors.length ? { ok: false, errors } : { ok: true, value };
+  }
+  if (kind === 'coach-rank-update') {
+    const value: CoachRankUpdatePacket = {
+      schemaVersion: PROGRESS_SCHEMA_VERSION,
+      kind,
+      id,
+      studentId,
+      updatedAt,
+      rankUpdate: readCoachRankUpdate(record, errors),
+      issuedAt: readTime(record.issuedAt, 'issuedAt', errors),
+      updateId: readId(record.updateId, 'Update id', errors),
+    };
+    const gym = attachGym(record);
+    if (gym) value.gym = gym;
+    return errors.length ? { ok: false, errors } : { ok: true, value };
+  }
+  if (kind === 'coach-competition-update') {
+    const value: CoachCompetitionUpdatePacket = {
+      schemaVersion: PROGRESS_SCHEMA_VERSION,
+      kind,
+      id,
+      studentId,
+      updatedAt,
+      competitionUpdate: readCoachCompetitionUpdate(record, errors),
+      issuedAt: readTime(record.issuedAt, 'issuedAt', errors),
+      updateId: readId(record.updateId, 'Update id', errors),
+    };
+    const gym = attachGym(record);
+    if (gym) value.gym = gym;
+    return errors.length ? { ok: false, errors } : { ok: true, value };
+  }
+  if (kind !== 'coach-feedback') {
+    errors.push(`Packet kind must be ${PROGRESS_PACKET_KINDS.join(', ')}.`);
+    return { ok: false, errors };
   }
   const value: CoachFeedbackPacket = {
     schemaVersion: PROGRESS_SCHEMA_VERSION,
@@ -306,6 +344,98 @@ export function parseProgressValue(raw: unknown): ProgressParse {
 
 function attachGym(record: Record<string, unknown>): CoachGymBrand | undefined {
   return readTravelingGym(record) ?? undefined;
+}
+
+/** Belt, stripe count, and promotion date. A checklist on this object is rejected by the caller. */
+function readCoachRankUpdate(record: Record<string, unknown>, errors: string[]): CoachRankUpdatePacket['rankUpdate'] {
+  const row = asRecord(record.rankUpdate);
+  if (!row) {
+    errors.push('Rank update needs a belt, a stripe count, and a promotion date.');
+    return { belt: 'white', stripeCount: 0, promotionDate: '', note: '' };
+  }
+  const belt = typeof row.belt === 'string' ? row.belt : '';
+  if (!(PROGRESS_BELTS as readonly string[]).includes(belt)) {
+    errors.push('Rank update belt is not a known belt.');
+  }
+  const stripeCount = row.stripeCount;
+  if (
+    typeof stripeCount !== 'number' ||
+    !Number.isInteger(stripeCount) ||
+    stripeCount < 0 ||
+    stripeCount > RANK_TAPE_MAX
+  ) {
+    errors.push(`Rank update stripe count must be a whole number from 0 to ${RANK_TAPE_MAX}.`);
+  }
+  const note = typeof row.note === 'string' ? row.note.trim() : '';
+  if (note.length > PROGRESS_NOTE_MAX) errors.push('Coach note is too long.');
+  return {
+    belt: (PROGRESS_BELTS as readonly string[]).includes(belt) ? (belt as CoachRankUpdatePacket['rankUpdate']['belt']) : 'white',
+    stripeCount:
+      typeof stripeCount === 'number' && Number.isInteger(stripeCount)
+        ? Math.min(RANK_TAPE_MAX, Math.max(0, stripeCount))
+        : 0,
+    promotionDate: readDate(row.promotionDate, 'Promotion date', errors, true),
+    note: note.slice(0, PROGRESS_NOTE_MAX),
+  };
+}
+
+function readCoachCompetitionUpdate(
+  record: Record<string, unknown>,
+  errors: string[],
+): CoachCompetitionUpdatePacket['competitionUpdate'] {
+  const row = asRecord(record.competitionUpdate);
+  const empty = {
+    tournamentName: '',
+    date: '',
+    location: '',
+    division: '',
+    weightClass: '',
+    matches: [] as CoachCompetitionUpdatePacket['competitionUpdate']['matches'],
+  };
+  if (!row) {
+    errors.push('Competition update needs a tournament name, a date, and the matches.');
+    return empty;
+  }
+  const tournamentName = typeof row.tournamentName === 'string' ? row.tournamentName.trim().slice(0, PROGRESS_NAME_MAX) : '';
+  if (!tournamentName) errors.push('Competition update needs a tournament name.');
+  const location = typeof row.location === 'string' ? row.location.trim().slice(0, PROGRESS_NOTE_MAX) : '';
+  const division = typeof row.division === 'string' ? row.division.trim().slice(0, PROGRESS_NAME_MAX) : '';
+  const weightClass = typeof row.weightClass === 'string' ? row.weightClass.trim().slice(0, PROGRESS_NAME_MAX) : '';
+  const matches: CoachCompetitionUpdatePacket['competitionUpdate']['matches'] = [];
+  if (!Array.isArray(row.matches)) errors.push('Competition update needs a match list.');
+  else if (row.matches.length > PROGRESS_MATCHES_MAX) errors.push('That match list is too long.');
+  else {
+    for (const item of row.matches) {
+      const match = asRecord(item);
+      if (!match) continue;
+      const opponent = typeof match.opponent === 'string' ? match.opponent.trim().slice(0, PROGRESS_NAME_MAX) : '';
+      const result = match.result;
+      const method = match.method;
+      if (!opponent) {
+        errors.push('Each match needs an opponent.');
+        continue;
+      }
+      if (result !== 'win' && result !== 'loss' && result !== 'draw') {
+        errors.push('Each match result must be win, loss, or draw.');
+        continue;
+      }
+      if (method !== '' && method !== 'points' && method !== 'sub' && method !== 'advantage' && method !== 'dq') {
+        errors.push('Each match method must be points, sub, advantage, dq, or blank.');
+        continue;
+      }
+      const note = typeof match.note === 'string' ? match.note.trim() : '';
+      if (note.length > PROGRESS_NOTE_MAX) errors.push('A match note is too long.');
+      matches.push({ opponent, result, method, note: note.slice(0, PROGRESS_NOTE_MAX) });
+    }
+  }
+  return {
+    tournamentName,
+    date: readDate(row.date, 'Tournament date', errors, true),
+    location,
+    division,
+    weightClass,
+    matches,
+  };
 }
 
 /**
@@ -398,6 +528,8 @@ export function exportProgressCsv(packet: ProgressPacket): string {
   if (packet.kind === 'student-progress-report') writeReportRows(lines, packet);
   if (packet.kind === 'coach-plan') writePlanRows(lines, packet);
   if (packet.kind === 'coach-feedback') writeFeedbackRows(lines, packet);
+  if (packet.kind === 'coach-rank-update') writeRankUpdateRows(lines, packet);
+  if (packet.kind === 'coach-competition-update') writeCompetitionUpdateRows(lines, packet);
   return `\uFEFF${lines.join('\r\n')}\r\n`;
 }
 
@@ -2630,6 +2762,58 @@ function writePlanRows(lines: string[], packet: CoachPlanPacket): void {
   }
 }
 
+function writeCompetitionUpdateRows(lines: string[], packet: CoachCompetitionUpdatePacket): void {
+  lines.push(
+    csvRow([
+      'Coach competition update',
+      packet.updateId,
+      packet.competitionUpdate.date,
+      packet.studentId,
+      '',
+      '',
+      packet.competitionUpdate.tournamentName,
+      '',
+      '',
+      packet.competitionUpdate.division,
+      packet.competitionUpdate.location,
+      '',
+      '',
+      packet.kind,
+      '',
+      '',
+      '',
+      '',
+      '',
+      packet.competitionUpdate.weightClass,
+    ]),
+  );
+}
+
+function writeRankUpdateRows(lines: string[], packet: CoachRankUpdatePacket): void {
+  lines.push(
+    csvRow([
+      'Coach rank update',
+      packet.updateId,
+      packet.rankUpdate.promotionDate,
+      packet.studentId,
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      packet.rankUpdate.note,
+      '',
+      '',
+      packet.kind,
+      packet.rankUpdate.belt,
+      String(packet.rankUpdate.stripeCount),
+      '',
+      '',
+    ]),
+  );
+}
+
 function writeFeedbackRows(lines: string[], packet: CoachFeedbackPacket): void {
   lines.push(csvRow([
     'Coach feedback',
@@ -2785,6 +2969,10 @@ function carriesStripeKey(value: unknown): boolean {
 
 function carriesStudentMark(value: unknown): boolean {
   return carriesKey(value, (key) => key === 'met' || key === 'journal' || key === 'rubric' || key === 'goals');
+}
+
+function carriesChecklist(value: unknown): boolean {
+  return carriesKey(value, (key) => key === 'checklist');
 }
 
 function carriesKey(value: unknown, match: (key: string) => boolean): boolean {

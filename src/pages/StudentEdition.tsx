@@ -31,6 +31,7 @@ import { ResultsPage } from './student/ResultsPage';
 import { ScoutingPage } from './student/ScoutingPage';
 import { VideoLibraryPage } from './student/VideoLibraryPage';
 import { WeightPage } from './student/WeightPage';
+import { CoachUpdateInbox } from '../components/CoachUpdateInbox';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
 import { ageIllegalTechniques } from '../lib/studentBenchmarks';
 import { studentScreen } from '../lib/studentHubMenu';
@@ -140,6 +141,7 @@ export function StudentEditionPage() {
   return (
     <>
       {demo ? <StudentDemoBanner /> : null}
+      <CoachUpdateInbox />
       {screen}
     </>
   );

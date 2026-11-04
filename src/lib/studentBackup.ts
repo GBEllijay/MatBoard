@@ -366,7 +366,13 @@ export function parseStudentBackup(text: string): { ok: true; file: StudentBacku
   }
   if (!raw || typeof raw !== 'object') return { ok: false, error: BACKUP_NOT_A_BACKUP };
   const record = raw as Partial<StudentBackupFile> & { kind?: string };
-  if (record.kind === 'student-progress-report' || record.kind === 'coach-plan' || record.kind === 'coach-feedback') {
+  if (
+    record.kind === 'student-progress-report' ||
+    record.kind === 'coach-plan' ||
+    record.kind === 'coach-feedback' ||
+    record.kind === 'coach-rank-update' ||
+    record.kind === 'coach-competition-update'
+  ) {
     return { ok: false, error: BACKUP_NOT_A_BACKUP };
   }
   if (record.advantage !== STUDENT_BACKUP_KIND || record.version !== STUDENT_BACKUP_VERSION) {

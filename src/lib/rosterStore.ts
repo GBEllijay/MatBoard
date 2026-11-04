@@ -27,6 +27,7 @@ import {
   type GameLinkFlag,
   type GameSection,
 } from './gamePlan.ts';
+import { isStableStudentId } from './studentIdentity.ts';
 import { isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 export const STORAGE_KEY = 'matboard.roster.v1';
@@ -73,6 +74,22 @@ export type Student = {
    * list does not update, remove, or retag the card on the other list.
    */
   rosterList?: 'student';
+  /**
+   * Student Edition id this card is linked to. Omitted until a coach links it.
+   * The same name on the other roster is still a separate card.
+   */
+  linkedStudentId?: string;
+  /**
+   * Guest archive id. Set when this competitor card was placed from Guest competitors.
+   * A guest is not an Advantage student and is never sent a message.
+   * Omitted on student cards and on older competitor cards.
+   */
+  guestId?: string;
+  /**
+   * Stripes on the belt the coach last saved. Omitted on older cards.
+   * 0 means the coach saved the belt with no stripe. This is not a checklist.
+   */
+  stripes?: number;
 };
 
 /** Weekend checklist items. Missing or false means Off. */
@@ -146,6 +163,8 @@ export type StudentDraft = {
   note: string;
   /** Compact face photo data URL. Omit or blank for no photo. */
   photo?: string;
+  /** 0 to 4. Omit when the coach has not set stripes on this card. */
+  stripes?: number;
 };
 
 const listeners = new Set<() => void>();
@@ -258,7 +277,7 @@ export function emptyDraft(): StudentDraft {
 }
 
 export function draftFromStudent(student: Student): StudentDraft {
-  return {
+  const draft: StudentDraft = {
     name: student.name,
     belt: student.belt,
     division: student.division,
@@ -268,6 +287,8 @@ export function draftFromStudent(student: Student): StudentDraft {
     note: student.note,
     photo: student.photo,
   };
+  if (student.stripes !== undefined) draft.stripes = student.stripes;
+  return draft;
 }
 
 const BELT_ALIAS_CANONICAL: Record<string, string> = {
@@ -359,6 +380,11 @@ export function clipDivision(value: string): string {
 
 export function clipLastPromotionDetail(value: string): string {
   return value.normalize('NFC').trim().slice(0, LAST_PROMOTION_DETAIL_MAX);
+}
+
+export function clipStripes(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 4) return undefined;
+  return value;
 }
 
 export function clipNote(value: string): string {
@@ -526,7 +552,14 @@ export function normalizeStudent(raw: unknown): Student | null {
     checkedIn: row.checkedIn,
   });
   if (!student) return null;
-  return row.rosterList === 'student' ? { ...student, rosterList: 'student' } : student;
+  const card: Student = row.rosterList === 'student' ? { ...student, rosterList: 'student' } : student;
+  const linked = typeof row.linkedStudentId === 'string' ? row.linkedStudentId.trim() : '';
+  if (isStableStudentId(linked)) card.linkedStudentId = linked;
+  const guestId = typeof row.guestId === 'string' ? row.guestId.trim() : '';
+  if (isStableStudentId(guestId) || /^guest-[A-Za-z0-9._-]{1,74}$/.test(guestId)) card.guestId = guestId;
+  const stripes = clipStripes(row.stripes);
+  if (stripes !== undefined) card.stripes = stripes;
+  return card;
 }
 
 function readyIsBlank(ready: CompetitorReady): boolean {
@@ -820,9 +853,62 @@ export function updateStudent(id: string, draft: Partial<StudentDraft>): Student
     checkedIn: current.checkedIn,
   });
   if (!next) return null;
-  const card = current.rosterList === 'student' ? { ...next, rosterList: 'student' as const } : next;
+  const card = preserveRosterCard(current, next, draft);
   commit(sortStudents(state.students.map((row) => (row.id === id ? card : row))));
   return card;
+}
+
+function preserveRosterCard(current: Student, next: Student, draft: Partial<StudentDraft>): Student {
+  const card: Student = current.rosterList === 'student' ? { ...next, rosterList: 'student' } : { ...next };
+  if (current.linkedStudentId) card.linkedStudentId = current.linkedStudentId;
+  if (current.guestId) card.guestId = current.guestId;
+  const stripes = draft.stripes !== undefined ? clipStripes(draft.stripes) : current.stripes;
+  if (stripes !== undefined) card.stripes = stripes;
+  return card;
+}
+
+/** One-time: this competitor card is the same person as a Student Roster card. */
+export function linkCompetitorToRosterStudent(
+  competitorId: string,
+  rosterStudentId: string,
+): { ok: true; card: Student } | { ok: false; error: string } {
+  const competitor = state.students.find((row) => row.id === competitorId);
+  const rosterStudent = state.students.find((row) => row.id === rosterStudentId);
+  if (!competitor || competitor.rosterList === 'student') {
+    return { ok: false, error: 'Choose a competitor card.' };
+  }
+  if (competitor.guestId) return { ok: false, error: 'A guest competitor is not an Advantage student.' };
+  if (competitor.linkedStudentId) return { ok: false, error: 'This competitor is already linked.' };
+  if (!rosterStudent || rosterStudent.rosterList !== 'student') {
+    return { ok: false, error: 'Choose a student on the Student Roster.' };
+  }
+  if (!rosterStudent.linkedStudentId) {
+    return { ok: false, error: `Link ${rosterStudent.name} to a student ID on the Student Roster first.` };
+  }
+  const next = { ...competitor, linkedStudentId: rosterStudent.linkedStudentId };
+  commit(state.students.map((row) => (row.id === competitorId ? next : row)));
+  return { ok: true, card: next };
+}
+
+export function tagGuestCard(id: string, guestId: string): Student | null {
+  const current = state.students.find((row) => row.id === id);
+  if (!current || current.rosterList === 'student') return null;
+  const next = { ...current, guestId };
+  delete next.linkedStudentId;
+  commit(state.students.map((row) => (row.id === id ? next : row)));
+  return next;
+}
+
+/** Store the Student Edition id on this card. An unknown id is ignored. */
+export function linkRosterCard(id: string, studentId: string): Student | null {
+  const linked = studentId.trim();
+  if (!isStableStudentId(linked)) return null;
+  const current = state.students.find((row) => row.id === id);
+  if (!current || current.guestId) return null;
+  if (current.linkedStudentId === linked) return current;
+  const next = { ...current, linkedStudentId: linked };
+  commit(state.students.map((row) => (row.id === id ? next : row)));
+  return next;
 }
 
 export function setCheckedIn(id: string, checkedIn: boolean): Student | null {

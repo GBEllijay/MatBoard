@@ -9,6 +9,7 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { CheckInFillSheet } from '../components/CheckInFillSheet';
 import { OutcomePickSheet } from '../components/OutcomeCalls';
+import { SendCompetitionSheet } from '../components/SendCompetitionSheet';
 import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
 import { useLockViewportZoom, usePinchZoom } from '../hooks/usePinchZoom';
@@ -941,6 +942,12 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
   const result = tournament.results[matchId];
   const winOn = result?.call === 'win' && result.winnerSide === side;
   const dqOn = result?.call === 'dq' && result.winnerSide !== side;
+  const [sendOpen, setSendOpen] = useState(false);
+  const linked = competitorCards(roster.students).find(
+    (row) => !row.guestId && row.linkedStudentId && row.name.trim().toLowerCase() === name.trim().toLowerCase(),
+  );
+  const otherName = slotName(tournament, slotId(matchId, side === 'a' ? 'b' : 'a'));
+  const sent = result && linked?.linkedStudentId ? studentBout(side, result) : null;
   const [sheet, setSheet] = useState<OutcomeCall | null>(null);
   const label = name.trim() || placeholder;
   const hideMarks = bye || matchHasBye(tournament, matchId);
@@ -1016,6 +1023,41 @@ function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }
           setSheet(null);
         }}
       />
+      {sent && linked?.linkedStudentId ? (
+        <button type="button" className="btn btn--ghost" onClick={() => setSendOpen(true)}>
+          Send to student
+        </button>
+      ) : null}
+      {sent && linked?.linkedStudentId ? (
+        <SendCompetitionSheet
+          open={sendOpen}
+          studentId={linked.linkedStudentId}
+          initial={{
+            tournamentName: tournament.headline || tournament.title || 'In-house',
+            date: new Date().toISOString().slice(0, 10),
+            location: '',
+            division: tournament.title,
+            weightClass: '',
+            opponent: otherName,
+            result: sent.result,
+            method: sent.method,
+            note: '',
+          }}
+          onClose={() => setSendOpen(false)}
+        />
+      ) : null}
     </div>
   );
+}
+
+function studentBout(
+  side: MatchSide,
+  bout: NonNullable<ReturnType<typeof useTournamentState>['results'][BracketMatchId]>,
+): { result: 'win' | 'loss'; method: '' | 'points' | 'sub' | 'advantage' | 'dq' } {
+  const result = bout.winnerSide === side ? 'win' : 'loss';
+  if (bout.call === 'dq') return { result, method: 'dq' };
+  if (bout.method === 'submission') return { result, method: 'sub' };
+  if (bout.method === 'points') return { result, method: 'points' };
+  if (bout.scoreReason === 'advantages') return { result, method: 'advantage' };
+  return { result, method: '' };
 }
