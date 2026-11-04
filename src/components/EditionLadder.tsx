@@ -120,7 +120,7 @@ function LadderRung({
       : rung.role === 'open'
         ? 'Open'
         : rung.role === 'soon'
-          ? `Coming soon · ${LADDER_LIST_LABEL['pro-cloud']}`
+          ? `This product is in alpha · ${LADDER_LIST_LABEL['pro-cloud']}`
           : ladderBuyPrice(LADDER_LIST_LABEL[rung.id as Exclude<LadderId, 'white'>], quote, asked).price;
   const className = `edition-ladder__rung edition-ladder__rung--${rung.role} edition-ladder__rung--${rung.id}`;
   const body = (
@@ -138,7 +138,7 @@ function LadderRung({
     );
   }
   const label =
-    rung.role === 'open' ? `Open ${name}` : rung.role === 'soon' ? `${name}, coming soon` : `${name}, ${meta}`;
+    rung.role === 'open' ? `Open ${name}` : rung.role === 'soon' ? `${name}, in alpha` : `${name}, ${meta}`;
   return (
     <li data-rung={rung.id} data-role={rung.role}>
       <Link className={className} to={rung.href} aria-label={label}>

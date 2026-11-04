@@ -51,7 +51,7 @@ test('home picker keeps White, Instructor (coach), and Pro, with locked Student 
   await shot(page, 'home-picker-390');
   await student.screenshot({ path: '/opt/cursor/artifacts/student-button-closeup.png' });
 
-  await page.getByRole('button', { name: 'Advantage Student Edition, coming soon' }).click();
+  await page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' }).click();
   const dialog = page.getByRole('dialog', { name: 'Advantage – Student Edition' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText('Price: $19.99 one-time when it launches. Not for sale on this page.')).toBeVisible();
@@ -63,13 +63,13 @@ test('home picker keeps White, Instructor (coach), and Pro, with locked Student 
   await page.getByRole('button', { name: 'Got it' }).click();
   await expect(dialog).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Advantage Instructor Edition, coming soon' }).click();
+  await page.getByRole('button', { name: 'Advantage Instructor Edition, This product is in alpha' }).click();
   await expect(page.getByRole('dialog', { name: 'Advantage Instructor Edition' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Owner unlock' })).toBeVisible();
   await expect(page.getByText('Price: $49.99 one-time when it launches. Not for sale on this page.')).toBeVisible();
   await page.getByRole('button', { name: 'Got it' }).click();
 
-  await page.getByRole('button', { name: 'Advantage Pro, coming soon' }).click();
+  await page.getByRole('button', { name: 'Advantage Pro, This product is in alpha' }).click();
   await expect(page.getByRole('dialog', { name: 'Advantage Pro' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Owner unlock' })).toBeVisible();
   await page.getByRole('button', { name: 'Got it' }).click();
@@ -227,7 +227,7 @@ test('a direct /student visit stays closed, and sign out still leaves the seat',
   await expect(page.getByRole('link', { name: BACK, exact: true })).toHaveCount(0);
   await page.getByRole('link', { name: 'Home', exact: true }).click();
   await expect(page).toHaveURL(/\/products$/);
-  await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' })).toBeVisible();
 
   await page.addInitScript(() => {
     const seat = {
@@ -262,7 +262,7 @@ test('a direct /student visit stays closed, and sign out still leaves the seat',
   await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
   await expect(page.getByText('Signed in as')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
@@ -271,13 +271,13 @@ test('a direct /student visit stays closed, and sign out still leaves the seat',
 
 test('Student Edition owner unlock opens the hub from the locked card', async ({ page }) => {
   await page.goto('/products');
-  await page.getByRole('button', { name: 'Advantage Student Edition, coming soon' }).click();
+  await page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' }).click();
   await page.getByRole('button', { name: 'Owner unlock' }).click();
   await expect(page.getByRole('dialog', { name: 'Owner unlock' })).toBeVisible();
   await page.getByPlaceholder('Owner code').fill('not-a-code');
   await page.getByRole('button', { name: 'Unlock Student Edition' }).click();
   await expect(page.getByText('That code did not match.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' })).toBeVisible();
 
   await page.evaluate(() => {
     localStorage.setItem('advantage.proUnlocked', '1');
@@ -299,7 +299,7 @@ test('Student Edition owner unlock opens the hub from the locked card', async ({
   await page.goto('/pro');
   await page.getByRole('button', { name: 'Lock Pro' }).click();
   await page.goto('/products');
-  await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await page.goto('/student');
   await expect(page.getByRole('link', { name: 'Training & Journal', exact: true })).toHaveCount(0);
@@ -324,7 +324,7 @@ test('URL params do not unlock a tier', async ({ browser }) => {
 
 test('the Pro owner code opens the Student Edition card', async ({ page }) => {
   await page.goto('/products');
-  await page.getByRole('button', { name: 'Advantage Pro, coming soon' }).click();
+  await page.getByRole('button', { name: 'Advantage Pro, This product is in alpha' }).click();
   await page.getByRole('button', { name: 'Owner unlock' }).click();
   await page.evaluate(() => {
     localStorage.setItem('advantage.proUnlocked', '1');
@@ -343,7 +343,7 @@ test('the Pro owner code opens the Student Edition card', async ({ page }) => {
 
 test('the full owner unlock code opens the Student Edition hub', async ({ page }) => {
   await page.goto('/products');
-  await page.getByRole('button', { name: 'Advantage Instructor Edition, coming soon' }).click();
+  await page.getByRole('button', { name: 'Advantage Instructor Edition, This product is in alpha' }).click();
   await page.getByRole('button', { name: 'Owner unlock' }).click();
   await page.evaluate(() => {
     localStorage.setItem('advantage.proUnlocked', '1');
@@ -366,7 +366,7 @@ test('the full owner unlock code opens the Student Edition hub', async ({ page }
   await page.goto('/pro');
   await page.getByRole('button', { name: 'Lock Pro' }).click();
   await page.goto('/products');
-  await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
   await page.goto('/student');

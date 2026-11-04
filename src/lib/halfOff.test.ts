@@ -110,7 +110,7 @@ test('buy pages keep the half-off note and the existing unlock path', () => {
   const entry = readFileSync(resolve(root, 'src/components/AlphaCodeEntry.tsx'), 'utf8');
   assert.match(entry, /redeemAccessCode\(typed, \(input\.email \?\? ''\)\.trim\(\)\)/);
   assert.match(tier, /HalfOffCheckoutNote/);
-  assert.match(tier, /buyCheckoutBody\(\{ product: tier\.product, halfOffActive: halfOff \}\)/);
+  assert.match(tier, /buyCheckoutBody\(\{ product: tier\.product, halfOffActive: halfOff, cloud: cloudTier && includeCloud \}\)/);
   const note = readFileSync(resolve(root, 'src/components/HalfOffCheckoutNote.tsx'), 'utf8');
   assert.match(note, /HALF_OFF_NOTE/);
 });

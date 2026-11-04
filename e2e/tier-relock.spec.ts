@@ -105,7 +105,7 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await page.getByRole('button', { name: 'Lock Student Edition' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page).toHaveURL(/\/products$/);
-  await expect(page.getByRole('button', { name: 'Advantage Student Edition, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
   await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/student-locked-products.png`, fullPage: true });
@@ -157,7 +157,7 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page.getByRole('button', { name: 'Lock Pro' })).toHaveClass(/home__text-btn/);
   await page.getByRole('button', { name: 'Lock Pro' }).click();
   await page.goto('/products');
-  await expect(page.getByRole('button', { name: 'Advantage Pro, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Pro, This product is in alpha' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
 
@@ -165,7 +165,7 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page.getByRole('button', { name: 'Lock Coach' })).toHaveClass(/home__text-btn/);
   await page.getByRole('button', { name: 'Lock Coach' }).click();
   await page.goto('/products');
-  await expect(page.getByRole('button', { name: 'Advantage Instructor Edition, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Instructor Edition, This product is in alpha' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
 
   const after = await page.evaluate(() => localStorage.getItem('matboard.studentEdition.v1'));
