@@ -381,7 +381,7 @@
   .skin-root.skin-root--poster.skin-root--arcade .row {
     min-height: 0;
     overflow: hidden;
-    grid-template-rows: auto minmax(25%, 0.35fr) auto;
+    grid-template-rows: auto minmax(0, 18%) auto;
     background: #0a0a16;
     border-width: 0.4vh;
   }
@@ -420,7 +420,7 @@
 
 @media (orientation: portrait) {
   .skin-root.skin-root--poster[data-skin='dungeon-quest'] .sb {
-    padding-top: 0.3vh;
+    padding-top: calc(0.4rem + 2.6rem);
     grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr);
   }
 
