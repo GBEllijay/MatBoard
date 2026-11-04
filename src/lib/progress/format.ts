@@ -1659,6 +1659,9 @@ function readJournalEntry(value: unknown, index: number, errors: string[]): Jour
       area: readOptionalText(injury.area, `${label} injury area`, PROGRESS_NAME_MAX, errors),
       note: readOptionalText(injury.note, `${label} injury note`, PROGRESS_NAME_MAX * 4, errors),
     };
+    if (typeof injury.zone === 'string' && /^[a-z][a-zA-Z]{1,30}$/.test(injury.zone)) entry.injury.zone = injury.zone;
+    if (injury.status === 'hurt' || injury.status === 'healing' || injury.status === 'healed') entry.injury.status = injury.status;
+    if (typeof injury.markedOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(injury.markedOn)) entry.injury.markedOn = injury.markedOn;
   }
   const hiatus = asRecord(record.hiatus);
   if (hiatus) {

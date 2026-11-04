@@ -54,3 +54,20 @@
 .match-log__res--loss { color: #ff9a90; }
 .match-log__close { min-height: 48px; }
 .card-details__split { margin: 0; font-size: 14px; }
+
+/* Character sheet home */
+.student-home__top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin: 8px 0 12px; }
+.streak-badge { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 14px; background: rgba(255, 154, 46, 0.12); border: 1px solid rgba(255, 154, 46, 0.5); min-width: 0; flex: 1 1 220px; }
+.streak-badge__text { display: grid; gap: 2px; min-width: 0; }
+.streak-badge__text strong { font-size: 16px; }
+.streak-badge__text small { font-size: 12px; opacity: 0.9; }
+.streak-badge__bar { height: 6px; border-radius: 3px; background: rgba(127, 127, 127, 0.3); overflow: hidden; }
+.streak-badge__bar i { display: block; height: 100%; background: #ff9a2e; }
+.student-home__hours { margin: 0; font-size: 14px; font-weight: 700; }
+.student-home__menu { margin: 16px 0; display: grid; gap: 8px; }
+.student-home__menu h2 { margin: 0; font-size: 18px; }
+.student-home__menu ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.student-home__link { display: grid; gap: 2px; min-height: 48px; padding: 8px 12px; border-radius: 10px; text-decoration: none; color: inherit; border: 1px solid rgba(127, 127, 127, 0.4); }
+.student-home__link strong { font-size: 15px; }
+.student-home__link small { font-size: 12px; opacity: 0.85; }
+.student-home__lock { min-height: 44px; justify-self: start; }

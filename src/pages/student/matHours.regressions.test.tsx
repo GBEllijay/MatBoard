@@ -235,7 +235,7 @@ test('total stat wears the belt cloth on white, blue, purple, black and toggles 
 
 test('hub has no mat hours tile; profile shows stat, streak and report link; report shows streak, status and source labels', () => {
   seed('purple', { minutes: 60, injury: { area: 'Shoulder', note: '' } });
-  const hub = mount(<StudentEditionPage />, '/student?student=1');
+  const hub = mount(<StudentEditionPage />, '/student/hub?student=1');
   assert.equal(hub.host.querySelector('[data-testid="mat-hours"]'), null);
   assert.equal(hub.host.querySelector('[aria-label="My report card"]'), null);
   assert.ok(labeled(hub.host, 'My profile'));

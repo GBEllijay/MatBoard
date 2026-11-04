@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { bodyScanHref, isBodyZone, STATUS_LABEL, zoneFromText, zoneLabel } from '../lib/bodyScan';
+import './student/bodyScan.css';
+import { StudentHome } from './student/StudentHome';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { LeatherSpine } from '../components/LeatherSpine';
@@ -34,7 +37,7 @@ import { WeightPage } from './student/WeightPage';
 import { CoachUpdateInbox } from '../components/CoachUpdateInbox';
 import { GymLogoPrompt } from '../components/GymLogoPrompt';
 import { ParentApprovals } from '../components/ParentApprovals';
-import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
+import { LeatherHeader, StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './student/chrome';
 import { studentScreen } from '../lib/studentHubMenu';
 import { BackupMenu, ClearStudentMenu } from './student/BackupMenu';
 import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from './student/StudentMenus';
@@ -211,9 +214,10 @@ function studentScreenNode(rest: string) {
     case 'backup-clear':
       return <ClearStudentMenu />;
     case 'hub':
-      return <StudentHub />;
+      // '/student' is the character sheet; the classic grouped hub stays at /student/hub.
+      return rest === 'hub' ? <StudentHub /> : <StudentHome />;
     default:
-      return <StudentHub />;
+      return <StudentHome />;
   }
 }
 
@@ -664,6 +668,39 @@ function JournalCardPage({ id }: { id: string }) {
   );
 }
 
+/** Injury mark on a card: date, zone/area, note, status, and a link to the private body scan. */
+function InjuryLine({ injury, date }: { injury: NonNullable<JournalCardView['injury']>; date: string }) {
+  const { pathname, hash } = useLocation();
+  const to = useStudentPath();
+  const onCardPage = pathname.includes('/student/cards/');
+  const highlight = onCardPage && hash === '#injury';
+  useScrollToHash(highlight ? 'injury' : '');
+  const zone = injury.zone && isBodyZone(injury.zone) ? injury.zone : zoneFromText(injury.area);
+  return (
+    <div
+      className={highlight ? 'journal-card__injury journal-card__injury--flash' : 'journal-card__injury'}
+      id={onCardPage ? 'injury' : undefined}
+      data-testid="card-injury"
+      data-highlight={highlight ? 'true' : undefined}
+    >
+      <p className="journal-card__mat">
+        Injury · {injury.area || (zone ? zoneLabel(zone) : 'unspecified')}
+        {injury.note ? ` — ${injury.note}` : ''}
+      </p>
+      <p className="journal-card__mat journal-card__injury-meta">
+        {formatJournalDate(date)}
+        {zone ? ` · ${zoneLabel(zone)}` : ''}
+        {injury.status ? ` · ${STATUS_LABEL[injury.status]}${injury.markedOn ? ` (${formatJournalDate(injury.markedOn)})` : ''}` : ''}
+      </p>
+      {onCardPage ? (
+        <Link className="ink-btn journal-card__scan-link" to={to(bodyScanHref(zone))} data-testid="see-on-body-scan">
+          See on body scan
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
 function CardBody({ card, query = '' }: { card: JournalCardView; query?: string }) {
   return (
     <div className="ink">
@@ -674,7 +711,7 @@ function CardBody({ card, query = '' }: { card: JournalCardView; query?: string 
       <p className="journal-card__mat" data-testid="card-mat-time">
         {matTimeLine(card.session, card.minutes, card.sessionOther)}
       </p>
-      {card.injury ? <p className="journal-card__mat" data-testid="card-injury">Injury · {card.injury.area || 'unspecified'}{card.injury.note ? ` — ${card.injury.note}` : ''}</p> : null}
+      {card.injury ? <InjuryLine injury={card.injury} date={card.date} /> : null}
       {card.hiatus ? (
         <p className="journal-card__mat" data-testid="card-hiatus">
           {card.hiatus.reason === 'medical' ? 'Medical break' : 'Break'} · {card.hiatus.start}

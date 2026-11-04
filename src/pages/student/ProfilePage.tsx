@@ -8,6 +8,7 @@ import { ProfileCornerMarks, ProfileMedia, ProfileSwitches, useProfileMedia } fr
 import { StudentProfileFields, TrainingSettings } from './ProfileFields';
 import { StudentCompetitorSwitch } from './StudentCompetitorSwitch';
 import { StudentCardLayout } from './StudentCardLayout';
+import { BodyScanSetting } from './BodyScan';
 import './profile.css';
 
 /** Name, gym, start date, birth year, Kid or Adult, optional photo, and gym logo. Saved on this phone. */
@@ -54,6 +55,7 @@ export function ProfilePage() {
           <StudentCompetitorSwitch report={report} />
           <TrainingSettings report={report} commit={commit} />
           <ProfileSwitches report={report} />
+          <BodyScanSetting />
           <StudentNoPhotosSwitch studentId={report.studentId} />
           {/* Save profile renders here: last on the page, reachable at 390px. */}
           <div ref={setSaveSlot} className="profile-save-slot" data-testid="profile-save-slot" />

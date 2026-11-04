@@ -1,0 +1,56 @@
+/* Body scan hologram (v2 look). All styling for the scan lives here so it is easy to restyle. */
+.bs { position: relative; padding: 14px; border-radius: 14px; display: grid; gap: 10px; color: #c9f8ff;
+  background: radial-gradient(120% 80% at 50% 10%, #0d2a4a 0%, #06101f 70%); border: 1px solid #3d8bff;
+  box-shadow: 0 0 18px rgba(61, 139, 255, 0.35), inset 0 0 24px rgba(95, 216, 255, 0.12); min-width: 0; }
+.bs--off { padding: 6px 14px; background: transparent; box-shadow: none; color: inherit; border-color: rgba(127, 127, 127, 0.4); }
+.bs__hd { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.bs-switch { display: inline-flex; gap: 10px; align-items: center; min-height: 44px; font-size: 15px; font-weight: 700; cursor: pointer; }
+.bs-switch input { width: 22px; height: 22px; accent-color: #3d8bff; }
+.bs-seg { display: inline-flex; border: 1px solid #3d8bff; border-radius: 10px; overflow: hidden; }
+.bs-seg button { min-height: 44px; padding: 0 10px; font: inherit; font-size: 13px; background: transparent; color: #c9f8ff; border: 0; cursor: pointer; }
+.bs-seg button[aria-pressed='true'] { background: #3d8bff; color: #06101f; font-weight: 800; }
+.bs-small { margin: 0; font-size: 13px; opacity: 0.9; }
+.bs-status { margin: 0; font-size: 14px; color: #ffb020; font-weight: 700; }
+.bs-stage { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bs-figure { width: 100%; max-height: 300px; overflow: visible; }
+.bs-floor { fill: none; stroke: #5fd8ff; stroke-opacity: 0.5; stroke-dasharray: 2 4; }
+.bs-body { fill: rgba(95, 216, 255, 0.10); stroke: #5fd8ff; stroke-width: 1.2; filter: drop-shadow(0 0 3px #3d8bff); }
+.bs-scanline { stroke: #bff6ff; stroke-opacity: 0.5; animation: bs-scan 4s linear infinite; }
+@keyframes bs-scan { from { transform: translateY(10px); } to { transform: translateY(250px); } }
+@media (prefers-reduced-motion: reduce) { .bs-scanline { animation: none; display: none; } }
+.bs-zone circle:first-child { stroke: #5fd8ff; stroke-opacity: 0.35; }
+.bs-zone--flagged circle:first-child { stroke: none; filter: drop-shadow(0 0 5px currentColor); opacity: 0.9; }
+.bs-zone--selected circle:first-child { stroke: #fff; stroke-width: 2; stroke-opacity: 1; }
+.bs-hit { fill: transparent; cursor: pointer; }
+.bs-hit:focus-visible { outline: none; stroke: #fff; stroke-width: 1.5; }
+.bs-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.bs-legend__btn { width: 100%; min-height: 44px; text-align: left; display: grid; gap: 4px; padding: 8px 10px; border-radius: 10px; font: inherit; color: inherit; cursor: pointer;
+  background: rgba(61, 139, 255, 0.12); border: 1px solid rgba(95, 216, 255, 0.4); }
+.bs-legend__line { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.bs-bar { position: relative; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #ff4d3a, #ffb020, #3de08a); }
+.bs-bar i { position: absolute; top: -3px; width: 4px; height: 12px; margin-left: -2px; border-radius: 2px; background: #fff; box-shadow: 0 0 4px #fff; }
+.bs-peek { padding: 12px; border-radius: 12px; background: #0a1a30; border-top: 3px solid #3d8bff; display: grid; gap: 8px; }
+.bs-peek__hd { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.bs-peek__hd h3 { margin: 0; font-size: 17px; }
+.bs-peek__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.bs-peek__row { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid rgba(95, 216, 255, 0.25); }
+.bs-peek__when { margin: 0; font-size: 14px; }
+.bs-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.bs-chip { min-height: 44px; padding: 0 12px; border-radius: 22px; font: inherit; font-size: 13px; cursor: pointer; background: transparent; color: #c9f8ff; border: 1.5px solid #5fd8ff; }
+.bs-chip--hurt[aria-pressed='true'] { background: #ff4d3a; border-color: #ff4d3a; color: #fff; }
+.bs-chip--healing[aria-pressed='true'] { background: #ffb020; border-color: #ffb020; color: #1a1000; }
+.bs-chip--healed[aria-pressed='true'] { background: #3de08a; border-color: #3de08a; color: #04210f; }
+.bs-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+/* Journal side */
+.journal-card__injury { border-radius: 8px; padding: 2px 6px; }
+.journal-card__injury--flash { animation: bs-flash 2.4s ease-out 1; outline: 2px solid #3d8bff; }
+@keyframes bs-flash { 0% { background: rgba(61, 139, 255, 0.45); } 100% { background: transparent; } }
+.journal-card__scan-link { margin-top: 4px; }
+.bs-help { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #5fd8ff; background: transparent; color: #c9f8ff; font: inherit; font-size: 18px; font-weight: 800; cursor: pointer; }
+.bs-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(2, 8, 18, 0.6); display: flex; align-items: flex-end; justify-content: center; }
+.bs-sheet { width: min(560px, 100%); max-height: 80vh; overflow-y: auto; padding: 16px; border-radius: 18px 18px 0 0; background: #0a1a30; color: #c9f8ff; border-top: 3px solid #3d8bff; display: grid; gap: 10px; }
+@media (min-width: 700px) { .bs-overlay { align-items: center; } .bs-sheet { border-radius: 18px; } }
+.bs-close { min-width: 44px; }
+.bs-meanings { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 14px; }
+.bs-meanings li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+.bs-swatch { width: 22px; height: 22px; border-radius: 50%; box-shadow: 0 0 8px currentColor; margin-top: 2px; }
