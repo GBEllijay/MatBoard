@@ -220,7 +220,7 @@ export type StoredCompetitionUpdate = {
     location: string;
     division: string;
     weightClass: string;
-    matches: { opponent: string; result: string; method: string; note: string }[];
+    matches: { opponent: string; result: string; method: string; note: string; round?: string }[];
   };
   gym?: { name: string; logo?: string };
 };
@@ -250,7 +250,8 @@ export function readStoredCompetitionUpdate(value: unknown): StoredCompetitionUp
       return null;
     }
     const note = typeof match.note === 'string' ? match.note.trim().slice(0, 500) : '';
-    matches.push({ opponent, result: match.result, method: match.method, note });
+    const round = typeof match.round === 'string' ? match.round.trim().slice(0, 80) : '';
+    matches.push({ opponent, result: match.result, method: match.method, note, ...(round ? { round } : {}) });
   }
   const stored: StoredCompetitionUpdate = {
     schemaVersion: row.schemaVersion,

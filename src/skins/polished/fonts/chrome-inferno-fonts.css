@@ -1,0 +1,18 @@
+/* Self-hosted SIL Open Font License faces for Heavy Metal (Chrome Inferno).
+   Metal Mania: headings only. Anton: every numeral, including the digit inside a heading.
+   License text: ./metal-mania/OFL.txt and ./anton/OFL.txt. Latin woff2 only. */
+@font-face {
+  font-family: 'Metal Mania';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('./metal-mania/metal-mania-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('./anton/anton-latin-400-normal.woff2') format('woff2');
+}

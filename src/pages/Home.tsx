@@ -258,6 +258,7 @@ function StudentHomeCard({
 /**
  * Advantage Media Edition on /products. Open reads the Media door (useMediaUnlocked).
  * Locked shows the price, the alpha line, and Learn more, which opens the Media preview.
+ * Unlocked shows only the Open button (no Learn more).
  * There is no Media product in Stripe, so there is no buy button.
  */
 function MediaHomeCard({ open }: { open: boolean }) {

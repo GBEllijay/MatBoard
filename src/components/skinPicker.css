@@ -69,6 +69,21 @@
   gap: var(--skin-gap);
 }
 
+.skin-pick__radios {
+  display: contents;
+}
+
+.skin-pick__cell {
+  position: relative;
+  width: var(--skin-tile-w);
+  height: calc(var(--skin-tile-img) + var(--skin-tile-name) + 0.66rem);
+}
+
+.skin-pick__cell > .skin-pick__thumb {
+  width: 100%;
+  height: 100%;
+}
+
 .skin-pick__thumb {
   position: relative;
   display: grid;
@@ -123,6 +138,84 @@
   -webkit-box-orient: vertical;
 }
 
+.skin-pick__upload {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--skin-tile-w);
+  height: calc(var(--skin-tile-img) + var(--skin-tile-name) + 0.66rem);
+  box-sizing: border-box;
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 2px dashed rgba(247, 244, 238, 0.45);
+  color: #f7f4ee;
+  -webkit-text-fill-color: #f7f4ee;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.skin-pick__upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.skin-pick__upload.is-full {
+  cursor: default;
+}
+
+.skin-pick__cell .skin-pick__name {
+  visibility: hidden;
+}
+
+.skin-pick__cell:not(:has(.skin-pick__rename)) .skin-pick__name {
+  visibility: visible;
+}
+
+.skin-pick__rename {
+  position: absolute;
+  left: 0.28rem;
+  right: 0.28rem;
+  bottom: 0.2rem;
+  z-index: 1;
+  width: auto;
+  height: var(--skin-tile-name);
+  margin: 0;
+  padding: 0 0.15rem;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(8, 12, 20, 0.72);
+  color: #f7f4ee;
+  -webkit-text-fill-color: #f7f4ee;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.skin-pick__delete {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  z-index: 1;
+  min-height: 0;
+  padding: 0.08rem 0.32rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
 /* The next row peeks through this fade while more skins sit below. */
 .skin-pick__fade {
   position: absolute;
@@ -134,3 +227,72 @@
   border-radius: 0 0 16px 16px;
   background: linear-gradient(to bottom, rgba(14, 22, 36, 0), #0e1624 78%);
 }
+
+/* Fanned thumbnails. The current skin is the front card. */
+.skin-stack {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  width: 4.85rem;
+  height: auto;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  -webkit-text-fill-color: inherit;
+}
+
+.skin-stack:focus-visible {
+  outline: 3px solid #fcc000;
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+.skin-stack__fan {
+  position: relative;
+  width: 4.75rem;
+  height: 3.45rem;
+}
+
+.skin-stack__label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.skin-stack__card {
+  position: absolute;
+  width: 2.55rem;
+  height: 1.9rem;
+  object-fit: cover;
+  border-radius: 7px;
+  border: 2px solid #f4f7fb;
+  background: #1a2436;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.38);
+}
+
+.skin-stack__card--back {
+  left: 0;
+  top: 0.05rem;
+  z-index: 1;
+  transform: rotate(-12deg);
+}
+
+.skin-stack__card--mid {
+  right: 0;
+  top: 0.2rem;
+  z-index: 2;
+  transform: rotate(10deg);
+}
+
+.skin-stack__card--front {
+  left: 0.9rem;
+  top: 1.05rem;
+  z-index: 3;
+  width: 2.85rem;
+  height: 2.15rem;
+  transform: rotate(-2deg);
+}
+

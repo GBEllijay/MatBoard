@@ -122,7 +122,7 @@ test('Media card on /products has no purple hue, locked or unlocked; only the pu
   assert.match(css, /\.belt-rail--purple \{\s*--belt-fill: #6b2d91;/);
 });
 
-test('Locked product cards have Learn more; unlocked cards show only their Open button', () => {
+test('Locked product cards have Learn more; unlocked cards show only their Open button. Open labels follow the Student pattern', () => {
   assert.match(home, /<LearnMoreLink tier="media" \/>/);
   assert.match(home, /to=\{TIER_BUY_PATHS\.media\}/);
   assert.match(home, /Try the demo/);
@@ -142,7 +142,11 @@ test('Locked product cards have Learn more; unlocked cards show only their Open 
   const unlockedMedia = home.slice(home.indexOf('mode-card mode-card--media mode-card--feature'), home.indexOf('mode-card mode-card--media mode-card--locked'));
   assert.doesNotMatch(unlockedMedia, /LearnMoreLink/);
   const unlockedWhite = home.slice(home.indexOf('whiteUnlocked ? ('), home.indexOf(') : (', home.indexOf('whiteUnlocked ? (')));
+  assert.match(unlockedWhite, /Open White/);
   assert.doesNotMatch(unlockedWhite, /LearnMoreLink/);
+  const student = home.slice(home.indexOf('function StudentHomeCard'));
+  const unlockedStudent = student.slice(student.indexOf('if (open)'), student.indexOf('mode-card--locked'));
+  assert.match(unlockedStudent, /\{demo \? <LearnMoreLink tier="student" \/> : null\}/);
   assert.match(home, /Owner test unlock/);
   assert.match(home, /ALPHA_PRODUCT_STATUS/);
   assert.doesNotMatch(home, /coming soon/i);

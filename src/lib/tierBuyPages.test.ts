@@ -139,7 +139,7 @@ test('Instructor and Pro public pages sell the one-time price with optional Clou
   assert.doesNotMatch(code(parts), /fetch\(WHITE_CHECKOUT_API/);
 });
 
-test('/products: locked Student, Instructor and Pro cards open their tier pages; Learn more is on every card', () => {
+test('/products: locked Student, Instructor and Pro cards open their tier pages; Learn more is on every locked card only', () => {
   assert.match(home, /aria-label=\{`Advantage Student Edition, \$\{ALPHA_PRODUCT_STATUS\}`\}/);
   assert.match(home, /to=\{TIER_BUY_PATHS\.instructor\}\s*aria-label=\{`\$\{INSTRUCTOR_HOME_TITLE\}, \$\{ALPHA_PRODUCT_STATUS\}`\}/);
   assert.match(home, /aria-label=\{`Advantage Pro, \$\{ALPHA_PRODUCT_STATUS\}`\}/);

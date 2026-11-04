@@ -6,6 +6,7 @@ import { PlayExitMark } from '../components/PlayExitMark';
 import { PolishedTimer } from '../components/PolishedTimer';
 import { Sheet } from '../components/Sheet';
 import { TrainingOptions } from '../components/TrainingOptions';
+import { useCustomSkinUrl } from '../hooks/useCustomSkinUrl';
 import { useInterval } from '../hooks/useClock';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
@@ -15,6 +16,7 @@ import { useGymLogo } from '../hooks/useGymBrand';
 import { useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import { useEffectiveTimerBackdrop, useTimerBackgroundUrl } from '../hooks/useTimerBackdrop';
 import { unlockAudio } from '../lib/audio';
+import { customSkinRecordId, isCustomSkinId } from '../lib/customSkin';
 import { formatMmSs } from '../lib/format';
 import { fullscreenElement } from '../lib/fullscreen';
 import { wantsRoundsFullscreen } from '../lib/roundsFullscreen';
@@ -28,7 +30,9 @@ export function TrainingPage() {
   /** A polished pick paints only with Media Edition or above. White paints one of its three base skins. */
   const skin = visibleTrainingSkin(useTrainingSkin(), usePolishedSkinsUnlocked(), useWhiteBaseSkins());
   const whiteSurface = whiteTimerSurfaceClass(skin);
-  const polished = isPolishedTrainingSkin(skin) ? skin : null;
+  const customRecordId = isCustomSkinId(skin) ? customSkinRecordId(skin) : null;
+  const customUrl = useCustomSkinUrl(customRecordId);
+  const polished = customRecordId || !isPolishedTrainingSkin(skin) ? null : skin;
   const [options, setOptions] = useState(false);
   const [, setTick] = useState(0);
   const remaining = remainingTraining(training);
@@ -45,7 +49,10 @@ export function TrainingPage() {
   const { prefs: backdrop } = useEffectiveTimerBackdrop();
   const backgroundUrl = useTimerBackgroundUrl(backdrop.backgroundStamp);
   const gymLogo = timerGymLogoSrc(backdrop, useGymLogo());
-  const backdropClass = timerBackdropClasses(Boolean(backgroundUrl), backdrop, Boolean(gymLogo));
+  const photoUrl = customUrl ?? (customRecordId ? null : backgroundUrl);
+  const backdropClass = customUrl
+    ? 'training--custom-bg training--skin-auto-scrim'
+    : timerBackdropClasses(Boolean(photoUrl), backdrop, Boolean(gymLogo));
 
   // Phone controller "Rounds" tap: make sure the timer is fullscreen on arrival.
   useEffect(() => {
@@ -106,14 +113,15 @@ export function TrainingPage() {
         setOptions(true);
       }}
     >
-      {backgroundUrl ? (
+      {photoUrl ? (
         <>
           <div
             className="training__backdrop"
+            data-custom-skin-bg={customUrl ? '' : undefined}
             aria-hidden="true"
-            style={{ backgroundImage: `url("${backgroundUrl}")` }}
+            style={{ backgroundImage: `url("${photoUrl}")` }}
           />
-          <div className="training__scrim" aria-hidden="true" />
+          <div className="training__scrim" data-custom-skin-scrim={customUrl ? '' : undefined} aria-hidden="true" />
         </>
       ) : null}
       <Chrome ghost title="" />
@@ -149,6 +157,7 @@ export function TrainingPage() {
           phaseLabel={`${training.phase === 'work' ? 'Work' : 'Break'} · ${roundLabel}. ${fs.active ? 'Tap to exit fullscreen' : 'Tap for fullscreen'}`}
           onPhase={onRoundLabel}
           onClock={onClock}
+          running={training.running}
         />
       ) : (
         <>

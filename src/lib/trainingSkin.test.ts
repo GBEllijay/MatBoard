@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import { customSkinValue } from './customSkin.ts';
 import {
   DEFAULT_TRAINING_SKIN,
   TRAINING_SKIN_KEY,
   getTrainingSkin,
   setTrainingSkin,
   trainingUsesAdvantageSkin,
+  visibleTrainingSkin,
 } from './trainingSkin.ts';
 
 function memoryStorage() {
@@ -78,4 +80,16 @@ test('Rounds controller uses the Classic board when that skin is picked', () => 
   assert.match(css, /\.controller\.controller--classic\s*\{[^}]*background:\s*#050505/);
   assert.match(css, /\.controller\.controller--classic\s*\{[^}]*background-image:\s*none/);
   assert.match(css, /\.controller\.controller--classic\.controller--break\s*\{[^}]*background:\s*#120e08/);
+});
+
+test('a custom timer skin stays stored and paints only for Media and above', () => {
+  const id = customSkinValue('skinabc12345');
+  assert.ok(id);
+  setTrainingSkin(id);
+  assert.equal(getTrainingSkin(), id);
+  assert.equal(localStorage.getItem(TRAINING_SKIN_KEY), id);
+  assert.equal(visibleTrainingSkin(id, true, false), id);
+  assert.equal(visibleTrainingSkin(id, false, false), 'classic');
+  assert.equal(visibleTrainingSkin(id, false, true), 'MOCK_TOURNAMENT');
+  setTrainingSkin('classic');
 });
