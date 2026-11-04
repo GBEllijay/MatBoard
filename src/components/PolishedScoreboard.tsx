@@ -4,6 +4,7 @@ import { usePolishedSkinModule } from '../hooks/usePolishedSkins';
 import { dispatchMatch, type ScoreKind, type Side } from '../lib/matchStore';
 import type { PolishedSkinSlug } from '../lib/polishedSkins';
 import { beltChipKey, canonicalBelt } from '../lib/rosterStore';
+import { metalBoardState, metalFaceParts, metalRoundLabel, sideChipLabel } from '../skins/polished/heavyMetal';
 import { fitNamesIn } from '../skins/polished/fitNames';
 import { isPosterSkin, posterFitLineFloor } from '../skins/polished/posterSkins';
 
@@ -38,9 +39,37 @@ function PolishedTile({ side, kind, value }: { side: Side; kind: ScoreKind; valu
       {...handlers}
     >
       <span className="lab">{l.lab}</span>
-      <span className="num">{value}</span>
+      <span className="num">
+        <span className={Math.abs(value) >= 10 ? 'digit digit--pair' : 'digit'}>{value}</span>
+      </span>
     </button>
   );
+}
+
+/** Metal Mania for the words, Anton for every numeral, so "Round 1" never reads as I. */
+function MetalFace({ children }: { children: ReactNode }) {
+  return <>{paintMetal(children)}</>;
+}
+
+function paintMetal(node: ReactNode): ReactNode {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return metalFaceParts(metalRoundLabel(String(node))).map((part, index) =>
+      part.kind === 'num' ? (
+        <span key={index} className="n">
+          {part.value}
+        </span>
+      ) : (
+        <span key={index} className="metal-face">
+          {part.value}
+        </span>
+      ),
+    );
+  }
+  if (Array.isArray(node)) return node.map((child, index) => <span key={index}>{paintMetal(child)}</span>);
+  if (isValidElement<{ children?: ReactNode }>(node)) {
+    return cloneElement(node, undefined, paintMetal(node.props.children));
+  }
+  return node;
 }
 
 function textOf(node: ReactNode): string {
@@ -74,14 +103,18 @@ function splitNums(node: ReactNode, on: boolean): ReactNode {
   return node;
 }
 
-function Belt({ rank, poster }: { rank: string; poster: boolean }) {
+function Belt({ rank, metal, poster }: { rank: string; metal: boolean; poster: boolean }) {
   const label = rank.trim();
   if (!label) return null;
   const canonical = canonicalBelt(label) || label;
   const key = beltChipKey(canonical).replace(/[^a-z]+/g, '-');
   const first = key.split('-')[0] || 'custom';
   const upper = canonical.toUpperCase();
-  const text = poster && !upper.includes('BELT') ? `${upper} BELT` : upper;
+  const text = metal
+    ? !/\bBELT\b/.test(upper) ? `${upper} BELT` : upper
+    : poster && !upper.includes('BELT')
+      ? `${upper} BELT`
+      : upper;
   return (
     <span className={`belt ${first} belt--${key}`}>
       <i />
@@ -90,20 +123,20 @@ function Belt({ rank, poster }: { rank: string; poster: boolean }) {
   );
 }
 
-function Row({ row, cls, extra, poster }: { row: PolishedRow; cls: string; extra: string; poster: boolean }) {
+function Row({ row, cls, extra, metal, poster }: { row: PolishedRow; cls: string; extra: string; metal: boolean; poster: boolean }) {
   const label = row.side === 'blue' ? 'Blue' : 'White';
   return (
     <section className={`row ${cls}`} aria-label={`${label} competitor`}>
       {extra ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: extra }} /> : null}
       <div className="id">
-        {poster ? (
+        {metal || poster ? (
           <div className="side">
-            <b>{label.toUpperCase()}</b>
+            <b>{metal ? sideChipLabel(row.side) : label.toUpperCase()}</b>
           </div>
         ) : null}
         <div className="name">{row.name}</div>
         <div className="meta">
-          <Belt rank={row.rank} poster={poster} />
+          <Belt rank={row.rank} metal={metal} poster={poster} />
           <span className="gym">{row.gym}</span>
         </div>
       </div>
@@ -138,6 +171,8 @@ export function PolishedScoreboard({
 }) {
   const mod = usePolishedSkinModule(slug);
   const extra = mod?.ROW_EXTRA ?? ['', ''];
+  const metal = slug === 'heavy-metal';
+  const stateLabel = metal && typeof state === 'string' ? metalBoardState(state) : state;
   const poster = isPosterSkin(slug);
   const spec = mod?.POSTER;
   const rootRef = useRef<HTMLDivElement>(null);
@@ -173,17 +208,18 @@ export function PolishedScoreboard({
       <div className="sb">
         {mod ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: mod.SCOREBOARD_DECO ?? '' }} /> : null}
         <header className="hdr">
-          {poster ? (
+          {metal || poster ? (
             <div className="lead">
               <img className="logo" src="/card-logo.png" alt="Advantage" />
               <span className="wm">
                 Advantage
-                {spec?.wordmarkExtra ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: spec.wordmarkExtra }} /> : null}
+                {poster && spec?.wordmarkExtra ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: spec.wordmarkExtra }} /> : null}
               </span>
             </div>
           ) : (
             <img className="logo" src="/card-logo.png" alt="Advantage" />
           )}
+          {metal ? <i className="crest" aria-hidden="true" /> : null}
           {poster ? (
             spec?.headerCrest ? (
               <span className="crest" dangerouslySetInnerHTML={{ __html: spec.headerCrest }} />
@@ -191,7 +227,14 @@ export function PolishedScoreboard({
               <i className="crest" aria-hidden="true" />
             )
           ) : null}
-          {poster ? (
+          {metal ? (
+            <div className="trail">
+              <span className="mat">
+                <MetalFace>{mat}</MetalFace>
+              </span>
+              <span className="div">{division}</span>
+            </div>
+          ) : poster ? (
             <div className="trail">
               <span className="mat">{round}</span>
               <span className="div">{divisionLine}</span>
@@ -203,11 +246,16 @@ export function PolishedScoreboard({
             </>
           )}
         </header>
-        <Row row={rows[0]} cls="c1" extra={extra[0]} poster={poster} />
-        <div className={`band${poster && state === 'FINAL' ? ' is-final' : ''}`}>
+        <Row row={rows[0]} cls="c1" extra={extra[0]} metal={metal} poster={poster} />
+        <div className={`band${(metal || poster) && stateLabel === 'FINAL' ? ' is-final' : ''}`}>
+          {metal ? (
+            <div className="bandfx" aria-hidden="true">
+              <div className="flameband" />
+            </div>
+          ) : null}
           {poster && spec?.bandDeco ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: spec.bandDeco }} /> : null}
-          <span className="state">{state}</span>
-          {poster ? (
+          <span className="state">{stateLabel}</span>
+          {metal || poster ? (
             <span className="plate">
               <span className="clock">{clock}</span>
             </span>
@@ -216,7 +264,7 @@ export function PolishedScoreboard({
           )}
           <span className="status">{status}</span>
         </div>
-        <Row row={rows[1]} cls="c2" extra={extra[1]} poster={poster} />
+        <Row row={rows[1]} cls="c2" extra={extra[1]} metal={metal} poster={poster} />
       </div>
     </div>
   );

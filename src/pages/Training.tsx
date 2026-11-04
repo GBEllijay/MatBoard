@@ -157,6 +157,7 @@ export function TrainingPage() {
           phaseLabel={`${training.phase === 'work' ? 'Work' : 'Break'} · ${roundLabel}. ${fs.active ? 'Tap to exit fullscreen' : 'Tap for fullscreen'}`}
           onPhase={onRoundLabel}
           onClock={onClock}
+          running={training.running}
         />
       ) : (
         <>

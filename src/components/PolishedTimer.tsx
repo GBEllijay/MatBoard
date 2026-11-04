@@ -3,8 +3,9 @@ import { usePolishedSkinModule, useViewportSize } from '../hooks/usePolishedSkin
 import { formatMmSs, formatMss } from '../lib/format';
 import type { PolishedTimerSlug } from '../lib/polishedSkins';
 import { brasilRing, keynoteRing } from '../skins/polished/ring';
+import { METAL_METER_SEGMENTS, metalMeterLit, metalPhaseParts, metalTimerTitle } from '../skins/polished/heavyMetal';
 import { isPosterSkin, posterSplitsNums, posterTimerTitle } from '../skins/polished/posterSkins';
-import { metalTimerTitle, psychedelicTimerTitle, reggaeTimerTitle, timerNextLine, timerProgress, visionaryTimerTitle } from '../skins/polished/timerText';
+import { psychedelicTimerTitle, reggaeTimerTitle, timerNextLine, timerProgress, visionaryTimerTitle } from '../skins/polished/timerText';
 
 /** Hide the endless tag on a narrow poster timer. The accessible name stays the full line. */
 function posterPhaseLine(phaseLine: string): ReactNode {
@@ -44,6 +45,7 @@ export function PolishedTimer({
   phaseLabel,
   onPhase,
   onClock,
+  running,
   children,
 }: {
   slug: PolishedTimerSlug;
@@ -58,6 +60,8 @@ export function PolishedTimer({
   phaseLabel: string;
   onPhase: (event: MouseEvent) => void;
   onClock: (event: MouseEvent) => void;
+  /** Heavy Metal only: a paused clock dims the meter and shows PAUSED. */
+  running?: boolean;
   children?: ReactNode;
 }) {
   const mod = usePolishedSkinModule(slug);
@@ -67,6 +71,9 @@ export function PolishedTimer({
   const next = timerNextLine(rest, workMs, breakMs, round);
   const deco = mod ? (rest && mod.TIMER_REST_DECO != null ? mod.TIMER_REST_DECO : mod.TIMER_DECO) : '';
   const ringP = Math.round(p * 1000) / 1000;
+
+  const metalPhase = slug === 'heavy-metal' ? metalPhaseParts(phaseLine) : null;
+  const metalPaused = slug === 'heavy-metal' && running === false;
 
   const clockBtn = (content: ReactNode, cls = 'digits', data?: string) => (
     <button
@@ -132,20 +139,30 @@ export function PolishedTimer({
         </>
       );
       break;
-    case 'heavy-metal':
+    case 'heavy-metal': {
+      const title = metalTimerTitle(rest, round);
+      const lit = metalMeterLit(p);
       inner = (
         <>
-          <div className="title">{metalTimerTitle(rest, round)}</div>
+          <i className="crest" aria-hidden="true" />
+          <div className="title">
+            <span className="metal-face">{title.word}</span>
+            {title.numeral != null ? <span className="n">{title.numeral}</span> : null}
+          </div>
           {clockBtn(digits, 'digits', digits)}
-          <div className="vu">
-            {Array.from({ length: 32 }, (_, i) => (
-              <i key={i} style={{ ['--i' as string]: i }} />
+          <div className="meter" aria-hidden="true">
+            {Array.from({ length: METAL_METER_SEGMENTS }, (_, i) => (
+              <i key={i} className={i < lit ? 'on' : undefined} style={{ ['--i' as string]: i }} />
             ))}
           </div>
           <div className="next">{next}</div>
+          <div className="paused-tag" aria-hidden="true">
+            PAUSED
+          </div>
         </>
       );
       break;
+    }
     case 'brasil':
       inner = (
         <div className="globe-wrap">
@@ -266,11 +283,20 @@ export function PolishedTimer({
 
   return (
     <div className={`skin-root skin-root--timer${isPosterSkin(slug) ? ' skin-root--poster' : ''}${mod ? '' : ' skin-root--loading'}`} data-skin={slug}>
-      <div className={`tm${rest ? ' rest' : ''}`} style={{ ['--p' as string]: p.toFixed(4) }}>
+      <div className={`tm${rest ? ' rest' : ''}${metalPaused ? ' is-paused' : ''}`} style={{ ['--p' as string]: p.toFixed(4) }}>
         {deco ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: deco }} /> : null}
         <img className="logo" src="/card-logo.png" alt="Advantage" />
         <button type="button" className="phase sk-btn tm-phase" aria-label={phaseLabel} onClick={onPhase}>
-          {isPosterSkin(slug) ? posterPhaseLine(phaseLine) : phaseLine}
+          {metalPhase ? (
+            <>
+              <span className="phase-pill">{metalPhase.pill}</span>
+              {metalPhase.sub ? <span className="endless">{metalPhase.sub}</span> : null}
+            </>
+          ) : isPosterSkin(slug) ? (
+            posterPhaseLine(phaseLine)
+          ) : (
+            phaseLine
+          )}
         </button>
         {inner}
         {children}

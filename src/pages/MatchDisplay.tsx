@@ -8,6 +8,7 @@ import { RankChip } from '../components/RankChip';
 import { DqDisappointedPopup } from '../components/DqDisappointedPopup';
 import { GrandmasterCheer, grandmasterIdFromLocation } from '../components/GrandmasterCheer';
 import { PolishedScoreboard } from '../components/PolishedScoreboard';
+import { metalBoardPhase } from '../skins/polished/heavyMetal';
 import { posterBoardState } from '../skins/polished/posterSkins';
 import { ScoreBox } from '../components/ScoreBox';
 import { ScoreboardSkinPicker } from '../components/ScoreboardSkinPicker';
@@ -227,7 +228,12 @@ export function MatchDisplayPage() {
             <ClassLine division={match.division} weight={match.weight} onOpen={openController} />
           }
           state={
-            posterBoardState(polished.slug, match.outcome?.call === 'win' || match.outcome?.call === 'dq') ?? 'Match'
+            polished.slug === 'heavy-metal'
+              ? metalBoardPhase({
+                  running: match.running,
+                  decided: match.outcome?.call === 'win' || match.outcome?.call === 'dq',
+                })
+              : posterBoardState(polished.slug, match.outcome?.call === 'win' || match.outcome?.call === 'dq') ?? 'Match'
           }
           clock={
             <button type="button" className="sk-btn" onClick={toggleClock} aria-label="Start or pause match clock">
