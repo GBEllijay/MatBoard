@@ -144,7 +144,7 @@
   background: var(--cb-pending-bg);
   box-shadow: inset 0 0 0 1px var(--cb-pending-ring);
   color: var(--cb-pending-ink);
-  font: 700 10.5px/1.2 Inter, sans-serif;
+  font: 700 12px/1.2 Inter, sans-serif;
   white-space: nowrap;
 }
 .clipboard__pending::before {
@@ -159,7 +159,7 @@
   border: 0;
   padding: 0;
   cursor: pointer;
-  font: 600 10.5px/1.3 Inter, sans-serif;
+  font: 600 12px/1.3 Inter, sans-serif;
   color: var(--cb-link) !important;
   text-align: center;
 }
@@ -175,7 +175,7 @@
   min-width: 0;
 }
 .clipboard__k {
-  font: 700 10.5px/1 Inter, sans-serif;
+  font: 700 12px/1 Inter, sans-serif;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--cb-muted);
@@ -203,7 +203,7 @@
   border-radius: 10px;
 }
 .clipboard__crest small {
-  font: 600 9.5px/1.15 Inter, sans-serif;
+  font: 600 12px/1.15 Inter, sans-serif;
   color: var(--cb-muted);
   text-align: center;
   letter-spacing: 0.03em;
@@ -279,7 +279,7 @@
 }
 .clipboard__tabs .cnt {
   margin-left: 6px;
-  font-size: 11px;
+  font-size: 12px;
   padding: 1px 6px;
   border-radius: 9px;
   background: var(--cb-count-bg);
@@ -326,7 +326,7 @@
   border-left: 1px solid var(--cb-line);
 }
 .clipboard__facts dt {
-  font: 700 9.5px/1.2 Inter, sans-serif;
+  font: 700 12px/1.2 Inter, sans-serif;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--cb-muted);
@@ -355,7 +355,7 @@
 }
 .clipboard__facts .nost {
   display: block;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--cb-muted);
   margin-top: 1px;
@@ -363,7 +363,7 @@
 }
 .clipboard__facts .seg button {
   padding: 3px 8px;
-  font-size: 11.5px;
+  font-size: 12px;
 }
 .clipboard__grid {
   display: grid;
@@ -408,7 +408,7 @@
 .clipboard__legend {
   display: flex;
   gap: 12px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--cb-muted);
   flex-wrap: wrap;
 }
@@ -435,7 +435,7 @@
   font-size: 12.5px;
 }
 .clipboard th {
-  font: 700 9.5px/1 Inter, sans-serif;
+  font: 700 12px/1 Inter, sans-serif;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--cb-muted);
@@ -460,7 +460,7 @@
 }
 .clipboard td.d {
   font-weight: 600;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--cb-muted);
 }
 .clipboard td.d.hi {
@@ -472,7 +472,7 @@
   line-height: 1.45;
 }
 .clipboard__sw3 b {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   margin-right: 6px;
@@ -603,7 +603,7 @@
 }
 .clipboard .chk em {
   font-style: normal;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--cb-pending-ink);
   font-weight: 600;
   margin-left: 4px;
@@ -750,7 +750,7 @@
 }
 .clipboard__latest b {
   display: block;
-  font-size: 10.5px;
+  font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--cb-link);
@@ -813,14 +813,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 4px 0;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--cb-muted);
 }
 .clipboard__amark {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font: 600 11.5px/1 Inter, sans-serif;
+  font: 600 12px/1 Inter, sans-serif;
 }
 .clipboard__amark img {
   width: 22px;
@@ -849,7 +849,7 @@
     font-size: 22px;
   }
   .clipboard__pending {
-    font-size: 9px;
+    font-size: 12px;
     padding: 2px 6px;
     white-space: normal;
     text-align: center;
@@ -863,7 +863,7 @@
     font-size: 22px;
   }
   .clipboard__k {
-    font-size: 9.5px;
+    font-size: 12px;
     letter-spacing: 0.1em;
   }
   .clipboard__hdr > .clipboard__brow {
@@ -875,7 +875,7 @@
     height: 46px;
   }
   .clipboard__crest small {
-    font-size: 8.5px;
+    font-size: 12px;
   }
   .clipboard__belt .s-belt-mark .belt {
     --h: 44px;
@@ -1037,7 +1037,7 @@
   margin-top: 6px;
   padding: 2px 8px;
   border-radius: 999px;
-  font: 700 11px/1.4 Inter, sans-serif;
+  font: 700 12px/1.4 Inter, sans-serif;
   background: var(--cb-chip-bg);
   box-shadow: inset 0 0 0 1px var(--cb-chip-ring);
   color: var(--cb-ink);
@@ -1082,7 +1082,7 @@
 }
 .clipboard .clipboard__choose,
 .clipboard .clipboard__nophotos-toggle {
-  font-size: 11px;
+  font-size: 12px;
   max-width: 100%;
 }
 .clipboard[data-style='fighter'] .clipboard__idc .clipboard__photo,
@@ -1216,3 +1216,82 @@
   outline: 2px solid var(--cb-link);
   outline-offset: 2px;
 }
+
+/* ---- Card entry overhaul: tap to change, 12px floor, 44px targets ---- */
+.clipboard__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.clipboard .clipboard__tap {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-height: 44px;
+  border-radius: 8px;
+}
+.clipboard .clipboard__tap--name {
+  display: inline-flex;
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+.clipboard .clipboard__tap:focus-visible {
+  outline: 3px solid var(--cb-on);
+  outline-offset: 2px;
+}
+.clipboard button.clipboard__belt {
+  display: inline-flex;
+  align-items: center;
+}
+.clipboard .clipboard__pencil {
+  width: 44px;
+  height: 44px;
+}
+.clipboard .clipboard__tabs button,
+.clipboard .clipboard__btn,
+.clipboard .clipboard__choose,
+.clipboard .clipboard__nophotos-toggle,
+.clipboard .clipboard__link,
+.clipboard .sw,
+.clipboard .seg button,
+.clipboard [role='tablist'] button,
+.clipboard input:not([type='hidden']):not([type='file']):not([type='checkbox']):not([type='radio']) {
+  min-height: 44px;
+}
+.clipboard .clipboard__link {
+  display: inline-flex;
+  align-items: center;
+}
+.clipboard .clipboard__nophotos-toggle,
+.clipboard .clipboard__choose {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  max-width: 100%;
+}
+.clipboard__radar {
+  overflow: visible;
+}
+.clipboard__radar text {
+  font-size: 15px;
+}
+.clipboard .seg button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+}
+.clipboard .belt-mark__name { font-size: 12px; }

@@ -7,6 +7,7 @@ import { ShareCardWithCoach, cardShareAvailable } from '../../components/Student
 import { ProfileCornerMarks, ProfileMedia, ProfileSwitches, useProfileMedia } from './ProfileIdentity';
 import { StudentProfileFields, TrainingSettings } from './ProfileFields';
 import { StudentCompetitorSwitch } from './StudentCompetitorSwitch';
+import { ProfileCardFace } from './ProfileCardFace';
 import './profile.css';
 
 /** Name, gym, start date, birth year, Kid or Adult, optional photo, and gym logo. Saved on this phone. */
@@ -36,6 +37,7 @@ export function ProfilePage() {
             name={kids && !media.logo && !showPhoto ? gymName : ''}
           />
         </header>
+        <ProfileCardFace report={report} portrait={showPhoto ? media.portrait : null} logo={media.logo} to={to} />
         <div className="profile-stack">
           <ProfileMedia media={media} kids={kids} />
           <KidAdultFields report={report} commit={commit} />

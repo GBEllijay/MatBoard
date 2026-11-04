@@ -767,3 +767,130 @@ test('Roster page: Rolodex wraps both lists in the card look and opens the right
   assert.match(css, /scroll-snap-type: y/);
   assert.match(css, /prefers-reduced-motion: reduce/);
 });
+
+test('Coach card: the name and belt open Change details; no new control is named edit; tap hint is described', () => {
+  for (const look of CARD_LOOKS) {
+    localStorage.clear();
+    resetRoster();
+    writeCardLook(look);
+    const card = studentCard();
+    let opened = 0;
+    const m = mount(
+      <RosterCardSheet
+        student={card}
+        onClose={() => undefined}
+        onEditBelt={() => {
+          opened += 1;
+        }}
+        onLink={() => undefined}
+        onOpenPhotos={() => undefined}
+        competitorRosterOpen
+        onOpenCompetitorRoster={() => undefined}
+      />,
+    );
+    const name = document.querySelector('h2.clipboard__n button.clipboard__tap--name') as HTMLButtonElement;
+    assert.ok(name, `${look.style}-${look.skin}: name is a button inside the heading`);
+    assert.equal(name.textContent?.trim(), 'Ana Lima', 'heading name unchanged');
+    assert.equal(name.getAttribute('aria-label'), null, 'name keeps its own text as its name');
+    const hint = document.getElementById(name.getAttribute('aria-describedby') as string);
+    assert.equal(hint?.textContent?.trim(), 'Tap the name or belt to change details');
+    click(name);
+    const belt = document.querySelector('button.clipboard__belt') as HTMLButtonElement;
+    assert.equal(belt.getAttribute('aria-label'), 'Change belt and stripes');
+    click(belt);
+    const pencil = document.querySelector('button.clipboard__pencil') as HTMLButtonElement;
+    assert.equal(pencil.getAttribute('aria-label'), 'Edit belt and stripes', 'pencil kept');
+    click(pencil);
+    assert.equal(opened, 3, 'name, belt and pencil all open Change details');
+    for (const b of [name, belt]) {
+      const label = (b.getAttribute('aria-label') ?? b.textContent ?? '').toLowerCase();
+      assert.ok(!label.includes('edit'), `new control "${label}" must not match getByRole name Edit`);
+    }
+    const hdr = document.querySelector('.clipboard__hdr') as HTMLElement;
+    assert.deepEqual(
+      [...hdr.children].map((c) => c.className),
+      ['clipboard__idc', 'clipboard__who', 'clipboard__crest', 'clipboard__brow'],
+      'header order kept',
+    );
+    unmount(m);
+  }
+});
+
+test('Coach card CSS: 12px text floor and 44px targets', async () => {
+  const { readFileSync } = await import('node:fs');
+  const css = readFileSync('src/components/rosterCard/coachClipboard.css', 'utf8');
+  const small = [...css.matchAll(/font-size:\s*([\d.]+)px/g)].map((m) => Number(m[1])).filter((px) => px < 12);
+  assert.deepEqual(small, [], 'no px font-size under 12');
+  for (const sel of ['.clipboard__tap', '.clipboard__pencil', '.clipboard__btn', '.clipboard__choose', '.clipboard__nophotos-toggle']) {
+    assert.ok(new RegExp(`${sel.replace(/[.]/g, '\\.')}[^{]*\\{[^}]*height:\\s*44px`).test(css), `${sel} min-height 44`);
+  }
+  assert.match(css, /\.clipboard__radar text\s*\{[^}]*font-size:\s*15px/, 'radar labels reach 12px rendered');
+});
+
+test('My profile: the card face shows saved fields, jumps to each field, and keeps Save profile last', () => {
+  localStorage.clear();
+  const report = blankStudentReport();
+  saveStudentReport(localStorage, {
+    ...report,
+    profile: { ...report.profile, displayName: 'Ana Lima', gymName: 'Advantage', startedOn: '2023-02-14', trainingStyle: 'both' },
+  });
+  localStorage.setItem(
+    'matboard.studentEdition.coachOverlay.v1',
+    JSON.stringify({ version: 1, assessments: [], beltProgress: {}, notes: [{ updateId: 'u1', issuedOn: '2026-10-01', journalDate: '2026-10-01', note: 'x', cardLook: 'fighter-light' }] }),
+  );
+  const m = mount(<ProfilePage />, '/student/profile?student=1');
+  const face = document.querySelector('[data-testid="profile-card-face"]') as HTMLElement;
+  assert.ok(face, 'card face renders');
+  const card = face.querySelector('.clipboard') as HTMLElement;
+  assert.ok(card.dataset.style && card.dataset.skin, 'card face uses a card look');
+  const faceText = face.textContent ?? '';
+  for (const part of ['Student card', 'Ana Lima', 'Gym · Advantage', 'Training since', 'Trains · Gi and No-Gi', 'White belt']) {
+    assert.ok(faceText.includes(part), part);
+  }
+  // Labels on the face must not collide with the form's labels or existing e2e names.
+  for (const el of face.querySelectorAll('button, a')) {
+    assert.equal(el.getAttribute('aria-label'), null, 'face controls use visible text only');
+    const name = (el.textContent ?? '').trim();
+    assert.ok(!/edit|start|my profile|^my rank$|^gi$|^both$|^close$/i.test(name), `face name "${name}" collides`);
+  }
+  assert.equal(face.querySelectorAll('[role="status"], [aria-live]').length, 0, 'no status region on the face');
+  assert.equal(face.querySelectorAll('img.profile-avatar').length, 0, 'face image is not the profile avatar');
+  // Each part jumps to its field.
+  const nameInput = document.querySelector('form[aria-label="My profile"] input[aria-label="Name"]') as HTMLInputElement;
+  click(buttons('Ana Lima')[0]);
+  assert.equal(document.activeElement, nameInput, 'name focuses the Name field');
+  click(buttons('Gym · Advantage')[0]);
+  assert.equal(document.activeElement, document.querySelector('form[aria-label="My profile"] input[aria-label="Gym"]'));
+  click(buttons(/^Training since/)[0]);
+  assert.equal(document.activeElement, document.querySelector('form[aria-label="My profile"] input[aria-label="Training start date"]'));
+  click(buttons(/^Trains ·/)[0]);
+  assert.equal((document.activeElement as HTMLElement)?.getAttribute('role'), 'radio', 'trains focuses the Training style choice');
+  const belt = face.querySelector('a.profile-face__belt') as HTMLAnchorElement;
+  assert.match(belt.getAttribute('href') ?? '', /\/student\/rank\?student=1$/, 'belt opens My rank');
+  // Save profile is still last on the page; the face is before the stack.
+  const main = document.querySelector('main.student') as HTMLElement;
+  const all = [...main.querySelectorAll('button, input, a[href], label.profile-action')].filter((el) => !el.closest('[data-testid="student-card-preview"]') && !el.closest('.profile-after-save'));
+  assert.equal(all[all.length - 1], buttons('Save profile')[0], 'Save profile last');
+  assert.equal(buttons('Gi').length, 1, 'Gi stays unique');
+  assert.equal(buttons('Both').length, 1, 'Both stays unique');
+  unmount(m);
+});
+
+test('My profile: with No photos on, the face shows initials, never the photo', () => {
+  seedStudent();
+  localStorage.setItem(STUDENT_NO_PHOTOS_KEY, JSON.stringify({ on: true, setBy: 'family' }));
+  const m = mount(<ProfilePage />, '/student/profile?student=1');
+  const face = document.querySelector('[data-testid="profile-card-face"]') as HTMLElement;
+  assert.equal(face.querySelectorAll('.profile-face__photo img').length, 0);
+  assert.ok((face.textContent ?? '').includes('AL'));
+  unmount(m);
+});
+
+test('My profile CSS: inline links and Exit demo reach 44px', async () => {
+  const { readFileSync } = await import('node:fs');
+  const profile = readFileSync('src/pages/student/profile.css', 'utf8');
+  assert.match(profile, /\.profile-mode a\s*\{[^}]*min-height:\s*44px/);
+  assert.match(profile, /\.profile-face__row\s*\{[^}]*min-height:\s*44px/);
+  const se = readFileSync('src/student-edition.css', 'utf8');
+  assert.match(se, /\.student-demo-banner a\s*\{[^}]*min-height:\s*44px/);
+});
