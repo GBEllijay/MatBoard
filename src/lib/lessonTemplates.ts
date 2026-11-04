@@ -4,6 +4,8 @@
  * specific training, cool down, and closing.
  * Kids starts from that and puts a Game between Technique 1 and Technique 2
  * in place of Technique 3.
+ * Private lesson is Adult trimmed for one student: intro, warm-up, two
+ * techniques, specific training, and closing (no cool down).
  * Competition points this plan at the Competition Class Curriculum. That
  * curriculum keeps its own saved days.
  * A template only sets the starting blocks. The coach can reorder, add, and
@@ -25,12 +27,13 @@ import {
 import { clampText } from './plainValue.ts';
 import { MAX_REPLAYS, cleanReplay, createReplay, replayHasContent, replayHeading, type ReplayBlock } from './replayAnalysis.ts';
 
-export const LESSON_TEMPLATES = ['adult', 'kids', 'competition'] as const;
+export const LESSON_TEMPLATES = ['adult', 'kids', 'private', 'competition'] as const;
 export type LessonTemplateId = (typeof LESSON_TEMPLATES)[number];
 
 export const LESSON_TEMPLATE_LABELS: Record<LessonTemplateId, string> = {
   adult: 'Adult class',
   kids: 'Kids class',
+  private: 'Private lesson',
   competition: 'Competition class',
 };
 
@@ -73,7 +76,7 @@ export function createGame(): GameBlock {
 }
 
 export function isLessonTemplate(value: unknown): value is LessonTemplateId {
-  return value === 'adult' || value === 'kids' || value === 'competition';
+  return value === 'adult' || value === 'kids' || value === 'private' || value === 'competition';
 }
 
 export function activeLessonTemplate(plan: Pick<TrainingNotesPlan, 'template'>): LessonTemplateId {
@@ -141,12 +144,18 @@ function kidsSignature(plan: TrainingNotesPlan): string {
   return ['intro', 'warmup', ids[0] ? `technique:${ids[0]}` : 'technique:', 'game', ids[1] ? `technique:${ids[1]}` : 'technique:', 'specific', 'cooldown', 'closing'].join('|');
 }
 
+function privateSignature(plan: TrainingNotesPlan): string {
+  const ids = plan.techniques.slice(0, 2).map((tech) => tech.id);
+  return ['intro', 'warmup', ...ids.map((id) => `technique:${id}`), 'specific', 'closing'].join('|');
+}
+
 export function templateAlreadyApplied(plan: TrainingNotesPlan, template: LessonTemplateId): boolean {
   if (template === 'competition') return plan.template === 'competition';
   const current = plan.template ?? 'adult';
   if (current !== template) return false;
   if (!plan.blocks) return template === 'adult';
-  const starter = template === 'kids' ? kidsSignature(plan) : adultSignature(plan);
+  const starter =
+    template === 'kids' ? kidsSignature(plan) : template === 'private' ? privateSignature(plan) : adultSignature(plan);
   return blockSignature(plan.blocks) === starter;
 }
 
@@ -223,6 +232,20 @@ function kidsStarter(plan: TrainingNotesPlan): { blocks: PlanBlock[]; techniques
   return { techniques, games: [game], blocks };
 }
 
+/** Private lesson: Adult without Technique 3 and Cool down. */
+function privateStarter(plan: TrainingNotesPlan): { blocks: PlanBlock[]; techniques: TechniqueBlock[] } {
+  const techniques = plan.techniques.slice(0, 2).map((tech) => ({ ...tech }));
+  while (techniques.length < 2) techniques.push(createTechnique());
+  const blocks: PlanBlock[] = [
+    { kind: 'intro' },
+    { kind: 'warmup' },
+    ...techniques.map((tech) => ({ kind: 'technique' as const, id: tech.id })),
+    { kind: 'specific' },
+    { kind: 'closing' },
+  ];
+  return { techniques, blocks };
+}
+
 /** Replay cards already on the plan, in order, so a template change keeps them (and their clips) at the end. */
 function keptReplayBlocks(plan: TrainingNotesPlan): PlanBlock[] {
   return (plan.blocks ?? []).filter((block) => block.kind === 'replay');
@@ -235,6 +258,12 @@ export function applyLessonTemplate(plan: TrainingNotesPlan, template: LessonTem
   if (template === 'kids') {
     const starter = kidsStarter(plan);
     return withStructure(plan, [...starter.blocks, ...replays], starter.techniques, starter.games, 'kids');
+  }
+  if (template === 'private') {
+    const starter = privateStarter(plan);
+    const next = withStructure(plan, [...starter.blocks, ...replays], starter.techniques, undefined, 'private');
+    delete next.games;
+    return next;
   }
   const starter = adultStarter(plan);
   const next = withStructure(plan, [...starter.blocks, ...replays], starter.techniques, undefined, 'adult');

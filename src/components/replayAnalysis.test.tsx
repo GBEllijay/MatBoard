@@ -239,6 +239,9 @@ test('Daily Lesson Plan keeps its controls and adds the replay button beside the
   const cardUses = src.split('<ReplayAnalysisCard').length - 1;
   assert.equal(cardUses, 2, 'block list + competition section');
   assert.ok(/block\.kind === 'replay' && replay \? \(\s*<ReplayAnalysisCard/.test(src));
+  // Private lesson sits in the template picker with its own confirm copy.
+  assert.ok(src.includes("template === 'private'"));
+  assert.ok(src.includes('LESSON_TEMPLATES.map'));
   // Capture follows the existing seat permission.
   assert.ok(src.includes("visibleCoachControl('uploadForDistribution'"));
 });

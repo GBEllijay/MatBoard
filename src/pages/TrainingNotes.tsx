@@ -1748,6 +1748,9 @@ function templateConfirmCopy(template: LessonTemplateId): string {
   if (template === 'kids') {
     return 'Apply the Kids class template? This sets the starting blocks: Technique 1, a Game, then Technique 2. Notes on the blocks that remain stay. You can reorder them after.';
   }
+  if (template === 'private') {
+    return 'Apply the Private lesson template? This sets the starting blocks: Intro, Warm-up, two techniques, Specific training, and Closing. Notes on the blocks that remain stay. You can add or reorder after.';
+  }
   return 'Apply the Adult class template? This sets the starting blocks: Intro, three techniques, Cool down, Closing, and the other sections. Notes on the blocks that remain stay.';
 }
 

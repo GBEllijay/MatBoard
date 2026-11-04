@@ -181,3 +181,39 @@ test('the Drive / Cloud lesson copy lists replay cards', () => {
   const json = lessonPlanForDrive(plan) as unknown as { replays?: { title: string }[] };
   assert.equal(json.replays?.[0].title, 'For Drive');
 });
+
+test('Private lesson template: intro, warm-up, two techniques, specific, closing', () => {
+  const plan = emptyPlan();
+  plan.techniques[0].title = 'Knee cut';
+  plan.techniques[2].title = 'Dropped on Private';
+  const next = applyLessonTemplate(plan, 'private');
+  assert.equal(next.template, 'private');
+  assert.deepEqual(kinds(next), ['intro', 'warmup', 'technique', 'technique', 'specific', 'closing']);
+  assert.equal(next.techniques.length, 2);
+  assert.equal(next.techniques[0].title, 'Knee cut');
+  assert.equal(next.games, undefined);
+  assert.equal(templateAlreadyApplied(next, 'private'), true);
+  assert.equal(templateAlreadyApplied(next, 'adult'), false);
+  // Add technique / Add game / replay still work on Private.
+  const grown = addLessonReplay(addLessonGame(addLessonTechnique(next)));
+  assert.equal(kinds(grown).filter((k) => k === 'technique').length, 3);
+  assert.equal(kinds(grown).filter((k) => k === 'game').length, 1);
+  assert.equal(kinds(grown).filter((k) => k === 'replay').length, 1);
+  // Survives sanitize and storage.
+  const { plan: clean } = sanitizePlan(JSON.parse(JSON.stringify(next)));
+  assert.equal(clean.template, 'private');
+  assert.deepEqual(kinds(clean), kinds(next));
+  // Switching back to Adult restores three techniques and Cool down.
+  const adult = applyLessonTemplate(next, 'adult');
+  assert.deepEqual(kinds(adult), ['intro', 'warmup', 'technique', 'technique', 'technique', 'specific', 'cooldown', 'closing']);
+});
+
+test('Private keeps replay cards across a switch', () => {
+  let plan = addLessonReplay(emptyPlan());
+  const [id] = replayIds(plan);
+  plan = updateLessonReplay(plan, id, { title: 'Private review' });
+  const next = applyLessonTemplate(plan, 'private');
+  assert.equal(kinds(next).at(-1), 'replay');
+  assert.equal(next.replays?.[0].title, 'Private review');
+  assert.equal(templateAlreadyApplied(next, 'private'), true);
+});
