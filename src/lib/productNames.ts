@@ -155,6 +155,9 @@ export const COACH_VIDEOS_PATH = `/techniques?from=${COACH_BOARD_FROM}`;
 /** Technique Tree opened from the Coach hub. */
 export const COACH_TREE_PATH = `/technique-tree?from=${COACH_BOARD_FROM}`;
 
+/** Record for Review opened on its own. The lesson-plan block stays on Daily Lesson Plan. */
+export const RECORD_FOR_REVIEW_PATH = '/record-for-review';
+
 /** Daily Training Videos opened from Coach Unlimited. */
 export const UNLIMITED_VIDEOS_PATH = `/techniques?from=${UNLIMITED_FROM}`;
 
@@ -193,6 +196,7 @@ export const COACH_HUBS = [
   { title: 'Daily Training Videos', to: COACH_VIDEOS_PATH, belt: 'coach' as const },
   { title: TECHNIQUE_TREE_LABEL, to: COACH_TREE_PATH, belt: 'coach' as const },
   { title: 'Student Roster', to: STUDENT_ROSTER_PATH, belt: 'coach' as const },
+  { title: 'Record for Review', to: `${RECORD_FOR_REVIEW_PATH}?from=${COACH_BOARD_FROM}`, belt: 'coach' as const },
   // Instructor Edition has no Pro door, so /suite is closed. This is the competitor list those users can still open.
   { title: COMPETITOR_ROSTER_LABEL, to: `/roster?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
   { title: MOCK_TOURNAMENT_NAME, to: `/tournament?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
@@ -236,6 +240,7 @@ export function coachingToolsMenu(unlimited: boolean) {
  * Daily Lesson Plan is the Unlimited plan that can be uploaded for review.
  * Student Roster opens the student list (names, belts, and the other roster-card fields). It does not open the competitor list.
  * The four brown rails wear 0-3 white stripes, counted from the tip up toward the header's 4.
+ * Record for Review sits directly under Student Roster and wears the same brown belt with no extra stripe.
  * Scoreboard and Round Timer are the Competition and Tournament Management controllers, with the same black belt.
  * `from=unlimited` sends Back to Coach Unlimited, not the Suite.
  * Sunday review and Drive cards stay on the page, under this menu.
@@ -246,6 +251,7 @@ export const COACH_UNLIMITED_TOOLS = [
   { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const, clearBout: false as const },
   { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const, clearBout: false as const },
   { title: STUDENT_ROSTER_LABEL, to: STUDENT_ROSTER_MENU_PATH, belt: 'brown' as const, stripes: 3 as const, clearBout: false as const },
+  { title: 'Record for Review', to: `${RECORD_FOR_REVIEW_PATH}?from=${UNLIMITED_FROM}`, belt: 'brown' as const, clearBout: false as const },
   { title: 'Scoreboard', to: '/match/control?from=unlimited', belt: 'black' as const, clearBout: true as const },
   { title: 'Round Timer', to: '/training/control?from=unlimited', belt: 'black' as const, clearBout: false as const },
 ] as const;

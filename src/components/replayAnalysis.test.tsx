@@ -9,8 +9,12 @@ import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
+import { ANNOTATED_FALLBACK_COPY } from '../lib/annotatedReplay.ts';
+import { SWIPE_BLOCK_SELECTOR, coachSwipeTarget, swipeGestureBlocked } from '../lib/coachSwipe.ts';
 import { INSTRUCTOR_PRESETS, canCaptureReplay, replayCaptureAccess, visibleCoachControl } from '../lib/instructorSeats.ts';
 import { ADD_REPLAY_LABEL, createReplay, type ReplayBlock } from '../lib/replayAnalysis.ts';
+import { STANDALONE_REVIEW_KEY } from '../lib/recordForReviewStore.ts';
+import { TRAINING_NOTES_STORAGE_KEY } from '../lib/trainingNotesStore.ts';
 import { ReplayAnalysisCard } from './ReplayAnalysisCard.tsx';
 import { ReplayPlayer } from './ReplayPlayer.tsx';
 import type { ReplaySaveKind } from '../lib/replayAnalysis.ts';
@@ -30,6 +34,7 @@ installGlobal('document', view.document);
 installGlobal('localStorage', view.localStorage);
 installGlobal('sessionStorage', view.sessionStorage);
 installGlobal('HTMLElement', view.HTMLElement);
+installGlobal('Element', view.Element);
 installGlobal('navigator', view.navigator);
 installGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
@@ -477,4 +482,209 @@ test('each Save picture choice calls its own save path and says how it went', as
   assert.deepEqual(device.calls, []);
   assert.equal(device.mounted.host.querySelector('[data-picture-message]')?.textContent, 'Picture saved to this device.');
   unmount(device.mounted);
+});
+
+function withDuration(mounted: Mounted) {
+  const video = mounted.host.querySelector('video') as HTMLVideoElement;
+  Object.defineProperty(video, 'duration', { configurable: true, get: () => 60 });
+  let current = 12;
+  Object.defineProperty(video, 'currentTime', {
+    configurable: true,
+    get: () => current,
+    set: (value: number) => {
+      current = value;
+    },
+  });
+  act(() => {
+    video.dispatchEvent(new view.Event('durationchange') as unknown as Event);
+  });
+  return video;
+}
+
+test('drawing on Record for Review does not navigate to Daily Training Videos', () => {
+  const mounted = player();
+  click(button(mounted.host, 'Arrow'));
+  const root = mounted.host.querySelector('.replay-player') as HTMLElement;
+  const canvas = mounted.host.querySelector('canvas') as HTMLElement;
+  assert.equal(root.hasAttribute('data-coach-no-swipe'), true);
+  assert.equal(root.classList.contains('replay-player'), true);
+  assert.equal(swipeGestureBlocked(canvas), true);
+  assert.match(SWIPE_BLOCK_SELECTOR, /\.replay-player/);
+  assert.equal(coachSwipeTarget('/notes', 'left'), '/techniques');
+  let reached = 0;
+  const onStart = () => {
+    reached += 1;
+  };
+  document.addEventListener('touchstart', onStart);
+  act(() => {
+    canvas.dispatchEvent(new view.Event('touchstart', { bubbles: true }) as unknown as Event);
+  });
+  document.removeEventListener('touchstart', onStart);
+  assert.equal(reached, 0, 'the stroke never reaches the page swipe');
+  unmount(mounted);
+});
+
+test('fullscreen keeps Arrow selected, the play bar tappable, and drawing on the paused frame', async () => {
+  const mounted = player();
+  const root = mounted.host.querySelector('.replay-player') as HTMLElement;
+  const video = withDuration(mounted);
+  click(button(mounted.host, 'Arrow'));
+  click(button(mounted.host, 'Full screen'));
+  await flush();
+  assert.equal(root.getAttribute('data-fullscreen'), 'true');
+  assert.equal(root.classList.contains('replay-player--fs'), true);
+  assert.equal(root.classList.contains('replay-player--overlay'), true, 'happy-dom has no element fullscreen, so the iOS overlay is used');
+  assert.equal(button(mounted.host, 'Arrow').getAttribute('aria-pressed'), 'true');
+  const stage = root.querySelector('.replay-player__stage') as HTMLElement;
+  const playBar = root.querySelector('[data-play-bar]') as HTMLElement;
+  const scrub = root.querySelector('[role="slider"]') as HTMLElement;
+  assert.equal(stage.contains(playBar), false);
+  assert.equal(stage.contains(scrub), false);
+  assert.ok(playBar.querySelector('button'));
+  const before = video.currentTime;
+  click(button(playBar, '+10s'));
+  assert.equal(video.currentTime, before + 10);
+  const canvas = root.querySelector('canvas') as HTMLCanvasElement;
+  assert.equal(canvas.classList.contains('replay-player__ink--on'), true);
+  canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 100, right: 200, bottom: 100, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+  act(() => {
+    canvas.dispatchEvent(new view.PointerEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 10, pointerId: 1 }) as unknown as Event);
+    canvas.dispatchEvent(new view.PointerEvent('pointermove', { bubbles: true, clientX: 80, clientY: 40, pointerId: 1 }) as unknown as Event);
+    canvas.dispatchEvent(new view.PointerEvent('pointerup', { bubbles: true, clientX: 80, clientY: 40, pointerId: 1 }) as unknown as Event);
+  });
+  assert.equal(button(mounted.host, 'Undo').disabled, false);
+  assert.equal(root.getAttribute('data-fullscreen'), 'true', 'drawing does not leave full screen');
+  assert.equal(button(mounted.host, 'Arrow').getAttribute('aria-pressed'), 'true');
+  click(button(mounted.host, 'Exit full screen'));
+  await flush();
+  assert.equal(root.getAttribute('data-fullscreen'), 'false');
+  assert.equal(button(mounted.host, 'Arrow').getAttribute('aria-pressed'), 'true');
+  unmount(mounted);
+});
+
+test('the Fullscreen API path stays up with a tool selected when the browser supports it', async () => {
+  const mounted = player();
+  const root = mounted.host.querySelector('.replay-player') as HTMLElement;
+  const previous = Object.getOwnPropertyDescriptor(document, 'fullscreenElement');
+  const previousExit = document.exitFullscreen;
+  let current: Element | null = null;
+  Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => current });
+  root.requestFullscreen = (async () => {
+    current = root;
+  }) as HTMLElement['requestFullscreen'];
+  document.exitFullscreen = async () => {
+    current = null;
+  };
+  try {
+    click(button(mounted.host, 'Pen'));
+    click(button(mounted.host, 'Full screen'));
+    await flush();
+    assert.equal(root.getAttribute('data-fullscreen-mode'), 'api');
+    assert.equal(root.classList.contains('replay-player--overlay'), false);
+    assert.equal(button(mounted.host, 'Pen').getAttribute('aria-pressed'), 'true');
+    assert.ok(root.querySelector('[data-play-bar]'));
+    click(button(mounted.host, 'Exit full screen'));
+    await flush();
+    assert.equal(root.getAttribute('data-fullscreen'), 'false');
+    assert.equal(button(mounted.host, 'Pen').getAttribute('aria-pressed'), 'true');
+  } finally {
+    if (previous) Object.defineProperty(document, 'fullscreenElement', previous);
+    else delete (document as { fullscreenElement?: Element | null }).fullscreenElement;
+    document.exitFullscreen = previousExit;
+    unmount(mounted);
+  }
+});
+
+test('play controls wrap inside the player so a phone-width row can shrink', () => {
+  const css = readFileSync('src/index.css', 'utf8');
+  assert.match(css, /\.replay-player \{[^}]*min-width:\s*0/);
+  assert.match(css, /\.replay-player__controls[\s\S]*flex-wrap:\s*wrap/);
+  assert.match(css, /\.replay-player__controls \.btn \{[^}]*flex:\s*1 1 4\.5rem/);
+  assert.match(css, /\.replay-player--fs[\s\S]*flex-direction:\s*column/);
+  assert.match(css, /\.replay-player--fs \.replay-player__controls[\s\S]*order:\s*4/);
+});
+
+test('annotated save hands the burned file to the existing save and does not send it', async () => {
+  const calls: { kind: string; picture: boolean; size: number }[] = [];
+  const mounted = mount(
+    <ReplayPlayer
+      src="blob:http://localhost/clip"
+      label="Video replay analysis"
+      frameName="frame.png"
+      dateKey="2026-11-04"
+      pictureTargets={() => ['advantage-cloud', 'google-drive']}
+      clipBlob={new Blob(['raw'], { type: 'video/mp4' })}
+      clipMime="video/mp4"
+      captureFrame={async () => new Blob([Uint8Array.from([1])], { type: 'image/png' })}
+      recordClip={async () => ({ burned: true, blob: new Blob(['burned'], { type: 'video/mp4' }), mime: 'video/mp4' })}
+      saveAnnotated={async (kind, blob, _mime, picture) => {
+        calls.push({ kind, picture, size: blob.size });
+        return { ok: true, kind, ref: 'cloud-ref' };
+      }}
+    />,
+  );
+  withDuration(mounted);
+  assert.equal(mounted.host.querySelector('[data-annotated-target]'), null);
+  click(button(mounted.host, 'Save annotated video'));
+  assert.deepEqual(
+    [...mounted.host.querySelectorAll('[data-annotated-target]')].map((el) => el.getAttribute('data-annotated-target')),
+    ['device', 'advantage-cloud', 'google-drive'],
+  );
+  assert.equal(calls.length, 0);
+  click(mounted.host.querySelector('[data-annotated-target="advantage-cloud"]')!);
+  await flush();
+  assert.deepEqual(calls, [{ kind: 'advantage-cloud', picture: false, size: 6 }]);
+  assert.match(mounted.host.querySelector('[data-annotated-message]')?.textContent ?? '', /Annotated video saved to Advantage Cloud/);
+  unmount(mounted);
+});
+
+test('when burn-in is unavailable, annotated save sends the clip and a still through the same save', async () => {
+  const calls: { picture: boolean; type: string }[] = [];
+  const mounted = mount(
+    <ReplayPlayer
+      src="blob:http://localhost/clip"
+      label="Video replay analysis"
+      frameName="frame.png"
+      pictureTargets={() => ['google-drive']}
+      clipBlob={new Blob(['raw-clip'], { type: 'video/mp4' })}
+      clipMime="video/mp4"
+      captureFrame={async () => new Blob([Uint8Array.from([2])], { type: 'image/png' })}
+      recordClip={async () => ({ burned: false, reason: ANNOTATED_FALLBACK_COPY })}
+      saveAnnotated={async (kind, blob, mime, picture) => {
+        calls.push({ picture, type: mime || blob.type });
+        return { ok: true, kind, ref: 'drive' };
+      }}
+    />,
+  );
+  withDuration(mounted);
+  click(button(mounted.host, 'Save annotated video'));
+  click(mounted.host.querySelector('[data-annotated-target="google-drive"]')!);
+  await flush();
+  assert.deepEqual(calls, [
+    { picture: false, type: 'video/mp4' },
+    { picture: true, type: 'image/png' },
+  ]);
+  assert.match(mounted.host.querySelector('[data-annotated-message]')?.textContent ?? '', /cannot bake the drawings/);
+  unmount(mounted);
+});
+
+test('standalone Record for Review works with no lesson plan', async () => {
+  localStorage.clear();
+  const { RecordForReviewPage } = await import('../pages/RecordForReview.tsx');
+  const mounted = mount(<RecordForReviewPage />);
+  assert.match(mounted.host.textContent ?? '', /Record for Review/);
+  assert.ok(button(mounted.host, 'Record or pick video'));
+  assert.equal(localStorage.getItem(TRAINING_NOTES_STORAGE_KEY), null);
+  const saved = localStorage.getItem(STANDALONE_REVIEW_KEY);
+  assert.ok(saved, 'the standalone tool stores its own review');
+  assert.equal(JSON.parse(saved).clip, undefined);
+  assert.ok(mounted.host.querySelector('section.replay-card'));
+  assert.equal(mounted.host.querySelector('.replay-player'), null, 'no clip yet, so the shared card is waiting');
+  const page = readFileSync('src/pages/RecordForReview.tsx', 'utf8');
+  const notes = readFileSync('src/pages/TrainingNotes.tsx', 'utf8');
+  assert.match(page, /<ReplayAnalysisCard/);
+  assert.doesNotMatch(page, /TRAINING_NOTES_STORAGE_KEY|loadTrainingArchive/);
+  assert.match(notes, /<ReviewSlotControls/);
+  assert.match(notes, /<ReplayAnalysisCard/);
+  unmount(mounted);
 });

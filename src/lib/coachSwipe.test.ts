@@ -4,6 +4,7 @@ import {
   classifyCoachSwipe,
   coachSwipeTarget,
   swipeStartsInBrowserEdge,
+  SWIPE_BLOCK_SELECTOR,
   SWIPE_EDGE_PX,
   SWIPE_MIN_PX,
 } from './coachSwipe.ts';
@@ -21,6 +22,13 @@ test('screen-edge starts stay with the browser', () => {
   assert.equal(swipeStartsInBrowserEdge(SWIPE_EDGE_PX - 1, 400), true);
   assert.equal(swipeStartsInBrowserEdge(390, 400), true);
   assert.equal(swipeStartsInBrowserEdge(80, 400), false);
+});
+
+test('a Record for Review stroke is not a swipe to Daily Training Videos', () => {
+  assert.match(SWIPE_BLOCK_SELECTOR, /\.replay-player/);
+  assert.match(SWIPE_BLOCK_SELECTOR, /data-coach-no-swipe/);
+  assert.equal(coachSwipeTarget('/notes', 'left'), '/techniques');
+  assert.equal(classifyCoachSwipe(-120, 8), 'left');
 });
 
 test('coach tools swipe in order, and roster only goes right to the bracket', () => {

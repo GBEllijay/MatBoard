@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { ANNOTATED_FALLBACK_COPY, fileNameForMime, recordVisibleClip, type AnnotatedRecord } from '../lib/annotatedReplay';
+import { exitPageFullscreen, fullscreenElement, requestElementFullscreen } from '../lib/fullscreen';
 import {
   EMPTY_MARKUP,
   MARKUP_COLORS,
@@ -41,6 +43,18 @@ type Props = {
   pictureTargets?: () => ReplaySaveKind[];
   savePicture?: (kind: ReplaySaveKind, blob: Blob) => Promise<ReplaySaveResult>;
   captureFrame?: () => Promise<Blob | null>;
+  /** Original clip, used when this browser cannot bake the drawings into the video. */
+  clipBlob?: Blob | null;
+  clipMime?: string;
+  annotatedVideoName?: string;
+  annotatedStillName?: string;
+  /**
+   * Same save the Cloud / Drive buttons already use. The player hands it a file.
+   * Absent in tests that only check the device download.
+   */
+  saveAnnotated?: (kind: ReplaySaveKind, blob: Blob, mime: string, picture: boolean) => Promise<ReplaySaveResult>;
+  /** Test seam for the canvas recording. Defaults to the real recorder. */
+  recordClip?: (video: HTMLVideoElement, paint: (ctx: CanvasRenderingContext2D, frame: CanvasImageSource, width: number, height: number) => void) => Promise<AnnotatedRecord>;
 };
 
 export const PICTURE_DEVICE_LABEL = 'This device';
@@ -109,11 +123,41 @@ function paint(canvas: HTMLCanvasElement | null, strokes: readonly MarkupStroke[
  * pen line on the frame, with Undo and Clear. Drawings clear when play
  * resumes because the frame under them changes.
  */
-export function ReplayPlayer({ src, label, frameName, dateKey = '', replayId = 'replay', pictureTargets, savePicture, captureFrame }: Props) {
+function downloadBlob(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+export function ReplayPlayer({
+  src,
+  label,
+  frameName,
+  dateKey = '',
+  replayId = 'replay',
+  pictureTargets,
+  savePicture,
+  captureFrame,
+  clipBlob = null,
+  clipMime = 'video/mp4',
+  annotatedVideoName = 'annotated-replay.mp4',
+  annotatedStillName = 'annotated-replay.png',
+  saveAnnotated,
+  recordClip = recordVisibleClip,
+}: Props) {
   const [pictureMenu, setPictureMenu] = useState(false);
   const [pictureTargetsNow, setPictureTargetsNow] = useState<ReplaySaveKind[]>([]);
   const [pictureMessage, setPictureMessage] = useState<string | null>(null);
   const [pictureBusy, setPictureBusy] = useState(false);
+  const [annotatedMenu, setAnnotatedMenu] = useState(false);
+  const [annotatedTargets, setAnnotatedTargets] = useState<ReplaySaveKind[]>([]);
+  const [annotatedMessage, setAnnotatedMessage] = useState<string | null>(null);
+  const [annotatedBusy, setAnnotatedBusy] = useState(false);
+  const [fsMode, setFsMode] = useState<'off' | 'api' | 'overlay'>('off');
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
@@ -149,6 +193,57 @@ export function ReplayPlayer({ src, label, frameName, dateKey = '', replayId = '
     },
     [],
   );
+
+  // A drawing stroke is a sideways drag. Stop it before the lesson-plan swipe
+  // listener (Daily Lesson Plan → Daily Training Videos) can see the touch.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const stop = (event: Event) => event.stopPropagation();
+    root.addEventListener('touchstart', stop);
+    return () => root.removeEventListener('touchstart', stop);
+  }, []);
+
+  useEffect(() => {
+    const sync = () => {
+      const on = fullscreenElement() === rootRef.current;
+      setFsMode((mode) => (on ? 'api' : mode === 'api' ? 'off' : mode));
+    };
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync as EventListener);
+    return () => {
+      document.removeEventListener('fullscreenchange', sync);
+      document.removeEventListener('webkitfullscreenchange', sync as EventListener);
+      if (fullscreenElement() === rootRef.current) void exitPageFullscreen();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (fsMode !== 'overlay') return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFsMode('off');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [fsMode]);
+
+  const enterFullscreen = useCallback(async () => {
+    const root = rootRef.current;
+    if (!root) return;
+    const result = await requestElementFullscreen(root);
+    if (result === 'unsupported') setFsMode('overlay');
+    else setFsMode('api');
+  }, []);
+
+  const exitFullscreen = useCallback(async () => {
+    if (fullscreenElement()) await exitPageFullscreen();
+    setFsMode('off');
+  }, []);
 
   const seekTo = useCallback((next: number) => {
     const video = videoRef.current;
@@ -268,9 +363,69 @@ export function ReplayPlayer({ src, label, frameName, dateKey = '', replayId = '
 
   /** "Save picture" opens a choice; nothing saves until the coach picks one. */
   const openPictureMenu = () => {
+    setAnnotatedMenu(false);
     setPictureMessage(null);
     setPictureTargetsNow((pictureTargets ?? availableReplaySaveTargets)());
     setPictureMenu((open) => !open);
+  };
+
+  const openAnnotatedMenu = () => {
+    setPictureMenu(false);
+    setAnnotatedMessage(null);
+    setAnnotatedTargets((pictureTargets ?? availableReplaySaveTargets)());
+    setAnnotatedMenu((open) => !open);
+  };
+
+  const paintRecordedFrame = (ctx: CanvasRenderingContext2D, frame: CanvasImageSource, width: number, height: number) => {
+    ctx.drawImage(frame, 0, 0, width, height);
+    for (const stroke of markup.strokes) drawStroke(ctx, stroke, width, height);
+  };
+
+  /** "Save annotated video" opens a choice. The existing save receives the file. */
+  const saveAnnotatedTo = async (kind: ReplaySaveKind | 'device') => {
+    setAnnotatedMenu(false);
+    setAnnotatedBusy(true);
+    setAnnotatedMessage(null);
+    try {
+      const video = videoRef.current;
+      const burned = video ? await recordClip(video, paintRecordedFrame) : { burned: false as const, reason: ANNOTATED_FALLBACK_COPY };
+      if (burned.burned) {
+        const name = fileNameForMime(annotatedVideoName, burned.mime);
+        if (kind === 'device') {
+          downloadBlob(burned.blob, name);
+          setAnnotatedMessage('Annotated video saved to this device.');
+          return;
+        }
+        if (!saveAnnotated) {
+          downloadBlob(burned.blob, name);
+          setAnnotatedMessage('Annotated video saved to this device.');
+          return;
+        }
+        const result = await saveAnnotated(kind, burned.blob, burned.mime, false);
+        if (!result.ok) setAnnotatedMessage(`Annotated video not saved to ${PICTURE_TARGET_LABELS[kind]}. ${result.message}`);
+        else if (result.pending) setAnnotatedMessage(`Annotated video ${REPLAY_PENDING_MESSAGE.charAt(0).toLowerCase()}${REPLAY_PENDING_MESSAGE.slice(1)}`);
+        else setAnnotatedMessage(`Annotated video saved to ${PICTURE_TARGET_LABELS[kind]}.`);
+        return;
+      }
+      const still = await renderFrame();
+      if (kind === 'device') {
+        if (clipBlob) downloadBlob(clipBlob, fileNameForMime(annotatedVideoName, clipMime));
+        if (still) downloadBlob(still, annotatedStillName);
+        setAnnotatedMessage(ANNOTATED_FALLBACK_COPY);
+        return;
+      }
+      if (!saveAnnotated) {
+        setAnnotatedMessage(ANNOTATED_FALLBACK_COPY);
+        return;
+      }
+      const videoResult = clipBlob ? await saveAnnotated(kind, clipBlob, clipMime, false) : null;
+      const stillResult = still ? await saveAnnotated(kind, still, 'image/png', true) : null;
+      const failed = [videoResult, stillResult].find((result) => result && !result.ok);
+      if (failed && !failed.ok) setAnnotatedMessage(`${ANNOTATED_FALLBACK_COPY} ${failed.message}`);
+      else setAnnotatedMessage(ANNOTATED_FALLBACK_COPY);
+    } finally {
+      setAnnotatedBusy(false);
+    }
   };
 
   const savePictureTo = async (kind: ReplaySaveKind | 'device') => {
@@ -307,18 +462,28 @@ export function ReplayPlayer({ src, label, frameName, dateKey = '', replayId = '
 
   const progress = duration > 0 ? Math.min(100, (time / duration) * 100) : 0;
   const drawing = !playing && tool !== null;
+  const fsOn = fsMode !== 'off';
+  const playerClass = `replay-player${fsOn ? ' replay-player--fs' : ''}${fsMode === 'overlay' ? ' replay-player--overlay' : ''}`;
 
   return (
-    <div className="replay-player" data-playing={playing ? 'true' : 'false'}>
+    <div
+      ref={rootRef}
+      className={playerClass}
+      data-playing={playing ? 'true' : 'false'}
+      data-coach-no-swipe=""
+      data-fullscreen={fsOn ? 'true' : 'false'}
+      data-fullscreen-mode={fsMode}
+    >
       <div
         className="replay-player__stage"
-        style={{ aspectRatio: String(aspect), maxWidth: `min(100%, calc(70vh * ${aspect.toFixed(4)}))` }}
+        style={fsOn ? undefined : { aspectRatio: String(aspect), maxWidth: `min(100%, calc(70vh * ${aspect.toFixed(4)}))` }}
       >
         <video
           ref={videoRef}
           className="replay-player__video"
           src={src}
           playsInline
+          disablePictureInPicture
           preload="metadata"
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
@@ -383,7 +548,7 @@ export function ReplayPlayer({ src, label, frameName, dateKey = '', replayId = '
         <span className="replay-player__knob" style={{ left: `${progress}%` }} />
       </div>
 
-      <div className="replay-player__controls">
+      <div className="replay-player__controls" data-play-bar="">
         <button type="button" className="btn btn--ghost" data-replay-restart="" onClick={restart} aria-label={`Restart ${label} from the beginning`}>
           Restart
         </button>
@@ -445,8 +610,29 @@ export function ReplayPlayer({ src, label, frameName, dateKey = '', replayId = '
           >
             Save picture
           </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={!duration || annotatedBusy}
+            aria-expanded={annotatedMenu}
+            data-save-annotated=""
+            onClick={openAnnotatedMenu}
+          >
+            Save annotated video
+          </button>
         </div>
       )}
+      <div className="replay-player__fs-row">
+        <button
+          type="button"
+          className="btn btn--ghost"
+          data-fullscreen-toggle=""
+          aria-pressed={fsOn}
+          onClick={() => void (fsOn ? exitFullscreen() : enterFullscreen())}
+        >
+          {fsOn ? 'Exit full screen' : 'Full screen'}
+        </button>
+      </div>
       {pictureMenu ? (
         <div className="replay-player__save-menu" role="group" aria-label="Save picture to">
           <button type="button" className="btn btn--ghost" data-picture-target="device" onClick={() => void savePictureTo('device')}>
@@ -462,6 +648,23 @@ export function ReplayPlayer({ src, label, frameName, dateKey = '', replayId = '
       {pictureMessage ? (
         <p className="replay-card__note" role="status" data-picture-message="">
           {pictureMessage}
+        </p>
+      ) : null}
+      {annotatedMenu ? (
+        <div className="replay-player__save-menu" role="group" aria-label="Save annotated video to">
+          <button type="button" className="btn btn--ghost" data-annotated-target="device" onClick={() => void saveAnnotatedTo('device')}>
+            {PICTURE_DEVICE_LABEL}
+          </button>
+          {annotatedTargets.map((kind) => (
+            <button key={kind} type="button" className="btn btn--ghost" data-annotated-target={kind} onClick={() => void saveAnnotatedTo(kind)}>
+              {PICTURE_TARGET_LABELS[kind]}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {annotatedMessage ? (
+        <p className="replay-card__note" role="status" data-annotated-message="">
+          {annotatedMessage}
         </p>
       ) : null}
     </div>

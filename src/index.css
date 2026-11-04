@@ -12825,6 +12825,7 @@ html.lesson-cover-open body {
 .notes__block {
   display: grid;
   gap: 0.45rem;
+  min-width: 0;
 }
 
 .notes__remove {
@@ -18713,6 +18714,8 @@ a.plan-pick {
 .replay-card {
   display: grid;
   gap: 0.7rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .replay-card__heading {
@@ -18745,6 +18748,8 @@ a.plan-pick {
 .replay-player {
   display: grid;
   gap: 0.55rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .replay-player__stage {
@@ -18859,17 +18864,38 @@ a.plan-pick {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .replay-player__controls .btn,
 .replay-player__markup .btn {
   min-height: 48px;
+  min-width: 0;
+}
+
+.replay-player__controls .btn {
+  flex: 1 1 4.5rem;
+  padding-inline: 0.55rem;
 }
 
 .replay-player__clock {
-  margin-left: auto;
+  flex: 1 0 auto;
+  margin-left: 0;
+  text-align: end;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
+  white-space: nowrap;
+}
+
+.replay-player__fs-row {
+  display: flex;
+  min-width: 0;
+}
+
+.replay-player__fs-row .btn {
+  flex: 1 1 auto;
+  min-height: 48px;
 }
 
 .replay-player__tool--on {
@@ -18895,6 +18921,67 @@ a.plan-pick {
   margin: 0;
   color: var(--muted);
   font-size: 0.88rem;
+}
+
+/* Full screen: the stage fills the screen. The scrub bar and transport sit at the bottom. */
+.replay-player--fs,
+.replay-player:fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding:
+    calc(0.4rem + env(safe-area-inset-top, 0px))
+    calc(0.4rem + env(safe-area-inset-right, 0px))
+    calc(0.45rem + env(safe-area-inset-bottom, 0px))
+    calc(0.4rem + env(safe-area-inset-left, 0px));
+  background: #05070d;
+  overflow: hidden;
+}
+
+.replay-player--fs .replay-player__stage,
+.replay-player:fullscreen .replay-player__stage {
+  order: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+
+.replay-player--fs .replay-player__markup,
+.replay-player--fs .replay-player__hint,
+.replay-player--fs .replay-player__fs-row,
+.replay-player--fs .replay-player__save-menu,
+.replay-player--fs .replay-card__note,
+.replay-player:fullscreen .replay-player__markup,
+.replay-player:fullscreen .replay-player__hint,
+.replay-player:fullscreen .replay-player__fs-row,
+.replay-player:fullscreen .replay-player__save-menu,
+.replay-player:fullscreen .replay-card__note {
+  order: 2;
+  flex: none;
+}
+
+.replay-player--fs .replay-player__bar,
+.replay-player:fullscreen .replay-player__bar {
+  order: 3;
+  flex: none;
+}
+
+.replay-player--fs .replay-player__controls,
+.replay-player:fullscreen .replay-player__controls {
+  order: 4;
+  flex: none;
 }
 
 .notes__competition-replays {
