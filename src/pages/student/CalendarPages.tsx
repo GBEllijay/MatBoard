@@ -27,7 +27,7 @@ import { todayIso, viewJournalEntry } from '../../lib/studentEdition';
 import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import './fundamentals.css';
 import { markTrained, untimedOn } from '../../lib/matLog';
-import { formatMatTime, sessionOf, JOURNAL_SESSION_LABELS } from '../../lib/matHours';
+import { formatMatTime, sessionOf, sessionLabel } from '../../lib/matHours';
 import { MatQuickAddSheet } from './MatQuickAdd';
 import './calendar.css';
 
@@ -515,7 +515,7 @@ function CalendarMatTime({
         <ul className="comp-list">
           {sessions.map((entry) => (
             <li key={entry.id} data-testid="cal-mat-row">
-              Trained · {JOURNAL_SESSION_LABELS[sessionOf(entry)]} · {entry.minutes ? formatMatTime(entry.minutes) : 'no time yet'}
+              Trained · {sessionLabel(sessionOf(entry), entry.sessionOther)} · {entry.minutes ? formatMatTime(entry.minutes) : 'no time yet'}
             </li>
           ))}
         </ul>

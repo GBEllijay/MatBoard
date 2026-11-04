@@ -4,7 +4,8 @@
  * Advantage does not host it.
  */
 
-import { mergeBeltBooks, readBeltBook } from '../beltBook.ts';
+import { beltModeOf, mergeBeltBooks, readBeltBook } from '../beltBook.ts';
+import { migrateQualityToNote, qualityStage } from '../sessionQuality.ts';
 import { coachGymLogoFits, readTravelingGym, softenOversizedGymLogo } from '../coachGymFit.ts';
 import { splitCombinedDivision } from '../divisionFields.ts';
 import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
@@ -282,6 +283,10 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     const beltBook = readBeltBook(record.beltBook);
     errors.push(...beltBook.errors);
     if (beltBook.book) value.beltBook = beltBook.book;
+    if (value.journal.some((entry) => entry.quality !== undefined)) {
+      const stage = qualityStage(value.profile.belt, beltModeOf(value) === 'kids');
+      value.journal = value.journal.map((entry) => migrateQualityToNote(entry, stage));
+    }
     return errors.length ? { ok: false, errors } : { ok: true, value };
   }
   if (
@@ -1645,6 +1650,7 @@ function readJournalEntry(value: unknown, index: number, errors: string[]): Jour
   if (minutes !== undefined) entry.minutes = minutes;
   const session = readChoice(record.session, `${label} session`, JOURNAL_SESSIONS, errors);
   if (session) entry.session = session;
+  if (session === 'other' && typeof record.sessionOther === 'string' && record.sessionOther.trim()) entry.sessionOther = record.sessionOther.trim().slice(0, 80);
   const quality = readTargetLevel(record.quality, `${label} quality`, errors);
   if (quality) entry.quality = quality;
   const injury = asRecord(record.injury);

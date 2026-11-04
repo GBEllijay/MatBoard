@@ -12,7 +12,7 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** Quick-add sheet: date, Class / Open mat, duration, Save. Writes the shared log (the journal). */
+/** Quick-add sheet: date, session type (Class / Open mat / Miscellaneous / Other), duration wheel, Save. Writes the shared log (the journal). */
 export function MatQuickAddSheet({
   report,
   commit,
@@ -29,10 +29,11 @@ export function MatQuickAddSheet({
   const [date, setDate] = useState(initialDate ?? todayIso());
   const [session, setSession] = useState<JournalSession>(initialSession);
   const [minutes, setMinutes] = useState(60);
+  const [sessionOther, setSessionOther] = useState('');
   const [error, setError] = useState('');
   const save = () => {
     try {
-      commit(logMatTime(report, { date, session, minutes }));
+      commit(logMatTime(report, { date, session, minutes, sessionOther }));
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save.');
@@ -45,7 +46,7 @@ export function MatQuickAddSheet({
         <span>Date</span>
         <input type="date" value={date} max={todayIso()} onChange={(e) => setDate(e.target.value)} aria-label="Date" />
       </label>
-      <MatTimeField idPrefix="quick" session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} />
+      <MatTimeField idPrefix="Quick " session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} sessionOther={sessionOther} onSessionOther={setSessionOther} />
       <p className="mat-time__note">Adds to your journal and calendar. Same day and session updates the time, never counts twice.</p>
       {error ? <p role="alert" className="mat-quick__error">{error}</p> : null}
       <div className="mat-quick__actions">

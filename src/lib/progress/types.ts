@@ -475,6 +475,8 @@ export type JournalEntry = {
   minutes?: number;
   /** Class or open mat. Absent on older cards: read as class unless the class name says open mat. */
   session?: JournalSession;
+  /** Optional text for an Other session ("Wrestling", "Seminar"). Only kept when session is other. */
+  sessionOther?: string;
   /** Optional 1–5 how the session felt, student-rated. Labels change with belt (lib/sessionQuality). */
   quality?: 1 | 2 | 3 | 4 | 5;
   /** Marks the card as an injury. Private to the student. */
@@ -483,7 +485,9 @@ export type JournalEntry = {
   hiatus?: { reason: 'medical' | 'other'; start: string; end: string };
 };
 
-export const JOURNAL_SESSIONS = ['class', 'openMat'] as const;
+export const JOURNAL_SESSIONS = ['class', 'openMat', 'misc', 'other'] as const;
+/** Longest optional "what was it" text on an Other session. */
+export const JOURNAL_SESSION_OTHER_MAX = 80;
 export type JournalSession = (typeof JOURNAL_SESSIONS)[number];
 /** Longest single session a card accepts: 12 hours. */
 export const JOURNAL_MINUTES_MAX = 720;

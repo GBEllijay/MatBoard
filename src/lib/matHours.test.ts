@@ -7,7 +7,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { formatMatTime, clockMatTime, matHoursLabel, matHoursLongLabel, matHoursSplit, matHoursTotal, sessionOf } from './matHours.ts';
 import { trainingStreak, streakLabel, streakWeekLine, weekStart, readStreakTarget, saveStreakTarget } from './trainingStreak.ts';
-import { QUALITY_SCALES, qualityStage, qualitySummary, bodyStatus } from './sessionQuality.ts';
+import { QUALITY_SCALES, qualityStage, qualityText, latestHowItWent, howItWentOf, migrateQualityToNote, bodyStatus } from './sessionQuality.ts';
+import { viewJournalEntry } from './studentEdition.ts';
 import { addJournalEntry, blankStudentReport, loadStudentReport, saveStudentReport, updateJournalEntry } from './studentEdition.ts';
 import { exportProgressPacket, parseProgressPacket } from './progress/format.ts';
 import { forgetAcademyFolder, joinAcademy, leaveAcademy, removePreviousGym } from './academyMembership.ts';
@@ -61,8 +62,8 @@ test('editing a card updates the total; 0 clears; undefined keeps', () => {
   assert.equal(matHoursTotal(report.journal).minutes, 0);
 });
 
-test('minutes, session, quality, injury and hiatus survive a backup round trip', () => {
-  let report = log(blankStudentReport(1), '2026-11-02', { minutes: 45, session: 'openMat', quality: 4, injury: { area: 'Left knee', note: 'tweaked' } });
+test('minutes, session, how it went, injury and hiatus survive a backup round trip', () => {
+  let report = log(blankStudentReport(1), '2026-11-02', { minutes: 45, session: 'openMat', howItWent: 'Game working', injury: { area: 'Left knee', note: 'tweaked' } });
   report = log(report, '2026-10-01', { hiatus: { reason: 'medical', start: '2026-10-01', end: '2026-10-20' } }, 2);
   const parsed = parseProgressPacket(exportProgressPacket(report));
   assert.ok(parsed.ok, JSON.stringify(parsed));
@@ -70,7 +71,8 @@ test('minutes, session, quality, injury and hiatus survive a backup round trip',
   const [a, b] = parsed.value.journal;
   assert.equal(a.minutes, 45);
   assert.equal(a.session, 'openMat');
-  assert.equal(a.quality, 4);
+  assert.equal(a.quality, undefined);
+  assert.equal(viewJournalEntry(a).howItWent, 'Game working');
   assert.deepEqual(a.injury, { area: 'Left knee', note: 'tweaked' });
   assert.deepEqual(b.hiatus, { reason: 'medical', start: '2026-10-01', end: '2026-10-20' });
 });
@@ -122,11 +124,37 @@ test('quality wording follows the belt', () => {
   assert.equal(qualityStage('black', false), 'refiner');
   assert.equal(qualityStage('grey', true), 'kids');
   assert.match(QUALITY_SCALES.white.labels.join(), /survived/i);
-  let report = log(blankStudentReport(1), '2026-11-02', { quality: 4 });
-  report = log(report, '2026-11-03', { quality: 5 }, 2);
-  const summary = qualitySummary(report.journal, 'builder');
-  assert.equal(summary?.average, 4.5);
-  assert.equal(summary?.count, 2);
+  assert.equal(qualityText(3, 'white'), 'Learned something');
+  assert.equal(qualityText(3, 'builder'), 'Solid flow');
+  let report = log(blankStudentReport(1), '2026-11-02', { howItWent: 'Rusty' });
+  report = log(report, '2026-11-03', { howItWent: 'Hit my first\nsweep' }, 2);
+  const latest = latestHowItWent(report.journal);
+  assert.equal(latest?.text, 'Hit my first sweep');
+  assert.equal(latest?.count, 2);
+});
+
+test('saved 1–5 ratings migrate to "How it went" text on load; nothing is lost', () => {
+  let report = log(blankStudentReport(1), '2026-11-02', { notes: 'keep elbows in', stopDoing: 'flailing' });
+  report = log(report, '2026-11-03', { howItWent: 'Mine wins' }, 2);
+  const raw = JSON.parse(exportProgressPacket(report));
+  raw.journal[0].quality = 3;
+  raw.journal[1].quality = 5;
+  const parsed = parseProgressPacket(JSON.stringify(raw));
+  assert.ok(parsed.ok, JSON.stringify(parsed));
+  if (!parsed.ok) return;
+  const [a, b] = parsed.value.journal;
+  assert.equal(a.quality, undefined);
+  assert.equal(howItWentOf(a), 'Learned something');
+  const view = viewJournalEntry(a);
+  assert.equal(view.howItWent, 'Learned something');
+  assert.equal(view.notes, 'keep elbows in');
+  assert.equal(view.stopDoing, 'flailing');
+  assert.equal(howItWentOf(b), 'Mine wins');
+  assert.equal(b.quality, undefined);
+  // Idempotent, and an unrated card is untouched.
+  assert.equal(migrateQualityToNote(a, 'white'), a);
+  // Kids wording for a kids belt book.
+  assert.equal(howItWentOf(migrateQualityToNote({ ...a, body: report.journal[0].body, quality: 4 }, 'kids')), 'Great');
 });
 
 test('status comes from journal cards: current break, injury history', () => {
@@ -142,7 +170,7 @@ test('status comes from journal cards: current break, injury history', () => {
 test('leave academy, remove old gym and disconnect never clear mat time', () => {
   const storage = testMemory();
   let report = assignStudentId(blankStudentReport(10), 'stu-alex', 10);
-  report = log(report, '2026-11-01', { minutes: 90, session: 'openMat', quality: 3, injury: { area: 'Knee', note: '' } });
+  report = log(report, '2026-11-01', { minutes: 90, session: 'openMat', howItWent: 'Learned something', injury: { area: 'Knee', note: '' } });
   saveStudentReport(storage, report);
   saveStudentDriveLink(storage, { role: 'academy', provider: 'googleDrive', folderId: 'gymA-folder', folderName: 'A', accountLabel: null, gymName: 'A' });
   joinAcademy(storage, { folderId: 'gymA-folder', provider: 'googleDrive', gymName: 'A', license: 'licA-1234' }, 1000);
@@ -151,7 +179,7 @@ test('leave academy, remove old gym and disconnect never clear mat time', () => 
   removePreviousGym(storage, { removeLogo: true });
   const after = loadStudentReport(storage);
   assert.equal(matHoursTotal(after.journal).minutes, 90);
-  assert.equal(after.journal[0].quality, 3);
+  assert.equal(howItWentOf(after.journal[0]), 'Learned something');
   assert.deepEqual(after.journal[0].injury, { area: 'Knee', note: '' });
 });
 
@@ -159,7 +187,7 @@ test('coach update file never carries mat time, injury or break marks', () => {
   let report = assignStudentId(blankStudentReport(10), 'stu-alex', 10);
   report = log(report, '2026-11-01', { minutes: 90, injury: { area: 'SECRET-KNEE', note: '' } });
   const built = buildCoachUpdateFile(report, { storage: testMemory(), assessments: [], now: 100, today: '2026-11-04' });
-  assert.doesNotMatch(built.json, /minutes|SECRET-KNEE|hiatus|quality/);
+  assert.doesNotMatch(built.json, /minutes|SECRET-KNEE|hiatus|quality|How it went/);
 });
 
 test('shared log: quick-add, calendar mark and journal card de-dupe by day + session', () => {

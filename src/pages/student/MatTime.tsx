@@ -6,9 +6,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { QUALITY_SCALES, qualityStage } from '../../lib/sessionQuality';
 import {
-  MAT_TIME_CHIPS,
-  MAT_TIME_STEP,
-  JOURNAL_MINUTES_MAX,
   JOURNAL_SESSION_LABELS,
   clampMinutes,
   clockMatTime,
@@ -17,12 +14,17 @@ import {
   matHoursLongLabel,
   matHoursSplit,
   matHoursTotal,
+  matMinuteOptions,
+  sessionLabel,
 } from '../../lib/matHours';
-import { JOURNAL_SESSIONS, type JournalSession, type StudentProgressReport } from '../../lib/progress/types';
+import { WheelPicker } from '../../components/WheelPicker';
+import { JOURNAL_SESSIONS, JOURNAL_SESSION_OTHER_MAX, type JournalSession, type StudentProgressReport } from '../../lib/progress/types';
 import { wornBeltPreview, type WornBeltPreview } from '../../lib/studentRank';
 import { kidsClothStyle } from './wornBelt';
 import './beltWeave.css';
 import './matHours.css';
+
+const MINUTE_OPTIONS = matMinuteOptions();
 
 export function MatTimeField({
   idPrefix,
@@ -30,15 +32,18 @@ export function MatTimeField({
   minutes,
   onSession,
   onMinutes,
+  sessionOther = '',
+  onSessionOther,
 }: {
   idPrefix: string;
   session: JournalSession;
   minutes: number;
   onSession: (next: JournalSession) => void;
   onMinutes: (next: number) => void;
+  sessionOther?: string;
+  onSessionOther?: (next: string) => void;
 }) {
   const value = clampMinutes(minutes);
-  const step = (delta: number) => onMinutes(clampMinutes(value + delta));
   return (
     <fieldset className="ink mat-time" aria-label={`${idPrefix}Mat time`}>
       <legend className="ink__label">Time on the mat</legend>
@@ -55,50 +60,41 @@ export function MatTimeField({
           </button>
         ))}
       </div>
-      <div className="mat-time__row" role="group" aria-label={`${idPrefix}Quick time`}>
-        {MAT_TIME_CHIPS.map((chip) => (
-          <button
-            key={chip}
-            type="button"
-            className="mat-time__chip"
-            aria-pressed={value === chip}
-            onClick={() => onMinutes(value === chip ? 0 : chip)}
-          >
-            {formatMatTime(chip)}
-          </button>
-        ))}
-      </div>
+      {session === 'other' && onSessionOther ? (
+        <label className="mat-time__other">
+          <span className="ink__label">What was it? (optional)</span>
+          <input
+            aria-label={`${idPrefix}Other session type`}
+            value={sessionOther}
+            maxLength={JOURNAL_SESSION_OTHER_MAX}
+            placeholder="Wrestling, seminar, private…"
+            spellCheck
+            autoCorrect="on"
+            autoCapitalize="sentences"
+            onChange={(event) => onSessionOther(event.target.value)}
+          />
+        </label>
+      ) : null}
       <div className="mat-time__stepper" role="group" aria-label={`${idPrefix}Custom time`}>
-        <button type="button" className="mat-time__step" aria-label={`${idPrefix}Less time`} disabled={value <= 0} onClick={() => step(-MAT_TIME_STEP)}>
-          −
-        </button>
+        <WheelPicker label={`${idPrefix}Time on the mat`} value={value} options={MINUTE_OPTIONS} onChange={(next) => onMinutes(clampMinutes(next))} />
         <output className="mat-time__value" aria-live="polite" aria-label={`${idPrefix}Minutes on the mat`}>
           {value ? clockMatTime(value) : 'Untimed'}
         </output>
-        <button
-          type="button"
-          className="mat-time__step"
-          aria-label={`${idPrefix}More time`}
-          disabled={value >= JOURNAL_MINUTES_MAX}
-          onClick={() => step(MAT_TIME_STEP)}
-        >
-          +
-        </button>
         {value ? (
           <button type="button" className="mat-time__clear" onClick={() => onMinutes(0)}>
             Clear
           </button>
         ) : null}
       </div>
-      <small className="mat-time__note">Just for you. Counts toward your mat hours. Coaches don't see it.</small>
+      <small className="mat-time__note">Scroll to any minute; it settles gently on 10s. Just for you. Counts toward your mat hours. Coaches don't see it.</small>
     </fieldset>
   );
 }
 
 /** Line on a saved card: "Open mat · 1h 30m on the mat" or "Class · untimed". */
-export function matTimeLine(session: JournalSession, minutes: number): string {
+export function matTimeLine(session: JournalSession, minutes: number, other = ''): string {
   const time = formatMatTime(minutes);
-  return `${JOURNAL_SESSION_LABELS[session]} · ${time ? `${time} on the mat` : 'untimed'}`;
+  return `${sessionLabel(session, other)} · ${time ? `${time} on the mat` : 'untimed'}`;
 }
 
 function finalCloth(preview: WornBeltPreview): CSSProperties {
@@ -190,7 +186,7 @@ function useCountUp(target: number): number {
 
 export type SessionMark = 'none' | 'injury' | 'hiatus';
 export type SessionExtrasValue = {
-  quality: number;
+  howItWent: string;
   mark: SessionMark;
   area: string;
   injuryNote: string;
@@ -200,12 +196,12 @@ export type SessionExtrasValue = {
 };
 
 export function extrasFromCard(card: {
-  quality: number;
+  howItWent: string;
   injury: { area: string; note: string } | null;
   hiatus: { reason: 'medical' | 'other'; start: string; end: string } | null;
 }): SessionExtrasValue {
   return {
-    quality: card.quality,
+    howItWent: card.howItWent,
     mark: card.hiatus ? 'hiatus' : card.injury ? 'injury' : 'none',
     area: card.injury?.area ?? '',
     injuryNote: card.injury?.note ?? '',
@@ -215,18 +211,18 @@ export function extrasFromCard(card: {
   };
 }
 
-export const EMPTY_EXTRAS: SessionExtrasValue = { quality: 0, mark: 'none', area: '', injuryNote: '', reason: 'other', start: '', end: '' };
+export const EMPTY_EXTRAS: SessionExtrasValue = { howItWent: '', mark: 'none', area: '', injuryNote: '', reason: 'other', start: '', end: '' };
 
 /** Draft fields for addJournalEntry / updateJournalEntry. Null clears on edit. */
 export function extrasDraft(value: SessionExtrasValue, date: string) {
   return {
-    quality: value.quality,
+    howItWent: value.howItWent,
     injury: value.mark === 'injury' ? { area: value.area, note: value.injuryNote } : null,
     hiatus: value.mark === 'hiatus' ? { reason: value.reason, start: value.start || date, end: value.end } : null,
   };
 }
 
-/** Optional quality chips (belt-worded) and Injury / Break marks. Private to the student. */
+/** "How it went" free-text note (lined paper, belt-worded prompt) and Injury / Break marks. Private to the student. */
 export function SessionExtras({
   idPrefix,
   report,
@@ -242,22 +238,23 @@ export function SessionExtras({
   const scale = QUALITY_SCALES[qualityStage(preview.belt, preview.kind === 'kids')];
   const set = (patch: Partial<SessionExtrasValue>) => onChange({ ...value, ...patch });
   return (
-    <fieldset className="ink mat-time" aria-label={`${idPrefix}How it went`}>
-      <legend className="ink__label">How it went (optional)</legend>
-      <small className="mat-time__note">{scale.prompt}</small>
-      <div className="mat-time__row" role="group" aria-label={`${idPrefix}Session quality`}>
-        {scale.labels.map((text, index) => (
-          <button
-            key={text}
-            type="button"
-            className="mat-time__chip"
-            aria-pressed={value.quality === index + 1}
-            onClick={() => set({ quality: value.quality === index + 1 ? 0 : index + 1 })}
-          >
-            {text}
-          </button>
-        ))}
-      </div>
+    <>
+    <label className="ink ink--wobble journal-note">
+      <span className="ink__label">How it went</span>
+      <span className="student-quiet" aria-hidden="true">
+        {scale.prompt}
+      </span>
+      <textarea spellCheck autoCorrect="on" autoCapitalize="sentences"
+        aria-label={`${idPrefix}How it went`}
+        rows={2}
+        maxLength={400}
+        placeholder={scale.labels[2]}
+        value={value.howItWent}
+        onChange={(e) => set({ howItWent: e.target.value })}
+      />
+    </label>
+    <fieldset className="ink mat-time" aria-label={`${idPrefix}Card marks`}>
+      <legend className="ink__label">Mark card (optional)</legend>
       <div className="mat-time__row" role="group" aria-label={`${idPrefix}Mark card`}>
         {(['none', 'injury', 'hiatus'] as const).map((mark) => (
           <button key={mark} type="button" className="mat-time__chip mat-time__chip--kind" aria-pressed={value.mark === mark} onClick={() => set({ mark })}>
@@ -299,5 +296,6 @@ export function SessionExtras({
       ) : null}
       <small className="mat-time__note">Private. Never sent to a coach.</small>
     </fieldset>
+    </>
   );
 }

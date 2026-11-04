@@ -72,3 +72,12 @@ The profile summary reads "Lately: <label>", with the average of the last 10 rat
 - `after-profile-report-{blue,injury,hiatus,black}-*`
 
 Every shot was checked: no sideways scroll, smallest text 12px, smallest tap target 44px. The seeded screenshots render under the app's DEMO MODE banner.
+
+## Round 10:58 — session types + one time wheel
+- Session types: Class, Open mat, Miscellaneous, Other (optional free text, max 80, stored as `sessionOther`, kept only when session is `other`). Misc/Other count toward total mat hours.
+- Mat time is one scrolling wheel (existing `WheelPicker`, detents every 10 min → 10/30 soft snap). Any minute 0–12:00 reachable by tap/arrow/flick (e.g. "1:31"); slow drags settle on the nearest 10. Clear kept. Same picker in quick-add. Chips and −/+ removed.
+- Shared fix in `WheelPicker.commit()`: clear pending debounce so scrollend+debounce don't double-commit and re-snap a tapped/arrowed value. Benefits the #379 timer wheels too.
+- Journal: technique lines with notes, My techniques picker search, fuzzy (typo-tolerant) search with highlights; video library has no tags so matching is text-only. Pagination is card view only. Binder pages styling.
+- Seeded preview runs in DEMO MODE: saves don't persist across navigation (same on base f594af9) — not a bug.
+- Overlap with #399: CSS is self-contained in `journalPages.css` / `matHours.css`; only shared touch is `WheelPicker.tsx` (one line).
+- Tests: `journalRound.test.ts` (7) + mat-hours regressions (11). Full `npm test` 1768 pass / 0 fail; tsc + build clean.

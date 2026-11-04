@@ -12,7 +12,7 @@ import { assessmentSummary } from '../../lib/rosterCard';
 import { readCoachOverlay } from '../../lib/coachSync';
 import { loadAssessments } from '../../lib/studentAssessment';
 import { matHoursTotal, formatHours } from '../../lib/matHours';
-import { qualityStage, qualitySummary, bodyStatus } from '../../lib/sessionQuality';
+import { latestHowItWent, bodyStatus } from '../../lib/sessionQuality';
 import { readStreakTarget, saveStreakTarget, streakLabel, streakWeekLine, trainingStreak, type StreakTarget } from '../../lib/trainingStreak';
 import { todayIso } from '../../lib/studentEdition';
 import { wornBeltPreview } from '../../lib/studentRank';
@@ -33,7 +33,7 @@ export function ProfileReport({ report, storage, today }: { report: StudentProgr
   const preview = wornBeltPreview(report);
   const total = matHoursTotal(report.journal);
   const streak = trainingStreak(report.journal, today, target);
-  const quality = qualitySummary(report.journal, qualityStage(preview.belt, preview.kind === 'kids'));
+  const howItWent = latestHowItWent(report.journal);
   const status = bodyStatus(report.journal, today);
   const overlay = readCoachOverlay(storage);
   const coach = coachEntriesFromOverlay(overlay);
@@ -86,11 +86,11 @@ export function ProfileReport({ report, storage, today }: { report: StudentProgr
             <strong>{total.timed} timed sessions</strong>
             <span>{total.untimed ? `${total.untimed} older cards untimed` : `${formatHours(total.minutes)} h logged`}</span>
           </p>
-          {quality ? (
+          {howItWent ? (
             <p className="report__stat" data-testid="report-quality">
-              <strong>Lately: {quality.label}</strong>
+              <strong>Lately: {howItWent.text}</strong>
               <span>
-                Average {quality.average} of 5 · last {quality.count} rated
+                How it went · {howItWent.date} · {howItWent.count} {howItWent.count === 1 ? 'note' : 'notes'}
               </span>
             </p>
           ) : null}

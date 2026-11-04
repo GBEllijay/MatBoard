@@ -11,7 +11,7 @@ import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { emptyRank } from './studentRank.ts';
 import { clampMinutes, sessionOf } from './matHours.ts';
-import type { JournalSession } from './progress/types.ts';
+import { JOURNAL_SESSIONS, JOURNAL_SESSION_OTHER_MAX, type JournalSession } from './progress/types.ts';
 import {
   beginAppStudentSave,
   endAppStudentSave,
@@ -23,6 +23,7 @@ import {
 } from './studentDemo.ts';
 import { amnestyStillOpen } from './entitlement.ts';
 import { clearStudentEditionRelock, isStudentEditionRelocked, isStudentEditionUnlocked } from './studentUnlock.ts';
+import { searchJournalIndex } from './journalIndex.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips, techniqueDrilledLabel } from './progress/format.ts';
 import { shareTournaments } from './sharedTournaments.ts';
 import {
@@ -105,11 +106,14 @@ export function migrateClassText(value: string): string {
   return text.slice(0, PROGRESS_NAME_MAX);
 }
 
+export type JournalTechniqueLine = TechniqueRef & { note?: string };
+
 export type JournalDraft = {
   date: string;
   className: string;
   gameTag: GameTag | '';
-  techniques: TechniqueRef[];
+  /** Technique lines. `note` is the line's "What I learned" text (kept in the card body). */
+  techniques: JournalTechniqueLine[];
   partners: string;
   drills: string;
   rolls: string;
@@ -124,8 +128,10 @@ export type JournalDraft = {
   minutes?: number;
   /** Class or open mat. Missing keeps the saved kind (or class on a new card). */
   session?: JournalSession;
-  /** 0 or missing: unrated. Missing on edit keeps the saved rating. */
-  quality?: number;
+  /** Optional text for an Other session. Missing on edit keeps the saved text. */
+  sessionOther?: string;
+  /** Free-text "How it went" note. Missing on edit keeps the saved note. */
+  howItWent?: string;
   /** null clears. Missing on edit keeps. */
   injury?: JournalEntry['injury'] | null;
   hiatus?: JournalEntry['hiatus'] | null;
@@ -137,7 +143,8 @@ export type JournalCardView = JournalDraft & {
   createdAt: number;
   minutes: number;
   session: JournalSession;
-  quality: number;
+  sessionOther: string;
+  howItWent: string;
   injury: NonNullable<JournalEntry['injury']> | null;
   hiatus: NonNullable<JournalEntry['hiatus']> | null;
 };
@@ -359,21 +366,39 @@ export function setTechniquePolicy(
   return { ...report, updatedAt: now, profile };
 }
 
-export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes' | 'stopDoing'>): string {
-  const techniques = draft.techniques.map((item) => item.name.trim()).filter(Boolean);
+export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes' | 'stopDoing' | 'howItWent'>): string {
+  const howItWent = (draft.howItWent ?? '').replace(/\s*\n\s*/g, ' ').trim();
+  const lines = draft.techniques.filter((item) => item.name.trim());
+  const techniques = lines.map((item) => item.name.trim());
   return [
     `Class: ${migrateClassText(draft.className)}`,
-    ...techniques.map((name, index) => `${techniqueDrilledLabel(index)}: ${name}`),
+    ...lines.flatMap((item, index) => {
+      const note = (item.note ?? '').replace(/\s*\n\s*/g, ' ').trim();
+      return [`${techniqueDrilledLabel(index)}: ${item.name.trim()}`, ...(note ? [`${techniqueNoteLabel(index)}: ${note}`] : [])];
+    }),
     `Techniques: ${techniques.join('; ')}`,
     `Training partners: ${draft.partners.trim()}`,
     `Drills: ${draft.drills.trim()}`,
     `Rolls: ${draft.rolls.trim()}`,
+    ...(howItWent ? [`${HOW_IT_WENT_PREFIX} ${howItWent}`] : []),
     'Notes:',
     joinJournalNotes(draft.notes, draft.stopDoing ?? ''),
   ].join('\n');
 }
 
-export function decodeJournalBody(body: string): Pick<JournalDraft, 'className' | 'partners' | 'drills' | 'rolls' | 'notes' | 'stopDoing'> {
+export const HOW_IT_WENT_PREFIX = 'How it went:';
+
+/** Body line holding a technique line's note, e.g. `What I learned #1: keep the knee shield`. */
+export function techniqueNoteLabel(index: number): string {
+  return `What I learned #${index + 1}`;
+}
+
+/** A picked (fundamentals-linked) line has a catalog or checklist id; free text has a `free.` id or none. */
+export function isFundamentalLink(id: string): boolean {
+  return Boolean(id.trim()) && !id.startsWith('free.');
+}
+
+export function decodeJournalBody(body: string): Pick<JournalDraft, 'className' | 'partners' | 'drills' | 'rolls' | 'notes' | 'stopDoing' | 'howItWent'> {
   const lines = body.split('\n');
   const take = (prefix: string) => {
     const line = lines.find((row) => row.startsWith(prefix));
@@ -387,9 +412,16 @@ export function decodeJournalBody(body: string): Pick<JournalDraft, 'className' 
     partners: take('Training partners:'),
     drills: take('Drills:'),
     rolls: take('Rolls:'),
+    howItWent: notesAt >= 0 ? (lines.slice(0, notesAt).find((row) => row.startsWith(HOW_IT_WENT_PREFIX)) ?? '').slice(HOW_IT_WENT_PREFIX.length).trim() : '',
     notes: split.notes,
     stopDoing: split.stopDoing,
   };
+}
+
+function techniqueNoteOf(body: string, index: number): string {
+  const prefix = `${techniqueNoteLabel(index)}:`;
+  const line = body.split('\n').find((row) => row.startsWith(prefix));
+  return line ? line.slice(prefix.length).trim() : '';
 }
 
 export function viewJournalEntry(entry: JournalEntry): JournalCardView {
@@ -399,7 +431,7 @@ export function viewJournalEntry(entry: JournalEntry): JournalCardView {
     date: entry.date,
     className: decoded.className,
     gameTag: entry.gameTag,
-    techniques: entry.techniqueRefs.map((item) => ({ id: item.id, name: item.name })),
+    techniques: entry.techniqueRefs.map((item, index) => ({ id: item.id, name: item.name, note: techniqueNoteOf(entry.body, index) })),
     partners: decoded.partners,
     drills: decoded.drills,
     rolls: decoded.rolls,
@@ -409,7 +441,8 @@ export function viewJournalEntry(entry: JournalEntry): JournalCardView {
     createdAt: entry.createdAt,
     minutes: clampMinutes(entry.minutes),
     session: sessionOf(entry),
-    quality: entry.quality ?? 0,
+    sessionOther: entry.sessionOther ?? '',
+    howItWent: decoded.howItWent ?? '',
     injury: entry.injury ?? null,
     hiatus: entry.hiatus ?? null,
   };
@@ -436,6 +469,7 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
     .map((item, index) => ({
       id: item.id.trim() || techniqueId(item.name, now, index),
       name: item.name.trim(),
+      note: (item.note ?? '').trim(),
     }))
     .filter((item) => item.name)
     .slice(0, JOURNAL_TECHNIQUE_MAX);
@@ -444,16 +478,16 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
     date: draft.date,
     gameTag: (GAME_TAGS as readonly string[]).includes(draft.gameTag) ? draft.gameTag : '',
     body: encodeJournalBody({ ...draft, techniques }),
-    techniqueRefs: techniques,
+    techniqueRefs: techniques.map(({ id, name }) => ({ id, name })),
     amendments: [],
     createdAt: now,
     updatedAt: now,
   };
   const minutes = clampMinutes(draft.minutes);
   if (minutes) entry.minutes = minutes;
-  if (draft.session === 'openMat' || draft.session === 'class') entry.session = draft.session;
-  const quality = Math.round(Number(draft.quality ?? 0));
-  if (quality >= 1 && quality <= 5) entry.quality = quality as 1 | 2 | 3 | 4 | 5;
+  if (draft.session && (JOURNAL_SESSIONS as readonly string[]).includes(draft.session)) entry.session = draft.session;
+  const other = (draft.sessionOther ?? '').trim().slice(0, JOURNAL_SESSION_OTHER_MAX);
+  if (entry.session === 'other' && other) entry.sessionOther = other;
   if (draft.injury) entry.injury = { area: draft.injury.area.trim().slice(0, PROGRESS_NAME_MAX), note: draft.injury.note.trim().slice(0, PROGRESS_NAME_MAX * 4) };
   if (draft.hiatus) {
     const start = DATE_RE.test(draft.hiatus.start) ? draft.hiatus.start : draft.date;
@@ -485,10 +519,11 @@ export function updateJournalEntry(
   const stopDoing = draft.stopDoing === undefined ? viewJournalEntry(current).stopDoing : draft.stopDoing;
   const minutes = draft.minutes === undefined ? current.minutes : draft.minutes;
   const session = draft.session === undefined ? current.session : draft.session;
-  const quality = draft.quality === undefined ? current.quality : draft.quality;
+  const sessionOther = draft.sessionOther === undefined ? current.sessionOther : draft.sessionOther;
+  const howItWent = draft.howItWent === undefined ? viewJournalEntry(current).howItWent : draft.howItWent;
   const injury = draft.injury === undefined ? current.injury : draft.injury;
   const hiatus = draft.hiatus === undefined ? current.hiatus : draft.hiatus;
-  const next = createJournalEntry({ ...draft, stopDoing, minutes, session, quality, injury, hiatus, gameTag: draft.gameTag || current.gameTag }, now);
+  const next = createJournalEntry({ ...draft, stopDoing, howItWent, minutes, session, sessionOther, injury, hiatus, gameTag: draft.gameTag || current.gameTag }, now);
   const journal = report.journal.slice();
   journal[index] = {
     ...next,
@@ -538,7 +573,8 @@ export function searchStudentJournal(report: StudentProgressReport, query: strin
   const needle = query.trim().toLowerCase();
   if (!needle) return newest;
   const tags = new Set(matchingGameTags(report.competition, query));
-  return newest.filter((entry) => (entry.gameTag !== '' && tags.has(entry.gameTag)) || searchJournal([entry], query).length > 0);
+  const hits = new Set(searchJournalIndex(newest, query).map((hit) => hit.entry.id));
+  return newest.filter((entry) => (entry.gameTag !== '' && tags.has(entry.gameTag)) || hits.has(entry.id) || searchJournal([entry], query).length > 0);
 }
 
 export function searchStudentClips(report: StudentProgressReport, query: string): JournalClip[] {

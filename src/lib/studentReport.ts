@@ -163,9 +163,14 @@ export function journalReportLine(entry: JournalEntry): string {
   const decoded = decodeJournalBody(entry.body);
   const parts = [formatJournalDate(entry.date)];
   if (decoded.className.trim()) parts.push(decoded.className.trim());
+  const lines = entry.body.split('\n');
   techniqueNames(entry).forEach((name, index) => {
-    parts.push(`${techniqueDrilledLabel(index)}: ${name}`);
+    const notePrefix = `What I learned #${index + 1}:`;
+    const note = (lines.find((row) => row.startsWith(notePrefix)) ?? '').slice(notePrefix.length).trim();
+    parts.push(`${techniqueDrilledLabel(index)}: ${name}${note ? ` — What I learned: ${note}` : ''}`);
   });
+  const howItWent = (lines.find((row) => row.startsWith('How it went:')) ?? '').slice('How it went:'.length).trim();
+  if (howItWent) parts.push(`How it went: ${howItWent}`);
   if (decoded.partners.trim()) parts.push(`${JOURNAL_PARTNERS_LABEL}: ${decoded.partners.trim()}`);
   if (decoded.drills.trim()) parts.push(`${JOURNAL_DRILLS_LABEL}: ${decoded.drills.trim()}`);
   if (decoded.rolls.trim()) parts.push(`${JOURNAL_ROLLS_LABEL}: ${decoded.rolls.trim()}`);

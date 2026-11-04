@@ -5,6 +5,7 @@
  * starts with YYYY-MM-DD and an em dash. That is still the note field.
  */
 
+import { FUNDAMENTALS_REQUIRED_FOR_BELT } from './fundamentalsConfig.ts';
 import { classesOnDay, formatClassTime, normalizeGymCalendar, WEEKDAY_LABELS, weekdayFromJsDay } from './gymCalendar.ts';
 import { competitionOf } from './progress/competition.ts';
 import { addTournament, removeTournament, updateTournament } from './studentCompetition.ts';
@@ -536,10 +537,14 @@ export function learnedCatalogIds(report: StudentProgressReport): Set<string> {
 }
 
 /** A checkpoint is filled when the student marked it, or every requirement counts. Not a stripe. */
-export function checkpointFilled(row: RubricCheckpoint, learned: LearnedIndex): boolean {
+const isFundamentalsCriterion = (item: RubricCheckpoint['criteria'][number]) => Boolean(item.catalogNeed) || item.techniqueRefs.length > 0;
+
+export function checkpointFilled(row: RubricCheckpoint, learned: LearnedIndex, fundamentalsRequired = FUNDAMENTALS_REQUIRED_FOR_BELT): boolean {
   if (row.met === true) return true;
   if (!row.criteria.length) return false;
-  return row.criteria.every((item) => criterionCounts(item, learned));
+  const required = fundamentalsRequired ? row.criteria : row.criteria.filter((item) => !isFundamentalsCriterion(item));
+  if (!required.length) return false;
+  return required.every((item) => criterionCounts(item, learned));
 }
 
 /** 1 when the checkpoint is filled, otherwise the share of requirements that count. */

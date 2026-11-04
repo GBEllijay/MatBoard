@@ -2,7 +2,7 @@
  * Mat hours: student-logged time on journal cards, and the belt-cloth total.
  * Controls touched: Journal (today's page) Save entry, Class field, all fields;
  * Journal card Edit / Save card / Cancel edit / Delete; hub My profile row;
- * Preview my card sheet. New: session chips, quick time chips, − / + stepper, Clear.
+ * Preview my card sheet. New: session chips (Class / Open mat / Miscellaneous / Other + text), the time wheel, Clear.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -103,6 +103,20 @@ function click(node: HTMLElement) {
   });
 }
 
+/** The time wheel (shared WheelPicker): open it, tap the minute row, Done. */
+function pickTime(host: ParentNode, prefix: string, label: string) {
+  const opener = host.querySelector(`[aria-label^="${prefix}Time on the mat,"]`) as HTMLElement;
+  assert.ok(opener, `${prefix}time wheel`);
+  click(opener);
+  const lists = [...document.querySelectorAll(`[role="listbox"][aria-label="${prefix}Time on the mat"]`)];
+  const list = lists[lists.length - 1];
+  assert.ok(list, 'wheel list');
+  click(control(list, '[role="option"]', label));
+  const sheet = list.closest('[role="dialog"]') ?? document.body;
+  const done = [...sheet.querySelectorAll('button')].filter((b) => b.textContent?.trim() === 'Done');
+  if (done.length) click(done[done.length - 1] as HTMLElement);
+}
+
 function seed(belt = 'white', extra: Partial<Parameters<typeof addJournalEntry>[1]> = {}) {
   localStorage.clear();
   const report = blankStudentReport(10);
@@ -116,7 +130,7 @@ function seed(belt = 'white', extra: Partial<Parameters<typeof addJournalEntry>[
   return next;
 }
 
-test('log sheet: session chips, quick chips, stepper, clear, quality and marks save to the card', () => {
+test('log sheet: session chips, quick chips, stepper, clear, how it went and marks save to the card', () => {
   localStorage.clear();
   const mounted = mount(<StudentEditionPage />, '/student/journal?date=2026-10-11&student=1');
   const { host } = mounted;
@@ -129,21 +143,18 @@ test('log sheet: session chips, quick chips, stepper, clear, quality and marks s
   assert.equal(control(kinds, 'button', 'Open mat').getAttribute('aria-pressed'), 'true');
   const out = labeled(host, 'Minutes on the mat');
   assert.equal(out.textContent, 'Untimed');
-  const quick = labeled(host, 'Quick time');
-  click(control(quick, 'button', '1h 30m'));
-  assert.equal(out.textContent, '1:30');
-  click(control(quick, 'button', '1h 30m'));
-  assert.equal(out.textContent, 'Untimed');
-  click(control(quick, 'button', '1h'));
-  click(labeled(host, 'More time'));
-  assert.equal(out.textContent, '1:15');
-  click(labeled(host, 'Less time'));
-  click(labeled(host, 'Less time'));
-  assert.equal(out.textContent, '0:45');
+  assert.equal(host.querySelector('[aria-label="Quick time"]'), null, 'preset chips replaced by the wheel');
+  assert.equal(host.querySelector('[aria-label="More time"]'), null, 'no − / + stepper');
+  pickTime(host, '', '1:31');
+  assert.equal(out.textContent, '1:31', 'any minute, not just 15s');
   click(control(host, 'button', 'Clear'));
   assert.equal(out.textContent, 'Untimed');
-  click(control(quick, 'button', '2h'));
-  click(control(labeled(host, 'Session quality'), 'button', 'Learned something'));
+  pickTime(host, '', '2:00');
+  assert.equal(host.querySelector('[aria-label="Session quality"]'), null, 'no rating chips');
+  const how = field(host, 'How it went');
+  assert.equal(how.tagName, 'TEXTAREA');
+  assert.ok(how.closest('label.ink.journal-note'), 'lined-paper note treatment');
+  typeInto(how, 'Learned something new');
   click(control(labeled(host, 'Mark card'), 'button', 'Injury'));
   typeInto(field(host, 'Injury area'), 'Left knee');
   click(control(host, 'button', 'Save entry'));
@@ -151,7 +162,8 @@ test('log sheet: session chips, quick chips, stepper, clear, quality and marks s
   assert.equal(stored.length, 1);
   assert.equal(stored[0].minutes, 120);
   assert.equal(stored[0].session, 'openMat');
-  assert.equal(stored[0].quality, 3);
+  assert.equal(stored[0].quality, undefined);
+  assert.match(stored[0].body, /^How it went: Learned something new$/m);
   assert.deepEqual(stored[0].injury, { area: 'Left knee', note: '' });
   // Reset after save.
   assert.equal(labeled(host, 'Minutes on the mat').textContent, 'Untimed');
@@ -187,13 +199,14 @@ test('editing a card updates mat time and the total; other fields stay', () => {
   const edit = [...host.querySelectorAll('a, button')].find((b) => /^Edit /.test(b.textContent?.trim() ?? ''));
   assert.ok(edit, 'Edit button');
   click(edit as HTMLElement);
-  click(labeled(host, 'Edit More time'));
-  click(labeled(host, 'Edit More time'));
+  pickTime(host, 'Edit ', '1:30');
   // Blue belt wording.
-  assert.ok(control(labeled(host, 'Edit Session quality'), 'button', 'Solid flow'));
+  assert.equal((field(host, 'Edit How it went') as HTMLTextAreaElement).placeholder, 'Solid flow');
+  typeInto(field(host, 'Edit How it went'), 'Flowed');
   click(control(host, 'button', 'Save card'));
   const stored = loadStudentReport(localStorage).journal[0];
   assert.equal(stored.minutes, 90);
+  assert.match(stored.body, /^How it went: Flowed$/m);
   assert.equal(host.querySelector('[data-testid="card-mat-time"]')?.textContent, 'Class · 1h 30m on the mat');
   unmount(mounted);
 });
@@ -266,7 +279,7 @@ test('profile card stat: tap opens quick-add; save updates the same day record a
   const sheet = page.host.querySelector('[data-testid="mat-quick-add"]') as HTMLElement;
   assert.ok(sheet);
   typeInto(field(sheet, 'Date') as HTMLInputElement, '2026-10-11');
-  click(control(sheet, 'button', '1h 30m'));
+  pickTime(sheet, 'Quick ', '1:30');
   click(control(sheet, 'button', 'Save'));
   assert.equal(page.host.querySelector('[data-testid="mat-quick-add"]'), null);
   const saved = loadStudentReport(localStorage);
@@ -284,11 +297,68 @@ test('calendar day: mark trained (untimed), then add time from the same sheet; j
   assert.match(section().textContent ?? '', /no time yet/);
   assert.equal(loadStudentReport(localStorage).journal.length, 1);
   click(control(section(), 'button', 'Add time'));
-  click(control(section(), 'button', '2h'));
+  pickTime(section(), 'Quick ', '2:00');
   click(control(section(), 'button', 'Save'));
   assert.match(section().textContent ?? '', /Trained · Class · 2h/);
   const saved = loadStudentReport(localStorage);
   assert.equal(saved.journal.length, 1);
   assert.equal(saved.journal[0].minutes, 120);
   unmount(day);
+});
+
+test('session type Other shows an optional text field; it saves and shows on the card', () => {
+  localStorage.clear();
+  const mounted = mount(<StudentEditionPage />, '/student/journal?date=2026-10-13&student=1');
+  const { host } = mounted;
+  const kinds = labeled(host, 'Session type');
+  assert.deepEqual([...kinds.querySelectorAll('button')].map((b) => b.textContent), ['Class', 'Open mat', 'Miscellaneous', 'Other']);
+  assert.equal(host.querySelector('[aria-label="Other session type"]'), null, 'text field only for Other');
+  click(control(kinds, 'button', 'Other'));
+  typeInto(field(host, 'Other session type'), 'Wrestling');
+  pickTime(host, '', '1:31');
+  click(control(host, 'button', 'Save entry'));
+  const stored = loadStudentReport(localStorage).journal[0];
+  assert.equal(stored.session, 'other');
+  assert.equal(stored.sessionOther, 'Wrestling');
+  assert.equal(stored.minutes, 91);
+  unmount(mounted);
+  const card = mount(<StudentEditionPage />, `/student/cards/${stored.id}?student=1`);
+  assert.equal(card.host.querySelector('[data-testid="card-mat-time"]')?.textContent, 'Other · Wrestling · 1h 31m on the mat');
+  unmount(card);
+});
+
+test('journal page: techniques drilled sits last; lines carry What I learned and the fundamentals checkbox', () => {
+  localStorage.clear();
+  const mounted = mount(<StudentEditionPage />, '/student/journal?date=2026-10-14&student=1');
+  const { host } = mounted;
+  const section = host.querySelector('[data-testid="journal-techniques"]') as HTMLElement;
+  assert.ok(section);
+  const stop = field(host, 'Stop doing');
+  assert.ok(stop.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING, 'techniques after Stop doing');
+  assert.equal(section.querySelectorAll('[data-testid="technique-line"]').length, 3);
+  typeInto(field(section, 'Technique drilled #1'), 'Zorbo pass');
+  typeInto(field(section, 'What I learned #1'), 'Angle off the hip');
+  const box = labeled(section, 'On my fundamentals list? #1') as HTMLInputElement;
+  assert.equal(box.checked, false, 'free text defaults unchecked');
+  click(control(host, 'button', 'Save entry'));
+  const stored = loadStudentReport(localStorage).journal[0];
+  assert.match(stored.body, /^What I learned #1: Angle off the hip$/m);
+  unmount(mounted);
+  const card = mount(<StudentEditionPage />, `/student/cards/${stored.id}?student=1`);
+  const pages = card.host.querySelectorAll('[data-testid="binder-page"]');
+  assert.ok(pages.length >= 1);
+  assert.equal(pages[0].getAttribute('aria-label'), `Page 1 of ${pages.length}`);
+  unmount(card);
+});
+
+test('journal search: a typo finds the card and the hit is highlighted', () => {
+  seed('white', { notes: 'Scissor sweep from closed guard' });
+  const page = mount(<StudentEditionPage />, '/student/cards?student=1');
+  typeInto(field(page.host, 'Search journal') as HTMLInputElement, 'scisor');
+  const mark = page.host.querySelector('mark.journal-hit');
+  assert.ok(mark, 'highlighted hit');
+  assert.match(mark?.textContent ?? '', /Scissor/i);
+  const link = [...page.host.querySelectorAll('a')].find((a) => /[?&]q=scisor/.test(a.getAttribute('href') ?? ''));
+  assert.ok(link, 'result opens the entry with the query');
+  unmount(page);
 });

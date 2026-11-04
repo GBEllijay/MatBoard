@@ -172,3 +172,8 @@
 .mat-quick.mat-quick .mat-time__chip[aria-pressed='true'] { color: #fff !important; }
 .mat-quick.mat-quick .mat-time__note { color: #1c2430 !important; }
 .card-stat--mat-hours a.profile-mat-hours__report { color: inherit !important; background: transparent !important; }
+
+/* Other session text + the shared time wheel. */
+.mat-time__other { display: grid; gap: 0.3rem; margin: 0.5rem 0; }
+.mat-time__other input { min-height: 44px; font-size: 16px; }
+.mat-time__stepper .wheel-value { min-height: 44px; min-width: 6rem; }

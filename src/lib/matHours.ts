@@ -7,11 +7,17 @@
 import { JOURNAL_MINUTES_MAX, type JournalEntry, type JournalSession } from './progress/types.ts';
 
 export { JOURNAL_MINUTES_MAX };
-export const JOURNAL_SESSION_LABELS: Record<JournalSession, string> = { class: 'Class', openMat: 'Open mat' };
-/** Quick picks on the log sheet: 30m, 1h, 1.5h, 2h. */
-export const MAT_TIME_CHIPS = [30, 60, 90, 120] as const;
-/** The custom stepper moves in 15-minute steps. */
-export const MAT_TIME_STEP = 15;
+export const JOURNAL_SESSION_LABELS: Record<JournalSession, string> = { class: 'Class', openMat: 'Open mat', misc: 'Miscellaneous', other: 'Other' };
+
+/** "Other · Wrestling" when an Other session has text, else the plain label. */
+export function sessionLabel(session: JournalSession, other = ''): string {
+  return session === 'other' && other.trim() ? `Other · ${other.trim()}` : JOURNAL_SESSION_LABELS[session];
+}
+
+/** Time picker: every minute from 0 (untimed) to 12h; 10-minute marks are soft detents. */
+export function matMinuteOptions(): { value: number; label: string; detent?: boolean }[] {
+  return Array.from({ length: JOURNAL_MINUTES_MAX + 1 }, (_, value) => ({ value, label: value ? clockMatTime(value) : 'Untimed', detent: value > 0 && value % 10 === 0 }));
+}
 
 /** Whole minutes from 0 to 720. Anything else is 0 (untimed). */
 export function clampMinutes(value: unknown): number {
@@ -53,13 +59,15 @@ export type MatHoursTotal = {
   minutes: number;
   classMinutes: number;
   openMatMinutes: number;
+  /** Miscellaneous and Other sessions. */
+  otherMinutes: number;
   timed: number;
   untimed: number;
 };
 
 /** Derived from journal durations. Untimed cards count as 0. */
 export function matHoursTotal(journal: readonly JournalEntry[]): MatHoursTotal {
-  const total: MatHoursTotal = { minutes: 0, classMinutes: 0, openMatMinutes: 0, timed: 0, untimed: 0 };
+  const total: MatHoursTotal = { minutes: 0, classMinutes: 0, openMatMinutes: 0, otherMinutes: 0, timed: 0, untimed: 0 };
   for (const entry of journal) {
     const minutes = clampMinutes(entry.minutes);
     if (!minutes) {
@@ -68,8 +76,10 @@ export function matHoursTotal(journal: readonly JournalEntry[]): MatHoursTotal {
     }
     total.timed += 1;
     total.minutes += minutes;
-    if (sessionOf(entry) === 'openMat') total.openMatMinutes += minutes;
-    else total.classMinutes += minutes;
+    const kind = sessionOf(entry);
+    if (kind === 'openMat') total.openMatMinutes += minutes;
+    else if (kind === 'class') total.classMinutes += minutes;
+    else total.otherMinutes += minutes;
   }
   return total;
 }
@@ -82,8 +92,12 @@ export function matHoursLabel(minutes: number): string {
 
 /** "Class 100 · Open mat 28.5", or empty when only one kind has time. */
 export function matHoursSplit(total: MatHoursTotal): string {
-  if (!total.classMinutes || !total.openMatMinutes) return '';
-  return `Class ${formatHours(total.classMinutes)} · Open mat ${formatHours(total.openMatMinutes)}`;
+  const parts = [
+    total.classMinutes ? `Class ${formatHours(total.classMinutes)}` : '',
+    total.openMatMinutes ? `Open mat ${formatHours(total.openMatMinutes)}` : '',
+    total.otherMinutes ? `Other ${formatHours(total.otherMinutes)}` : '',
+  ].filter(Boolean);
+  return parts.length > 1 ? parts.join(' · ') : '';
 }
 
 /** Optional long view on tap: "5.3 days on the mat" or "1.2 years on the mat" (24h days). */

@@ -35,7 +35,6 @@ import { CoachUpdateInbox } from '../components/CoachUpdateInbox';
 import { GymLogoPrompt } from '../components/GymLogoPrompt';
 import { ParentApprovals } from '../components/ParentApprovals';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './student/chrome';
-import { ageIllegalTechniques } from '../lib/studentBenchmarks';
 import { studentScreen } from '../lib/studentHubMenu';
 import { BackupMenu, ClearStudentMenu } from './student/BackupMenu';
 import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from './student/StudentMenus';
@@ -49,9 +48,7 @@ import {
   addJournalEntry,
   deleteJournalEntry,
   updateJournalEntry,
-  fundamentalsBoard,
   JOURNAL_CLASS_PLACEHOLDER,
-  JOURNAL_TECHNIQUE_MAX,
   JOURNAL_TECHNIQUE_ROWS,
   searchStudentJournal,
   studentDemoMode,
@@ -59,7 +56,6 @@ import {
   techniqueDrilledLabel,
   todayIso,
   viewJournalEntry,
-  type FundamentalRow,
   type JournalCardView,
 } from '../lib/studentEdition.ts';
 import { clearStudentDemoOverlay } from '../lib/studentDemo';
@@ -68,13 +64,13 @@ import './student/arena.css';
 import './student/hub.css';
 import './student/progressPages.css';
 import './student/beltWeave.css';
+import './student/journalPages.css';
 import { ProfileReportPage } from './student/ProfileReport';
+import { highlightParts, techniqueLineHits, videosForTechnique } from '../lib/journalIndex';
+import { pageLabel, paginateJournal } from '../lib/journalPages';
+import { TechniqueLines, blankTechniqueLines, techniqueLinesFrom } from './student/TechniqueLines';
 import { EMPTY_EXTRAS, MatTimeField, SessionExtras, extrasDraft, extrasFromCard, matTimeLine, type SessionExtrasValue } from './student/MatTime';
 import type { JournalSession } from '../lib/progress/types';
-
-function blankTechniqueRows(count: number): { id: string; name: string }[] {
-  return Array.from({ length: count }, () => ({ id: '', name: '' }));
-}
 
 function firstTechnique(card: JournalCardView): string {
   return card.techniques.find((item) => item.name.trim())?.name.trim() ?? '';
@@ -87,13 +83,17 @@ function entryActionLabel(card: JournalCardView): string {
 function journalFieldLines(card: JournalCardView): string[] {
   const techniques = card.techniques.filter((item) => item.name.trim());
   const techniqueLines = techniques.length
-    ? techniques.map((item, index) => `${techniqueDrilledLabel(index)}: ${item.name}`)
+    ? techniques.flatMap((item, index) => [
+        `${techniqueDrilledLabel(index)}: ${item.name}`,
+        ...(item.note?.trim() ? [`What I learned: ${item.note.trim()}`] : []),
+      ])
     : [`${techniqueDrilledLabel(0)}: —`];
   return [
     ...techniqueLines,
     `${JOURNAL_PARTNERS_LABEL}: ${card.partners || '—'}`,
     `${JOURNAL_DRILLS_LABEL}: ${card.drills || '—'}`,
     `${JOURNAL_ROLLS_LABEL}: ${card.rolls || '—'}`,
+    ...(card.howItWent ? [`How it went: ${card.howItWent}`] : []),
     `${JOURNAL_NOTES_LABEL}: ${card.notes || '—'}`,
     `${JOURNAL_STOP_LABEL}: ${card.stopDoing || '—'}`,
   ];
@@ -259,27 +259,18 @@ function JournalToday() {
   const [date, setDate] = useState(isIsoDate(requested) ? requested : todayIso());
   const [className, setClassName] = useState('');
   const [session, setSession] = useState<JournalSession>('class');
+  const [sessionOther, setSessionOther] = useState('');
   const [minutes, setMinutes] = useState(0);
   const [extras, setExtras] = useState<SessionExtrasValue>(EMPTY_EXTRAS);
-  const [techniques, setTechniques] = useState(() => blankTechniqueRows(JOURNAL_TECHNIQUE_ROWS));
+  const [techniques, setTechniques] = useState(() => blankTechniqueLines(JOURNAL_TECHNIQUE_ROWS));
   const [partners, setPartners] = useState('');
   const [drills, setDrills] = useState('');
   const [rolls, setRolls] = useState('');
   const [notes, setNotes] = useState('');
   const [stopDoing, setStopDoing] = useState('');
-  const [picker, setPicker] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [savedId, setSavedId] = useState('');
   const [savedToast, setSavedToast] = useState(false);
-
-  const choose = (index: number, item: FundamentalRow) => {
-    setTechniques((current) =>
-      current.map((slot, slotIndex) =>
-        slotIndex === index ? { id: item.catalogItemId || item.entryId, name: item.label } : slot,
-      ),
-    );
-    setPicker(null);
-  };
 
   const save = () => {
     try {
@@ -295,6 +286,7 @@ function JournalToday() {
           notes,
           stopDoing,
           session,
+          sessionOther,
           minutes,
           ...extrasDraft(extras, date),
         }),
@@ -302,15 +294,15 @@ function JournalToday() {
       const id = next.journal[next.journal.length - 1]?.id ?? '';
       setClassName('');
       setSession('class');
+      setSessionOther('');
       setMinutes(0);
       setExtras(EMPTY_EXTRAS);
-      setTechniques(blankTechniqueRows(JOURNAL_TECHNIQUE_ROWS));
+      setTechniques(blankTechniqueLines(JOURNAL_TECHNIQUE_ROWS));
       setPartners('');
       setDrills('');
       setRolls('');
       setNotes('');
       setStopDoing('');
-      setPicker(null);
       setError('');
       setSavedId(id);
       setSavedToast(true);
@@ -338,6 +330,8 @@ function JournalToday() {
               <span className="ink__label">Class</span>
               <input
                 aria-label="Class"
+                spellCheck
+                autoCorrect="on"
                 value={className}
                 maxLength={PROGRESS_NAME_MAX}
                 placeholder={JOURNAL_CLASS_PLACEHOLDER}
@@ -345,55 +339,21 @@ function JournalToday() {
               />
             </label>
           </div>
-          <MatTimeField idPrefix="" session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} />
+          <MatTimeField idPrefix="" session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} sessionOther={sessionOther} onSessionOther={setSessionOther} />
           <SessionExtras idPrefix="" report={report} value={extras} onChange={setExtras} />
           <div className="student-split">
             <div className="student-stack">
-              {techniques.map((slot, index) => (
-                <label key={index} className={index % 2 === 0 ? 'ink ink--tech' : 'ink ink--wobble ink--tech'}>
-                  <span className="ink__label">{techniqueDrilledLabel(index)}</span>
-                  <input
-                    aria-label={techniqueDrilledLabel(index)}
-                    value={slot.name}
-                    onChange={(event) => {
-                      const name = event.target.value;
-                      setTechniques((current) =>
-                        current.map((item, slotIndex) => (slotIndex === index ? { id: item.name === name ? item.id : '', name } : item)),
-                      );
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="student-pick"
-                    aria-label={`Pick ${techniqueDrilledLabel(index)} from fundamentals`}
-                    onClick={() => setPicker(index)}
-                  >
-                    Pick
-                  </button>
-                </label>
-              ))}
-              {techniques.length < JOURNAL_TECHNIQUE_MAX ? (
-                <button
-                  type="button"
-                  className="ink-btn ink-btn--small"
-                  onClick={() => setTechniques((current) => [...current, { id: '', name: '' }])}
-                >
-                  Add another technique
-                </button>
-              ) : null}
-            </div>
-            <div className="student-stack">
               <label className="ink">
                 <span className="ink__label">{JOURNAL_PARTNERS_LABEL}</span>
-                <textarea aria-label={JOURNAL_PARTNERS_LABEL} rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
+                <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_PARTNERS_LABEL} rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
               </label>
               <label className="ink ink--wobble">
                 <span className="ink__label">{JOURNAL_DRILLS_LABEL}</span>
-                <textarea aria-label={JOURNAL_DRILLS_LABEL} rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
+                <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_DRILLS_LABEL} rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
               </label>
               <label className="ink">
                 <span className="ink__label">{JOURNAL_ROLLS_LABEL}</span>
-                <textarea aria-label={JOURNAL_ROLLS_LABEL} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
+                <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_ROLLS_LABEL} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
               </label>
             </div>
           </div>
@@ -402,15 +362,19 @@ function JournalToday() {
             <span className="student-quiet" aria-hidden="true">
               What you drilled and what to remember.
             </span>
-            <textarea aria-label={JOURNAL_NOTES_LABEL} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
+            <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_NOTES_LABEL} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
           </label>
           <label className="ink ink--wobble journal-note">
             <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
             <span className="student-quiet" aria-hidden="true">
               Mistakes to stop making.
             </span>
-            <textarea aria-label={JOURNAL_STOP_LABEL} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
+            <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_STOP_LABEL} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
           </label>
+          <section className="journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
+            <h2 className="ink__label journal-techniques__title">Techniques drilled · optional</h2>
+            <TechniqueLines idPrefix="" report={report} rows={techniques} onChange={setTechniques} />
+          </section>
           {error ? <p role="alert">{error}</p> : null}
           <EntrySavedToast open={savedToast} />
           <div className="student-actions journal-actions">
@@ -428,31 +392,6 @@ function JournalToday() {
           </div>
         </form>
       </div>
-      {picker === null ? null : (
-        <div className="student-picker" role="dialog" aria-label={`Pick ${techniqueDrilledLabel(picker)}`}>
-          <button type="button" className="ink-btn" onClick={() => setPicker(null)}>
-            Close
-          </button>
-          {ageIllegalTechniques(report).length ? (
-            <p className="student-quiet">Some techniques are hidden. They are illegal for this age until a coach or parent turns them on in Training.</p>
-          ) : null}
-          {fundamentalsBoard(report).map((category) => (
-            <section key={category.id}>
-              <h2 className="student-picker__category">{category.name}</h2>
-              {category.items.map((item) => (
-                <button
-                  key={`${item.catalogItemId}-${item.entryId}-${item.name}`}
-                  type="button"
-                  className="student-picker__item"
-                  onClick={() => choose(picker, item)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </section>
-          ))}
-        </div>
-      )}
     </main>
   );
 }
@@ -493,6 +432,8 @@ function JournalList() {
   const cards = searchStudentJournal(report, query).map(viewJournalEntry);
   const games = matchingGameTags(report.competition, query);
   const results = matchingResults(report.competition, query);
+  const lineHits = techniqueLineHits(report.journal, query);
+  const videos = videosForTechnique(report, query);
   return (
     <main className="student student-frame student--arena student--cards">
       <StudentMarks />
@@ -535,16 +476,48 @@ function JournalList() {
               ))}
             </section>
           ) : null}
+          {lineHits.length ? (
+            <section className="ink" aria-label="Technique lines">
+              <h2 className="ink__label">Technique lines</h2>
+              {lineHits.map((hit, index) => (
+                <p key={`${hit.entryId}-${index}`}>
+                  <Link to={to(`/student/cards/${hit.entryId}?q=${encodeURIComponent(query.trim())}`)}>{formatJournalDate(hit.date)}</Link>
+                  {' · '}
+                  <Highlighted text={hit.name} query={query} />
+                  {hit.note ? (
+                    <>
+                      {' — What I learned: '}
+                      <Highlighted text={hit.note} query={query} />
+                    </>
+                  ) : null}
+                </p>
+              ))}
+            </section>
+          ) : null}
+          {videos.length ? (
+            <section className="ink" aria-label="Videos for this technique">
+              <h2 className="ink__label">Videos</h2>
+              {videos.map((clip) => (
+                <p key={clip.id}>
+                  <a href={clip.url} target="_blank" rel="noreferrer">
+                    {clip.description || clip.url}
+                  </a>
+                </p>
+              ))}
+            </section>
+          ) : null}
           {cards.length === 0 ? <p className="student-quiet">No cards match.</p> : null}
           {cards.map((card) => (
             <article key={card.id} className="ink student-card">
-              <Link className="student-card-link" to={to(`/student/cards/${card.id}`)}>
+              <Link className="student-card-link" to={to(`/student/cards/${card.id}${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`)}>
                 <strong>
                   {formatJournalDate(card.date)}
                   {card.className ? ` · ${card.className}` : ''}
                 </strong>
                 {journalFieldLines(card).map((line) => (
-                  <span key={line}>{line}</span>
+                  <span key={line}>
+                    <Highlighted text={line} query={query} />
+                  </span>
                 ))}
                 {card.amendments.map((item) =>
                   item.body.trim() ? <span key={item.id}>{item.body.trim()}</span> : null,
@@ -630,7 +603,7 @@ function JournalCardPage({ id }: { id: string }) {
               }}
             />
           ) : (
-            <CardBody card={card} />
+            <CardBody card={card} query={params.get('q') ?? ''} />
           )}
           <Amendments card={card} />
           <div className="student-card__actions">
@@ -678,7 +651,7 @@ function JournalCardPage({ id }: { id: string }) {
           >
             <label>
               <span className="ink__label">Add note to an earlier card</span>
-              <textarea aria-label="Amendment" rows={3} value={note} onChange={(event) => setNote(event.target.value)} />
+              <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label="Amendment" rows={3} value={note} onChange={(event) => setNote(event.target.value)} />
             </label>
             <button type="submit" className="ink-btn">
               Add note
@@ -691,7 +664,7 @@ function JournalCardPage({ id }: { id: string }) {
   );
 }
 
-function CardBody({ card }: { card: JournalCardView }) {
+function CardBody({ card, query = '' }: { card: JournalCardView; query?: string }) {
   return (
     <div className="ink">
       <p className="journal-card__when">
@@ -699,7 +672,7 @@ function CardBody({ card }: { card: JournalCardView }) {
         {card.className ? ` · ${card.className}` : ''}
       </p>
       <p className="journal-card__mat" data-testid="card-mat-time">
-        {matTimeLine(card.session, card.minutes)}
+        {matTimeLine(card.session, card.minutes, card.sessionOther)}
       </p>
       {card.injury ? <p className="journal-card__mat" data-testid="card-injury">Injury · {card.injury.area || 'unspecified'}{card.injury.note ? ` — ${card.injury.note}` : ''}</p> : null}
       {card.hiatus ? (
@@ -708,8 +681,46 @@ function CardBody({ card }: { card: JournalCardView }) {
           {card.hiatus.end ? ` to ${card.hiatus.end}` : ' · ongoing'}
         </p>
       ) : null}
-      {journalFieldLines(card).map((line) => (
-        <p key={line}>{line}</p>
+      <JournalPages lines={journalFieldLines(card)} query={query} />
+    </div>
+  );
+}
+
+function Highlighted({ text, query }: { text: string; query: string }) {
+  return (
+    <>
+      {highlightParts(text, query).map((part, index) =>
+        part.match ? (
+          <mark key={index} className="journal-hit">
+            {part.text}
+          </mark>
+        ) : (
+          <span key={index}>{part.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+/** Binder pages: rows flow onto new lined pages when a card overflows. Presentation only. */
+function JournalPages({ lines, query }: { lines: string[]; query: string }) {
+  const pages = paginateJournal(lines);
+  return (
+    <div className="binder-pages" data-testid="binder-pages">
+      {pages.map((rows, index) => (
+        <section key={index} className="binder-page" aria-label={pageLabel(index, pages.length)} data-testid="binder-page">
+          <span className="binder-page__holes" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+          {rows.map((row, at) => (
+            <p key={at} className={row.lead ? 'binder-page__row' : 'binder-page__row binder-page__row--cont'}>
+              <Highlighted text={row.text} query={query} />
+            </p>
+          ))}
+          <p className="binder-page__number">{pageLabel(index, pages.length)}</p>
+        </section>
       ))}
     </div>
   );
@@ -747,6 +758,7 @@ function JournalEditor({
     notes: string;
     stopDoing: string;
     session: JournalSession;
+    sessionOther: string;
     minutes: number;
   } & ReturnType<typeof extrasDraft>) => void;
 }) {
@@ -755,12 +767,9 @@ function JournalEditor({
   const [date, setDate] = useState(card.date);
   const [className, setClassName] = useState(card.className);
   const [session, setSession] = useState<JournalSession>(card.session);
+  const [sessionOther, setSessionOther] = useState(card.sessionOther);
   const [minutes, setMinutes] = useState(card.minutes);
-  const [techniques, setTechniques] = useState(() => {
-    const rows = card.techniques.map((item) => ({ id: item.id, name: item.name }));
-    while (rows.length < JOURNAL_TECHNIQUE_ROWS) rows.push({ id: '', name: '' });
-    return rows;
-  });
+  const [techniques, setTechniques] = useState(() => techniqueLinesFrom(card.techniques, JOURNAL_TECHNIQUE_ROWS));
   const [partners, setPartners] = useState(card.partners);
   const [drills, setDrills] = useState(card.drills);
   const [rolls, setRolls] = useState(card.rolls);
@@ -775,7 +784,7 @@ function JournalEditor({
       onSubmit={(event) => {
         event.preventDefault();
         try {
-          onSave({ date, className, techniques, partners, drills, rolls, notes, stopDoing, session, minutes, ...extrasDraft(extras, date) });
+          onSave({ date, className, techniques, partners, drills, rolls, notes, stopDoing, session, sessionOther, minutes, ...extrasDraft(extras, date) });
           setError('');
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Could not save this card.');
@@ -795,58 +804,38 @@ function JournalEditor({
           />
         </label>
       </div>
-      <MatTimeField idPrefix="Edit " session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} />
+      <MatTimeField idPrefix="Edit " session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} sessionOther={sessionOther} onSessionOther={setSessionOther} />
       <SessionExtras idPrefix="Edit " report={report} value={extras} onChange={setExtras} />
-      {techniques.map((slot, index) => (
-        <label key={index} className="ink">
-          <span className="ink__label">{techniqueDrilledLabel(index)}</span>
-          <input
-            aria-label={`Edit ${techniqueDrilledLabel(index)}`}
-            value={slot.name}
-            onChange={(event) => {
-              const name = event.target.value;
-              setTechniques((current) =>
-                current.map((item, slotIndex) => (slotIndex === index ? { id: item.name === name ? item.id : '', name } : item)),
-              );
-            }}
-          />
-        </label>
-      ))}
-      {techniques.length < JOURNAL_TECHNIQUE_MAX ? (
-        <button
-          type="button"
-          className="ink-btn ink-btn--small"
-          onClick={() => setTechniques((current) => [...current, { id: '', name: '' }])}
-        >
-          Add another technique
-        </button>
-      ) : null}
       <label className="ink">
         <span className="ink__label">{JOURNAL_PARTNERS_LABEL}</span>
-        <textarea aria-label={`Edit ${JOURNAL_PARTNERS_LABEL}`} rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
+        <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_PARTNERS_LABEL}`} rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
       </label>
       <label className="ink ink--wobble">
         <span className="ink__label">{JOURNAL_DRILLS_LABEL}</span>
-        <textarea aria-label={`Edit ${JOURNAL_DRILLS_LABEL}`} rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
+        <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_DRILLS_LABEL}`} rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
       </label>
       <label className="ink">
         <span className="ink__label">{JOURNAL_ROLLS_LABEL}</span>
-        <textarea aria-label={`Edit ${JOURNAL_ROLLS_LABEL}`} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
+        <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_ROLLS_LABEL}`} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
       </label>
       <label className="ink journal-note">
         <span className="ink__label">{JOURNAL_NOTES_LABEL}</span>
         <span className="student-quiet" aria-hidden="true">
           What you drilled and what to remember.
         </span>
-        <textarea aria-label={`Edit ${JOURNAL_NOTES_LABEL}`} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
+        <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_NOTES_LABEL}`} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
       </label>
       <label className="ink ink--wobble journal-note">
         <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
         <span className="student-quiet" aria-hidden="true">
           Mistakes to stop making.
         </span>
-        <textarea aria-label={`Edit ${JOURNAL_STOP_LABEL}`} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
+        <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_STOP_LABEL}`} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
       </label>
+      <section className="journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
+        <h2 className="ink__label journal-techniques__title">Techniques drilled · optional</h2>
+        <TechniqueLines idPrefix="Edit " report={report} rows={techniques} onChange={setTechniques} />
+      </section>
       {error ? <p role="alert">{error}</p> : null}
       <div className="student-card__actions">
         <button type="submit" className="ink-btn ink-btn--save">

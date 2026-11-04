@@ -27,7 +27,7 @@ export function findSessionRecord(journal: readonly JournalEntry[], date: string
 /** Quick-add: log time for a day + session. Updates the existing record if one exists. */
 export function logMatTime(
   report: StudentProgressReport,
-  input: { date: string; session: JournalSession; minutes: number },
+  input: { date: string; session: JournalSession; minutes: number; sessionOther?: string },
   now = Date.now(),
 ): StudentProgressReport {
   if (!DATE_RE.test(input.date)) throw new Error('Date must be YYYY-MM-DD.');
@@ -37,13 +37,13 @@ export function logMatTime(
   if (existing) {
     return {
       ...report,
-      journal: report.journal.map((entry) => (entry.id === existing.id ? { ...entry, minutes, session: input.session, updatedAt: now } : entry)),
+      journal: report.journal.map((entry) => (entry.id === existing.id ? { ...entry, minutes, session: input.session, ...(input.session === 'other' && input.sessionOther?.trim() ? { sessionOther: input.sessionOther.trim().slice(0, 80) } : {}), updatedAt: now } : entry)),
       updatedAt: now,
     };
   }
   return addJournalEntry(
     report,
-    { date: input.date, className: '', gameTag: '', techniques: [], partners: '', drills: '', rolls: '', notes: '', session: input.session, minutes },
+    { date: input.date, className: '', gameTag: '', techniques: [], partners: '', drills: '', rolls: '', notes: '', session: input.session, sessionOther: input.sessionOther, minutes },
     now,
   );
 }
