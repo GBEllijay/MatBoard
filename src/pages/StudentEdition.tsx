@@ -69,6 +69,7 @@ import './student/progressPages.css';
 import './student/beltWeave.css';
 import './student/journalPages.css';
 import { ProfileReportPage } from './student/ProfileReport';
+import { StudentLicenseClaimPage } from './student/StudentLicenseClaim';
 import { highlightParts, techniqueLineHits, videosForTechnique } from '../lib/journalIndex';
 import { pageLabel, paginateJournal } from '../lib/journalPages';
 import { TechniqueLines, blankTechniqueLines, techniqueLinesFrom } from './student/TechniqueLines';
@@ -140,11 +141,21 @@ export function StudentEditionPage() {
     white: useWhiteUnlocked(),
     student: useStudentEditionUnlocked(),
   };
+  const rest = path.startsWith('/student') ? path.slice('/student'.length).replace(/^\//, '') : '';
+  if (rest === 'claim' || rest.startsWith('claim/')) {
+    const raw = rest.startsWith('claim/') ? rest.slice('claim/'.length) : '';
+    let code = raw;
+    try {
+      code = decodeURIComponent(raw);
+    } catch {
+      code = raw;
+    }
+    return <StudentLicenseClaimPage code={code} gymName={params.get('gym') ?? ''} />;
+  }
   const open = studentEditionOpen(params, owner);
   const demo = studentDemoMode(params, owner);
   if (!open) return <StudentClosed />;
 
-  const rest = path.startsWith('/student') ? path.slice('/student'.length).replace(/^\//, '') : '';
   const screen = studentScreenNode(rest);
   return (
     <>
