@@ -18590,3 +18590,197 @@ a.plan-pick {
   --scrim-edge: 0.62;
   --scrim-core: 0.78;
 }
+
+/* Video replay analysis card (Daily Lesson Plan). */
+.replay-card {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.replay-card__heading {
+  margin: 0;
+}
+
+.replay-card__label {
+  display: grid;
+  gap: 0.3rem;
+  font-weight: 600;
+}
+
+.replay-card__note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.replay-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.replay-card__actions .btn {
+  flex: 1 1 10rem;
+  min-height: 48px;
+}
+
+.replay-player {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.replay-player__stage {
+  position: relative;
+  width: 100%;
+  margin-inline: auto;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+.replay-player__video,
+.replay-player__taps,
+.replay-player__ink {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.replay-player__video {
+  object-fit: contain;
+  background: #000;
+}
+
+.replay-player__taps {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.replay-player__ink {
+  pointer-events: none;
+}
+
+.replay-player__ink--on {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.replay-player__flash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--ink);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.replay-player__bar {
+  position: relative;
+  height: 32px;
+  touch-action: none;
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+.replay-player__bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 6px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.replay-player__bar:focus-visible {
+  outline: 2px solid var(--cta-focus);
+  outline-offset: 2px;
+}
+
+.replay-player__fill {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 6px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: var(--permission-on);
+  pointer-events: none;
+}
+
+.replay-player__knob {
+  position: absolute;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.replay-player__controls,
+.replay-player__markup,
+.replay-player__colors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.replay-player__controls .btn,
+.replay-player__markup .btn {
+  min-height: 48px;
+}
+
+.replay-player__clock {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.replay-player__tool--on {
+  background: var(--permission-on);
+  color: var(--ink);
+}
+
+.replay-player__swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  padding: 0;
+  cursor: pointer;
+}
+
+.replay-player__swatch--on {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--permission-on);
+}
+
+.replay-player__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.notes__competition-replays {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+}

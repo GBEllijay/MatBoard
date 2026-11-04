@@ -90,18 +90,25 @@ import {
   MAX_GAMES,
   activeLessonTemplate,
   addLessonGame,
+  addLessonReplay,
   addLessonTechnique,
   applyLessonTemplate,
   blockHeading,
   blockKey,
   lessonBlocks,
   moveLessonBlock,
+  moveReplayAmongReplays,
   removeLessonBlock,
+  removeLessonReplay,
+  replayCount,
   templateAlreadyApplied,
   templateChangeNeedsConfirm,
   type GameBlock,
   type LessonTemplateId,
+  updateLessonReplay,
 } from '../lib/lessonTemplates';
+import { ADD_REPLAY_LABEL, MAX_REPLAYS, replayHeading } from '../lib/replayAnalysis';
+import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
 import { INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
 import { classHistoryHref } from '../lib/submenuNav';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -572,6 +579,10 @@ export function TrainingNotesPage() {
   const orderedBlocks = lessonBlocks(plan);
   const atMax = orderedBlocks.filter((block) => block.kind === 'technique').length >= MAX_TECHNIQUES;
   const atMaxGames = orderedBlocks.filter((block) => block.kind === 'game').length >= MAX_GAMES;
+  const atMaxReplays = replayCount(plan) >= MAX_REPLAYS;
+  /** Recording or picking a replay clip follows the existing upload switch for seats. */
+  const canCaptureReplay = visibleCoachControl('uploadForDistribution', { owner: true, seat });
+  const competitionReplays = orderedBlocks.filter((block) => block.kind === 'replay');
   const canRemoveClass = editingToday && (planHasContent(plan) || classPlans.length > 1);
 
   const requestTemplate = (template: LessonTemplateId) => {
@@ -754,7 +765,65 @@ export function TrainingNotesPage() {
             {OPEN_DRIVE_CLASS_LABEL}
           </Link>
         ) : null}
-        {showCompetition ? <CompetitionCurriculumPage embedded /> : (
+        {showCompetition ? (
+          <>
+            <CompetitionCurriculumPage embedded />
+            {/* Competition shows its curriculum instead of the block list, so replay cards sit under it. */}
+            <section className="notes__competition-replays" aria-label="Video replay analysis">
+              {competitionReplays.map((block, index) => {
+                const replay = plan.replays?.find((item) => item.id === block.id);
+                if (!replay) return null;
+                const heading = replayHeading(index + 1);
+                const key = blockKey(block, index);
+                return (
+                  <div key={key} className="notes__block">
+                    <ReplayAnalysisCard
+                      replay={replay}
+                      heading={heading}
+                      dateKey={viewKey}
+                      readOnly={!editingToday}
+                      canCapture={canCaptureReplay}
+                      onChange={(patch) => commit(updateLessonReplay(plan, replay.id, patch))}
+                    />
+                    {editingToday ? (
+                      <BlockTools
+                        heading={heading}
+                        index={index}
+                        count={competitionReplays.length}
+                        confirming={removeBlockKey === key}
+                        onMove={(direction) => {
+                          setRemoveBlockKey(null);
+                          commit(moveReplayAmongReplays(plan, replay.id, direction));
+                        }}
+                        onAskRemove={() => setRemoveBlockKey(key)}
+                        onCancelRemove={() => setRemoveBlockKey(null)}
+                        onRemove={() => {
+                          commit(removeLessonReplay(plan, replay.id));
+                          setRemoveBlockKey(null);
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
+              {editingToday ? (
+                <div className="notes__add-row">
+                  <button
+                    type="button"
+                    className="btn notes__add"
+                    disabled={atMaxReplays}
+                    onClick={() => {
+                      setRemoveBlockKey(null);
+                      commit(addLessonReplay(plan));
+                    }}
+                  >
+                    {ADD_REPLAY_LABEL}
+                  </button>
+                </div>
+              ) : null}
+            </section>
+          </>
+        ) : (
         <>
         <section className="notes__archive" aria-label="Saved days">
           <PlanDateNav
@@ -1093,9 +1162,11 @@ export function TrainingNotesPage() {
           const key = blockKey(block, index);
           const techniqueOrdinal = orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'technique').length;
           const gameOrdinal = orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'game').length;
-          const heading = blockHeading(block, techniqueOrdinal, gameOrdinal);
+          const replayOrdinal = orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'replay').length;
+          const heading = blockHeading(block, techniqueOrdinal, gameOrdinal, replayOrdinal);
           const tech = block.kind === 'technique' ? plan.techniques.find((item) => item.id === block.id) : undefined;
           const game = block.kind === 'game' ? plan.games?.find((item) => item.id === block.id) : undefined;
+          const replay = block.kind === 'replay' ? plan.replays?.find((item) => item.id === block.id) : undefined;
           return (
             <div key={key} className="notes__block">
               {block.kind === 'intro' ? (
@@ -1162,6 +1233,16 @@ export function TrainingNotesPage() {
                       games: (plan.games ?? []).map((item) => (item.id === game.id ? { ...item, ...patch } : item)),
                     })
                   }
+                />
+              ) : null}
+              {block.kind === 'replay' && replay ? (
+                <ReplayAnalysisCard
+                  replay={replay}
+                  heading={heading}
+                  dateKey={viewKey}
+                  readOnly={!editingToday}
+                  canCapture={canCaptureReplay}
+                  onChange={(patch) => commit(updateLessonReplay(plan, replay.id, patch))}
                 />
               ) : null}
               {block.kind === 'specific' ? (
@@ -1258,6 +1339,17 @@ export function TrainingNotesPage() {
               }}
             >
               Add game
+            </button>
+            <button
+              type="button"
+              className="btn notes__add"
+              disabled={atMaxReplays}
+              onClick={() => {
+                setRemoveBlockKey(null);
+                commit(addLessonReplay(plan));
+              }}
+            >
+              {ADD_REPLAY_LABEL}
             </button>
           </div>
         ) : null}
