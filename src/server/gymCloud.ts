@@ -6,10 +6,12 @@
 
 import {
   CLOUD_CHUNK_BYTES,
+  CLOUD_DAILY_DROP_ONLY,
   CLOUD_ROLE_MESSAGE,
   CLOUD_SIGN_IN_MESSAGE,
   CLOUD_UNAVAILABLE_MESSAGE,
   cloudCapBytes,
+  cloudDailyVideoDrop,
   cloudFullMessage,
   cloudListPrefix,
   cloudMaxUploadBytes,
@@ -22,6 +24,7 @@ import {
   customSkinIdFromPath,
   isCustomSkinImagePath,
   isCustomSkinMetaPath,
+  isDailyVideoCloudPath,
   claimsOpenPlusCloud,
   grantRowOpensPlusCloud,
   gymActorForCloud,
@@ -81,6 +84,8 @@ type Actor = {
   preset: string | null;
   read: boolean;
   upload: boolean;
+  /** Program director: upload to today's daily videos only. */
+  dailyDrop: boolean;
 };
 
 const JSON_HEADERS = {
@@ -162,6 +167,7 @@ async function actorForClaims(env: GymCloudEnv, claims: EntitlementClaims, now: 
     preset: claims.preset ?? null,
     read: access.read,
     upload: access.upload,
+    dailyDrop: cloudDailyVideoDrop({ plusCloud, kind: seat ? 'seat' : 'owner', preset: claims.preset ?? null }),
   };
 }
 
@@ -347,7 +353,11 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   if (request.method === 'GET') {
     const op = url.searchParams.get('op') ?? 'status';
     if (op === 'status') {
-      if (!actor.read) return json(200, { ok: true, cloud: false });
+      if (!actor.read) {
+        if (!actor.dailyDrop) return json(200, { ok: true, cloud: false });
+        // Upload-only lane. No usage numbers, no list, no files.
+        return json(200, { ok: true, cloud: false, dailyVideoDrop: true, maxUploadBytes: maxUpload });
+      }
       const [licenseUsedBytes, bucketUsedBytes] = await Promise.all([
         bytesUnder(bucket, `groups/${actor.licenseId}/`),
         bytesUnder(bucket, ''),
@@ -382,13 +392,18 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
   }
 
-  if (!actor.upload) {
+  if (!actor.upload && !actor.dailyDrop) {
     return json(403, { ok: false, error: actor.read ? CLOUD_ROLE_MESSAGE : CLOUD_UNAVAILABLE_MESSAGE });
   }
+  /** Upload-only actors (program director) touch daily-video keys and nothing else. */
+  const dropOnly = !actor.upload;
+  const dropRefused = () => json(403, { ok: false, error: CLOUD_DAILY_DROP_ONLY });
+  const dropKeyAllowed = (key: string) => !dropOnly || isDailyVideoCloudPath(relativePath(actor.licenseId, key));
 
   if (request.method === 'PUT') {
     const key = ownedKey(actor, url.searchParams.get('key') ?? '');
     if (!key) return json(400, { ok: false, error: 'That file is not in this license.' });
+    if (!dropKeyAllowed(key)) return dropRefused();
     const op = url.searchParams.get('op');
     const bytes = new Uint8Array(await request.arrayBuffer());
     if (op === 'part') {
@@ -409,6 +424,9 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (bytes.byteLength > maxUpload) return json(413, { ok: false, error: cloudTooLargeMessage(maxUpload) });
     const relative = relativePath(actor.licenseId, key);
     const mime = safeCloudMime(request.headers.get('content-type') ?? '', 'application/octet-stream');
+    if (dropOnly && !mimeAllowed('daily-video', mime)) {
+      return json(400, { ok: false, error: 'Daily videos are video files.' });
+    }
     if (isCustomSkinImagePath(relative)) {
       if (!SKIN_IMAGE_MIME.has(mime)) return json(400, { ok: false, error: 'Use a JPG, PNG, or WebP.' });
       const existing = await bucket.head(key);
@@ -436,6 +454,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   }
 
   if (body.action === 'delete-skin') {
+    if (dropOnly) return dropRefused();
     const id = typeof body.id === 'string' ? body.id : '';
     const imageKey = cloudObjectKey(actor.licenseId, `skins/${id}`);
     const metaKey = cloudObjectKey(actor.licenseId, `skins/${id}.json`);
@@ -448,6 +467,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   if (body.action === 'abort') {
     const key = ownedKey(actor, body.key ?? '');
     if (!key || !body.uploadId) return json(400, { ok: false, error: 'That upload is already closed.' });
+    if (!dropKeyAllowed(key)) return dropRefused();
     await bucket.resumeMultipartUpload(key, body.uploadId).abort();
     return json(200, { ok: true });
   }
@@ -457,6 +477,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (!key || !body.uploadId || !Array.isArray(body.parts) || body.parts.length === 0) {
       return json(400, { ok: false, error: 'Advantage Cloud could not finish that file.' });
     }
+    if (!dropKeyAllowed(key)) return dropRefused();
     const parts = body.parts
       .map((part) => ({ partNumber: Number(part.partNumber), etag: typeof part.etag === 'string' ? part.etag : '' }))
       .filter((part) => Number.isInteger(part.partNumber) && part.partNumber > 0 && part.etag)
@@ -488,6 +509,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   const fileName = typeof body.fileName === 'string' ? body.fileName : '';
   const size = typeof body.size === 'number' && Number.isFinite(body.size) ? Math.floor(body.size) : -1;
   if (!purpose || size < 1) return json(400, { ok: false, error: 'Choose a file.' });
+  if (dropOnly && purpose !== 'daily-video') return dropRefused();
   if (size > maxUpload) return json(413, { ok: false, error: cloudTooLargeMessage(maxUpload) });
   const mime = safeCloudMime(typeof body.mime === 'string' ? body.mime : '', purpose === 'lesson' ? 'application/json' : 'video/mp4');
   if (!mimeAllowed(purpose, mime)) {
@@ -502,6 +524,10 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   if (!relative.ok) return json(400, { ok: false, error: relative.error });
   const key = cloudObjectKey(actor.licenseId, relative.path);
   if (!key) return json(400, { ok: false, error: 'That file name cannot be saved.' });
+  // A program director cannot see the folder, so never let a drop replace a coach's video.
+  if (dropOnly && (await bucket.head(key))) {
+    return json(409, { ok: false, error: "A video with that name is already in today's videos. Rename it and send again." });
+  }
   const room = await roomFor(bucket, key, size, cap);
   if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.bucketUsed, cap) });
   const plan = size > CLOUD_CHUNK_BYTES ? 'multipart' : 'single';

@@ -104,6 +104,7 @@ test('permission defaults and labels stay the soft-beta bundle', () => {
     uploadForDistribution: true,
     eventsAccess: false,
     proShopAccess: false,
+    dailyVideoUpload: false,
   });
   assert.deepEqual(
     INSTRUCTOR_PERMISSION_FIELDS.map((field) => field.label),
@@ -116,6 +117,7 @@ test('permission defaults and labels stay the soft-beta bundle', () => {
       'Upload for instructor distribution',
       'Events access',
       'Pro Shop access',
+      "Send videos to today's videos",
     ],
   );
   assert.deepEqual(Object.keys(DEFAULT_INSTRUCTOR_PERMISSIONS), [
@@ -127,6 +129,7 @@ test('permission defaults and labels stay the soft-beta bundle', () => {
     'uploadForDistribution',
     'eventsAccess',
     'proShopAccess',
+    'dailyVideoUpload',
   ]);
   const filled = normalizeInstructorPermissions({ rosterPull: false });
   assert.equal(filled.rosterPull, false);
@@ -146,6 +149,7 @@ test('issuing an invite stores an invited seat and a copyable link', () => {
     uploadForDistribution: false,
     eventsAccess: false,
     proShopAccess: true,
+    dailyVideoUpload: false,
   };
   const issued = issueInstructorInvite({
     email: '  Coach@Alliance.gym ',
@@ -409,6 +413,7 @@ test('four binder presets fill the toggles and stay overridable', () => {
     uploadForDistribution: true,
     eventsAccess: false,
     proShopAccess: false,
+    dailyVideoUpload: false,
   });
   assert.deepEqual(instructorPresetPermissions('coach'), defaultInstructorPermissions());
   assert.deepEqual(instructorPresetPermissions('program-director'), {
@@ -420,6 +425,7 @@ test('four binder presets fill the toggles and stay overridable', () => {
     uploadForDistribution: false,
     eventsAccess: true,
     proShopAccess: true,
+    dailyVideoUpload: true,
   });
   const instructors = instructorPresetPermissions('instructors');
   assert.equal(INSTRUCTOR_PRESETS.length, 4);
@@ -578,6 +584,7 @@ test('accepting an assistant coach invite starts a seat session and gates contro
     uploadForDistribution: true,
     eventsAccess: false,
     proShopAccess: false,
+    dailyVideoUpload: false,
   });
   const issued = issueInstructorInvite({
     email: 'assistant@gym.com',
@@ -1012,4 +1019,24 @@ test('role binder paint lock 2026-10-11 keeps coach brown and program director p
     assert.deepEqual(issued.seat.permissions, instructorPresetPermissions(presetId));
     assert.equal(instructorSeatBinderLabel(issued.seat.presetId, issued.seat.permissions), instructorPreset(presetId).label);
   }
+});
+
+test('program director sends to today\'s videos but never opens lesson plans', () => {
+  const pd = instructorPresetPermissions('program-director');
+  assert.equal(pd.dailyVideoUpload, true);
+  assert.equal(pd.dailyLessonPlanAccess, false);
+  assert.equal(pd.uploadForDistribution, false);
+  assert.equal(instructorPresetPermissions('assistant-coach').dailyVideoUpload, false);
+  assert.equal(instructorPresetPermissions('coach').dailyVideoUpload, false);
+  // The switch is overridable on the seat binder.
+  const off = { ...pd, dailyVideoUpload: false };
+  assert.equal(permissionsMatchPreset('program-director', off), false);
+  // A PD seat saved before this switch existed reads its preset value and is not "adjusted".
+  const legacy: Record<string, boolean> = { ...pd };
+  delete legacy.dailyVideoUpload;
+  const filled = normalizeInstructorPermissions(legacy, 'program-director');
+  assert.equal(filled.dailyVideoUpload, true);
+  assert.equal(permissionsMatchPreset('program-director', filled), true);
+  // Without a preset the missing key stays off.
+  assert.equal(normalizeInstructorPermissions(legacy).dailyVideoUpload, false);
 });
