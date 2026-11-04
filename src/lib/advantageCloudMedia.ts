@@ -27,12 +27,14 @@ export const CLOUD_CHUNK_BYTES = 8 * 1024 * 1024;
 export const CLOUD_SIGN_IN_MESSAGE = 'Sign in on this device to use Advantage Cloud.';
 export const CLOUD_ROLE_MESSAGE = 'Assistant coaches can play and download these files. A coach uploads them.';
 export const CLOUD_SAVED_MESSAGE = 'Saved to Advantage Cloud. This phone keeps a copy.';
+export const CLOUD_DAILY_DROP_ONLY =
+  "A program director can send videos to today's daily videos. Lesson plans and other Cloud files stay with the coaches.";
 export const CLOUD_UNAVAILABLE_MESSAGE = 'Advantage Cloud is not on this license.';
 export const CLOUD_HOME_UNBOUND = 'Advantage Cloud is not connected on this site.';
 export const CLOUD_HOME_CONNECTED =
   'Advantage Cloud is connected. Sign in on this device to see how much space this license is using.';
 export const CLOUD_ROLE_HOME =
-  'The gym owner, a Coach, and Instructors can upload daily videos and lesson-plan media. An assistant coach can play and download them. A program director does not use this lane.';
+  'The gym owner, a Coach, and Instructors can upload daily videos and lesson-plan media. An assistant coach can play and download them. A program director can send videos to today\'s daily videos, without opening lesson plans.';
 
 export type CloudMediaPurpose = 'daily-video' | 'lesson' | 'lesson-media';
 export type CloudMediaHome = 'device' | 'advantage-cloud';
@@ -120,6 +122,24 @@ export function cloudMediaAccess(input: {
   if (preset === 'coach' || preset === 'instructors') return { read: true, upload: true };
   if (preset === 'assistant-coach') return { read: true, upload: false };
   return { read: true, upload: false };
+}
+
+/**
+ * Program director's one Cloud lane: put a video in `videos/daily/{date}/`
+ * for instructors to download. No list, play, lesson plan, lesson media,
+ * skins, or replay. A revoked seat is refused before this is asked.
+ */
+export function cloudDailyVideoDrop(input: {
+  plusCloud: boolean;
+  kind: 'owner' | 'seat';
+  preset?: string | null;
+}): boolean {
+  return input.plusCloud && input.kind === 'seat' && input.preset === 'program-director';
+}
+
+/** A daily-video object path (`videos/daily/{date}/{file}`). Nothing else. */
+export function isDailyVideoCloudPath(relativePath: string): boolean {
+  return DAILY_KEY.test(relativePath);
 }
 
 export function gymActorForCloud(kind: 'owner' | 'seat', preset: string | null): GymActor {
@@ -324,6 +344,8 @@ export type CloudStatusBody = {
   ok: true;
   cloud: boolean;
   canUpload?: boolean;
+  /** Program director: may put a video in today's daily videos, nothing else. */
+  dailyVideoDrop?: boolean;
   licenseUsedBytes?: number;
   bucketUsedBytes?: number;
   capBytes?: number;

@@ -31,7 +31,26 @@ import {
   type EventsCastMode,
 } from '../lib/eventSlides';
 import { readGymLogo } from '../lib/gymLogo';
-import { seatPermissionAllows } from '../lib/instructorSeats';
+import { isProgramDirectorSeat, seatPermissionAllows } from '../lib/instructorSeats';
+import { APPROVAL_WAITING, readGalleryApproval } from '../lib/galleryApproval';
+import { addClassPhotoPromotionFiles } from '../lib/classPhotoPromotions';
+import { gymActorForCloud } from '../lib/advantageCloudMedia';
+import { readOneDriveBinding, readOneDriveSession } from '../lib/oneDrive';
+import {
+  DAILY_VIDEO_STAY,
+  VIDEO_DESTINATION_DAILY,
+  VIDEO_DESTINATION_DAILY_HINT,
+  VIDEO_DESTINATION_GALLERY,
+  VIDEO_DESTINATION_GALLERY_HINT,
+  VIDEO_DESTINATION_LEGEND,
+  canSendToDailyVideos,
+  chooseDailyVideoHome,
+  dailyVideoHomeLabel,
+  probeDailyVideoCloud,
+  sendToDailyVideos,
+  type DailyVideoHome,
+  type VideoDestination,
+} from '../lib/dailyVideoDrop';
 import { MEDIA_CONSOLE_INSTRUCTIONS, MEDIA_CONSOLE_NAME } from '../lib/productNames';
 import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -140,6 +159,8 @@ export function ScreensaverPage() {
   const [batchStatus, setBatchStatus] = useState<BatchNotice | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addKind, setAddKind] = useState<MediaSourceKind>('photo');
+  const [videoDest, setVideoDest] = useState<VideoDestination>('gallery');
+  const [dailyHome, setDailyHome] = useState<DailyVideoHome | null>(null);
   const [drivePickOpen, setDrivePickOpen] = useState(false);
   const [drivePickKind, setDrivePickKind] = useState<DrivePickKind>('photo');
   const [driveConnectOpen, setDriveConnectOpen] = useState(false);
@@ -356,10 +377,53 @@ export function ScreensaverPage() {
     void setEventsCastMode(next);
   };
 
+  const dailyVideoSeat = canSendToDailyVideos(seat);
+
   const openAdd = (folderId: FolderId, kind: MediaSourceKind) => {
     addFolderRef.current = folderId;
     setAddKind(kind);
+    setVideoDest('gallery');
     setAddOpen(true);
+    if (kind === 'video' && folderId === 'gallery' && dailyVideoSeat) {
+      // Only offer today's videos where the gym can hold them. Cloud asks the server.
+      const local = { driveConnected: Boolean(driveBinding), oneDriveConnected: Boolean(readOneDriveBinding() && readOneDriveSession()) };
+      setDailyHome(chooseDailyVideoHome({ cloudDrop: false, ...local }));
+      void probeDailyVideoCloud().then((cloudDrop) => {
+        setDailyHome(chooseDailyVideoHome({ cloudDrop, ...local }));
+      });
+    } else {
+      setDailyHome(null);
+    }
+  };
+
+  const dailyChoiceShown = addKind === 'video' && addFolderRef.current === 'gallery' && dailyVideoSeat && dailyHome !== null;
+  const sendingDaily = dailyChoiceShown && videoDest === 'daily-videos';
+
+  const onDailyFiles = async (files: readonly File[], home: DailyVideoHome) => {
+    savingRef.current = true;
+    setPickerNote('');
+    setBatchStatus({ tone: 'progress', text: `Sending to today's videos in ${dailyVideoHomeLabel(home)}…` });
+    try {
+      const result = await sendToDailyVideos({
+        files,
+        dateKey: localDateKey(),
+        home,
+        role: gymActorForCloud('seat', seat?.presetId ?? null),
+        onProgress: (done, total) => {
+          if (total > 1 && done < total) {
+            setBatchStatus({ tone: 'progress', text: `Sending ${done + 1} of ${total} to today's videos…` });
+          }
+        },
+      });
+      if (result.sent) {
+        setBatchStatus({ tone: 'saved', text: 'Sent' });
+        setPickerNote(result.message);
+      } else {
+        showBatchError('gallery', result.message);
+      }
+    } finally {
+      savingRef.current = false;
+    }
   };
 
   const openDrivePick = (folderId: FolderId, kind: DrivePickKind) => {
@@ -559,6 +623,11 @@ export function ScreensaverPage() {
     if (savingRef.current) return;
     const kind = addKind;
     const folderId = addFolderRef.current;
+    if (sendingDaily && dailyHome && folderId === 'gallery') {
+      setAddOpen(false);
+      await onDailyFiles([...files], dailyHome);
+      return;
+    }
     const folder = folderById(folderId);
     const picked = [...files];
     const readable = picked.filter((file) => file.size > 0);
@@ -589,6 +658,32 @@ export function ScreensaverPage() {
           error: null,
         }) ?? `Nothing was saved. ${SMALLER_BATCH_TIP}`,
       );
+      return;
+    }
+
+    // Program director with the gallery approval switch on: the same pending
+    // lane as Today's class photo / promotions. It plays after an approver says yes.
+    if (
+      folderId === 'gallery' &&
+      isProgramDirectorSeat(seat) &&
+      readGalleryApproval(typeof localStorage === 'undefined' ? null : localStorage).required
+    ) {
+      savingRef.current = true;
+      setPickerNote('');
+      setBatchStatus({ tone: 'progress', text: 'Sending for approval…' });
+      try {
+        const result = await addClassPhotoPromotionFiles(localDateKey(), matched);
+        if (result.saved) {
+          setBatchStatus({ tone: 'saved', text: 'Waiting' });
+          setPickerNote(`${APPROVAL_WAITING} They play in the Gallery after they are approved.`);
+        } else {
+          showBatchError(folderId, `Nothing was saved. ${SMALLER_BATCH_TIP}`);
+        }
+      } catch (error) {
+        showBatchError(folderId, error instanceof Error ? error.message : `Nothing was saved. ${SMALLER_BATCH_TIP}`);
+      } finally {
+        savingRef.current = false;
+      }
       return;
     }
 
@@ -1150,10 +1245,41 @@ export function ScreensaverPage() {
         captureInputId={addKind === 'video' ? 'saver-video-record' : 'saver-photo-capture'}
         libraryInputId={addKind === 'video' ? 'saver-video-library' : 'saver-photo-library'}
         stacked={options}
-        onPickPhotos={() => openPhotosPick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
-        onPickDrive={() => openDrivePick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
+        stay={sendingDaily ? DAILY_VIDEO_STAY : undefined}
+        onPickPhotos={sendingDaily ? undefined : () => openPhotosPick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
+        onPickDrive={sendingDaily ? undefined : () => openDrivePick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
         onClose={() => setAddOpen(false)}
-      />
+      >
+        {dailyChoiceShown && dailyHome ? (
+          <fieldset className="cloud-media__choice" data-video-destination="">
+            <legend>{VIDEO_DESTINATION_LEGEND}</legend>
+            <label>
+              <input
+                type="radio"
+                name="saver-video-destination"
+                value="gallery"
+                checked={videoDest === 'gallery'}
+                onChange={() => setVideoDest('gallery')}
+              />
+              <span>
+                <strong>{VIDEO_DESTINATION_GALLERY}</strong> {VIDEO_DESTINATION_GALLERY_HINT}
+              </span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="saver-video-destination"
+                value="daily-videos"
+                checked={videoDest === 'daily-videos'}
+                onChange={() => setVideoDest('daily-videos')}
+              />
+              <span>
+                <strong>{VIDEO_DESTINATION_DAILY}</strong> {VIDEO_DESTINATION_DAILY_HINT} Saved in {dailyVideoHomeLabel(dailyHome)}.
+              </span>
+            </label>
+          </fieldset>
+        ) : null}
+      </MediaSourceSheet>
       <GooglePhotosPicker
         open={photosPickOpen}
         kind={photosPickKind}
