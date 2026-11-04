@@ -37,7 +37,9 @@ function PolishedTile({ side, kind, value }: { side: Side; kind: ScoreKind; valu
       {...handlers}
     >
       <span className="lab">{l.lab}</span>
-      <span className="num">{value}</span>
+      <span className="num">
+        <span className="digit">{value}</span>
+      </span>
     </button>
   );
 }
@@ -143,16 +145,22 @@ export function PolishedScoreboard({
             <div className="lead">
               <img className="logo" src="/card-logo.png" alt="Advantage" />
               <span className="wm">Advantage</span>
-              <span className="mat">
-                <MetalFace>{mat}</MetalFace>
-              </span>
             </div>
           ) : (
             <img className="logo" src="/card-logo.png" alt="Advantage" />
           )}
           {metal ? <i className="crest" aria-hidden="true" /> : null}
-          {metal ? null : <span className="mat">{mat}</span>}
-          <span className="div">{division}</span>
+          {metal ? (
+            <div className="trail">
+              <span className="mat">
+                <MetalFace>{mat}</MetalFace>
+              </span>
+              <span className="div">{division}</span>
+            </div>
+          ) : (
+            <span className="mat">{mat}</span>
+          )}
+          {metal ? null : <span className="div">{division}</span>}
         </header>
         <Row row={rows[0]} cls="c1" extra={extra[0]} chip={metal} />
         <div className={`band${metal && stateLabel === 'FINAL' ? ' is-final' : ''}`}>
