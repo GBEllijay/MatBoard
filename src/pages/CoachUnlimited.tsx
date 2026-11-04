@@ -6,6 +6,7 @@ import { BeltHeader } from '../components/BeltHeader';
 import { BeltRail } from '../components/BeltRail';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { HomeMark } from '../components/HomeMark';
+import { LicenseShareButton } from '../components/LicenseShareButton';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { useSeatDoor } from '../hooks/useSeatDoor';
@@ -23,6 +24,8 @@ import {
   type LessonRevision,
 } from '../lib/lessonDrive';
 import { COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY, PRODUCTS_PATH, proConsoleEntryOpen } from '../lib/productNames';
+
+export { InstructorSharePage, StudentSharePage } from '../components/LicenseSharePage';
 
 /** Same pathway screen as the Pro page: link, QR, copy, and share folder. */
 export function AcademyPathwayPage() {
@@ -64,6 +67,7 @@ export function CoachUnlimitedPage() {
         <HomeMark to={PRODUCTS_PATH} />
         <section className="suite instructor-hub">
           <BeltHeader kind="brown" worn title="Instructor Edition" />
+          <LicenseShareButton />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
             <div className="pro-hubs">
               {tools.map((tool) => (

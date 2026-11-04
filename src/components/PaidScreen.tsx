@@ -149,6 +149,10 @@ const loadClassHistory = () => import('../pages/ClassHistory.tsx').then((mod) =>
 const loadCoachUnlimited = () =>
   import('../pages/CoachUnlimited.tsx').then((mod) => ({ node: <mod.CoachUnlimitedPage /> }));
 const loadAcademy = () => import('../pages/CoachUnlimited.tsx').then((mod) => ({ node: <mod.AcademyPathwayPage /> }));
+const loadInstructorShare = () =>
+  import('../pages/CoachUnlimited.tsx').then((mod) => ({ node: <mod.InstructorSharePage /> }));
+const loadStudentShare = () =>
+  import('../pages/CoachUnlimited.tsx').then((mod) => ({ node: <mod.StudentSharePage /> }));
 const loadReview = () => import('../pages/ReviewInbox.tsx').then((mod) => ({ node: <mod.ReviewInboxPage /> }));
 
 export function PaidProPage() {
@@ -182,4 +186,14 @@ export function PaidAcademyPathwayPage() {
 
 export function PaidReviewInboxPage() {
   return <PaidImport chunk="coach-unlimited" load={loadReview} />;
+}
+
+/** Advantage Instructor Edition share page (coach seat invite QR). Owner only inside. */
+export function PaidInstructorSharePage() {
+  return <PaidImport chunk="coach-unlimited" load={loadInstructorShare} />;
+}
+
+/** Advantage Student Edition share page (academy pathway QR). Owner only inside. */
+export function PaidStudentSharePage() {
+  return <PaidImport chunk="coach-unlimited" load={loadStudentShare} />;
 }
