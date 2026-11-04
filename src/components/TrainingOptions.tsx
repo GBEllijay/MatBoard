@@ -1,20 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
 import { useAudioPrefs, useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import { patchAudioPrefs, playSelectedEndCue, playStartCue, playWarningCue, unlockAudio } from '../lib/audio';
 import { EndCueControls } from './EndCueControls';
-import { formatMinuteInput, formatMmSs, formatMss, parseTypedDurationMs } from '../lib/format';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
 import { setTrainingSkin, visibleTrainingSkin } from '../lib/trainingSkin';
 import { TimerBackdropOptions } from './TimerBackdropOptions';
 import { TimerSkinPicker } from './TimerSkinPicker';
+import { WheelPicker } from './WheelPicker';
+import { durationOptions, REST_RANGE, ROUND_COUNT_OPTIONS, ROUND_LENGTH_RANGE } from '../lib/timeWheel';
 import {
-  BREAK_PRESETS_MS,
-  isBreakPreset,
-  isWorkPreset,
-  MAX_BREAK_MS,
-  MAX_WORK_MS,
-  MIN_BREAK_MS,
-  MIN_WORK_MS,
   resetTrainingSession,
   setBreakMs,
   setEndSound,
@@ -22,8 +15,10 @@ import {
   setStartSound,
   setWarningSound,
   setWorkMs,
-  WORK_PRESETS_MIN,
 } from '../lib/trainingStore';
+
+const WORK_OPTIONS = durationOptions(ROUND_LENGTH_RANGE);
+const REST_OPTIONS = durationOptions(REST_RANGE);
 
 /** Round length, break, count, sound, skin, and background & logo. Shared by the display sheet and the Rounds controller. */
 export function TrainingOptions({ onReset }: { onReset?: () => void }) {
@@ -33,14 +28,6 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
   const polishedOpen = usePolishedSkinsUnlocked();
   const whiteBase = useWhiteBaseSkins();
   const skin = visibleTrainingSkin(useTrainingSkin(), polishedOpen, whiteBase);
-  const [customWorkOpen, setCustomWorkOpen] = useState(false);
-  const [customBreakOpen, setCustomBreakOpen] = useState(false);
-  const customWork = !isWorkPreset(training.workMs);
-  const customBreak = !isBreakPreset(training.breakMs);
-  const showCustomWork = customWorkOpen || customWork;
-  const showCustomBreak = customBreakOpen || customBreak;
-  const workCustomOn = customWorkOpen || customWork;
-  const breakCustomOn = customBreakOpen || customBreak;
 
   const previewCue = (play: () => void) => {
     void unlockAudio().then(play);
@@ -50,74 +37,12 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
     <>
       <fieldset>
         <legend>Round length</legend>
-        <div className="presets presets--round-length" role="group" aria-label="Round length">
-          {WORK_PRESETS_MIN.map((minutes) => (
-            <button
-              key={minutes}
-              type="button"
-              className={`preset${!workCustomOn && training.workMs === minutes * 60_000 ? ' preset--on' : ''}`}
-              onClick={() => {
-                setCustomWorkOpen(false);
-                setWorkMs(minutes * 60_000);
-              }}
-            >
-              {minutes}:00
-            </button>
-          ))}
-          <button
-            type="button"
-            className={`preset${workCustomOn ? ' preset--on' : ''}`}
-            aria-expanded={showCustomWork}
-            onClick={() => setCustomWorkOpen((open) => (customWork ? true : !open))}
-          >
-            Custom
-          </button>
-        </div>
-        {showCustomWork ? (
-          <TimeNudges
-            valueMs={training.workMs}
-            minMs={MIN_WORK_MS}
-            maxMs={MAX_WORK_MS}
-            label="Custom round length"
-            onChange={setWorkMs}
-          />
-        ) : null}
+        <WheelPicker label="Round length" value={training.workMs} options={WORK_OPTIONS} onChange={setWorkMs} />
       </fieldset>
 
       <fieldset>
         <legend>Break</legend>
-        <div className="presets presets--break-length" role="group" aria-label="Break length">
-          {BREAK_PRESETS_MS.map((ms) => (
-            <button
-              key={ms}
-              type="button"
-              className={`preset${!breakCustomOn && training.breakMs === ms ? ' preset--on' : ''}`}
-              onClick={() => {
-                setCustomBreakOpen(false);
-                setBreakMs(ms);
-              }}
-            >
-              {formatMss(ms / 1000)}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={`preset${breakCustomOn ? ' preset--on' : ''}`}
-            aria-expanded={showCustomBreak}
-            onClick={() => setCustomBreakOpen((open) => (customBreak ? true : !open))}
-          >
-            Custom
-          </button>
-        </div>
-        {showCustomBreak ? (
-          <TimeNudges
-            valueMs={training.breakMs}
-            minMs={MIN_BREAK_MS}
-            maxMs={MAX_BREAK_MS}
-            label="Custom break length"
-            onChange={setBreakMs}
-          />
-        ) : null}
+        <WheelPicker label="Break" value={training.breakMs} options={REST_OPTIONS} onChange={setBreakMs} />
       </fieldset>
 
       <fieldset>
@@ -139,16 +64,12 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
           </button>
         </div>
         {!training.endless ? (
-          <label className="stepper">
-            Rounds 1–99
-            <input
-              type="number"
-              min={1}
-              max={99}
-              value={training.rounds}
-              onChange={(e) => setRounds(Number(e.target.value) || 1, false)}
-            />
-          </label>
+          <WheelPicker
+            label="Rounds"
+            value={training.rounds}
+            options={ROUND_COUNT_OPTIONS}
+            onChange={(rounds) => setRounds(rounds, false)}
+          />
         ) : null}
       </fieldset>
 
@@ -178,34 +99,41 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
           />
           Training end sound
         </label>
-        <EndCueControls label="Training end cue" value={audio.endCue} />
-        <div className="cue-preview">
-          <p className="cue-preview-label">Preview cues</p>
-          <div className="presets presets--three" role="group" aria-label="Preview cues">
-            <button
-              type="button"
-              className="preset"
-              disabled={!training.startSound}
-              onClick={() => previewCue(playStartCue)}
-            >
-              Start
-            </button>
-            <button
-              type="button"
-              className="preset"
-              disabled={!training.warningSound}
-              onClick={() => previewCue(playWarningCue)}
-            >
-              10s
-            </button>
-            <button
-              type="button"
-              className="preset"
-              disabled={!training.endSound}
-              onClick={() => previewCue(() => playSelectedEndCue('training', audio.endCue))}
-            >
-              End
-            </button>
+        <EndCueControls label="Training end cue" value={audio.endCue} begin />
+        {/*
+          FINAL-CLEANUP: Preview cues stay in this build and come out of the user-facing final build.
+          This slot stays flexible so a stacked-thumbnail skin chooser can take the same place.
+          Do not lock its height, columns, or position.
+        */}
+        <div className="controller-slot controller-slot--flexible" data-final-cleanup="preview-cues">
+          <div className="cue-preview">
+            <p className="cue-preview-label">Preview cues</p>
+            <div className="presets presets--three" role="group" aria-label="Preview cues">
+              <button
+                type="button"
+                className="preset"
+                disabled={!training.startSound}
+                onClick={() => previewCue(playStartCue)}
+              >
+                Start
+              </button>
+              <button
+                type="button"
+                className="preset"
+                disabled={!training.warningSound}
+                onClick={() => previewCue(playWarningCue)}
+              >
+                10s
+              </button>
+              <button
+                type="button"
+                className="preset"
+                disabled={!training.endSound}
+                onClick={() => previewCue(() => playSelectedEndCue('training', audio.endCue))}
+              >
+                End
+              </button>
+            </div>
           </div>
         </div>
         <label className="toggle">
@@ -279,111 +207,5 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
         Reset session
       </button>
     </>
-  );
-}
-
-function TimeNudges({
-  valueMs,
-  minMs,
-  maxMs,
-  label,
-  onChange,
-}: {
-  valueMs: number;
-  minMs: number;
-  maxMs: number;
-  label: string;
-  onChange: (ms: number) => void;
-}) {
-  const [draft, setDraft] = useState(() => formatMinuteInput(valueMs));
-  const editing = useRef(false);
-  const dirty = useRef(false);
-
-  useEffect(() => {
-    if (!editing.current) setDraft(formatMinuteInput(valueMs));
-  }, [valueMs]);
-
-  const commit = (raw: string) => {
-    dirty.current = false;
-    const next = parseTypedDurationMs(raw, minMs, maxMs);
-    if (next == null) {
-      setDraft(formatMinuteInput(valueMs));
-      return;
-    }
-    if (next !== valueMs) onChange(next);
-    setDraft(formatMinuteInput(next));
-  };
-
-  return (
-    <div className="custom-round">
-      <strong aria-live="polite">{formatMmSs(valueMs)}</strong>
-      <div className="custom-time">
-        <label>
-          Minutes
-          <input
-            inputMode="decimal"
-            enterKeyHint="done"
-            autoComplete="off"
-            aria-label={`${label} in minutes`}
-            value={draft}
-            onFocus={() => {
-              editing.current = true;
-            }}
-            onBlur={() => {
-              editing.current = false;
-              if (dirty.current) commit(draft);
-            }}
-            onChange={(e) => {
-              dirty.current = true;
-              setDraft(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') e.currentTarget.blur();
-            }}
-          />
-        </label>
-        <button type="button" className="btn" onClick={() => commit(draft)}>
-          Set
-        </button>
-      </div>
-      <div className="clock-nudges" role="group" aria-label={label}>
-        <button
-          type="button"
-          className="clock-nudge"
-          disabled={valueMs <= minMs}
-          aria-label="Subtract one minute"
-          onClick={() => onChange(valueMs - 60_000)}
-        >
-          −1m
-        </button>
-        <button
-          type="button"
-          className="clock-nudge"
-          disabled={valueMs <= minMs}
-          aria-label="Subtract one second"
-          onClick={() => onChange(valueMs - 1_000)}
-        >
-          −1s
-        </button>
-        <button
-          type="button"
-          className="clock-nudge"
-          disabled={valueMs >= maxMs}
-          aria-label="Add one second"
-          onClick={() => onChange(valueMs + 1_000)}
-        >
-          +1s
-        </button>
-        <button
-          type="button"
-          className="clock-nudge"
-          disabled={valueMs >= maxMs}
-          aria-label="Add one minute"
-          onClick={() => onChange(valueMs + 60_000)}
-        >
-          +1m
-        </button>
-      </div>
-    </div>
   );
 }
