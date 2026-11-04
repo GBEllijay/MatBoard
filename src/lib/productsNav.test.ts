@@ -166,6 +166,7 @@ test('Media, Instructor and Pro show one shared alpha line directly under the pr
   const esc = n.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
   assert.match(home, new RegExp(`\\{MEDIA_PRICE_LINE\\}</p>\\s*<p className="mode-card__price">\\{CLOUD_ADDON_LINE\\}</p>\\s*${esc}`));
   assert.match(home, new RegExp(`\\{INSTRUCTOR_DISPLAY_PRICE_LINE\\}</p>\\s*<p className="mode-card__price">\\{CLOUD_ADDON_LINE\\}</p>\\s*${esc}`));
-  assert.match(home, new RegExp(`\\{PRO_PRICE_LINE\\}</p>\\s*<p className="mode-card__price">\\{CLOUD_ADDON_LINE\\}</p>`));
+  assert.match(home, /PRO_PRICE_LINE/);
+  assert.match(home, /<HomeDescription text=\{CLOUD_ADDON_LINE\} \/>/);
   assert.doesNotMatch(home, /COACH_ALPHA_ACCESS_NOTE|PRO_ALPHA_ACCESS_NOTE/);
 });

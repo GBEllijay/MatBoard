@@ -182,12 +182,7 @@ export function HomePage() {
             <article className="mode-card mode-card--pro mode-card--locked">
               <Link className="mode-card__hit" to={TIER_BUY_PATHS.pro} aria-label={`Advantage Pro, ${ALPHA_PRODUCT_STATUS}`} />
               <ProHomeCopy />
-              {seated ? null : (
-                <>
-                  <p className="mode-card__price">{PRO_PRICE_LINE}</p>
-                  <p className="mode-card__price">{CLOUD_ADDON_LINE}</p>
-                </>
-              )}
+              {seated ? null : <p className="mode-card__price">{PRO_PRICE_LINE}</p>}
               <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
               <div className="mode-card__actions">
                 <LearnMoreLink tier="pro" />
@@ -320,7 +315,8 @@ function ProHomeCopy() {
     <>
       <BeltRail kind="black" bar="striped" />
       <strong>Advantage Pro</strong>
-      <HomeLines lines={[...PRO_HOME_LINES, PRO_DRIVE_NOTE, CLOUD_ADDON_LINE]} />
+      <HomeLines lines={[...PRO_HOME_LINES, PRO_DRIVE_NOTE]} />
+      <HomeDescription text={CLOUD_ADDON_LINE} />
     </>
   );
 }
