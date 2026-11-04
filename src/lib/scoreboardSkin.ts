@@ -12,6 +12,7 @@
  * Kids' Scoreboards paints the Pro bracket, not this skin.
  */
 
+import { isCustomSkinId } from './customSkin.ts';
 import { SUITE_FROM, UNLIMITED_FROM, withHubFrom } from './productNames.ts';
 import { POLISHED_SKINS, isPolishedSkinId, type PolishedSkinSlug } from './polishedSkins.ts';
 
@@ -44,6 +45,9 @@ export const SCOREBOARD_SKIN = {
 } as const;
 
 export type ScoreboardSkinId = (typeof SCOREBOARD_SKIN)[keyof typeof SCOREBOARD_SKIN];
+
+/** A built-in skin, or one uploaded picture (`custom:<id>`). */
+export type StoredScoreboardSkin = ScoreboardSkinId | `custom:${string}`;
 
 /** Match display and the controller start on Mock-Tournament until the coach picks another skin. */
 export const DEFAULT_SCOREBOARD_SKIN: ScoreboardSkinId = SCOREBOARD_SKIN.MOCK_TOURNAMENT;
@@ -141,13 +145,18 @@ export function isSelectableScoreboardSkin(value: unknown): value is ScoreboardS
 }
 
 /** Unknown or reserved ids fall back to Mock-Tournament. A polished pick is kept; the board gates it. */
-export function parseScoreboardSkin(value: unknown): ScoreboardSkinId {
+export function parseScoreboardSkin(value: unknown): StoredScoreboardSkin {
+  if (isCustomSkinId(value)) return value;
   if (isSelectableScoreboardSkin(value)) return value;
-  return isPolishedSkinId(value) ? (value as ScoreboardSkinId) : DEFAULT_SCOREBOARD_SKIN;
+  return isPolishedSkinId(value) ? value : DEFAULT_SCOREBOARD_SKIN;
 }
 
-/** Class hook for the active skin. */
-export function scoreboardSkinClass(skin: ScoreboardSkinId = DEFAULT_SCOREBOARD_SKIN): string {
+/**
+ * Class hook for the active skin.
+ * A custom skin keeps the Mock-Tournament board. The picture sits behind it.
+ */
+export function scoreboardSkinClass(skin: StoredScoreboardSkin = DEFAULT_SCOREBOARD_SKIN): string {
+  if (isCustomSkinId(skin)) return `${SKIN_CLASS[DEFAULT_SCOREBOARD_SKIN]} scoreboard-skin--custom`;
   return SKIN_CLASS[skin] ?? SKIN_CLASS[DEFAULT_SCOREBOARD_SKIN];
 }
 
@@ -222,13 +231,14 @@ export function isPlainWhiteScoreboard(
  * (`polishedOpen`). When it is locked here, the board falls back to the default.
  */
 export function visibleScoreboardSkin(
-  skin: ScoreboardSkinId,
+  skin: StoredScoreboardSkin,
   fromSuite: boolean,
   linkedBout: boolean,
   coachWhiteBoard = false,
   polishedOpen = false,
   whiteBaseSkins = false,
-): ScoreboardSkinId {
+): StoredScoreboardSkin {
+  if (isCustomSkinId(skin)) return polishedOpen ? skin : DEFAULT_SCOREBOARD_SKIN;
   if (isPolishedSkinId(skin)) return polishedOpen ? skin : DEFAULT_SCOREBOARD_SKIN;
   if (whiteBaseSkins && isSelectableScoreboardSkin(skin)) return skin;
   return isPlainWhiteScoreboard(fromSuite, linkedBout, coachWhiteBoard) ? DEFAULT_SCOREBOARD_SKIN : skin;

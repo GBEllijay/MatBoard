@@ -18,7 +18,6 @@ test('scoreboard controller keeps every control that was not part of this redesi
     'Start beep',
     '10-second warning',
     'Match end sound',
-    'aria-label="Preview match cues"',
     'Auto-announce winner',
     '<EndCueControls label="Match end cue"',
     'Cast',
@@ -34,7 +33,9 @@ test('scoreboard controller keeps every control that was not part of this redesi
   assert.match(board, /label="Add one second"/);
   assert.match(board, /aria-label=\{label\}/);
   assert.match(board, /setInterval\(fire, 80\)/);
-  assert.doesNotMatch(board, /CLOCK_NUDGES_SEC|Subtract 5 seconds|Add 5 seconds|Match length presets|inputMode="decimal"/);
+  assert.doesNotMatch(board, /CLOCK_NUDGES_SEC|Subtract 5 seconds|Add 5 seconds|Match length presets|inputMode="decimal"|Preview match cues/);
+  assert.match(board, /appearance="stack"/);
+  assert.match(board, /formatMmSs\(remaining\)/);
 });
 
 test('weight shows on the display only when it is filled, beside division', () => {

@@ -15,8 +15,8 @@ import {
 } from './dqDisappointed';
 import { clamp, minutesToMs, secondsToMs } from './format';
 import { canonicalRoundValue } from './matchRound';
+import { DEFAULT_SCOREBOARD_SKIN, parseScoreboardSkin, type StoredScoreboardSkin } from './scoreboardSkin';
 import { DEFAULT_MATCH_MS, MATCH_LENGTH_RANGE, snapDurationMs } from './timeWheel';
-import { DEFAULT_SCOREBOARD_SKIN, parseScoreboardSkin, type ScoreboardSkinId } from './scoreboardSkin';
 import {
   ensureAudioRunning,
   getAudioPrefs,
@@ -89,7 +89,7 @@ export type MatchState = {
    */
   autoAnnounce: boolean;
   /** Mock-Tournament, Quick Result, or Old School. Travels with the match so Display follows the controller. */
-  skin: ScoreboardSkinId;
+  skin: StoredScoreboardSkin;
   /** Optional grandmaster cheer on the scoreboard. Off until the controller turns it on. */
   grandmaster: GrandmasterCelebrationPrefs;
   /** Optional one-shot reaction when a DQ is recorded. Off until the controller turns it on. */
@@ -118,7 +118,7 @@ export type MatchAction =
   | { type: 'setEndCue'; value: EndCue }
   | { type: 'setBracketMatchId'; value: string | null }
   | { type: 'setAutoAnnounce'; value: boolean }
-  | { type: 'setSkin'; value: ScoreboardSkinId }
+  | { type: 'setSkin'; value: StoredScoreboardSkin }
   | { type: 'setGrandmaster'; value: Partial<GrandmasterCelebrationPrefs> }
   | { type: 'setDqDisappointed'; value: Partial<DqDisappointedPrefs> }
   | { type: 'setOutcomeFlash'; value: OutcomeFlash | null }

@@ -23,39 +23,33 @@ test('round timer keeps every control that was not replaced by a wheel', () => {
     'aria-label="Timer skin"',
     'Classic',
     'Advantage',
-    '<TimerSkinPicker',
+    '<TimerSkinPicker appearance="stack" />',
     '<TimerBackdropOptions />',
     'Reset session',
-    'aria-label="Preview cues"',
-    'playStartCue',
-    'playWarningCue',
-    "playSelectedEndCue('training', audio.endCue)",
-    'FINAL-CLEANUP',
-    'data-final-cleanup="preview-cues"',
-    'controller-slot--flexible',
+    'aria-label="Training start sound"',
+    'Beep',
+    'Combate',
+    '10-second warning',
   ]) {
     assert.ok(options.includes(needle), needle);
   }
-  assert.match(options, /<EndCueControls label="Training end cue" value=\{audio\.endCue\} begin \/>/);
-  assert.doesNotMatch(options, /WORK_PRESETS|BREAK_PRESETS|type="number"|Custom round length/);
+  assert.match(options, /<EndCueControls label="Training end cue" value=\{audio\.endCue\} \/>/);
+  assert.doesNotMatch(options, /begin |Preview cues|WORK_PRESETS|BREAK_PRESETS|type="number"|Custom round length/);
   assert.doesNotMatch(options, /aria-label="3 minutes"|aria-label="5 minutes"|aria-label="10 minutes"|TIME_PRESETS/);
+  assert.ok(options.indexOf('aria-label="Training end cue"') < options.indexOf('appearance="stack"'));
   const picker = readFileSync(new URL('../components/WheelPicker.tsx', import.meta.url), 'utf8');
   assert.match(picker, /event\.key === 'ArrowDown' \? 1 : -1/);
   assert.match(picker, /precise\.current = true/);
 });
 
-test('Begin plays the owner Combate file through the shared cue bus', () => {
+test('Combate is the training start, not an end-cue button, and uses the shared cue bus', () => {
   assert.match(audio, /export const BEGIN_CUE_URL = '\/sounds\/combate\.mp3'/);
   assert.match(audio, /Owner's "Combate" start call/);
+  assert.match(audio, /startCue: 'combate'/);
   assert.match(audio, /function startRecorded\(buffer: AudioBuffer, gain: number\): void \{\s*const audio = getContext\(\);\s*if \(masterGain\(\) <= 0\) return;\s*const bus = getMaster\(\);/s);
-  assert.match(cues, /className="preset preset--begin"/);
-  assert.match(cues, /Begin/);
-  assert.match(cues, /onClick=\{\(\) => playBeginCue\(\)\}/);
-  const beginAt = cues.indexOf('className="preset preset--begin"');
-  const begin = cues.slice(beginAt, beginAt + 180);
-  assert.match(begin, /playBeginCue\(\)/);
-  assert.doesNotMatch(begin, /setEndCue/);
-  const choose = cues.slice(cues.indexOf('const choose'), cues.indexOf('const cues'));
+  assert.match(audio, /export function playTrainingStart\(\): void \{\s*if \(prefs\.startCue === 'beep'\) playStartCue\(\);\s*else playBeginCue\(\);/s);
+  assert.doesNotMatch(cues, /preset--begin|playBeginCue|Begin/);
+  const choose = cues.slice(cues.indexOf('const choose'), cues.indexOf('return ('));
   assert.match(choose, /setEndCue/);
   assert.doesNotMatch(choose, /playBeginCue/);
   assert.match(vite, /sounds\/combate\.mp3/);

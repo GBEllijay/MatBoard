@@ -9,6 +9,7 @@
  * those three paints Mock-Tournament and stays stored.
  */
 
+import { isCustomSkinId } from './customSkin.ts';
 import { POLISHED_TIMER_SKINS, isPolishedTimerSlug, type PolishedTimerSlug } from './polishedSkins.ts';
 
 /** Same three base skins as the scoreboard picker, in that order. White tier only. */
@@ -23,7 +24,7 @@ export type WhiteTimerSkinId = (typeof WHITE_TIMER_SKINS)[number]['id'];
 /** Base skin a hidden pick falls back to on White. */
 export const WHITE_TIMER_BASE: WhiteTimerSkinId = 'MOCK_TOURNAMENT';
 
-export type TrainingSkin = 'classic' | 'themed' | WhiteTimerSkinId | PolishedTimerSlug;
+export type TrainingSkin = 'classic' | 'themed' | WhiteTimerSkinId | PolishedTimerSlug | `custom:${string}`;
 
 export const TRAINING_SKIN_KEY = 'matboard.trainingSkin.v1';
 export const DEFAULT_TRAINING_SKIN: TrainingSkin = 'classic';
@@ -35,7 +36,7 @@ export function isWhiteTimerSkin(value: unknown): value is WhiteTimerSkinId {
 }
 
 function isSkin(value: string | null): value is TrainingSkin {
-  return value === 'classic' || value === 'themed' || isWhiteTimerSkin(value) || isPolishedTimerSlug(value);
+  return value === 'classic' || value === 'themed' || isWhiteTimerSkin(value) || isPolishedTimerSlug(value) || isCustomSkinId(value);
 }
 
 function readSkin(): TrainingSkin {
@@ -93,6 +94,7 @@ export function isPolishedTrainingSkin(skin: TrainingSkin): skin is PolishedTime
  */
 export function visibleTrainingSkin(skin: TrainingSkin, polishedOpen: boolean, whiteBaseSkins = false): TrainingSkin {
   if (whiteBaseSkins) return isWhiteTimerSkin(skin) ? skin : WHITE_TIMER_BASE;
+  if (isCustomSkinId(skin)) return polishedOpen ? skin : DEFAULT_TRAINING_SKIN;
   if (isWhiteTimerSkin(skin)) return DEFAULT_TRAINING_SKIN;
   if (isPolishedTimerSlug(skin) && !polishedOpen) return DEFAULT_TRAINING_SKIN;
   return skin;

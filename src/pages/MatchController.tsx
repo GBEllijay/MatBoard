@@ -18,7 +18,7 @@ import {
   GRANDMASTER_THRESHOLD_MIN,
   type GrandmasterCelebrationPrefs,
 } from '../lib/grandmasterCelebration';
-import { playSelectedEndCue, playStartCue, playWarningCue, unlockAudio } from '../lib/audio';
+import { unlockAudio } from '../lib/audio';
 import { EndCueControls } from '../components/EndCueControls';
 import { declareMatchOutcome, scoreboardPath, visibleOutcomeBanner } from '../lib/bracketBout';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
@@ -142,13 +142,12 @@ export function MatchControllerPage() {
         }
       />
 
-      {board.kidsSkin || (plainWhite && !board.polishedOpen && !board.whiteBaseSkins) ? null : (
+      {!board.kidsSkin && !plainWhite && !board.polishedOpen && !board.whiteBaseSkins ? (
         <section className="kids-switch-panel" aria-label="Scoreboard skin">
           <p className="cue-preview-label">Scoreboard skin</p>
-          {/* Media and above, and Advantage White: one Skins button. A suite board below Media keeps the toggle. */}
-          {board.polishedOpen || board.whiteBaseSkins ? <ScoreboardSkinPicker /> : <ScoreboardSkinSwitcher skin={match.skin} />}
+          <ScoreboardSkinSwitcher skin={match.skin} />
         </section>
-      )}
+      ) : null}
 
       <section className="controller__clock">
         <button
@@ -262,39 +261,7 @@ export function MatchControllerPage() {
             Match end sound
           </label>
           <EndCueControls label="Match end cue" value={match.endCue} />
-          <div className="cue-preview">
-            <p className="cue-preview-label">Preview cues</p>
-            <div className="presets presets--three" role="group" aria-label="Preview match cues">
-              <button
-                type="button"
-                className="preset"
-                onClick={() => {
-                  void unlockAudio().then(() => playStartCue());
-                }}
-              >
-                Start
-              </button>
-              <button
-                type="button"
-                className="preset"
-                onClick={() => {
-                  void unlockAudio().then(() => playWarningCue());
-                }}
-              >
-                10s
-              </button>
-              <button
-                type="button"
-                className="preset"
-                disabled={!match.endBuzzer}
-                onClick={() => {
-                  void unlockAudio().then(() => playSelectedEndCue('match', match.endCue));
-                }}
-              >
-                End
-              </button>
-            </div>
-          </div>
+          {board.polishedOpen || board.whiteBaseSkins ? <ScoreboardSkinPicker appearance="stack" /> : null}
         </fieldset>
         <label className="toggle">
           <input

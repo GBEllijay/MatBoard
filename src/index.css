@@ -18385,3 +18385,47 @@ a.plan-pick {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Uploaded skin: the picture is only the background. Mock-Tournament text and controls stay on top. */
+.display__skin-bg,
+.display__skin-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.display__skin-bg {
+  background-color: #10182a;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: brightness(0.55) saturate(0.85);
+}
+
+.display__skin-scrim {
+  background:
+    linear-gradient(180deg, rgba(6, 10, 18, 0.42), rgba(6, 10, 18, 0.62)),
+    radial-gradient(ellipse 80% 70% at 50% 45%, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.55));
+}
+
+.display--custom-skin > .bout,
+.display--custom-skin > .display__mid {
+  position: relative;
+  z-index: 1;
+}
+
+.display--custom-skin .clock-btn,
+.display--custom-skin .display__meta,
+.display--custom-skin .display__clock-hint {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7), 0 8px 24px rgba(0, 0, 0, 0.75);
+}
+
+.training--skin-auto-scrim .training__backdrop {
+  filter: brightness(0.62) saturate(0.88);
+}
+
+.training--skin-auto-scrim .training__scrim {
+  --scrim-edge: 0.62;
+  --scrim-core: 0.78;
+}

@@ -46,10 +46,11 @@ test('custom length fields use a decimal keypad and cue buttons only select', ()
   assert.doesNotMatch(rounds, /label="Custom break length"/);
   assert.doesNotMatch(rounds, /aria-label="Subtract one minute"/);
 
-  const chooseMatch = match.slice(match.indexOf('const chooseMatchEndCue'), match.indexOf('const onCast'));
-  const chooseRounds = rounds.slice(rounds.indexOf('const chooseEndCue'), rounds.indexOf('return ('));
-  assert.doesNotMatch(chooseMatch, /playSelectedEndCue/);
-  assert.doesNotMatch(chooseRounds, /playSelectedEndCue/);
-  assert.match(match, /playSelectedEndCue\('match', match\.endCue\)/);
-  assert.match(rounds, /playSelectedEndCue\('training', audio\.endCue\)/);
+  assert.doesNotMatch(match, /playSelectedEndCue/);
+  assert.doesNotMatch(rounds, /playSelectedEndCue/);
+  const matchStore = fs.readFileSync(new URL('./matchStore.ts', import.meta.url), 'utf8');
+  const trainingStore = fs.readFileSync(new URL('./trainingStore.ts', import.meta.url), 'utf8');
+  assert.match(matchStore, /playSelectedEndCue\('match', cue\)/);
+  assert.match(trainingStore, /playSelectedEndCue\('training'\)/);
+  assert.match(trainingStore, /playTrainingStart\(\)/);
 });

@@ -104,7 +104,7 @@ test('warning ticks still mark warned, and cues follow the switches', () => {
   const store = readFileSync(new URL('./trainingStore.ts', import.meta.url), 'utf8');
   assert.match(
     store,
-    /function playTrainStartCue\(\): void \{\s*if \(!state\.startSound\) return;\s*playStartCue\(\);/s,
+    /function playTrainStartCue\(\): void \{\s*if \(!state\.startSound\) return;\s*playTrainingStart\(\);/s,
   );
   assert.match(store, /if \(warningSound\) playWarningCue\(\)/);
   assert.match(store, /persist\(\{ \.\.\.state, warned: true \}\)/);
@@ -121,9 +121,9 @@ test('warning ticks still mark warned, and cues follow the switches', () => {
   const startAt = options.indexOf('Start sound');
   const warnAt = options.indexOf('10-second warning');
   assert.ok(soundAt >= 0 && startAt > soundAt && warnAt > startAt && endAt > warnAt);
-  assert.match(options, /disabled=\{!training\.startSound\}/);
-  assert.match(options, /disabled=\{!training\.warningSound\}/);
-  assert.match(options, /disabled=\{!training\.endSound\}/);
+  assert.doesNotMatch(options, /disabled=\{!training\.startSound\}/);
+  assert.doesNotMatch(options, /disabled=\{!training\.warningSound\}/);
+  assert.doesNotMatch(options, /disabled=\{!training\.endSound\}/);
   const before = getTraining().warned;
   tickTraining();
   assert.equal(getTraining().warned, before);

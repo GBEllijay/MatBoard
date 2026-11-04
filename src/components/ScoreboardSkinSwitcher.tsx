@@ -1,11 +1,11 @@
 import { dispatchMatch } from '../lib/matchStore';
 import {
   SELECTABLE_SCOREBOARD_SKINS,
-  type ScoreboardSkinId,
+  type StoredScoreboardSkin,
 } from '../lib/scoreboardSkin';
 
 /** Mock-Tournament, Old School, and Quick Result. The choice is stored with the match so Display follows. */
-export function ScoreboardSkinSwitcher({ skin }: { skin: ScoreboardSkinId }) {
+export function ScoreboardSkinSwitcher({ skin }: { skin: StoredScoreboardSkin }) {
   return (
     <div className="kids-switch" role="radiogroup" aria-label="Scoreboard skin">
       {SELECTABLE_SCOREBOARD_SKINS.map((option) => (

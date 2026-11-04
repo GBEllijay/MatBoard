@@ -1,5 +1,5 @@
 import { useAudioPrefs, useTrainingSkin, useTrainingState } from '../hooks/useStores';
-import { patchAudioPrefs, playSelectedEndCue, playStartCue, playWarningCue, unlockAudio } from '../lib/audio';
+import { patchAudioPrefs, type StartCue } from '../lib/audio';
 import { EndCueControls } from './EndCueControls';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
 import { setTrainingSkin, visibleTrainingSkin } from '../lib/trainingSkin';
@@ -28,10 +28,7 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
   const polishedOpen = usePolishedSkinsUnlocked();
   const whiteBase = useWhiteBaseSkins();
   const skin = visibleTrainingSkin(useTrainingSkin(), polishedOpen, whiteBase);
-
-  const previewCue = (play: () => void) => {
-    void unlockAudio().then(play);
-  };
+  const picker = polishedOpen || whiteBase;
 
   return (
     <>
@@ -83,6 +80,23 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
           />
           Start sound
         </label>
+        <div className="cue-preview">
+          <p className="cue-preview-label">Training start sound</p>
+          <div className="presets presets--split" role="radiogroup" aria-label="Training start sound">
+            {(['beep', 'combate'] as const satisfies readonly StartCue[]).map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={audio.startCue === id}
+                className={`preset${audio.startCue === id ? ' preset--on' : ''}`}
+                onClick={() => patchAudioPrefs({ startCue: id })}
+              >
+                {id === 'beep' ? 'Beep' : 'Combate'}
+              </button>
+            ))}
+          </div>
+        </div>
         <label className="toggle">
           <input
             type="checkbox"
@@ -99,43 +113,8 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
           />
           Training end sound
         </label>
-        <EndCueControls label="Training end cue" value={audio.endCue} begin />
-        {/*
-          FINAL-CLEANUP: Preview cues stay in this build and come out of the user-facing final build.
-          This slot stays flexible so a stacked-thumbnail skin chooser can take the same place.
-          Do not lock its height, columns, or position.
-        */}
-        <div className="controller-slot controller-slot--flexible" data-final-cleanup="preview-cues">
-          <div className="cue-preview">
-            <p className="cue-preview-label">Preview cues</p>
-            <div className="presets presets--three" role="group" aria-label="Preview cues">
-              <button
-                type="button"
-                className="preset"
-                disabled={!training.startSound}
-                onClick={() => previewCue(playStartCue)}
-              >
-                Start
-              </button>
-              <button
-                type="button"
-                className="preset"
-                disabled={!training.warningSound}
-                onClick={() => previewCue(playWarningCue)}
-              >
-                10s
-              </button>
-              <button
-                type="button"
-                className="preset"
-                disabled={!training.endSound}
-                onClick={() => previewCue(() => playSelectedEndCue('training', audio.endCue))}
-              >
-                End
-              </button>
-            </div>
-          </div>
-        </div>
+        <EndCueControls label="Training end cue" value={audio.endCue} />
+        {picker ? <TimerSkinPicker appearance="stack" /> : null}
         <label className="toggle">
           <input
             type="checkbox"
@@ -165,12 +144,10 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
         </label>
       </fieldset>
 
+      {picker ? null : (
       <fieldset>
         <legend>Skin</legend>
-        {/* Media and above, and Advantage White: one Skins button. Student keeps the Classic / Advantage toggle. */}
-        {polishedOpen || whiteBase ? (
-          <TimerSkinPicker buttonClassName="preset" />
-        ) : (
+        {/* Student keeps the Classic / Advantage toggle. The fanned Skins tile is in Sound for White and Media. */}
           <div className="presets presets--split" role="radiogroup" aria-label="Timer skin">
             <button
               type="button"
@@ -191,8 +168,8 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
               Advantage
             </button>
           </div>
-        )}
       </fieldset>
+      )}
 
       <TimerBackdropOptions />
 
