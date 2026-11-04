@@ -1,3 +1,4 @@
+import { CAMERA_HREF, CAMERA_PATH, cameraWindowOpen } from './lib/pdCamera';
 import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
 import { InviteHandoffAccept } from './components/InviteHandoffAccept';
@@ -295,6 +296,15 @@ function WhiteLiveRoute({ children }: { children: ReactNode }) {
 }
 
 /** Gallery, Events, or Pro Shop. A closed seat goes home. An unseated visitor sees Coming soon. */
+/** Program director Camera window: a bookmarkable /camera that opens the Media Console camera view. */
+function CameraRoute() {
+  const door = useSeatDoor();
+  if (!paidDoorAgrees('media-console', mediaConsoleDoorOpen(door) && cameraWindowOpen(door.seat ?? null))) {
+    return <GuardRedirect to={closedOrPaused(door.seated)} />;
+  }
+  return <Navigate to={CAMERA_HREF} replace />;
+}
+
 function MediaFolderRoute({ folder }: { folder: MediaFolderId }) {
   const door = useSeatDoor();
   const open = mediaFolderDoorOpen(door, door.seat?.permissions ?? null, folder);
@@ -703,6 +713,7 @@ export default function App() {
           </CoachRoute>
         }
       />
+      <Route path={CAMERA_PATH} element={<CameraRoute />} />
       <Route
         path="/slideshow"
         element={
