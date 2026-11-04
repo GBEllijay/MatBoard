@@ -75,13 +75,18 @@ export type GymCloudEnv = {
   ENTITLEMENTS_DB?: D1Database | null;
 };
 
-type Actor = {
+export type GymCloudActor = {
   licenseId: string;
   kind: 'owner' | 'seat';
   preset: string | null;
   read: boolean;
   upload: boolean;
+  /** Seat id on a seat token. Empty for the owner. */
+  seatId: string;
+  /** This license has Advantage Cloud (Pro Plus Cloud). */
+  plusCloud: boolean;
 };
+type Actor = GymCloudActor;
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -128,6 +133,16 @@ async function seatIsActive(env: GymCloudEnv, licenseId: string, seatId: string)
   }
 }
 
+/** Signed-in actor for the gym cloud functions. Revoked seats get 403 here. */
+export async function readGymCloudActor(request: Request, env: GymCloudEnv, now: Date): Promise<GymCloudActor | Response> {
+  return readActor(request, env, now);
+}
+
+/** Bytes used under one prefix of the gym bucket. */
+export function gymBytesUnder(bucket: GymMediaBucket, prefix: string): Promise<number> {
+  return bytesUnder(bucket, prefix);
+}
+
 async function readActor(request: Request, env: GymCloudEnv, now: Date): Promise<Actor | Response> {
   const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
   if (!material) return json(503, { ok: false, error: 'Sign-in is not set up yet.' });
@@ -162,6 +177,8 @@ async function actorForClaims(env: GymCloudEnv, claims: EntitlementClaims, now: 
     preset: claims.preset ?? null,
     read: access.read,
     upload: access.upload,
+    seatId: seat ? claims.sid ?? '' : '',
+    plusCloud,
   };
 }
 
