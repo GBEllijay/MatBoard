@@ -81,3 +81,8 @@ Every shot was checked: no sideways scroll, smallest text 12px, smallest tap tar
 - Seeded preview runs in DEMO MODE: saves don't persist across navigation (same on base f594af9) — not a bug.
 - Overlap with #399: CSS is self-contained in `journalPages.css` / `matHours.css`; only shared touch is `WheelPicker.tsx` (one line).
 - Tests: `journalRound.test.ts` (7) + mat-hours regressions (11). Full `npm test` 1768 pass / 0 fail; tsc + build clean.
+
+## 11:19 follow-up
+- Flag already present since 3ae6fa4: `src/lib/fundamentalsConfig.ts` → `FUNDAMENTALS_REQUIRED_FOR_BELT = true`. Routed through `checkpointFilled()` in `studentTools.ts` (default param), which feeds `checkpointShare`/`checkpointState`/`beltRequirementProgress` and the report's "Met". No other fundamentals-required checks exist.
+- Test strengthened (`journalRound.test.ts`): default blocks on an unmet fundamentals requirement (= explicit `true`); `false` lets coach-met requirements decide.
+- Techniques drilled confirmed last in both the new-entry and edit forms (after Partners, Drills, Rolls, Notes, Stop doing), covered by the regression test.

@@ -10,6 +10,8 @@ import { editDistance, fuzzyMatches, highlightParts, searchJournalIndex, techniq
 import { JOURNAL_PAGE_ROWS, pageLabel, paginateJournal, wrapRows } from './journalPages.ts';
 import { myTechniques, techniquePicker, techniqueSuggestions } from './techniqueIndex.ts';
 import { FUNDAMENTALS_REQUIRED_FOR_BELT } from './fundamentalsConfig.ts';
+import { checkpointFilled, learnedCatalogIds } from './studentTools.ts';
+import type { RubricCheckpoint } from './progress/types.ts';
 import { JOURNAL_SESSION_LABELS, matHoursSplit, matHoursTotal, matMinuteOptions, sessionLabel, sessionOf, clockMatTime } from './matHours.ts';
 import { logMatTime } from './matLog.ts';
 import { exportProgressPacket, parseProgressPacket } from './progress/format.ts';
@@ -70,6 +72,16 @@ test('binder pagination: rows wrap, pages fill to the row limit, labels read Pag
 
 test('fundamentals flag defaults to required (no behavior change)', () => {
   assert.equal(FUNDAMENTALS_REQUIRED_FOR_BELT, true);
+  const coachMet = { id: 'c.plain', requirement: 'Shows up', techniqueRefs: [], met: true, note: '' };
+  const fundamentals = { id: 'c.fund', requirement: 'Scissor sweep', techniqueRefs: [{ catalogItemId: 'sweep.scissor' }], met: null, note: '' };
+  const row = { id: 'checkpoint.x', name: 'Guard', met: null, note: '', criteria: [coachMet, fundamentals] } as unknown as RubricCheckpoint;
+  const learned = learnedCatalogIds(blankStudentReport(1));
+  // Default = required: an unmet fundamentals requirement still blocks the checkpoint (today's behavior).
+  assert.equal(checkpointFilled(row, learned), false);
+  assert.equal(checkpointFilled(row, learned), checkpointFilled(row, learned, true));
+  // Flag off: fundamentals requirements stop blocking; the coach-met one still decides.
+  assert.equal(checkpointFilled(row, learned, false), true);
+  assert.equal(checkpointFilled({ ...row, criteria: [fundamentals] } as RubricCheckpoint, learned, false), false);
 });
 
 test('session types: four options, Other text stored and shown, old entries still read', () => {
