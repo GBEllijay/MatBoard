@@ -5,6 +5,9 @@
  * Back. Hold for Home. Home.
  * Overall proficiency.
  * Self-assessment, Practical benchmarks, Video Library.
+ * Polish pass: these three are styled buttons (radar icon on Self-assessment),
+ * Practical benchmarks shows a read-only checklist with a done count, and each
+ * row opens its benchmark. Per-move Open: links are styled chip buttons.
  * Sort: List order, Weakest first, Recently updated.
  * Filter: All, Not started, In progress, Against resistance.
  * Per move: proficiency 0 Not started through 5 Can teach it, note, date learned.
@@ -20,7 +23,7 @@ import test from 'node:test';
 import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { exportProgressPacket } from '../../lib/progress/format.ts';
 import { setBeltMode } from '../../lib/beltBook.ts';
 import {
@@ -105,7 +108,8 @@ test('fundamentals keeps every control on the dark arena surface', () => {
   assert.equal(host.textContent?.toLowerCase().includes('live or better'), false);
 
   for (const name of ['Self-assessment', 'Practical benchmarks', 'Video Library', 'List order', 'Weakest first', 'Recently updated', 'All', 'Not started', 'In progress', 'Against resistance', 'Restore starter list']) {
-    control(host, name === 'Self-assessment' || name === 'Practical benchmarks' || name === 'Video Library' ? 'a' : 'button', name);
+    if (name === 'Self-assessment' || name === 'Practical benchmarks' || name === 'Video Library') labeled(host, name);
+    else control(host, 'button', name);
   }
   const sweeps = labeled(host, 'Sweeps');
   labeled(sweeps, 'Scissor sweep proficiency');
@@ -118,9 +122,9 @@ test('fundamentals keeps every control on the dark arena surface', () => {
   labeled(sweeps, 'Rename Scissor sweep');
   labeled(sweeps, 'Remove Scissor sweep');
   labeled(sweeps, 'Add your own to Sweeps');
-  assert.equal(control(host, 'a', 'Self-assessment').getAttribute('href'), '/student/self-assessment?from=fundamentals');
-  assert.equal(control(host, 'a', 'Practical benchmarks').getAttribute('href'), '/student/rubric');
-  assert.equal(control(host, 'a', 'Video Library').getAttribute('href'), '/student/videos');
+  assert.equal(labeled(host, 'Self-assessment').getAttribute('href'), '/student/self-assessment?from=fundamentals');
+  assert.equal(labeled(host, 'Practical benchmarks').getAttribute('href'), '/student/rubric');
+  assert.equal(labeled(host, 'Video Library').getAttribute('href'), '/student/videos');
   assert.ok(sweeps.textContent?.includes('Not updated yet'));
   unmount(mounted);
 });
@@ -354,4 +358,93 @@ test('kids fundamentals use kid level words and note illegal techniques', () => 
   } finally {
     unmount(mounted);
   }
+});
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="where">{`${location.pathname}${location.search}${location.hash}`}</output>;
+}
+
+function mountRouted(): { root: Root; host: HTMLElement } {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  act(() => {
+    root.render(
+      <MemoryRouter initialEntries={['/student/fundamentals']}>
+        <Routes>
+          <Route path="/student/fundamentals" element={<FundamentalsPage />} />
+          <Route path="*" element={<LocationProbe />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  });
+  return { root, host };
+}
+
+function clickAndWhere(selector: (host: HTMLElement) => HTMLElement): string {
+  const mounted = mountRouted();
+  const el = selector(mounted.host);
+  act(() => {
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  });
+  const where = mounted.host.querySelector('[data-testid="where"]')?.textContent ?? '';
+  unmount(mounted);
+  return where;
+}
+
+test('polish: self-assessment is a styled button with a radar icon and routes to the self-assessment page', () => {
+  localStorage.clear();
+  const mounted = mount(<FundamentalsPage />);
+  const btn = labeled(mounted.host, 'Self-assessment');
+  assert.equal(btn.tagName, 'A');
+  assert.ok(btn.classList.contains('fund-jump--assess'));
+  assert.ok(btn.querySelector('svg[data-icon="radar"]'));
+  unmount(mounted);
+  assert.equal(clickAndWhere((h) => labeled(h, 'Self-assessment')), '/student/self-assessment?from=fundamentals');
+});
+
+test('polish: Video Library button routes to the Video Library', () => {
+  localStorage.clear();
+  assert.equal(clickAndWhere((h) => labeled(h, 'Video Library')), '/student/videos');
+});
+
+test('polish: practical benchmarks render as a checklist with a done count and each row routes to its benchmark', () => {
+  localStorage.clear();
+  const mounted = mount(<FundamentalsPage />);
+  const list = labeled(mounted.host, 'Practical benchmarks checklist');
+  const rows = [...list.querySelectorAll('.fund-check')];
+  assert.ok(rows.length > 0, 'white belt starter benchmarks show as rows');
+  for (const row of rows) {
+    assert.ok(row.querySelector('.fund-check__box'));
+    assert.match(row.getAttribute('aria-label') ?? '', /, (done|partly done|not done)$/);
+    assert.match(row.getAttribute('href') ?? '', /^\/student\/rubric#/);
+  }
+  const more = [...list.querySelectorAll('button')].find((b) => b.textContent?.startsWith('Show all'));
+  let total = rows.length;
+  if (more) {
+    act(() => more.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    total = list.querySelectorAll('.fund-check').length;
+    assert.ok(total > rows.length, 'Show all reveals every benchmark');
+  }
+  assert.ok(list.textContent?.includes(`0 of ${total} done`));
+  assert.equal(list.querySelectorAll('input[type="checkbox"]').length, 0, 'checking stays on the belt page');
+  const firstHref = rows[0].getAttribute('href') ?? '';
+  unmount(mounted);
+  assert.equal(clickAndWhere((h) => labeled(h, 'Practical benchmarks')), '/student/rubric');
+  assert.equal(clickAndWhere((h) => h.querySelector('.fund-check') as HTMLElement), firstHref);
+});
+
+test('polish: per-move Open links are styled buttons that keep their destinations', () => {
+  localStorage.clear();
+  const mounted = mount(<FundamentalsPage />);
+  const sweeps = labeled(mounted.host, 'Sweeps');
+  const open = control(sweeps, 'a', 'Open: Guard self-assessment');
+  assert.ok(open.classList.contains('fund-chip-btn'));
+  const href = open.getAttribute('href');
+  unmount(mounted);
+  assert.equal(
+    clickAndWhere((h) => control(labeled(h, 'Sweeps'), 'a', 'Open: Guard self-assessment')),
+    href,
+  );
 });
