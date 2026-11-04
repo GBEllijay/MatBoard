@@ -223,7 +223,8 @@ test('the skin stack opens the same chooser and keeps the current skin in front'
   try {
     const stack = document.querySelector<HTMLButtonElement>('.skin-stack');
     assert.ok(stack);
-    assert.equal(stack.getAttribute('aria-label'), 'Skin stack, Old School');
+    assert.equal(stack.getAttribute('aria-label'), 'Skins, Old School');
+    assert.equal(stack.querySelector('.skin-stack__label')?.textContent, 'Skins');
     const cards = [...document.querySelectorAll<HTMLImageElement>('.skin-stack__card')];
     assert.equal(cards.length, 3);
     assert.equal(cards.at(-1)?.classList.contains('skin-stack__card--front'), true);

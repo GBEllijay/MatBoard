@@ -231,13 +231,17 @@
 /* Fanned thumbnails. The current skin is the front card. */
 .skin-stack {
   position: relative;
-  width: 4.75rem;
-  height: 3.45rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  width: 4.85rem;
+  height: auto;
   flex: 0 0 auto;
   padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
+  -webkit-text-fill-color: inherit;
 }
 
 .skin-stack:focus-visible {
@@ -247,8 +251,15 @@
 }
 
 .skin-stack__fan {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  width: 4.75rem;
+  height: 3.45rem;
+}
+
+.skin-stack__label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.1;
 }
 
 .skin-stack__card {
@@ -285,16 +296,3 @@
   transform: rotate(-2deg);
 }
 
-/* Sits in the Preview cues row. Cues stay beside the stack, or below it when the row is narrow. */
-.cue-with-stack {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.7rem 0.9rem;
-  margin-top: 0.35rem;
-}
-
-.cue-with-stack > .cue-preview {
-  margin-top: 0;
-  flex: 1 1 14rem;
-}

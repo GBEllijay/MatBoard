@@ -223,9 +223,7 @@ export function MatchDisplayPage() {
             )
           }
           division={
-            <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={openController}>
-              {match.division || 'Open'}
-            </ControllerFocusLink>
+            <ClassLine division={match.division} weight={match.weight} onOpen={openController} />
           }
           state="Match"
           clock={
@@ -315,9 +313,7 @@ export function MatchDisplayPage() {
                   {roundLine}
                 </ControllerFocusLink>
               ) : null}
-              <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={openController}>
-                {match.division || 'Open'}
-              </ControllerFocusLink>
+              <ClassLine division={match.division} weight={match.weight} onOpen={openController} />
             </div>
             {flap ? null : clockControl}
             {statusControl}
@@ -455,6 +451,30 @@ function CompetitorBand({
         <ScoreBox side={side} kind="disadvantages" value={disadvantages} flap={flap} />
       </div>
     </section>
+  );
+}
+
+function ClassLine({
+  division,
+  weight,
+  onOpen,
+}: {
+  division: string;
+  weight: string;
+  onOpen: (focus: DisplayFocus) => void;
+}) {
+  const weightText = weight.trim();
+  return (
+    <span className="display__class">
+      <ControllerFocusLink focus="division" label="Edit division on Controller" onOpen={onOpen}>
+        {division.trim() || 'Open'}
+      </ControllerFocusLink>
+      {weightText ? (
+        <ControllerFocusLink focus="weight" label="Edit weight on Controller" onOpen={onOpen}>
+          {weightText}
+        </ControllerFocusLink>
+      ) : null}
+    </span>
   );
 }
 

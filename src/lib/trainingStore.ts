@@ -1,5 +1,13 @@
-import { clamp } from './format.ts';
-import { endCueFollowMs, playSelectedEndCue, playStartCue, playWarningCue } from './audio.ts';
+import { endCueFollowMs, playSelectedEndCue, playTrainingStart, playWarningCue } from './audio.ts';
+import {
+  DEFAULT_REST_MS,
+  DEFAULT_ROUNDS,
+  DEFAULT_WORK_MS,
+  REST_RANGE,
+  ROUND_LENGTH_RANGE,
+  snapDurationMs,
+  snapRounds,
+} from './timeWheel.ts';
 
 export type TrainingPhase = 'work' | 'break';
 
@@ -23,39 +31,28 @@ export type TrainingState = {
 };
 
 const STORAGE_KEY = 'matboard.training.v1';
-export const WORK_PRESETS_MIN = [1, 2, 5, 10] as const;
-export const BREAK_PRESETS_MS = [0, 30_000, 60_000] as const;
-export const MIN_WORK_MS = 1_000;
-export const MAX_WORK_MS = (99 * 60 + 59) * 1_000;
-export const MIN_BREAK_MS = 0;
-export const MAX_BREAK_MS = 10 * 60_000;
+/** Wheel bounds. Saved values snap onto these in clampWorkMs / clampBreakMs. */
+export const MIN_WORK_MS = ROUND_LENGTH_RANGE.minMs;
+export const MAX_WORK_MS = ROUND_LENGTH_RANGE.maxMs;
+export const MIN_BREAK_MS = REST_RANGE.minMs;
+export const MAX_BREAK_MS = REST_RANGE.maxMs;
 
 export function clampWorkMs(ms: number): number {
-  if (!Number.isFinite(ms)) return 5 * 60_000;
-  return clamp(Math.round(ms / 1000) * 1000, MIN_WORK_MS, MAX_WORK_MS);
+  return snapDurationMs(ms, ROUND_LENGTH_RANGE, DEFAULT_WORK_MS);
 }
 
 export function clampBreakMs(ms: number): number {
-  if (!Number.isFinite(ms)) return 30_000;
-  return clamp(Math.round(ms / 1000) * 1000, MIN_BREAK_MS, MAX_BREAK_MS);
-}
-
-export function isWorkPreset(ms: number): boolean {
-  return WORK_PRESETS_MIN.some((minutes) => minutes * 60_000 === ms);
-}
-
-export function isBreakPreset(ms: number): boolean {
-  return BREAK_PRESETS_MS.some((preset) => preset === ms);
+  return snapDurationMs(ms, REST_RANGE, DEFAULT_REST_MS);
 }
 
 const listeners = new Set<() => void>();
 
 export function defaultTraining(): TrainingState {
-  const workMs = 5 * 60_000;
+  const workMs = DEFAULT_WORK_MS;
   return {
     workMs,
-    breakMs: 30_000,
-    rounds: 5,
+    breakMs: DEFAULT_REST_MS,
+    rounds: DEFAULT_ROUNDS,
     endless: false,
     remainingMs: workMs,
     running: false,
@@ -78,6 +75,7 @@ export function normalizeStoredTraining(parsed: Partial<TrainingState> | null | 
     ...parsed,
     workMs: clampWorkMs(typeof parsed.workMs === 'number' ? parsed.workMs : base.workMs),
     breakMs: clampBreakMs(typeof parsed.breakMs === 'number' ? parsed.breakMs : base.breakMs),
+    rounds: snapRounds(typeof parsed.rounds === 'number' ? parsed.rounds : base.rounds),
     startSound: parsed.startSound !== false,
     warningSound: parsed.warningSound !== false,
     endSound: parsed.endSound !== false,
@@ -159,7 +157,7 @@ export function setEndSound(endSound: boolean): void {
 export function setRounds(rounds: number, endless: boolean): void {
   persist({
     ...state,
-    rounds: clamp(rounds, 1, 99),
+    rounds: snapRounds(rounds),
     endless,
   });
 }
@@ -205,16 +203,16 @@ function playTrainEndCue(): void {
 
 function playTrainStartCue(): void {
   if (!state.startSound) return;
-  playStartCue();
+  playTrainingStart();
 }
 
 function followWithStartCue(): void {
   if (!state.startSound) return;
   if (state.endSound) {
-    window.setTimeout(() => playStartCue(), endCueFollowMs());
+    window.setTimeout(() => playTrainingStart(), endCueFollowMs());
     return;
   }
-  playStartCue();
+  playTrainingStart();
 }
 
 function nextAfterWork(): void {
@@ -276,6 +274,8 @@ export function tickTraining(): void {
     persist({ ...state, warned: true });
     if (warningSound) playWarningCue();
   }
+  // The end cue starts in this same tick, as soon as remaining hits 0.
+  // It does not wait for the 0:00 paint or a requestAnimationFrame.
   if (left > 0) return;
   if (state.phase === 'work') nextAfterWork();
   else nextAfterBreak();

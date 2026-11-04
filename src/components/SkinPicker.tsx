@@ -55,7 +55,7 @@ export function SkinPicker({
   mineExtra?: ReactNode;
   /** Rename and delete for an uploaded skin. Rendered on top of that tile. */
   renderTileExtra?: (option: SkinPickerOption) => ReactNode;
-  /** Chip is the Skins label. Stack is the fanned thumbnails beside Preview cues. */
+  /** Chip is the text button. Stack is the fanned tile with a Skins label. */
   appearance?: 'chip' | 'stack';
 }) {
   const [open, setOpen] = useState(false);
@@ -225,26 +225,23 @@ export function SkinPicker({
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-controls={open ? pickerId : undefined}
-        aria-label={
-          appearance === 'stack'
-            ? `Skin stack, ${current ? current.label : label}`
-            : current
-              ? `${label}, ${current.label}`
-              : label
-        }
+        aria-label={current ? `Skins, ${current.label}` : 'Skins'}
         onClick={() => setOpen((v) => !v)}
       >
         {appearance === 'stack' ? (
-          <span className="skin-stack__fan" aria-hidden="true">
-            {stackFaces.map((face, index) => (
-              <img
-                key={`${face.id}-${index}`}
-                className={`skin-stack__card skin-stack__card--${index === stackFaces.length - 1 ? 'front' : index === 0 ? 'back' : 'mid'}`}
-                src={face.thumb}
-                alt=""
-              />
-            ))}
-          </span>
+          <>
+            <span className="skin-stack__fan" aria-hidden="true">
+              {stackFaces.map((face, index) => (
+                <img
+                  key={`${face.id}-${index}`}
+                  className={`skin-stack__card skin-stack__card--${index === stackFaces.length - 1 ? 'front' : index === 0 ? 'back' : 'mid'}`}
+                  src={face.thumb}
+                  alt=""
+                />
+              ))}
+            </span>
+            <span className="skin-stack__label">Skins</span>
+          </>
         ) : (
           'Skins'
         )}

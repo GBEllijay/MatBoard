@@ -7,8 +7,7 @@ import { dispatchMatch } from '../lib/matchStore';
  * and the scoreboard so both read and write the same per-device audio prefs
  * (and the live match state), for every edition.
  *
- * Selection only. Switching cues mid-round must not play a stop sound; the
- * page's "End" preview button plays the selected cue.
+ * Selection only. Switching cues does not play the sound. The live clock plays it.
  */
 export function EndCueControls({ label, value }: { label: string; value: EndCue }) {
   const audio = useAudioPrefs();

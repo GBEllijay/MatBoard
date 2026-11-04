@@ -33,6 +33,22 @@ const {
   tickTraining,
 } = await import('./trainingStore.ts');
 
+test('saved round length, rest, and rounds snap onto the wheels', () => {
+  const five = normalizeStoredTraining({ workMs: 5 * 60_000, breakMs: 30_000, rounds: 5 });
+  assert.equal(five.workMs, 5 * 60_000);
+  assert.equal(five.breakMs, 30_000);
+  assert.equal(five.rounds, 5);
+  assert.equal(normalizeStoredTraining({ workMs: 7 * 60_000 + 7_000 }).workMs, 7 * 60_000 + 10_000);
+  assert.equal(normalizeStoredTraining({ workMs: 30_000 }).workMs, 60_000);
+  assert.equal(normalizeStoredTraining({ workMs: 61 * 60_000 }).workMs, 60 * 60_000);
+  assert.equal(normalizeStoredTraining({ breakMs: 0 }).breakMs, 0);
+  assert.equal(normalizeStoredTraining({ breakMs: 4_000 }).breakMs, 0);
+  assert.equal(normalizeStoredTraining({ breakMs: 25_000 }).breakMs, 30_000);
+  assert.equal(normalizeStoredTraining({ rounds: 5.6 }).rounds, 6);
+  assert.equal(normalizeStoredTraining({ rounds: 0 }).rounds, 1);
+  assert.equal(normalizeStoredTraining({ rounds: 120 }).rounds, 99);
+});
+
 test('round timer start and warning sounds default on', () => {
   const fresh = defaultTraining();
   assert.equal(fresh.startSound, true);
@@ -87,19 +103,26 @@ test('warning ticks still mark warned, and cues follow the switches', () => {
   const store = readFileSync(new URL('./trainingStore.ts', import.meta.url), 'utf8');
   assert.match(
     store,
-    /function playTrainStartCue\(\): void \{\s*if \(!state\.startSound\) return;\s*playStartCue\(\);/s,
+    /function playTrainStartCue\(\): void \{\s*if \(!state\.startSound\) return;\s*playTrainingStart\(\);/s,
   );
   assert.match(store, /if \(warningSound\) playWarningCue\(\)/);
   assert.match(store, /persist\(\{ \.\.\.state, warned: true \}\)/);
+  const tick = store.slice(store.indexOf('export function tickTraining'));
+  assert.match(tick, /if \(left > 0\) return;\s*if \(state\.phase === 'work'\) nextAfterWork\(\);/);
+  assert.doesNotMatch(tick, /requestAnimationFrame\(|setTimeout\(/);
+  const audio = readFileSync(new URL('./audio.ts', import.meta.url), 'utf8');
+  const parou = audio.slice(audio.indexOf('function playParouCue'), audio.indexOf('export function playSelectedEndCue'));
+  assert.doesNotMatch(parou, /requestAnimationFrame\(|setTimeout\(/);
+  assert.match(parou, /startParou\(buffer\)/);
   const options = readFileSync(new URL('../components/TrainingOptions.tsx', import.meta.url), 'utf8');
   const soundAt = options.indexOf('<legend>Sound</legend>');
   const endAt = options.indexOf('Training end sound');
   const startAt = options.indexOf('Start sound');
   const warnAt = options.indexOf('10-second warning');
   assert.ok(soundAt >= 0 && startAt > soundAt && warnAt > startAt && endAt > warnAt);
-  assert.match(options, /disabled=\{!training\.startSound\}/);
-  assert.match(options, /disabled=\{!training\.warningSound\}/);
-  assert.match(options, /disabled=\{!training\.endSound\}/);
+  assert.doesNotMatch(options, /disabled=\{!training\.startSound\}/);
+  assert.doesNotMatch(options, /disabled=\{!training\.warningSound\}/);
+  assert.doesNotMatch(options, /disabled=\{!training\.endSound\}/);
   const before = getTraining().warned;
   tickTraining();
   assert.equal(getTraining().warned, before);

@@ -2,6 +2,9 @@ const STORAGE_KEY = 'matboard.audio.v1';
 
 export type EndCue = 'buzzer' | 'bell' | 'parou';
 
+/** Round-timer start. Beep is the synthesized gym "go". Combate is the owner's recording. */
+export type StartCue = 'beep' | 'combate';
+
 /** Synthesized end sounds (Parou is the recorded voice take). */
 export type BuzzerSound = Exclude<EndCue, 'parou'>;
 
@@ -11,6 +14,8 @@ export type AudioPrefs = {
   vibrate: boolean;
   /** End-of-round / end-of-match cue. One per device; Timer and Scoreboard share it. */
   endCue: EndCue;
+  /** Round-timer start. Missing saves become Combate. */
+  startCue: StartCue;
   /** Drive the limiter harder for loud rooms (denser, slightly grittier). */
   extraLoud: boolean;
 };
@@ -25,9 +30,19 @@ export const END_CUE_OPTIONS: { id: EndCue; label: string }[] = [
 /**
  * Approved gaming-mic take: full “Parou… stop”.
  * File: `public/sounds/parou-stop-gaming-mic.mp3` (served as this URL).
- * The chip label stays PAROU! ("STOP!"); both words are spoken.
+ * The file is trimmed at 0.90s with a 10 ms fade-in, so the call starts with
+ * the clock instead of after the old ~0.92s of leading silence. The clip is
+ * about 2.6s. The chip label stays PAROU! ("STOP!"); both words are spoken.
  */
 const PAROU_URL = '/sounds/parou-stop-gaming-mic.mp3';
+
+/**
+ * Begin cue. The owner's own recorded tournament start call, "Combate"
+ * (`public/sounds/combate.mp3`, mono, 44.1 kHz, about 1.4s).
+ * Swap this one constant when a new take replaces the file.
+ * Playback uses the shared cue bus, so mute, volume, and extra loud apply.
+ */
+export const BEGIN_CUE_URL = '/sounds/combate.mp3';
 
 /**
  * Cue-only trim above the user volume slider.
@@ -40,6 +55,7 @@ const DEFAULT_PREFS: AudioPrefs = {
   volume: 1,
   vibrate: true,
   endCue: 'buzzer',
+  startCue: 'combate',
   extraLoud: false,
 };
 
@@ -63,6 +79,7 @@ function loadPrefs(): AudioPrefs {
       volume,
       vibrate: parsed.vibrate !== false,
       endCue: migrateEndCue(parsed.endCue, parsed.buzzerSound),
+      startCue: parseStartCue(parsed.startCue),
       extraLoud: parsed.extraLoud === true,
     };
   } catch {
@@ -93,6 +110,11 @@ export function parseEndCue(value: unknown, fallback: EndCue = DEFAULT_PREFS.end
   return value === 'parou' || value === 'buzzer' || value === 'bell' ? value : fallback;
 }
 
+/** A saved Beep stays Beep. Anything else, including a missing field, is Combate. */
+export function parseStartCue(value: unknown): StartCue {
+  return value === 'beep' ? 'beep' : 'combate';
+}
+
 /**
  * Draft builds of the louder-buzzer change saved a separate `buzzerSound`
  * (classic / arena / airhorn / bell / triple). Only the bell survived, so a
@@ -111,6 +133,7 @@ export function patchAudioPrefs(partial: Partial<AudioPrefs>): void {
     ...partial,
     volume: clampVolume(partial.volume ?? prefs.volume),
     endCue: parseEndCue(partial.endCue ?? prefs.endCue),
+    startCue: parseStartCue(partial.startCue ?? prefs.startCue),
     extraLoud: partial.extraLoud ?? prefs.extraLoud,
   };
   persist();
@@ -121,6 +144,8 @@ let master: MasterBus | null = null;
 let noiseBuffer: AudioBuffer | null = null;
 let parouBuffer: AudioBuffer | null = null;
 let parouLoad: Promise<AudioBuffer | null> | null = null;
+let beginBuffer: AudioBuffer | null = null;
+let beginLoad: Promise<AudioBuffer | null> | null = null;
 
 export async function unlockAudio(): Promise<void> {
   const audio = getContext();
@@ -128,6 +153,7 @@ export async function unlockAudio(): Promise<void> {
     await audio.resume();
   }
   void loadParouBuffer();
+  void loadBeginBuffer();
 }
 
 /** True when this document already has an unlocked context that can be heard. */
@@ -465,6 +491,12 @@ export function playStartCue(): void {
   playCue(startCueVoices(), [18, 30, 18]);
 }
 
+/** Round timer start. Combate uses the same mute, volume, and extra-loud bus as Parou. */
+export function playTrainingStart(): void {
+  if (prefs.startCue === 'beep') playStartCue();
+  else playBeginCue();
+}
+
 /**
  * Original 10-second warning: three staccato ticks on one pitch, plus an
  * octave-up square so the ticks cut through floor music.
@@ -553,40 +585,106 @@ export function playMatchEndBuzzer(sound: BuzzerSound = synthFor(prefs.endCue)):
   playCue(buzzerVoices(sound, 'match'), MATCH_END_VIBE, soundOf(sound));
 }
 
-async function loadParouBuffer(): Promise<AudioBuffer | null> {
-  if (parouBuffer) return parouBuffer;
-  if (!parouLoad) {
-    parouLoad = (async () => {
+function loadCueBuffer(
+  url: string,
+  slot: { buffer: AudioBuffer | null; load: Promise<AudioBuffer | null> | null },
+): Promise<AudioBuffer | null> {
+  if (slot.buffer) return Promise.resolve(slot.buffer);
+  if (!slot.load) {
+    slot.load = (async () => {
       try {
         const audio = getContext();
-        const res = await fetch(PAROU_URL);
+        const res = await fetch(url);
         if (!res.ok) return null;
         const data = await res.arrayBuffer();
-        parouBuffer = await audio.decodeAudioData(data.slice(0));
-        return parouBuffer;
+        slot.buffer = await audio.decodeAudioData(data.slice(0));
+        return slot.buffer;
       } catch {
-        parouLoad = null;
+        slot.load = null;
         return null;
       }
     })();
   }
-  return parouLoad;
+  return slot.load;
 }
 
-function startParou(buffer: AudioBuffer): void {
+function loadParouBuffer(): Promise<AudioBuffer | null> {
+  return loadCueBuffer(PAROU_URL, {
+    get buffer() {
+      return parouBuffer;
+    },
+    set buffer(value) {
+      parouBuffer = value;
+    },
+    get load() {
+      return parouLoad;
+    },
+    set load(value) {
+      parouLoad = value;
+    },
+  });
+}
+
+function loadBeginBuffer(): Promise<AudioBuffer | null> {
+  return loadCueBuffer(BEGIN_CUE_URL, {
+    get buffer() {
+      return beginBuffer;
+    },
+    set buffer(value) {
+      beginBuffer = value;
+    },
+    get load() {
+      return beginLoad;
+    },
+    set load(value) {
+      beginLoad = value;
+    },
+  });
+}
+
+/** Recorded cue on the shared bus. Mute is masterGain 0. Volume and extra loud are getMaster. */
+function startRecorded(buffer: AudioBuffer, gain: number): void {
   const audio = getContext();
   if (masterGain() <= 0) return;
   const bus = getMaster();
   const src = audio.createBufferSource();
   const amp = audio.createGain();
   src.buffer = buffer;
-  amp.gain.value = PAROU_CUE_GAIN;
+  amp.gain.value = gain;
   src.connect(amp);
   amp.connect(bus);
   src.start();
 }
 
+function startParou(buffer: AudioBuffer): void {
+  startRecorded(buffer, PAROU_CUE_GAIN);
+}
+
+/**
+ * Placeholder path if the Combate file cannot be decoded.
+ * The button still calls playBeginCue; only this fallback changes with BEGIN_CUE_URL.
+ */
+function playBeginFallback(): void {
+  playVoices(startCueVoices());
+}
+
+/** Owner's "Combate" start call. Same mute, volume, and extra-loud bus as Parou. */
+export function playBeginCue(): void {
+  buzz([18, 30, 18]);
+  void playAfterResume(() => {
+    void loadBeginBuffer().then((buffer) => {
+      if (buffer) {
+        startRecorded(buffer, 1);
+        return;
+      }
+      playBeginFallback();
+    });
+  });
+}
+
 function playParouCue(kind: 'match' | 'training'): void {
+  // Same clock tick that remaining hits 0. The trimmed file has no leading
+  // silence, and this does not wait for paint or requestAnimationFrame.
   buzz(kind === 'match' ? MATCH_END_VIBE : TRAIN_END_VIBE);
   void playAfterResume(() => {
     void loadParouBuffer().then((buffer) => {
@@ -613,8 +711,13 @@ export function playSelectedEndCue(kind: 'match' | 'training' = 'match', cue: En
 /** Time to wait after a Training end cue before a back-to-back start cue (classic buzzer). */
 export const END_BUZZER_MS = 1250;
 
+/**
+ * Trimmed Parou take is about 2.6s (the old file was ~3.5s plus 0.92s of
+ * leading silence). Wait the speech out before the next start cue.
+ */
+export const PAROU_FOLLOW_MS = 2800;
+
 export function endCueFollowMs(): number {
-  // Full take is ~3.5s (speech ends ~2.4s). Wait it out before the next start cue.
-  if (prefs.endCue === 'parou') return 3700;
+  if (prefs.endCue === 'parou') return PAROU_FOLLOW_MS;
   return Math.max(END_BUZZER_MS, Math.round(BUZZER_LENGTH_S[synthFor(prefs.endCue)].training * 1000) + 100);
 }

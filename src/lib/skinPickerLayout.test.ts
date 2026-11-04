@@ -201,18 +201,19 @@ test('the skin stack puts the current skin on top and stays inside the tier list
   assert.equal(skinStackFaces(board, SCOREBOARD_SKIN.QUICK_RESULT).some((skin) => skin.id === 'KEYNOTE'), false);
 });
 
-test('Preview cues stay beside the skin stack on both controllers', () => {
+test('the Skins tile replaces Preview cues and the separate Skins button', () => {
   const timer = fs.readFileSync(new URL('../components/TrainingOptions.tsx', import.meta.url), 'utf8');
   const board = fs.readFileSync(new URL('../pages/MatchController.tsx', import.meta.url), 'utf8');
   for (const source of [timer, board]) {
-    assert.match(source, /className="cue-with-stack"/);
     assert.match(source, /appearance="stack"/);
-    assert.match(source, /data-cleanup="preview-cues"/);
+    assert.doesNotMatch(source, /cue-with-stack|Preview cues|Preview match cues|data-cleanup="preview-cues"/);
   }
-  assert.match(timer, /aria-label="Preview cues"/);
-  assert.match(board, /aria-label="Preview match cues"/);
-  assert.match(timer, /playSelectedEndCue\('training', audio\.endCue\)/);
-  assert.match(board, /playSelectedEndCue\('match', match\.endCue\)/);
+  assert.match(timer, /<EndCueControls label="Training end cue" value=\{audio\.endCue\} \/>\s*\{picker \? <TimerSkinPicker appearance="stack" \/> : null\}/);
+  assert.match(board, /<EndCueControls label="Match end cue" value=\{match\.endCue\} \/>\s*\{board\.polishedOpen \|\| board\.whiteBaseSkins \? <ScoreboardSkinPicker appearance="stack" \/> : null\}/);
+  assert.doesNotMatch(timer, /<TimerSkinPicker buttonClassName="preset" \/>/);
+  assert.doesNotMatch(board, /<ScoreboardSkinPicker \/>/);
+  assert.match(timer, /aria-label="Timer skin"/);
+  assert.match(board, /<ScoreboardSkinSwitcher/);
 });
 
 test('the popup scrolls with touch, wheel, and a fade over the peeking row', () => {
