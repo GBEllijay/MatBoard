@@ -73,16 +73,190 @@
   gap: 8px;
 }
 
-.student.student--fundamentals .fund-jumps a,
-.student.student--fundamentals .fund-move__links a {
+/* Related tools: styled buttons on the blue/cyan arena paint. */
+/* Beats the arena-wide blue link color (0,5,1) so button text stays white. */
+.student.student--arena.student--fundamentals .fund-jumps a.fund-jump:not(.play-exit),
+.student.student--arena.student--fundamentals .fund-jumps a.fund-jump__head:not(.play-exit),
+.student.student--arena.student--fundamentals .fund-jumps a.fund-check:not(.play-exit),
+.student.student--arena.student--fundamentals .fund-move__links a.fund-chip-btn:not(.play-exit) {
+  color: #f5f5f7;
+  text-decoration: none;
+}
+
+.student.student--fundamentals .fund-jumps .fund-jump__text strong {
+  color: #ffffff;
+}
+
+.fund-check-more {
+  width: 100%;
+  margin-top: 8px;
+  justify-content: center !important;
+  cursor: pointer;
+}
+
+.fund-jump,
+.fund-jump__head {
   display: flex;
   align-items: center;
-  min-height: 56px;
-  padding: 8px 4px;
-  color: #0a84ff;
-  font-size: 17px;
+  gap: 14px;
+  min-height: 64px;
+  box-sizing: border-box;
+  color: #f5f5f7;
+}
+
+.fund-jump {
+  padding: 10px 14px;
+  border: 1px solid rgba(10, 132, 255, 0.45);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.22), rgba(34, 211, 238, 0.1));
+}
+
+.fund-jump--assess {
+  border-color: rgba(34, 211, 238, 0.7);
+  background: linear-gradient(135deg, #0a3d7a 0%, #0a84ff 60%, #22d3ee 140%);
+  box-shadow: 0 6px 22px rgba(10, 132, 255, 0.35);
+}
+
+.fund-jump--checklist {
+  display: block;
+}
+
+.fund-jump__icon {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  color: #f5f5f7;
+}
+
+.fund-jump__text {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 2px;
+}
+
+.fund-jump__text strong {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.fund-jump__text small {
+  color: #d1e9ff;
+  font-size: 14px;
+}
+
+.fund-chev {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  color: #22d3ee;
+}
+
+.fund-jump:focus-visible,
+.fund-jump__head:focus-visible,
+.fund-check:focus-visible,
+.fund-chip-btn:focus-visible {
+  outline: 3px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+.fund-meter--check {
+  margin: 4px 0 8px;
+  height: 6px;
+}
+
+.fund-meter--check span {
+  background: linear-gradient(90deg, #0a84ff, #22d3ee);
+}
+
+.fund-checklist {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.student.student--arena.student--fundamentals .fund-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #f5f5f7;
+  font-size: 16px;
+}
+
+.fund-check__box {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 2px solid #8e8e93;
+  border-radius: 7px;
+  box-sizing: border-box;
+}
+
+.fund-check__box svg {
+  width: 20px;
+  height: 20px;
+}
+
+.fund-check.is-done .fund-check__box {
+  border-color: #22d3ee;
+  background: #0a84ff;
+  color: #ffffff;
+}
+
+.fund-check.is-partly .fund-check__box {
+  border-color: #0a84ff;
+  color: #22d3ee;
+}
+
+.fund-check.is-done .fund-check__name {
+  color: #c7c7cc;
+  text-decoration: line-through;
+  text-decoration-color: rgba(34, 211, 238, 0.7);
+}
+
+.fund-check__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.student.student--arena.student--fundamentals .fund-chip-btn,
+.student.student--arena.student--fundamentals .fund-chip-btn:visited {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 14px;
+  border: 1px solid rgba(10, 132, 255, 0.5);
+  border-radius: 12px;
+  background: rgba(10, 132, 255, 0.14);
+  color: #f5f5f7;
+  font-size: 16px;
   font-weight: 600;
   text-decoration: none;
+}
+
+.fund-chip-btn span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 900px) {
+  .fund-jumps {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fund-jump--checklist {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }
 
 .fund-picks {
@@ -268,7 +442,8 @@
 
 .fund-move__links {
   display: grid;
-  margin-top: 4px;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .fund-move__fields {
