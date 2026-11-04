@@ -12,7 +12,7 @@ import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { confirmCheckoutSession, withCheckoutNonce } from '../lib/codeRedeemClient';
 import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
-import { STUDENT_LIST_PRICE_CENTS } from '../lib/productPrices';
+import { STUDENT_LIST_PRICE_CENTS, WHITE_STORAGE_LINE } from '../lib/productPrices';
 import { PRODUCTS_PATH } from '../lib/productNames';
 import { studentEditionEntitled } from '../lib/studentEdition';
 import { buyCheckoutBody } from '../lib/halfOff';
@@ -192,6 +192,7 @@ export function BuyWhitePage() {
               {WHITE_PRICE_LABEL} <span>{WHITE_PRICE_DETAIL}</span>
             </p>
             <p>{WHITE_STRIPE_NOTE}</p>
+            <p className="buy__storage">{WHITE_STORAGE_LINE}</p>
           </header>
 
           <section className="buy__card buy__checkout" aria-label="Checkout">

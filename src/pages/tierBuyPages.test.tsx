@@ -10,9 +10,9 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { BuyInstructorEditionPage, BuyProEditionPage, BuyStudentEditionPage } from './BuyEdition.tsx';
 import { BuyWhitePage } from './BuyWhite.tsx';
-import { BuyCoachPage } from './BuyTier.tsx';
+import { BuyCoachPage, BuyMediaPage, BuyProPage, BuyStudentPage } from './BuyTier.tsx';
 import { EXPECTED_ONE_TIME_CENTS } from '../server/stripeCheckout.ts';
-import { INSTRUCTOR_LIST_PRICE_CENTS } from '../lib/productPrices.ts';
+import { CLOUD_ADDON_CHECKBOX, INSTRUCTOR_LIST_PRICE_CENTS, STUDENT_STORAGE_LINE, WHITE_STORAGE_LINE } from '../lib/productPrices.ts';
 import { INSTRUCTOR_DISPLAY_PRICE_CENTS } from '../lib/tierBuyPages.ts';
 import { formatUsdFromCents } from '../lib/whitePurchase.ts';
 
@@ -43,7 +43,10 @@ function mount(entry: string) {
           <Route path="/editions/student" element={<BuyStudentEditionPage />} />
           <Route path="/editions/instructor" element={<BuyInstructorEditionPage />} />
           <Route path="/editions/pro" element={<BuyProEditionPage />} />
+          <Route path="/buy/student" element={<BuyStudentPage />} />
+          <Route path="/buy/media" element={<BuyMediaPage />} />
           <Route path="/buy/coach" element={<BuyCoachPage />} />
+          <Route path="/buy/pro" element={<BuyProPage />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -118,8 +121,8 @@ test('/editions/instructor: brown belt, $49.99, optional Cloud, alpha line, only
   assert.ok(header?.querySelector('.belt-tip.buy__belt[data-belt="brown"]'));
   assert.equal(header?.querySelector('h2')?.textContent, 'Advantage Instructor Edition');
   assert.match(header?.textContent ?? '', /\$49\.99/);
-  assert.match(header?.textContent ?? '', /Advantage works best with Google Drive or Advantage Cloud/);
-  assert.match(header?.textContent ?? '', /some sharing features are limited/);
+  assert.match(header?.textContent ?? '', /Pair it with Advantage Cloud or your own Google Drive or OneDrive to share with your staff and students/);
+  assert.match(header?.textContent ?? '', /Without one, everything still works on this device/);
   assert.match(m.host.querySelector('section.buy__checkout')?.textContent ?? '', ALPHA);
   assert.ok(m.host.querySelector('input[name="advantageCloud"]'));
   assert.ok(m.host.querySelector('form.alpha-code__form input[name="code"]'));
@@ -208,6 +211,28 @@ test('/editions/instructor open link targets /coach-unlimited once Instructor (c
   assert.equal(m.host.querySelector('h2')?.textContent, 'Advantage Instructor Edition');
   m.done();
   localStorage.clear();
+});
+
+test('each buy page states where the work is stored, and only Media, Instructor, and Pro offer Cloud', () => {
+  const cloud = CLOUD_ADDON_CHECKBOX;
+  const white = mount('/buy');
+  assert.match(white.host.textContent ?? '', new RegExp(WHITE_STORAGE_LINE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal(white.host.querySelector('input[name="advantageCloud"]'), null);
+  white.done();
+
+  for (const path of ['/buy/student', '/editions/student']) {
+    const student = mount(path);
+    assert.match(student.host.textContent ?? '', new RegExp(STUDENT_STORAGE_LINE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.equal(student.host.querySelector('input[name="advantageCloud"]'), null);
+    student.done();
+  }
+
+  for (const path of ['/buy/media', '/buy/coach', '/buy/pro', '/editions/instructor', '/editions/pro']) {
+    const page = mount(path);
+    const label = page.host.querySelector('label.buy__cloud')?.textContent ?? '';
+    assert.equal(label, cloud, path);
+    page.done();
+  }
 });
 
 test('/buy/coach displayed price equals the Instructor price coach Checkout charges', () => {

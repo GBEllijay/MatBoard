@@ -15,7 +15,7 @@ import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { withCheckoutNonce } from '../lib/codeRedeemClient';
 import { buyCheckoutBody } from '../lib/halfOff';
 import { COACH_UNLIMITED_PATH, INSTRUCTOR_DRIVE_REQUIREMENT, PRODUCTS_PATH } from '../lib/productNames';
-import { ALPHA_PRODUCT_STATUS } from '../lib/productPrices';
+import { ALPHA_PRODUCT_STATUS, STUDENT_STORAGE_LINE } from '../lib/productPrices';
 import { studentEditionEntitled } from '../lib/studentEdition';
 import { PRO_INCLUDES_ALL, tierEntry } from '../lib/tierBuyPages';
 import { WHITE_CHECKOUT_API } from '../lib/whitePurchase';
@@ -98,6 +98,7 @@ export function BuyEditionPage({ tier }: { tier: EditionBuyTier }) {
             <p className="buy__price">
               {entry.price} <span>{entry.priceDetail}</span>
             </p>
+            {tier === 'student' ? <p className="buy__storage">{STUDENT_STORAGE_LINE}</p> : null}
             {tier === 'instructor' ? <InstructorCloudCopy /> : null}
             {sellTier ? <CloudAddonLine /> : null}
             {studentOpen || sellTier ? null : <p>Not for sale on this page.</p>}

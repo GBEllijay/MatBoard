@@ -41,12 +41,24 @@ export const CLOUD_ADDON_LINE = '+ optional Advantage Cloud $5.99/month';
 export const CLOUD_ADDON_CHECKBOX =
   "Include Advantage Cloud access ($5.99/month), so you don't need your own Google Drive or OneDrive";
 
+/** White buy page. Scoreboard, timer, and roster stay in this browser. No Drive connector. */
+export const WHITE_STORAGE_LINE =
+  "Everything runs right on this device, so you don't need Google Drive or OneDrive.";
+
+/**
+ * Student buy page. The journal stays on the phone. Connections can add Google Drive
+ * or OneDrive later for a personal backup or an academy folder.
+ */
+export const STUDENT_STORAGE_LINE =
+  "Your progress saves on this phone, so you don't need Google Drive or OneDrive. Connect one anytime to back up or link with your academy.";
+
 export const ALPHA_PRODUCT_STATUS = 'This product is in alpha';
 
-export const INSTRUCTOR_CLOUD_FIT = 'Advantage works best with Google Drive or Advantage Cloud.';
+/** Instructor buy pages. Drive and OneDrive are the live share connectors. Dropbox is not wired. */
+export const INSTRUCTOR_CLOUD_FIT =
+  'Pair it with Advantage Cloud or your own Google Drive or OneDrive to share with your staff and students.';
 
-export const INSTRUCTOR_CLOUD_LIMIT =
-  'Without a cloud, some sharing features are limited. The app still works.';
+export const INSTRUCTOR_CLOUD_LIMIT = 'Without one, everything still works on this device.';
 
 /**
  * Display only. Advantage Pro Plus Cloud is the $5.99/month hosted-storage plan.

@@ -19,6 +19,7 @@ import { setProUnlocked } from '../lib/proUnlock';
 import {
   PRO_LIST_PRICE_CENTS,
   STUDENT_LIST_PRICE_CENTS,
+  STUDENT_STORAGE_LINE,
 } from '../lib/productPrices';
 import { COACH_UNLIMITED_PATH, INSTRUCTOR_HOME_TITLE, PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
 import { INSTRUCTOR_DISPLAY_PRICE_CENTS, TIER_BUY_PATHS } from '../lib/tierBuyPages';
@@ -218,6 +219,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
               {tier.priceLabel} <span>{tier.priceDetail}</span>
             </p>
             <p>{WHITE_STRIPE_NOTE}</p>
+            {tier.product === 'student' ? <p className="buy__storage">{STUDENT_STORAGE_LINE}</p> : null}
             {cloudTier ? <CloudAddonLine /> : null}
             {tier.product === 'coach' ? <InstructorCloudCopy /> : null}
           </header>
@@ -265,7 +267,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
                 onQuote={setQuote}
               />
             ) : null}
-            {showCheckout && cloudTier ? <CloudAddonChoice checked={includeCloud} onChange={setIncludeCloud} /> : null}
+            {cloudTier ? <CloudAddonChoice checked={includeCloud} onChange={setIncludeCloud} /> : null}
             {showCheckout ? (
               <button className="btn btn--white" type="submit" disabled={pending || quote?.kind === 'owned'}>
                 {pending
