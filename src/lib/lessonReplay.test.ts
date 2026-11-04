@@ -217,3 +217,84 @@ test('Private keeps replay cards across a switch', () => {
   assert.equal(next.replays?.[0].title, 'Private review');
   assert.equal(templateAlreadyApplied(next, 'private'), true);
 });
+
+// ---------- Competition curriculum: Record for replay mode + Record for Review ----------
+import {
+  CURRICULUM_TIMINGS,
+  CURRICULUM_TIMING_LABELS,
+  RECORD_FOR_REVIEW_LABEL,
+  blockOffersReviewToggle,
+  blockWantsReplay,
+  copyCurriculum,
+  createCustomBlock,
+  curriculumHasContent,
+  emptyCurriculum,
+  sanitizeCurriculum,
+} from './competitionCurriculum.ts';
+
+test('curriculum modes: Timer only / Looping video / Record for replay', () => {
+  assert.deepEqual(
+    CURRICULUM_TIMINGS.map((t) => CURRICULUM_TIMING_LABELS[t]),
+    ['Timer only', 'Looping video', 'Record for replay'],
+  );
+  assert.equal(RECORD_FOR_REVIEW_LABEL, 'Record for Review');
+});
+
+test('Record for Review: sparring and added blocks only, not warm-up, body movement or technique', () => {
+  assert.equal(blockOffersReviewToggle('live'), true);
+  assert.equal(blockOffersReviewToggle('custom'), true);
+  for (const kind of ['warmup', 'body', 'takedown', 'specific', 'cooldown'] as const) {
+    assert.equal(blockOffersReviewToggle(kind), false, kind);
+  }
+  assert.equal(blockWantsReplay({ kind: 'warmup', timing: 'replay' }), true);
+  assert.equal(blockWantsReplay({ kind: 'warmup', timing: 'timer', recordReview: true }), false);
+  assert.equal(blockWantsReplay({ kind: 'live', timing: 'timer', recordReview: true }), true);
+  assert.equal(blockWantsReplay({ kind: 'live', timing: 'replay' }), false, 'live has no mode picker');
+  assert.equal(blockWantsReplay({ kind: 'custom', timing: 'timer', recordReview: true }), true);
+  assert.equal(blockWantsReplay({ kind: 'custom', timing: 'timer' }), false);
+});
+
+test('curriculum sanitize keeps replay mode, review toggle and clip ref; drops them where not offered', () => {
+  const plan = emptyCurriculum();
+  const clip = { localId: 'clip-1', name: 'round.mp4', mime: 'video/mp4', size: 10, source: 'record' };
+  const custom = { ...createCustomBlock(), title: 'Bag work', recordReview: true, replayClip: clip };
+  const raw = JSON.parse(
+    JSON.stringify({
+      ...plan,
+      blocks: [
+        { ...plan.blocks[0], timing: 'replay', replayClip: clip },
+        { ...plan.blocks[1], recordReview: true },
+        ...plan.blocks.slice(2, 4),
+        { ...plan.blocks[4], recordReview: true },
+        plan.blocks[5],
+        custom,
+      ],
+    }),
+  );
+  const { plan: clean, repaired } = sanitizeCurriculum(raw);
+  assert.equal(repaired, true, 'body movement toggle removed');
+  assert.equal(clean.blocks[0].timing, 'replay');
+  assert.equal(clean.blocks[0].replayClip?.localId, 'clip-1');
+  assert.equal(clean.blocks[1].recordReview, undefined);
+  assert.equal(clean.blocks[4].recordReview, true);
+  assert.equal(clean.blocks[6].recordReview, true);
+  assert.equal(clean.blocks[6].replayClip?.name, 'round.mp4');
+  assert.equal(curriculumHasContent(clean), true);
+  const again = sanitizeCurriculum(JSON.parse(JSON.stringify(clean)));
+  assert.equal(again.repaired, false);
+  assert.deepEqual(again.plan, clean);
+  const copy = copyCurriculum(clean);
+  assert.equal(copy.blocks[0].timing, 'replay');
+  assert.equal(copy.blocks[4].recordReview, true);
+  const broken = sanitizeCurriculum({ ...raw, blocks: [{ ...raw.blocks[0], replayClip: { name: 'x' } }] });
+  assert.equal(broken.plan.blocks[0].replayClip, undefined);
+  assert.equal(broken.repaired, true);
+});
+
+test('a fresh curriculum is still empty; toggling Record for Review counts as content', () => {
+  const plan = emptyCurriculum();
+  assert.equal(curriculumHasContent(plan), false);
+  const live = plan.blocks.findIndex((b) => b.kind === 'live');
+  const next = { ...plan, blocks: plan.blocks.map((b, i) => (i === live ? { ...b, recordReview: true } : b)) };
+  assert.equal(curriculumHasContent(next), true);
+});

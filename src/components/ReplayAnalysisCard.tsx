@@ -27,6 +27,11 @@ type Props = {
   /** Existing seat rule: owner, or a seat with "Upload for instructor distribution". */
   canCapture: boolean;
   onChange: (patch: Partial<Omit<ReplayBlock, 'id'>>) => void;
+  /**
+   * Inside another block (Competition "Record for replay" / "Record for Review").
+   * The host block keeps its own heading and notes, so only the clip, player and save show.
+   */
+  embedded?: boolean;
 };
 
 type ClipState = { status: 'none' } | { status: 'loading' } | { status: 'ready'; url: string; blob: Blob } | { status: 'missing' };
@@ -36,7 +41,7 @@ type ClipState = { status: 'none' } | { status: 'loading' } | { status: 'ready';
  * looping videos use, review it in the replay player, and save a copy through
  * Advantage Cloud, Google Drive, or OneDrive when those are already set up.
  */
-export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapture, onChange }: Props) {
+export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapture, onChange, embedded = false }: Props) {
   const recordRef = useRef<HTMLInputElement | null>(null);
   const libraryRef = useRef<HTMLInputElement | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -144,23 +149,32 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
   const showCapture = editable && canCapture;
 
   return (
-    <section className="notes__card replay-card" id={`lesson-block-${replay.id}`} data-lesson-block={heading}>
+    <section
+      className={embedded ? 'replay-card replay-card--embedded' : 'notes__card replay-card'}
+      id={embedded ? undefined : `lesson-block-${replay.id}`}
+      data-lesson-block={embedded ? undefined : heading}
+      aria-label={embedded ? `Replay for ${heading}` : undefined}
+    >
       <div className="notes__field">
-        <div className="notes__section-head">
-          <h2 className="replay-card__heading">{heading}</h2>
-        </div>
-        <label htmlFor={titleId} className="replay-card__label">
-          What are we reviewing?
-        </label>
-        <input
-          id={titleId}
-          type="text"
-          value={replay.title}
-          maxLength={REPLAY_TITLE_MAX}
-          placeholder="e.g. Saturday tournament, round 2"
-          readOnly={!editable}
-          onChange={(event) => onChange({ title: event.target.value })}
-        />
+        {embedded ? null : (
+          <>
+            <div className="notes__section-head">
+              <h2 className="replay-card__heading">{heading}</h2>
+            </div>
+            <label htmlFor={titleId} className="replay-card__label">
+              What are we reviewing?
+            </label>
+            <input
+              id={titleId}
+              type="text"
+              value={replay.title}
+              maxLength={REPLAY_TITLE_MAX}
+              placeholder="e.g. Saturday tournament, round 2"
+              readOnly={!editable}
+              onChange={(event) => onChange({ title: event.target.value })}
+            />
+          </>
+        )}
 
         {clip.status === 'ready' ? (
           <ReplayPlayer
@@ -210,17 +224,21 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
           </p>
         ) : null}
 
-        <label htmlFor={notesId} className="replay-card__label">
-          Notes
-        </label>
-        <textarea
-          id={notesId}
-          value={replay.notes}
-          rows={3}
-          maxLength={REPLAY_NOTES_MAX}
-          readOnly={!editable}
-          onChange={(event) => onChange({ notes: event.target.value })}
-        />
+        {embedded ? null : (
+          <>
+            <label htmlFor={notesId} className="replay-card__label">
+              Notes
+            </label>
+            <textarea
+              id={notesId}
+              value={replay.notes}
+              rows={3}
+              maxLength={REPLAY_NOTES_MAX}
+              readOnly={!editable}
+              onChange={(event) => onChange({ notes: event.target.value })}
+            />
+          </>
+        )}
       </div>
       {showCapture ? (
         <>

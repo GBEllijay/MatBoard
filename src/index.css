@@ -18784,3 +18784,10 @@ a.plan-pick {
   gap: 0.8rem;
   margin-top: 0.8rem;
 }
+
+/* Replay recorder inside a Competition block (Record for replay / Record for Review). */
+.replay-card--embedded {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}

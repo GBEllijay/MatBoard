@@ -245,3 +245,87 @@ test('Daily Lesson Plan keeps its controls and adds the replay button beside the
   // Capture follows the existing seat permission.
   assert.ok(src.includes("visibleCoachControl('uploadForDistribution'"));
 });
+
+// ---------- Competition curriculum: three per-block modes + Record for Review ----------
+
+function curriculumCards(host: ParentNode): HTMLElement[] {
+  return [...host.querySelectorAll('section.notes__card[aria-labelledby^="curriculum-"]')] as HTMLElement[];
+}
+
+function cardTitled(host: ParentNode, title: string): HTMLElement {
+  const found = curriculumCards(host).find((el) => (el.querySelector('h2')?.textContent ?? '').trim() === title);
+  assert.ok(found, `curriculum card "${title}"`);
+  return found;
+}
+
+async function curriculumPage() {
+  localStorage.clear();
+  const { CompetitionCurriculumPage } = await import('../pages/CompetitionCurriculum.tsx');
+  return mount(<CompetitionCurriculumPage embedded />);
+}
+
+test('curriculum: clock blocks offer Timer only / Looping video / Record for replay', async () => {
+  const mounted = await curriculumPage();
+  const groups = [...mounted.host.querySelectorAll('[role="radiogroup"].curriculum__modes')];
+  assert.ok(groups.length >= 4, 'warm-up, body, takedown, specific each have modes');
+  for (const group of groups) {
+    const labels = [...group.querySelectorAll('[role="radio"]')].map((el) => (el.textContent ?? '').trim());
+    assert.deepEqual(labels, ['Timer only', 'Looping video', 'Record for replay']);
+  }
+  unmount(mounted);
+});
+
+test('curriculum: Record for replay shows the replay recorder and hides the round timer; Timer only restores it', async () => {
+  const mounted = await curriculumPage();
+  const first = curriculumCards(mounted.host)[0];
+  const title = (first.querySelector('h2')?.textContent ?? '').trim();
+  assert.ok(buttons(first).some((b) => (b.textContent ?? '').includes('Open round timer')));
+  assert.equal(first.querySelector('.replay-card--embedded'), null);
+  click(button(first, 'Record for replay'));
+  let card = cardTitled(mounted.host, title);
+  assert.ok(card.querySelector('.replay-card--embedded'), 'replay recorder appears');
+  assert.ok(buttons(card).some((b) => (b.textContent ?? '').trim() === 'Record or pick video'));
+  assert.equal(buttons(card).some((b) => (b.textContent ?? '').includes('Open round timer')), false);
+  assert.equal(card.querySelector('.replay-card__heading'), null, 'embedded: no second heading');
+  click(button(card, 'Looping video'));
+  card = cardTitled(mounted.host, title);
+  assert.equal(card.querySelector('.replay-card--embedded'), null);
+  click(button(card, 'Timer only'));
+  card = cardTitled(mounted.host, title);
+  assert.equal(card.querySelector('.replay-card--embedded'), null);
+  assert.ok(buttons(card).some((b) => (b.textContent ?? '').includes('Open round timer')));
+  unmount(mounted);
+});
+
+test('curriculum: Record for Review is only on sparring (Live Rounds) among the starter blocks; it keeps the timer', async () => {
+  const mounted = await curriculumPage();
+  const switches = [...mounted.host.querySelectorAll('[data-record-review]')] as HTMLButtonElement[];
+  assert.equal(switches.length, 1, 'only Live Rounds among the suggested blocks');
+  const live = switches[0].closest('section.notes__card') as HTMLElement;
+  const title = (live.querySelector('h2')?.textContent ?? '').trim();
+  assert.match(title, /live/i);
+  for (const card of curriculumCards(mounted.host)) {
+    const h = (card.querySelector('h2')?.textContent ?? '').trim();
+    if (/warm|body|takedown|technique/i.test(h)) assert.equal(card.querySelector('[data-record-review]'), null, h);
+  }
+  assert.equal(switches[0].getAttribute('aria-checked'), 'false');
+  assert.equal(switches[0].getAttribute('role'), 'switch');
+  click(switches[0]);
+  const card = cardTitled(mounted.host, title);
+  const on = card.querySelector('[data-record-review]') as HTMLButtonElement;
+  assert.equal(on.getAttribute('aria-checked'), 'true');
+  assert.ok(card.querySelector('.replay-card--embedded'), 'recorder appears');
+  assert.ok(buttons(card).some((b) => (b.textContent ?? '').includes('Open round timer')), 'timer stays');
+  click(on);
+  assert.equal(cardTitled(mounted.host, title).querySelector('.replay-card--embedded'), null);
+  unmount(mounted);
+});
+
+test('curriculum source: modes and toggle come from the shared lists; Program director cannot capture', () => {
+  const src = readFileSync('src/pages/CompetitionCurriculum.tsx', 'utf8');
+  assert.ok(src.includes('CURRICULUM_TIMINGS.map'));
+  assert.ok(src.includes('blockOffersReviewToggle(block.kind)'));
+  assert.ok(src.includes("visibleCoachControl('uploadForDistribution'"));
+  assert.ok(src.includes('Open round timer'));
+  assert.ok(src.includes('<LessonMediaRail'));
+});

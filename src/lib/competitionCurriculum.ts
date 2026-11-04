@@ -7,6 +7,7 @@
 
 import { parseMmSs } from './format.ts';
 import { asRecord, clampText } from './plainValue.ts';
+import { cleanClip, type ReplayClipRef } from './replayAnalysis.ts';
 import {
   CLASS_DESIGNATION_MAX,
   CLASS_TIME_MAX,
@@ -48,7 +49,15 @@ export const SUGGESTED_KINDS = ['warmup', 'body', 'takedown', 'specific', 'live'
 
 export type SuggestedKind = (typeof SUGGESTED_KINDS)[number];
 export type CurriculumKind = SuggestedKind | 'custom';
-export type CurriculumTiming = 'timer' | 'video';
+/** Timer only, looping video, or record a clip for replay analysis. */
+export type CurriculumTiming = 'timer' | 'video' | 'replay';
+export const CURRICULUM_TIMINGS: readonly CurriculumTiming[] = ['timer', 'video', 'replay'];
+export const CURRICULUM_TIMING_LABELS: Record<CurriculumTiming, string> = {
+  timer: 'Timer only',
+  video: 'Looping video',
+  replay: 'Record for replay',
+};
+export const RECORD_FOR_REVIEW_LABEL = 'Record for Review';
 
 export type CurriculumBlock = {
   id: string;
@@ -65,6 +74,10 @@ export type CurriculumBlock = {
   mediaName: string;
   treeId?: string;
   rounds: number;
+  /** Sparring and added blocks: keep the timer and also record a clip for review. */
+  recordReview?: boolean;
+  /** Replay clip on this device (plus where a copy was saved). Only the ref is stored here. */
+  replayClip?: ReplayClipRef;
 };
 
 export type CurriculumPlan = {
@@ -133,6 +146,20 @@ export function blockNotesLabel(kind: CurriculumKind): string {
 
 export function blockOffersClock(kind: CurriculumKind): boolean {
   return kind === 'warmup' || kind === 'body' || kind === 'takedown' || kind === 'specific' || kind === 'custom';
+}
+
+/**
+ * "Record for Review" switch: sparring (Live Rounds) and added blocks such as
+ * Bag Work or Cardio. Not on warm-up, body movement, or technique blocks.
+ */
+export function blockOffersReviewToggle(kind: CurriculumKind): boolean {
+  return kind === 'live' || kind === 'custom';
+}
+
+/** The block shows the replay recorder: its mode is "Record for replay", or Record for Review is on. */
+export function blockWantsReplay(block: Pick<CurriculumBlock, 'kind' | 'timing' | 'recordReview'>): boolean {
+  if (blockOffersClock(block.kind) && block.timing === 'replay') return true;
+  return blockOffersReviewToggle(block.kind) && block.recordReview === true;
 }
 
 export function blockOffersTree(kind: CurriculumKind): boolean {
@@ -222,6 +249,8 @@ function blockSignature(block: CurriculumBlock): string {
     block.clipId ?? '',
     block.treeId ?? '',
     block.kind === 'live' ? String(block.rounds) : '',
+    block.recordReview ? 'review' : '',
+    block.replayClip?.localId ?? '',
   ].join('\u0001');
 }
 
@@ -252,7 +281,7 @@ function sanitizeBlock(value: unknown): { block: CurriculumBlock; repaired: bool
   const expected = normalizeExpectedDuration(clampText(raw?.expected, EXPECTED_MAX)).slice(0, EXPECTED_MAX);
   if (raw && (raw.title !== title || raw.notes !== notes || raw.expected !== expected)) repaired = true;
   if (raw && raw.waterBreak !== true && raw.waterBreak !== false) repaired = true;
-  const timing: CurriculumTiming = raw?.timing === 'video' ? 'video' : 'timer';
+  const timing: CurriculumTiming = raw?.timing === 'video' ? 'video' : raw?.timing === 'replay' ? 'replay' : 'timer';
   if (raw && raw.timing !== timing) repaired = true;
   let clipId: string | null = null;
   if (typeof raw?.clipId === 'string' && raw.clipId.trim()) clipId = raw.clipId.trim().slice(0, 80);
@@ -270,6 +299,14 @@ function sanitizeBlock(value: unknown): { block: CurriculumBlock; repaired: bool
   }
   const rounds = clampRounds(raw?.rounds);
   if (raw && raw.rounds !== rounds) repaired = true;
+  const recordReview = blockOffersReviewToggle(kind) && raw?.recordReview === true;
+  if (raw && raw.recordReview != null && raw.recordReview !== recordReview) repaired = true;
+  let replayClip: ReplayClipRef | undefined;
+  if (raw && raw.replayClip != null) {
+    const cleaned = cleanClip(raw.replayClip);
+    replayClip = cleaned.clip ?? undefined;
+    if (!replayClip || cleaned.repaired) repaired = true;
+  }
   return {
     repaired,
     block: {
@@ -284,6 +321,8 @@ function sanitizeBlock(value: unknown): { block: CurriculumBlock; repaired: bool
       mediaName,
       rounds,
       ...(treeId ? { treeId } : {}),
+      ...(recordReview ? { recordReview } : {}),
+      ...(replayClip ? { replayClip } : {}),
     },
   };
 }

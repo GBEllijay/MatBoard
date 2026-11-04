@@ -60,7 +60,7 @@ export function replayHeading(ordinal: number): string {
   return ordinal <= 1 ? REPLAY_HEADING : `${REPLAY_HEADING} ${ordinal}`;
 }
 
-function cleanClip(value: unknown): { clip: ReplayClipRef | undefined; repaired: boolean } {
+export function cleanClip(value: unknown): { clip: ReplayClipRef | undefined; repaired: boolean } {
   if (value == null) return { clip: undefined, repaired: false };
   const raw = typeof value === 'object' ? (value as Record<string, unknown>) : null;
   const localId = raw && typeof raw.localId === 'string' ? raw.localId.trim().slice(0, 80) : '';
