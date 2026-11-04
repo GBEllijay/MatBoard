@@ -729,3 +729,99 @@ test('Student checkout webhook unlocks Student Edition and leaves White and Pro 
   assert.equal(hiddenBody.product, undefined);
   assert.equal(hiddenBody.email, undefined);
 });
+
+/** Media Cloud checkout: one-time Media $29.99 plus STRIPE_PRICE_MEDIA_CLOUD_MONTHLY at the given amount. */
+function mediaCloudFetch(monthlyCents: number, sessions: { count: number }): typeof fetch {
+  return async (input, init) => {
+    const url = String(input);
+    if (url.includes('/v1/prices/price_media_cloud')) {
+      return new Response(
+        JSON.stringify({ id: 'price_media_cloud', unit_amount: monthlyCents, currency: 'usd', product: 'prod_media' }),
+        { status: 200 },
+      );
+    }
+    if (url.includes('/v1/prices/')) {
+      return new Response(JSON.stringify({ id: 'price_media', unit_amount: 2999, currency: 'usd', product: 'prod_media' }), {
+        status: 200,
+      });
+    }
+    sessions.count += 1;
+    const fields = new URLSearchParams(String(init?.body ?? ''));
+    assert.equal(fields.get('mode'), 'subscription');
+    assert.equal(fields.get('line_items[0][price]'), 'price_media');
+    assert.equal(fields.get('line_items[1][price]'), 'price_media_cloud');
+    return new Response(JSON.stringify({ id: 'cs_test_media_cloud', url: 'https://checkout.stripe.com/c/pay/cs_media' }), {
+      status: 200,
+    });
+  };
+}
+
+const mediaCloudEnv: StripeRuntimeEnv = {
+  ...env,
+  STRIPE_PRICE_MEDIA: 'price_media',
+  STRIPE_PRICE_MEDIA_CLOUD_MONTHLY: 'price_media_cloud',
+};
+
+test('Media Cloud checkout accepts the $2.99 monthly price', async () => {
+  const sessions = { count: 0 };
+  const response = await handleCheckout(
+    jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: 'media', cloud: true }),
+    mediaCloudEnv,
+    mediaCloudFetch(299, sessions),
+  );
+  assert.equal(response.status, 200);
+  assert.equal(sessions.count, 1);
+});
+
+for (const wrong of [599, 199, 2999]) {
+  test(`Media Cloud checkout refuses a ${wrong}-cent monthly price and makes no charge`, async () => {
+    const sessions = { count: 0 };
+    const response = await handleCheckout(
+      jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: 'media', cloud: true }),
+      mediaCloudEnv,
+      mediaCloudFetch(wrong, sessions),
+    );
+    assert.equal(response.status, 503);
+    const body = (await response.json()) as { error: string };
+    assert.match(body.error, /No charge was made/);
+    assert.equal(sessions.count, 0);
+  });
+}
+
+test('Media Cloud without STRIPE_PRICE_MEDIA_CLOUD_MONTHLY never falls back to the $5.99 Pro price', async () => {
+  const sessions = { count: 0 };
+  const { STRIPE_PRICE_MEDIA_CLOUD_MONTHLY: _unset, ...noMediaCloud } = mediaCloudEnv;
+  const response = await handleCheckout(
+    jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: 'media', cloud: true }),
+    noMediaCloud,
+    mediaCloudFetch(599, sessions),
+  );
+  assert.equal(response.status, 503);
+  assert.equal(sessions.count, 0);
+});
+
+test('Instructor Cloud checkout still refuses a $2.99 monthly price', async () => {
+  let sessions = 0;
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = String(input);
+    if (url.includes('/v1/prices/price_pro_monthly')) {
+      return new Response(JSON.stringify({ id: 'price_pro_monthly', unit_amount: 299, currency: 'usd', product: 'prod_cloud' }), {
+        status: 200,
+      });
+    }
+    if (url.includes('/v1/prices/')) {
+      return new Response(JSON.stringify({ id: 'price_coach', unit_amount: 4999, currency: 'usd', product: 'prod_coach' }), {
+        status: 200,
+      });
+    }
+    sessions += 1;
+    return new Response('no', { status: 500 });
+  };
+  const response = await handleCheckout(
+    jsonRequest('https://advantagebjjtimer.com/api/checkout', { product: 'coach', cloud: true }),
+    env,
+    fetchImpl,
+  );
+  assert.equal(response.status, 503);
+  assert.equal(sessions, 0);
+});

@@ -44,10 +44,12 @@ test('Cloud checkout picks the monthly price for that edition', () => {
   assert.equal(pro.productId, 'advantage-pro');
 });
 
-test('an empty or non-price edition Cloud var falls back to STRIPE_PRICE_PRO_MONTHLY', () => {
+test('an empty or non-price Instructor Cloud var falls back to STRIPE_PRICE_PRO_MONTHLY; Media never does', () => {
   const blank = { ...env, STRIPE_PRICE_INSTRUCTOR_CLOUD_MONTHLY: '  ', STRIPE_PRICE_MEDIA_CLOUD_MONTHLY: 'not-a-price' };
   assert.equal(readCloudMonthlyPrice(blank, 'coach'), 'price_pro_monthly');
-  assert.equal(readCloudMonthlyPrice(blank, 'media'), 'price_pro_monthly');
+  // Media Cloud is $2.99. Falling back to the $5.99 Pro price would overcharge.
+  assert.equal(readCloudMonthlyPrice(blank, 'media'), null);
+  assert.ok('error' in readCloudAddonCart(blank, 'media'));
   const cart = readCloudAddonCart(blank, 'coach');
   assert.ok(!('error' in cart));
   if ('error' in cart) return;

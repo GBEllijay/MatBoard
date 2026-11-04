@@ -2,6 +2,8 @@ import { CHECKOUT_BUY_PATH, isCheckoutProduct, type CheckoutProduct } from '../l
 import { HALF_OFF_CODE } from '../lib/halfOff.ts';
 import {
   INSTRUCTOR_LIST_PRICE_CENTS,
+  INSTRUCTOR_CLOUD_MONTHLY_PRICE_CENTS,
+  MEDIA_CLOUD_MONTHLY_PRICE_CENTS,
   MEDIA_LIST_PRICE_CENTS,
   PRO_LIST_PRICE_CENTS,
   PRO_MONTHLY_PRICE_CENTS,
@@ -150,13 +152,14 @@ function listedPrice(raw: string | undefined): string | null {
 }
 
 /**
- * Monthly Cloud price for this edition. Instructor and Media use their own env
- * when it is a price_ id. Otherwise they use STRIPE_PRICE_PRO_MONTHLY.
+ * Monthly Cloud price for this edition. Each edition uses its own env when it is a
+ * price_ id. Instructor falls back to STRIPE_PRICE_PRO_MONTHLY (both $5.99).
+ * Media is $2.99, so it never falls back to the $5.99 Pro price: unset means no checkout.
  */
 export function readCloudMonthlyPrice(env: StripeRuntimeEnv, product: CloudAddonProduct): string | null {
   const own = listedPrice(env[CLOUD_MONTHLY_ENV[product]]);
   if (own) return own;
-  if (product === 'pro') return null;
+  if (product !== 'coach') return null;
   return listedPrice(env.STRIPE_PRICE_PRO_MONTHLY);
 }
 
@@ -188,7 +191,12 @@ export function readOptionalCloudMonthlyDiscountPrice(env: StripeRuntimeEnv, pro
   return listedPrice(env[CLOUD_DISCOUNT_ENV[product]]);
 }
 
-export const EXPECTED_CLOUD_MONTHLY_CENTS = PRO_MONTHLY_PRICE_CENTS;
+/** Amount each edition's Cloud monthly price must be. Checkout refuses any other amount. */
+export const EXPECTED_CLOUD_MONTHLY_CENTS: Record<CloudAddonProduct, number> = {
+  media: MEDIA_CLOUD_MONTHLY_PRICE_CENTS,
+  coach: INSTRUCTOR_CLOUD_MONTHLY_PRICE_CENTS,
+  pro: PRO_MONTHLY_PRICE_CENTS,
+};
 
 const CONFIG_HINT: Record<CheckoutProduct, string> = {
   white: 'STRIPE_SECRET_KEY and STRIPE_PRICE_WHITE',

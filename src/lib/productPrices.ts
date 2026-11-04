@@ -19,6 +19,12 @@ export const PRO_LIST_PRICE_CENTS = 9999;
 /** Monthly Advantage Pro price. The Pro Checkout session includes this with the one-time price. */
 export const PRO_MONTHLY_PRICE_CENTS = 599;
 
+/** Monthly Advantage Cloud price on Media Edition (STRIPE_PRICE_MEDIA_CLOUD_MONTHLY). */
+export const MEDIA_CLOUD_MONTHLY_PRICE_CENTS = 299;
+
+/** Monthly Advantage Cloud price on Instructor Edition. Same as Pro monthly. */
+export const INSTRUCTOR_CLOUD_MONTHLY_PRICE_CENTS = 599;
+
 export const STUDENT_PRICE_LINE = '$19.99 one-time';
 
 export const COACH_PRICE_LINE = '$29.99 one-time';

@@ -136,9 +136,10 @@ export async function handleCheckout(
         return json(503, { error: `${name} checkout is not configured. No charge was made.` });
       }
     }
-    if (cloudFlag) {
+    if (cloudFlag && isCloudAddonProduct(product)) {
+      // Per edition: Media Cloud is $2.99, Instructor and Pro Cloud are $5.99.
       const monthly = await fetchOneTimePrice(config.secret, config.priceIds[1], fetchImpl);
-      if (monthly.unitAmount !== EXPECTED_CLOUD_MONTHLY_CENTS || monthly.currency.toLowerCase() !== 'usd') {
+      if (monthly.unitAmount !== EXPECTED_CLOUD_MONTHLY_CENTS[product] || monthly.currency.toLowerCase() !== 'usd') {
         return json(503, { error: 'Advantage Cloud checkout is not configured. No charge was made.' });
       }
     }
