@@ -20,6 +20,8 @@ export type SubscriptionClaim = {
   state: 'active' | 'grace' | 'locked';
   lock_at?: string;
   ends_at?: string;
+  /** Set when this checkout included the Advantage Cloud add-on. Not a door. */
+  cloud?: boolean;
 };
 
 export type EntitlementClaims = {
@@ -148,6 +150,7 @@ export function claimsFromUnknown(raw: unknown): EntitlementClaims | null {
       const endsAt = (row.subs as SubscriptionClaim).ends_at;
       if (typeof lockAt === 'string') subs.lock_at = lockAt;
       if (typeof endsAt === 'string') subs.ends_at = endsAt;
+      if ((row.subs as SubscriptionClaim).cloud === true) subs.cloud = true;
       claims.subs = subs;
     }
   }

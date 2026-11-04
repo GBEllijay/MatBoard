@@ -72,6 +72,36 @@ test('students cannot upload into the gallery or the daily video lane', () => {
   assert.deepEqual(video, { ok: false, reason: 'students-no-daily-video' });
 });
 
+test('a program director can send to the daily video lane but not lesson plans', () => {
+  const daily = routeUpload({
+    purpose: 'daily-video',
+    role: 'program-director',
+    kind: 'video',
+    dateKey: '2026-11-04',
+    fileName: 'morning drill.mp4',
+  });
+  assert.equal(daily.ok, true);
+  if (daily.ok) assert.match(daily.path, /^videos\/daily\/2026-11-04\//);
+  const lesson = routeUpload({
+    purpose: 'lesson',
+    role: 'program-director',
+    kind: 'video',
+    dateKey: '2026-11-04',
+    fileName: 'plan.json',
+  });
+  assert.equal(lesson.ok, false);
+  const gallery = routeUpload({
+    purpose: 'gallery',
+    role: 'program-director',
+    kind: 'video',
+    dateKey: '2026-11-04',
+    fileName: 'class.mp4',
+    approvalRequired: true,
+  });
+  assert.equal(gallery.ok, true);
+  if (gallery.ok) assert.match(gallery.path, /^gallery\/pending\//);
+});
+
 test('a missing purpose does not fall into the last folder', () => {
   const missing = routeUpload({
     purpose: '',

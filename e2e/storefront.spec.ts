@@ -76,12 +76,12 @@ test('public homepage sells Advantage White and links coming soon to the edition
   const pro = progress.locator('a.sf-step--pro');
   await expect(student).toContainText('Advantage – Student Edition');
   await expect(student).toContainText('personal BJJ training journal');
-  await expect(student).toContainText('Coming soon');
+  await expect(student).toContainText('This product is in alpha');
   await expect(coach).toContainText('Advantage Coach');
-  await expect(coach).toContainText('Coming soon');
+  await expect(coach).toContainText('This product is in alpha');
   await expect(pro).toContainText('Advantage Pro');
-  await expect(pro).toContainText('$99.99 + $5.99/mo');
-  await expect(pro).toContainText('Coming soon');
+  await expect(pro).toContainText('$99.99 one-time');
+  await expect(pro).toContainText('This product is in alpha');
   await expect(progress).toContainText('are in alpha testing');
 
   const mail = page.getByRole('link', { name: 'Request to join alpha' });
@@ -100,7 +100,7 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await page.setViewportSize({ width: 1440, height: 900 });
   await coach.click();
   await expect(page).toHaveURL(/\/products$/);
-  await expect(page.getByRole('button', { name: 'Advantage Coach, coming soon' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Coach, This product is in alpha' })).toBeVisible();
 });
 
 test('White card opens checkout; Student, Coach, Pro, and the heading open the picker', async ({ page }) => {

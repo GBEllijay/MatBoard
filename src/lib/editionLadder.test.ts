@@ -161,7 +161,7 @@ test('the ladder, credit note, and Pro Plus Cloud card do not hardcode a credit 
   assert.match(quote, /data-testid="purchase-credit-note"/);
   assert.match(tier, /readKnownPurchaseEmail\(params\.toString\(\)\)/);
   assert.match(buy, /<ProCloudBuyCard \/>/);
-  assert.match(parts, /Coming soon/);
+  assert.match(parts, /This product is in alpha/);
   assert.match(parts, /to=\{PRO_PLUS_CLOUD_INFO_PATH\}/);
   assert.doesNotMatch(parts.slice(parts.indexOf('function ProCloudBuyCard'), parts.indexOf('function HigherTierList')), /fetch\(|WHITE_CHECKOUT_API/);
   assert.match(read('../pages/White.tsx'), /<WhiteUpgradePrompt \/>[\s\S]*<EditionLadder page="white" \/>/);

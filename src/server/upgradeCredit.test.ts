@@ -231,11 +231,10 @@ for (const row of LADDER) {
     assert.equal(session.get('customer_email'), email);
     assert.equal(session.get('metadata[upgrade_coupon]'), 'coupon_upgrade_1');
     if (row.target === 'pro') {
-      // $5.99/month line is unchanged: same price, not a product the coupon applies to.
       assert.equal(session.get('line_items[0][price]'), 'price_pro_once');
-      assert.equal(session.get('line_items[1][price]'), 'price_pro_monthly');
-      assert.notEqual(coupon.get('applies_to[products][0]'), 'prod_price_pro_monthly');
-      assert.equal(session.get('mode'), 'subscription');
+      assert.equal(session.get('line_items[1][price]'), null);
+      assert.equal(session.get('mode'), 'payment');
+      assert.equal(session.get('metadata[cloud]'), null);
     }
   });
 }
@@ -318,7 +317,7 @@ test('a new buyer (no email or unknown email) sees no change and causes no extra
   for (const body of [{ product: 'pro' }, { product: 'pro', email: 'nobody@gym.test' }]) {
     const result = await checkout(memoryEntitlementStore(), sqliteD1(), body);
     assert.equal(result.status, 200);
-    assert.equal(result.calls.prices.length, 0);
+    assert.deepEqual(result.calls.prices, ['price_pro_once']);
     assert.equal(result.calls.coupons.length, 0);
     const session = result.calls.sessions[0];
     assert.equal(session.get('allow_promotion_codes'), 'true');

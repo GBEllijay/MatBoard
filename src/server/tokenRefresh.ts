@@ -4,6 +4,7 @@ import type { D1Database } from './d1.ts';
 import { expandGrants, tierForGrants } from './grantMatrix.ts';
 import { claimForAccess } from './subscriptionAccess.ts';
 import { accessForLicense } from './subscriptionSync.ts';
+import { cloudAccessForLicense } from './cloudSubscription.ts';
 import { doorsFromStored, grantsForLicense, type StoredGrant } from './purchaseRecords.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
 import { refreshSeat } from './seats.ts';
@@ -114,6 +115,16 @@ export async function handleTokenRefresh(
     if (view) subs = claimForAccess(view.access);
     else if (doors.includes('pro')) subs = { state: 'active' };
     else subs = undefined;
+    // Media or Instructor Cloud is its own subscription. The server decides,
+    // not the old token: a canceled, unpaid, or ended add-on drops Cloud and
+    // leaves the one-time edition doors as they are.
+    const cloud = await cloudAccessForLicense(db, claims.sub, stamp, { env, fetchImpl });
+    if (cloud.tracked) {
+      if (cloud.entitled) subs = subs ? { ...subs, cloud: true } : { state: 'active', cloud: true };
+    } else if ((subs?.state === 'active' || subs?.state === 'grace') && claims.subs?.cloud) {
+      // Pro + Cloud rides on the Pro subscription. A locked one drops Cloud.
+      subs = { ...subs, cloud: true };
+    }
     if (!doors.length && subs?.state !== 'locked') {
       return json(401, { ok: false, revoked: true, error: 'This access is no longer active.' });
     }
@@ -141,7 +152,7 @@ export async function handleTokenRefresh(
       subs:
         claims.src === 'owner'
           ? undefined
-          : claims.src === 'seat' || doors.includes('pro') || subs?.state === 'locked' || subs?.state === 'grace'
+          : claims.src === 'seat' || doors.includes('pro') || subs?.cloud === true || subs?.state === 'locked' || subs?.state === 'grace'
             ? subs
             : undefined,
       gym: claims.gym,

@@ -6,10 +6,12 @@
 
 import {
   CLOUD_CHUNK_BYTES,
+  CLOUD_DAILY_DROP_ONLY,
   CLOUD_ROLE_MESSAGE,
   CLOUD_SIGN_IN_MESSAGE,
   CLOUD_UNAVAILABLE_MESSAGE,
   cloudCapBytes,
+  cloudDailyVideoDrop,
   cloudFullMessage,
   cloudListPrefix,
   cloudMaxUploadBytes,
@@ -30,6 +32,7 @@ import {
   customSkinIdFromPath,
   isCustomSkinImagePath,
   isCustomSkinMetaPath,
+  isDailyVideoCloudPath,
   claimsOpenPlusCloud,
   grantRowOpensPlusCloud,
   gymActorForCloud,
@@ -93,6 +96,8 @@ type Actor = {
   seatId: string;
   /** Replay clips and markup pictures only: direct, pending owner approval, or none. */
   replayUpload: ReplayCloudUpload;
+  /** Program director: upload to today's daily videos only. */
+  dailyDrop: boolean;
 };
 
 const JSON_HEADERS = {
@@ -176,6 +181,7 @@ async function actorForClaims(env: GymCloudEnv, claims: EntitlementClaims, now: 
     upload: access.upload,
     seatId: seat ? claims.sid ?? '' : '',
     replayUpload: cloudReplayUpload({ plusCloud, kind: seat ? 'seat' : 'owner', preset: claims.preset ?? null }),
+    dailyDrop: cloudDailyVideoDrop({ plusCloud, kind: seat ? 'seat' : 'owner', preset: claims.preset ?? null }),
   };
 }
 
@@ -409,7 +415,15 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const op = url.searchParams.get('op') ?? 'status';
     if (op === 'status') {
       if (!actor.read) {
-        return json(200, actor.replayUpload === 'pending' ? { ok: true, cloud: false, replayUpload: 'pending' } : { ok: true, cloud: false });
+        const pendingReplay = actor.replayUpload === 'pending';
+        if (!actor.dailyDrop && !pendingReplay) return json(200, { ok: true, cloud: false });
+        // Upload-only lanes. No usage numbers, no list, no files.
+        return json(200, {
+          ok: true,
+          cloud: false,
+          ...(pendingReplay ? { replayUpload: 'pending' as const } : {}),
+          ...(actor.dailyDrop ? { dailyVideoDrop: true, maxUploadBytes: maxUpload } : {}),
+        });
       }
       const [licenseUsedBytes, bucketUsedBytes] = await Promise.all([
         bytesUnder(bucket, `groups/${actor.licenseId}/`),
@@ -461,14 +475,29 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
 
   /** Assistant coach / program director: replay clips and pictures only, and only as pending. */
   const pendingOnly = !actor.upload && actor.replayUpload === 'pending';
-  if (!actor.upload && !pendingOnly) {
+  if (!actor.upload && !actor.dailyDrop && !pendingOnly) {
     return json(403, { ok: false, error: actor.read ? CLOUD_ROLE_MESSAGE : CLOUD_UNAVAILABLE_MESSAGE });
   }
+  /**
+   * Upload-only actors touch only their lanes: daily-video keys (program director, #390)
+   * and their own pending replay keys (assistant coach / program director, #387).
+   */
+  const dropOnly = !actor.upload;
+  const dropRefused = () => json(403, { ok: false, error: CLOUD_DAILY_DROP_ONLY });
+  const isDropKey = (key: string) => actor.dailyDrop && isDailyVideoCloudPath(relativePath(actor.licenseId, key));
+  const isOwnPendingKey = (key: string) => pendingOnly && ownPendingKey(actor, key);
+  const laneRefused = (key: string) =>
+    !dropOnly || isDropKey(key) || isOwnPendingKey(key)
+      ? null
+      : pendingOnly && !actor.dailyDrop
+        ? json(403, { ok: false, error: CLOUD_ROLE_MESSAGE })
+        : dropRefused();
 
   if (request.method === 'PUT') {
     const key = ownedKey(actor, url.searchParams.get('key') ?? '');
     if (!key) return json(400, { ok: false, error: 'That file is not in this license.' });
-    if (pendingOnly && !ownPendingKey(actor, key)) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+    const refused = laneRefused(key);
+    if (refused) return refused;
     const op = url.searchParams.get('op');
     const bytes = new Uint8Array(await request.arrayBuffer());
     if (op === 'part') {
@@ -489,6 +518,9 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (bytes.byteLength > maxUpload) return json(413, { ok: false, error: cloudTooLargeMessage(maxUpload) });
     const relative = relativePath(actor.licenseId, key);
     const mime = safeCloudMime(request.headers.get('content-type') ?? '', 'application/octet-stream');
+    if (dropOnly && !isOwnPendingKey(key) && !mimeAllowed('daily-video', mime)) {
+      return json(400, { ok: false, error: 'Daily videos are video files.' });
+    }
     if (isCustomSkinImagePath(relative)) {
       if (!SKIN_IMAGE_MIME.has(mime)) return json(400, { ok: false, error: 'Use a JPG, PNG, or WebP.' });
       const existing = await bucket.head(key);
@@ -542,8 +574,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     return json(200, { ok: true, status, ...(approvedPath ? { path: approvedPath } : {}) });
   }
 
-  if (pendingOnly && body.action !== 'start' && body.action !== 'complete' && body.action !== 'abort') {
-    return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+  if (dropOnly && body.action !== 'start' && body.action !== 'complete' && body.action !== 'abort') {
+    return actor.dailyDrop ? dropRefused() : json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
   }
 
   if (body.action === 'delete-skin') {
@@ -559,7 +591,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   if (body.action === 'abort') {
     const key = ownedKey(actor, body.key ?? '');
     if (!key || !body.uploadId) return json(400, { ok: false, error: 'That upload is already closed.' });
-    if (pendingOnly && !ownPendingKey(actor, key)) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+    const refused = laneRefused(key);
+    if (refused) return refused;
     await bucket.resumeMultipartUpload(key, body.uploadId).abort();
     return json(200, { ok: true });
   }
@@ -569,7 +602,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (!key || !body.uploadId || !Array.isArray(body.parts) || body.parts.length === 0) {
       return json(400, { ok: false, error: 'Advantage Cloud could not finish that file.' });
     }
-    if (pendingOnly && !ownPendingKey(actor, key)) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+    const refused = laneRefused(key);
+    if (refused) return refused;
     const parts = body.parts
       .map((part) => ({ partNumber: Number(part.partNumber), etag: typeof part.etag === 'string' ? part.etag : '' }))
       .filter((part) => Number.isInteger(part.partNumber) && part.partNumber > 0 && part.etag)
@@ -601,12 +635,15 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   const fileName = typeof body.fileName === 'string' ? body.fileName : '';
   const size = typeof body.size === 'number' && Number.isFinite(body.size) ? Math.floor(body.size) : -1;
   if (!purpose || size < 1) return json(400, { ok: false, error: 'Choose a file.' });
+  if (dropOnly) {
+    const laneOk = (purpose === 'daily-video' && actor.dailyDrop) || (purpose === 'replay-pending' && pendingOnly);
+    if (!laneOk) return actor.dailyDrop ? dropRefused() : json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+  }
   if (size > maxUpload) return json(413, { ok: false, error: cloudTooLargeMessage(maxUpload) });
   const mime = safeCloudMime(typeof body.mime === 'string' ? body.mime : '', purpose === 'lesson' ? 'application/json' : 'video/mp4');
   if (!mimeAllowed(purpose, mime)) {
     return json(400, { ok: false, error: purpose === 'daily-video' ? 'Daily videos are video files.' : 'That file type cannot go in the lesson plan.' });
   }
-  if (pendingOnly && purpose !== 'replay-pending') return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
   if (purpose === 'replay-pending' && actor.replayUpload !== 'pending') {
     return json(403, { ok: false, error: actor.replayUpload === 'direct' ? 'Save replays to lesson media.' : CLOUD_ROLE_MESSAGE });
   }
@@ -624,6 +661,10 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   if (!relative.ok) return json(400, { ok: false, error: relative.error });
   const key = cloudObjectKey(actor.licenseId, relative.path);
   if (!key) return json(400, { ok: false, error: 'That file name cannot be saved.' });
+  // A program director cannot see the folder, so never let a drop replace a coach's video.
+  if (dropOnly && purpose === 'daily-video' && (await bucket.head(key))) {
+    return json(409, { ok: false, error: "A video with that name is already in today's videos. Rename it and send again." });
+  }
   const room = await roomFor(bucket, key, size, cap);
   if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.bucketUsed, cap) });
   const plan = size > CLOUD_CHUNK_BYTES ? 'multipart' : 'single';

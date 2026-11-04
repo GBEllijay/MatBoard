@@ -95,7 +95,9 @@ export function lifetimeFor(input: IssueInput): Pick<EntitlementClaims, 'exp' | 
   if (input.kind === 'onetime') {
     const exp = bounded(ONETIME_TOKEN_DAYS * DAY);
     const failOpen = bounded((ONETIME_TOKEN_DAYS + ONETIME_FAIL_OPEN_DAYS) * DAY);
-    return { exp, refresh_after: now + 7 * DAY, fail_open_until: failOpen };
+    // A Cloud add-on rides on a monthly subscription, so check it daily.
+    // A canceled one then drops Cloud within a day; the edition stays.
+    return { exp, refresh_after: now + (input.subs?.cloud ? DAY : 7 * DAY), fail_open_until: failOpen };
   }
   return {
     exp: bounded(ONETIME_TOKEN_DAYS * DAY),

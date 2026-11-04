@@ -26,6 +26,9 @@ import {
   setCloudUploadReady,
   writeCloudMediaHome,
   cloudUploadSelected,
+  CLOUD_DAILY_DROP_ONLY,
+  cloudDailyVideoDrop,
+  isDailyVideoCloudPath,
 } from './advantageCloudMedia.ts';
 import { INSTRUCTOR_PRESETS } from './instructorSeats.ts';
 import { proPlusCloudDoorOpen } from './proPlusCloud.ts';
@@ -90,9 +93,27 @@ test('cloud paths stay on the gym tree and refuse a public or escaped key', () =
   assert.equal(cloudObjectKey('bad id', 'videos/daily/2026-11-03/armbar.mp4'), null);
   assert.equal(cloudListPrefix('lesson', '2026-11-03')?.plan, 'lessons/current/2026-W45/2026-11-03.json');
   assert.equal(cloudRelativePath({ purpose: 'daily-video', role: 'assistant', dateKey: '2026-11-03', fileName: 'a.mp4' }).ok, true);
-  const hidden = cloudRelativePath({ purpose: 'daily-video', role: 'program-director', dateKey: '2026-11-03', fileName: 'a.mp4' });
-  assert.equal(hidden.ok, false);
-  if (!hidden.ok) assert.equal(hidden.error, CLOUD_ROLE_MESSAGE);
+  // A program director may drop a video into today's daily videos, and nothing in lesson plans.
+  const pdDaily = cloudRelativePath({ purpose: 'daily-video', role: 'program-director', dateKey: '2026-11-03', fileName: 'a.mp4' });
+  assert.equal(pdDaily.ok && pdDaily.path, 'videos/daily/2026-11-03/a.mp4');
+  const pdLesson = cloudRelativePath({ purpose: 'lesson', role: 'program-director', dateKey: '2026-11-03', fileName: 'plan.json' });
+  assert.equal(pdLesson.ok, false);
+  const pdMedia = cloudRelativePath({ purpose: 'lesson-media', role: 'program-director', dateKey: '2026-11-03', fileName: 'a.mp4' });
+  assert.equal(pdMedia.ok, false);
+  if (!pdMedia.ok) assert.equal(pdMedia.error, CLOUD_ROLE_MESSAGE);
+  assert.equal(cloudRelativePath({ purpose: 'daily-video', role: 'student', dateKey: '2026-11-03', fileName: 'a.mp4' }).ok, false);
+});
+
+test('program director daily-video drop needs Plus Cloud and the PD preset, and never opens Cloud reading', () => {
+  assert.equal(cloudDailyVideoDrop({ plusCloud: true, kind: 'seat', preset: 'program-director' }), true);
+  assert.equal(cloudDailyVideoDrop({ plusCloud: false, kind: 'seat', preset: 'program-director' }), false);
+  assert.equal(cloudDailyVideoDrop({ plusCloud: true, kind: 'seat', preset: 'assistant-coach' }), false);
+  assert.equal(cloudDailyVideoDrop({ plusCloud: true, kind: 'seat', preset: null }), false);
+  assert.deepEqual(cloudMediaAccess({ plusCloud: true, kind: 'seat', preset: 'program-director' }), { read: false, upload: false });
+  assert.equal(isDailyVideoCloudPath('videos/daily/2026-11-03/a.mp4'), true);
+  assert.equal(isDailyVideoCloudPath('lessons/current/2026-W45/2026-11-03.json'), false);
+  assert.equal(isDailyVideoCloudPath('videos/daily/../lessons/x.json'), false);
+  assert.match(CLOUD_DAILY_DROP_ONLY, /today's daily videos/);
 });
 
 test('the bucket cap defaults to 8 GB and a full upload says so in plain words', () => {

@@ -762,3 +762,148 @@ test('a revoked program director seat cannot send a pending replay', async () =>
   });
   assert.equal(sent.ok, false);
 });
+
+test('a program director can only drop a video into today\'s daily videos, and a revoked or non-Plus-Cloud PD is refused', async () => {
+  const secret = await signingSecret();
+  const bucket = new MemoryBucket();
+  bucket.objects.set('groups/lic-code/lessons/current/2026-W45/2026-11-03.json', {
+    bytes: Uint8Array.from([1, 2]),
+    type: 'application/json',
+  });
+  const grants = [
+    {
+      licenseId: 'lic-code',
+      product: 'advantage-pro',
+      source: 'code',
+      sourceRef: 'code:1',
+      status: 'active',
+      endsAt: null,
+      revokedAt: null,
+    },
+  ];
+  const env: GymCloudEnv = {
+    GYM_MEDIA: bucket,
+    ENTITLEMENT_SIGNING_KEY: secret,
+    ENTITLEMENT_KEY_ID: 'k1',
+    ENTITLEMENTS_DB: fakeDb({ grants, seat: { status: 'claimed', revokedAt: null } }),
+  };
+  const pd = await token(secret, {
+    licenseId: 'lic-code',
+    grants: ['pro'],
+    tier: 'seat',
+    src: 'seat',
+    deviceId: 'device-pd',
+    now,
+    kind: 'seat',
+    gym: 'lic-code',
+    sid: 'seat-pd',
+    preset: 'program-director',
+  });
+  const post = (body: Record<string, unknown>, e: GymCloudEnv = env) =>
+    call(e, '/api/gym/cloud', { method: 'POST', body: JSON.stringify(body) }, pd);
+
+  const status = await call(env, '/api/gym/cloud?op=status', {}, pd);
+  assert.equal(status.status, 200);
+  const statusBody = (await status.json()) as { cloud: boolean; dailyVideoDrop?: boolean; canUpload?: boolean };
+  assert.equal(statusBody.cloud, false, 'PD does not open the Cloud file list');
+  assert.equal(statusBody.dailyVideoDrop, true);
+  assert.notEqual(statusBody.canUpload, true);
+
+  // Reading Cloud stays closed.
+  assert.equal((await call(env, '/api/gym/cloud?op=list&purpose=daily-video&date=2026-11-03', {}, pd)).status, 403);
+  assert.equal(
+    (await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent('lessons/current/2026-W45/2026-11-03.json')}`, {}, pd)).status,
+    403,
+  );
+
+  // Lesson plans and lesson media are refused.
+  for (const purpose of ['lesson', 'lesson-media']) {
+    const refused = await post({ action: 'start', purpose, dateKey: '2026-11-03', fileName: 'x.mp4', size: 4, mime: 'video/mp4' });
+    assert.equal(refused.status, 403, purpose);
+  }
+  // Writing straight to a lesson key is refused.
+  const sneaky = await call(
+    env,
+    `/api/gym/cloud?op=put&key=${encodeURIComponent('groups/lic-code/lessons/current/2026-W45/2026-11-03.json')}`,
+    { method: 'PUT', body: 'xx', headers: { 'content-type': 'video/mp4' } },
+    pd,
+  );
+  assert.equal(sneaky.status, 403);
+  assert.deepEqual([...bucket.objects.get('groups/lic-code/lessons/current/2026-W45/2026-11-03.json')!.bytes], [1, 2]);
+  const skin = await post({ action: 'delete-skin', id: 'any' });
+  assert.equal(skin.status, 403);
+
+  // Today's daily video goes in.
+  const started = await post({
+    action: 'start',
+    purpose: 'daily-video',
+    dateKey: '2026-11-03',
+    fileName: 'morning drill.mp4',
+    size: 4,
+    mime: 'video/mp4',
+  });
+  assert.equal(started.status, 200);
+  const opened = (await started.json()) as { key: string; path: string; mode: string };
+  assert.match(opened.path, /^videos\/daily\/2026-11-03\//);
+  const put = await call(
+    env,
+    `/api/gym/cloud?op=put&key=${encodeURIComponent(opened.key)}`,
+    { method: 'PUT', body: Uint8Array.from([1, 2, 3, 4]), headers: { 'content-type': 'video/mp4' } },
+    pd,
+  );
+  assert.equal(put.status, 200);
+  assert.ok(bucket.objects.has(opened.key));
+  // The same name again is refused instead of replacing the video already there.
+  const again = await post({
+    action: 'start',
+    purpose: 'daily-video',
+    dateKey: '2026-11-03',
+    fileName: 'morning drill.mp4',
+    size: 4,
+    mime: 'video/mp4',
+  });
+  assert.equal(again.status, 409);
+  // A non-video type on a daily key is never stored as that type.
+  const notVideo = await call(
+    env,
+    `/api/gym/cloud?op=put&key=${encodeURIComponent('groups/lic-code/videos/daily/2026-11-03/x.mp4')}`,
+    { method: 'PUT', body: 'hi', headers: { 'content-type': 'text/html' } },
+    pd,
+  );
+  if (notVideo.status === 200) {
+    assert.notEqual(bucket.objects.get('groups/lic-code/videos/daily/2026-11-03/x.mp4')?.type, 'text/html');
+  } else {
+    assert.equal(notVideo.status, 400);
+  }
+
+  // A revoked PD seat is refused before anything else.
+  const revokedEnv: GymCloudEnv = {
+    ...env,
+    ENTITLEMENTS_DB: fakeDb({ grants, seat: { status: 'claimed', revokedAt: '2026-11-01T00:00:00.000Z' } }),
+  };
+  assert.equal((await call(revokedEnv, '/api/gym/cloud?op=status', {}, pd)).status, 403);
+  const revokedStart = await post(
+    { action: 'start', purpose: 'daily-video', dateKey: '2026-11-03', fileName: 'a.mp4', size: 4, mime: 'video/mp4' },
+    revokedEnv,
+  );
+  assert.equal(revokedStart.status, 403);
+
+  // Without Plus Cloud the drop is not offered and not accepted.
+  const noCloudEnv: GymCloudEnv = {
+    ...env,
+    ENTITLEMENTS_DB: fakeDb({
+      grants: [{ ...grants[0], source: 'stripe_subscription', sourceRef: 'sub_1' }],
+      seat: { status: 'claimed', revokedAt: null },
+    }),
+  };
+  const noCloud = await call(noCloudEnv, '/api/gym/cloud?op=status', {}, pd);
+  assert.equal(noCloud.status, 200);
+  const noCloudBody = (await noCloud.json()) as { cloud: boolean; dailyVideoDrop?: boolean };
+  assert.equal(noCloudBody.cloud, false);
+  assert.notEqual(noCloudBody.dailyVideoDrop, true);
+  const noCloudStart = await post(
+    { action: 'start', purpose: 'daily-video', dateKey: '2026-11-03', fileName: 'a.mp4', size: 4, mime: 'video/mp4' },
+    noCloudEnv,
+  );
+  assert.equal(noCloudStart.status, 403);
+});

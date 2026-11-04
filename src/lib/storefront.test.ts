@@ -100,8 +100,8 @@ test('coming soon stays Student, Coach, Pro and does not sell Coach or Pro', () 
   );
   assert.equal(STOREFRONT_COMING_SOON[0]?.price, '$19.99 one-time');
   assert.equal(STOREFRONT_COMING_SOON[1]?.price, '$29.99 one-time');
-  assert.equal(STOREFRONT_COMING_SOON[2]?.price, '$99.99 one-time, plus $5.99/month');
-  assert.equal(STOREFRONT_COMING_SOON[2]?.cardPrice, '$99.99 + $5.99/mo');
+  assert.equal(STOREFRONT_COMING_SOON[2]?.price, '$99.99 one-time');
+  assert.equal(STOREFRONT_COMING_SOON[2]?.cardPrice, '$99.99 one-time');
   assert.equal(STOREFRONT_COMING_SOON[0]?.blurb, 'A personal BJJ training journal.');
   assert.equal(
     STOREFRONT_COMING_SOON[1]?.blurb,
@@ -109,9 +109,9 @@ test('coming soon stays Student, Coach, Pro and does not sell Coach or Pro', () 
   );
   assert.match(STOREFRONT_COMING_SOON[2]?.blurb ?? '', /shared drive/);
   assert.match(STOREFRONT_COMING_SOON[2]?.blurb ?? '', /Includes Coach/);
-  assert.equal(STOREFRONT_COMING_SOON[0]?.status, 'Coming soon');
-  assert.equal(STOREFRONT_COMING_SOON[1]?.status, 'Coming soon');
-  assert.equal(STOREFRONT_COMING_SOON[2]?.status, 'Coming soon');
+  assert.equal(STOREFRONT_COMING_SOON[0]?.status, 'This product is in alpha');
+  assert.equal(STOREFRONT_COMING_SOON[1]?.status, 'This product is in alpha');
+  assert.equal(STOREFRONT_COMING_SOON[2]?.status, 'This product is in alpha');
   assert.equal(STOREFRONT_COMING_SOON.some((item) => item.forSale), false);
   assert.match(STUDENT_HOME_DESCRIPTION, /rank and stripes/);
   assert.match(COACH_HOME_DESCRIPTION, /everything in Media, Student and White/);
