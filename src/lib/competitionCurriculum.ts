@@ -65,8 +65,8 @@ export type CurriculumBlock = {
   title: string;
   notes: string;
   /**
-   * Whole minutes, such as "8". Blank means 5. Older "8:00" and "1:30" strings
-   * migrate to a minute on load.
+   * Minutes, such as "8" or "8.5". Blank means 5. Older "8:00" becomes "8"
+   * and "1:30" becomes "1.5" on load.
    */
   expected: string;
   waterBreak: boolean;
