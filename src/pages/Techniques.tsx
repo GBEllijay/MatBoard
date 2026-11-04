@@ -28,6 +28,7 @@ import {
   type CurriculumVideoCard,
 } from '../lib/curriculumVideos';
 import { loadCurriculumArchive, writeCurriculumBlockClip } from '../lib/competitionCurriculum';
+import { lessonExpectedText, loopSecondsForSlot } from '../lib/expectedDuration';
 import { formatMmSs, formatMss, secondsToMs } from '../lib/format';
 import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import {
@@ -51,7 +52,13 @@ import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/
 import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
 import { safeTimerReturn } from '../lib/timerReturn';
 import { techniquesPageEyebrow } from '../lib/productNames';
-import { isWithinRetention, localDateKey } from '../lib/trainingNotesStore';
+import {
+  isWithinRetention,
+  loadTrainingArchive,
+  localDateKey,
+  plansOnDay,
+  type TrainingNotesPlan,
+} from '../lib/trainingNotesStore';
 import { LARGE_MEDIA_BYTES, LARGE_MEDIA_NOTE, quotaAddNote } from '../lib/storageQuota';
 import {
   canAssignClip,
@@ -60,6 +67,7 @@ import {
   insertTechniqueSlot,
   isDrillPreset,
   isTimedSlot,
+  techniqueIndex,
   MAX_DRILL_SEC,
   MAX_TECHNIQUE_SLOTS,
   MIN_DRILL_SEC,
@@ -111,6 +119,12 @@ async function loadSharedCurriculumCards(clips: readonly TechniqueClip[]): Promi
     if (row) byId.set(row.id, row);
   }
   return { cards, clips: [...byId.values()] };
+}
+
+function classLessonPlan(dateKey: string, planId: string | null): TrainingNotesPlan | null {
+  const id = planId?.trim() ?? '';
+  if (!id) return null;
+  return plansOnDay(loadTrainingArchive(dateKey), dateKey).find((item) => item.id === id) ?? null;
 }
 
 const idleDriveNotice = { phase: 'idle' as const, text: '' };
@@ -173,6 +187,14 @@ export function TechniquesPage() {
   const boardDateRef = useRef(boardDate);
   boardDateRef.current = boardDate;
   const lessonPlanIdRef = useRef<string | null>(new URLSearchParams(launchKey).get('class'));
+  const [lessonPlan, setLessonPlan] = useState<TrainingNotesPlan | null>(null);
+  const lessonPlanRef = useRef<TrainingNotesPlan | null>(null);
+  lessonPlanRef.current = lessonPlan;
+  const secondsFor = (videoPlan: VideoPlan, slot: VideoSlot) =>
+    loopSecondsForSlot(
+      slot,
+      lessonExpectedText(lessonPlanRef.current, slot, techniqueIndex(videoPlan, slot.slotId)),
+    );
   if (new URLSearchParams(launchKey).get('class')) {
     lessonPlanIdRef.current = new URLSearchParams(launchKey).get('class');
   }
@@ -240,14 +262,18 @@ export function TechniquesPage() {
     void loadTechniqueBoardForDate(boardDate)
       .then(async (board) => {
         if (cancelled) return;
+        const found = classLessonPlan(boardDate, lessonPlanIdRef.current);
+        lessonPlanRef.current = found;
+        setLessonPlan(found);
         const overlay = lessonPlanVideoOverlay(boardDate, lessonPlanIdRef.current);
-        applyPlan(overlay === null ? board.plan : videoPlanWithPlanVideos(board.plan, overlay));
+        const shown = overlay === null ? board.plan : videoPlanWithPlanVideos(board.plan, overlay);
+        applyPlan(shown);
         const shared = await loadSharedCurriculumCards(board.clips);
         if (cancelled) return;
         setCurriculumCards(shared.cards);
         setClips(shared.clips);
-        const selected = board.plan.slots.find((slot) => slot.slotId === board.plan.selectedSlotId);
-        if (selected && isTimedSlot(selected)) setRemainingMs(secondsToMs(selected.drillSec));
+        const selected = shown.slots.find((slot) => slot.slotId === shown.selectedSlotId);
+        if (selected && isTimedSlot(selected)) setRemainingMs(secondsToMs(secondsFor(shown, selected)));
       })
       .catch(() => {
         if (!cancelled) setPickerNote('Could not open clips on this device.');
@@ -310,7 +336,7 @@ export function TechniquesPage() {
     const next = selectSlot(current, slotId);
     const slot = next.slots.find((item) => item.slotId === slotId);
     setPlaying(false);
-    if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
+    if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(secondsFor(next, slot)));
     void persistPlan(next);
   };
 
@@ -327,7 +353,7 @@ export function TechniquesPage() {
     const next = setSlotDrill(base, slotId, nextSec);
     if (next === current) return;
     const slot = next.slots.find((item) => item.slotId === slotId);
-    if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
+    if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(secondsFor(next, slot)));
     setPlaying(false);
     void persistPlan(next);
   };
@@ -343,8 +369,8 @@ export function TechniquesPage() {
     }
     if (!selected?.clipId || !selectedSrc || playing) return;
     if (!muteVideo) setUnlockSound(true);
-    if (isTimedSlot(selected)) {
-      setRemainingMs((ms) => remainingOnStart(ms, secondsToMs(selected.drillSec)));
+    if (isTimedSlot(selected) && plan) {
+      setRemainingMs((ms) => remainingOnStart(ms, secondsToMs(secondsFor(plan, selected))));
     }
     setPlaying(true);
   };
@@ -443,7 +469,7 @@ export function TechniquesPage() {
       const next = selectSlot(plan, slot.slotId);
       applyPlan(next);
       setPlaying(false);
-      if (isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
+      if (isTimedSlot(slot)) setRemainingMs(secondsToMs(secondsFor(next, slot)));
       void saveTechniquePlan(next, boardDateRef.current)
         .then(() => rememberLessonVideos(next))
         .catch(() => {
@@ -460,7 +486,7 @@ export function TechniquesPage() {
       launchStarted.current = true;
       if (!muteVideo) setUnlockSound(true);
       if (isTimedSlot(slot)) {
-        setRemainingMs((ms) => remainingOnStart(ms, secondsToMs(slot.drillSec)));
+        setRemainingMs((ms) => remainingOnStart(ms, secondsToMs(secondsFor(plan, slot))));
       }
       setPlaying(true);
     } else if (!focus.play) {
@@ -571,7 +597,7 @@ export function TechniquesPage() {
     if (current.selectedSlotId !== slot.slotId) {
       const next = selectSlot(current, slot.slotId);
       setPlaying(false);
-      if (isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
+      if (isTimedSlot(slot)) setRemainingMs(secondsToMs(secondsFor(next, slot)));
       void persistPlan(next);
     }
   };
@@ -652,7 +678,7 @@ export function TechniquesPage() {
         }
       }
       const slot = result.plan.slots.find((item) => item.slotId === slotId);
-      if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(slot.drillSec));
+      if (slot && isTimedSlot(slot)) setRemainingMs(secondsToMs(secondsFor(result.plan, slot)));
     } catch (error) {
       setPickerNote(quotaAddNote(error) ?? 'Could not save that clip on this device. Try again.');
     }
@@ -816,6 +842,7 @@ export function TechniquesPage() {
             onSelect={() => selectCard(warmup.slotId)}
             onAdd={() => openChooser(warmup)}
             onRemove={() => void removeClip(warmup.slotId)}
+            timedLoopMs={lessonPlan ? loopSecondsForSlot(warmup, lessonPlan.warmupExpected) * 1000 : undefined}
             fullscreen={immersive}
             onToggleFullscreen={() => void togglePlaybackFullscreen()}
             onStop={stopDrill}
@@ -823,7 +850,9 @@ export function TechniquesPage() {
           />
         ) : null}
 
-        {techniques.map((slot, index) => (
+        {techniques.map((slot, index) => {
+          const loopSec = secondsFor(plan, slot);
+          return (
           <SlotCard
             key={slot.slotId}
             slot={slot}
@@ -835,8 +864,9 @@ export function TechniquesPage() {
             muted={muteVideo}
             unlockSound={unlockSound}
             canAdd={plan ? canAssignClip(plan, slot.slotId) : false}
-            remainingMs={plan?.selectedSlotId === slot.slotId ? remainingMs : secondsToMs(slot.drillSec)}
-            customOpen={customSlotId === slot.slotId || !isDrillPreset(slot.drillSec)}
+            loopSec={loopSec}
+            remainingMs={plan?.selectedSlotId === slot.slotId ? remainingMs : secondsToMs(loopSec)}
+            customOpen={customSlotId === slot.slotId || !isDrillPreset(loopSec)}
             timersLocked={playing}
             onSelect={() => selectCard(slot.slotId)}
             onAdd={() => openChooser(slot)}
@@ -849,13 +879,14 @@ export function TechniquesPage() {
               setCustomSlotId(slot.slotId);
               selectCard(slot.slotId);
             }}
-            onNudge={(delta) => commitDrill(slot.slotId, slot.drillSec + delta)}
+            onNudge={(delta) => commitDrill(slot.slotId, loopSec + delta)}
             fullscreen={immersive}
             onToggleFullscreen={() => void togglePlaybackFullscreen()}
             onStop={stopDrill}
             onToggleMute={() => void commitMute(!muteVideo)}
           />
-        ))}
+          );
+        })}
 
         <button type="button" className="btn techniques__add" disabled={!plan || atSlotMax} onClick={addTechnique}>
           + Add another
@@ -875,6 +906,7 @@ export function TechniquesPage() {
             onSelect={() => selectCard(cooldown.slotId)}
             onAdd={() => openChooser(cooldown)}
             onRemove={() => void removeClip(cooldown.slotId)}
+            timedLoopMs={lessonPlan ? loopSecondsForSlot(cooldown, lessonPlan.cooldownExpected) * 1000 : undefined}
             fullscreen={immersive}
             onToggleFullscreen={() => void togglePlaybackFullscreen()}
             onStop={stopDrill}
@@ -1083,9 +1115,11 @@ function SlotCard({
   muted,
   unlockSound,
   canAdd,
+  loopSec,
   remainingMs,
   customOpen,
   timersLocked,
+  timedLoopMs,
   onSelect,
   onAdd,
   onRemove,
@@ -1106,9 +1140,13 @@ function SlotCard({
   muted: boolean;
   unlockSound: boolean;
   canAdd: boolean;
+  /** Loop length shown on a technique card. The lesson duration, unless a manual length wins. */
+  loopSec?: number;
   remainingMs?: number;
   customOpen?: boolean;
   timersLocked?: boolean;
+  /** Warm-up and cool down opened from a class plan. Unset keeps the untimed loop. */
+  timedLoopMs?: number;
   onSelect: () => void;
   onAdd: () => void;
   onRemove: () => void;
@@ -1122,7 +1160,13 @@ function SlotCard({
 }) {
   const filled = Boolean(slot.clipId && src);
   const timed = isTimedSlot(slot);
+  const lengthSec = loopSec ?? slot.drillSec;
   const showClock = playing && timed && remainingMs != null;
+  const showTimedLoop = Boolean(playing && timedLoopMs && timedLoopMs > 0);
+  const [timedLeft, setTimedLeft] = useState(timedLoopMs ?? 0);
+  useEffect(() => {
+    setTimedLeft(timedLoopMs ?? 0);
+  }, [timedLoopMs, playing]);
   const cardClass = [
     'techniques__card',
     selected ? 'techniques__card--on' : '',
@@ -1153,6 +1197,9 @@ function SlotCard({
           muted={muted}
           unlockSound={unlockSound}
           fullscreen={Boolean(fullscreen)}
+          durationMs={showTimedLoop ? timedLoopMs : undefined}
+          onDurationEnd={showTimedLoop ? onStop : undefined}
+          onRemaining={showTimedLoop ? setTimedLeft : undefined}
           onToggleFullscreen={onToggleFullscreen}
           onStop={onStop}
           onToggleMute={onToggleMute}
@@ -1164,6 +1211,14 @@ function SlotCard({
               >
                 <span className="techniques__loop">Loop</span>
                 {formatMmSs(remainingMs)}
+              </p>
+            ) : showTimedLoop ? (
+              <p
+                className={`techniques__clock${timedLeft === 0 ? ' techniques__clock--done' : ' techniques__clock--play'}`}
+                aria-live="polite"
+              >
+                <span className="techniques__loop">Loop</span>
+                {formatMmSs(timedLeft)}
               </p>
             ) : (
               <span className="techniques__live">Loop</span>
@@ -1211,7 +1266,7 @@ function SlotCard({
           aria-label={`Loop timer for ${title}`}
         >
           {DRILL_PRESETS_SEC.map((seconds) => {
-            const on = slot.drillSec === seconds && !customOpen;
+            const on = lengthSec === seconds && !customOpen;
             return (
               <button
                 key={seconds}
@@ -1241,17 +1296,17 @@ function SlotCard({
               <button
                 type="button"
                 className="clock-nudge"
-                disabled={timersLocked || slot.drillSec <= MIN_DRILL_SEC}
+                disabled={timersLocked || lengthSec <= MIN_DRILL_SEC}
                 aria-label="Subtract 15 seconds"
                 onClick={() => onNudge(-15)}
               >
                 −
               </button>
-              <strong aria-live="polite">{formatMss(slot.drillSec)}</strong>
+              <strong aria-live="polite">{formatMss(lengthSec)}</strong>
               <button
                 type="button"
                 className="clock-nudge"
-                disabled={timersLocked || slot.drillSec >= MAX_DRILL_SEC}
+                disabled={timersLocked || lengthSec >= MAX_DRILL_SEC}
                 aria-label="Add 15 seconds"
                 onClick={() => onNudge(15)}
               >

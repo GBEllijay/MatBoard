@@ -6,6 +6,7 @@
  * This store still keeps the lesson text on the phone.
  */
 
+import { migrateExpectedDuration } from './expectedDuration.ts';
 import {
   planStructureStored,
   remapTechniqueVideos,
@@ -36,7 +37,7 @@ export const COOLDOWN_NOTE_MAX = 1_500;
 export const CLOSING_MAX = 2_000;
 export const TECHNIQUE_TITLE_MAX = 120;
 export const TECHNIQUE_NOTES_MAX = 2_000;
-/** Free-text expected duration, such as "5 min". Not a countdown. */
+/** Stored minute count, such as "8". Older "8:00" and "5 min" text migrates on load. */
 export const EXPECTED_MAX = 40;
 export const MIN_TECHNIQUES = 3;
 export const MAX_TECHNIQUES = 20;
@@ -55,7 +56,11 @@ export type TechniqueBlock = {
   slotId: string;
   title: string;
   notes: string;
-  /** How long the coach expects this drill to take. A note, not a timer. */
+  /**
+   * Whole minutes the coach expects this drill to take, such as "8".
+   * Blank means 5. This is the default loop length for the drill's video
+   * unless the video card has its own loop length.
+   */
   expected: string;
   waterBreak: boolean;
   /**
@@ -332,7 +337,7 @@ function sanitizeTechnique(value: unknown): { block: TechniqueBlock; repaired: b
   if (raw && raw.waterBreak !== true && raw.waterBreak !== false) repaired = true;
   const title = clampText(raw?.title, TECHNIQUE_TITLE_MAX);
   const notes = clampText(raw?.notes, TECHNIQUE_NOTES_MAX);
-  const expected = clampText(raw?.expected, EXPECTED_MAX);
+  const expected = migrateExpectedDuration(clampText(raw?.expected, EXPECTED_MAX));
   if (raw && (raw.title !== title || raw.notes !== notes || raw.expected !== expected)) repaired = true;
   let treeId: string | undefined;
   if (raw && Object.prototype.hasOwnProperty.call(raw, 'treeId')) {
@@ -421,13 +426,13 @@ export function sanitizePlan(input: unknown): { plan: TrainingNotesPlan; repaire
   const lessonTitle = clampText(raw?.lessonTitle, LESSON_TITLE_MAX);
   const classTime = clampText(raw?.classTime, CLASS_TIME_MAX);
   const intro = clampText(raw?.intro, INTRO_MAX);
-  const introExpected = clampText(raw?.introExpected, EXPECTED_MAX);
+  const introExpected = migrateExpectedDuration(clampText(raw?.introExpected, EXPECTED_MAX));
   const warmupNote = clampText(raw?.warmupNote, WARMUP_NOTE_MAX);
-  const warmupExpected = clampText(raw?.warmupExpected, EXPECTED_MAX);
+  const warmupExpected = migrateExpectedDuration(clampText(raw?.warmupExpected, EXPECTED_MAX));
   const specificNote = clampText(raw?.specificNote, SPECIFIC_NOTE_MAX);
-  const specificExpected = clampText(raw?.specificExpected, EXPECTED_MAX);
+  const specificExpected = migrateExpectedDuration(clampText(raw?.specificExpected, EXPECTED_MAX));
   const cooldownNote = clampText(raw?.cooldownNote, COOLDOWN_NOTE_MAX);
-  const cooldownExpected = clampText(raw?.cooldownExpected, EXPECTED_MAX);
+  const cooldownExpected = migrateExpectedDuration(clampText(raw?.cooldownExpected, EXPECTED_MAX));
   const closing = clampText(raw?.closing, CLOSING_MAX);
   if (
     raw &&

@@ -78,6 +78,12 @@ export type VideoSlot = {
   clipId: string | null;
   drillSec: number;
   /**
+   * The coach picked a loop length on this card (2:30, 5:00, 7:00, or Custom).
+   * That choice wins over the lesson block's expected minutes, including when
+   * they pick 5:00, which is also the untouched default.
+   */
+  drillManual?: boolean;
+  /**
    * Customer Google Drive file id for this clip. Null while the file is only
    * on this phone. Never a download URL and never the file bytes.
    */
@@ -207,10 +213,13 @@ export function selectSlot(plan: VideoPlan, slotId: string): VideoPlan {
 export function setSlotDrill(plan: VideoPlan, slotId: string, drillSec: number): VideoPlan {
   const clamped = clampDrillSec(drillSec);
   const slot = plan.slots.find((item) => item.slotId === slotId);
-  if (!slot || slot.kind !== 'technique' || slot.drillSec === clamped) return plan;
+  if (!slot || slot.kind !== 'technique') return plan;
+  if (slot.drillSec === clamped && slot.drillManual === true) return plan;
   return {
     ...plan,
-    slots: plan.slots.map((item) => (item.slotId === slotId ? { ...item, drillSec: clamped } : item)),
+    slots: plan.slots.map((item) =>
+      item.slotId === slotId ? { ...item, drillSec: clamped, drillManual: true } : item,
+    ),
   };
 }
 
@@ -306,6 +315,7 @@ function parseSlot(value: unknown, known: ReadonlySet<string>): { slot: VideoSlo
   const clipId = clipKnown ? clipRaw : null;
   const hadDrill = typeof raw.drillSec === 'number' && Number.isFinite(raw.drillSec);
   const drillSec = clampDrillSec(hadDrill ? (raw.drillSec as number) : DEFAULT_DRILL_SEC);
+  const drillManual = kind === 'technique' && raw.drillManual === true;
   const driveFileId = clampDriveFileId(raw.driveFileId);
   const mediaName = clampMediaLabel(raw.mediaName);
   const mediaMime = clampMediaLabel(raw.mediaMime, 120);
@@ -316,11 +326,24 @@ function parseSlot(value: unknown, known: ReadonlySet<string>): { slot: VideoSlo
   const changed =
     Boolean(clipRaw && !clipKnown) ||
     (kind === 'technique' && hadDrill && drillSec !== raw.drillSec) ||
+    (kind === 'technique' && raw.drillManual != null && raw.drillManual !== true) ||
     !hadMedia ||
     raw.driveFileId !== driveFileId ||
     raw.mediaName !== mediaName ||
     raw.mediaMime !== mediaMime;
-  return { slot: { slotId, kind, clipId, drillSec, driveFileId, mediaName, mediaMime }, changed };
+  return {
+    slot: {
+      slotId,
+      kind,
+      clipId,
+      drillSec,
+      driveFileId,
+      mediaName,
+      mediaMime,
+      ...(drillManual ? { drillManual: true } : {}),
+    },
+    changed,
+  };
 }
 
 function planSignature(plan: VideoPlan): string {
@@ -332,6 +355,7 @@ function planSignature(plan: VideoPlan): string {
       kind: slot.kind,
       clipId: slot.clipId,
       drillSec: slot.drillSec,
+      ...(slot.drillManual ? { drillManual: true } : {}),
       driveFileId: slot.driveFileId,
       mediaName: slot.mediaName,
       mediaMime: slot.mediaMime,
