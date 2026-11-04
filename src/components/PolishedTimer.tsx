@@ -205,7 +205,10 @@ export function PolishedTimer({
       break;
     case 'creature-anime':
     case 'idol-hunters':
-    case 'shinobi-anime': {
+    case 'shinobi-anime':
+    case 'dungeon-quest':
+    case 'mech-battle':
+    case 'arcade-fighter': {
       const title = posterTimerTitle(slug, rest, round);
       const titleText = posterSplitsNums(slug)
         ? title.split(/(\d+)/).map((part, index) =>
@@ -253,7 +256,7 @@ export function PolishedTimer({
   }
 
   return (
-    <div className={`skin-root skin-root--timer${isPosterSkin(slug) ? ' skin-root--poster' : ''}${mod ? '' : ' skin-root--loading'}`} data-skin={slug}>
+    <div className={`skin-root skin-root--timer${isPosterSkin(slug) ? ' skin-root--poster' : ''}${slug === 'arcade-fighter' ? ' skin-root--arcade' : ''}${mod ? '' : ' skin-root--loading'}`} data-skin={slug}>
       <div className={`tm${rest ? ' rest' : ''}`} style={{ ['--p' as string]: p.toFixed(4) }}>
         {deco ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: deco }} /> : null}
         <img className="logo" src="/card-logo.png" alt="Advantage" />

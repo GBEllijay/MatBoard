@@ -5,7 +5,7 @@ import { dispatchMatch, type ScoreKind, type Side } from '../lib/matchStore';
 import type { PolishedSkinSlug } from '../lib/polishedSkins';
 import { beltChipKey, canonicalBelt } from '../lib/rosterStore';
 import { fitNamesIn } from '../skins/polished/fitNames';
-import { isPosterSkin, posterFitLineFloor } from '../skins/polished/posterSkins';
+import { arcadePipCount, isPosterSkin, posterFitLineFloor } from '../skins/polished/posterSkins';
 
 export type PolishedRow = {
   side: Side;
@@ -90,12 +90,26 @@ function Belt({ rank, poster }: { rank: string; poster: boolean }) {
   );
 }
 
-function Row({ row, cls, extra, poster }: { row: PolishedRow; cls: string; extra: string; poster: boolean }) {
+function Row({
+  row,
+  cls,
+  extra,
+  poster,
+  arcade,
+}: {
+  row: PolishedRow;
+  cls: string;
+  extra: string;
+  poster: boolean;
+  arcade: boolean;
+}) {
   const label = row.side === 'blue' ? 'Blue' : 'White';
   return (
     <section className={`row ${cls}`} aria-label={`${label} competitor`}>
       {extra ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: extra }} /> : null}
       <div className="id">
+        {arcade ? <span className="ptag">{row.side === 'blue' ? '1P' : '2P'}</span> : null}
+        {arcade ? <i className="sil" aria-hidden="true" /> : null}
         {poster ? (
           <div className="side">
             <b>{label.toUpperCase()}</b>
@@ -139,7 +153,9 @@ export function PolishedScoreboard({
   const mod = usePolishedSkinModule(slug);
   const extra = mod?.ROW_EXTRA ?? ['', ''];
   const poster = isPosterSkin(slug);
+  const arcade = slug === 'arcade-fighter';
   const spec = mod?.POSTER;
+  const pips = arcade ? arcadePipCount(textOf(mat)) : null;
   const rootRef = useRef<HTMLDivElement>(null);
   const nameKey = rows.map((row) => textOf(row.name)).join('\n');
   useEffect(() => {
@@ -167,7 +183,7 @@ export function PolishedScoreboard({
   return (
     <div
       ref={rootRef}
-      className={`skin-root skin-root--board${poster ? ' skin-root--poster' : ''}${mod ? '' : ' skin-root--loading'}`}
+      className={`skin-root skin-root--board${poster ? ' skin-root--poster' : ''}${arcade ? ' skin-root--arcade' : ''}${mod ? '' : ' skin-root--loading'}`}
       data-skin={slug}
     >
       <div className="sb">
@@ -195,10 +211,18 @@ export function PolishedScoreboard({
           {poster ? null : <span className="mat">{mat}</span>}
           <span className="div">{divisionLine}</span>
         </header>
-        <Row row={rows[0]} cls="c1" extra={extra[0]} poster={poster} />
+        <Row row={rows[0]} cls="c1" extra={extra[0]} poster={poster} arcade={arcade} />
         <div className={`band${poster && state === 'FINAL' ? ' is-final' : ''}`}>
           {poster && spec?.bandDeco ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: spec.bandDeco }} /> : null}
+          {arcade ? <b className="vs">VS</b> : null}
           <span className="state">{state}</span>
+          {pips != null ? (
+            <span className="pips" aria-hidden="true">
+              {Array.from({ length: pips }, (_, index) => (
+                <i key={index} />
+              ))}
+            </span>
+          ) : null}
           {poster ? (
             <span className="plate">
               <span className="clock">{clock}</span>
@@ -208,7 +232,7 @@ export function PolishedScoreboard({
           )}
           <span className="status">{status}</span>
         </div>
-        <Row row={rows[1]} cls="c2" extra={extra[1]} poster={poster} />
+        <Row row={rows[1]} cls="c2" extra={extra[1]} poster={poster} arcade={arcade} />
       </div>
     </div>
   );

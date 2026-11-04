@@ -29,6 +29,12 @@ import idolSb from './polished/thumbs/idol-hunters-scoreboard.jpg';
 import idolTm from './polished/thumbs/idol-hunters-timer.jpg';
 import shinobiSb from './polished/thumbs/shinobi-anime-scoreboard.jpg';
 import shinobiTm from './polished/thumbs/shinobi-anime-timer.jpg';
+import dungeonSb from './polished/thumbs/dungeon-quest-scoreboard.jpg';
+import dungeonTm from './polished/thumbs/dungeon-quest-timer.jpg';
+import mechSb from './polished/thumbs/mech-battle-scoreboard.jpg';
+import mechTm from './polished/thumbs/mech-battle-timer.jpg';
+import arcadeFighterSb from './polished/thumbs/arcade-fighter-scoreboard.jpg';
+import arcadeFighterTm from './polished/thumbs/arcade-fighter-timer.jpg';
 
 export const EXISTING_SKIN_THUMBS = {
   MOCK_TOURNAMENT: mockTournament,
@@ -53,6 +59,9 @@ const POLISHED: Record<PolishedTimerSlug, { scoreboard: string; timer: string }>
   'creature-anime': { scoreboard: creatureSb, timer: creatureTm },
   'idol-hunters': { scoreboard: idolSb, timer: idolTm },
   'shinobi-anime': { scoreboard: shinobiSb, timer: shinobiTm },
+  'dungeon-quest': { scoreboard: dungeonSb, timer: dungeonTm },
+  'mech-battle': { scoreboard: mechSb, timer: mechTm },
+  'arcade-fighter': { scoreboard: arcadeFighterSb, timer: arcadeFighterTm },
 };
 
 export function polishedThumb(slug: PolishedTimerSlug, kind: 'scoreboard' | 'timer'): string {

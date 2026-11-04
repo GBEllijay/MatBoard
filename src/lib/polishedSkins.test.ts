@@ -50,7 +50,7 @@ import {
 } from '../skins/polished/timerText.ts';
 import { brasilRing, keynoteRing, lerpHex } from '../skins/polished/ring.ts';
 import { fitNameBox } from '../skins/polished/fitNames.ts';
-import { posterBoardState, posterTimerTitle } from '../skins/polished/posterSkins.ts';
+import { arcadePipCount, posterBoardState, posterTimerTitle } from '../skins/polished/posterSkins.ts';
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 
@@ -83,11 +83,11 @@ const PRODUCTS = [
 test('the nine polished families in picker order; Calçadão is a timer-only option after Brasil', () => {
   assert.deepEqual(
     POLISHED_SKINS.map((s) => s.label),
-    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime'],
+    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime', 'Dungeon Quest', 'Mech Battle', 'Arcade Fighter'],
   );
   assert.deepEqual(
     POLISHED_TIMER_SKINS.map((s) => s.label),
-    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Calçadão', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime'],
+    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Calçadão', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime', 'Dungeon Quest', 'Mech Battle', 'Arcade Fighter'],
   );
   assert.equal(parseScoreboardSkin('calcadao'), DEFAULT_SCOREBOARD_SKIN, 'no Calçadão scoreboard');
   assert.equal(parseScoreboardSkin('CALCADAO'), DEFAULT_SCOREBOARD_SKIN, 'no Calçadão scoreboard');
@@ -295,6 +295,9 @@ const POSTER = [
   ['creature-anime', 'CREATURE_ANIME', 'Creature Anime'],
   ['idol-hunters', 'IDOL_HUNTERS', 'Idol Hunters'],
   ['shinobi-anime', 'SHINOBI_ANIME', 'Shinobi Anime'],
+  ['dungeon-quest', 'DUNGEON_QUEST', 'Dungeon Quest'],
+  ['mech-battle', 'MECH_BATTLE', 'Mech Battle'],
+  ['arcade-fighter', 'ARCADE_FIGHTER', 'Arcade Fighter'],
 ] as const;
 
 test('poster skins are registered once, on both boards, and the gate still hides them below Media', () => {
@@ -323,6 +326,14 @@ test('poster skins are registered once, on both boards, and the gate still hides
   assert.equal(posterTimerTitle('idol-hunters', true, 2), 'Encore Break');
   assert.equal(posterTimerTitle('shinobi-anime', false, 3), 'Round 3');
   assert.equal(posterTimerTitle('shinobi-anime', true, 3), 'Rest');
+  assert.equal(posterTimerTitle('dungeon-quest', true, 1), 'Short Rest');
+  assert.equal(posterTimerTitle('dungeon-quest', false, 2), 'Round 2');
+  assert.equal(posterTimerTitle('mech-battle', true, 1), 'Cooldown');
+  assert.equal(posterTimerTitle('arcade-fighter', false, 1), 'FIGHT!');
+  assert.equal(posterTimerTitle('arcade-fighter', true, 1), 'CATCH YOUR BREATH');
+  assert.equal(arcadePipCount('Round 3'), 3);
+  assert.equal(arcadePipCount('Final'), null);
+  assert.equal(arcadePipCount(''), null);
 });
 
 test('long names shrink on one line, then wrap, and stop at the floor', () => {

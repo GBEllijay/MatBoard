@@ -1,0 +1,142 @@
+/* Arcade Fighter rearranges the shared board: a plate per fighter, scores under each, VS between. */
+
+.skin-root--arcade .sb {
+  grid-template-columns: minmax(0, 1fr) minmax(16vh, auto) minmax(0, 1fr);
+  grid-template-rows: 8vh minmax(0, 1fr);
+  gap: 1.2vh 1.6vh;
+  padding-left: 12vh;
+  padding-right: 12vh;
+}
+
+.skin-root--arcade .hdr { grid-column: 1 / -1; grid-row: 1; }
+
+.skin-root--arcade .row.c1 { grid-column: 1; grid-row: 2; }
+.skin-root--arcade .band { grid-column: 2; grid-row: 2; }
+.skin-root--arcade .row.c2 { grid-column: 3; grid-row: 2; }
+
+.skin-root--arcade .row {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vh;
+  padding: 1.2vh;
+  background: #0a0a16;
+  border: 0.55vh solid #1c46cc;
+  min-height: 0;
+}
+
+.skin-root--arcade .row.c2 { border-color: #f4f6fb; }
+
+.skin-root--arcade .id {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 0.6vh 1.2vh;
+  align-items: center;
+}
+
+.skin-root--arcade .ptag {
+  grid-row: 1;
+  grid-column: 1;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 1.6vh;
+  color: #111;
+  background: #ffd23f;
+  padding: 0.5vh 0.8vh;
+}
+
+.skin-root--arcade .sil {
+  grid-row: 1 / span 3;
+  grid-column: 1;
+  margin-top: 3.2vh;
+  width: 7vh;
+  height: 9vh;
+  background: currentColor;
+  clip-path: polygon(30% 0, 70% 0, 78% 18%, 62% 22%, 88% 100%, 12% 100%, 38% 22%, 22% 18%);
+}
+
+.skin-root--arcade .c1 .sil { color: #1c46cc; }
+.skin-root--arcade .c2 .sil { color: #f4f6fb; }
+
+.skin-root--arcade .side { grid-column: 2; grid-row: 1; }
+.skin-root--arcade .name { grid-column: 2; grid-row: 2; }
+.skin-root--arcade .meta { grid-column: 2; grid-row: 3; }
+
+.skin-root--arcade .tile { flex: 1; }
+
+.skin-root--arcade .row .tile:nth-of-type(1),
+.skin-root--arcade .row .pts,
+.skin-root--arcade .row .adv,
+.skin-root--arcade .row .pen {
+  width: 100%;
+}
+
+.skin-root--arcade .row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.skin-root--arcade .id { grid-column: 1 / -1; }
+
+.skin-root--arcade .band {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1vh;
+  padding: 0;
+}
+
+.skin-root--arcade .vs {
+  font-size: 4vh;
+  line-height: 1;
+  color: #ffd23f;
+}
+
+.skin-root--arcade .pips {
+  display: flex;
+  gap: 0.6vh;
+}
+
+.skin-root--arcade .pips i {
+  width: 1.3vh;
+  height: 1.3vh;
+  border-radius: 50%;
+  background: #ffd23f;
+  box-shadow: 0 0 0.6vh #ffd23f;
+}
+
+.skin-root--arcade .band .state,
+.skin-root--arcade .band .status {
+  margin: 0;
+}
+
+.skin-root--arcade .fighter {
+  position: absolute;
+  bottom: 1vh;
+  width: 18vh;
+  height: 78vh;
+  background: center bottom / contain no-repeat;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.skin-root--arcade .fighter.f1 { left: 0; background-image: url(./assets/arcade-fighter/fighter-blue.webp); }
+.skin-root--arcade .fighter.f2 { right: 0; background-image: url(./assets/arcade-fighter/fighter-white.webp); }
+
+.skin-root--arcade .plate { height: auto; min-height: 12vh; padding: 0.6vh 1.4vh; }
+
+@media (orientation: portrait) {
+  .skin-root.skin-root--arcade .sb {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto;
+    padding: calc(0.4rem + 2.6rem) 2.6vw 1.4vw;
+  }
+
+  .skin-root.skin-root--arcade .hdr { grid-row: 1; grid-column: 1; }
+  .skin-root.skin-root--arcade .row.c1 { grid-row: 2; grid-column: 1; }
+  .skin-root.skin-root--arcade .band { grid-row: 3; grid-column: 1; }
+  .skin-root.skin-root--arcade .row.c2 { grid-row: 4; grid-column: 1; }
+  .skin-root.skin-root--arcade .fighter { display: none; }
+  .skin-root.skin-root--arcade .row .tile .num { font-size: 14vh; }
+}

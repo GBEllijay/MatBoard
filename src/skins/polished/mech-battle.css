@@ -1,0 +1,115 @@
+/* Mech Battle. Digits stay solid white Oxanium. */
+.skin-root[data-skin='mech-battle'] {
+  --pts: #ffc21a;
+  --adv: #38e1ff;
+  --pen: #ff8a70;
+  --crest: url(./assets/mech-battle/crest.webp);
+  font-family: 'Chakra Petch', sans-serif;
+  background: #07090d;
+  color: #fff;
+}
+
+.skin-root[data-skin='mech-battle'] .sb .bg {
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.25) 40%, rgba(0, 0, 0, 0.6)),
+    url(./assets/mech-battle/hangar@2560.webp);
+}
+
+.skin-root[data-skin='mech-battle'] .tm .bg {
+  background-image: radial-gradient(50% 50% at 50% 55%, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.55)),
+    url(./assets/mech-battle/city@2560.webp);
+}
+
+.skin-root[data-skin='mech-battle'] .num,
+.skin-root[data-skin='mech-battle'] .plate .clock .sk-btn,
+.skin-root[data-skin='mech-battle'] .tm .tm-clock {
+  font-family: Oxanium, sans-serif;
+  font-weight: 800;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  text-shadow: 0 0.4vh 0 #000;
+}
+
+.skin-root[data-skin='mech-battle'] .num { font-size: 16vh; }
+
+.skin-root[data-skin='mech-battle'] .name {
+  font-family: 'Saira SemiCondensed', sans-serif;
+  font-weight: 800;
+  font-size: 5.6vh;
+  color: #fff;
+  text-shadow: 0 0.25vh 0 #000;
+}
+
+.skin-root[data-skin='mech-battle'] .wm,
+.skin-root[data-skin='mech-battle'] .hdr .mat,
+.skin-root[data-skin='mech-battle'] .tm .title {
+  font-family: 'Russo One', sans-serif;
+  color: #e8eef6;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0.2vh 0 #000, 0 0 1.2vh rgba(56, 225, 255, 0.45);
+}
+
+.skin-root[data-skin='mech-battle'] .hdr .div {
+  background: #0b1017;
+  color: #fff;
+  box-shadow: inset 0.35vh 0 0 #ffb01f;
+  border-radius: 0.3vh;
+}
+
+.skin-root[data-skin='mech-battle'] .hdr .crest,
+.skin-root[data-skin='mech-battle'] .tm .crest {
+  filter: drop-shadow(0 0 1.2vh rgba(56, 225, 255, 0.65));
+}
+
+.skin-root[data-skin='mech-battle'] .row {
+  background: linear-gradient(180deg, #1b232f, #0d121a);
+  clip-path: polygon(2vh 0, calc(100% - 2vh) 0, 100% 2vh, 100% calc(100% - 2vh), calc(100% - 2vh) 100%, 2vh 100%, 0 calc(100% - 2vh), 0 2vh);
+  box-shadow: inset 0 0 0 0.3vh #3a4555;
+}
+
+.skin-root[data-skin='mech-battle'] .c1 .id { background: linear-gradient(90deg, rgba(24, 70, 196, 0.6), transparent 80%); }
+.skin-root[data-skin='mech-battle'] .c2 .id { background: linear-gradient(90deg, rgba(255, 255, 255, 0.24), transparent 80%); }
+.skin-root[data-skin='mech-battle'] .c1 .rail { background: linear-gradient(180deg, #8fb2ff, #2f6bff); }
+.skin-root[data-skin='mech-battle'] .c2 .rail { background: #f2f4f7; }
+.skin-root[data-skin='mech-battle'] .c1 .side b { background: #1846c4; color: #fff; box-shadow: inset 0 0 0 0.18vh #8fb2ff; border-radius: 0.3vh; }
+.skin-root[data-skin='mech-battle'] .c2 .side b { background: #f2f4f7; color: #0b1738; box-shadow: inset 0 0 0 0.18vh #0b1738; border-radius: 0.3vh; }
+.skin-root[data-skin='mech-battle'] .gym { color: #d5dce6; }
+.skin-root[data-skin='mech-battle'] .belt { background: #153fc4; color: #fff; border-radius: 0.3vh; }
+
+.skin-root[data-skin='mech-battle'] .tile {
+  background: #0a0e14;
+  box-shadow: inset 0 0 0 0.25vh #283240;
+}
+.skin-root[data-skin='mech-battle'] .pts .lab { color: var(--pts); }
+.skin-root[data-skin='mech-battle'] .adv .lab { color: var(--adv); }
+.skin-root[data-skin='mech-battle'] .pen .lab { color: var(--pen); }
+
+.skin-root[data-skin='mech-battle'] .plate {
+  background: #0a0e14;
+  box-shadow: inset 0 0 0 0.4vh #38e1ff;
+}
+.skin-root[data-skin='mech-battle'] .band .state { background: #0a0e14; color: #fff; box-shadow: inset 0 0 0 0.22vh #38e1ff; }
+.skin-root[data-skin='mech-battle'] .band .status .sk-btn { background: #a8102c; color: #fff; box-shadow: inset 0 0 0 0.22vh #ff8c8c; }
+
+.skin-root[data-skin='mech-battle'] .band .bust {
+  top: 50%;
+  height: 18vh;
+  width: 14vh;
+  transform: translateY(-50%);
+  -webkit-mask-image: linear-gradient(#000 70%, transparent);
+  mask-image: linear-gradient(#000 70%, transparent);
+}
+.skin-root[data-skin='mech-battle'] .band .m-l { left: 0; background-image: url(./assets/mech-battle/mech-blue.webp); background-position: center top; background-size: auto 48vh; }
+.skin-root[data-skin='mech-battle'] .band .m-r { right: 0; background-image: url(./assets/mech-battle/mech-white.webp); background-position: center top; background-size: auto 48vh; }
+
+.skin-root[data-skin='mech-battle'] .tm .phase { background: #8a2c00; color: #fff; box-shadow: inset 0 0 0 0.22vh #ffb01f; }
+.skin-root[data-skin='mech-battle'] .tm.rest .phase { background: #1846c4; box-shadow: inset 0 0 0 0.22vh #8fb2ff; }
+.skin-root[data-skin='mech-battle'] .tm .dplate { background: linear-gradient(180deg, #141b25, #090d13); box-shadow: inset 0 0 0 0.45vh #38e1ff; }
+.skin-root[data-skin='mech-battle'] .tm.rest .dplate { box-shadow: inset 0 0 0 0.45vh #8fb2ff; }
+.skin-root[data-skin='mech-battle'] .tm .meter { background: #0a0e14; }
+.skin-root[data-skin='mech-battle'] .tm .meter .fill { background: linear-gradient(90deg, #ff7a1a, #ffb01f); }
+.skin-root[data-skin='mech-battle'] .tm.rest .meter .fill { background: linear-gradient(90deg, #2f6bff, #38e1ff); }
+.skin-root[data-skin='mech-battle'] .tm .next { color: #d5dce6; font-family: 'Chakra Petch', sans-serif; }
+.skin-root[data-skin='mech-battle'] .tm .t-l { background-image: url(./assets/mech-battle/mech-blue.webp); height: 62vh; width: 28vh; }
+.skin-root[data-skin='mech-battle'] .tm .t-r { background-image: url(./assets/mech-battle/mech-white.webp); height: 62vh; width: 28vh; }
+.skin-root[data-skin='mech-battle'] .tm.rest .t-l { background-image: url(./assets/mech-battle/mech-white.webp); }
+.skin-root[data-skin='mech-battle'] .tm.rest .t-r { background-image: url(./assets/mech-battle/mech-blue.webp); }
