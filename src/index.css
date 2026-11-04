@@ -12808,6 +12808,76 @@ html.lesson-cover-open body {
   display: none;
 }
 
+/* Under Match names, in the same grid. Not a floating layer over the board. */
+.home--white .home__modes > .white-upgrade {
+  grid-column: 1 / -1;
+  position: relative;
+  z-index: 1;
+  align-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border-radius: 14px;
+  background: rgba(0, 78, 186, 0.28);
+  border: 1px solid rgba(0, 78, 186, 0.55);
+  color: #f7f4ee;
+  text-align: left;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.home--white .white-upgrade__mark {
+  flex: none;
+  width: 2.15rem;
+  height: 1.05rem;
+  border-radius: 4px;
+}
+
+.home--white .white-upgrade__mark .belt-tip__bar {
+  top: 0.14rem;
+  bottom: 0.14rem;
+  left: 0.14rem;
+  width: 0.34rem;
+}
+
+.home--white .white-upgrade__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.home--white .white-upgrade__line,
+.home--white .white-upgrade__sub {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.home--white .white-upgrade__line {
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.98rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.home--white .white-upgrade__sub {
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 600;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.home--white .white-upgrade:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
 .home--white .mode-card__sub {
   color: #e7eef8;
 }
