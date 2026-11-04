@@ -54,6 +54,25 @@ export function readGymLogo(): string | null {
  * Media Console custom logo wins. A picture picked on the schedule is next.
  * Otherwise the Advantage mark.
  */
+export type GymLogoSource = {
+  /** Image to draw: the gym's data URL, or the Advantage mark. */
+  src: string;
+  /** 'gym' when the master slot holds a logo, 'advantage' for the fallback. */
+  kind: 'gym' | 'advantage';
+  /** The raw gym data URL, or null when the slot is empty. */
+  dataUrl: string | null;
+};
+
+/**
+ * Master gym logo for any surface (share pages now; student journals and
+ * lower licenses in a later PR). Set on the Gallery "Custom gym logo" slot.
+ * Pair with subscribeGymLogo for live updates.
+ */
+export function getGymLogo(): GymLogoSource {
+  const dataUrl = readGymLogo();
+  return dataUrl ? { src: dataUrl, kind: 'gym', dataUrl } : { src: ADVANTAGE_MARK_SRC, kind: 'advantage', dataUrl: null };
+}
+
 export function resolveScheduleLogo(
   gymLogo: string | null | undefined,
   boardLogo: string | null | undefined,

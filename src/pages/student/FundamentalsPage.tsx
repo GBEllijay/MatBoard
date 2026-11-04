@@ -17,7 +17,12 @@ import {
   type FundamentalSort,
   type LevelAudience,
 } from '../../lib/fundamentals';
-import { ageIllegalTechniques } from '../../lib/studentBenchmarks';
+import {
+  ageIllegalTechniques,
+  benchmarkView,
+  catalogLevelMap,
+  checkpointsForProgress,
+} from '../../lib/studentBenchmarks';
 import { loadFilms } from '../../lib/studentFilm';
 import {
   addCustomFundamental,
@@ -30,7 +35,13 @@ import {
   setFundamentalNote,
   type FundamentalRow,
 } from '../../lib/studentEdition';
-import { withStarterRubric } from '../../lib/studentTools';
+import {
+  beltLevel,
+  checkpointState,
+  checkpointTitle,
+  showsAdultCheckpoints,
+  withStarterRubric,
+} from '../../lib/studentTools';
 import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import './fundamentals.css';
 
@@ -71,6 +82,7 @@ export function FundamentalsPage() {
   const illegal = ageIllegalTechniques(report);
   const summary = proficiencySummary(board.flatMap((category) => category.items));
   const clips = report.clips ?? [];
+  const benchmarks = benchmarkRows(report);
 
   return (
     <main className="student student-frame student--arena student--fundamentals">
@@ -91,9 +103,28 @@ export function FundamentalsPage() {
         </header>
         <div className="fund-stack">
           <nav className="fund-jumps" aria-label="Related student tools">
-            <Link to={to('/student/self-assessment?from=fundamentals')}>Self-assessment</Link>
-            <Link to={to('/student/rubric')}>Practical benchmarks</Link>
-            <Link to={to('/student/videos')}>Video Library</Link>
+            <Link
+              className="fund-jump fund-jump--assess"
+              data-testid="fund-jump-self-assessment"
+              aria-label="Self-assessment"
+              to={to('/student/self-assessment?from=fundamentals')}
+            >
+              <RadarIcon />
+              <span className="fund-jump__text">
+                <strong>Self-assessment</strong>
+                <small>Rate your game on the radar</small>
+              </span>
+              <ChevronIcon />
+            </Link>
+            <BenchmarkChecklist rows={benchmarks} to={to} />
+            <Link className="fund-jump" data-testid="fund-jump-videos" aria-label="Video Library" to={to('/student/videos')}>
+              <PlayIcon />
+              <span className="fund-jump__text">
+                <strong>Video Library</strong>
+                <small>Your clips and filmed moves</small>
+              </span>
+              <ChevronIcon />
+            </Link>
           </nav>
 
           <section className="ink fund-picks" aria-label="Sort and filter">
@@ -216,6 +247,123 @@ export function FundamentalsPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+type BenchmarkRow = { id: string; name: string; done: boolean; partly: boolean };
+
+/**
+ * Read-only checklist view of this belt's practical benchmarks. Checking items
+ * off still happens on the Belt progress page, with the same who-can-edit rules.
+ */
+function benchmarkRows(report: ReturnType<typeof useStudentFile>['report']): BenchmarkRow[] | null {
+  if (!showsAdultCheckpoints(report)) return null;
+  const level = beltLevel(report, report.profile.belt);
+  const learned = catalogLevelMap(report);
+  const rows = checkpointsForProgress(level?.checkpoints ?? [], benchmarkView(report));
+  return rows.map((row) => {
+    const state = checkpointState(row, learned);
+    return { id: row.id, name: checkpointTitle(row), done: state === 'filled', partly: state === 'partly filled' };
+  });
+}
+
+function BenchmarkChecklist({ rows, to }: { rows: BenchmarkRow[] | null; to: (path: string) => string }) {
+  const done = rows ? rows.filter((row) => row.done).length : 0;
+  const [showAll, setShowAll] = useState(false);
+  const LIMIT = 6;
+  const visible = rows ? (showAll ? rows : rows.slice(0, LIMIT)) : [];
+  return (
+    <section className="fund-jump fund-jump--checklist" aria-label="Practical benchmarks checklist">
+      <Link className="fund-jump__head" data-testid="fund-jump-benchmarks" aria-label="Practical benchmarks" to={to('/student/rubric')}>
+        <ChecklistIcon />
+        <span className="fund-jump__text">
+          <strong>Practical benchmarks</strong>
+          <small>{rows && rows.length ? `${done} of ${rows.length} done` : 'Open your belt checklist'}</small>
+        </span>
+        <ChevronIcon />
+      </Link>
+      {rows && rows.length ? (
+        <>
+          <div className="fund-meter fund-meter--check" role="img" aria-label={`${done} of ${rows.length} practical benchmarks done`}>
+            <span style={{ width: `${(done / rows.length) * 100}%` }} />
+          </div>
+          <ul className="fund-checklist">
+            {visible.map((row) => (
+              <li key={row.id}>
+                <Link
+                  className={row.done ? 'fund-check is-done' : row.partly ? 'fund-check is-partly' : 'fund-check'}
+                  to={to(`/student/rubric#${row.id}`)}
+                  aria-label={`${row.name}, ${row.done ? 'done' : row.partly ? 'partly done' : 'not done'}`}
+                >
+                  <span className="fund-check__box" aria-hidden="true">
+                    {row.done ? (
+                      <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    ) : row.partly ? (
+                      <svg viewBox="0 0 24 24"><path d="M7 12h10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
+                    ) : null}
+                  </span>
+                  <span className="fund-check__name">{row.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {rows.length > LIMIT ? (
+            <button
+              type="button"
+              className="fund-chip-btn fund-check-more"
+              aria-expanded={showAll}
+              onClick={() => setShowAll((open) => !open)}
+            >
+              {showAll ? 'Show fewer' : `Show all ${rows.length}`}
+            </button>
+          ) : null}
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function RadarIcon() {
+  const ring = (r: number) =>
+    Array.from({ length: 6 }, (_, i) => {
+      const a = (Math.PI / 3) * i - Math.PI / 2;
+      return `${(24 + r * Math.cos(a)).toFixed(1)},${(24 + r * Math.sin(a)).toFixed(1)}`;
+    }).join(' ');
+  return (
+    <svg className="fund-jump__icon fund-radar" viewBox="0 0 48 48" aria-hidden="true" data-icon="radar">
+      <polygon points={ring(20)} fill="none" stroke="currentColor" strokeOpacity="0.45" strokeWidth="1.2" />
+      <polygon points={ring(13)} fill="none" stroke="currentColor" strokeOpacity="0.35" strokeWidth="1" />
+      <polygon points={ring(6)} fill="none" stroke="currentColor" strokeOpacity="0.3" strokeWidth="1" />
+      <polygon points="24,8 39,17 35,32 24,36 12,30 10,16" fill="#22d3ee" fillOpacity="0.35" stroke="#22d3ee" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ChecklistIcon() {
+  return (
+    <svg className="fund-jump__icon" viewBox="0 0 48 48" aria-hidden="true">
+      <rect x="8" y="9" width="9" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M10 13.5l2.2 2.2L16 11" fill="none" stroke="#22d3ee" strokeWidth="2.2" strokeLinecap="round" />
+      <rect x="8" y="27" width="9" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M22 13.5h18M22 31.5h18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg className="fund-jump__icon" viewBox="0 0 48 48" aria-hidden="true">
+      <rect x="6" y="11" width="36" height="26" rx="5" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M21 18v12l10-6z" fill="#22d3ee" />
+    </svg>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg className="fund-chev" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -392,8 +540,9 @@ function FundamentalLine({
       {links.length ? (
         <div className="fund-move__links">
           {links.map((link) => (
-            <Link key={link.href} to={link.href}>
-              {link.label}
+            <Link key={link.href} className="fund-chip-btn" to={link.href}>
+              <span>{link.label}</span>
+              <ChevronIcon />
             </Link>
           ))}
         </div>
