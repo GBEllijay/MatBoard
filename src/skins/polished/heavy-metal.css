@@ -114,7 +114,7 @@
   height: 100%;
   padding: 1.6vh 2.4vh 2.4vh;
   display: grid;
-  grid-template-rows: 8vh 1fr 16vh 1fr;
+  grid-template-rows: 10.5vh minmax(0, 1fr) 15vh minmax(0, 1fr);
   gap: 2vh;
   isolation: isolate;
 }
@@ -122,11 +122,13 @@
 .skin-root[data-skin="heavy-metal"] .hdr {
   position: relative;
   z-index: 4;
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) 22vh minmax(0, 1fr);
+  display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  column-gap: 1.4vh;
+  gap: 1.2vh;
   min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .skin-root[data-skin="heavy-metal"] .hdr .logo {
@@ -153,16 +155,14 @@
   left: auto;
   top: auto;
   transform: none;
-  grid-column: 4;
-  justify-self: center;
-  height: 10.6vh;
-  width: 22vh;
+  flex: none;
+  height: 9vh;
+  width: 18vh;
   z-index: 2;
 }
 
 .skin-root[data-skin="heavy-metal"] .hdr .mat {
-  grid-column: 3;
-  justify-self: start;
+  flex: 1 1 0;
   margin-left: 0;
   min-width: 0;
   max-width: 100%;
@@ -193,11 +193,17 @@
   white-space: nowrap;
 }
 
-.skin-root[data-skin="heavy-metal"] .hdr .div {
-  grid-column: 5;
-  justify-self: end;
-  flex: none;
+.skin-root[data-skin="heavy-metal"] .hdr .div,
+.skin-root[data-skin="heavy-metal"] .hdr .div a {
+  display: block;
   min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.skin-root[data-skin="heavy-metal"] .hdr .div {
+  flex: 1 1 0;
   max-width: 100%;
   font-family: Oswald, sans-serif;
   font-weight: 600;
@@ -217,7 +223,7 @@
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-columns: 31% 1.3fr 1fr 1fr;
+  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.15fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
   gap: 1.6vh;
   padding: 1.8vh 1.8vh 1.8vh 4.2vh;
   min-height: 0;
@@ -317,7 +323,7 @@
   font-family: "Big Shoulders Display", sans-serif;
   font-weight: 900;
   text-transform: uppercase;
-  font-size: 7vh;
+  font-size: min(6.4vh, 4.4vw);
   line-height: 0.95;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -350,6 +356,7 @@
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
+  gap: 0.55em;
   white-space: nowrap;
   font-family: Oswald, sans-serif;
   font-weight: 700;
@@ -513,6 +520,10 @@
 
 .skin-root[data-skin="heavy-metal"] .band .status {
   justify-self: end;
+}
+
+.skin-root[data-skin="heavy-metal"] .band.is-final .status {
+  visibility: hidden;
 }
 
 .skin-root[data-skin="heavy-metal"] .band .status .sk-btn {
@@ -744,7 +755,10 @@
 @media (orientation: portrait) {
   .skin-root.skin-root[data-skin="heavy-metal"] .sb {
     padding: calc(2.4vw + 3.2rem) 3vw 3vw;
-    grid-template-rows: auto minmax(min-content, 1fr) auto minmax(min-content, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
     gap: 3.4vw;
   }
 
@@ -798,15 +812,19 @@
 
   .skin-root[data-skin="heavy-metal"] .row {
     grid-template-columns: 1.25fr 1fr 1fr;
-    grid-template-rows: auto minmax(min-content, 1fr);
-    gap: 2.4vw;
-    padding: 3vw 2.6vw 2.6vw 6vw;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 1.4vw;
+    padding: 1.6vw 2.2vw 1.4vw 5vw;
   }
 
   .skin-root[data-skin="heavy-metal"] .id {
     grid-column: 1 / -1;
-    gap: 1.6vw;
+    gap: 0.8vw;
     padding-left: 1vw;
+    overflow: visible;
   }
 
   .skin-root[data-skin="heavy-metal"] .rail {
@@ -830,11 +848,12 @@
   }
 
   .skin-root[data-skin="heavy-metal"] .row .name {
-    font-size: 9.6vw;
+    flex: none;
+    font-size: min(7.2vw, 5vh);
   }
 
   .skin-root[data-skin="heavy-metal"] .belt {
-    height: 6.6vw;
+    height: 5vw;
     font-size: 3.4vw;
     padding: 0 2.4vw 0 1.6vw;
   }
@@ -849,12 +868,14 @@
   }
 
   .skin-root[data-skin="heavy-metal"] .row .tile {
-    min-height: 14vh;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .skin-root[data-skin="heavy-metal"] .row .tile .num {
-    font-size: min(24vw, 11vh);
-    line-height: 0.86;
+    font-size: min(12vw, 4.2vh);
+    line-height: 0.82;
   }
 
   .skin-root[data-skin="heavy-metal"] .tile {
@@ -866,7 +887,7 @@
     grid-template-rows: auto auto;
     row-gap: 2vw;
     height: auto;
-    min-height: 18vh;
+    min-height: 0;
     align-content: center;
     padding: 0;
     z-index: 5;
@@ -885,7 +906,7 @@
   .skin-root[data-skin="heavy-metal"] .plate .clock .sk-btn {
     height: auto;
     width: auto;
-    font-size: min(17vw, 10vh);
+    font-size: min(14vw, 8vh);
   }
 
   .skin-root[data-skin="heavy-metal"] .band .state.state,

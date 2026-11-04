@@ -146,7 +146,7 @@ export function PolishedScoreboard({
           <span className="div">{division}</span>
         </header>
         <Row row={rows[0]} cls="c1" extra={extra[0]} chip={metal} />
-        <div className="band">
+        <div className={`band${metal && stateLabel === 'FINAL' ? ' is-final' : ''}`}>
           {metal ? (
             <div className="bandfx" aria-hidden="true">
               <div className="flameband" />
