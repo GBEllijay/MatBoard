@@ -73,14 +73,16 @@ test('a fresh curriculum is the suggested class order and does not write storage
   assert.equal(localStorage.getItem(CURRICULUM_STORAGE_KEY), null);
 });
 
-test('expected duration is a clock time and sets the timer default', () => {
-  assert.equal(normalizeExpectedDuration('5:00'), '5:00');
-  assert.equal(normalizeExpectedDuration('5'), '5:00');
-  assert.equal(normalizeExpectedDuration('1:30'), '1:30');
+test('expected duration is whole minutes and sets the timer default', () => {
+  assert.equal(normalizeExpectedDuration('5:00'), '5');
+  assert.equal(normalizeExpectedDuration('5'), '5');
+  assert.equal(normalizeExpectedDuration('8:00'), '8');
+  assert.equal(normalizeExpectedDuration('1:30'), '2');
   assert.equal(normalizeExpectedDuration(''), '');
   assert.equal(expectedToWorkMs('5:00'), 5 * 60_000);
   assert.equal(expectedToWorkMs('5'), 5 * 60_000);
-  assert.equal(expectedToWorkMs('1:30'), 90_000);
+  assert.equal(expectedToWorkMs('8:00'), 8 * 60_000);
+  assert.equal(expectedToWorkMs('1:30'), 2 * 60_000);
   assert.equal(expectedToWorkMs(''), 5 * 60_000);
   assert.equal(expectedToWorkMs('soon'), 5 * 60_000);
 });
@@ -128,7 +130,7 @@ test('today saves on this phone and class folders use the designation', () => {
   plan.blocks[1]!.notes = 'Shrimps';
   plan.blocks[1]!.expected = '5';
   const saved = saveCurriculum(TODAY, plan, TODAY);
-  assert.equal(saved.plan.blocks[1]?.expected, '5:00');
+  assert.equal(saved.plan.blocks[1]?.expected, '5');
   const loaded = loadCurriculumArchive(TODAY);
   assert.equal(plansOnCurriculumDay(loaded, TODAY)[0]?.coachName, 'Alex');
   const folders = curriculumBrowseFolders(loaded, TODAY);

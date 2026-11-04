@@ -12794,6 +12794,24 @@ html.lesson-cover-open body {
   padding: 0.45rem 0.75rem;
 }
 
+.notes__time .wheel-value {
+  width: auto;
+  flex: 0 0 auto;
+  min-width: 5.5rem;
+  max-width: 8rem;
+  min-height: 48px;
+  margin: 0 0 0 auto;
+  padding: 0.2rem 0.75rem;
+  font-size: 1.2rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.notes__time .wheel-value:disabled {
+  opacity: 0.72;
+  cursor: default;
+}
+
 .notes__field textarea,
 .notes__area {
   min-height: 6.5rem;

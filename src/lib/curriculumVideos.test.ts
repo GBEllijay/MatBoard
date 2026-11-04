@@ -32,11 +32,15 @@ test('only looping-video cards are shown in the daily training window', () => {
   assert.equal(curriculumVideoCards([emptyCurriculum()]).length, 0);
 });
 
-test('a short expected duration is the loop length for that card', () => {
-  const plan = withVideo(emptyCurriculum(), 2, '0:04');
+test('expected minutes are the loop length, and old m:ss rounds to a minute', () => {
+  const plan = withVideo(emptyCurriculum(), 2, '1:30');
   const cards = curriculumVideoCards([plan]);
   assert.equal(cards[0]?.title, 'Take Downs');
-  assert.equal(cards[0]?.durationMs, 4_000);
+  assert.equal(cards[0]?.durationMs, 2 * 60_000);
+  const eight = withVideo(emptyCurriculum(), 0, '8:00');
+  assert.equal(curriculumVideoCards([eight])[0]?.durationMs, 8 * 60_000);
+  const short = withVideo(emptyCurriculum(), 0, '0:04');
+  assert.equal(curriculumVideoCards([short])[0]?.durationMs, 60_000);
 });
 
 test('an added card with looping video is included', () => {
