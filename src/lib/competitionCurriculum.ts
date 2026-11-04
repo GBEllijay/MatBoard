@@ -5,7 +5,7 @@
  * A Drive copy is text only, in the gym's connected folder. Advantage does not host videos.
  */
 
-import { parseMmSs } from './format.ts';
+import { migrateExpectedDuration, parseExpectedMinutes } from './expectedDuration.ts';
 import { asRecord, clampText } from './plainValue.ts';
 import { cleanClip, cleanReviewSlot, type ReplayClipRef, type ReviewSlot } from './replayAnalysis.ts';
 import {
@@ -36,7 +36,6 @@ export const CURRICULUM_UNLOCK_LABEL = "Edit today's curriculum";
 export const CURRICULUM_ADD_LABEL = '+ Add another';
 export const CURRICULUM_ADD_EXAMPLES = 'Cardio, Bag Work, Sparring';
 export const DESIGNATION_PLACEHOLDER = 'Gi, No Gi, Cardio, Wrestling';
-export const EXPECTED_PLACEHOLDER = '5:00';
 export const DEFAULT_EXPECTED_MS = 5 * 60_000;
 export const DEFAULT_LIVE_ROUNDS = 5;
 export const MAX_BLOCKS = 20;
@@ -65,7 +64,10 @@ export type CurriculumBlock = {
   /** Custom section title. Suggested cards keep their own headings. */
   title: string;
   notes: string;
-  /** Clock time such as 5:00. A bare minute count is stored as m:00. */
+  /**
+   * Whole minutes, such as "8". Blank means 5. Older "8:00" and "1:30" strings
+   * migrate to a minute on load.
+   */
   expected: string;
   waterBreak: boolean;
   timing: CurriculumTiming;
@@ -181,22 +183,26 @@ export function blockOffersExpected(kind: CurriculumKind): boolean {
   return kind !== 'live';
 }
 
-/** `5:00` stays. A bare minute count such as `5` becomes `5:00`. */
+/**
+ * Stored minute count. "8:00" becomes "8". "1:30" becomes "2".
+ * Blank stays blank. Text that is not a duration is kept.
+ */
 export function normalizeExpectedDuration(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return '';
-  const clock = /^(\d{1,2}):([0-5]\d)$/.exec(trimmed);
-  if (clock) return `${Number(clock[1])}:${clock[2]}`;
-  const minutes = /^(\d{1,2})$/.exec(trimmed);
-  if (minutes) return `${Number(minutes[1])}:00`;
-  return trimmed.slice(0, EXPECTED_MAX);
+  const migrated = migrateExpectedDuration(value);
+  return migrated.length > EXPECTED_MAX ? migrated.slice(0, EXPECTED_MAX) : migrated;
 }
 
-/** Milliseconds for the round timer or video looper. Blank or unreadable text uses 5:00. */
+/**
+ * Milliseconds for the round timer or the looping video.
+ * Blank or unreadable text uses 5 minutes. A clock string rounds to a minute.
+ * The round timer still clamps this to its own 1:00–60:00 wheel.
+ */
 export function expectedToWorkMs(value: string, fallbackMs = DEFAULT_EXPECTED_MS): number {
-  const ms = parseMmSs(normalizeExpectedDuration(value));
-  if (ms == null || ms < 1_000) return fallbackMs;
-  return Math.min(ms, (99 * 60 + 59) * 1_000);
+  const trimmed = value.trim();
+  if (!trimmed) return fallbackMs;
+  const minutes = parseExpectedMinutes(trimmed);
+  if (minutes == null) return fallbackMs;
+  return minutes * 60_000;
 }
 
 function clampRounds(value: unknown): number {

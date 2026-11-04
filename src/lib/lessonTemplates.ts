@@ -13,6 +13,7 @@
  * `blocks` and still open as Adult.
  */
 
+import { migrateExpectedDuration } from './expectedDuration.ts';
 import {
   EXPECTED_MAX,
   MAX_TECHNIQUES,
@@ -427,7 +428,7 @@ function cleanGame(value: unknown): { game: GameBlock; repaired: boolean } | nul
   const id = idValue ? idValue.slice(0, 80) : createId('game');
   const title = clampText(raw.title, TECHNIQUE_TITLE_MAX);
   const notes = clampText(raw.notes, TECHNIQUE_NOTES_MAX);
-  const expected = clampText(raw.expected, EXPECTED_MAX);
+  const expected = migrateExpectedDuration(clampText(raw.expected, EXPECTED_MAX));
   const repaired =
     !idValue ||
     raw.id !== id ||

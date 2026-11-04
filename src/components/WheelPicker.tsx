@@ -14,11 +14,14 @@ export function WheelPicker({
   value,
   options,
   onChange,
+  disabled = false,
 }: {
   label: string;
   value: number;
   options: readonly WheelOption[];
   onChange: (value: number) => void;
+  /** Past days can show the value without opening the wheel. */
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [wheelNode, setWheelNode] = useState<HTMLDivElement | null>(null);
@@ -92,7 +95,10 @@ export function WheelPicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={`${label}, ${selected?.label ?? ''}`}
-        onClick={() => setOpen(true)}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) setOpen(true);
+        }}
       >
         <span className="wheel-value__readout">{selected?.label}</span>
       </button>

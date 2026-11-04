@@ -13,6 +13,7 @@ import { PlanDateNav } from '../components/PlanDateNav';
 import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
 import { AdvantageCloudPanel } from '../components/AdvantageCloudMedia';
+import { ExpectedDurationField } from '../components/ExpectedDurationField';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -133,7 +134,6 @@ import {
   CLOSING_MAX,
   COACH_NAME_MAX,
   COOLDOWN_NOTE_MAX,
-  EXPECTED_MAX,
   INTRO_MAX,
   MAX_TECHNIQUES,
   SPECIFIC_NOTE_MAX,
@@ -1179,7 +1179,7 @@ export function TrainingNotesPage() {
                     <div className="notes__section-head">
                       <div className="notes__field-bar">
                         <label htmlFor="notes-intro">Intro</label>
-                        <ExpectedTime
+                        <ExpectedDurationField
                           id="notes-intro-time"
                           value={plan.introExpected}
                           readOnly={!editingToday}
@@ -1504,33 +1504,6 @@ export function TrainingNotesPage() {
   );
 }
 
-function ExpectedTime({
-  id,
-  value,
-  readOnly,
-  onChange,
-}: {
-  id: string;
-  value: string;
-  readOnly: boolean;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="notes__time" htmlFor={id}>
-      Expected Duration
-      <input
-        id={id}
-        value={value}
-        maxLength={EXPECTED_MAX}
-        readOnly={readOnly}
-        autoComplete="off"
-        enterKeyHint="done"
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
-  );
-}
-
 function NoteSection({
   id,
   title,
@@ -1569,7 +1542,7 @@ function NoteSection({
         <label className="notes__kicker" htmlFor={id}>
           {label}
         </label>
-        <ExpectedTime
+        <ExpectedDurationField
           id={`${id}-time`}
           value={expected}
           readOnly={readOnly}
@@ -1636,7 +1609,7 @@ function TechniqueBlockView({
         <div className="notes__field">
           <div className="notes__field-bar">
             <label htmlFor={notesId}>Notes</label>
-            <ExpectedTime
+            <ExpectedDurationField
               id={`notes-tech-time-${tech.id}`}
               value={tech.expected}
               readOnly={readOnly}
@@ -1716,7 +1689,7 @@ function GameBlockView({
         <div className="notes__field">
           <div className="notes__field-bar">
             <label htmlFor={notesId}>Notes</label>
-            <ExpectedTime
+            <ExpectedDurationField
               id={`notes-game-time-${game.id}`}
               value={game.expected}
               readOnly={readOnly}

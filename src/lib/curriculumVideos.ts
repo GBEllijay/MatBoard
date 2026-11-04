@@ -32,6 +32,7 @@ function videoCard(plan: CurriculumPlan, blockId: string): CurriculumVideoCard |
     title: blockHeading(block),
     clipId: block.clipId,
     mediaName: block.mediaName,
+    // Expected minutes are the loop length. This card has no separate length control.
     durationMs: expectedToWorkMs(block.expected),
     locked: plan.locked,
   };

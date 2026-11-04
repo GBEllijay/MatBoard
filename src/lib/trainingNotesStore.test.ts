@@ -228,15 +228,15 @@ test('copy keeps the words and mints new technique slot ids', () => {
   assert.equal(copied.classDesignation, 'GB1');
   assert.equal(copied.classTime, '5:00 PM');
   assert.equal(copied.intro, 'No-gi.');
-  assert.equal(copied.introExpected, '5 min');
+  assert.equal(copied.introExpected, '5');
   assert.equal(copied.specificNote, 'Rounds start from mount escapes.');
-  assert.equal(copied.specificExpected, '15 min');
-  assert.equal(copied.warmupExpected, '10 minutes');
-  assert.equal(copied.cooldownExpected, '3 min');
+  assert.equal(copied.specificExpected, '15');
+  assert.equal(copied.warmupExpected, '10');
+  assert.equal(copied.cooldownExpected, '3');
   assert.equal(copied.techniques.length, 4);
   assert.equal(copied.techniques[0].title, 'Armbar');
   assert.equal(copied.techniques[0].notes, 'Elbow tight.');
-  assert.equal(copied.techniques[0].expected, '8 min');
+  assert.equal(copied.techniques[0].expected, '8');
   assert.equal(copied.techniques[0].treeId, 'tree-armbar');
   assert.equal(copied.techniques[2].waterBreak, true);
   assert.equal(copied.techniques[3].title, 'Sweep');
@@ -347,15 +347,15 @@ test('specific training and expected times save, copy, and stay blank when missi
   plan.cooldownExpected = '3 min';
   plan.techniques[0].expected = '8 min';
   const saved = saveTrainingNotes(plan, TODAY);
-  assert.equal(saved.introExpected, '5 min');
-  assert.equal(saved.warmupExpected, '10 minutes');
+  assert.equal(saved.introExpected, '5');
+  assert.equal(saved.warmupExpected, '10');
   assert.equal(saved.specificNote, 'Rounds start from mount escapes.');
-  assert.equal(saved.specificExpected, '15 min');
-  assert.equal(saved.cooldownExpected, '3 min');
-  assert.equal(saved.techniques[0].expected, '8 min');
+  assert.equal(saved.specificExpected, '15');
+  assert.equal(saved.cooldownExpected, '3');
+  assert.equal(saved.techniques[0].expected, '8');
   const loaded = loadTrainingNotes(TODAY);
   assert.equal(loaded.specificNote, plan.specificNote);
-  assert.equal(loaded.techniques[0].expected, '8 min');
+  assert.equal(loaded.techniques[0].expected, '8');
 
   const onlyRounds = emptyPlan();
   onlyRounds.specificNote = 'Positional sparring.';
@@ -366,10 +366,10 @@ test('specific training and expected times save, copy, and stay blank when missi
 
   const copied = copyPlan(saved);
   assert.equal(copied.specificNote, saved.specificNote);
-  assert.equal(copied.specificExpected, '15 min');
-  assert.equal(copied.introExpected, '5 min');
-  assert.equal(copied.cooldownExpected, '3 min');
-  assert.equal(copied.techniques[0].expected, '8 min');
+  assert.equal(copied.specificExpected, '15');
+  assert.equal(copied.introExpected, '5');
+  assert.equal(copied.cooldownExpected, '3');
+  assert.equal(copied.techniques[0].expected, '8');
 
   storage.clear();
   const legacy = emptyPlan();

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { PlanDateNav } from '../components/PlanDateNav';
+import { ExpectedDurationField } from '../components/ExpectedDurationField';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { ReviewSlotControls } from '../components/ReviewSlotControls';
 import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
@@ -30,7 +31,6 @@ import {
   RECORD_FOR_REVIEW_LABEL,
   CURRICULUM_UNLOCK_LABEL,
   DESIGNATION_PLACEHOLDER,
-  EXPECTED_PLACEHOLDER,
   MAX_BLOCKS,
   MAX_ROUNDS,
   MIN_ROUNDS,
@@ -54,7 +54,6 @@ import {
   insertBlockAfter,
   loadCurriculumArchive,
   moveBlock,
-  normalizeExpectedDuration,
   plansOnCurriculumDay,
   searchCurriculumPlans,
   removeBlock,
@@ -67,7 +66,7 @@ import { exportCurriculumToDrive } from '../lib/curriculumDrive';
 import { techniquesPathForCurriculum } from '../lib/curriculumVideos';
 import { deleteUnusedTrainingClip, readTrainingClipBlob } from '../lib/techniqueStore';
 import { CONNECT_WITH_TITLE } from '../lib/cloudStorage';
-import { CLASS_DESIGNATION_MAX, CLASS_TIME_MAX, CLOSING_MAX, COACH_NAME_MAX, EXPECTED_MAX, TECHNIQUE_NOTES_MAX, TECHNIQUE_TITLE_MAX, localDateKey, planDayStamp, planDayTitle, shiftDateKey } from '../lib/trainingNotesStore';
+import { CLASS_DESIGNATION_MAX, CLASS_TIME_MAX, CLOSING_MAX, COACH_NAME_MAX, TECHNIQUE_NOTES_MAX, TECHNIQUE_TITLE_MAX, localDateKey, planDayStamp, planDayTitle, shiftDateKey } from '../lib/trainingNotesStore';
 import { techniqueTreeLaunchPath } from '../lib/lessonLinks';
 import { COACHING_TOOLS_PATH, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
@@ -707,36 +706,6 @@ export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boo
   );
 }
 
-function ExpectedTime({
-  id,
-  value,
-  readOnly,
-  onChange,
-}: {
-  id: string;
-  value: string;
-  readOnly: boolean;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="notes__time" htmlFor={id}>
-      Expected Duration
-      <input
-        id={id}
-        value={value}
-        maxLength={EXPECTED_MAX}
-        placeholder={EXPECTED_PLACEHOLDER}
-        readOnly={readOnly}
-        autoComplete="off"
-        inputMode="text"
-        enterKeyHint="done"
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={(event) => onChange(normalizeExpectedDuration(event.currentTarget.value))}
-      />
-    </label>
-  );
-}
-
 function CurriculumCard({
   block,
   index,
@@ -856,7 +825,7 @@ function CurriculumCard({
           />
         ) : null}
         {blockOffersExpected(block.kind) ? (
-          <ExpectedTime
+          <ExpectedDurationField
             id={`curriculum-${block.id}-time`}
             value={block.expected}
             readOnly={readOnly}
