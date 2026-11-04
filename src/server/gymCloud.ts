@@ -86,7 +86,7 @@ export type GymCloudEnv = {
   ENTITLEMENTS_DB?: D1Database | null;
 };
 
-type Actor = {
+export type GymCloudActor = {
   licenseId: string;
   kind: 'owner' | 'seat';
   preset: string | null;
@@ -98,7 +98,10 @@ type Actor = {
   replayUpload: ReplayCloudUpload;
   /** Program director: upload to today's daily videos only. */
   dailyDrop: boolean;
+  /** This license has Advantage Cloud (Pro Plus Cloud). Used by the gym roster function. */
+  plusCloud: boolean;
 };
+type Actor = GymCloudActor;
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -145,6 +148,16 @@ async function seatIsActive(env: GymCloudEnv, licenseId: string, seatId: string)
   }
 }
 
+/** Signed-in actor for the gym cloud functions. Revoked seats get 403 here. */
+export async function readGymCloudActor(request: Request, env: GymCloudEnv, now: Date): Promise<GymCloudActor | Response> {
+  return readActor(request, env, now);
+}
+
+/** Bytes used under one prefix of the gym bucket. */
+export function gymBytesUnder(bucket: GymMediaBucket, prefix: string): Promise<number> {
+  return bytesUnder(bucket, prefix);
+}
+
 async function readActor(request: Request, env: GymCloudEnv, now: Date): Promise<Actor | Response> {
   const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
   if (!material) return json(503, { ok: false, error: 'Sign-in is not set up yet.' });
@@ -182,6 +195,7 @@ async function actorForClaims(env: GymCloudEnv, claims: EntitlementClaims, now: 
     seatId: seat ? claims.sid ?? '' : '',
     replayUpload: cloudReplayUpload({ plusCloud, kind: seat ? 'seat' : 'owner', preset: claims.preset ?? null }),
     dailyDrop: cloudDailyVideoDrop({ plusCloud, kind: seat ? 'seat' : 'owner', preset: claims.preset ?? null }),
+    plusCloud,
   };
 }
 

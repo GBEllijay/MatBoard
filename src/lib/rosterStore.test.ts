@@ -435,13 +435,13 @@ describe('student and competitor CSV lists stay separate', () => {
     const template = rosterCsvTemplate();
     assert.equal(
       template.startsWith(
-        'Name,Belt,Division,Gym name / nickname,Last promotion,Last promotion detail,Notes,Check In\r\n',
+        'Name,Belt,Division,Gym name / nickname,Last promotion,Last promotion detail,Notes,Check In,Belt achieved,Last stripe awarded,Stripes,Training start date,Gi / No-Gi / Both\r\n',
       ),
       true,
     );
     const blank = template.split('\r\n').filter((line) => line.length);
     assert.equal(blank.length, 4);
-    assert.equal(blank.slice(1).every((line) => line === ',,,,,,,'), true);
+    assert.equal(blank.slice(1).every((line) => line === ',,,,,,,,,,,,'), true);
 
     const csv = [
       'Name,Belt,Division,Gym name / nickname,Last promotion,Last promotion detail,Notes,Check In',

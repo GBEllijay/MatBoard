@@ -159,6 +159,15 @@ export function routeUpload(input: {
   if (purpose === 'lesson' && (input.role === 'student' || input.role === 'program-director' || input.role === 'none')) {
     return { ok: false, reason: 'role-hidden' };
   }
+  // The gym roster folder holds the shared roster backup and pending roster edits.
+  // Students never write there. Assistant coach and program director seats have no
+  // roster submit, so they do not write there either.
+  if (
+    purpose === 'roster' &&
+    (input.role === 'student' || input.role === 'none' || input.role === 'assistant' || input.role === 'program-director')
+  ) {
+    return { ok: false, reason: 'role-hidden' };
+  }
   if ((purpose === 'student-file' || purpose === 'student-assessment') && input.role !== 'student') {
     return { ok: false, reason: 'role-hidden' };
   }
