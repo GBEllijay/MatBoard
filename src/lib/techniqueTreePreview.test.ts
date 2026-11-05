@@ -2,16 +2,22 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { TECHNIQUE_TREE_STORAGE_KEY } from './techniqueTreeStore.ts';
 import {
+  PREVIEW_LESSON_DATE,
   PREVIEW_STORAGE_KEY,
   attachLesson,
+  attributedMinutes,
   beltCoverage,
+  lessonTracking,
   loadPreviewState,
   logJournal,
+  logPreviewMatTime,
   matchIndex,
   previewBackTarget,
   saveIndexEntry,
   savePreviewState,
   seedPreview,
+  tagAsVariation,
+  tagPosition,
 } from './techniqueTreePreview.ts';
 
 function memoryStorage(initial: Record<string, string> = {}) {
@@ -224,4 +230,121 @@ test('preview storage stays off the live technique tree key and a broken store f
   assert.equal(previewBackTarget(null), '/products');
   assert.equal(previewBackTarget('tools'), '/coaching-tools');
   assert.equal(previewBackTarget('unlimited'), '/coach-unlimited');
+});
+
+test('class mat time on a lesson day counts toward each taught technique and replaces the same day', () => {
+  const state = seedPreview();
+  const mayaArm = attributedMinutes(state, 'stu-maya', 'core-armbar');
+  const mayaSpin = attributedMinutes(state, 'stu-maya', 'var-armbar-spin');
+  const mayaEscape = attributedMinutes(state, 'stu-maya', 'core-escape');
+  assert.equal(mayaArm.classMinutes, 90);
+  assert.equal(mayaSpin.classMinutes, 90);
+  assert.equal(mayaEscape.classMinutes, 90);
+  assert.equal(mayaArm.openMatMinutes, 0);
+  assert.equal(attributedMinutes(state, 'stu-maya', 'core-scissor').classMinutes, 0);
+  assert.equal(attributedMinutes(state, 'stu-luis', 'core-armbar').classMinutes, 75);
+  assert.equal(attributedMinutes(state, 'stu-priya', 'core-armbar').minutes, 0);
+
+  const replaced = logPreviewMatTime(state, {
+    studentId: 'stu-maya',
+    date: PREVIEW_LESSON_DATE,
+    kind: 'class',
+    minutes: 60,
+  });
+  assert.equal(replaced.ok, true);
+  if (!replaced.ok) return;
+  assert.equal(replaced.replaced, true);
+  assert.equal(replaced.state.matLogs.filter((log) => log.studentId === 'stu-maya' && log.kind === 'class').length, 1);
+  assert.equal(attributedMinutes(replaced.state, 'stu-maya', 'core-armbar').classMinutes, 60);
+
+  const otherDay = logPreviewMatTime(state, {
+    studentId: 'stu-maya',
+    date: '2026-11-12',
+    kind: 'class',
+    minutes: 45,
+  });
+  assert.equal(otherDay.ok, true);
+  if (!otherDay.ok) return;
+  assert.equal(otherDay.replaced, false);
+  assert.equal(attributedMinutes(otherDay.state, 'stu-maya', 'core-armbar').classMinutes, 90);
+  assert.equal(logPreviewMatTime(state, { studentId: 'stu-maya', date: '11/05/2026', kind: 'class', minutes: 30 }).ok, false);
+  assert.equal(logPreviewMatTime(state, { studentId: 'stu-maya', date: PREVIEW_LESSON_DATE, kind: 'class', minutes: 0 }).ok, false);
+});
+
+test('open mat is a wash unless the student notes the technique', () => {
+  const state = seedPreview();
+  assert.equal(attributedMinutes(state, 'stu-maya', 'core-armbar').openMatMinutes, 0);
+  assert.equal(attributedMinutes(state, 'stu-luis', 'var-armbar-spin').openMatMinutes, 45);
+  assert.equal(attributedMinutes(state, 'stu-luis', 'var-armbar-spin').minutes, 75 + 45);
+  assert.equal(attributedMinutes(state, 'stu-luis', 'core-armbar').openMatMinutes, 0);
+
+  const unnamed = logPreviewMatTime(state, {
+    studentId: 'stu-priya',
+    date: '2026-11-08',
+    kind: 'openMat',
+    minutes: 30,
+    indexId: 'core-armbar',
+    note: '   ',
+  });
+  assert.equal(unnamed.ok, true);
+  if (!unnamed.ok) return;
+  assert.equal(attributedMinutes(unnamed.state, 'stu-priya', 'core-armbar').openMatMinutes, 0);
+
+  const noted = logPreviewMatTime(unnamed.state, {
+    studentId: 'stu-priya',
+    date: '2026-11-08',
+    kind: 'openMat',
+    minutes: 30,
+    indexId: 'core-armbar',
+    note: 'Worked the armbar',
+  });
+  assert.equal(noted.ok, true);
+  if (!noted.ok) return;
+  assert.equal(noted.replaced, true);
+  assert.equal(noted.state.matLogs.filter((log) => log.studentId === 'stu-priya' && log.kind === 'openMat').length, 1);
+  assert.equal(attributedMinutes(noted.state, 'stu-priya', 'core-armbar').openMatMinutes, 30);
+});
+
+test('lesson tags grow the index, and class tracking shows rating plus minutes', () => {
+  const state = seedPreview();
+  const tagged = tagPosition(state, 'core-knee-slice', 'pos-side');
+  assert.equal(tagged.ok, true);
+  if (!tagged.ok) return;
+  assert.equal(tagged.added, true);
+  assert.ok(tagged.entry.positionIds.includes('pos-side'));
+  assert.equal(tagPosition(tagged.state, 'core-knee-slice', 'pos-side').ok, true);
+
+  const created = saveIndexEntry(state, {
+    name: 'Gift wrap',
+    kind: 'core',
+    positionId: 'pos-mount',
+    id: 'core-gift',
+  });
+  assert.equal(created.ok, true);
+  if (!created.ok) return;
+  const variation = tagAsVariation(created.state, 'core-gift', 'core-armbar');
+  assert.equal(variation.ok, true);
+  if (!variation.ok) return;
+  assert.equal(variation.entry.kind, 'variation');
+  assert.equal(variation.entry.parentId, 'core-armbar');
+  assert.equal(tagAsVariation(state, 'core-armbar', 'core-triangle').ok, false);
+
+  const tracking = lessonTracking(state);
+  const armbar = tracking.moves.find((move) => move.indexId === 'core-armbar');
+  assert.equal(armbar?.inClassCount, 2);
+  const maya = armbar?.students.find((student) => student.studentId === 'stu-maya');
+  const priya = armbar?.students.find((student) => student.studentId === 'stu-priya');
+  assert.equal(maya?.inClass, true);
+  assert.equal(maya?.rating, 4);
+  assert.equal(maya?.classMinutes, 90);
+  assert.equal(maya?.openMatMinutes, 0);
+  assert.equal(priya?.inClass, false);
+  assert.equal(priya?.rating, 5);
+  assert.equal(priya?.minutes, 0);
+  const spin = tracking.moves.find((move) => move.indexId === 'var-armbar-spin');
+  const luis = spin?.students.find((student) => student.studentId === 'stu-luis');
+  assert.equal(luis?.rating, 4);
+  assert.equal(luis?.classMinutes, 75);
+  assert.equal(luis?.openMatMinutes, 45);
+  assert.equal(beltCoverage(state, 'stu-maya', 'white')?.rows.find((row) => row.indexId === 'core-armbar')?.minutes, 90);
 });

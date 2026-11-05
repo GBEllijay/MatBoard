@@ -1,25 +1,31 @@
 /**
- * Preview-only fundamentals index for the technique-tree demo.
+ * Preview-only fundamentals index.
  * Storage key is separate from the live coach Technique Tree.
- * Shared index ids connect a lesson attach, a journal rating, and belt coverage.
+ * Shared index ids connect a lesson attach, a journal rating, class mat time, and belt coverage.
+ * Class mat time follows the live rule: one Class row per student per day, replaced in place.
  */
 
+import { clampMinutes } from './matHours.ts';
 import { asRecord, clampText } from './plainValue.ts';
 
 export const PREVIEW_STORAGE_KEY = 'matboard.preview.techniqueFundamentals.v1';
 export const TECHNIQUE_TREE_PREVIEW_PATH = '/preview/technique-tree';
 export const TECHNIQUE_TREE_PREVIEW_BANNER =
   'Preview only — not live curriculum. Draft for owner review.';
+export const PREVIEW_LESSON_DATE = '2026-11-05';
 
 const NAME_MAX = 80;
 const NOTE_MAX = 400;
+const OPEN_NOTE_MAX = 80;
 const ID_MAX = 80;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export type EntryKind = 'position' | 'core' | 'variation';
 export type MoveKind = 'core' | 'variation';
 export type JournalRating = 1 | 2 | 3 | 4 | 5;
 export type BeltId = 'kids-grey' | 'kids-yellow' | 'white' | 'blue' | 'purple';
-export type PreviewView = 'index' | 'lesson' | 'journal' | 'belts';
+export type MatKind = 'class' | 'openMat';
+export type PreviewView = 'lesson' | 'journal' | 'class' | 'belts' | 'index';
 
 export type IndexEntry = {
   id: string;
@@ -36,6 +42,20 @@ export type LessonLine = {
   indexId: string;
   fundamentals: boolean;
   addedAt: string;
+  /** Class day. A Class mat-time log on this date counts toward this index entry. */
+  date: string;
+};
+
+export type MatLog = {
+  id: string;
+  studentId: string;
+  date: string;
+  kind: MatKind;
+  minutes: number;
+  /** Open mat only, and only when the student names a technique. Class logs stay null. */
+  indexId: string | null;
+  /** Open mat attribution requires this note. Blank is a wash. */
+  note: string;
 };
 
 export type JournalLine = {
@@ -62,9 +82,12 @@ export type PreviewStudent = {
 
 export type PreviewState = {
   version: 1;
+  /** Day the lesson screen is planning. New attaches land on this date. */
+  lessonDate: string;
   entries: IndexEntry[];
   lessons: LessonLine[];
   journal: JournalLine[];
+  matLogs: MatLog[];
   belts: BeltRequirement[];
   students: PreviewStudent[];
 };
@@ -78,14 +101,16 @@ export const RATING_WORDS: Record<JournalRating, string> = {
 };
 
 export const PREVIEW_VIEWS: readonly { id: PreviewView; label: string }[] = [
-  { id: 'index', label: 'Index' },
   { id: 'lesson', label: 'Lesson' },
   { id: 'journal', label: 'Journal' },
+  { id: 'class', label: 'Class' },
   { id: 'belts', label: 'Belts' },
+  { id: 'index', label: 'Index' },
 ];
 
 const SEED: PreviewState = {
   version: 1,
+  lessonDate: PREVIEW_LESSON_DATE,
   entries: [
     position('pos-mount', 'Mount'),
     position('pos-closed', 'Closed guard'),
@@ -124,9 +149,15 @@ const SEED: PreviewState = {
     variation('var-escape-side', 'Elbow-knee from side control', 'core-escape', ['pos-side']),
   ],
   lessons: [
-    { id: 'lesson-armbar', indexId: 'core-armbar', fundamentals: true, addedAt: '2026-11-05T15:00:00.000Z' },
-    { id: 'lesson-spin', indexId: 'var-armbar-spin', fundamentals: false, addedAt: '2026-11-05T15:05:00.000Z' },
-    { id: 'lesson-escape', indexId: 'core-escape', fundamentals: true, addedAt: '2026-11-05T15:10:00.000Z' },
+    { id: 'lesson-armbar', indexId: 'core-armbar', fundamentals: true, addedAt: '2026-11-05T15:00:00.000Z', date: PREVIEW_LESSON_DATE },
+    { id: 'lesson-spin', indexId: 'var-armbar-spin', fundamentals: false, addedAt: '2026-11-05T15:05:00.000Z', date: PREVIEW_LESSON_DATE },
+    { id: 'lesson-escape', indexId: 'core-escape', fundamentals: true, addedAt: '2026-11-05T15:10:00.000Z', date: PREVIEW_LESSON_DATE },
+  ],
+  matLogs: [
+    mat('mat-maya-class', 'stu-maya', PREVIEW_LESSON_DATE, 'class', 90, null, ''),
+    mat('mat-maya-open', 'stu-maya', '2026-11-06', 'openMat', 60, null, ''),
+    mat('mat-luis-class', 'stu-luis', PREVIEW_LESSON_DATE, 'class', 75, null, ''),
+    mat('mat-luis-open', 'stu-luis', '2026-11-07', 'openMat', 45, 'var-armbar-spin', 'Spinning armbar entries'),
   ],
   journal: [
     line('j-maya-arm-1', 'stu-maya', 'core-armbar', 2, 'Lost the grip on the way over.', '2026-10-02T17:00:00.000Z'),
@@ -219,6 +250,18 @@ function line(
   loggedAt: string,
 ): JournalLine {
   return { id, studentId, indexId, rating, note, loggedAt };
+}
+
+function mat(
+  id: string,
+  studentId: string,
+  date: string,
+  kind: MatKind,
+  minutes: number,
+  indexId: string | null,
+  note: string,
+): MatLog {
+  return { id, studentId, date, kind, minutes, indexId, note };
 }
 
 let idSeq = 0;
@@ -413,6 +456,7 @@ export function attachLesson(
     indexId: entry.id,
     fundamentals: input.fundamentals,
     addedAt: input.addedAt ?? new Date().toISOString(),
+    date: state.lessonDate,
   };
   return { ok: true, line, state: { ...state, lessons: [...state.lessons, line] } };
 }
@@ -426,6 +470,206 @@ export function setLessonFundamentals(state: PreviewState, lessonId: string, fun
 
 export function removeLesson(state: PreviewState, lessonId: string): PreviewState {
   return { ...state, lessons: state.lessons.filter((lesson) => lesson.id !== lessonId) };
+}
+
+/** Move this class's lesson lines onto a new day. Other dates stay put. */
+export function setLessonDate(state: PreviewState, date: string): PreviewState {
+  if (!ISO_DATE.test(date)) return state;
+  const previous = state.lessonDate;
+  return {
+    ...state,
+    lessonDate: date,
+    lessons: state.lessons.map((lesson) => (lesson.date === previous ? { ...lesson, date } : lesson)),
+  };
+}
+
+export type TagPositionResult =
+  | { ok: true; state: PreviewState; entry: IndexEntry; added: boolean }
+  | { ok: false; reason: 'unknown' | 'not-a-move' | 'missing-position' };
+
+/** Coach tag: this move also sprouts from a position hub. */
+export function tagPosition(state: PreviewState, indexId: string, positionId: string): TagPositionResult {
+  const entry = findEntry(state.entries, indexId);
+  if (!entry) return { ok: false, reason: 'unknown' };
+  if (entry.kind === 'position') return { ok: false, reason: 'not-a-move' };
+  const hub = findEntry(state.entries, positionId);
+  if (!hub || hub.kind !== 'position') return { ok: false, reason: 'missing-position' };
+  if (entry.positionIds.includes(hub.id)) return { ok: true, state, entry, added: false };
+  const next: IndexEntry = { ...entry, positionIds: [...entry.positionIds, hub.id] };
+  return { ok: true, entry: next, added: true, state: replaceEntry(state, next) };
+}
+
+export type TagVariationResult =
+  | { ok: true; state: PreviewState; entry: IndexEntry }
+  | { ok: false; reason: 'unknown' | 'not-a-move' | 'missing-parent' | 'bad-parent' | 'has-children' };
+
+/** Coach tag: this move hangs off a core. A core with its own variations stays a core. */
+export function tagAsVariation(state: PreviewState, indexId: string, parentId: string): TagVariationResult {
+  const entry = findEntry(state.entries, indexId);
+  if (!entry) return { ok: false, reason: 'unknown' };
+  if (entry.kind === 'position') return { ok: false, reason: 'not-a-move' };
+  const parent = findEntry(state.entries, parentId);
+  if (!parent) return { ok: false, reason: 'missing-parent' };
+  if (parent.kind !== 'core' || parent.id === entry.id) return { ok: false, reason: 'bad-parent' };
+  if (state.entries.some((item) => item.parentId === entry.id)) return { ok: false, reason: 'has-children' };
+  const next: IndexEntry = { ...entry, kind: 'variation', parentId: parent.id };
+  return { ok: true, entry: next, state: replaceEntry(state, next) };
+}
+
+function replaceEntry(state: PreviewState, next: IndexEntry): PreviewState {
+  return { ...state, entries: state.entries.map((entry) => (entry.id === next.id ? next : entry)) };
+}
+
+export type LogMatResult =
+  | { ok: true; state: PreviewState; log: MatLog; replaced: boolean }
+  | { ok: false; reason: 'bad-date' | 'bad-minutes' | 'unknown-student' | 'unknown-index' | 'not-a-move' };
+
+/**
+ * One Class row per student per day, same as live mat hours. Logging that day again
+ * replaces the minutes. Open mat is its own row and does not count toward a technique
+ * unless `note` names the work and `indexId` is that technique.
+ */
+export function logPreviewMatTime(
+  state: PreviewState,
+  input: {
+    studentId: string;
+    date: string;
+    kind: MatKind;
+    minutes: number;
+    indexId?: string | null;
+    note?: string;
+    id?: string;
+  },
+): LogMatResult {
+  if (!ISO_DATE.test(input.date)) return { ok: false, reason: 'bad-date' };
+  const minutes = clampMinutes(input.minutes);
+  if (!minutes) return { ok: false, reason: 'bad-minutes' };
+  if (!state.students.some((student) => student.id === input.studentId)) {
+    return { ok: false, reason: 'unknown-student' };
+  }
+
+  let indexId: string | null = null;
+  let note = '';
+  if (input.kind === 'openMat') {
+    note = clampText(input.note, OPEN_NOTE_MAX).trim();
+    const rawId = clampText(input.indexId, ID_MAX).trim();
+    if (rawId) {
+      const entry = findEntry(state.entries, rawId);
+      if (!entry) return { ok: false, reason: 'unknown-index' };
+      if (entry.kind === 'position') return { ok: false, reason: 'not-a-move' };
+      indexId = entry.id;
+    }
+  }
+
+  const existing = state.matLogs.find(
+    (log) => log.studentId === input.studentId && log.date === input.date && log.kind === input.kind,
+  );
+  const log: MatLog = {
+    id: existing?.id ?? uniqueId(state.matLogs, input.id, input.kind === 'class' ? 'class' : 'open'),
+    studentId: input.studentId,
+    date: input.date,
+    kind: input.kind,
+    minutes,
+    indexId,
+    note,
+  };
+  return {
+    ok: true,
+    log,
+    replaced: Boolean(existing),
+    state: {
+      ...state,
+      matLogs: existing
+        ? state.matLogs.map((item) => (item.id === existing.id ? log : item))
+        : [...state.matLogs, log],
+    },
+  };
+}
+
+export type AttributedTime = {
+  classMinutes: number;
+  openMatMinutes: number;
+  minutes: number;
+};
+
+/** Class minutes on a day the move was taught, plus open mat only when the note names that move. */
+export function attributedMinutes(state: PreviewState, studentId: string, indexId: string): AttributedTime {
+  const classDates = new Set(state.lessons.filter((lesson) => lesson.indexId === indexId).map((lesson) => lesson.date));
+  let classMinutes = 0;
+  let openMatMinutes = 0;
+  const seenClass = new Set<string>();
+  const seenOpen = new Set<string>();
+  for (const log of state.matLogs) {
+    if (log.studentId !== studentId) continue;
+    if (log.kind === 'class') {
+      if (!classDates.has(log.date) || seenClass.has(log.date)) continue;
+      seenClass.add(log.date);
+      classMinutes += log.minutes;
+      continue;
+    }
+    if (log.indexId !== indexId || !log.note.trim() || seenOpen.has(log.date)) continue;
+    seenOpen.add(log.date);
+    openMatMinutes += log.minutes;
+  }
+  return { classMinutes, openMatMinutes, minutes: classMinutes + openMatMinutes };
+}
+
+export type LessonStudentTrack = {
+  studentId: string;
+  name: string;
+  beltLabel: string;
+  rating: JournalRating | null;
+  average: number | null;
+  ratingCount: number;
+  classMinutes: number;
+  openMatMinutes: number;
+  minutes: number;
+  inClass: boolean;
+};
+
+export type LessonMoveTrack = {
+  indexId: string;
+  name: string;
+  students: LessonStudentTrack[];
+  inClassCount: number;
+  ratedCount: number;
+};
+
+/** Instructor view of one class day: who was there, their rating, and attributed minutes. */
+export function lessonTracking(state: PreviewState, date = state.lessonDate): { date: string; moves: LessonMoveTrack[] } {
+  const seen = new Set<string>();
+  const moves: LessonMoveTrack[] = [];
+  for (const lesson of state.lessons) {
+    if (lesson.date !== date || seen.has(lesson.indexId)) continue;
+    const entry = findEntry(state.entries, lesson.indexId);
+    if (!entry) continue;
+    seen.add(entry.id);
+    const students = state.students.map((student) => {
+      const ratings = state.journal.filter((item) => item.studentId === student.id && item.indexId === entry.id);
+      const latest = latestLog(ratings);
+      const time = attributedMinutes(state, student.id, entry.id);
+      return {
+        studentId: student.id,
+        name: student.name,
+        beltLabel: state.belts.find((belt) => belt.belt === student.belt)?.label ?? student.belt,
+        rating: latest?.rating ?? null,
+        average: meanRating(ratings.map((item) => item.rating)),
+        ratingCount: ratings.length,
+        classMinutes: time.classMinutes,
+        openMatMinutes: time.openMatMinutes,
+        minutes: time.minutes,
+        inClass: time.classMinutes > 0,
+      };
+    });
+    moves.push({
+      indexId: entry.id,
+      name: entry.name,
+      students,
+      inClassCount: students.filter((student) => student.inClass).length,
+      ratedCount: students.filter((student) => student.rating != null).length,
+    });
+  }
+  return { date, moves };
 }
 
 export function fundamentalsChecklist(state: PreviewState): IndexEntry[] {
@@ -488,6 +732,9 @@ export type CoverageRow = {
   latest: JournalRating | null;
   latestAt: string | null;
   onFundamentalsList: boolean;
+  classMinutes: number;
+  openMatMinutes: number;
+  minutes: number;
 };
 
 export type BeltCoverage = {
@@ -526,6 +773,7 @@ export function beltCoverage(state: PreviewState, studentId: string, belt: BeltI
       latest: latest?.rating ?? null,
       latestAt: latest?.loggedAt ?? null,
       onFundamentalsList: checklist.has(entry.id),
+      ...attributedMinutes(state, student.id, entry.id),
     };
     return [row];
   });
@@ -558,7 +806,7 @@ function latestLog(logs: readonly JournalLine[]): JournalLine | null {
 }
 
 export function previewView(value: string | null): PreviewView {
-  return PREVIEW_VIEWS.some((view) => view.id === value) ? (value as PreviewView) : 'index';
+  return PREVIEW_VIEWS.some((view) => view.id === value) ? (value as PreviewView) : 'lesson';
 }
 
 /** Short press on the corner mark. A direct preview link returns to the public product list. */
@@ -607,14 +855,18 @@ function sanitizePreview(value: unknown): PreviewState | null {
   const entries = sanitizeList(record.entries, sanitizeEntry);
   const lessons = sanitizeList(record.lessons, sanitizeLesson);
   const journal = sanitizeList(record.journal, sanitizeJournal);
+  const matLogs = sanitizeList(record.matLogs, sanitizeMatLog);
   const belts = sanitizeList(record.belts, sanitizeBelt);
   const students = sanitizeList(record.students, sanitizeStudent);
   if (entries.length === 0) return null;
+  const lessonDate = isoDate(record.lessonDate) || lessons[0]?.date || seed.lessonDate;
   return {
     version: 1,
+    lessonDate,
     entries,
     lessons,
     journal,
+    matLogs,
     belts: belts.length ? belts : seed.belts,
     students: students.length ? students : seed.students,
   };
@@ -654,7 +906,38 @@ function sanitizeLesson(value: unknown): LessonLine | null {
   const indexId = clampText(record.indexId, ID_MAX).trim();
   const addedAt = clampText(record.addedAt, 40).trim();
   if (!id || !indexId) return null;
-  return { id, indexId, fundamentals: record.fundamentals === true, addedAt: addedAt || '2026-11-05T00:00:00.000Z' };
+  return {
+    id,
+    indexId,
+    fundamentals: record.fundamentals === true,
+    addedAt: addedAt || '2026-11-05T00:00:00.000Z',
+    date: isoDate(record.date) || PREVIEW_LESSON_DATE,
+  };
+}
+
+function sanitizeMatLog(value: unknown): MatLog | null {
+  const record = asRecord(value);
+  if (!record || (record.kind !== 'class' && record.kind !== 'openMat')) return null;
+  const id = clampText(record.id, ID_MAX).trim();
+  const studentId = clampText(record.studentId, ID_MAX).trim();
+  const date = isoDate(record.date);
+  const minutes = clampMinutes(record.minutes);
+  if (!id || !studentId || !date || !minutes) return null;
+  const indexId = clampText(record.indexId, ID_MAX).trim();
+  return {
+    id,
+    studentId,
+    date,
+    kind: record.kind,
+    minutes,
+    indexId: record.kind === 'openMat' && indexId ? indexId : null,
+    note: record.kind === 'openMat' ? clampText(record.note, OPEN_NOTE_MAX).trim() : '',
+  };
+}
+
+function isoDate(value: unknown): string {
+  const text = clampText(value, 10).trim();
+  return ISO_DATE.test(text) ? text : '';
 }
 
 function sanitizeJournal(value: unknown): JournalLine | null {

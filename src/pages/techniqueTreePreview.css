@@ -131,8 +131,8 @@
 
 .ttp-tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
   min-width: 0;
   max-width: 100%;
 }
@@ -152,7 +152,8 @@
 .ttp-tab {
   min-width: 0;
   min-height: 44px;
-  padding: 0 8px;
+  padding: 0 4px;
+  font-size: 14px;
   border: 1px solid var(--ttp-edge);
   border-radius: 999px;
   background: transparent;
@@ -379,6 +380,11 @@
   border-color: rgba(34, 211, 238, 0.75);
 }
 
+.ttp-line.is-gap {
+  border-style: dashed;
+  border-color: var(--ttp-edge);
+}
+
 .ttp-hit strong,
 .ttp-line strong,
 .ttp-row strong,
@@ -585,6 +591,7 @@
   .ttp-tab {
     flex: 0 0 auto;
     padding: 0 18px;
+    font-size: 17px;
   }
 
   .ttp-index {
