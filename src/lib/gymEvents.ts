@@ -5,6 +5,8 @@
  * self-assessment, and no private coach notes.
  */
 
+import { parseExpectedMinutes } from './expectedDuration.ts';
+
 export const GYM_EVENT_VERSION = 1 as const;
 
 export const ARCHIVE_REASONS = ['left', 'paused', 'moved', 'other'] as const;
@@ -83,7 +85,8 @@ function stripesOf(value: unknown): number {
 function minutesOf(value: unknown): number {
   const n = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(480, Math.trunc(n)));
+  const halves = Math.round(n * 2) / 2;
+  return Math.max(0, Math.min(480, halves));
 }
 
 function dayOf(value: unknown, fallback: string): string {
@@ -233,17 +236,22 @@ export function rankFacts(before: RankSnap, saved: RankSnap, date: string): Arra
 }
 
 const MINUTE_WORD = /(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b/i;
-const MINUTE_MIN = /(\d+)\s*(?:m|min|mins|minute|minutes)\b/i;
+const MINUTE_MIN = /(\d+(?:\.\d+)?)\s*(?:m|min|mins|minute|minutes)\b/i;
 
 export function minutesFromExpected(value: string): number {
   const textValue = value.trim();
   if (!textValue) return 0;
   const hours = MINUTE_WORD.exec(textValue);
   if (hours) return Math.min(480, Math.round(Number(hours[1]) * 60));
+  const parsed = parseExpectedMinutes(textValue);
+  if (parsed != null) return Math.min(480, parsed);
   const mins = MINUTE_MIN.exec(textValue);
-  if (mins) return Math.min(480, Number(mins[1]));
-  if (/^\d+$/.test(textValue)) {
-    const n = Number(textValue);
+  if (mins) {
+    const n = Math.round(Number(mins[1]) * 2) / 2;
+    return n > 0 ? Math.min(480, n) : 0;
+  }
+  if (/^\d+(?:\.\d+)?$/.test(textValue)) {
+    const n = Math.round(Number(textValue) * 2) / 2;
     return n > 0 && n <= 240 ? n : 0;
   }
   return 0;
@@ -258,7 +266,7 @@ export type MinutePlan = {
   games?: { expected?: string }[];
 };
 
-/** Sum of expected durations on a lesson plan. 60 when nothing on the plan parses. */
+/** Sum of expected durations on a lesson plan, including halves. 60 when nothing on the plan parses. */
 export function classMinutes(plan: MinutePlan): number {
   const parts = [
     plan.introExpected ?? '',
