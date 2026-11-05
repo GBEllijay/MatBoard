@@ -5,7 +5,7 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { formatMatTime, clockMatTime, matHoursLabel, matHoursLongLabel, matHoursSplit, matHoursTotal, sessionOf } from './matHours.ts';
+import { formatMatTime, clockMatTime, matHoursLabel, matHoursLongLabel, matHoursSplit, matHoursTotal, matQuarterOptions, sessionOf } from './matHours.ts';
 import { trainingStreak, streakLabel, streakWeekLine, weekStart, readStreakTarget, saveStreakTarget } from './trainingStreak.ts';
 import { QUALITY_SCALES, qualityStage, qualityText, latestHowItWent, howItWentOf, migrateQualityToNote, bodyStatus } from './sessionQuality.ts';
 import { viewJournalEntry } from './studentEdition.ts';
@@ -33,6 +33,30 @@ test('time formats and labels show hours, never years by default', () => {
   assert.doesNotMatch(matHoursLabel(600000), /year|day/);
   assert.equal(matHoursLongLabel(7710), '5.4 days on the mat');
   assert.match(matHoursLongLabel(600000), /years on the mat$/);
+});
+
+test('log mat time wheel is 15-minute steps; 1:15 is 75 minutes and sessions sum without a double count', () => {
+  const options = matQuarterOptions();
+  assert.ok(options.length > 2);
+  assert.ok(options.every((option) => option.value % 15 === 0));
+  assert.equal(options[0].label, 'Untimed');
+  assert.equal(options.find((option) => option.label === '0:45')?.value, 45);
+  assert.equal(options.find((option) => option.label === '1:00')?.value, 60);
+  assert.equal(options.find((option) => option.label === '1:15')?.value, 75);
+  assert.equal(options.find((option) => option.label === '1:30')?.value, 90);
+  assert.equal(options.find((option) => option.label === '2:00')?.value, 120);
+  assert.equal(options.some((option) => option.value % 15 !== 0), false);
+  assert.equal(options.some((option) => option.label === '1:01'), false);
+
+  let report = logMatTime(blankStudentReport(1), { date: '2026-11-04', session: 'class', minutes: 75 }, 1);
+  report = logMatTime(report, { date: '2026-11-04', session: 'openMat', minutes: 120 }, 2);
+  report = logMatTime(report, { date: '2026-11-04', session: 'misc', minutes: 45 }, 3);
+  assert.equal(matHoursTotal(report.journal).minutes, 75 + 120 + 45);
+  assert.equal(report.journal.length, 3);
+  report = logMatTime(report, { date: '2026-11-04', session: 'class', minutes: 90 }, 4);
+  assert.equal(report.journal.filter((entry) => entry.session === 'class').length, 1);
+  assert.equal(report.journal.find((entry) => entry.session === 'class')?.minutes, 90);
+  assert.equal(matHoursTotal(report.journal).minutes, 90 + 120 + 45);
 });
 
 test('total sums class and open mat, old cards count as untimed', () => {

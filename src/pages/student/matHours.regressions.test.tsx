@@ -5,6 +5,7 @@
  * Preview my card sheet. New: session chips (Class / Open mat / Miscellaneous / Other + text), the time wheel, Clear.
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
@@ -292,6 +293,43 @@ test('profile card: the timer opens quick-add; save updates the same day record;
   const saved = loadStudentReport(localStorage);
   assert.equal(saved.journal.length, 1);
   assert.equal(saved.journal[0].minutes, 90);
+  unmount(page);
+});
+
+test('log mat time: Class, Open mat, and Misc; 15-minute wheel; 1:15 stores 75 minutes', () => {
+  localStorage.clear();
+  saveStudentReport(localStorage, blankStudentReport(10));
+  const page = mount(<StudentEditionPage />, '/student/profile?student=1');
+  click(labeled(page.host, 'Add mat time'));
+  const sheet = page.host.querySelector('[data-testid="mat-quick-add"]') as HTMLElement;
+  assert.ok(sheet);
+  const kinds = labeled(sheet, 'Quick Session type');
+  assert.deepEqual([...kinds.querySelectorAll('button')].map((button) => button.textContent?.trim()), ['Class', 'Open mat', 'Misc']);
+  assert.equal(sheet.querySelector('[aria-label="Quick Other session type"]'), null);
+  click(control(kinds, 'button', 'Misc'));
+  assert.equal(control(kinds, 'button', 'Misc').getAttribute('aria-pressed'), 'true');
+  click(control(sheet, 'button', 'Clear'));
+  assert.equal(labeled(sheet, 'Quick Minutes on the mat').textContent, 'Untimed');
+  const opener = sheet.querySelector('[aria-label^="Quick Time on the mat,"]') as HTMLElement;
+  click(opener);
+  const list = [...document.querySelectorAll('[role="listbox"][aria-label="Quick Time on the mat"]')].at(-1);
+  assert.ok(list, '15-minute wheel');
+  const labels = [...list.querySelectorAll('[role="option"]')].map((option) => option.textContent?.trim() ?? '');
+  assert.ok(labels.includes('1:15') && labels.includes('0:45') && labels.includes('2:00'));
+  assert.ok(!labels.includes('1:01') && !labels.includes('0:01'));
+  click(control(list, '[role="option"]', '1:15'));
+  const wheel = list.closest('[role="dialog"]') ?? document.body;
+  const done = [...wheel.querySelectorAll('button')].filter((button) => button.textContent?.trim() === 'Done');
+  if (done.length) click(done[done.length - 1] as HTMLElement);
+  assert.equal(labeled(sheet, 'Quick Minutes on the mat').textContent, '1:15');
+  click(control(sheet, 'button', 'Save'));
+  const saved = loadStudentReport(localStorage);
+  assert.equal(saved.journal.length, 1);
+  assert.equal(saved.journal[0].session, 'misc');
+  assert.equal(saved.journal[0].minutes, 75);
+  const css = readFileSync('src/pages/student/matHours.css', 'utf8');
+  assert.match(css, /\.mat-quick \{[^}]*background:\s*#0a1a30/);
+  assert.doesNotMatch(css, /\.mat-quick \{[^}]*#fffdf6/);
   unmount(page);
 });
 

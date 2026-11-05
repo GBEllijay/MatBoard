@@ -9,6 +9,8 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { QUALITY_SCALES, qualityStage } from '../../lib/sessionQuality';
 import {
   JOURNAL_SESSION_LABELS,
+  MAT_LOG_SESSIONS,
+  MAT_LOG_SESSION_LABELS,
   clampMinutes,
   clockMatTime,
   formatMatTime,
@@ -17,6 +19,7 @@ import {
   matHoursSplit,
   matHoursTotal,
   matMinuteOptions,
+  matQuarterOptions,
   sessionLabel,
 } from '../../lib/matHours';
 import { WheelPicker } from '../../components/WheelPicker';
@@ -27,6 +30,7 @@ import './beltWeave.css';
 import './matHours.css';
 
 const MINUTE_OPTIONS = matMinuteOptions();
+const QUARTER_OPTIONS = matQuarterOptions();
 
 export function MatTimeField({
   idPrefix,
@@ -36,6 +40,8 @@ export function MatTimeField({
   onMinutes,
   sessionOther = '',
   onSessionOther,
+  /** Log mat time: three types and a 15-minute wheel. The journal keeps every minute and Other. */
+  logTime = false,
 }: {
   idPrefix: string;
   session: JournalSession;
@@ -44,13 +50,16 @@ export function MatTimeField({
   onMinutes: (next: number) => void;
   sessionOther?: string;
   onSessionOther?: (next: string) => void;
+  logTime?: boolean;
 }) {
   const value = clampMinutes(minutes);
+  const kinds = logTime ? MAT_LOG_SESSIONS : JOURNAL_SESSIONS;
+  const options = logTime ? QUARTER_OPTIONS : MINUTE_OPTIONS;
   return (
     <fieldset className="ink mat-time" aria-label={`${idPrefix}Mat time`}>
       <legend className="ink__label">Time on the mat</legend>
       <div className="mat-time__row" role="group" aria-label={`${idPrefix}Session type`}>
-        {JOURNAL_SESSIONS.map((kind) => (
+        {kinds.map((kind) => (
           <button
             key={kind}
             type="button"
@@ -58,7 +67,7 @@ export function MatTimeField({
             aria-pressed={session === kind}
             onClick={() => onSession(kind)}
           >
-            {JOURNAL_SESSION_LABELS[kind]}
+            {logTime && kind !== 'other' ? MAT_LOG_SESSION_LABELS[kind] : JOURNAL_SESSION_LABELS[kind]}
           </button>
         ))}
       </div>
@@ -78,7 +87,7 @@ export function MatTimeField({
         </label>
       ) : null}
       <div className="mat-time__stepper" role="group" aria-label={`${idPrefix}Custom time`}>
-        <WheelPicker label={`${idPrefix}Time on the mat`} value={value} options={MINUTE_OPTIONS} onChange={(next) => onMinutes(clampMinutes(next))} />
+        <WheelPicker label={`${idPrefix}Time on the mat`} value={value} options={options} onChange={(next) => onMinutes(clampMinutes(next))} />
         <output className="mat-time__value" aria-live="polite" aria-label={`${idPrefix}Minutes on the mat`}>
           {value ? clockMatTime(value) : 'Untimed'}
         </output>
@@ -88,7 +97,11 @@ export function MatTimeField({
           </button>
         ) : null}
       </div>
-      <small className="mat-time__note">Scroll to any minute; it settles gently on 10s. Just for you. Counts toward your mat hours. Coaches don't see it.</small>
+      <small className="mat-time__note">
+        {logTime
+          ? "Scroll in 15-minute steps. Just for you. Counts toward your mat hours. Coaches don't see it."
+          : "Scroll to any minute; it settles gently on 10s. Just for you. Counts toward your mat hours. Coaches don't see it."}
+      </small>
     </fieldset>
   );
 }
