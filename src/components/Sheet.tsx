@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { releaseTextFocus } from '../lib/keepFieldVisible';
+import { lockPageScroll, unlockPageScroll } from '../lib/pageScrollLock';
 import { popSheetLayer, pushSheetLayer } from '../lib/sheetLayer';
 
 type Props = {
@@ -42,9 +43,28 @@ export function Sheet({
 
   useEffect(() => {
     if (!open) return;
+    const doc = rootRef.current?.ownerDocument ?? document;
     pushSheetLayer();
-    return () => popSheetLayer();
+    lockPageScroll(doc);
+    return () => {
+      popSheetLayer();
+      unlockPageScroll(doc);
+    };
   }, [open]);
+
+  const closeFromPointer = (event: { button?: number; pointerId?: number; currentTarget: EventTarget | null }) => {
+    if (event.button != null && event.button !== 0) return;
+    const node = event.currentTarget;
+    if (
+      node instanceof HTMLElement &&
+      event.pointerId != null &&
+      typeof node.hasPointerCapture === 'function' &&
+      node.hasPointerCapture(event.pointerId)
+    ) {
+      node.releasePointerCapture(event.pointerId);
+    }
+    onClose();
+  };
 
   if (!mounted) return null;
   const sheet = (
@@ -55,7 +75,7 @@ export function Sheet({
       aria-modal="true"
       aria-labelledby={titleId}
     >
-      <button className="sheet__backdrop" aria-label="Close options" onClick={onClose} />
+      <button className="sheet__backdrop" aria-label="Close options" onClick={() => closeFromPointer({ currentTarget: null })} />
       <div className="sheet__panel" onClick={(event) => event.stopPropagation()}>
         <div className="sheet__head">
           <h2 id={titleId}>{title}</h2>
@@ -63,12 +83,11 @@ export function Sheet({
             type="button"
             className="btn btn--ghost sheet__close"
             onPointerUp={(event) => {
-              if (event.button !== 0) return;
-              onClose();
+              closeFromPointer(event);
             }}
             onClick={(event) => {
               event.preventDefault();
-              onClose();
+              closeFromPointer(event);
             }}
           >
             Close

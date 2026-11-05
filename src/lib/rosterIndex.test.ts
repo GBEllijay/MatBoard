@@ -9,6 +9,7 @@ import {
   readRosterSort,
   rosterIndexClearance,
   rosterIndexTopPx,
+  rosterJumpClearance,
   rosterJumpTop,
   rosterIndex,
   rosterIndexLetter,
@@ -182,6 +183,25 @@ test('A and B clear a measured Upgrade header at 390 and 400 wide', () => {
   assert.match(css, /--roster-index-top,\s*calc\(var\(--mark-home-clear/);
   assert.doesNotMatch(indexSource, /top:\s*['"]?\d+px/);
   assert.match(readFileSync('src/lib/rosterIndex.ts', 'utf8'), /\.seat-session/);
+});
+
+test('an A–Z jump lands the first row below the measured sticky header', () => {
+  const headerBottom = 190;
+  const scrollerTop = 40;
+  const clearance = rosterJumpClearance(headerBottom, scrollerTop);
+  assert.ok(scrollerTop + clearance > headerBottom, 'V sits fully under the header edge');
+  const targetTop = 640;
+  const scrollTop = 200;
+  const next = rosterJumpTop(targetTop, scrollerTop, scrollTop, clearance);
+  const landed = targetTop - (next - scrollTop);
+  assert.ok(landed >= headerBottom + 8);
+  assert.equal(rosterJumpClearance(null, scrollerTop), 12);
+  assert.equal(rosterJumpClearance(20, 80), 12);
+  const pageSource = readFileSync('src/pages/Roster.tsx', 'utf8');
+  const jump = pageSource.slice(pageSource.indexOf('const jumpToLetter'), pageSource.indexOf('const openAdd'));
+  assert.match(jump, /rosterJumpClearance\(measureStickyHeaderBottom/);
+  assert.match(jump, /scroller\.scrollTop = top/);
+  assert.doesNotMatch(jump, /behavior:\s*'smooth'/);
 });
 
 function store() {

@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Window } from 'happy-dom';
-import { act } from 'react';
+import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -57,6 +57,8 @@ const { RankBelt } = await import('./RankBelt.tsx');
 const { CheckInFillSheet } = await import('../CheckInFillSheet.tsx');
 const { studentCheckInFor } = await import('../../pages/Roster.tsx');
 const { RosterIndex } = await import('./RosterIndex.tsx');
+const { Sheet } = await import('../Sheet.tsx');
+const { pageScrollIsLocked, resetPageScrollLockForTests } = await import('../../lib/pageScrollLock.ts');
 const { rosterIndexTopPx } = await import('../../lib/rosterIndex.ts');
 const { blankStudentReport, saveStudentReport } = await import('../../lib/studentEdition.ts');
 const { STUDENT_NO_PHOTOS_KEY } = await import('../../lib/studentPhotoFlag.ts');
@@ -834,6 +836,95 @@ test('A and B sit below the measured Upgrade header at 390 and 400', () => {
   } finally {
     HTMLElement.prototype.getBoundingClientRect = original;
     header.remove();
+  }
+});
+
+test('open card Close restores page scroll, including belt Edit', () => {
+  resetPageScrollLockForTests(document);
+  localStorage.clear();
+  resetRoster();
+  const card = studentCard();
+  function Harness({ closeCardFromEdit = false }: { closeCardFromEdit?: boolean }) {
+    const [cardOn, setCardOn] = useState(true);
+    const [editOn, setEditOn] = useState(false);
+    return (
+      <>
+        <RosterCardSheet
+          student={cardOn ? fresh(card.id) : null}
+          onClose={() => setCardOn(false)}
+          onEditBelt={() => setEditOn(true)}
+          onLink={() => undefined}
+          onOpenPhotos={() => undefined}
+          competitorRosterOpen
+          onOpenCompetitorRoster={() => undefined}
+        />
+        <Sheet
+          open={editOn}
+          title="Edit student"
+          onClose={() => {
+            setEditOn(false);
+            if (closeCardFromEdit) setCardOn(false);
+          }}
+          portal
+          stacked
+        >
+          <p>Stripes</p>
+        </Sheet>
+      </>
+    );
+  }
+  const wheelOk = () => {
+    const wheel = new view.WheelEvent('wheel', { deltaY: 40, cancelable: true, bubbles: true });
+    document.dispatchEvent(wheel);
+    assert.equal(wheel.defaultPrevented, false);
+  };
+  const restored = () => {
+    assert.equal(document.body.style.overflow, '');
+    assert.equal(document.body.style.touchAction, '');
+    assert.equal(document.documentElement.style.overflow, '');
+    assert.equal(document.documentElement.style.touchAction, '');
+    assert.equal(pageScrollIsLocked(document), false);
+    wheelOk();
+  };
+  let mounted = mount(<Harness />);
+  try {
+    assert.equal(document.body.style.overflow, 'hidden');
+    assert.equal(document.documentElement.style.touchAction, 'none');
+    click(buttons('Close')[0]);
+    restored();
+  } finally {
+    unmount(mounted);
+    resetPageScrollLockForTests(document);
+  }
+
+  mounted = mount(<Harness />);
+  try {
+    const belt = document.querySelector('button.clipboard__belt') as HTMLButtonElement;
+    assert.ok(belt, 'belt opens Edit');
+    click(belt);
+    assert.equal(document.querySelectorAll('.sheet').length, 2);
+    assert.equal(pageScrollIsLocked(document), true);
+    const editClose = buttons('Close').at(-1);
+    assert.ok(editClose);
+    click(editClose);
+    assert.equal(document.querySelectorAll('.sheet').length, 1, 'card stays open after Edit closes');
+    assert.equal(pageScrollIsLocked(document), true);
+    click(buttons('Close')[0]);
+    restored();
+  } finally {
+    unmount(mounted);
+    resetPageScrollLockForTests(document);
+  }
+
+  mounted = mount(<Harness closeCardFromEdit />);
+  try {
+    click(document.querySelector('button.clipboard__belt') as HTMLButtonElement);
+    click(buttons('Close').at(-1) as HTMLButtonElement);
+    assert.equal(document.querySelector('.sheet'), null);
+    restored();
+  } finally {
+    unmount(mounted);
+    resetPageScrollLockForTests(document);
   }
 });
 

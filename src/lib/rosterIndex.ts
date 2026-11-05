@@ -138,6 +138,25 @@ export function rosterJumpTop(targetTop: number, scrollerTop: number, scrollTop:
 }
 
 /**
+ * How far below the scroller's top the jumped row must sit.
+ * When the sticky header overlaps that scroller, the clearance is the measured
+ * overlap plus a small gap, so the first row of the letter is fully visible.
+ */
+export function rosterJumpClearance(
+  headerBottom: number | null,
+  scrollerTop: number,
+  base = 12,
+  gap = ROSTER_INDEX_HEADER_GAP,
+): number {
+  const floor = Number.isFinite(base) ? Math.max(0, base) : 0;
+  const pad = Number.isFinite(gap) ? Math.max(0, gap) : 0;
+  const origin = Number.isFinite(scrollerTop) ? scrollerTop : 0;
+  if (headerBottom == null || !Number.isFinite(headerBottom)) return floor;
+  const cover = Math.ceil(headerBottom) - origin + pad;
+  return Math.max(floor, cover);
+}
+
+/**
  * Space between the measured Upgrade bar and the first letter.
  * This is not the bar's height. The height comes from the element's box.
  */
