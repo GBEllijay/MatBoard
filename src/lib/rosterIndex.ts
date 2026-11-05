@@ -136,3 +136,51 @@ export function rosterJumpTop(targetTop: number, scrollerTop: number, scrollTop:
   if (![targetTop, scrollerTop, scrollTop, clearance].every(Number.isFinite)) return Math.max(0, scrollTop);
   return Math.max(0, targetTop - scrollerTop + scrollTop - clearance);
 }
+
+/**
+ * Space between the measured Upgrade bar and the first letter.
+ * This is not the bar's height. The height comes from the element's box.
+ */
+export const ROSTER_INDEX_HEADER_GAP = 8;
+
+/**
+ * Top of the A–Z strip in viewport pixels.
+ * `headerBottom` is the measured bottom of the sticky Upgrade bar.
+ * `fallbackTop` is the logo clearance already used when that bar is absent
+ * or has scrolled above it. A and B stay below the bar.
+ */
+export function rosterIndexClearance(headerBottom: number | null, fallbackTop: number, gap = ROSTER_INDEX_HEADER_GAP): number {
+  const fallback = Number.isFinite(fallbackTop) ? Math.max(0, fallbackTop) : 0;
+  const pad = Number.isFinite(gap) ? Math.max(0, gap) : 0;
+  if (headerBottom == null || !Number.isFinite(headerBottom)) return fallback;
+  const below = Math.ceil(headerBottom);
+  if (below <= fallback) return fallback;
+  return below + pad;
+}
+
+/**
+ * Pixel top for the strip, or null to keep the stylesheet logo clearance.
+ * A null header, or a header that sits above the logo clearance, does not
+ * pin the strip to a hardcoded offset.
+ */
+export function rosterIndexTopPx(headerBottom: number | null, fallbackTop: number, gap = ROSTER_INDEX_HEADER_GAP): string | null {
+  const fallback = Number.isFinite(fallbackTop) ? Math.max(0, fallbackTop) : 0;
+  const top = rosterIndexClearance(headerBottom, fallback, gap);
+  if (!(top > fallback)) return null;
+  return `${top}px`;
+}
+
+/** Bottom of the Upgrade bar in viewport pixels. Null when that bar is not on screen. */
+export function measureStickyHeaderBottom(root: ParentNode | null | undefined): number | null {
+  if (!root || typeof root.querySelector !== 'function') return null;
+  const header = root.querySelector('.seat-session');
+  if (!(header instanceof HTMLElement)) return null;
+  const view = header.ownerDocument?.defaultView;
+  if (view && typeof view.getComputedStyle === 'function') {
+    const style = view.getComputedStyle(header);
+    if (style.display === 'none' || style.visibility === 'hidden') return null;
+  }
+  const rect = header.getBoundingClientRect();
+  if (!(rect.height > 0) || !Number.isFinite(rect.bottom)) return null;
+  return rect.bottom;
+}

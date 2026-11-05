@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { letterInStrip, type RosterIndexEntry } from '../../lib/rosterIndex';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { letterInStrip, measureStickyHeaderBottom, rosterIndexTopPx, type RosterIndexEntry } from '../../lib/rosterIndex';
 
 /**
  * iOS Contacts-style A–Z strip. Drag only moves the bubble.
@@ -16,6 +16,52 @@ export function RosterIndex({
   const dragging = useRef(false);
   const armed = useRef<string | null>(null);
   const [bubble, setBubble] = useState<{ letter: string; x: number; y: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const view = root.ownerDocument.defaultView ?? window;
+    let frame = 0;
+    let schedule = () => {};
+    const Observer = typeof view.ResizeObserver === 'function' ? view.ResizeObserver : null;
+    const resize = Observer ? new Observer(() => schedule()) : null;
+    let watched: Element | null = null;
+    const watchHeader = () => {
+      const header = view.document.querySelector('.seat-session');
+      if (!resize || header === watched) return;
+      if (watched) resize.unobserve(watched);
+      if (header) resize.observe(header);
+      watched = header;
+    };
+    const measure = () => {
+      const previous = root.style.getPropertyValue('--roster-index-top');
+      root.style.removeProperty('--roster-index-top');
+      const fallback = root.getBoundingClientRect().top;
+      if (previous) root.style.setProperty('--roster-index-top', previous);
+      const next = rosterIndexTopPx(measureStickyHeaderBottom(view.document), fallback);
+      if (next == null) root.style.removeProperty('--roster-index-top');
+      else if (previous !== next) root.style.setProperty('--roster-index-top', next);
+      watchHeader();
+    };
+    schedule = () => {
+      view.cancelAnimationFrame(frame);
+      frame = view.requestAnimationFrame(measure);
+    };
+    resize?.observe(view.document.documentElement);
+    measure();
+    const Mutation = typeof view.MutationObserver === 'function' ? view.MutationObserver : null;
+    const mutations = Mutation ? new Mutation(schedule) : null;
+    mutations?.observe(view.document.body, { childList: true, subtree: true });
+    view.addEventListener('resize', schedule);
+    view.addEventListener('scroll', schedule);
+    return () => {
+      view.cancelAnimationFrame(frame);
+      resize?.disconnect();
+      mutations?.disconnect();
+      view.removeEventListener('resize', schedule);
+      view.removeEventListener('scroll', schedule);
+    };
+  }, [letters.length]);
 
   const letterAt = (clientY: number): string | null => {
     const root = rootRef.current;

@@ -56,6 +56,8 @@ const { checkedInCompetitors, competitorsForBracketFill, orderCheckedInByRanking
 const { RankBelt } = await import('./RankBelt.tsx');
 const { CheckInFillSheet } = await import('../CheckInFillSheet.tsx');
 const { studentCheckInFor } = await import('../../pages/Roster.tsx');
+const { RosterIndex } = await import('./RosterIndex.tsx');
+const { rosterIndexTopPx } = await import('../../lib/rosterIndex.ts');
 const { blankStudentReport, saveStudentReport } = await import('../../lib/studentEdition.ts');
 const { STUDENT_NO_PHOTOS_KEY } = await import('../../lib/studentPhotoFlag.ts');
 const { saveStudentDriveLink } = await import('../../lib/academyPathway.ts');
@@ -782,6 +784,57 @@ test('Roster page: Rolodex wraps both lists in the card look and opens the right
   assert.match(css, /max-height:\s*none/);
   assert.match(css, /\.roster-index\s*\{[^}]*position:\s*fixed/);
   assert.match(css, /prefers-reduced-motion: reduce/);
+});
+
+test('A and B sit below the measured Upgrade header at 390 and 400', () => {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  installGlobal('ResizeObserver', ResizeObserverStub);
+  const viewWithObserver = window as Window & { ResizeObserver: typeof ResizeObserverStub };
+  viewWithObserver.ResizeObserver = ResizeObserverStub;
+  const header = document.createElement('div');
+  header.className = 'seat-session';
+  header.textContent = 'Upgrade';
+  document.body.appendChild(header);
+  const original = HTMLElement.prototype.getBoundingClientRect;
+  HTMLElement.prototype.getBoundingClientRect = function rect() {
+    if (this.classList.contains('seat-session')) {
+      return { x: 0, y: 128, top: 128, bottom: 196, left: 0, right: 400, width: 400, height: 68, toJSON() { return {}; } } as DOMRect;
+    }
+    if (this.classList.contains('roster-index') && !this.style.getPropertyValue('--roster-index-top')) {
+      return { x: 350, y: 128, top: 128, bottom: 975, left: 350, right: 390, width: 40, height: 847, toJSON() { return {}; } } as DOMRect;
+    }
+    return original.call(this);
+  };
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((letter) => ({
+    letter,
+    count: 1,
+    firstId: letter,
+  }));
+  try {
+    for (const width of [390, 400]) {
+      const top = rosterIndexTopPx(196, 128);
+      assert.equal(top, '204px', `${width}px wide`);
+      assert.ok(Number.parseFloat(top ?? '0') >= 196);
+    }
+    const mounted = mount(<RosterIndex letters={letters} onJump={() => undefined} />);
+    const strip = document.querySelector('[data-testid="roster-index"]') as HTMLElement;
+    assert.equal(strip.style.getPropertyValue('--roster-index-top'), '204px');
+    const a = strip.querySelector('[data-letter="A"]') as HTMLElement;
+    const b = strip.querySelector('[data-letter="B"]') as HTMLElement;
+    assert.ok(a && b);
+    assert.equal(a.textContent?.trim(), 'A');
+    assert.equal(b.textContent?.trim(), 'B');
+    const hash = strip.querySelector('[data-letter="#"]');
+    assert.ok(hash, '# stays on the strip');
+    unmount(mounted);
+  } finally {
+    HTMLElement.prototype.getBoundingClientRect = original;
+    header.remove();
+  }
 });
 
 test('Coach card: the name and belt open Change details; no new control is named edit; tap hint is described', () => {

@@ -5,13 +5,17 @@ import {
   compareRosterNames,
   letterAtClientY,
   letterInStrip,
+  measureStickyHeaderBottom,
   readRosterSort,
+  rosterIndexClearance,
+  rosterIndexTopPx,
   rosterJumpTop,
   rosterIndex,
   rosterIndexLetter,
   rosterSwipeIntent,
   sortRoster,
   writeRosterSort,
+  ROSTER_INDEX_HEADER_GAP,
   ROSTER_SORT_KEY,
 } from './rosterIndex.ts';
 
@@ -145,6 +149,39 @@ test('a vertical swipe on a card scrolls and does not get captured', () => {
   assert.match(page, /data-testid="card-entry-belt-slot"[\s\S]*<RankBelt student=\{\{ belt: draft\.belt, stripes: draft\.stripes/);
   assert.match(page, /Sort/);
   assert.match(page, /readRosterSort/);
+});
+
+test('A and B clear a measured Upgrade header at 390 and 400 wide', () => {
+  const headerBottom = 196;
+  const logoClearance = 128;
+  const viewportHeight = 985;
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+  for (const width of [390, 400]) {
+    const top = rosterIndexClearance(headerBottom, logoClearance);
+    assert.equal(top, Math.ceil(headerBottom) + ROSTER_INDEX_HEADER_GAP);
+    assert.ok(top > headerBottom, `${width}px: strip starts below the header`);
+    const bottom = viewportHeight - 10;
+    const band = (bottom - top) / letters.length;
+    assert.ok(top >= headerBottom, `${width}px: A is tappable`);
+    assert.ok(top + band >= headerBottom, `${width}px: B is tappable`);
+    assert.ok(top + letters.length * band <= viewportHeight, `${width}px: # stays on screen`);
+    const right = Math.max(2, (width - Math.min(42 * 16, width)) / 2);
+    assert.ok(right + 40 <= width, `${width}px: the strip stays inside the screen`);
+  }
+  assert.equal(rosterIndexClearance(null, logoClearance), logoClearance);
+  assert.equal(rosterIndexClearance(40, logoClearance), logoClearance);
+  assert.equal(rosterIndexClearance(Number.NaN, logoClearance), logoClearance);
+  assert.equal(rosterIndexTopPx(headerBottom, logoClearance), `${Math.ceil(headerBottom) + ROSTER_INDEX_HEADER_GAP}px`);
+  assert.equal(rosterIndexTopPx(null, logoClearance), null);
+  assert.equal(rosterIndexTopPx(40, logoClearance), null);
+  assert.equal(measureStickyHeaderBottom(null), null);
+  const indexSource = readFileSync('src/components/rosterCard/RosterIndex.tsx', 'utf8');
+  const css = readFileSync('src/components/rosterCard/rolodex.css', 'utf8');
+  assert.match(indexSource, /measureStickyHeaderBottom\(view\.document\)/);
+  assert.match(indexSource, /querySelector\('\.seat-session'\)|measureStickyHeaderBottom/);
+  assert.match(css, /--roster-index-top,\s*calc\(var\(--mark-home-clear/);
+  assert.doesNotMatch(indexSource, /top:\s*['"]?\d+px/);
+  assert.match(readFileSync('src/lib/rosterIndex.ts', 'utf8'), /\.seat-session/);
 });
 
 function store() {

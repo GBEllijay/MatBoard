@@ -288,11 +288,13 @@
   font-size: 12px;
 }
 
-/* A–Z jump strip. Fixed to the visible screen so a drag does not move the letters. */
+/* A–Z jump strip. Fixed to the visible screen so a drag does not move the letters.
+   --roster-index-top is the measured bottom of the Upgrade bar. Without that bar,
+   the strip starts at the logo clearance. */
 .roster-index {
   position: fixed;
   z-index: 6;
-  top: calc(var(--mark-home-clear, 8rem) + var(--safe-t, 0px));
+  top: var(--roster-index-top, calc(var(--mark-home-clear, 8rem) + var(--safe-t, 0px)));
   bottom: calc(10px + var(--safe-b, 0px));
   right: max(2px, calc((100vw - min(42rem, 100vw)) / 2));
   display: flex;
