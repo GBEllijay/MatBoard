@@ -5382,7 +5382,34 @@ button.tm-phase {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.6rem;
   margin-bottom: 0.8rem;
+}
+
+.sheet__head h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sheet__close {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
+  touch-action: manipulation;
+}
+
+.sheet.sheet--clipboard .sheet__panel {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.sheet.sheet--clipboard .sheet__head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: -0.25rem 0 0.8rem;
+  padding: 0.25rem 0;
+  background: rgba(8, 16, 28, 0.94);
 }
 
 .sheet__body {
@@ -10745,8 +10772,68 @@ input.roster-pick__name:focus,
 .roster__search {
   display: grid;
   gap: 0.35rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   font-weight: 700;
+}
+
+.roster__find {
+  width: min(42rem, calc(100% - 2rem));
+  margin: 0 auto 1rem;
+  display: grid;
+  gap: 0.55rem;
+  padding-right: 48px;
+  box-sizing: border-box;
+}
+
+.roster__find .roster__search {
+  width: auto;
+  margin-inline: 0;
+}
+
+.roster__sort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.roster__sort-label {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.roster__sort button {
+  min-height: 44px;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.roster__sort button[aria-checked='true'] {
+  background: var(--logo-blue);
+  color: #fff;
+  border-color: transparent;
+}
+
+.roster__cardlook {
+  position: static;
+  z-index: auto;
+  width: min(42rem, calc(100% - 2rem));
+  margin: 0 auto 0.85rem;
+  padding: 0;
+  background: none;
+}
+
+.roster__cardlook summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 800;
+  line-height: 1.3;
+  cursor: pointer;
 }
 
 .roster__list {

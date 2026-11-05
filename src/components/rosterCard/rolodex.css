@@ -2,28 +2,40 @@
    Scroll or swipe up and down; cards snap and slide as they pass. Tapping a face opens
    the full card. Every row control stays on the mini card, 44px or taller. */
 .rolodex {
+  position: relative;
+  width: min(42rem, calc(100% - 0.5rem));
+  max-width: none;
   margin: 0 auto 2rem;
-  max-width: 760px;
 }
 .rolodex .rolodex__list {
+  width: 100%;
+  max-width: none;
   margin: 0;
-  padding: 6px 4px 12vh;
-  max-height: min(78vh, 880px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scroll-snap-type: y proximity;
-  scroll-padding-top: 6px;
+  padding: 6px 48px 12vh 10px;
+  max-height: none;
+  overflow: visible;
+  /* The page scrolls this list. auto, not contain, so a vertical swipe is a page scroll. */
+  overscroll-behavior: auto;
+  scroll-snap-type: none;
   gap: 14px;
   border-radius: 18px;
   background: var(--cb-board);
   box-shadow: inset 0 0 0 1px var(--cb-line);
-  padding-left: 10px;
-  padding-right: 10px;
   padding-top: 12px;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 .rolodex .rolodex__list > li {
-  scroll-snap-align: start;
-  scroll-margin-top: 12px;
+  scroll-margin-top: calc(var(--mark-home-clear, 8rem) + 8px);
+}
+/* The view-timeline flip used to leave a transformed layer under the finger, so a
+   vertical swipe on a card never reached this scroller or the page. pan-y keeps
+   taps and the horizontal coach swipe, and lets the browser scroll. */
+.rolodex .roster-card,
+.rolodex .roster-card button,
+.rolodex .roster-card a,
+.rolodex .roster-card h2 {
+  touch-action: pan-y;
 }
 .rolodex .roster-card {
   position: relative;
@@ -224,11 +236,21 @@
     transform: none !important;
   }
 }
+/* Touch screens: the flip transform captures the gesture before the list can scroll. */
+@media (hover: none) and (pointer: coarse) {
+  .rolodex .rolodex__list > li > .roster-card {
+    animation: none !important;
+    transform: none !important;
+  }
+}
 @media (max-width: 600px) {
+  .rolodex {
+    width: calc(100% - 0.25rem);
+  }
   .rolodex .rolodex__list {
-    max-height: 72vh;
+    max-height: none;
     padding-left: 6px;
-    padding-right: 6px;
+    padding-right: 46px;
   }
   .rolodex .roster-card {
     padding: 12px 10px 10px;
@@ -264,4 +286,66 @@
 }
 .rolodex .roster-card .belt-mark__name {
   font-size: 12px;
+}
+
+/* A–Z jump strip. Fixed to the visible screen so a drag does not move the letters.
+   --roster-index-top is the measured bottom of the Upgrade bar. Without that bar,
+   the strip starts at the logo clearance. */
+.roster-index {
+  position: fixed;
+  z-index: 6;
+  top: var(--roster-index-top, calc(var(--mark-home-clear, 8rem) + var(--safe-t, 0px)));
+  bottom: calc(10px + var(--safe-b, 0px));
+  right: max(2px, calc((100vw - min(42rem, 100vw)) / 2));
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+  width: 40px;
+  padding: 2px 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+.roster-index__letter {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 40px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cb-link, #8fb6ff);
+  font: 700 12px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.roster-index__letter.is-empty {
+  color: var(--cb-muted, #b9c3d4);
+  opacity: 0.35;
+  cursor: default;
+}
+.roster-index__bubble {
+  position: fixed;
+  z-index: 30;
+  width: 84px;
+  height: 84px;
+  margin-top: -42px;
+  margin-left: -96px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: #004eba;
+  color: #fff;
+  font: 800 42px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
 }

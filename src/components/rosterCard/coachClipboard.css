@@ -217,7 +217,7 @@
   align-items: center;
 }
 .clipboard__belt {
-  max-width: 400px;
+  max-width: 100%;
   flex: 1;
   min-width: 0;
 }
@@ -828,19 +828,50 @@
   border-radius: 50%;
 }
 @media (max-width: 600px) {
+  .clipboard,
+  .clipboard__board,
+  .clipboard__sheet,
+  .clipboard__hdr,
+  .clipboard__tabs,
+  .clipboard__top,
+  .clipboard__facts {
+    max-width: 100%;
+    min-width: 0;
+  }
   .clipboard__board {
     margin: 0;
     border-radius: 0;
     padding: 14px 6px 8px;
+    overflow-x: hidden;
   }
   .clipboard__hdr {
-    grid-template-columns: 80px minmax(0, 1fr) 52px;
-    gap: 10px;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 8px;
     padding: 10px;
     align-items: start;
   }
+  .clipboard__crest {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    max-width: none;
+    width: 100%;
+    gap: 8px;
+  }
+  .clipboard__crest small {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
   .clipboard__idc {
-    width: 80px;
+    width: 72px;
+    grid-row: 1;
+  }
+  .clipboard__who {
+    grid-row: 1;
   }
   .clipboard__photo,
   .clipboard__initials {
@@ -867,8 +898,12 @@
     letter-spacing: 0.1em;
   }
   .clipboard__hdr > .clipboard__brow {
-    grid-column: 2 / 4;
-    margin-top: 6px;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-top: 8px;
+    min-width: 0;
+    position: relative;
+    z-index: 2;
   }
   .clipboard__crest img {
     width: 46px;
@@ -893,11 +928,18 @@
     text-overflow: ellipsis;
   }
   .clipboard__tabs {
-    padding: 0 8px;
+    flex-wrap: wrap;
+    padding: 0 4px;
+    max-width: 100%;
+    overflow: visible;
   }
   .clipboard__tabs button {
-    padding: 9px 8px;
-    font-size: 12.5px;
+    flex: 1 1 46%;
+    min-width: 0;
+    padding: 8px 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    text-align: center;
   }
   .clipboard__facts {
     grid-template-columns: 1fr 1fr;
@@ -1167,12 +1209,12 @@
 }
 @media (max-width: 600px) {
   .clipboard[data-style='fighter'] .clipboard__idc {
-    width: 96px;
+    width: 72px;
   }
   .clipboard[data-style='fighter'] .clipboard__idc .clipboard__photo,
   .clipboard[data-style='fighter'] .clipboard__idc .clipboard__initials {
-    width: 96px;
-    height: 114px;
+    width: 64px;
+    height: 76px;
   }
   .clipboard__bars li {
     grid-template-columns: 92px 1fr 24px;
@@ -1251,8 +1293,17 @@
   outline-offset: 2px;
 }
 .clipboard button.clipboard__belt {
-  display: inline-flex;
+  position: relative;
+  z-index: 2;
+  display: flex;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.clipboard__belt .s-belt-mark .belt {
+  width: 100%;
+  max-width: 100%;
 }
 .clipboard .clipboard__pencil {
   width: 44px;
