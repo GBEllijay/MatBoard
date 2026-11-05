@@ -7,7 +7,8 @@
  * Last stripe awarded is the newest dated stripe on that belt, or — with none.
  */
 
-import { currentKidsBelt, beltModeOf } from './beltBook.ts';
+import { compactSlots, currentKidsBelt, beltModeOf } from './beltBook.ts';
+import { IBJJF_KIDS_TEMPLATE } from './beltTemplates.ts';
 import { rosterBeltToProgress } from './coachRankUpdate.ts';
 import { emptyRank, emptyTapeDates, rankBeltLabel, wornBeltPreview, type WornBeltPreview } from './studentRank.ts';
 import { KIDS_BELTS, canonicalBelt, type Student } from './rosterStore.ts';
@@ -105,13 +106,42 @@ export function isKidsRosterBelt(belt: string): boolean {
   return (KIDS_BELTS as readonly string[]).includes(canonicalBelt(belt));
 }
 
+/** How many stripes this roster belt can store. Kids belts use the IBJJF tape list. */
+export function rosterStripeMax(belt: string): number {
+  const name = canonicalBelt(belt);
+  if (isKidsRosterBelt(name)) {
+    const id = name.toLowerCase();
+    return IBJJF_KIDS_TEMPLATE.belts.find((row) => row.id === id)?.tapeColors.length ?? 4;
+  }
+  if (name.toLowerCase() === 'black') return 6;
+  return 4;
+}
+
+function sameRosterBelt(a: string, b: string): boolean {
+  return canonicalBelt(a) === canonicalBelt(b);
+}
+
+/**
+ * Stripe count for every roster belt drawing.
+ * `student.stripes` (the Promotion section) is the source of truth once the
+ * coach has saved it, including 0. An older card that never saved stripes
+ * falls back to the coach rank log's dated stripes so the belt is not blank.
+ */
+export function rosterStripeCount(student: Pick<Student, 'belt' | 'stripes'>, log?: CoachRankLog): number {
+  if (typeof student.stripes === 'number' && Number.isInteger(student.stripes) && student.stripes >= 0) {
+    return Math.min(student.stripes, rosterStripeMax(student.belt));
+  }
+  if (log && sameRosterBelt(log.belt, student.belt)) return Math.min(log.stripeDates.length, rosterStripeMax(student.belt));
+  return 0;
+}
+
 /**
  * A rank source for a roster student on the coach device.
  * Uses the coach's own belt log when it matches the roster belt.
  */
 export function coachRankSource(student: Pick<Student, 'belt' | 'stripes' | 'lastPromotion'>, log?: CoachRankLog): RankDateSource {
-  const stripes = Math.max(0, student.stripes ?? 0);
-  const matched = log && log.belt === student.belt ? log : undefined;
+  const stripes = rosterStripeCount(student, log);
+  const matched = log && sameRosterBelt(log.belt, student.belt) ? log : undefined;
   const awardedOn = matched ? matched.awardedOn : stripes === 0 && DATE_RE.test(student.lastPromotion) ? student.lastPromotion : '';
   const dates = (matched?.stripeDates ?? []).slice(0, stripes);
   if (isKidsRosterBelt(student.belt)) {
@@ -148,9 +178,22 @@ export function coachRankSource(student: Pick<Student, 'belt' | 'stripes' | 'las
   };
 }
 
-/** The existing worn-belt drawing, for any rank source. */
+/**
+ * The worn belt on roster cards.
+ * Kids belts use the approved compact row: whites fill, then those same slots
+ * turn red, then black. The rank page still draws one slot per tape.
+ */
 export function cardBelt(source: RankDateSource): WornBeltPreview {
-  return wornBeltPreview(source as unknown as StudentProgressReport);
+  const preview = wornBeltPreview(source as unknown as StudentProgressReport);
+  if (preview.system !== 'kids') return preview;
+  const rung = currentKidsBelt(source as unknown as StudentProgressReport);
+  return {
+    ...preview,
+    slots: compactSlots(rung.tapeColors, rung.tapeCount).map((slot) => ({
+      on: slot.on,
+      color: slot.on ? slot.color : '',
+    })),
+  };
 }
 
 export function initialsOf(name: string): string {

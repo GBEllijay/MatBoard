@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Window } from 'happy-dom';
-import { act } from 'react';
+import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -56,6 +56,10 @@ const { checkedInCompetitors, competitorsForBracketFill, orderCheckedInByRanking
 const { RankBelt } = await import('./RankBelt.tsx');
 const { CheckInFillSheet } = await import('../CheckInFillSheet.tsx');
 const { studentCheckInFor } = await import('../../pages/Roster.tsx');
+const { RosterIndex } = await import('./RosterIndex.tsx');
+const { Sheet } = await import('../Sheet.tsx');
+const { pageScrollIsLocked, resetPageScrollLockForTests } = await import('../../lib/pageScrollLock.ts');
+const { rosterIndexTopPx } = await import('../../lib/rosterIndex.ts');
 const { blankStudentReport, saveStudentReport } = await import('../../lib/studentEdition.ts');
 const { STUDENT_NO_PHOTOS_KEY } = await import('../../lib/studentPhotoFlag.ts');
 const { saveStudentDriveLink } = await import('../../lib/academyPathway.ts');
@@ -778,8 +782,150 @@ test('Roster page: Rolodex wraps both lists in the card look and opens the right
   assert.match(page, /onOpenFace=\{studentRoster \? \(\) => setCardTarget\([^)]*\) : \(\) => setCompCardTarget\([^)]*\)\}/);
   assert.match(page, /<CompetitionCard\b/);
   const css = readFileSync('src/components/rosterCard/rolodex.css', 'utf8');
-  assert.match(css, /scroll-snap-type: y/);
+  assert.match(css, /scroll-snap-type:\s*none/);
+  assert.match(css, /max-height:\s*none/);
+  assert.match(css, /\.roster-index\s*\{[^}]*position:\s*fixed/);
   assert.match(css, /prefers-reduced-motion: reduce/);
+});
+
+test('A and B sit below the measured Upgrade header at 390 and 400', () => {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  installGlobal('ResizeObserver', ResizeObserverStub);
+  const viewWithObserver = window as Window & { ResizeObserver: typeof ResizeObserverStub };
+  viewWithObserver.ResizeObserver = ResizeObserverStub;
+  const header = document.createElement('div');
+  header.className = 'seat-session';
+  header.textContent = 'Upgrade';
+  document.body.appendChild(header);
+  const original = HTMLElement.prototype.getBoundingClientRect;
+  HTMLElement.prototype.getBoundingClientRect = function rect() {
+    if (this.classList.contains('seat-session')) {
+      return { x: 0, y: 128, top: 128, bottom: 196, left: 0, right: 400, width: 400, height: 68, toJSON() { return {}; } } as DOMRect;
+    }
+    if (this.classList.contains('roster-index') && !this.style.getPropertyValue('--roster-index-top')) {
+      return { x: 350, y: 128, top: 128, bottom: 975, left: 350, right: 390, width: 40, height: 847, toJSON() { return {}; } } as DOMRect;
+    }
+    return original.call(this);
+  };
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('').map((letter) => ({
+    letter,
+    count: 1,
+    firstId: letter,
+  }));
+  try {
+    for (const width of [390, 400]) {
+      const top = rosterIndexTopPx(196, 128);
+      assert.equal(top, '204px', `${width}px wide`);
+      assert.ok(Number.parseFloat(top ?? '0') >= 196);
+    }
+    const mounted = mount(<RosterIndex letters={letters} onJump={() => undefined} />);
+    const strip = document.querySelector('[data-testid="roster-index"]') as HTMLElement;
+    assert.equal(strip.style.getPropertyValue('--roster-index-top'), '204px');
+    const a = strip.querySelector('[data-letter="A"]') as HTMLElement;
+    const b = strip.querySelector('[data-letter="B"]') as HTMLElement;
+    assert.ok(a && b);
+    assert.equal(a.textContent?.trim(), 'A');
+    assert.equal(b.textContent?.trim(), 'B');
+    const hash = strip.querySelector('[data-letter="#"]');
+    assert.ok(hash, '# stays on the strip');
+    unmount(mounted);
+  } finally {
+    HTMLElement.prototype.getBoundingClientRect = original;
+    header.remove();
+  }
+});
+
+test('open card Close restores page scroll, including belt Edit', () => {
+  resetPageScrollLockForTests(document);
+  localStorage.clear();
+  resetRoster();
+  const card = studentCard();
+  function Harness({ closeCardFromEdit = false }: { closeCardFromEdit?: boolean }) {
+    const [cardOn, setCardOn] = useState(true);
+    const [editOn, setEditOn] = useState(false);
+    return (
+      <>
+        <RosterCardSheet
+          student={cardOn ? fresh(card.id) : null}
+          onClose={() => setCardOn(false)}
+          onEditBelt={() => setEditOn(true)}
+          onLink={() => undefined}
+          onOpenPhotos={() => undefined}
+          competitorRosterOpen
+          onOpenCompetitorRoster={() => undefined}
+        />
+        <Sheet
+          open={editOn}
+          title="Edit student"
+          onClose={() => {
+            setEditOn(false);
+            if (closeCardFromEdit) setCardOn(false);
+          }}
+          portal
+          stacked
+        >
+          <p>Stripes</p>
+        </Sheet>
+      </>
+    );
+  }
+  const wheelOk = () => {
+    const wheel = new view.WheelEvent('wheel', { deltaY: 40, cancelable: true, bubbles: true });
+    document.dispatchEvent(wheel);
+    assert.equal(wheel.defaultPrevented, false);
+  };
+  const restored = () => {
+    assert.equal(document.body.style.overflow, '');
+    assert.equal(document.body.style.touchAction, '');
+    assert.equal(document.documentElement.style.overflow, '');
+    assert.equal(document.documentElement.style.touchAction, '');
+    assert.equal(pageScrollIsLocked(document), false);
+    wheelOk();
+  };
+  let mounted = mount(<Harness />);
+  try {
+    assert.equal(document.body.style.overflow, 'hidden');
+    assert.equal(document.documentElement.style.touchAction, 'none');
+    click(buttons('Close')[0]);
+    restored();
+  } finally {
+    unmount(mounted);
+    resetPageScrollLockForTests(document);
+  }
+
+  mounted = mount(<Harness />);
+  try {
+    const belt = document.querySelector('button.clipboard__belt') as HTMLButtonElement;
+    assert.ok(belt, 'belt opens Edit');
+    click(belt);
+    assert.equal(document.querySelectorAll('.sheet').length, 2);
+    assert.equal(pageScrollIsLocked(document), true);
+    const editClose = buttons('Close').at(-1);
+    assert.ok(editClose);
+    click(editClose);
+    assert.equal(document.querySelectorAll('.sheet').length, 1, 'card stays open after Edit closes');
+    assert.equal(pageScrollIsLocked(document), true);
+    click(buttons('Close')[0]);
+    restored();
+  } finally {
+    unmount(mounted);
+    resetPageScrollLockForTests(document);
+  }
+
+  mounted = mount(<Harness closeCardFromEdit />);
+  try {
+    click(document.querySelector('button.clipboard__belt') as HTMLButtonElement);
+    click(buttons('Close').at(-1) as HTMLButtonElement);
+    assert.equal(document.querySelector('.sheet'), null);
+    restored();
+  } finally {
+    unmount(mounted);
+    resetPageScrollLockForTests(document);
+  }
 });
 
 test('Coach card: the name and belt open Change details; no new control is named edit; tap hint is described', () => {
@@ -934,3 +1080,34 @@ test('Rolodex and Competition card: the belt under the name shows the rank strip
 function RankBeltProbe({ id }: { id: string }) {
   return <li><RankBelt student={fresh(id)} /></li>;
 }
+
+test('mini card, open card, and edit belt share the promotion stripe count', () => {
+  localStorage.clear();
+  resetRoster();
+  const oliver = addStudent({ name: 'Oliver Tibbetts', belt: 'Blue', stripes: 1, division: 'Adult', gym: 'Gracie Barra Ellijay', lastPromotion: '2026-09-26', lastPromotionDetail: '', note: '', photo: '' }, { rosterList: 'student' });
+  assert.ok(oliver);
+  updateStudent(oliver.id, { stripes: 1, lastPromotion: '2026-09-26' });
+  let m = mount(<ul><RankBeltProbe id={oliver.id} /></ul>);
+  const blue = document.querySelector('[data-testid="rank-belt"]') as HTMLElement;
+  assert.equal(blue.getAttribute('data-stripes'), '1');
+  assert.equal(blue.querySelectorAll('.stripe.is-on').length, 1);
+  assert.equal(blue.querySelectorAll('.stripe').length, 4);
+  unmount(m);
+
+  const micah = addStudent({ name: 'Micah Bates', belt: 'Grey', stripes: 0, division: 'Kids', gym: 'Gracie Barra Ellijay', lastPromotion: '', lastPromotionDetail: '', note: '', photo: '' }, { rosterList: 'student' });
+  assert.ok(micah);
+  m = mount(<ul><RankBeltProbe id={micah.id} /></ul>);
+  const grey = document.querySelector('[data-testid="rank-belt"]') as HTMLElement;
+  assert.equal(grey.querySelector('.s-belt-mark')?.getAttribute('data-system'), 'kids');
+  assert.equal(grey.querySelectorAll('.stripe').length, 4, 'grey does not draw 11 stripe marks');
+  assert.equal(grey.querySelectorAll('.stripe.is-on').length, 0);
+  assert.equal(grey.querySelector('.belt--kids') instanceof HTMLElement, true);
+  unmount(m);
+
+  const page = readFileSync('src/pages/Roster.tsx', 'utf8');
+  assert.match(page, /focusStripes/);
+  assert.match(page, /portal stacked/);
+  const css = readFileSync('src/components/rosterCard/coachClipboard.css', 'utf8');
+  assert.match(css, /grid-column:\s*1\s*\/\s*-1/);
+  assert.match(css, /button\.clipboard__belt[\s\S]*z-index:\s*2/);
+});

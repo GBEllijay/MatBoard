@@ -32,6 +32,14 @@ import { isStableStudentId } from './studentIdentity.ts';
 import { isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 export const STORAGE_KEY = 'matboard.roster.v1';
+
+/**
+ * Adult belts keep 4 stripes and a black belt keeps 6 degrees.
+ * Kids belts keep up to 11 tapes (4 white, 4 red, 3 black). The card draws
+ * those tapes as the compact 4-slot bar; this cap is only the stored count.
+ * Declared before the roster loads: `clipStripes` runs while that load normalizes names.
+ */
+export const ROSTER_STRIPE_CAP = 11;
 /** Competitor Notes on the roster card. */
 export const NOTE_MAX = 500;
 export const NAME_MAX = 80;
@@ -412,7 +420,7 @@ export function clipLastPromotionDetail(value: string): string {
 }
 
 export function clipStripes(value: unknown): number | undefined {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 4) return undefined;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > ROSTER_STRIPE_CAP) return undefined;
   return value;
 }
 
