@@ -57,7 +57,7 @@ export type TechniqueBlock = {
   title: string;
   notes: string;
   /**
-   * Whole minutes the coach expects this drill to take, such as "8".
+   * Minutes the coach expects this drill to take, such as "8" or "8.5".
    * Blank means 5. This is the default loop length for the drill's video
    * unless the video card has its own loop length.
    */

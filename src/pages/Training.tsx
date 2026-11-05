@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
+import { HoldButton } from '../components/HoldButton';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { PolishedTimer } from '../components/PolishedTimer';
@@ -23,7 +24,7 @@ import { wantsRoundsFullscreen } from '../lib/roundsFullscreen';
 import { safeTimerReturn } from '../lib/timerReturn';
 import { isPolishedTrainingSkin, trainingUsesAdvantageSkin, visibleTrainingSkin, whiteTimerSurfaceClass } from '../lib/trainingSkin';
 import { timerBackdropClasses, timerGymLogoSrc } from '../lib/timerBackdrop';
-import { remainingTraining, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
+import { remainingTraining, resetTrainingPeriod, resetTrainingSession, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
 
 export function TrainingPage() {
   const training = useTrainingState();
@@ -74,7 +75,7 @@ export function TrainingPage() {
     ? `Round ${training.currentRound} · Endless`
     : `Round ${training.currentRound} / ${training.rounds}`;
 
-  const onClock = (event: MouseEvent) => {
+  const onClock = (event: { stopPropagation: () => void }) => {
     event.stopPropagation();
     void unlockAudio()
       .catch(() => undefined)
@@ -84,7 +85,7 @@ export function TrainingPage() {
   };
 
   /** Tap the "Work · Round 1 / 5" line to enter fullscreen; tap again to leave. */
-  const onRoundLabel = (event: MouseEvent) => {
+  const onRoundLabel = (event: { stopPropagation: () => void }) => {
     event.stopPropagation();
     void fs.toggle();
   };
@@ -157,24 +158,33 @@ export function TrainingPage() {
           phaseLabel={`${training.phase === 'work' ? 'Work' : 'Break'} · ${roundLabel}. ${fs.active ? 'Tap to exit fullscreen' : 'Tap for fullscreen'}`}
           onPhase={onRoundLabel}
           onClock={onClock}
+          onPhaseHold={() => resetTrainingSession()}
+          onClockHold={() => resetTrainingPeriod()}
           running={training.running}
         />
       ) : (
         <>
-          <button
-            type="button"
+          <HoldButton
             className="training__phase"
-            aria-label={`${training.phase === 'work' ? 'Work' : 'Break'} · ${roundLabel}. ${
+            dataHold="round"
+            ariaLabel={`${training.phase === 'work' ? 'Work' : 'Break'} · ${roundLabel}. ${
               fs.active ? 'Tap to exit fullscreen' : 'Tap for fullscreen'
-            }`}
-            onClick={onRoundLabel}
+            } Hold 3 seconds to reset the session.`}
+            onTap={onRoundLabel}
+            onComplete={() => resetTrainingSession()}
           >
             {training.phase === 'work' ? 'Work' : 'Break'} · {roundLabel}
-          </button>
-          <button type="button" className="training__clock" onClick={onClock}>
+          </HoldButton>
+          <HoldButton
+            className="training__clock"
+            dataHold="timer"
+            ariaLabel={`${formatMmSs(remaining)}. Tap to start or pause. Hold 3 seconds to reset this period.`}
+            onTap={onClock}
+            onComplete={() => resetTrainingPeriod()}
+          >
             {formatMmSs(remaining)}
-          </button>
-          <p className="training__hint">Tap the clock to start or pause. Tap the round line for fullscreen. Tap anywhere else for options.</p>
+          </HoldButton>
+          <p className="training__hint">Tap the clock to start or pause. Hold the clock for 3 seconds to reset this period. Tap the round line for fullscreen. Hold the round line for 3 seconds to reset the session. Tap anywhere else for options.</p>
         </>
       )}
 

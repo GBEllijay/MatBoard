@@ -174,6 +174,22 @@ export function resetTrainingSession(): void {
   });
 }
 
+/**
+ * Hold on the clock. Restores the configured length of the period on screen:
+ * full work time during work, full rest time during rest. Not zero.
+ * The round number and the length, rest, and rounds settings stay.
+ */
+export function resetTrainingPeriod(): void {
+  const remainingMs = state.phase === 'break' ? state.breakMs : state.workMs;
+  persist({
+    ...state,
+    remainingMs,
+    running: false,
+    startedAt: null,
+    warned: false,
+  });
+}
+
 export function toggleTrainingClock(): void {
   if (state.running) {
     persist({
