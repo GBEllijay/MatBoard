@@ -7,6 +7,9 @@ import { carryHubFrom } from './productNames.ts';
  * Left (finger moves left): Daily Lesson Plan → Daily Training Videos → Technique Tree.
  * Right: the reverse.
  * Competitor Roster swipes right to Mock Tournament. Mock Tournament does not swipe back.
+ *
+ * A stroke on Record for Review is a horizontal drag. The player is blocked so
+ * drawing does not swipe from Daily Lesson Plan to Daily Training Videos.
  */
 
 export const SWIPE_MIN_PX = 80;
@@ -29,14 +32,14 @@ export function swipeStartsInBrowserEdge(x: number, width: number, edge = SWIPE_
   return x < edge || x > width - edge;
 }
 
-const EDITABLE =
-  'input, textarea, select, option, button, a, label, [contenteditable="true"], [role="dialog"], [data-coach-no-swipe]';
+export const SWIPE_BLOCK_SELECTOR =
+  'input, textarea, select, option, button, a, label, [contenteditable="true"], [role="dialog"], [data-coach-no-swipe], .replay-player';
 
-/** Text fields, controls, and open sheets keep their own gestures. */
+/** Text fields, controls, open sheets, and Record for Review keep their own gestures. */
 export function swipeGestureBlocked(target: EventTarget | null): boolean {
   if (typeof Element === 'undefined') return false;
   if (!(target instanceof Element)) return false;
-  return Boolean(target.closest(EDITABLE));
+  return Boolean(target.closest(SWIPE_BLOCK_SELECTOR));
 }
 
 export function coachSwipeTarget(

@@ -383,8 +383,8 @@ export function menuCloudSharing(
 
 /**
  * Coach hub links. No seat shows every tool. A signed-in seat hides Daily
- * Lesson Plan or Daily Training Videos when that switch is off. Technique Tree
- * and the folder hubs stay.
+ * Lesson Plan, Record for Review, or Daily Training Videos when that switch
+ * is off. Technique Tree and the folder hubs stay.
  */
 export function coachToolVisible(
   to: string,
@@ -392,7 +392,7 @@ export function coachToolVisible(
 ): boolean {
   if (!seat) return true;
   const path = to.split('?')[0];
-  if (path === '/notes') return seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
+  if (path === '/notes' || path === '/record-for-review') return seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
   if (path === '/techniques') return seatPermissionAllows(seat.permissions, 'downloadTodaysVideos');
   return true;
 }

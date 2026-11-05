@@ -79,6 +79,7 @@ import { TermsPage } from './pages/Terms';
 import { RankingsPage } from './pages/Rankings';
 import { TournamentPage } from './pages/Tournament';
 import { TournamentSuitePage } from './pages/TournamentSuite';
+import { RecordForReviewPage } from './pages/RecordForReview';
 import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
@@ -686,6 +687,14 @@ export default function App() {
         element={
           <CoachRoute>
             <TrainingNotesPage />
+          </CoachRoute>
+        }
+      />
+      <Route
+        path="/record-for-review"
+        element={
+          <CoachRoute>
+            <RecordForReviewPage />
           </CoachRoute>
         }
       />

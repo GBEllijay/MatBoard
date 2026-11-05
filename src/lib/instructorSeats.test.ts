@@ -691,8 +691,11 @@ test('Coach tool seats hide lesson plan and videos and leave the other hubs', ()
     },
   };
   assert.equal(coachToolVisible('/notes', null), true);
+  assert.equal(coachToolVisible('/record-for-review', null), true);
   assert.equal(coachToolVisible('/techniques', null), true);
   assert.equal(coachToolVisible('/notes', open), false);
+  assert.equal(coachToolVisible('/record-for-review', open), false);
+  assert.equal(coachToolVisible('/record-for-review?from=coach', open), false);
   assert.equal(coachToolVisible('/notes?plan=unlimited', open), false);
   assert.equal(coachToolVisible('/techniques', open), false);
   assert.equal(coachToolVisible('/technique-tree', open), true);

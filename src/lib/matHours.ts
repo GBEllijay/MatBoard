@@ -19,6 +19,25 @@ export function matMinuteOptions(): { value: number; label: string; detent?: boo
   return Array.from({ length: JOURNAL_MINUTES_MAX + 1 }, (_, value) => ({ value, label: value ? clockMatTime(value) : 'Untimed', detent: value > 0 && value % 10 === 0 }));
 }
 
+/** Log mat time only. 0, then every 15 minutes through 12h. Hour marks are the soft detents. */
+export function matQuarterOptions(): { value: number; label: string; detent?: boolean }[] {
+  const options: { value: number; label: string; detent?: boolean }[] = [];
+  for (let value = 0; value <= JOURNAL_MINUTES_MAX; value += 15) {
+    options.push({ value, label: value ? clockMatTime(value) : 'Untimed', detent: value > 0 && value % 60 === 0 });
+  }
+  return options;
+}
+
+/** Types offered on Log mat time. Other stays in the journal model and is not a choice here. */
+export const MAT_LOG_SESSIONS = ['class', 'openMat', 'misc'] as const;
+
+/** Short pill labels. `misc` is still the stored session. */
+export const MAT_LOG_SESSION_LABELS: Record<(typeof MAT_LOG_SESSIONS)[number], string> = {
+  class: 'Class',
+  openMat: 'Open mat',
+  misc: 'Misc',
+};
+
 /** Whole minutes from 0 to 720. Anything else is 0 (untimed). */
 export function clampMinutes(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0;

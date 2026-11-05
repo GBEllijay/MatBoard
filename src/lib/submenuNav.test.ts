@@ -122,6 +122,12 @@ test('Coach Unlimited tools go back to Coach Unlimited, including a direct Pro v
 
 test('Coach hub tools go back to Coach even when Pro is unlocked', () => {
   assert.equal(submenuBackTarget({ pathname: '/notes', search: 'from=coach', ...pro }), '/coach');
+  assert.equal(submenuBackTarget({ pathname: '/record-for-review', search: 'from=coach', ...pro }), '/coach');
+  assert.equal(submenuBackTarget({ pathname: '/record-for-review', search: 'from=unlimited', ...pro }), '/coach-unlimited');
+  assert.equal(
+    submenuBackTarget({ pathname: '/record-for-review', search: '', proUnlocked: false, coachUnlocked: true }),
+    '/coach',
+  );
   assert.equal(submenuBackTarget({ pathname: '/techniques', search: 'from=coach', ...pro }), '/coach');
   assert.equal(submenuBackTarget({ pathname: '/technique-tree', search: 'from=coach', ...pro }), '/coach');
   assert.equal(submenuBackTarget({ pathname: '/roster', search: 'from=students', ...pro }), '/coach');

@@ -12,6 +12,7 @@ import {
   type ReplaySaveKind,
 } from '../lib/replayAnalysis';
 import { newReplayClipId, putReplayClip, readReplayClip } from '../lib/replayClipStore';
+import { annotatedFileName } from '../lib/annotatedReplay';
 import { REPLAY_PENDING_MESSAGE, availableReplaySaveTargets, plainVideoMime, saveReplayClip } from '../lib/replaySave';
 import { DeviceMediaInput } from './DeviceMediaInput';
 import { ReplayPlayer } from './ReplayPlayer';
@@ -148,6 +149,18 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
     setMessage(`${REPLAY_SAVED_LABELS[result.kind]}. This device keeps a copy.`);
   };
 
+  /** The existing save, with the annotated file (or the still) as the bytes. */
+  const saveAnnotatedFile = async (kind: ReplaySaveKind, blob: Blob, mime: string, picture: boolean) =>
+    saveReplayClip({
+      kind,
+      dateKey,
+      fileName: annotatedFileName(dateKey, replay.title || heading, mime, replay.id, picture),
+      blob,
+      mime,
+      replayId: replay.id,
+      ...(picture ? { picture: true } : {}),
+    });
+
   const editable = !readOnly;
   const titleId = `${inputBase}-title`;
   const notesId = `${inputBase}-notes`;
@@ -188,6 +201,11 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
             frameName={replayFileName(dateKey, replay.title, 'image/png', replay.id).replace(/\.mp4$/, '.png')}
             dateKey={dateKey}
             replayId={replay.id}
+            clipBlob={clip.blob}
+            clipMime={replay.clip?.mime}
+            annotatedVideoName={annotatedFileName(dateKey, replay.title || heading, replay.clip?.mime || 'video/mp4', replay.id)}
+            annotatedStillName={annotatedFileName(dateKey, replay.title || heading, 'image/png', replay.id, true)}
+            saveAnnotated={saveAnnotatedFile}
           />
         ) : null}
         {clip.status === 'loading' ? <p className="replay-card__note">Opening clip…</p> : null}
