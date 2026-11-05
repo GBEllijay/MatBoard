@@ -65,8 +65,8 @@ export type CurriculumBlock = {
   title: string;
   notes: string;
   /**
-   * Whole minutes, such as "8". Blank means 5. Older "8:00" and "1:30" strings
-   * migrate to a minute on load.
+   * Minutes, such as "8" or "8.5". Blank means 5. Older "8:00" becomes "8"
+   * and "1:30" becomes "1.5" on load.
    */
   expected: string;
   waterBreak: boolean;
@@ -184,8 +184,9 @@ export function blockOffersExpected(kind: CurriculumKind): boolean {
 }
 
 /**
- * Stored minute count. "8:00" becomes "8". "1:30" becomes "2".
+ * Stored minute count. "8:00" becomes "8". "1:30" becomes "1.5".
  * Blank stays blank. Text that is not a duration is kept.
+ * Above 60 clamps to 60. Under 30 seconds clamps to 0.5.
  */
 export function normalizeExpectedDuration(value: string): string {
   const migrated = migrateExpectedDuration(value);
@@ -194,7 +195,7 @@ export function normalizeExpectedDuration(value: string): string {
 
 /**
  * Milliseconds for the round timer or the looping video.
- * Blank or unreadable text uses 5 minutes. A clock string rounds to a minute.
+ * Blank or unreadable text uses 5 minutes. A clock string snaps to 30 seconds.
  * The round timer still clamps this to its own 1:00–60:00 wheel.
  */
 export function expectedToWorkMs(value: string, fallbackMs = DEFAULT_EXPECTED_MS): number {
@@ -202,7 +203,7 @@ export function expectedToWorkMs(value: string, fallbackMs = DEFAULT_EXPECTED_MS
   if (!trimmed) return fallbackMs;
   const minutes = parseExpectedMinutes(trimmed);
   if (minutes == null) return fallbackMs;
-  return minutes * 60_000;
+  return Math.round(minutes * 60_000);
 }
 
 function clampRounds(value: unknown): number {

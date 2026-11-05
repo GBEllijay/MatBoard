@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
+import { HoldButton } from '../components/HoldButton';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TrainingOptions } from '../components/TrainingOptions';
 import { useInterval } from '../hooks/useClock';
@@ -13,7 +14,7 @@ import { formatMmSs } from '../lib/format';
 import { fullscreenSupported, requestPageFullscreen } from '../lib/fullscreen';
 import { ROUNDS_FULLSCREEN_STATE, readRoundsDeviceEnv, roundsChipAction, roundsDisplayPath } from '../lib/roundsFullscreen';
 import { trainingUsesAdvantageSkin, visibleTrainingSkin, whiteTimerControllerClass } from '../lib/trainingSkin';
-import { remainingTraining, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
+import { remainingTraining, resetTrainingPeriod, resetTrainingSession, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
 
 function openRoundsWindow(fromSuite: boolean): void {
   window.open(roundsDisplayPath(fromSuite), 'matboard-rounds', 'popup,noopener,noreferrer,width=1280,height=720');
@@ -85,12 +86,23 @@ export function TrainingControllerPage() {
       />
 
       <section className="controller__clock">
-        <p className="training-control__phase">
+        <HoldButton
+          className="training-control__phase"
+          dataHold="round"
+          ariaLabel={`${training.phase === 'work' ? 'Work' : 'Break'} · ${roundLabel}. Hold 3 seconds to reset the session.`}
+          onComplete={() => resetTrainingSession()}
+        >
           {training.phase === 'work' ? 'Work' : 'Break'} · {roundLabel}
-        </p>
-        <button type="button" className="clock-btn clock-btn--control" onClick={toggleClock}>
+        </HoldButton>
+        <HoldButton
+          className="clock-btn clock-btn--control"
+          dataHold="timer"
+          ariaLabel={`${formatMmSs(remaining)}. Tap to start or pause. Hold 3 seconds to reset this period.`}
+          onTap={() => toggleClock()}
+          onComplete={() => resetTrainingPeriod()}
+        >
           {formatMmSs(remaining)}
-        </button>
+        </HoldButton>
         <div className="training-control__actions">
           <button type="button" className="btn" onClick={toggleClock}>
             {training.running ? 'Pause' : 'Start'}

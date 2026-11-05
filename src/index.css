@@ -4262,6 +4262,9 @@ main.tree:has(> .tier-home) > .tree__bar {
 .clock-btn--control {
   width: 100%;
   font-size: clamp(3.4rem, 18vw, 6rem);
+  position: relative;
+  touch-action: none;
+  user-select: none;
 }
 
 .clock-nudges {
@@ -5078,6 +5081,9 @@ label {
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
   line-height: 0.9;
+  position: relative;
+  touch-action: none;
+  user-select: none;
 }
 
 .training__phase {
@@ -5098,6 +5104,69 @@ label {
   text-transform: uppercase;
   font-weight: 800;
   color: var(--gold-2);
+  touch-action: none;
+  user-select: none;
+}
+
+/* Hold ring. Gold on the existing Advantage paint. It only mounts while the finger is down. */
+.hold-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3.4em;
+  height: 3.4em;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 6;
+  overflow: visible;
+}
+
+.training__phase .hold-ring,
+.tm-phase .hold-ring,
+.training-control__phase .hold-ring {
+  width: 4.75rem;
+  height: 4.75rem;
+}
+
+.hold-ring__halo,
+.hold-ring__track,
+.hold-ring__fill {
+  fill: none;
+  transform-box: fill-box;
+  transition: none;
+  animation: none;
+}
+
+.hold-ring__halo {
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 14;
+}
+
+.hold-ring__track {
+  stroke: rgba(255, 255, 255, 0.78);
+  stroke-width: 8;
+}
+
+.hold-ring__fill {
+  stroke: var(--gold-2);
+  stroke-width: 8;
+  stroke-linecap: butt;
+}
+
+button.tm-clock,
+button.tm-phase {
+  touch-action: none;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hold-ring,
+  .hold-ring__halo,
+  .hold-ring__track,
+  .hold-ring__fill {
+    transition: none;
+    animation: none;
+  }
 }
 
 .training--break .training__phase {
@@ -5456,9 +5525,20 @@ fieldset {
 }
 
 .training-control__phase {
+  appearance: none;
+  display: block;
+  width: 100%;
   margin: 0 0 0.35rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
   font-weight: 800;
   letter-spacing: -0.02em;
+  cursor: pointer;
+  position: relative;
+  touch-action: none;
+  user-select: none;
 }
 
 .training-control__actions {

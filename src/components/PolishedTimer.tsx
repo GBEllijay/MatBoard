@@ -1,4 +1,5 @@
-import type { MouseEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import { HoldButton } from './HoldButton';
 import { usePolishedSkinModule, useViewportSize } from '../hooks/usePolishedSkins';
 import { formatMmSs, formatMss } from '../lib/format';
 import type { PolishedTimerSlug } from '../lib/polishedSkins';
@@ -45,6 +46,8 @@ export function PolishedTimer({
   phaseLabel,
   onPhase,
   onClock,
+  onPhaseHold,
+  onClockHold,
   running,
   children,
 }: {
@@ -58,8 +61,12 @@ export function PolishedTimer({
   phaseLine: string;
   /** Accessible name of the fullscreen toggle. */
   phaseLabel: string;
-  onPhase: (event: MouseEvent) => void;
-  onClock: (event: MouseEvent) => void;
+  onPhase: (event: { stopPropagation: () => void }) => void;
+  onClock: (event: { stopPropagation: () => void }) => void;
+  /** Hold the round line for 3 seconds. */
+  onPhaseHold: () => void;
+  /** Hold the digits for 3 seconds. */
+  onClockHold: () => void;
   /** Heavy Metal only: a paused clock dims the meter and shows PAUSED. */
   running?: boolean;
   children?: ReactNode;
@@ -76,15 +83,16 @@ export function PolishedTimer({
   const metalPaused = slug === 'heavy-metal' && running === false;
 
   const clockBtn = (content: ReactNode, cls = 'digits', data?: string) => (
-    <button
-      type="button"
+    <HoldButton
       className={`${cls} sk-btn tm-clock`}
-      data-d={data}
-      aria-label={`${digits}. Start or pause the round clock`}
-      onClick={onClock}
+      dataHold="timer"
+      dataD={data}
+      ariaLabel={`${digits}. Start or pause the round clock. Hold 3 seconds to reset this period.`}
+      onTap={onClock}
+      onComplete={onClockHold}
     >
       {content}
-    </button>
+    </HoldButton>
   );
 
   let inner: ReactNode;
@@ -286,7 +294,13 @@ export function PolishedTimer({
       <div className={`tm${rest ? ' rest' : ''}${metalPaused ? ' is-paused' : ''}`} style={{ ['--p' as string]: p.toFixed(4) }}>
         {deco ? <div className="skin-deco" dangerouslySetInnerHTML={{ __html: deco }} /> : null}
         <img className="logo" src="/card-logo.png" alt="Advantage" />
-        <button type="button" className="phase sk-btn tm-phase" aria-label={phaseLabel} onClick={onPhase}>
+        <HoldButton
+          className="phase sk-btn tm-phase"
+          dataHold="round"
+          ariaLabel={`${phaseLabel} Hold 3 seconds to reset the session.`}
+          onTap={onPhase}
+          onComplete={onPhaseHold}
+        >
           {metalPhase ? (
             <>
               <span className="phase-pill">{metalPhase.pill}</span>
@@ -297,7 +311,7 @@ export function PolishedTimer({
           ) : (
             phaseLine
           )}
-        </button>
+        </HoldButton>
         {inner}
         {children}
       </div>

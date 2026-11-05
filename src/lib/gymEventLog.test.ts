@@ -160,9 +160,17 @@ test('append is idempotent by id, check-in is once per person per day, and class
 test('class minutes sum expected durations and fall back to 60', () => {
   assert.equal(minutesFromExpected('10 minutes'), 10);
   assert.equal(minutesFromExpected('1 hr'), 60);
+  assert.equal(minutesFromExpected('8'), 8);
+  assert.equal(minutesFromExpected('8.5'), 8.5);
+  assert.equal(minutesFromExpected('8.5 min'), 8.5);
+  assert.equal(minutesFromExpected('1:30'), 1.5);
   assert.equal(
     classMinutes({ introExpected: '5 min', warmupExpected: '10 minutes', specificExpected: '15 min', cooldownExpected: '3 min', techniques: [{ expected: '8 min' }] }),
     41,
+  );
+  assert.equal(
+    classMinutes({ introExpected: '8.5', warmupExpected: '8', specificExpected: '1.5', cooldownExpected: '', techniques: [{ expected: '0.5' }] }),
+    18.5,
   );
   assert.equal(classMinutes({}), 60);
 });
