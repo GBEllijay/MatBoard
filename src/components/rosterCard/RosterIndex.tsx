@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
-import { letterAtClientY, type LetterBand, type RosterIndexEntry } from '../../lib/rosterIndex';
+import { letterInStrip, type RosterIndexEntry } from '../../lib/rosterIndex';
 
 /**
- * iOS Contacts-style A–Z strip. Tap or drag to jump. Empty letters stay
- * visible and dimmed. The bubble shows while the pointer is down.
+ * iOS Contacts-style A–Z strip. Drag only moves the bubble.
+ * The list jumps once, instantly, to the letter under the finger at release.
  */
 export function RosterIndex({
   letters,
@@ -14,23 +14,36 @@ export function RosterIndex({
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  const armed = useRef<string | null>(null);
   const [bubble, setBubble] = useState<{ letter: string; x: number; y: number } | null>(null);
 
-  const bands = (): LetterBand[] => {
+  const letterAt = (clientY: number): string | null => {
     const root = rootRef.current;
-    if (!root) return [];
-    return [...root.querySelectorAll<HTMLButtonElement>('[data-letter]')].map((button) => {
-      const rect = button.getBoundingClientRect();
-      return { letter: button.dataset.letter ?? '', top: rect.top, bottom: rect.bottom };
-    });
+    if (!root) return null;
+    const rect = root.getBoundingClientRect();
+    return letterInStrip(
+      letters.map((row) => row.letter),
+      rect.top,
+      rect.bottom,
+      clientY,
+    );
   };
 
-  const point = (clientY: number) => {
+  const show = (clientY: number) => {
     const root = rootRef.current;
-    const letter = letterAtClientY(bands(), clientY);
+    const letter = letterAt(clientY);
     if (!letter || !root) return;
+    armed.current = letter;
     const rect = root.getBoundingClientRect();
     setBubble({ letter, x: rect.left, y: clientY });
+  };
+
+  const release = () => {
+    const letter = armed.current;
+    dragging.current = false;
+    armed.current = null;
+    setBubble(null);
+    if (!letter) return;
     const row = letters.find((item) => item.letter === letter);
     if (row && row.count > 0) onJump(letter);
   };
@@ -42,20 +55,21 @@ export function RosterIndex({
       ref={rootRef}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
+        event.preventDefault();
         dragging.current = true;
         rootRef.current?.setPointerCapture?.(event.pointerId);
-        point(event.clientY);
+        show(event.clientY);
       }}
       onPointerMove={(event) => {
         if (!dragging.current) return;
-        point(event.clientY);
+        show(event.clientY);
       }}
       onPointerUp={() => {
-        dragging.current = false;
-        setBubble(null);
+        release();
       }}
       onPointerCancel={() => {
         dragging.current = false;
+        armed.current = null;
         setBubble(null);
       }}
     >

@@ -28,7 +28,7 @@ import { CardLookSetting } from '../components/rosterCard/CardLookSetting';
 import { readCardLook, type CardLook } from '../lib/cardLook';
 import { CompetitionCard } from '../components/rosterCard/CompetitionCard';
 import { initialsOf, rosterStripeCount, rosterStripeMax } from '../lib/rosterCard';
-import { readRosterSort, rosterIndex, rosterIndexLetter, sortRoster, writeRosterSort, type RosterSortMode } from '../lib/rosterIndex';
+import { readRosterSort, rosterIndex, rosterIndexLetter, rosterJumpTop, sortRoster, writeRosterSort, type RosterSortMode } from '../lib/rosterIndex';
 import '../components/rosterCard/rolodex.css';
 import '../components/rosterCard/coachClipboard.css';
 import '../components/rosterCard/cardEntry.css';
@@ -179,9 +179,13 @@ export function RosterPage() {
   const jumpToLetter = (letter: string) => {
     const list = listRef.current;
     const target = list?.querySelector<HTMLElement>(`[data-roster-letter="${letter}"]`);
-    if (!list || !target) return;
-    const top = target.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
-    list.scrollTo({ top, behavior: 'smooth' });
+    if (!target) return;
+    const scroller = rosterPageScroller(target);
+    const top = rosterJumpTop(target.getBoundingClientRect().top, scroller.getBoundingClientRect().top, scroller.scrollTop, 12);
+    const previous = scroller.style.scrollBehavior;
+    scroller.style.scrollBehavior = 'auto';
+    scroller.scrollTop = top;
+    scroller.style.scrollBehavior = previous;
   };
   const openAdd = () => setEditor({ id: null, draft: { ...emptyDraft(), gym: readGymName() } });
 
@@ -313,8 +317,6 @@ export function RosterPage() {
 
       {showCsv ? csvTools : null}
 
-      {studentRoster ? <CardLookSetting /> : null}
-
       {listed.length ? (
       <div className="roster__find">
       <label className="roster__search">
@@ -338,6 +340,8 @@ export function RosterPage() {
       </div>
       </div>
       ) : null}
+
+      {studentRoster ? <CardLookSetting /> : null}
 
       {competitors.length ? (
         <div className="clipboard rolodex" data-style={look.style} data-skin={look.skin} data-testid="rolodex">
@@ -685,6 +689,16 @@ function CsvInstructions({ text }: { text: string }) {
  * Check In is the person's one check-in. Linked to a competitor card, both cards change
  * together; unlinked, it lives on the Student Roster card. Competitor on or off.
  */
+function rosterPageScroller(node: HTMLElement): HTMLElement {
+  let current: HTMLElement | null = node.parentElement;
+  while (current) {
+    const style = getComputedStyle(current);
+    if (/(auto|scroll)/.test(`${style.overflowY} ${style.overflow}`)) return current;
+    current = current.parentElement;
+  }
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
+}
+
 /** Promotion stripes, or the coach rank log when this card has never saved a stripe count. */
 function draftWithStripes(student: Student): StudentDraft {
   const draft = draftFromStudent(student);
@@ -818,7 +832,16 @@ export function StudentCard({
 
   return (
     <li data-roster-letter={indexLetter}>
-      <article className={`roster-card${onOpenFace ? ' rolodex-card' : ''}`}>
+      <article
+        className={`roster-card${onOpenFace ? ' rolodex-card' : ''}`}
+        onClick={(event) => {
+          if (!onOpenFace) return;
+          const node = event.target;
+          if (!node || typeof (node as Element).closest !== 'function') return;
+          if ((node as Element).closest('button, a, input, select, textarea, label, h2')) return;
+          onOpenFace();
+        }}
+      >
         <header className="roster-card__head">
           <div className="roster-card__identity">
             {onOpenFace ? (

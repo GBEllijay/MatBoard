@@ -59,7 +59,18 @@ export function Sheet({
       <div className="sheet__panel" onClick={(event) => event.stopPropagation()}>
         <div className="sheet__head">
           <h2 id={titleId}>{title}</h2>
-          <button type="button" className="btn btn--ghost" onClick={onClose}>
+          <button
+            type="button"
+            className="btn btn--ghost sheet__close"
+            onPointerUp={(event) => {
+              if (event.button !== 0) return;
+              onClose();
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              onClose();
+            }}
+          >
             Close
           </button>
         </div>

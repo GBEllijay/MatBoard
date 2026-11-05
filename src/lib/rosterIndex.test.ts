@@ -4,7 +4,9 @@ import test from 'node:test';
 import {
   compareRosterNames,
   letterAtClientY,
+  letterInStrip,
   readRosterSort,
+  rosterJumpTop,
   rosterIndex,
   rosterIndexLetter,
   rosterSwipeIntent,
@@ -113,6 +115,26 @@ test('a vertical swipe on a card scrolls and does not get captured', () => {
     { letter: 'B', top: 20, bottom: 40 },
     { letter: 'C', top: 40, bottom: 60 },
   ], 28), 'B');
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+  const top = 80;
+  const band = 12;
+  const bottom = top + alphabet.length * band;
+  const at = (letter: string) => top + alphabet.indexOf(letter) * band + 3;
+  assert.equal(letterInStrip(alphabet, top, bottom, at('V')), 'V');
+  assert.equal(letterInStrip(alphabet, top, bottom, at('O')), 'O');
+  assert.equal(letterInStrip(alphabet, top, bottom, at('P')), 'P');
+  assert.equal(letterInStrip(alphabet, top, bottom, at('N')), 'N');
+  assert.equal(rosterJumpTop(400, 100, 20, 12), 308);
+  const pageSource = readFileSync('src/pages/Roster.tsx', 'utf8');
+  const jump = pageSource.slice(pageSource.indexOf('const jumpToLetter'), pageSource.indexOf('const openAdd'));
+  assert.match(jump, /scroller\.scrollTop = top/);
+  assert.doesNotMatch(jump, /behavior:\s*'smooth'/);
+  const look = readFileSync('src/index.css', 'utf8');
+  assert.match(look, /\.roster__cardlook\s*\{[^}]*position:\s*static/);
+  assert.doesNotMatch(look, /\.roster__cardlook\s*\{[^}]*position:\s*sticky/);
+  const findAt = pageSource.indexOf('data-testid="roster-sort"');
+  const lookAt = pageSource.indexOf('<CardLookSetting');
+  assert.ok(findAt > 0 && lookAt > findAt, 'Card look sits after Find and Sort');
   const css = readFileSync('src/components/rosterCard/rolodex.css', 'utf8');
   assert.match(css, /\.rolodex \.roster-card,\s*\n\.rolodex \.roster-card button[\s\S]*touch-action:\s*pan-y/);
   assert.match(css, /overscroll-behavior:\s*auto/);

@@ -3,33 +3,30 @@
    the full card. Every row control stays on the mini card, 44px or taller. */
 .rolodex {
   position: relative;
+  width: min(42rem, calc(100% - 0.5rem));
+  max-width: none;
   margin: 0 auto 2rem;
-  max-width: 760px;
 }
 .rolodex .rolodex__list {
+  width: 100%;
+  max-width: none;
   margin: 0;
-  padding: 6px 4px 12vh;
-  max-height: min(78vh, 880px);
-  overflow-y: auto;
-  /* auto, not contain: a vertical swipe that starts on a card must chain to the page. */
+  padding: 6px 48px 12vh 10px;
+  max-height: none;
+  overflow: visible;
+  /* The page scrolls this list. auto, not contain, so a vertical swipe is a page scroll. */
   overscroll-behavior: auto;
-  scroll-snap-type: y proximity;
-  scroll-padding-top: 6px;
+  scroll-snap-type: none;
   gap: 14px;
   border-radius: 18px;
   background: var(--cb-board);
   box-shadow: inset 0 0 0 1px var(--cb-line);
-  padding-left: 10px;
-  padding-right: 34px;
   padding-top: 12px;
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
 .rolodex .rolodex__list > li {
-  scroll-snap-align: start;
-  scroll-margin-top: 12px;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 240px;
+  scroll-margin-top: calc(var(--mark-home-clear, 8rem) + 8px);
 }
 /* The view-timeline flip used to leave a transformed layer under the finger, so a
    vertical swipe on a card never reached this scroller or the page. pan-y keeps
@@ -247,10 +244,13 @@
   }
 }
 @media (max-width: 600px) {
+  .rolodex {
+    width: calc(100% - 0.25rem);
+  }
   .rolodex .rolodex__list {
-    max-height: 72vh;
+    max-height: none;
     padding-left: 6px;
-    padding-right: 30px;
+    padding-right: 46px;
   }
   .rolodex .roster-card {
     padding: 12px 10px 10px;
@@ -288,27 +288,32 @@
   font-size: 12px;
 }
 
-/* A–Z jump strip. Sits in the list's right padding so it does not cover Check In. */
+/* A–Z jump strip. Fixed to the visible screen so a drag does not move the letters. */
 .roster-index {
-  position: absolute;
-  z-index: 3;
-  top: 10px;
-  right: 2px;
-  bottom: 10px;
+  position: fixed;
+  z-index: 6;
+  top: calc(var(--mark-home-clear, 8rem) + var(--safe-t, 0px));
+  bottom: calc(10px + var(--safe-b, 0px));
+  right: max(2px, calc((100vw - min(42rem, 100vw)) / 2));
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  width: 28px;
+  align-items: stretch;
+  justify-content: stretch;
+  width: 40px;
+  padding: 2px 0;
   touch-action: none;
   user-select: none;
+  -webkit-user-select: none;
+  background: transparent;
+  -webkit-tap-highlight-color: transparent;
 }
 .roster-index__letter {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
+  width: 100%;
+  min-width: 40px;
   min-height: 0;
   margin: 0;
   padding: 0;
@@ -317,6 +322,9 @@
   color: var(--cb-link, #8fb6ff);
   font: 700 12px/1 Inter, ui-sans-serif, system-ui, sans-serif;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .roster-index__letter.is-empty {
   color: var(--cb-muted, #b9c3d4);

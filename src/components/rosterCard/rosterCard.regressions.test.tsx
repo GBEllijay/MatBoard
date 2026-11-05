@@ -778,7 +778,9 @@ test('Roster page: Rolodex wraps both lists in the card look and opens the right
   assert.match(page, /onOpenFace=\{studentRoster \? \(\) => setCardTarget\([^)]*\) : \(\) => setCompCardTarget\([^)]*\)\}/);
   assert.match(page, /<CompetitionCard\b/);
   const css = readFileSync('src/components/rosterCard/rolodex.css', 'utf8');
-  assert.match(css, /scroll-snap-type: y/);
+  assert.match(css, /scroll-snap-type:\s*none/);
+  assert.match(css, /max-height:\s*none/);
+  assert.match(css, /\.roster-index\s*\{[^}]*position:\s*fixed/);
   assert.match(css, /prefers-reduced-motion: reduce/);
 });
 

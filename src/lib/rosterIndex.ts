@@ -108,21 +108,31 @@ export function rosterSwipeIntent(dx: number, dy: number): 'scroll' | 'horizonta
 
 export type LetterBand = { letter: string; top: number; bottom: number };
 
+/**
+ * Letter under a finger on an evenly divided strip.
+ * Uses the strip box, not each button's midpoint, so a release on V stays on V.
+ */
+export function letterInStrip(letters: readonly string[], top: number, bottom: number, clientY: number): string | null {
+  if (!letters.length || !(bottom > top) || !Number.isFinite(clientY)) return null;
+  const span = bottom - top;
+  const y = Math.min(Math.max(clientY, top), bottom - 1e-6);
+  const index = Math.min(letters.length - 1, Math.max(0, Math.floor(((y - top) / span) * letters.length)));
+  return letters[index] ?? null;
+}
+
 /** Which index letter a drag is over. Bands are the letter buttons, top to bottom. */
 export function letterAtClientY(bands: readonly LetterBand[], clientY: number): string | null {
   if (!bands.length) return null;
-  if (clientY <= bands[0].top) return bands[0].letter;
-  const last = bands[bands.length - 1];
-  if (clientY >= last.bottom) return last.letter;
-  let best = bands[0];
-  let bestDist = Infinity;
-  for (const band of bands) {
-    const mid = (band.top + band.bottom) / 2;
-    const dist = Math.abs(clientY - mid);
-    if (dist < bestDist) {
-      best = band;
-      bestDist = dist;
-    }
-  }
-  return best.letter;
+  return letterInStrip(
+    bands.map((band) => band.letter),
+    bands[0].top,
+    bands[bands.length - 1].bottom,
+    clientY,
+  );
+}
+
+/** Instant jump offset. No smooth-scroll lag. */
+export function rosterJumpTop(targetTop: number, scrollerTop: number, scrollTop: number, clearance = 8): number {
+  if (![targetTop, scrollerTop, scrollTop, clearance].every(Number.isFinite)) return Math.max(0, scrollTop);
+  return Math.max(0, targetTop - scrollerTop + scrollTop - clearance);
 }
