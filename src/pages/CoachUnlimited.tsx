@@ -24,6 +24,7 @@ import {
   type LessonRevision,
 } from '../lib/lessonDrive';
 import { COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY, PRODUCTS_PATH, proConsoleEntryOpen } from '../lib/productNames';
+import { previewEntryPath } from '../lib/techniqueTreePreview';
 
 export { InstructorSharePage, StudentSharePage } from '../components/LicenseSharePage';
 
@@ -83,6 +84,12 @@ export function CoachUnlimitedPage() {
               ))}
             </div>
           </nav>
+          <p className="suite__note">
+            <Link className="home__text-btn" to={previewEntryPath('unlimited')}>
+              Preview
+            </Link>
+            {' — technique tree and fundamentals. Draft for owner review. Not live curriculum.'}
+          </p>
           <article className="plan-card">
             <p className="plan-card__kicker">{OWNER_DRIVE_KICKER}</p>
             <strong>{OWNER_DRIVE_TITLE}</strong>
