@@ -42,12 +42,18 @@ test('controller keeps the desktop popup, the Rounds chip, and Open rounds on th
 test('rounds display keeps the Fullscreen chip and the round line toggles fullscreen', () => {
   const src = read('src/pages/Training.tsx');
   assert.match(src, /<FullscreenChip/);
-  assert.match(src, /className="training__phase"[\s\S]*?onClick=\{onRoundLabel\}/);
+  assert.match(src, /className="training__phase"/);
+  assert.match(src, /dataHold="round"/);
+  assert.match(src, /onTap=\{onRoundLabel\}/);
+  assert.match(src, /onComplete=\{\(\) => resetTrainingSession\(\)\}/);
   assert.match(src, /const onRoundLabel[\s\S]*?event\.stopPropagation\(\);\s*void fs\.toggle\(\);/);
   // Tapping the round line must not also open the options sheet.
   assert.match(src, /'\.sheet, \.training__clock, \.training__phase,/);
-  // Clock tap still starts / pauses.
-  assert.match(src, /className="training__clock" onClick=\{onClock\}/);
+  // Clock tap still starts / pauses. A 3-second hold resets the period instead.
+  assert.match(src, /className="training__clock"/);
+  assert.match(src, /dataHold="timer"/);
+  assert.match(src, /onTap=\{onClock\}/);
+  assert.match(src, /onComplete=\{\(\) => resetTrainingPeriod\(\)\}/);
 });
 
 test('home-screen manifest opens fullscreen and stays public', () => {
