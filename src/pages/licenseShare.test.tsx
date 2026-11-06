@@ -10,6 +10,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { LicenseShareButton } from '../components/LicenseShareButton.tsx';
 import { InstructorSharePage, StudentSharePage } from '../components/LicenseSharePage.tsx';
+import { CoachUnlimitedPage } from './CoachUnlimited.tsx';
 import { academyPathway, academyPathwayUrl } from '../lib/academyPathway.ts';
 import { clearEntitlementToken, setEntitlementConfigForTests } from '../lib/entitlement.ts';
 import { DRIVE_BINDING_KEY } from '../lib/googleDrive.ts';
@@ -40,6 +41,11 @@ installGlobal('CustomEvent', view.CustomEvent);
 installGlobal('StorageEvent', view.StorageEvent);
 installGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 installGlobal('fetch', async () => new Response('{}', { status: 503 }));
+
+// The Instructor hub reads Vite's env while choosing a dev Drive client id.
+if (typeof import.meta.env === 'undefined') {
+  Object.defineProperty(import.meta, 'env', { configurable: true, value: { DEV: false, MODE: 'test' } });
+}
 
 const ORIGIN = 'http://localhost';
 const clipboard: string[] = [];
@@ -105,6 +111,41 @@ test('Instructor Edition owner sees the Student share only', async () => {
   const m = await mount(<LicenseShareButton />);
   assert.deepEqual(shareTargets(m.host), ['/coach-unlimited/share/student']);
   m.done();
+});
+
+function shareSlotOrder(host: HTMLElement): string[] {
+  return [...host.querySelectorAll('.belt-header, .instructor-jumps, .license-share-entry, .plan-card')].map((node) =>
+    node.classList.contains('belt-header')
+      ? 'belt'
+      : node.classList.contains('instructor-jumps')
+        ? 'tools'
+        : node.classList.contains('license-share-entry')
+          ? 'share'
+          : 'plan',
+  );
+}
+
+test('Instructor Edition share card sits after the tools and wears role buttons', async () => {
+  reset();
+  grant(['pro']);
+  const m = await mount(<CoachUnlimitedPage />);
+  assert.deepEqual(shareSlotOrder(m.host).slice(0, 4), ['belt', 'tools', 'share', 'plan']);
+  const share = m.host.querySelector('.license-share-entry');
+  assert.equal(share?.getAttribute('aria-label'), 'Share code');
+  assert.match(share?.textContent ?? '', /Coach seat or Student Edition/);
+  assert.deepEqual(shareTargets(m.host), ['/coach-unlimited/share/instructor', '/coach-unlimited/share/student']);
+  assert.equal(m.host.querySelectorAll('.license-share-entry__btn').length, 2);
+  assert.ok(m.host.querySelector('.license-share-entry__btn--instructor'));
+  assert.ok(m.host.querySelector('.license-share-entry__btn--student'));
+  m.done();
+
+  reset();
+  grant(['coach']);
+  const coach = await mount(<CoachUnlimitedPage />);
+  assert.deepEqual(shareSlotOrder(coach.host).slice(0, 4), ['belt', 'tools', 'share', 'plan']);
+  assert.deepEqual(shareTargets(coach.host), ['/coach-unlimited/share/student']);
+  assert.match(coach.host.querySelector('.license-share-entry')?.textContent ?? '', /Student Edition link/);
+  coach.done();
 });
 
 test('lower tiers never see Share code', async () => {
