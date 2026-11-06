@@ -30,6 +30,7 @@ import {
   blankStudentReport,
   decodeJournalBody,
   setStudentProfile,
+  setTrainingStyle,
   fundamentalsBoard,
   hideFundamental,
   loadStudentReport,
@@ -695,4 +696,23 @@ test('a fresh journal starts white, and a file without name, gym, or start date 
   assert.equal(roundTrip.profile.startedOn, '2014-03-01');
   assert.equal(roundTrip.profile.belt, 'blue');
   assert.match(roundTrip.journal[0]?.body ?? '', /collar grip deeper/);
+});
+
+test('choosing Both is stored and still Both after save and reload', () => {
+  const phone = memoryStorage();
+  const gi = setTrainingStyle(blankStudentReport(20), 'gi', 21);
+  assert.equal(gi.profile.trainingStyle, 'gi');
+  const both = setTrainingStyle(gi, 'both', 22);
+  assert.equal(both.profile.trainingStyle, 'both');
+  const named = setStudentProfile(both, { displayName: 'Ada Student', gymName: 'Advantage' }, 23);
+  assert.equal(named.profile.trainingStyle, 'both', 'saving the name keeps Both');
+  saveStudentReport(phone, named);
+  const loaded = loadStudentReport(phone);
+  assert.equal(loaded.profile.trainingStyle, 'both');
+  assert.equal(loaded.profile.displayName, 'Ada Student');
+  assert.equal(setTrainingStyle(loaded, 'both', 24), loaded, 'Both again does not clear the saved choice');
+  const nogi = setTrainingStyle(loaded, 'nogi', 25);
+  assert.equal(nogi.profile.trainingStyle, 'nogi');
+  saveStudentReport(phone, setTrainingStyle(nogi, 'both', 26));
+  assert.equal(loadStudentReport(phone).profile.trainingStyle, 'both');
 });

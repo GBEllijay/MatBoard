@@ -49,7 +49,10 @@ export function ProfilePage() {
             saveSlot={saveSlot}
             onSaved={() => {
               setSaved(true);
-              setPreview(true);
+              // Stay on this page's card. Save used to open the read-only preview shell.
+              const face = document.querySelector<HTMLElement>('[data-testid="profile-card-face"]');
+              const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+              face?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
             }}
           />
           <StudentCompetitorSwitch report={report} />

@@ -326,19 +326,18 @@ function samePolicy(left: TechniquePolicy | undefined, right: TechniquePolicy | 
 
 /**
  * Gi, no-gi, or both.
- * A missing value is Both for an adult and Gi for a kid.
- * Choosing that default leaves the field off, unless it was already saved on purpose.
+ * A missing value still means Both for an adult and Gi for a kid.
+ * Choosing Both is stored. Leaving it off (the adult default) made Both
+ * disappear from the card after save and reload.
+ * Choosing the kid default (Gi) still leaves the field off.
  */
 export function setTrainingStyle(report: StudentProgressReport, style: TrainingStyle, now = Date.now()): StudentProgressReport {
   if (style !== 'gi' && style !== 'nogi' && style !== 'both') throw new Error('Training style must be gi, no-gi, or both.');
+  if (report.profile.trainingStyle === style) return report;
   const implicit: TrainingStyle = beltModeOf(report) === 'kids' ? 'gi' : 'both';
   const profile = { ...report.profile };
-  if (style === implicit) {
-    if (report.profile.trainingStyle === style) return report;
-    delete profile.trainingStyle;
-  } else {
-    profile.trainingStyle = style;
-  }
+  if (style === 'both' || style !== implicit) profile.trainingStyle = style;
+  else delete profile.trainingStyle;
   if (report.profile.trainingStyle === profile.trainingStyle) return report;
   return { ...report, updatedAt: now, profile };
 }
