@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -9,7 +9,23 @@ import { canCaptureReplay, isLiveSeat, seatMenuAllowed } from '../lib/instructor
 import { RECORD_FOR_REVIEW_LABEL } from '../lib/competitionCurriculum';
 import { loadStandaloneReview, saveStandaloneReview } from '../lib/recordForReviewStore';
 import type { ReplayBlock } from '../lib/replayAnalysis';
+import {
+  addStandaloneReviewToJournalLibrary,
+  attachReviewName,
+  markReviewInLibrary,
+  type AttachReviewNameResult,
+} from '../lib/reviewIndexLink';
+import { originCanStore } from '../lib/storageQuota';
+import { putFilmBlob } from '../lib/studentFilm';
+import { loadStudentReport, saveStudentReport } from '../lib/studentEdition';
 import { localDateKey } from '../lib/trainingNotesStore';
+
+function applyReplayPatch(current: ReplayBlock, patch: Partial<Omit<ReplayBlock, 'id'>>): ReplayBlock {
+  const next: ReplayBlock = { ...current, ...patch, id: current.id };
+  if (Object.prototype.hasOwnProperty.call(patch, 'indexLink') && patch.indexLink == null) delete next.indexLink;
+  if (Object.prototype.hasOwnProperty.call(patch, 'journalLibrary') && patch.journalLibrary == null) delete next.journalLibrary;
+  return next;
+}
 
 /**
  * Record for Review on its own. Same card as a Daily Lesson Plan block.
@@ -23,10 +39,45 @@ export function RecordForReviewPage() {
   const blocked = isLiveSeat(seat) && !lessonMenu;
   const canCapture = canCaptureReplay({ owner: true, seat });
   const [replay, setReplay] = useState<ReplayBlock>(() => loadStandaloneReview());
+  const [report, setReport] = useState(() => loadStudentReport(localStorage));
+  const replayRef = useRef(replay);
+  replayRef.current = replay;
+  const reportRef = useRef(report);
+  reportRef.current = report;
 
   useEffect(() => {
     if (!blocked) saveStandaloneReview(replay);
   }, [blocked, replay]);
+
+  const addFundamental = (categoryId: string, name: string): AttachReviewNameResult => {
+    const result = attachReviewName(reportRef.current, categoryId, name);
+    if (!result.link || !result.added) return result;
+    try {
+      const saved = saveStudentReport(localStorage, result.report);
+      reportRef.current = saved;
+      setReport(saved);
+      return { ...result, report: saved };
+    } catch (error) {
+      return {
+        report: reportRef.current,
+        link: null,
+        added: false,
+        error: error instanceof Error ? error.message : 'Could not save that fundamental.',
+      };
+    }
+  };
+
+  const addToLibrary = async (blob: Blob) => {
+    const current = replayRef.current;
+    const clipLocalId = current.clip?.localId ?? '';
+    const result = await addStandaloneReviewToJournalLibrary(current, blob, localDateKey(), localStorage, {
+      canStore: originCanStore,
+      putBlob: putFilmBlob,
+    });
+    if (!result.ok) return result.error;
+    setReplay((prev) => markReviewInLibrary(prev, result.filmId, clipLocalId));
+    return result.message;
+  };
 
   return (
     <main className="notes">
@@ -47,8 +98,9 @@ export function RecordForReviewPage() {
       ) : (
         <>
           <p className="notes__lead">
-            Record or pick a clip, draw on it, and save it. This review stays on this device until you save a copy. It
-            is not part of a daily lesson plan.
+            Record or pick a clip, draw on it, and save it. Pick the fundamental from the index, or add a new name.
+            Add the clip to the journal video library when you want it there. This review stays on this device until
+            you save a copy. It is not part of a daily lesson plan.
           </p>
           <ReplayAnalysisCard
             replay={replay}
@@ -56,7 +108,9 @@ export function RecordForReviewPage() {
             dateKey={localDateKey()}
             readOnly={false}
             canCapture={canCapture}
-            onChange={(patch) => setReplay((current) => ({ ...current, ...patch }))}
+            linkIndex={{ report, onAdd: addFundamental }}
+            journalLibrary={{ onAdd: addToLibrary }}
+            onChange={(patch) => setReplay((current) => applyReplayPatch(current, patch))}
           />
         </>
       )}

@@ -34,11 +34,30 @@ export type ReplayClipRef = {
   saved?: { kind: ReplaySaveKind; ref: string };
 };
 
+/**
+ * Fundamental this review is attached to.
+ * `id` is a catalog id (`sub.armbar-guard`) or a custom checklist id.
+ * `name` is the display name on the fundamentals index.
+ * `title` stays a free-text label (a tournament round, for example).
+ */
+export type ReplayIndexLink = {
+  id: string;
+  name: string;
+};
+
+/** Set only after this clip is added to the journal video library. */
+export type ReplayJournalCopy = {
+  filmId: string;
+  clipLocalId: string;
+};
+
 export type ReplayBlock = {
   id: string;
   title: string;
   notes: string;
   clip?: ReplayClipRef;
+  indexLink?: ReplayIndexLink;
+  journalLibrary?: ReplayJournalCopy;
 };
 
 let seq = 0;
@@ -53,7 +72,20 @@ export function createReplay(): ReplayBlock {
 }
 
 export function replayHasContent(replay: ReplayBlock): boolean {
-  return Boolean(replay.title.trim() || replay.notes.trim() || replay.clip);
+  return Boolean(replay.title.trim() || replay.notes.trim() || replay.clip || replay.indexLink);
+}
+
+/** Tournament label when one was typed. Otherwise the fundamental's index name. */
+export function replayReviewLabel(replay: { title?: string; indexLink?: { name?: string } | null }): string {
+  const title = replay.title?.trim() ?? '';
+  if (title) return title;
+  return replay.indexLink?.name?.trim() ?? '';
+}
+
+/** True when this clip was already added to the journal video library. */
+export function reviewInJournalLibrary(replay: Pick<ReplayBlock, 'clip' | 'journalLibrary'>): boolean {
+  const localId = replay.clip?.localId ?? '';
+  return Boolean(localId && replay.journalLibrary?.filmId && replay.journalLibrary.clipLocalId === localId);
 }
 
 export function replayHeading(ordinal: number): string {
@@ -81,6 +113,30 @@ export function cleanClip(value: unknown): { clip: ReplayClipRef | undefined; re
   return { clip, repaired };
 }
 
+const LINK_ID_MAX = 80;
+
+function cleanLinkId(value: unknown): string {
+  return typeof value === 'string' ? value.trim().slice(0, LINK_ID_MAX) : '';
+}
+
+function cleanIndexLink(value: unknown): { link?: ReplayIndexLink; repaired: boolean } {
+  if (value == null) return { repaired: false };
+  const raw = typeof value === 'object' ? (value as Record<string, unknown>) : null;
+  const id = cleanLinkId(raw?.id);
+  const name = clampText(raw?.name, REPLAY_TITLE_MAX).trim().replace(/\s+/g, ' ');
+  if (!raw || !id || !name) return { repaired: true };
+  return { link: { id, name }, repaired: raw.id !== id || raw.name !== name };
+}
+
+function cleanJournalLibrary(value: unknown): { copy?: ReplayJournalCopy; repaired: boolean } {
+  if (value == null) return { repaired: false };
+  const raw = typeof value === 'object' ? (value as Record<string, unknown>) : null;
+  const filmId = cleanLinkId(raw?.filmId);
+  const clipLocalId = cleanLinkId(raw?.clipLocalId);
+  if (!raw || !filmId || !clipLocalId) return { repaired: true };
+  return { copy: { filmId, clipLocalId }, repaired: raw.filmId !== filmId || raw.clipLocalId !== clipLocalId };
+}
+
 export function cleanReplay(value: unknown): { replay: ReplayBlock; repaired: boolean } | null {
   const raw = value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
   if (!raw) return null;
@@ -89,17 +145,32 @@ export function cleanReplay(value: unknown): { replay: ReplayBlock; repaired: bo
   const title = clampText(raw.title, REPLAY_TITLE_MAX);
   const notes = clampText(raw.notes, REPLAY_NOTES_MAX);
   const { clip, repaired: clipRepaired } = cleanClip(raw.clip);
+  const { link, repaired: linkRepaired } = cleanIndexLink(raw.indexLink);
+  const { copy, repaired: libraryRepaired } = cleanJournalLibrary(raw.journalLibrary);
   const replay: ReplayBlock = { id, title, notes };
   if (clip) replay.clip = clip;
+  if (link) replay.indexLink = link;
+  if (copy) replay.journalLibrary = copy;
   return {
     replay,
-    repaired: clipRepaired || !idValue || raw.id !== id || raw.title !== title || raw.notes !== notes,
+    repaired:
+      clipRepaired ||
+      linkRepaired ||
+      libraryRepaired ||
+      !idValue ||
+      raw.id !== id ||
+      raw.title !== title ||
+      raw.notes !== notes,
   };
 }
 
-/** Copy for Drive/Cloud plan JSON. Text and the clip reference only, never bytes. */
+/** Copy for Drive/Cloud plan JSON. Text, the index link, and the clip reference only, never bytes. */
 export function replayForDrive(replay: ReplayBlock): ReplayBlock {
   const next: ReplayBlock = { id: replay.id, title: replay.title, notes: replay.notes };
+  if (replay.indexLink) next.indexLink = { id: replay.indexLink.id, name: replay.indexLink.name };
+  if (replay.journalLibrary) {
+    next.journalLibrary = { filmId: replay.journalLibrary.filmId, clipLocalId: replay.journalLibrary.clipLocalId };
+  }
   if (replay.clip) {
     next.clip = {
       localId: replay.clip.localId,
