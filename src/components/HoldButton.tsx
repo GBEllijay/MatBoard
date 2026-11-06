@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { useTimedHold, type HoldClock } from '../hooks/useTimedHold';
 import { HOLD_MS } from '../lib/holdDuration';
 
@@ -13,6 +14,7 @@ export function HoldRing({ progress }: { progress: number }) {
     <svg
       className="hold-ring"
       viewBox="0 0 100 100"
+      preserveAspectRatio="xMidYMid meet"
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={3}
@@ -48,6 +50,11 @@ type Props = {
   onTap?: (event: TapEvent) => void;
   onComplete: () => void;
   clock?: HoldClock;
+  /**
+   * Circular skin frame (the visionary disc, the brasil globe). The ring is
+   * centered on this box. It is never placed at the pointer.
+   */
+  ringHost?: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 };
 
@@ -56,8 +63,10 @@ type Props = {
  * The ring sits on the control. Releasing early leaves the tap behaviour alone
  * only when the press was short; a longer press that does not finish does nothing.
  */
-export function HoldButton({ className, ariaLabel, dataHold, dataD, onTap, onComplete, clock, children }: Props) {
+export function HoldButton({ className, ariaLabel, dataHold, dataD, onTap, onComplete, clock, ringHost, children }: Props) {
   const hold = useTimedHold({ onTap, onComplete, clock });
+  const ring = hold.active ? <HoldRing progress={hold.progress} /> : null;
+  const host = ring && ringHost?.current ? ringHost.current : null;
   return (
     <button
       type="button"
@@ -68,7 +77,7 @@ export function HoldButton({ className, ariaLabel, dataHold, dataD, onTap, onCom
       {...hold.buttonProps}
     >
       {children}
-      {hold.active ? <HoldRing progress={hold.progress} /> : null}
+      {ring ? (host ? createPortal(ring, host) : ring) : null}
     </button>
   );
 }

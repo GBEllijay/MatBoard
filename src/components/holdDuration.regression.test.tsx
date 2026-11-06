@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Window } from 'happy-dom';
-import { act } from 'react';
+import { act, useRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { HoldButton } from './HoldButton.tsx';
 import { HOLD_VIBRATE_MS, holdOutcome } from '../lib/holdDuration.ts';
@@ -429,5 +429,55 @@ test('reduced motion steps the hold ring instead of sweeping it', () => {
   } finally {
     setReduced(false);
     unmount(mounted);
+  }
+});
+
+test('the progress ring is centered on the circular host, not the pointer', () => {
+  setReduced(false);
+  const time = makeClock();
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  function Frame() {
+    const ringHost = useRef<HTMLDivElement>(null);
+    return (
+      <div className="disc hold-ring-host" ref={ringHost} data-disc="">
+        <HoldButton dataHold="timer" clock={time.clock} ringHost={ringHost} onComplete={() => undefined}>
+          00:30
+        </HoldButton>
+      </div>
+    );
+  }
+  act(() => {
+    root.render(<Frame />);
+  });
+  try {
+    const timer = button(host, 'timer');
+    const disc = host.querySelector('[data-disc]');
+    assert.ok(disc);
+    act(() => {
+      timer.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          pointerId: 7,
+          pointerType: 'touch',
+          clientX: 12,
+          clientY: 340,
+          isPrimary: true,
+        }),
+      );
+    });
+    time.advance(1200);
+    const ring = host.querySelector('.hold-ring');
+    assert.ok(ring instanceof Element);
+    assert.equal(ring.parentElement, disc);
+    assert.equal(timer.contains(ring), false);
+    assert.equal(ring.getAttribute('style'), null);
+    assert.equal(ringProgress(host), '0.400');
+  } finally {
+    act(() => root.unmount());
+    host.remove();
   }
 });
