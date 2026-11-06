@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sheet } from '../Sheet';
 import { CoachClipboardCard, type AssessmentView } from './CoachClipboardCard';
+import { benchmarkView } from '../../lib/studentBenchmarks';
 import { assessmentSummary, benchmarkItems, cardBelt, cardDate, dateFacts, initialsOf, promotionDates } from '../../lib/rosterCard';
 import { readCoachOverlay, type CoachOverlay, type CoachOverlayNote } from '../../lib/coachSync';
 import { studentCardLook } from '../../lib/cardLook';
@@ -94,7 +95,7 @@ export function StudentCardPreview({
           beltLine={belt.meta}
           dates={dates}
           startedOn={report.profile.startedOn}
-          trainingStyle={report.profile.trainingStyle ?? ''}
+          trainingStyle={benchmarkView(report).trainingStyle}
           assessment={summary}
           assessmentView={view}
           onAssessmentView={setView}

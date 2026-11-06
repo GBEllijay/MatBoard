@@ -1,7 +1,7 @@
 /**
  * Coach Clipboard roster card, rendered: the four looks, the No photos badge and
- * blocked photo actions, Save profile last on My profile, the card preview after
- * Save, the upload offer, and sync on add.
+ * blocked photo actions, Save profile last on My profile, Save staying on the
+ * editable card, Both sticking after save, the upload offer, and sync on add.
  */
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
@@ -227,7 +227,16 @@ function seedStudent() {
   saveStudentReport(localStorage, { ...report, profile: { ...report.profile, displayName: 'Ana Lima', gymName: 'Advantage' } });
 }
 
-test('My profile: Save profile is the last control, then the preview opens and closes', () => {
+function submitProfile() {
+  const save = buttons('Save profile')[0];
+  assert.ok(save, 'Save profile');
+  const form = document.getElementById(save.getAttribute('form') as string) as HTMLFormElement;
+  act(() => {
+    form.dispatchEvent(new view.Event('submit', { bubbles: true, cancelable: true }) as unknown as Event);
+  });
+}
+
+test('My profile: Save profile is the last control and stays on the editable card', () => {
   seedStudent();
   const m = mount(<ProfilePage />, '/student/profile?student=1');
   const stack = document.querySelector('.profile-stack') as HTMLElement;
@@ -236,19 +245,22 @@ test('My profile: Save profile is the last control, then the preview opens and c
   assert.ok(save, 'Save profile');
   assert.equal(all[all.length - 1], save, 'Save profile is last in My profile');
   assert.ok(save.getAttribute('form'), 'submits the profile form from the bottom');
-  // Submit through the form, as the browser does for a form= button.
-  const form = document.getElementById(save.getAttribute('form') as string) as HTMLFormElement;
-  act(() => {
-    form.dispatchEvent(new view.Event('submit', { bubbles: true, cancelable: true }) as unknown as Event);
-  });
+  submitProfile();
   assert.ok(text().includes('Saved on this phone.'));
-  assert.ok(document.querySelector('[data-testid="student-card-preview"]'), 'preview after Save');
+  assert.equal(document.querySelector('[data-testid="student-card-preview"]'), null, 'Save does not open the preview shell');
+  assert.equal(document.querySelector('[role="dialog"]'), null, 'no preview dialog');
+  const face = document.querySelector('[data-testid="profile-card-face"]');
+  assert.ok(face, 'editable card stays on the page');
+  assert.ok(face.querySelector('button.profile-face__name'), 'name on the card still opens the field');
+  assert.equal(buttons('Upload for coach approval to add to student card').length, 0, 'no upload without Pro, Plus Cloud or a Drive');
+  assert.ok(buttons('Preview my card').length, 'preview stays available');
+  click(buttons('Preview my card')[0]);
+  assert.ok(document.querySelector('[data-testid="student-card-preview"]'), 'preview opens only when asked');
   assert.ok(text().includes('Latest from coach'));
   assert.ok(text().includes('Suggestions from coach'));
-  assert.equal(buttons('Upload for coach approval to add to student card').length, 0, 'no upload without Pro, Plus Cloud or a Drive');
   click(buttons('Close preview')[0]);
   assert.equal(document.querySelector('[data-testid="student-card-preview"]'), null, 'dismissed');
-  assert.ok(buttons('Preview my card').length, 'can reopen');
+  assert.ok(document.querySelector('[data-testid="profile-card-face"]'), 'back on the editable card');
   unmount(m);
 });
 
@@ -257,12 +269,8 @@ test('My profile: the upload offer shows after Save only when the gym has a Driv
   saveStudentDriveLink(localStorage, { role: 'academy', provider: 'googleDrive', folderId: '1AbCdEfGhIjKlMnOpQrStUvWxYz012345', folderName: 'Advantage gym', accountLabel: null, gymName: 'Advantage' });
   const m = mount(<ProfilePage />, '/student/profile?student=1');
   assert.equal(buttons('Upload for coach approval to add to student card').length, 0, 'not before Save');
-  const save = buttons('Save profile')[0];
-  const form = document.getElementById(save.getAttribute('form') as string) as HTMLFormElement;
-  act(() => {
-    form.dispatchEvent(new view.Event('submit', { bubbles: true, cancelable: true }) as unknown as Event);
-  });
-  click(buttons('Close preview')[0]);
+  submitProfile();
+  assert.equal(document.querySelector('[data-testid="student-card-preview"]'), null, 'upload sits on the profile, not behind the preview');
   assert.equal(buttons('Upload for coach approval to add to student card').length, 1);
   unmount(m);
 });
@@ -1034,6 +1042,40 @@ test('My profile: the card face shows saved fields, jumps to each field, and kee
   assert.equal(all[all.length - 1], buttons('Save profile')[0], 'Save profile last');
   assert.equal(buttons('Gi').length, 1, 'Gi stays unique');
   assert.equal(buttons('Both').length, 1, 'Both stays unique');
+  unmount(m);
+});
+
+test('My profile: choosing Both sticks on the editable card after save and reload', () => {
+  seedStudent();
+  const style = (label: string) =>
+    [...document.querySelectorAll('[role="radiogroup"][aria-label="Training style"] [role="radio"]')].find(
+      (el) => (el.textContent ?? '').trim() === label,
+    ) as HTMLButtonElement;
+  const storedStyle = () =>
+    (JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}') as { profile?: { trainingStyle?: string } }).profile
+      ?.trainingStyle;
+  let m = mount(<ProfilePage />, '/student/profile?student=1');
+  assert.equal(style('Both').getAttribute('aria-checked'), 'true', 'adult default reads as Both');
+  click(style('Gi'));
+  assert.equal(style('Gi').getAttribute('aria-checked'), 'true');
+  assert.equal(storedStyle(), 'gi');
+  click(style('No-Gi'));
+  assert.equal(storedStyle(), 'nogi');
+  click(style('Both'));
+  assert.equal(style('Both').getAttribute('aria-checked'), 'true');
+  assert.equal(style('Gi').getAttribute('aria-checked'), 'false');
+  assert.equal(storedStyle(), 'both', 'Both is written, not dropped as the adult default');
+  submitProfile();
+  assert.equal(document.querySelector('[data-testid="student-card-preview"]'), null, 'Save stays off the preview shell');
+  assert.match(document.querySelector('[data-testid="profile-card-face"]')?.textContent ?? '', /Trains · Gi and No-Gi/);
+  assert.equal(storedStyle(), 'both', 'Save profile keeps Both');
+  unmount(m);
+  m = mount(<ProfilePage />, '/student/profile?student=1');
+  assert.equal(style('Both').getAttribute('aria-checked'), 'true', 'Both is still selected after reload');
+  assert.equal(style('Gi').getAttribute('aria-checked'), 'false');
+  assert.equal(style('No-Gi').getAttribute('aria-checked'), 'false');
+  assert.match(document.querySelector('[data-testid="profile-card-face"]')?.textContent ?? '', /Trains · Gi and No-Gi/);
+  assert.equal(storedStyle(), 'both');
   unmount(m);
 });
 

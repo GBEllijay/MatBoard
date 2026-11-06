@@ -7,6 +7,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { WornBeltMark } from './wornBelt';
+import { benchmarkView } from '../../lib/studentBenchmarks';
 import { cardBelt, cardDate, initialsOf } from '../../lib/rosterCard';
 import { readCoachOverlay } from '../../lib/coachSync';
 import { studentCardLook } from '../../lib/cardLook';
@@ -72,7 +73,7 @@ export function ProfileCardFace({
   const name = report.profile.displayName.trim();
   const gym = report.profile.gymName.trim();
   const began = cardDate(report.profile.startedOn);
-  const trains = TRAINS_LABELS[report.profile.trainingStyle ?? ''] ?? '';
+  const trains = TRAINS_LABELS[benchmarkView(report).trainingStyle] ?? '';
   const belt = cardBelt(report);
   const photo = portrait && !noPhotos ? portrait : '';
   return (
