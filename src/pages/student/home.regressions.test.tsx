@@ -5,6 +5,7 @@
  * journal Body zone select and Injury status chips.
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
@@ -176,7 +177,8 @@ test('home: /student keeps the live branded header, then card → radar → meda
   seedNamed([{ date: daysAgo(1) }]);
   const m = mount(<StudentEditionPage />, '/student?student=1');
   const text = m.host.textContent ?? '';
-  assert.ok(text.includes('Parent approvals'), 'Parent approvals drop-down');
+  assert.equal(q(m.host, '.parent-approvals'), null, 'Parent approvals is not on the student home');
+  assert.equal(text.includes('Parent approvals'), false, 'Parent approvals is not student chrome');
   assert.ok(q(m.host, '.home__mark img.home__logo, img.home__logo'), 'round clock logo + Advantage title');
   assert.ok(text.includes('Advantage'), 'Advantage title');
   const nav = q(m.host, 'nav.s-hub')!;
@@ -206,6 +208,64 @@ test('home: /student keeps the live branded header, then card → radar → meda
   for (const cap of ['Identity', 'Mat time', 'Training streak', 'Wins', 'Shape', 'Body scan']) assert.ok([...sheets[0].querySelectorAll('.sheet-cap')].some((c) => c.textContent === cap), `caption ${cap}`);
   assert.equal(q(m.host, '[data-testid="student-home-top"]'), null, 'no streak bar at the very top');
   unmount(m);
+});
+
+test('Parent approvals control is absent from every Student Edition page', () => {
+  const shell = readFileSync('src/pages/StudentEdition.tsx', 'utf8');
+  assert.equal(shell.includes('ParentApprovals'), false, 'shared student shell must not mount the control');
+  assert.equal(shell.includes('parent-approvals'), false, 'shared student shell must not render the control');
+
+  seedNamed([{ date: daysAgo(1) }]);
+  const rests = [
+    '',
+    'hub',
+    'journal',
+    'cards',
+    'cards/card.1',
+    'fundamentals',
+    'calendar',
+    'calendar/2026-10-23',
+    'rubric',
+    'belt',
+    'profile',
+    'report',
+    'rank',
+    'share',
+    'self-assessment',
+    'competitor',
+    'weight',
+    'results',
+    'videos',
+    'connections',
+    'academy',
+    'print/progress',
+    'print/assessment',
+    'scouting',
+    'training',
+    'progress',
+    'compete',
+    'coach',
+    'backup',
+    'backup/clear',
+    'claim',
+    'not-a-page',
+  ];
+  for (const rest of rests) {
+    const path = `/student${rest ? `/${rest}` : ''}?student=1`;
+    const mounted = mount(<StudentEditionPage />, path);
+    const text = mounted.host.textContent ?? '';
+    assert.equal(mounted.host.querySelector('.parent-approvals'), null, path);
+    assert.equal(text.includes('Parent approvals'), false, path);
+    assert.equal(text.includes('Turn on parent approvals'), false, path);
+    assert.equal(text.includes('Turn off parent approvals'), false, path);
+    unmount(mounted);
+  }
+
+  localStorage.clear();
+  const closed = mount(<StudentEditionPage />, '/student');
+  assert.equal(closed.host.querySelector('.parent-approvals'), null, 'closed student gate');
+  assert.equal((closed.host.textContent ?? '').includes('Parent approvals'), false, 'closed student gate copy');
+  unmount(closed);
 });
 
 function seedWins() {
