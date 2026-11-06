@@ -125,6 +125,58 @@
 }
 .gym-id h2 { margin: 0; font-size: 22px; line-height: 1.15; overflow-wrap: anywhere; }
 .gym-id p { margin: 2px 0 0; font-size: 14px; color: var(--muted, #9aa3b5); }
+.gym-id__logo-hit {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+.gym-id__logo-hit:focus-within {
+  outline: 2px solid #6ea8ff;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.gym-id__file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.gym-id__upload {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  box-sizing: border-box;
+  width: 148px;
+  min-height: 56px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px dashed rgba(110, 168, 255, 0.45);
+  background: rgba(6, 16, 31, 0.65);
+  text-align: center;
+}
+.gym-id__upload-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: #6ea8ff;
+}
+.gym-id__upload-hint {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--muted, #9aa3b5);
+}
 .gym-sheet .sheet-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .gym-sheet .sheet-stat {
   min-height: 76px;
