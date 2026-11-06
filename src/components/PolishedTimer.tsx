@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode, type RefObject } from 'react';
 import { HoldButton } from './HoldButton';
 import { usePolishedSkinModule, useViewportSize } from '../hooks/usePolishedSkins';
 import { formatMmSs, formatMss } from '../lib/format';
@@ -73,6 +73,7 @@ export function PolishedTimer({
 }) {
   const mod = usePolishedSkinModule(slug);
   const view = useViewportSize();
+  const ringHostRef = useRef<HTMLDivElement>(null);
   const p = timerProgress(remainingMs, rest ? breakMs : workMs);
   const digits = formatMmSs(remainingMs);
   const next = timerNextLine(rest, workMs, breakMs, round);
@@ -82,7 +83,12 @@ export function PolishedTimer({
   const metalPhase = slug === 'heavy-metal' ? metalPhaseParts(phaseLine) : null;
   const metalPaused = slug === 'heavy-metal' && running === false;
 
-  const clockBtn = (content: ReactNode, cls = 'digits', data?: string) => (
+  const clockBtn = (
+    content: ReactNode,
+    cls = 'digits',
+    data?: string,
+    ringHost?: RefObject<HTMLDivElement | null>,
+  ) => (
     <HoldButton
       className={`${cls} sk-btn tm-clock`}
       dataHold="timer"
@@ -90,6 +96,7 @@ export function PolishedTimer({
       ariaLabel={`${digits}. Start or pause the round clock. Hold 3 seconds to reset this period.`}
       onTap={onClock}
       onComplete={onClockHold}
+      ringHost={ringHost}
     >
       {content}
     </HoldButton>
@@ -173,14 +180,14 @@ export function PolishedTimer({
     }
     case 'brasil':
       inner = (
-        <div className="globe-wrap">
+        <div className="globe-wrap hold-ring-host" ref={ringHostRef}>
           <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: brasilRing(view.w, view.h, ringP) }} />
           <div className="globe">
             <div className="band">
               <span>ORDEM E PROGRESSO</span>
             </div>
             {mod?.GLOBE_STARS ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: mod.GLOBE_STARS }} /> : null}
-            {clockBtn(digits)}
+            {clockBtn(digits, 'digits', undefined, ringHostRef)}
           </div>
         </div>
       );
@@ -278,10 +285,10 @@ export function PolishedTimer({
           <div className="ring track" />
           <div className="ring fill" />
           {mod?.VIS_KNOB_EYE ? <div className="knob" dangerouslySetInnerHTML={{ __html: mod.VIS_KNOB_EYE }} /> : null}
-          <div className="disc">
+          <div className="disc hold-ring-host" ref={ringHostRef}>
             {mod?.VIS_DISC_FLOWER ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: mod.VIS_DISC_FLOWER }} /> : null}
             <div className="title">{visionaryTimerTitle(rest, round)}</div>
-            {clockBtn(digits)}
+            {clockBtn(digits, 'digits', undefined, ringHostRef)}
             <div className="next">{next}</div>
           </div>
         </div>

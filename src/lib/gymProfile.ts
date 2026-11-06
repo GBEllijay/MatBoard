@@ -29,20 +29,25 @@ export function emptyGymProfile(): GymProfile {
   return { v: 1, foundedOn: '', founders: '', lineage: '', optIn: [] };
 }
 
-function clip(value: unknown, max: number): string {
-  return typeof value === 'string' ? value.trim().slice(0, max) : '';
+/**
+ * Free text the owner is still typing. Do not trim.
+ * Trimming on each change deletes a space typed at the end of Founders or Lineage,
+ * so the next letter never gets a gap and a second space never sticks.
+ */
+function clipText(value: unknown, max: number): string {
+  return typeof value === 'string' ? value.slice(0, max) : '';
 }
 
 export function sanitizeGymProfile(raw: unknown): GymProfile {
   const row = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  const founded = clip(row.foundedOn, 10);
+  const founded = typeof row.foundedOn === 'string' ? row.foundedOn.trim().slice(0, 10) : '';
   const rawOptIn = Array.isArray(row.optIn) ? row.optIn : [];
   const optIn = GYM_PROFILE_OPT_IN.filter((id) => rawOptIn.includes(id));
   return {
     v: 1,
     foundedOn: DATE_RE.test(founded) ? founded : '',
-    founders: clip(row.founders, 120),
-    lineage: clip(row.lineage, 240),
+    founders: clipText(row.founders, 120),
+    lineage: clipText(row.lineage, 240),
     optIn,
   };
 }

@@ -28,6 +28,21 @@ test('gym profile keeps founding date, founders, and lineage, and drops junk', (
   assert.equal(JSON.stringify(dirty).includes('private'), false);
 });
 
+test('founders and lineage keep a trailing space and spaces in the middle while typing', () => {
+  const store = memory();
+  const trailing = writeGymProfile({ founders: 'Ana ', lineage: 'Carlson  Gracie ' }, store);
+  assert.equal(trailing.founders, 'Ana ');
+  assert.equal(readGymProfile(store).founders, 'Ana ');
+  assert.equal(readGymProfile(store).lineage, 'Carlson  Gracie ');
+  const mid = writeGymProfile({ founders: 'Ana  Luis' }, store);
+  assert.equal(mid.founders, 'Ana  Luis');
+  assert.equal(readGymProfile(store).founders, 'Ana  Luis');
+  const clipped = writeGymProfile({ founders: `${'A '.repeat(80)}` }, store);
+  assert.equal(clipped.founders, 'A '.repeat(60));
+  const dated = sanitizeGymProfile({ foundedOn: ' 1998-04-02 ' });
+  assert.equal(dated.foundedOn, '1998-04-02');
+});
+
 test('academy sheet stays open for the owner and roster seats, and opt-in opens the others', () => {
   const profile = { v: 1 as const, foundedOn: '', founders: '', lineage: '', optIn: ['program-director'] as GymProfile['optIn'] };
   assert.equal(academySheetOpen({ seatId: null, preset: null, optedIn: false }), true);

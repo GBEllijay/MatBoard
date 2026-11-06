@@ -200,6 +200,11 @@ test('round and timer holds are on the display, the polished timer, and the cont
   assert.doesNotMatch(options, /HoldButton|useTimedHold|resetTrainingPeriod/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[^}]*\.hold-ring/s);
   assert.match(css, /stroke: var\(--gold-2\)/);
+  assert.match(css, /transform-box:\s*view-box/);
+  assert.doesNotMatch(css, /transform-box:\s*fill-box/);
+  assert.match(polished, /disc hold-ring-host/);
+  assert.match(polished, /globe-wrap hold-ring-host/);
+  assert.match(polished, /clockBtn\(digits, 'digits', undefined, ringHostRef\)/);
   assert.equal(HOLD_VIBRATE_MS > 0 && HOLD_VIBRATE_MS <= 30, true);
 
   assert.doesNotMatch(score, /HoldButton|resetTrainingPeriod|resetTrainingSession/);

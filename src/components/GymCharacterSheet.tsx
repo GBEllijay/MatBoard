@@ -4,7 +4,7 @@
  * Sits above the Pro belt console. Hidden for seats the roster does not include,
  * unless the owner opts them in. No locked tiles.
  */
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore, type ChangeEvent } from 'react';
 import { useCurrentSeat } from './SeatSessionBar';
 import { ensureGymBackfill } from '../lib/gymBackfill.ts';
 import { installGymActor } from '../lib/gymActor.ts';
@@ -78,37 +78,53 @@ export function GymCharacterSheet() {
   const gymName = readGymName() || 'Your academy';
   const owner = !seat;
 
+  const onLogoFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    void saveGymLogoFile(file).then(
+      () => setLogoNote('Logo saved on this device.'),
+      () => setLogoNote('That picture could not be saved.'),
+    );
+  };
+
   return (
     <section className="gym-sheet" aria-label="Gym character sheet" data-testid="gym-sheet">
       <div className="sheet-zone sheet-zone--identity" data-zone="identity">
         <h3 className="sheet-cap">Identity</h3>
         <div className="gym-id">
-          <img className="gym-id__logo" src={logo || ADVANTAGE_MARK_SRC} alt={logo ? 'Gym logo' : 'Advantage'} />
+          {owner ? (
+            <label className="gym-id__logo-hit" data-gym-logo={logo ? 'set' : 'empty'}>
+              {logo ? (
+                <img className="gym-id__logo" src={logo} alt="Gym logo" />
+              ) : (
+                <span className="gym-id__upload">
+                  <span className="gym-id__upload-title">Upload a gym logo</span>
+                  <span className="gym-id__upload-hint">Tap to upload</span>
+                </span>
+              )}
+              <input
+                className="gym-id__file"
+                type="file"
+                accept="image/*"
+                aria-label={logo ? 'Replace gym logo' : 'Upload a gym logo'}
+                onChange={onLogoFile}
+              />
+            </label>
+          ) : (
+            <img className="gym-id__logo" src={logo || ADVANTAGE_MARK_SRC} alt={logo ? 'Gym logo' : 'Advantage'} />
+          )}
           <div>
             <h2>{gymName}</h2>
             <p>{cloud ? 'Advantage Cloud' : 'This device'}</p>
             {profile.foundedOn ? <p>Founded {profile.foundedOn}</p> : null}
-            {profile.founders ? <p>Founders {profile.founders}</p> : null}
-            {profile.lineage ? <p>{profile.lineage}</p> : null}
+            {profile.founders.trim() ? <p>Founders {profile.founders}</p> : null}
+            {profile.lineage.trim() ? <p>{profile.lineage}</p> : null}
           </div>
         </div>
         {owner ? (
           <form className="gym-fields" onSubmit={(event) => event.preventDefault()}>
-            <label>
-              Gym logo
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (!file) return;
-                  void saveGymLogoFile(file).then(
-                    () => setLogoNote('Logo saved on this device.'),
-                    () => setLogoNote('That picture could not be saved.'),
-                  );
-                }}
-              />
-            </label>
             <label>
               Founded
               <input type="date" value={profile.foundedOn} onChange={(event) => writeGymProfile({ foundedOn: event.target.value })} />

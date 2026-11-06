@@ -53,9 +53,8 @@ export function ProPage() {
             blurb={mediaSeat ? hubs.map((hub) => hub.title).join(', ') : PRO_LADDER_DETAIL}
           />
           <ProToolboxCard hubs={hubs} label={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro hubs'} />
+          <LicenseShareButton />
         </nav>
-
-        <LicenseShareButton />
 
         <AcademyPathwayPanel />
 
