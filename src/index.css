@@ -18969,6 +18969,43 @@ a.plan-pick {
   min-height: 44px;
 }
 
+.review-library {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.review-library__list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-library__item {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(8, 10, 16, 0.45);
+}
+
+.review-library__title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.review-library .replay-card__note,
+.review-library .replay-card__label {
+  letter-spacing: 0.04em;
+}
+
 .replay-player {
   display: grid;
   gap: 0.55rem;

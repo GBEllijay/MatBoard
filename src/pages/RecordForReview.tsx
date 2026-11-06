@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
+import { ReviewJournalLibrary } from '../components/ReviewJournalLibrary';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -40,6 +41,7 @@ export function RecordForReviewPage() {
   const canCapture = canCaptureReplay({ owner: true, seat });
   const [replay, setReplay] = useState<ReplayBlock>(() => loadStandaloneReview());
   const [report, setReport] = useState(() => loadStudentReport(localStorage));
+  const [libraryTick, setLibraryTick] = useState(0);
   const replayRef = useRef(replay);
   replayRef.current = replay;
   const reportRef = useRef(report);
@@ -76,6 +78,7 @@ export function RecordForReviewPage() {
     });
     if (!result.ok) return result.error;
     setReplay((prev) => markReviewInLibrary(prev, result.filmId, clipLocalId));
+    setLibraryTick((value) => value + 1);
     return result.message;
   };
 
@@ -99,8 +102,8 @@ export function RecordForReviewPage() {
         <>
           <p className="notes__lead">
             Record or pick a clip, draw on it, and save it. Pick the fundamental from the index, or add a new name.
-            Add the clip to the journal video library when you want it there. This review stays on this device until
-            you save a copy. It is not part of a daily lesson plan.
+            Add the clip to the journal video library when you want it there, then search that library and review a
+            clip. This review stays on this device until you save a copy. It is not part of a daily lesson plan.
           </p>
           <ReplayAnalysisCard
             replay={replay}
@@ -112,6 +115,7 @@ export function RecordForReviewPage() {
             journalLibrary={{ onAdd: addToLibrary }}
             onChange={(patch) => setReplay((current) => applyReplayPatch(current, patch))}
           />
+          <ReviewJournalLibrary tick={libraryTick} />
         </>
       )}
     </main>
