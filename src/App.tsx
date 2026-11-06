@@ -44,6 +44,7 @@ import { preservesAppHomeQuery } from './lib/submenuNav';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { StudentEditionPage } from './pages/StudentEdition';
+import { Journal2036Page } from './preview/journal2036/Journal2036Page';
 import { CoachPage } from './pages/Coach';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
@@ -745,6 +746,7 @@ export default function App() {
           </MediaConsoleRoute>
         }
       />
+      <Route path="/preview/journal-2036" element={<Journal2036Page />} />
       <Route path="/student/*" element={<StudentEditionPage />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
       <Route path="/card" element={<CardPage />} />
