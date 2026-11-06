@@ -1,5 +1,5 @@
 /**
- * Student Edition home: the branded hub header (tiled navy, Parent approvals, clock logo,
+ * Student Edition home: the branded hub header (tiled navy, clock logo,
  * Advantage title, Student Edition belt bar), then ONE character sheet frame with zones:
  * identity → stat strip (mat time + stopwatch, streak, wins, stripes) → radar | wins → body scan,
  * then the usual hub tiles. No profile yet → profile setup first.

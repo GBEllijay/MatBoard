@@ -26,8 +26,11 @@ function label(item: HeldItem): string {
 }
 
 /**
- * Parent approvals on the student device. Minimal hook: a PIN, a switch, and
- * the list of held coach updates. Card visuals are a separate design item.
+ * Parent approvals on the student device. A PIN, a switch, and the list of
+ * held coach updates. This is a parent/admin control: do not mount it in
+ * Student Edition chrome (`StudentEditionPage`), which wraps every student
+ * page. There is no parent/admin screen for it yet. The gate in parentGate.ts
+ * still holds coach updates when it is already on.
  */
 export function ParentApprovals() {
   const { report, commit } = useStudentFile();
