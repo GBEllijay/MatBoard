@@ -1,10 +1,9 @@
-import { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { HoldButton } from '../components/HoldButton';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { TrainingOptions } from '../components/TrainingOptions';
-import { useInterval } from '../hooks/useClock';
+import { useTrainingClock } from '../hooks/useTrainingClock';
 import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
@@ -14,7 +13,7 @@ import { formatMmSs } from '../lib/format';
 import { fullscreenSupported, requestPageFullscreen } from '../lib/fullscreen';
 import { ROUNDS_FULLSCREEN_STATE, readRoundsDeviceEnv, roundsChipAction, roundsDisplayPath } from '../lib/roundsFullscreen';
 import { trainingUsesAdvantageSkin, visibleTrainingSkin, whiteTimerControllerClass } from '../lib/trainingSkin';
-import { remainingTraining, resetTrainingPeriod, resetTrainingSession, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
+import { remainingTraining, resetTrainingPeriod, resetTrainingSession, toggleTrainingClock } from '../lib/trainingStore';
 
 function openRoundsWindow(fromSuite: boolean): void {
   window.open(roundsDisplayPath(fromSuite), 'matboard-rounds', 'popup,noopener,noreferrer,width=1280,height=720');
@@ -27,18 +26,10 @@ export function TrainingControllerPage() {
   const whiteSurface = whiteTimerControllerClass(skin);
   const suite = useSuiteOrigin();
   const navigate = useNavigate();
-  const [, setTick] = useState(0);
   const remaining = remainingTraining(training);
 
   useWakeLock(training.running);
-  useInterval(
-    useCallback(() => {
-      tickTraining();
-      setTick((n) => n + 1);
-    }, []),
-    100,
-    true,
-  );
+  useTrainingClock();
 
   const roundLabel = training.endless
     ? `Round ${training.currentRound} · Endless`
