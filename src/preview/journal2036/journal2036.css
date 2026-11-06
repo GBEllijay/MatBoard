@@ -1,0 +1,438 @@
+/**
+ * Advantage 2036 preview journal.
+ * The shell, buttons, chips, selects, and lists stay on the digital navy / cyan / blue edge.
+ * Only fields the student types in (text and search inputs, textareas) wear the lined notebook.
+ */
+
+@font-face {
+  font-family: 'Patrick Hand';
+  src: url('/fonts/PatrickHand-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+.j2036 {
+  --j-navy: #071422;
+  --j-navy-2: #0c2240;
+  --j-blue: #1c4fd4;
+  --j-blue-2: #0a84ff;
+  --j-cyan: #22d3ee;
+  --j-ink: #e7f4ff;
+  --j-muted: #9fd0e4;
+  --j-paper: #f7f3e8;
+  --j-paper-ink: #1c140e;
+  --j-rule: rgba(70, 130, 180, 0.55);
+  min-height: 100dvh;
+  color: var(--j-ink);
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(34, 211, 238, 0.16), transparent 55%),
+    radial-gradient(800px 480px at 100% 0%, rgba(28, 79, 212, 0.42), transparent 50%),
+    var(--j-navy);
+}
+
+.j2036 * {
+  box-sizing: border-box;
+}
+
+.j2036-shell {
+  width: min(1080px, calc(100% - 20px));
+  margin: 0 auto;
+  padding: 12px 0 48px;
+}
+
+.j2036-banner {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(34, 211, 238, 0.75);
+  border-radius: 14px;
+  background: rgba(10, 132, 255, 0.18);
+  box-shadow: inset 3px 0 0 var(--j-cyan);
+  color: #f3fbff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.j2036-kicker {
+  margin: 0;
+  color: var(--j-cyan);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.j2036 h1 {
+  margin: 4px 0 0;
+  color: #f4fbff;
+  font-size: clamp(2.5rem, 12vw, 4rem);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+}
+
+.j2036-sub {
+  margin: 6px 0 0;
+  color: var(--j-muted);
+  font-size: 1.05rem;
+}
+
+.j2036-quiet {
+  margin: 8px 0 0;
+  color: var(--j-muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.j2036-path {
+  margin: 8px 0 0;
+  color: #b7e7f4;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.j2036-layout {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.j2036-card {
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(14, 40, 70, 0.94), rgba(8, 22, 42, 0.94));
+  box-shadow: inset 3px 0 0 var(--j-blue), 0 16px 36px rgba(0, 0, 0, 0.28);
+  padding: 14px;
+}
+
+.j2036-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.j2036-label {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--j-muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.j2036-field {
+  display: block;
+  margin-top: 12px;
+}
+
+.j2036-field:first-of-type {
+  margin-top: 0;
+}
+
+/* Typed fields only: cream page, blue rules, red margin. */
+.j2036 input.j2036-line,
+.j2036 textarea.j2036-line {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0 12px 0 22px;
+  border: 1px solid rgba(28, 79, 212, 0.35);
+  border-radius: 12px;
+  color: var(--j-paper-ink);
+  color-scheme: light;
+  background-color: var(--j-paper);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    var(--j-rule) 27px,
+    var(--j-rule) 28px
+  );
+  background-attachment: local;
+  box-shadow: inset 16px 0 0 #f6d5d5, inset 17px 0 0 #e15d5d;
+  font-family: 'Patrick Hand', 'Segoe Print', cursive;
+  font-size: 1.2rem;
+  line-height: 28px;
+  caret-color: var(--j-paper-ink);
+}
+
+.j2036 input.j2036-line {
+  height: 32px;
+}
+
+.j2036 textarea.j2036-line {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.j2036 input.j2036-line:focus,
+.j2036 textarea.j2036-line:focus {
+  outline: 2px solid var(--j-cyan);
+  outline-offset: 2px;
+}
+
+/* Digital controls. Same family as the shell, never the notepad. */
+.j2036-btn,
+.j2036-chip,
+.j2036 select.j2036-control,
+.j2036 input[type='date'].j2036-control {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--j-ink);
+  background: linear-gradient(180deg, rgba(16, 48, 88, 0.98), rgba(8, 24, 46, 0.98));
+  border: 1px solid rgba(34, 211, 238, 0.55);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(28, 79, 212, 0.45), 0 8px 18px rgba(0, 0, 0, 0.25);
+}
+
+.j2036-btn,
+.j2036-chip {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.j2036-btn:focus-visible,
+.j2036-chip:focus-visible,
+.j2036 select.j2036-control:focus-visible,
+.j2036 input[type='date'].j2036-control:focus-visible {
+  outline: 2px solid var(--j-cyan);
+  outline-offset: 2px;
+}
+
+.j2036-chip[aria-pressed='true'] {
+  background: linear-gradient(180deg, var(--j-blue-2), var(--j-blue));
+  border-color: var(--j-cyan);
+  box-shadow: 0 0 0 1px var(--j-cyan), 0 0 16px rgba(34, 211, 238, 0.28);
+}
+
+.j2036-btn:disabled,
+.j2036-chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.j2036-kinds,
+.j2036-marks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.j2036-chip {
+  width: 100%;
+}
+
+.j2036-readout {
+  margin: 10px 0 0;
+  color: #f4fbff;
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.j2036-expected {
+  margin: 6px 0 0;
+  color: var(--j-cyan);
+  font-weight: 700;
+}
+
+.j2036-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.j2036 select.j2036-control,
+.j2036 input[type='date'].j2036-control {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 1rem;
+}
+
+.j2036-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  border-radius: 14px;
+  background: rgba(7, 20, 38, 0.55);
+  color: var(--j-ink);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.35;
+}
+
+.j2036 input[type='checkbox'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 2px 0 0;
+  padding: 0;
+  flex: 0 0 auto;
+  accent-color: var(--j-cyan);
+  background: var(--j-navy);
+  border-radius: 4px;
+}
+
+.j2036-status {
+  margin: 8px 0 0;
+  color: #d7f6ff;
+  font-size: 0.95rem;
+}
+
+.j2036-plan {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.j2036-plan li,
+.j2036-index li {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(4, 14, 28, 0.45);
+  border: 1px solid rgba(28, 79, 212, 0.45);
+}
+
+.j2036-drill {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+.j2036-drill h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.j2036-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.j2036-suggest,
+.j2036-picker {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  border-radius: 14px;
+  background: rgba(5, 16, 32, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(28, 79, 212, 0.35);
+}
+
+.j2036-menu {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+}
+
+.j2036-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--j-ink);
+  font-weight: 650;
+  text-align: left;
+}
+
+.j2036-menu button:hover,
+.j2036-menu button:focus-visible {
+  background: rgba(10, 132, 255, 0.28);
+}
+
+.j2036-source {
+  color: var(--j-cyan);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.j2036-link {
+  margin: 6px 0 0;
+  color: var(--j-cyan);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.j2036-index__cols {
+  display: grid;
+  gap: 14px;
+}
+
+.j2036-index ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.j2036-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.j2036-date-read {
+  margin: 6px 0 0;
+  color: var(--j-muted);
+}
+
+@media (min-width: 720px) {
+  .j2036-kinds {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .j2036-marks {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 840px) {
+  .j2036-shell {
+    width: min(1080px, calc(100% - 48px));
+    padding-top: 28px;
+  }
+
+  .j2036-layout {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .j2036-lesson { grid-column: 1; grid-row: 1; }
+  .j2036-mat { grid-column: 1; grid-row: 2; }
+  .j2036-notes { grid-column: 2; grid-row: 1 / span 2; }
+  .j2036-marks,
+  .j2036-drills,
+  .j2036-index { grid-column: 1 / -1; }
+
+  .j2036-index__cols {
+    grid-template-columns: 1fr 1fr;
+  }
+}
