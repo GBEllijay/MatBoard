@@ -18,6 +18,8 @@ import {
   replayFileName,
   replayForDrive,
   replayHeading,
+  replayReviewLabel,
+  reviewInJournalLibrary,
   replaySaveTargets,
   scrubKey,
   scrubTime,
@@ -169,6 +171,31 @@ test('replay records sanitize, and the Drive copy has no stray bytes', () => {
   assert.equal(odd?.replay.clip?.saved, undefined);
   const withBlob = { ...cleaned.replay, blob: 'bytes' } as unknown as Parameters<typeof replayForDrive>[0];
   assert.equal('blob' in replayForDrive(withBlob), false);
+  const linked = cleanReplay({
+    id: 'replay-1',
+    title: '  Saturday finals  ',
+    notes: '',
+    indexLink: { id: ' sub.armbar-guard ', name: 'Armbar  from guard' },
+    journalLibrary: { filmId: ' film.1 ', clipLocalId: 'rclip-1' },
+  });
+  assert.equal(linked?.repaired, true);
+  assert.deepEqual(linked?.replay.indexLink, { id: 'sub.armbar-guard', name: 'Armbar from guard' });
+  assert.deepEqual(linked?.replay.journalLibrary, { filmId: 'film.1', clipLocalId: 'rclip-1' });
+  assert.equal(replayReviewLabel(linked!.replay), 'Saturday finals');
+  assert.equal(replayReviewLabel({ title: '  ', indexLink: { name: 'Armbar from guard' } }), 'Armbar from guard');
+  const broken = cleanReplay({ id: 'r', title: '', notes: '', indexLink: { id: '', name: 'Nope' }, journalLibrary: { filmId: 'film.1' } });
+  assert.equal(broken?.repaired, true);
+  assert.equal(broken?.replay.indexLink, undefined);
+  assert.equal(broken?.replay.journalLibrary, undefined);
+  const plain = cleanReplay({ id: 'r', title: 'Round 2', notes: '' });
+  assert.equal(plain?.repaired, false);
+  assert.equal(plain?.replay.indexLink, undefined);
+  const driven = replayForDrive({
+    ...linked!.replay,
+    clip: { localId: 'rclip-1', name: 'a.mp4', mime: 'video/mp4', size: 4, source: 'record' },
+  });
+  assert.equal(reviewInJournalLibrary(driven), true);
+  assert.equal('blob' in driven, false);
 });
 
 test('headings and file names', () => {
