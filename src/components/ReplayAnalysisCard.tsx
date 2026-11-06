@@ -7,10 +7,15 @@ import {
   REPLAY_SAVE_LABELS,
   REPLAY_TITLE_MAX,
   replayFileName,
+  replayReviewLabel,
+  reviewInJournalLibrary,
   type ReplayBlock,
   type ReplayClipRef,
   type ReplaySaveKind,
 } from '../lib/replayAnalysis';
+import type { AttachReviewNameResult } from '../lib/reviewIndexLink';
+import type { StudentProgressReport } from '../lib/progress/types';
+import { ReviewIndexControls } from './ReviewIndexControls';
 import { newReplayClipId, putReplayClip, readReplayClip } from '../lib/replayClipStore';
 import { annotatedFileName } from '../lib/annotatedReplay';
 import { REPLAY_PENDING_MESSAGE, availableReplaySaveTargets, plainVideoMime, saveReplayClip } from '../lib/replaySave';
@@ -33,6 +38,18 @@ type Props = {
    * The host block keeps its own heading and notes, so only the clip, player and save show.
    */
   embedded?: boolean;
+  /**
+   * Standalone Record for Review. Lesson-plan cards leave this off.
+   * Pick or add a fundamental; the free-text title stays the tournament label.
+   */
+  linkIndex?: {
+    report: StudentProgressReport;
+    onAdd: (categoryId: string, name: string) => AttachReviewNameResult;
+  };
+  /** Explicit add into the journal video library. Not called until the button is pressed. */
+  journalLibrary?: {
+    onAdd: (blob: Blob) => Promise<string>;
+  };
 };
 
 type ClipState = { status: 'none' } | { status: 'loading' } | { status: 'ready'; url: string; blob: Blob } | { status: 'missing' };
@@ -42,7 +59,17 @@ type ClipState = { status: 'none' } | { status: 'loading' } | { status: 'ready';
  * looping videos use, review it in the replay player, and save a copy through
  * Advantage Cloud, Google Drive, or OneDrive when those are already set up.
  */
-export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapture, onChange, embedded = false }: Props) {
+export function ReplayAnalysisCard({
+  replay,
+  heading,
+  dateKey,
+  readOnly,
+  canCapture,
+  onChange,
+  embedded = false,
+  linkIndex,
+  journalLibrary,
+}: Props) {
   const recordRef = useRef<HTMLInputElement | null>(null);
   const libraryRef = useRef<HTMLInputElement | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -50,6 +77,8 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState<{ kind: ReplaySaveKind; pct: number } | null>(null);
   const [targets, setTargets] = useState<ReplaySaveKind[]>(() => availableReplaySaveTargets());
+  const [libraryNote, setLibraryNote] = useState<string | null>(null);
+  const [libraryBusy, setLibraryBusy] = useState(false);
   const localId = replay.clip?.localId ?? '';
   /** Async saves finish after more typing; always patch the newest plan. */
   const onChangeRef = useRef(onChange);
@@ -98,6 +127,10 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
     };
   }, [localId]);
 
+  useEffect(() => {
+    setLibraryNote(null);
+  }, [localId]);
+
   const onFiles = async (files: readonly File[], source: ReplayClipRef['source']) => {
     setSheetOpen(false);
     const file = files[0];
@@ -125,7 +158,7 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
     const result = await saveReplayClip({
       kind,
       dateKey,
-      fileName: replayFileName(dateKey, replay.title, replay.clip.mime, replay.id),
+      fileName: replayFileName(dateKey, replayReviewLabel(replay), replay.clip.mime, replay.id),
       blob: clip.blob,
       mime: replay.clip.mime,
       replayId: replay.id,
@@ -154,7 +187,7 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
     saveReplayClip({
       kind,
       dateKey,
-      fileName: annotatedFileName(dateKey, replay.title || heading, mime, replay.id, picture),
+      fileName: annotatedFileName(dateKey, replayReviewLabel(replay) || heading, mime, replay.id, picture),
       blob,
       mime,
       replayId: replay.id,
@@ -165,6 +198,25 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
   const titleId = `${inputBase}-title`;
   const notesId = `${inputBase}-notes`;
   const showCapture = editable && canCapture;
+  const showIndex = Boolean(linkIndex) && !embedded;
+  const showJournalLibrary = Boolean(journalLibrary) && editable && !embedded;
+  const inLibrary = reviewInJournalLibrary(replay);
+  const reviewLabel = replayReviewLabel(replay);
+
+  const addToLibrary = async () => {
+    if (!journalLibrary || libraryBusy || inLibrary) return;
+    if (clip.status !== 'ready') {
+      setLibraryNote('Record or pick a clip first.');
+      return;
+    }
+    setLibraryBusy(true);
+    setLibraryNote(null);
+    try {
+      setLibraryNote(await journalLibrary.onAdd(clip.blob));
+    } finally {
+      setLibraryBusy(false);
+    }
+  };
 
   return (
     <section
@@ -179,6 +231,15 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
             <div className="notes__section-head">
               <h2 className="replay-card__heading">{heading}</h2>
             </div>
+            {showIndex && linkIndex ? (
+              <ReviewIndexControls
+                report={linkIndex.report}
+                link={replay.indexLink}
+                readOnly={!editable}
+                onPick={(next) => onChange(next ? { indexLink: next } : { indexLink: undefined })}
+                onAdd={linkIndex.onAdd}
+              />
+            ) : null}
             <label htmlFor={titleId} className="replay-card__label">
               What are we reviewing?
             </label>
@@ -191,6 +252,9 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
               readOnly={!editable}
               onChange={(event) => onChange({ title: event.target.value })}
             />
+            {showIndex ? (
+              <p className="replay-card__note">Optional label, such as a tournament round. The fundamental is the name on the index.</p>
+            ) : null}
           </>
         )}
 
@@ -198,13 +262,13 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
           <ReplayPlayer
             src={clip.url}
             label={heading}
-            frameName={replayFileName(dateKey, replay.title, 'image/png', replay.id).replace(/\.mp4$/, '.png')}
+            frameName={replayFileName(dateKey, reviewLabel, 'image/png', replay.id).replace(/\.mp4$/, '.png')}
             dateKey={dateKey}
             replayId={replay.id}
             clipBlob={clip.blob}
             clipMime={replay.clip?.mime}
-            annotatedVideoName={annotatedFileName(dateKey, replay.title || heading, replay.clip?.mime || 'video/mp4', replay.id)}
-            annotatedStillName={annotatedFileName(dateKey, replay.title || heading, 'image/png', replay.id, true)}
+            annotatedVideoName={annotatedFileName(dateKey, reviewLabel || heading, replay.clip?.mime || 'video/mp4', replay.id)}
+            annotatedStillName={annotatedFileName(dateKey, reviewLabel || heading, 'image/png', replay.id, true)}
             saveAnnotated={saveAnnotatedFile}
           />
         ) : null}
@@ -242,6 +306,18 @@ export function ReplayAnalysisCard({ replay, heading, dateKey, readOnly, canCapt
         ) : null}
         {showCapture && clip.status === 'ready' && targets.length === 0 ? (
           <p className="replay-card__note">{REPLAY_STAY_COPY}</p>
+        ) : null}
+        {showJournalLibrary ? (
+          <div className="replay-card__actions">
+            <button type="button" className="btn btn--ghost" disabled={libraryBusy || inLibrary} onClick={() => void addToLibrary()}>
+              {libraryBusy ? 'Adding to journal video library…' : inLibrary ? 'In the journal video library' : 'Add to journal video library'}
+            </button>
+          </div>
+        ) : null}
+        {libraryNote ? (
+          <p className="replay-card__note" role="status">
+            {libraryNote}
+          </p>
         ) : null}
         {message ? (
           <p className="replay-card__note" role="status">

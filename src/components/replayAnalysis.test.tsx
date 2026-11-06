@@ -688,3 +688,137 @@ test('standalone Record for Review works with no lesson plan', async () => {
   assert.match(notes, /<ReplayAnalysisCard/);
   unmount(mounted);
 });
+
+test('a lesson replay card does not offer the index or the journal library', () => {
+  const { mounted } = card();
+  const text = mounted.host.textContent ?? '';
+  assert.equal(text.includes('Pick from index'), false);
+  assert.equal(text.includes('Add to journal video library'), false);
+  assert.equal(text.includes('Fundamental'), false);
+  const notes = readFileSync('src/pages/TrainingNotes.tsx', 'utf8');
+  const curriculum = readFileSync('src/pages/CompetitionCurriculum.tsx', 'utf8');
+  const slots = readFileSync('src/components/ReviewSlotControls.tsx', 'utf8');
+  assert.doesNotMatch(notes, /linkIndex|journalLibrary|ReviewIndexControls/);
+  assert.doesNotMatch(curriculum, /linkIndex|journalLibrary|ReviewIndexControls/);
+  assert.doesNotMatch(slots, /linkIndex|journalLibrary|ReviewIndexControls/);
+  unmount(mounted);
+});
+
+test('record for review picks or adds a fundamental and does not auto-add the journal library', async () => {
+  localStorage.clear();
+  const { RecordForReviewPage } = await import('../pages/RecordForReview.tsx');
+  const { STUDENT_EDITION_STORAGE_KEY, loadStudentReport } = await import('../lib/studentEdition.ts');
+  const { FILM_STORAGE_KEY } = await import('../lib/studentFilm.ts');
+  const mounted = mount(<RecordForReviewPage />);
+  const text = () => mounted.host.textContent ?? '';
+  assert.match(text(), /Pick from index/);
+  assert.match(text(), /Add a new fundamental/);
+  assert.match(text(), /Add to journal video library/);
+  assert.equal(localStorage.getItem(FILM_STORAGE_KEY), null);
+  assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), null);
+
+  click(button(mounted.host, 'Add to journal video library'));
+  assert.match(text(), /Record or pick a clip first/);
+  assert.equal(localStorage.getItem(FILM_STORAGE_KEY), null, 'the library button does not write a film without a clip');
+
+  click(button(mounted.host, 'Pick from index'));
+  click(button(mounted.host, 'Armbar from guard'));
+  assert.match(text(), /Armbar from guard/);
+  const picked = JSON.parse(localStorage.getItem(STANDALONE_REVIEW_KEY) ?? '{}');
+  assert.deepEqual(picked.indexLink, { id: 'sub.armbar-guard', name: 'Armbar from guard' });
+  assert.equal(picked.title, '');
+  assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), null, 'picking a catalog fundamental does not write the journal file');
+  assert.equal(localStorage.getItem(TRAINING_NOTES_STORAGE_KEY), null);
+
+  click(button(mounted.host, 'Add a new fundamental'));
+  const name = mounted.host.querySelector('[aria-label="New fundamental name"]') as HTMLInputElement;
+  assert.ok(name);
+  const setValue = (el: HTMLInputElement, value: string) => {
+    Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value')?.set?.call(el, value);
+    const key = Object.keys(el).find((item) => item.startsWith('__reactProps'));
+    const props = key ? (el as unknown as Record<string, { onChange?: (event: unknown) => void }>)[key] : null;
+    act(() => props?.onChange?.({ target: el, currentTarget: el }));
+  };
+  setValue(name, 'Knee cut');
+  click(button(mounted.host, 'Passes'));
+  click(button(mounted.host, 'Add to index'));
+  assert.match(text(), /Knee cut/);
+  const linked = JSON.parse(localStorage.getItem(STANDALONE_REVIEW_KEY) ?? '{}');
+  assert.equal(linked.indexLink.name, 'Knee cut');
+  assert.equal(linked.title, '');
+  const report = loadStudentReport(localStorage);
+  const row = report.checklist.find((entry) => entry.name === 'Knee cut');
+  assert.ok(row, 'the new name is on the fundamentals index');
+  assert.equal(row?.categoryId, 'passes');
+  assert.equal(row?.catalogItemId, '');
+  assert.equal(linked.indexLink.id, row?.id);
+  assert.equal(localStorage.getItem(FILM_STORAGE_KEY), null);
+  assert.equal(localStorage.getItem(TRAINING_NOTES_STORAGE_KEY), null);
+
+  assert.match(text(), /Journal video library/);
+  assert.match(text(), /No videos in the journal library yet/);
+  const library = readFileSync('src/components/ReviewJournalLibrary.tsx', 'utf8');
+  assert.match(library, /searchStudentFilms/);
+  assert.match(library, /<ReplayPlayer/);
+
+  click(button(mounted.host, 'Clear fundamental'));
+  const cleared = JSON.parse(localStorage.getItem(STANDALONE_REVIEW_KEY) ?? '{}');
+  assert.equal(cleared.indexLink, undefined);
+  assert.match(text(), /Not on the index yet/);
+  assert.equal(loadStudentReport(localStorage).checklist.some((entry) => entry.name === 'Knee cut'), true, 'clearing the review keeps the index line');
+  unmount(mounted);
+});
+
+test('the journal library on Record for Review searches filmed moves and offers review', async () => {
+  localStorage.clear();
+  const { writeFilms } = await import('../lib/studentFilm.ts');
+  const { RecordForReviewPage } = await import('../pages/RecordForReview.tsx');
+  writeFilms(localStorage, [
+    {
+      id: 'film.knee',
+      fileName: 'knee.mp4',
+      date: '2026-11-06',
+      technique: 'Knee cut',
+      note: 'Saturday finals',
+      mime: 'video/mp4',
+      size: 12,
+      createdAt: 2,
+      updatedAt: 2,
+      where: 'phone',
+      provider: '',
+      driveFileId: '',
+      dateFolder: '2026-11-06',
+    },
+    {
+      id: 'film.arm',
+      fileName: 'arm.mp4',
+      date: '2026-11-05',
+      technique: 'Armbar from guard',
+      note: '',
+      mime: 'video/mp4',
+      size: 12,
+      createdAt: 1,
+      updatedAt: 1,
+      where: 'phone',
+      provider: '',
+      driveFileId: '',
+      dateFolder: '2026-11-05',
+    },
+  ]);
+  const mounted = mount(<RecordForReviewPage />);
+  const text = () => mounted.host.textContent ?? '';
+  assert.match(text(), /2026-11-06 Knee cut/);
+  assert.match(text(), /2026-11-05 Armbar from guard/);
+  const search = mounted.host.querySelector('[aria-label="Search journal video library"]') as HTMLInputElement;
+  assert.ok(search);
+  Object.getOwnPropertyDescriptor(search.constructor.prototype, 'value')?.set?.call(search, 'knee');
+  const key = Object.keys(search).find((item) => item.startsWith('__reactProps'));
+  const props = key ? (search as unknown as Record<string, { onChange?: (event: unknown) => void }>)[key] : null;
+  act(() => props?.onChange?.({ target: search, currentTarget: search }));
+  assert.match(text(), /Knee cut/);
+  assert.doesNotMatch(text(), /Armbar from guard/);
+  click(button(mounted.host, 'Review 2026-11-06 Knee cut'));
+  assert.match(text(), /Close review/);
+  assert.match(text(), /Opening clip…/);
+  unmount(mounted);
+});

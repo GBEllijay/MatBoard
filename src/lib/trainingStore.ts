@@ -192,12 +192,7 @@ export function resetTrainingPeriod(): void {
 
 export function toggleTrainingClock(): void {
   if (state.running) {
-    persist({
-      ...state,
-      running: false,
-      remainingMs: remainingTraining(state),
-      startedAt: null,
-    });
+    pauseTrainingClock();
     return;
   }
   const remaining = remainingTraining(state);
@@ -210,6 +205,51 @@ export function toggleTrainingClock(): void {
     warned: restarting ? false : state.warned,
   });
   playTrainStartCue();
+}
+
+/**
+ * Freeze the clock where it stands. No start or end cue.
+ * Leaving the round timer uses this so time away cannot finish the round.
+ */
+export function pauseTrainingClock(): void {
+  ignoreExpiredCatchUp = false;
+  if (!state.running) return;
+  persist({
+    ...state,
+    running: false,
+    remainingMs: remainingTraining(state),
+    startedAt: null,
+  });
+}
+
+/** Longer than a same-gesture hop between the rounds display and the controller. */
+const CATCH_UP_GAP_MS = 1_000;
+
+let attachedScreens = 0;
+let ignoreExpiredCatchUp = false;
+let lastLiveTickAt: number | null = null;
+
+/**
+ * One mounted rounds screen (display or controller). The clock keeps running
+ * while either is on screen. The last one to leave freezes it, with no cue.
+ * A later mount's first tick cannot catch up across that gap and buzz.
+ */
+export function attachTrainingScreen(): () => void {
+  attachedScreens += 1;
+  if (attachedScreens === 1) {
+    const gap = lastLiveTickAt == null ? Number.POSITIVE_INFINITY : Date.now() - lastLiveTickAt;
+    ignoreExpiredCatchUp = state.running && remainingTraining(state) <= 0 && gap > CATCH_UP_GAP_MS;
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    attachedScreens -= 1;
+    if (attachedScreens > 0) return;
+    queueMicrotask(() => {
+      if (attachedScreens === 0) pauseTrainingClock();
+    });
+  };
 }
 
 function playTrainEndCue(): void {
@@ -284,6 +324,16 @@ function nextAfterBreak(): void {
 
 export function tickTraining(): void {
   if (!state.running) return;
+  // First tick after a screen mounts onto a clock that already hit zero while
+  // nobody was ticking. Freeze. Do not end the round or play a cue.
+  if (ignoreExpiredCatchUp) {
+    ignoreExpiredCatchUp = false;
+    if (remainingTraining(state) <= 0) {
+      pauseTrainingClock();
+      return;
+    }
+  }
+  lastLiveTickAt = Date.now();
   const left = remainingTraining(state);
   if (state.phase === 'work' && !state.warned && left <= 10_000 && left > 0) {
     const warningSound = state.warningSound;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Chrome } from '../components/Chrome';
 import { HoldButton } from '../components/HoldButton';
@@ -8,7 +8,7 @@ import { PolishedTimer } from '../components/PolishedTimer';
 import { Sheet } from '../components/Sheet';
 import { TrainingOptions } from '../components/TrainingOptions';
 import { useCustomSkinUrl } from '../hooks/useCustomSkinUrl';
-import { useInterval } from '../hooks/useClock';
+import { useTrainingClock } from '../hooks/useTrainingClock';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
@@ -24,7 +24,7 @@ import { wantsRoundsFullscreen } from '../lib/roundsFullscreen';
 import { safeTimerReturn } from '../lib/timerReturn';
 import { isPolishedTrainingSkin, trainingUsesAdvantageSkin, visibleTrainingSkin, whiteTimerSurfaceClass } from '../lib/trainingSkin';
 import { timerBackdropClasses, timerGymLogoSrc } from '../lib/timerBackdrop';
-import { remainingTraining, resetTrainingPeriod, resetTrainingSession, tickTraining, toggleTrainingClock } from '../lib/trainingStore';
+import { remainingTraining, resetTrainingPeriod, resetTrainingSession, toggleTrainingClock } from '../lib/trainingStore';
 
 export function TrainingPage() {
   const training = useTrainingState();
@@ -35,7 +35,6 @@ export function TrainingPage() {
   const customUrl = useCustomSkinUrl(customRecordId);
   const polished = customRecordId || !isPolishedTrainingSkin(skin) ? null : skin;
   const [options, setOptions] = useState(false);
-  const [, setTick] = useState(0);
   const remaining = remainingTraining(training);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
@@ -62,14 +61,7 @@ export function TrainingPage() {
   }, [arriveFullscreen, enterFullscreen]);
 
   useWakeLock(training.running);
-  useInterval(
-    useCallback(() => {
-      tickTraining();
-      setTick((n) => n + 1);
-    }, []),
-    100,
-    true,
-  );
+  useTrainingClock();
 
   const roundLabel = training.endless
     ? `Round ${training.currentRound} · Endless`

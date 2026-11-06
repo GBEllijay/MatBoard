@@ -68,7 +68,6 @@ export function CoachUnlimitedPage() {
         <HomeMark to={PRODUCTS_PATH} />
         <section className="suite instructor-hub">
           <BeltHeader kind="brown" worn title="Instructor Edition" />
-          <LicenseShareButton />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
             <div className="pro-hubs">
               {tools.map((tool) => (
@@ -84,6 +83,7 @@ export function CoachUnlimitedPage() {
               ))}
             </div>
           </nav>
+          <LicenseShareButton />
           <p className="suite__note">
             <Link className="home__text-btn" to={previewEntryPath('unlimited')}>
               Preview
