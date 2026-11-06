@@ -16,6 +16,7 @@ import {
   UNLIMITED_LESSON_VALUE,
   coachingToolsMenu,
 } from '../lib/productNames';
+import { previewEntryPath } from '../lib/techniqueTreePreview';
 
 /**
  * Coaching Tools folder. Same card and hub buttons as Competition Team Management.
@@ -51,6 +52,12 @@ export function CoachingToolsPage() {
             </div>
           </article>
         </nav>
+        <p className="home__soon">
+          <Link className="home__text-btn" to={previewEntryPath('tools')}>
+            Preview
+          </Link>
+          {' — technique tree and fundamentals. Draft for owner review. Not live curriculum.'}
+        </p>
         <SiteFooter />
       </div>
     </main>
