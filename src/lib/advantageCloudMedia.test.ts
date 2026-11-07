@@ -47,9 +47,24 @@ test('Plus Cloud claims match the existing door, and seats are not Plus Cloud by
   const locked = { src: 'code' as const, tier: 'pro' as const, grants: ['pro'], subs: { state: 'locked' as const } };
   const seat = { src: 'seat' as const, tier: 'seat' as const, grants: ['pro'], preset: 'coach' };
   const coachCode = { src: 'code' as const, tier: 'coach' as const, grants: ['coach'] };
-  for (const claims of [owner, code, stripe, locked, seat, coachCode, null]) {
+  const paidCloud = {
+    src: 'stripe' as const,
+    tier: 'pro' as const,
+    grants: ['pro'],
+    subs: { state: 'active' as const, cloud: true },
+  };
+  const seatFlag = {
+    src: 'seat' as const,
+    tier: 'seat' as const,
+    grants: ['pro'],
+    subs: { state: 'active' as const, cloud: true },
+  };
+  for (const claims of [owner, code, stripe, locked, seat, coachCode, paidCloud, seatFlag, null]) {
     assert.equal(claimsOpenPlusCloud(claims), proPlusCloudDoorOpen(claims));
   }
+  assert.equal(claimsOpenPlusCloud(paidCloud), true);
+  assert.equal(claimsOpenPlusCloud(seatFlag), false);
+  assert.equal(claimsOpenPlusCloud(stripe), false);
 });
 
 test('assistant coaches view Advantage Cloud; coach and above upload; lower tiers see nothing', () => {
