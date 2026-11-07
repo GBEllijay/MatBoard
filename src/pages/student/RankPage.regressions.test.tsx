@@ -114,6 +114,16 @@ async function click(el: Element) {
   });
 }
 
+async function dateEvent(input: HTMLInputElement, name: 'onFocus' | 'onChange' | 'onBlur', value?: string) {
+  await act(async () => {
+    if (value != null) {
+      const proto = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value');
+      proto?.set?.call(input, value);
+    }
+    reactProps(input)?.[name]?.({ target: input, currentTarget: input } as never);
+  });
+}
+
 async function typeControl(input: HTMLInputElement | HTMLTextAreaElement, value: string, eventName: 'input' | 'blur' = 'input') {
   await act(async () => {
     const proto = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value');
@@ -1301,5 +1311,198 @@ test('a blue benchmark anchor opens Blue and scrolls, and a white anchor still s
   } finally {
     unmount(white);
     HTMLElement.prototype.scrollIntoView = previous;
+  }
+});
+
+const BLUE_PHOTO_A = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+const BLUE_PHOTO_B = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACwAAAAAAQABAAACAkQBADs=';
+const KIDS_PHOTO = BLUE_PHOTO_B;
+
+function storedRankFile() {
+  return JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}') as {
+    rank?: { awardedOn?: string; tapeDates?: string[]; history?: { belt?: string; awardedOn?: string }[] };
+    beltBook?: { kids?: { awardedOn?: string; beltId?: string; history?: { beltId?: string; awardedOn?: string }[] } };
+  };
+}
+
+test('editing an achieved date saves the first time and stays after leaving the page', async () => {
+  let report = setRankAwardedOn(blankStudentReport(30), '2014-02-15', 31);
+  report = setRankBelt(report, 'blue', 32);
+  report = setRankAwardedOn(report, '2015-03-26', 33);
+  report = setRankTapeCount(report, 1, 34);
+  report = setRankTapeDate(report, 0, '2015-06-01', 35);
+  saveStudentReport(localStorage, report);
+  const mounted = mount(<RankPage />);
+  try {
+    const blue = labeled('Date of this belt') as HTMLInputElement;
+    assert.equal(blue.value, '2015-03-26');
+    assert.equal(blue.parentElement?.querySelector('b')?.textContent, 'Mar 26, 2015');
+    await dateEvent(blue, 'onFocus');
+    await act(async () => {
+      const props = reactProps(blue);
+      const set = (value: string) => {
+        const proto = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(blue), 'value');
+        proto?.set?.call(blue, value);
+        props?.onChange?.({ target: blue, currentTarget: blue } as never);
+      };
+      set('');
+      set('2016-04-02');
+      set('2015-03-26');
+    });
+    assert.equal(blue.value, '2016-04-02');
+    assert.equal(blue.parentElement?.querySelector('b')?.textContent, 'Apr 2, 2016');
+    assert.equal(storedRankFile().rank?.awardedOn, '2016-04-02');
+    assert.equal(storedRankFile().rank?.history?.find((row) => row.belt === 'white')?.awardedOn, '2014-02-15');
+    assert.equal(storedRankFile().rank?.tapeDates?.[0], '2015-06-01');
+    assert.equal((labeled('Date of White belt') as HTMLInputElement).value, '2014-02-15');
+
+    const white = labeled('Date of White belt') as HTMLInputElement;
+    await dateEvent(white, 'onFocus');
+    await act(async () => {
+      const props = reactProps(white);
+      const set = (value: string) => {
+        const proto = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(white), 'value');
+        proto?.set?.call(white, value);
+        props?.onChange?.({ target: white, currentTarget: white } as never);
+      };
+      set('');
+      set('2014-03-01');
+      set('2014-02-15');
+    });
+    assert.equal(white.value, '2014-03-01');
+    assert.equal((labeled('Date of this belt') as HTMLInputElement).value, '2016-04-02');
+    assert.equal(storedRankFile().rank?.awardedOn, '2016-04-02');
+    assert.equal(storedRankFile().rank?.tapeDates?.[0], '2015-06-01');
+  } finally {
+    unmount(mounted);
+  }
+
+  const again = mount(<RankPage />);
+  try {
+    assert.equal((labeled('Date of this belt') as HTMLInputElement).value, '2016-04-02');
+    assert.equal((labeled('Date of White belt') as HTMLInputElement).value, '2014-03-01');
+    assert.equal(storedRankFile().rank?.awardedOn, '2016-04-02');
+    assert.equal(storedRankFile().rank?.history?.find((row) => row.belt === 'white')?.awardedOn, '2014-03-01');
+    assert.equal(storedRankFile().rank?.tapeDates?.[0], '2015-06-01');
+  } finally {
+    unmount(again);
+  }
+});
+
+test('a first achieved date still saves when the picker only publishes it on blur', async () => {
+  const mounted = mount(<RankPage />);
+  try {
+    const white = labeled('Date of this belt') as HTMLInputElement;
+    assert.equal(white.value, '');
+    await dateEvent(white, 'onFocus');
+    await dateEvent(white, 'onChange', '');
+    assert.equal(storedRankFile().rank?.awardedOn ?? '', '');
+    await dateEvent(white, 'onBlur', '2014-02-15');
+    assert.equal(white.value, '2014-02-15');
+    assert.equal(white.parentElement?.querySelector('b')?.textContent, 'Feb 15, 2014');
+    assert.equal(storedRankFile().rank?.awardedOn, '2014-02-15');
+  } finally {
+    unmount(mounted);
+  }
+  const again = mount(<RankPage />);
+  try {
+    assert.equal((labeled('Date of this belt') as HTMLInputElement).value, '2014-02-15');
+  } finally {
+    unmount(again);
+  }
+});
+
+test('each belt gallery shows only that belt and opens a photo larger', async () => {
+  let report = setRankAwardedOn(blankStudentReport(40), '2014-02-15', 41);
+  report = setRankBelt(report, 'blue', 42);
+  report = setRankAwardedOn(report, '2015-03-26', 43);
+  saveStudentReport(localStorage, report);
+  localStorage.setItem(
+    RANK_PHOTO_KEY,
+    JSON.stringify({ belts: { white: [STRIPE_PHOTO], blue: [BLUE_PHOTO_A, BLUE_PHOTO_B] } }),
+  );
+  const mounted = mount(<RankPage />);
+  try {
+    const tools = document.querySelector('.rung--blue .rung__photo-tools');
+    const stack = labeled('Open Blue photos, 2 photos');
+    assert.equal(stack.classList.contains('rank-photo-stack'), true);
+    assert.equal(stack.nextElementSibling?.classList.contains('photo'), true);
+    assert.equal(stack.getAttribute('aria-haspopup'), 'dialog');
+    assert.equal(stack.querySelector('.rank-photo-stack__card--front')?.getAttribute('src'), BLUE_PHOTO_A);
+    assert.equal(stack.querySelector('.rank-photo-stack__card--mid')?.getAttribute('src'), BLUE_PHOTO_B);
+    assert.equal(stack.textContent?.trim(), '');
+    assert.equal(tools?.querySelector('.photo .n')?.textContent, '2');
+    const whiteStack = labeled('Open White photos, 1 photo');
+    assert.equal(whiteStack.querySelectorAll('img').length, 1);
+    assert.equal(whiteStack.querySelector('.rank-photo-stack__card--front')?.getAttribute('src'), STRIPE_PHOTO);
+    assert.equal(document.querySelector('.rung--purple .rank-photo-stack'), null);
+    assert.ok(document.querySelector('.rung--purple .photo'));
+
+    await click(stack);
+    const dialog = document.querySelector('[aria-label="Blue gallery"]');
+    assert.ok(dialog instanceof HTMLElement);
+    assert.equal(dialog.querySelector('.rank-gallery__stage')?.getAttribute('src'), BLUE_PHOTO_A);
+    assert.match(dialog.textContent ?? '', /Photo 1 of 2/);
+    for (const img of dialog.querySelectorAll('img')) assert.notEqual(img.getAttribute('src'), STRIPE_PHOTO);
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    });
+    assert.equal(document.querySelector('.rank-gallery__stage')?.getAttribute('src'), BLUE_PHOTO_B);
+    await click(labeled('Blue photo 1'));
+    assert.equal(document.querySelector('.rank-gallery__stage')?.getAttribute('src'), BLUE_PHOTO_A);
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    assert.equal(document.querySelector('[aria-label="Blue gallery"]'), null);
+    assert.equal(labeled('Open Blue photos, 2 photos').getAttribute('aria-expanded'), 'false');
+
+    await click(labeled('Remove Blue photo 1'));
+    assert.equal(document.querySelector('[aria-label="Open Blue photo 2"]'), null);
+    assert.equal(labeled('Open Blue photos, 1 photo').querySelector('.rank-photo-stack__card--front')?.getAttribute('src'), BLUE_PHOTO_B);
+    assert.equal(document.querySelector('.rung--purple .rank-photo-stack'), null);
+    const kept = JSON.parse(localStorage.getItem(RANK_PHOTO_KEY) ?? '{}') as { belts?: { blue?: string[]; white?: string[] } };
+    assert.deepEqual(kept.belts?.blue, [BLUE_PHOTO_B]);
+    assert.deepEqual(kept.belts?.white, [STRIPE_PHOTO]);
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('a kids belt gallery does not show adult or other kids belt photos', async () => {
+  let report = setBeltMode(blankStudentReport(50), 'kids', 51);
+  report = setKidsBelt(report, 'grey-white', 52);
+  saveStudentReport(localStorage, report);
+  localStorage.setItem(
+    RANK_PHOTO_KEY,
+    JSON.stringify({
+      belts: { white: [STRIPE_PHOTO] },
+      kidsBelts: { 'grey-white': [KIDS_PHOTO], grey: [BLUE_PHOTO_A] },
+    }),
+  );
+  const mounted = mount(<RankPage />);
+  try {
+    const greyWhite = labeled('Grey/White').closest('li');
+    const tools = greyWhite?.querySelector('.rung__photo-tools');
+    const opener = labeled('Open Grey/White photos, 1 photo');
+    assert.equal(opener.nextElementSibling?.classList.contains('photo'), true);
+    assert.equal(tools?.querySelector('.rank-photo-stack__card--front')?.getAttribute('src'), KIDS_PHOTO);
+    await click(opener);
+    const dialog = document.querySelector('[aria-label="Grey/White gallery"]');
+    assert.ok(dialog instanceof HTMLElement);
+    assert.equal(dialog.querySelector('.rank-gallery__stage')?.getAttribute('src'), KIDS_PHOTO);
+    for (const img of dialog.querySelectorAll('img')) {
+      assert.notEqual(img.getAttribute('src'), STRIPE_PHOTO);
+      assert.notEqual(img.getAttribute('src'), BLUE_PHOTO_A);
+    }
+    const grey = labeled('Grey').closest('li');
+    assert.equal(grey?.querySelector('.rank-photo-stack__card--front')?.getAttribute('src'), BLUE_PHOTO_A);
+    assert.notEqual(grey?.querySelector('img')?.getAttribute('src'), KIDS_PHOTO);
+    assert.notEqual(grey?.querySelector('img')?.getAttribute('src'), STRIPE_PHOTO);
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    assert.equal(document.querySelector('[role="dialog"]'), null);
+  } finally {
+    unmount(mounted);
   }
 });
