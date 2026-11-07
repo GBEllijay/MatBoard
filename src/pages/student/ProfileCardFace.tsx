@@ -6,6 +6,7 @@
  */
 import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { rankFaceLabel } from '../../lib/studentRank';
 import { WornBeltMark } from './wornBelt';
 import { benchmarkView } from '../../lib/studentBenchmarks';
 import { cardBelt, cardDate, initialsOf } from '../../lib/rosterCard';
@@ -118,7 +119,7 @@ export function ProfileCardFace({
                 <span className="clipboard__belt">
                   <WornBeltMark preview={belt} />
                 </span>
-                <span className="profile-face__belt-text">{`${belt.summary} · change on the rank page ›`}</span>
+                <span className="profile-face__belt-text">{rankFaceLabel(belt)}</span>
               </Link>
               {beltStat}
             </div>

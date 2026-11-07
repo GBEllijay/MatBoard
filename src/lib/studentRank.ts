@@ -740,6 +740,28 @@ export function wornBeltPreview(report: StudentProgressReport): WornBeltPreview 
   return adultWornPreview(report);
 }
 
+/** 1st, 2nd, 3rd, 4th. 11–13 stay “th”. */
+export function ordinalWord(count: number): string {
+  const n = Math.abs(Math.trunc(count));
+  const mod100 = n % 100;
+  const suffix =
+    mod100 >= 11 && mod100 <= 13 ? 'th' : n % 10 === 1 ? 'st' : n % 10 === 2 ? 'nd' : n % 10 === 3 ? 'rd' : 'th';
+  return `${n}${suffix}`;
+}
+
+/**
+ * Words on the profile card’s rank link.
+ * A degree is an ordinal (“1st degree”). Stripes stay a count (“2 stripes”).
+ * Zero stays a count. The belt name comes from the worn belt, not a fixed color.
+ */
+export function rankFaceLabel(preview: Pick<WornBeltPreview, 'label' | 'meta' | 'summary'>): string {
+  const degree = /\b(\d+)\s+degrees?\b/i.exec(preview.meta);
+  if (!degree) return preview.summary;
+  const count = Number(degree[1]);
+  if (count < 1) return `${preview.label} belt · 0 degrees`;
+  return `${preview.label} belt · ${ordinalWord(count)} degree`;
+}
+
 function adultWornPreview(report: StudentProgressReport): WornBeltPreview {
   const belt = report.profile.belt;
   const rank = rankOf(report);

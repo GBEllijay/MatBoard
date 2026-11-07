@@ -406,7 +406,47 @@
 .profile-face .profile-face__belt,
 .profile-face .profile-face__belt:visited { color: var(--cb-ink); }
 .profile-face__belt .clipboard__belt { max-width: 400px; width: 100%; }
-.profile-face__belt-text { font-size: 14px; }
+.profile-face__belt-text { font-size: 14px; min-width: 0; line-height: 1.3; overflow-wrap: anywhere; }
+/* The face clears every button. The mat-hours frame and timer keep their own box. */
+.profile-face .mh-row { grid-column: 1 / -1; min-width: 0; max-width: 100%; }
+.profile-face .mh-frame {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 6px;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 3px solid var(--frame, #f2f0ea);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.15;
+}
+@media (min-width: 480px) {
+  .profile-face .mh-frame { flex-direction: row; align-items: baseline; }
+}
+.profile-face .mh-timer {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #0c2344;
+  border: 1.5px solid #004eba;
+  box-shadow: 0 0 10px rgba(110, 168, 255, 0.45), inset 0 0 8px rgba(0, 78, 186, 0.5);
+}
 .profile-face__belt .belt-mark__name { font-size: 12px; }
 @media (min-width: 600px) {
   .profile-face__rows { grid-template-columns: 1fr 1fr; }
