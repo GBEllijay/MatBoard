@@ -16,7 +16,7 @@ import { API_PRODUCT_PRO } from './routes.ts';
 import { stripeErrorMessage, type StripeRuntimeEnv } from './stripeCheckout.ts';
 import { appVersionOf } from '../lib/appCapability.ts';
 import { issueToken } from './tokenIssue.ts';
-import { cloudEditionForProduct, recordCloudGrant } from './cloudSubscription.ts';
+import { cloudEditionForCheckoutProduct, recordCloudGrant } from './cloudSubscription.ts';
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -127,8 +127,14 @@ export async function handleSessionRedeem(
   if (!session.client_reference_id || session.client_reference_id !== nonceHash) return json(400, UNCONFIRMED);
 
   const stamp = now();
-  const source: PurchaseSource = session.mode === 'subscription' ? 'stripe_subscription' : 'stripe_payment';
+  const cloudMeta = session.metadata?.cloud === '1';
+  // Pro + Cloud is a one-time Pro payment plus a Cloud subscription. Recording
+  // that Pro row as a subscription would let a Cloud cancel lock Pro.
+  const proCloud = product === API_PRODUCT_PRO && cloudMeta;
+  const source: PurchaseSource = session.mode === 'subscription' && !proCloud ? 'stripe_subscription' : 'stripe_payment';
+  const cloudSub = subscriptionId(session);
   let licenseId: string = crypto.randomUUID();
+  let recordedCloud = false;
   if (db) {
     const recorded = await recordPurchase(db, {
       email: emailOf(session),
@@ -136,19 +142,17 @@ export async function handleSessionRedeem(
       source,
       sourceRef: sessionId,
       sessionId,
-      subscriptionId: subscriptionId(session) || undefined,
+      subscriptionId: proCloud ? undefined : cloudSub || undefined,
       stripeCustomerId: customerId(session) || undefined,
       pepper,
       now: stamp,
       status: 'active',
     });
     licenseId = recorded.licenseId;
-    const cloudEdition = session.metadata?.cloud === '1' ? cloudEditionForProduct(product) : null;
-    const cloudSub = subscriptionId(session);
+    const cloudEdition = cloudMeta ? cloudEditionForCheckoutProduct(product) : null;
     if (cloudEdition && cloudSub) {
-      // Media or Instructor Cloud: mark the subscription as the add-on, so
-      // its end clears Cloud only and never reads as Pro.
       await recordCloudGrant(db, { licenseId, edition: cloudEdition, subscriptionId: cloudSub, now: stamp });
+      recordedCloud = true;
     }
   }
   const deviceId = typeof body.deviceId === 'string' && body.deviceId.trim() ? body.deviceId.trim().slice(0, 80) : crypto.randomUUID();
@@ -168,8 +172,8 @@ export async function handleSessionRedeem(
   }
   const doors = expandGrants(grants) as Door[];
   const hint = await emailHint(emailOf(session), pepper);
-  const cloud = session.metadata?.cloud === '1';
-  const subscription = session.mode === 'subscription';
+  const cloud = recordedCloud || (!db && cloudMeta);
+  const subscription = session.mode === 'subscription' && !proCloud;
   const token = await issueToken(
     env.ENTITLEMENT_SIGNING_KEY,
     {

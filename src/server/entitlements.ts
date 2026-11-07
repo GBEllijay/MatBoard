@@ -55,13 +55,13 @@ export type ProEntitlement = {
 };
 
 /**
- * Media Cloud or Instructor Cloud add-on, one record per Stripe subscription.
- * Separate from the one-time Media or Coach record, which a lapse never changes.
+ * Media, Instructor, or Pro Cloud add-on, one record per Stripe subscription.
+ * Separate from the one-time edition record, which a lapse never changes.
  * cloudLapsedAt is the first time Cloud went off. Nothing is deleted on a lapse.
  */
 export type CloudEntitlement = {
   subscriptionId: string;
-  edition: 'media' | 'coach';
+  edition: 'media' | 'coach' | 'pro';
   sessionId?: string;
   status: ProEntitlementStatus;
   cloudLapsedAt: string | null;
@@ -77,7 +77,7 @@ function parseCloudEntitlement(raw: unknown): CloudEntitlement | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
   if (typeof row.subscriptionId !== 'string' || !row.subscriptionId) return null;
-  if (row.edition !== 'media' && row.edition !== 'coach') return null;
+  if (row.edition !== 'media' && row.edition !== 'coach' && row.edition !== 'pro') return null;
   if (row.status !== 'active' && row.status !== 'inactive') return null;
   return {
     subscriptionId: row.subscriptionId,
@@ -132,7 +132,7 @@ export type EntitlementStore = {
   findProByEmail(email: string): Promise<ProEntitlement | null>;
   findProBySessionId(sessionId: string): Promise<ProEntitlement | null>;
   findProBySubscriptionId(subscriptionId: string): Promise<ProEntitlement | null>;
-  /** Media or Instructor Cloud add-on. Optional so older stores keep working. */
+  /** Cloud add-on. Optional so older stores keep working. */
   saveCloud?(record: CloudEntitlement): Promise<CloudEntitlement>;
   findCloudBySubscriptionId?(subscriptionId: string): Promise<CloudEntitlement | null>;
 };

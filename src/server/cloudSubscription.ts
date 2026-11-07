@@ -1,44 +1,66 @@
 import type { D1Database } from './d1.ts';
-import { API_PRODUCT_COACH, API_PRODUCT_MEDIA } from './routes.ts';
+import { API_PRODUCT_COACH, API_PRODUCT_MEDIA, API_PRODUCT_PRO } from './routes.ts';
 import { accessForSubscription, nextPastDueSince, type BillingEventKind, type SubscriptionAccess } from './subscriptionAccess.ts';
 import { canceledSnapshot, fetchStripeSubscription, type StripeSubscriptionSnapshot } from './stripeSubscription.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
 import { cloudEditionForPriceIds } from './proPrices.ts';
 
 /**
- * Media Cloud and Instructor Cloud add-on subscriptions.
+ * Advantage Cloud add-on subscriptions for Media, Instructor, and Pro.
  *
- * The one-time edition (Media or Instructor) is its own grant and is never
- * touched here. Cloud is a separate grant row with no doors:
- * product = advantage-cloud-media or advantage-cloud-coach,
+ * The one-time edition is its own grant and is never touched here. Cloud is a
+ * separate grant row with no doors:
+ * product = advantage-cloud-media, advantage-cloud-coach, or advantage-cloud-pro,
  * source = stripe_subscription, source_ref = the Stripe subscription id.
  * When the subscription ends, only that row goes inactive. revoked_at on it is
  * the lapse time. Files in R2 are not deleted here (60-day download window).
  * Uses the existing grants and subscriptions tables. No migration.
+ *
+ * Pro Cloud is recognized by checkout metadata cloud=1, not by price id.
+ * STRIPE_PRICE_PRO_MONTHLY is also the legacy Pro monthly price. A monthly
+ * Pro subscription without that metadata stays a Pro subscription.
+ *
+ * Purchases recorded before this split are not rewritten. A later Stripe
+ * event with metadata cloud=1 stores only the cloud row. It does not insert
+ * a one-time Pro grant and does not deactivate an existing Pro grant.
+ * Already-inactive Pro grants are not revived. Turning those into one-time
+ * Pro requires a Stripe Checkout Session lookup and is not done here.
  */
-export type CloudEdition = 'media' | 'coach';
+export type CloudEdition = 'media' | 'coach' | 'pro';
 
 export const CLOUD_GRANT_PRODUCT: Record<CloudEdition, string> = {
   media: 'advantage-cloud-media',
   coach: 'advantage-cloud-coach',
+  pro: 'advantage-cloud-pro',
 };
 
-const CLOUD_PRODUCTS = [CLOUD_GRANT_PRODUCT.media, CLOUD_GRANT_PRODUCT.coach];
+const CLOUD_PRODUCTS = [CLOUD_GRANT_PRODUCT.media, CLOUD_GRANT_PRODUCT.coach, CLOUD_GRANT_PRODUCT.pro];
 
 export function isCloudGrantProduct(product: string): boolean {
   return CLOUD_PRODUCTS.includes(product);
 }
 
+/** Cloud grant product, or the one-time Media/Instructor product that owns a cloud add-on. Pro is not included. */
 export function cloudEditionForProduct(product: string): CloudEdition | null {
   if (product === API_PRODUCT_MEDIA || product === CLOUD_GRANT_PRODUCT.media) return 'media';
   if (product === API_PRODUCT_COACH || product === CLOUD_GRANT_PRODUCT.coach) return 'coach';
+  if (product === CLOUD_GRANT_PRODUCT.pro) return 'pro';
   return null;
 }
 
-/** SQL fragment: subscription ids on this license that are Cloud add-ons, not Pro. */
+/**
+ * Edition whose checkout carried metadata cloud=1.
+ * advantage-pro maps only here, so a Pro grant is never read as Cloud by itself.
+ */
+export function cloudEditionForCheckoutProduct(product: string): CloudEdition | null {
+  if (product === API_PRODUCT_PRO) return 'pro';
+  return cloudEditionForProduct(product);
+}
+
+/** SQL fragment: subscription ids on this license that are Cloud add-ons, not the Pro edition. */
 export const CLOUD_SUBSCRIPTION_IDS_SQL = `SELECT source_ref FROM grants
   WHERE license_id = ? AND source = 'stripe_subscription' AND source_ref IS NOT NULL
-  AND product IN ('${CLOUD_GRANT_PRODUCT.media}', '${CLOUD_GRANT_PRODUCT.coach}')`;
+  AND product IN ('${CLOUD_GRANT_PRODUCT.media}', '${CLOUD_GRANT_PRODUCT.coach}', '${CLOUD_GRANT_PRODUCT.pro}')`;
 
 type CloudGrantRow = {
   licenseId: string;
@@ -53,9 +75,9 @@ export async function cloudGrantForSubscription(db: D1Database, subscriptionId: 
     .prepare(
       `SELECT license_id AS licenseId, product, source_ref AS subscriptionId, status, revoked_at AS revokedAt
        FROM grants WHERE source = 'stripe_subscription' AND source_ref = ?
-       AND product IN (?, ?) LIMIT 1`,
+       AND product IN (?, ?, ?) LIMIT 1`,
     )
-    .bind(subscriptionId, CLOUD_GRANT_PRODUCT.media, CLOUD_GRANT_PRODUCT.coach)
+    .bind(subscriptionId, CLOUD_GRANT_PRODUCT.media, CLOUD_GRANT_PRODUCT.coach, CLOUD_GRANT_PRODUCT.pro)
     .first<CloudGrantRow>();
 }
 
@@ -210,9 +232,9 @@ export async function cloudAccessForLicense(
          g.ends_at AS endsAt, s.status AS status, s.cancel_at_period_end AS cancelAtPeriodEnd,
          s.current_period_end AS currentPeriodEnd, s.past_due_since AS pastDueSince, s.last_synced_at AS lastSyncedAt
        FROM grants g LEFT JOIN subscriptions s ON s.stripe_subscription_id = g.source_ref
-       WHERE g.license_id = ? AND g.source = 'stripe_subscription' AND g.product IN (?, ?)`,
+       WHERE g.license_id = ? AND g.source = 'stripe_subscription' AND g.product IN (?, ?, ?)`,
     )
-    .bind(licenseId, CLOUD_GRANT_PRODUCT.media, CLOUD_GRANT_PRODUCT.coach)
+    .bind(licenseId, CLOUD_GRANT_PRODUCT.media, CLOUD_GRANT_PRODUCT.coach, CLOUD_GRANT_PRODUCT.pro)
     .all<{
       product: string;
       subscriptionId: string;
@@ -263,18 +285,20 @@ export async function cloudAccessForLicense(
 }
 
 /**
- * Media or Instructor Cloud, from a subscription read from Stripe: by its Cloud
- * price, its edition metadata, or its Cloud grant on file. Pro returns null.
+ * Cloud edition from a subscription read from Stripe: by its Cloud price, its
+ * edition metadata, Pro metadata cloud=1, or its Cloud grant on file.
+ * A Pro monthly price without cloud metadata returns null so it stays Pro.
  */
 export async function cloudEditionForSnapshot(
   db: D1Database | null | undefined,
-  snapshot: Pick<StripeSubscriptionSnapshot, 'id' | 'priceIds' | 'metadataProduct'>,
+  snapshot: Pick<StripeSubscriptionSnapshot, 'id' | 'priceIds' | 'metadataProduct' | 'metadataCloud'>,
   env: StripeRuntimeEnv,
 ): Promise<CloudEdition | null> {
   const priced = cloudEditionForPriceIds(snapshot.priceIds, env);
   if (priced === 'media' || priced === 'coach') return priced;
   const byMeta = snapshot.metadataProduct === API_PRODUCT_MEDIA ? 'media' : snapshot.metadataProduct === API_PRODUCT_COACH ? 'coach' : null;
   if (byMeta) return byMeta;
+  if (snapshot.metadataCloud && snapshot.metadataProduct === API_PRODUCT_PRO) return 'pro';
   if (!db) return null;
   const grant = await cloudGrantForSubscription(db, snapshot.id);
   return grant ? cloudEditionForProduct(grant.product) : null;

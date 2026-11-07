@@ -15,6 +15,7 @@ import {
   touchDevice,
 } from './purchaseRecords.ts';
 import { appVersionOf } from '../lib/appCapability.ts';
+import { cloudAccessForLicense } from './cloudSubscription.ts';
 import { freeStudentRestoreShape } from './studentLicenses.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
 
@@ -237,6 +238,16 @@ export async function handleRestoreVerify(
   // A license that is only a free Student claim restores as that claim, including
   // the gym link. Every other license keeps the token it had before.
   const studentClaim = await freeStudentRestoreShape(db, identity.licenseId, now(), env);
+  // Cloud comes from the cloud grant on this license. A previous phone's token
+  // is not part of this request, and its flags are not copied.
+  const cloud = studentClaim ? null : await cloudAccessForLicense(db, identity.licenseId, now());
+  const subs = studentClaim
+    ? undefined
+    : cloud?.entitled
+      ? { state: 'active' as const, cloud: true as const }
+      : pro
+        ? { state: 'active' as const }
+        : undefined;
   const token = await issueToken(env.ENTITLEMENT_SIGNING_KEY, {
     licenseId: identity.licenseId,
     grants: doors,
@@ -247,7 +258,7 @@ export async function handleRestoreVerify(
     kind: studentClaim ? 'onetime' : pro ? 'pro' : 'onetime',
     emailHint: row.emailHash.slice(0, 16),
     thumbprint,
-    subs: studentClaim ? undefined : pro ? { state: 'active' } : undefined,
+    subs,
     gym: studentClaim?.gym,
     preset: studentClaim?.preset,
     appVersion: appVersionOf(request),
