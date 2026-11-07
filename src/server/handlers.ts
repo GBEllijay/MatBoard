@@ -258,14 +258,15 @@ async function mirrorPurchase(
 }
 
 /**
- * Apply one Media or Instructor Cloud subscription state to D1 and KV.
+ * Apply one Cloud subscription state to D1 and KV.
  * Clears Cloud only. The one-time edition and any R2 files stay.
+ * A Pro Cloud event does not write or revoke the one-time Pro grant.
  */
 async function syncCloudSubscription(
   store: EntitlementStore,
   extras: WebhookExtras,
   input: {
-    edition: 'media' | 'coach';
+    edition: 'media' | 'coach' | 'pro';
     subscriptionId: string;
     entitled: boolean;
     hint: CloudSubscriptionSync;
@@ -449,6 +450,11 @@ export async function handleWebhook(
     return json(200, { received: true, sessionId: stored.sessionId, ...(parsed.cloud ? { cloud: true } : {}) });
   }
   if (parsed.action === 'record-pro') {
+    if (parsed.cloud && !extras.db) {
+      return json(500, { error: 'Entitlement storage is not configured. Bind ENTITLEMENTS_DB.' });
+    }
+    // Base Pro and Pro bought with Cloud are both one-time payments. Cloud, when
+    // present, is its own subscription row and is the only row a cancel moves.
     const licenseId = await mirrorPurchase(extras, {
       email: parsed.purchase.email,
       product: API_PRODUCT_PRO,
@@ -457,10 +463,38 @@ export async function handleWebhook(
       sessionId: parsed.purchase.sessionId,
       now: now(),
     });
+    let cloudRecorded = false;
+    if (parsed.cloud && parsed.subscriptionId && extras.db && licenseId) {
+      await recordCloudGrant(extras.db, {
+        licenseId,
+        edition: 'pro',
+        subscriptionId: parsed.subscriptionId,
+        now: now(),
+      });
+      await ensureHalfOffCode(extras.db, licenseId, now());
+      cloudRecorded = true;
+      if (store.saveCloud && !(store.findCloudBySubscriptionId && (await store.findCloudBySubscriptionId(parsed.subscriptionId)))) {
+        await store.saveCloud({
+          subscriptionId: parsed.subscriptionId,
+          edition: 'pro',
+          sessionId: parsed.purchase.sessionId,
+          status: 'active',
+          cloudLapsedAt: null,
+          createdAt: stamp,
+          updatedAt: stamp,
+        });
+      }
+    }
     if (eventId && extras.db) {
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }
-    return json(200, { received: true, sessionId: parsed.purchase.sessionId, product: API_PRODUCT_PRO, licenseId });
+    return json(200, {
+      received: true,
+      sessionId: parsed.purchase.sessionId,
+      product: API_PRODUCT_PRO,
+      licenseId,
+      ...(cloudRecorded ? { cloud: true } : {}),
+    });
   }
   if (parsed.action === 'record-media') {
     const record: MediaEntitlement = {

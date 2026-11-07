@@ -13,6 +13,8 @@ export type StripeSubscriptionSnapshot = {
   currentPeriodEnd: string | null;
   priceIds: string[];
   metadataProduct: string;
+  /** True only when subscription metadata cloud is "1". The monthly price alone is not Cloud. */
+  metadataCloud: boolean;
 };
 
 function unixSeconds(value: unknown): number | null {
@@ -107,6 +109,12 @@ function metadataProduct(row: Record<string, unknown>): string {
   return '';
 }
 
+function metadataCloud(row: Record<string, unknown>): boolean {
+  const metadata = row.metadata;
+  if (!metadata || typeof metadata !== 'object') return false;
+  return (metadata as { cloud?: unknown }).cloud === '1';
+}
+
 export function parseStripeSubscription(row: Record<string, unknown>): StripeSubscriptionSnapshot | null {
   const id = typeof row.id === 'string' && row.id.startsWith('sub_') ? row.id : '';
   if (!id) return null;
@@ -120,6 +128,7 @@ export function parseStripeSubscription(row: Record<string, unknown>): StripeSub
     currentPeriodEnd: readCurrentPeriodEnd(row),
     priceIds: readPriceIds(row),
     metadataProduct: metadataProduct(row),
+    metadataCloud: metadataCloud(row),
   };
 }
 
@@ -132,6 +141,7 @@ export function canceledSnapshot(subscriptionId: string): StripeSubscriptionSnap
     currentPeriodEnd: null,
     priceIds: [],
     metadataProduct: '',
+    metadataCloud: false,
   };
 }
 

@@ -537,9 +537,9 @@ export type StripeEntitlementDecision =
   | { action: 'record-student'; purchase: CheckoutPurchase }
   | { action: 'record-coach'; purchase: CheckoutPurchase; cloud?: boolean; subscriptionId?: string }
   | { action: 'record-media'; purchase: CheckoutPurchase; cloud?: boolean; subscriptionId?: string }
-  | { action: 'record-pro'; purchase: CheckoutPurchase }
+  | { action: 'record-pro'; purchase: CheckoutPurchase; cloud?: boolean; subscriptionId?: string }
   | { action: 'grant-pro'; grant: ProCheckoutGrant; cloud?: boolean }
-  | { action: 'sync-cloud'; edition: 'media' | 'coach'; entitled: boolean; subscriptionId: string; cloud: CloudSubscriptionSync }
+  | { action: 'sync-cloud'; edition: 'media' | 'coach' | 'pro'; entitled: boolean; subscriptionId: string; cloud: CloudSubscriptionSync }
   | { action: 'sync-pro'; sync: ProSubscriptionSync }
   | { action: 'revoke-onetime'; revocation: OneTimeRevocation }
   | { action: 'retry' }
@@ -608,6 +608,24 @@ function readSubscriptionId(row: Record<string, unknown>): string {
     }
   }
   return '';
+}
+
+function readCloudFlag(row: Record<string, unknown>): boolean {
+  if (readMetaCloud(row)) return true;
+  const parents = [row.parent, row.subscription_details];
+  for (const parent of parents) {
+    if (!parent || typeof parent !== 'object') continue;
+    const details =
+      parent === row.subscription_details ? parent : (parent as { subscription_details?: unknown }).subscription_details;
+    if (details && typeof details === 'object' && readMetaCloud(details as Record<string, unknown>)) return true;
+  }
+  const lines = row.lines;
+  if (lines && typeof lines === 'object' && Array.isArray((lines as { data?: unknown }).data)) {
+    for (const line of (lines as { data: unknown[] }).data) {
+      if (line && typeof line === 'object' && readMetaCloud(line as Record<string, unknown>)) return true;
+    }
+  }
+  return false;
 }
 
 function invoiceProduct(row: Record<string, unknown>): string {
@@ -681,6 +699,20 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
     return { action: 'record', purchase };
   }
   const cloudOn = readMetaCloud(row);
+  if (row.mode === 'subscription' && cloudOn && product === API_PRODUCT_PRO) {
+    if (!paid) return { action: 'ignore' };
+    if (typeof row.id !== 'string' || !row.id.startsWith('cs_')) return { action: 'invalid' };
+    const subscriptionId = readSubscriptionId(row);
+    if (!subscriptionId) return { action: 'retry' };
+    const purchase: CheckoutPurchase = {
+      email: readEmail(row),
+      sessionId: row.id,
+      amountTotal: money(row, 'amount_total'),
+      currency: currencyOf(row),
+    };
+    // One-time Pro stays a payment grant. The monthly line is only Cloud.
+    return { action: 'record-pro', purchase, cloud: true, subscriptionId };
+  }
   if (row.mode === 'subscription' && cloudOn && (product === API_PRODUCT_MEDIA || product === API_PRODUCT_COACH)) {
     if (!paid) return { action: 'ignore' };
     if (typeof row.id !== 'string' || !row.id.startsWith('cs_')) return { action: 'invalid' };
@@ -709,7 +741,6 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
         amountTotal: money(row, 'amount_total'),
         currency: currencyOf(row),
       },
-      cloud: cloudOn,
     };
   }
   return { action: 'ignore' };
@@ -731,12 +762,13 @@ function cloudSync(
   row: Record<string, unknown>,
   env: StripeRuntimeEnv,
   entitled: boolean,
-  input: { metaProduct: string; status: string; billingEvent: CloudSubscriptionSync['billingEvent'] },
+  input: { metaProduct: string; status: string; billingEvent: CloudSubscriptionSync['billingEvent']; cloudMeta: boolean },
 ): StripeEntitlementDecision | null {
   const priced = cloudEditionForPriceIds(readPriceIds(row), env);
   const byMeta = input.metaProduct === API_PRODUCT_MEDIA ? 'media' : input.metaProduct === API_PRODUCT_COACH ? 'coach' : null;
-  const edition = priced ?? byMeta;
-  if (edition !== 'media' && edition !== 'coach') return null;
+  // Pro monthly price ids are also legacy Pro. Cloud metadata is the only Pro Cloud signal.
+  const edition = priced ?? byMeta ?? (input.cloudMeta && input.metaProduct === API_PRODUCT_PRO ? 'pro' : null);
+  if (edition !== 'media' && edition !== 'coach' && edition !== 'pro') return null;
   const subscriptionId = readSubscriptionId(row) || (typeof row.id === 'string' && row.id.startsWith('sub_') ? row.id : '');
   if (!subscriptionId) return { action: 'ignore' };
   return {
@@ -757,6 +789,7 @@ function invoiceDecision(row: Record<string, unknown>, kind: 'paid' | 'failed', 
     metaProduct: product,
     status: kind === 'paid' ? 'active' : 'past_due',
     billingEvent: kind,
+    cloudMeta: readCloudFlag(row),
   });
   if (cloud) return cloud;
   if (product && product !== API_PRODUCT_PRO) return { action: 'ignore' };
@@ -786,6 +819,7 @@ function subscriptionDecision(row: Record<string, unknown>, kind: 'deleted' | 'u
     metaProduct: product,
     status: kind === 'deleted' ? 'canceled' : status,
     billingEvent: kind,
+    cloudMeta: readMetaCloud(row),
   });
   if (cloud) return cloud;
   if (product && product !== API_PRODUCT_PRO) return { action: 'ignore' };

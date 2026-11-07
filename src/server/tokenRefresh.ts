@@ -130,15 +130,11 @@ export async function handleTokenRefresh(
     if (view) subs = claimForAccess(view.access);
     else if (doors.includes('pro')) subs = { state: 'active' };
     else subs = undefined;
-    // Media or Instructor Cloud is its own subscription. The server decides,
-    // not the old token: a canceled, unpaid, or ended add-on drops Cloud and
-    // leaves the one-time edition doors as they are.
+    // Cloud is its own grant. The server decides, not the token that was sent:
+    // a wiped phone has no old flag, and a canceled add-on must not keep one.
     const cloud = await cloudAccessForLicense(db, claims.sub, stamp, { env, fetchImpl });
-    if (cloud.tracked) {
-      if (cloud.entitled) subs = subs ? { ...subs, cloud: true } : { state: 'active', cloud: true };
-    } else if ((subs?.state === 'active' || subs?.state === 'grace') && claims.subs?.cloud) {
-      // Pro + Cloud rides on the Pro subscription. A locked one drops Cloud.
-      subs = { ...subs, cloud: true };
+    if (cloud.tracked && cloud.entitled) {
+      subs = subs ? { ...subs, cloud: true } : { state: 'active', cloud: true };
     }
     if (!doors.length && subs?.state !== 'locked') {
       return json(401, { ok: false, revoked: true, error: 'This access is no longer active.' });
