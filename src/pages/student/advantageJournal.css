@@ -1,0 +1,457 @@
+/**
+ * Advantage shell for the live Student journal (today, cards, and a card).
+ * The page, buttons, chips, selects, dates, and the technique picker stay on
+ * the digital navy / cyan / blue edge. Only fields the student types in,
+ * and the saved binder page of those words, wear the lined notebook.
+ */
+
+.student.adv-journal {
+  --j-navy: #071422;
+  --j-blue: #1c4fd4;
+  --j-blue-2: #0a84ff;
+  --j-cyan: #22d3ee;
+  --j-ink: #e7f4ff;
+  --j-muted: #9fd0e4;
+  --j-paper: #f7f3e8;
+  --j-paper-ink: #1c140e;
+  --j-rule: rgba(70, 130, 180, 0.55);
+  color: var(--j-ink);
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.35;
+  background-color: var(--j-navy);
+  background-image:
+    radial-gradient(900px 420px at 0% -10%, rgba(34, 211, 238, 0.16), transparent 55%),
+    radial-gradient(800px 480px at 100% 0%, rgba(28, 79, 212, 0.42), transparent 50%);
+}
+
+.student.adv-journal .student-leather {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  width: min(1080px, calc(100% - 20px));
+  margin: 0 auto;
+  text-align: left;
+  color: var(--j-ink);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+  padding: calc(var(--mark-home-clear) + var(--safe-t)) 0 8px;
+}
+
+.student.adv-journal .student-leather::after {
+  display: none;
+}
+
+.student.adv-journal .adv-journal__kicker {
+  margin: 0;
+  color: var(--j-cyan);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.student.adv-journal .student-leather h1 {
+  width: auto;
+  margin: 4px 0 0;
+  color: #f4fbff;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(2.2rem, 10vw, 3.5rem);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+  text-shadow: none;
+}
+
+.student.adv-journal .adv-journal__sub {
+  margin: 6px 0 0;
+  color: var(--j-muted);
+  font-size: 1.05rem;
+}
+
+.student.adv-journal .student-paper {
+  background-color: var(--j-navy);
+  background-image: none;
+}
+
+.student.adv-journal .student-sheet {
+  width: min(1080px, calc(100% - 20px));
+  max-width: none;
+  margin: 0 auto;
+  padding: 8px 0 48px;
+  gap: 14px;
+}
+
+.student.adv-journal .student-sheet::before {
+  display: none;
+}
+
+.student.adv-journal .adv-journal__grid {
+  display: grid;
+  gap: 14px;
+}
+
+.student.adv-journal .adv-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(14, 40, 70, 0.94), rgba(8, 22, 42, 0.94));
+  box-shadow: inset 3px 0 0 var(--j-blue), 0 16px 36px rgba(0, 0, 0, 0.28);
+  padding: 14px;
+  min-width: 0;
+}
+
+.student.adv-journal .adv-card h2,
+.student.adv-journal h2.ink__label {
+  margin: 0 0 8px;
+  color: #f4fbff;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-transform: none;
+}
+
+.student.student--arena.adv-journal .ink,
+.student.adv-journal .ink {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.student.adv-journal .ink__label,
+.student.student--arena.adv-journal .ink__label,
+.student.adv-journal legend {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--j-muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.student.adv-journal .student-quiet,
+.student.adv-journal .student-card-link span,
+.student.adv-journal .student-amend time,
+.student.student--arena.student--cards.adv-journal a.student-card-link span {
+  color: var(--j-muted);
+  font-size: 0.95rem;
+}
+
+.student.adv-journal .journal-note .student-quiet {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.92rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.student.adv-journal .student-card-link,
+.student.adv-journal .student-card-link strong,
+.student.student--arena.student--cards.adv-journal a.student-card-link,
+.student.student--arena.student--cards.adv-journal a.student-card-link strong,
+.student.adv-journal .journal-card__when,
+.student.adv-journal .journal-card__mat,
+.student.student--arena.student--cards.adv-journal .journal-card__when {
+  color: #f4fbff;
+}
+
+.student.adv-journal .journal-date__value,
+.student.adv-journal .mat-time__value,
+.student.adv-journal .mat-time__note {
+  color: #f4fbff;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.student.adv-journal .mat-time__value {
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+
+.student.adv-journal .student-paper a {
+  color: #b7e7f4;
+}
+
+/* Typed fields only: cream page, blue rules, red margin. */
+.student.adv-journal textarea,
+.student.adv-journal input[type='text'],
+.student.adv-journal input[type='search'],
+.student.adv-journal input:not([type]),
+.student.student--arena.adv-journal textarea,
+.student.student--arena.adv-journal input[type='text'],
+.student.student--arena.adv-journal input[type='search'],
+.student.student--arena.adv-journal input:not([type]) {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px 8px 22px;
+  border: 1px solid rgba(28, 79, 212, 0.35);
+  border-radius: 12px;
+  color: var(--j-paper-ink);
+  color-scheme: light;
+  caret-color: var(--j-paper-ink);
+  background-color: var(--j-paper);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    var(--j-rule) 27px,
+    var(--j-rule) 28px
+  );
+  background-attachment: local;
+  box-shadow: inset 16px 0 0 #f6d5d5, inset 17px 0 0 #e15d5d;
+  font-family: 'Patrick Hand', 'Segoe Print', cursive;
+  font-size: 1.2rem;
+  font-weight: 400;
+  line-height: 28px;
+  min-height: 44px;
+}
+
+.student.adv-journal textarea,
+.student.student--arena.adv-journal textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.student.adv-journal textarea::placeholder,
+.student.adv-journal input[type='text']::placeholder,
+.student.adv-journal input[type='search']::placeholder,
+.student.adv-journal input:not([type])::placeholder {
+  color: rgba(28, 20, 14, 0.45);
+}
+
+.student.adv-journal textarea:focus,
+.student.adv-journal input[type='text']:focus,
+.student.adv-journal input[type='search']:focus,
+.student.adv-journal input:not([type]):focus {
+  outline: 2px solid var(--j-cyan);
+  outline-offset: 2px;
+}
+
+/* Digital controls. Same family as the shell, never the notepad. */
+.student.adv-journal input[type='date'],
+.student.adv-journal input[type='checkbox'],
+.student.adv-journal select,
+.student.adv-journal .wheel-value,
+.student.adv-journal .ink-btn,
+.student.adv-journal .mat-time__chip,
+.student.adv-journal .mat-time__clear,
+.student.adv-journal .student-pick,
+.student.adv-journal .student-picker__item,
+.student.student--arena.adv-journal input[type='date'],
+.student.student--arena.adv-journal select,
+.student.student--arena.adv-journal .ink-btn,
+.student.student--arena.adv-journal .wheel-value {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--j-ink);
+  color-scheme: dark;
+  background-color: #102848;
+  background-image: linear-gradient(180deg, rgba(16, 48, 88, 0.98), rgba(8, 24, 46, 0.98));
+  border: 1px solid rgba(34, 211, 238, 0.55);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(28, 79, 212, 0.45), 0 8px 18px rgba(0, 0, 0, 0.25);
+  min-height: 44px;
+}
+
+.student.adv-journal input[type='date'],
+.student.adv-journal select,
+.student.student--arena.adv-journal input[type='date'],
+.student.student--arena.adv-journal select {
+  display: block;
+  width: 100%;
+  padding: 0 12px;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.student.adv-journal input[type='checkbox'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  min-height: 1.25rem;
+  margin: 2px 0 0;
+  padding: 0;
+  flex: 0 0 auto;
+  accent-color: var(--j-cyan);
+  box-shadow: none;
+}
+
+.student.adv-journal .ink-btn,
+.student.adv-journal .mat-time__chip,
+.student.adv-journal .mat-time__clear,
+.student.adv-journal .student-pick,
+.student.student--arena.adv-journal .ink-btn {
+  min-height: 44px;
+  padding: 8px 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.student.adv-journal .mat-time__chip[aria-pressed='true'] {
+  background-color: var(--j-blue);
+  background-image: linear-gradient(180deg, var(--j-blue-2), var(--j-blue));
+  border-color: var(--j-cyan);
+  color: #f4fbff;
+  box-shadow: 0 0 0 1px var(--j-cyan), 0 0 16px rgba(34, 211, 238, 0.28);
+}
+
+.student.adv-journal .ink-btn:focus-visible,
+.student.adv-journal .mat-time__chip:focus-visible,
+.student.adv-journal select:focus-visible,
+.student.adv-journal input[type='date']:focus-visible,
+.student.adv-journal .wheel-value:focus-visible {
+  outline: 2px solid var(--j-cyan);
+  outline-offset: 2px;
+}
+
+.student.adv-journal .ink-btn--save,
+.student.student--arena.adv-journal .ink-btn--save {
+  background-color: var(--j-cyan);
+  background-image: linear-gradient(180deg, #67e8f9, var(--j-cyan));
+  color: #071422;
+  border-color: #a5f3fc;
+}
+
+.student.adv-journal .mat-time {
+  gap: 10px;
+}
+
+.student.adv-journal .mat-time__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.student.adv-journal .mat-time__chip--kind {
+  width: 100%;
+}
+
+.student.adv-journal .technique-line {
+  border-bottom-color: rgba(34, 211, 238, 0.22);
+}
+
+.student.adv-journal .technique-line__head,
+.student.adv-journal .technique-line .ink--tech {
+  display: grid;
+  gap: 8px;
+}
+
+.student.adv-journal .technique-line__link {
+  color: var(--j-ink);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
+}
+
+.student.adv-journal .journal-techniques {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.student.adv-journal .student-picker {
+  background-color: var(--j-navy);
+  background-image:
+    radial-gradient(900px 420px at 0% -10%, rgba(34, 211, 238, 0.16), transparent 55%),
+    radial-gradient(800px 480px at 100% 0%, rgba(28, 79, 212, 0.42), transparent 50%);
+  color: var(--j-ink);
+  padding: calc(12px + var(--safe-t)) 12px calc(16px + var(--safe-b));
+}
+
+.student.adv-journal .student-picker__category,
+.student.adv-journal .student-picker h2 {
+  color: var(--j-cyan);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  -webkit-text-stroke: 0;
+}
+
+.student.adv-journal .student-picker__item {
+  text-align: left;
+  font-weight: 650;
+}
+
+.student.adv-journal .journal-toast,
+.student.student--arena.adv-journal .journal-toast {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(34, 211, 238, 0.75);
+  border-radius: 14px;
+  background: rgba(10, 132, 255, 0.18);
+  color: #f3fbff;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.student.adv-journal .binder-page {
+  font-family: 'Patrick Hand', 'Segoe Print', cursive;
+  color: var(--j-paper-ink);
+}
+
+.student.adv-journal .student-actions,
+.student.adv-journal .student-card__actions {
+  display: grid;
+  gap: 8px;
+}
+
+.student.adv-journal .journal-actions,
+.student.adv-journal .adv-card--actions {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 720px) {
+  .student.adv-journal .mat-time__row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.student.adv-journal .adv-journal__grid > [role='alert'],
+.student.adv-journal .adv-journal__grid > .journal-toast,
+.student.adv-journal .journal-actions {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 840px) {
+  .student.adv-journal .student-leather,
+  .student.adv-journal .student-sheet {
+    width: min(1080px, calc(100% - 48px));
+  }
+
+  .student.adv-journal .adv-journal__grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  .student.adv-journal .adv-card--session {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .student.adv-journal .adv-card--marks {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .student.adv-journal .adv-card--mat,
+  .student.adv-journal .adv-card--drills,
+  .student.adv-journal .adv-card--wide,
+  .student.adv-journal .journal-actions,
+  .student.adv-journal .adv-journal__grid > [role='alert'],
+  .student.adv-journal .adv-journal__grid > .journal-toast {
+    grid-column: 1 / -1;
+  }
+}
