@@ -33,8 +33,8 @@
 
 .arena-scroll {
   flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
+  min-height: auto;
+  overflow: visible;
   background: var(--arena-bg);
 }
 
@@ -43,8 +43,7 @@
   margin: 0 auto;
 }
 
-/* The scrollport starts under the pinned Home mark. Padding inside the scroller
-   would slide the title up into that band. */
+/* First screen starts under the fixed marks. This padding scrolls with the page. */
 .student.student--arena:has(> .arena-scroll) {
   padding-top: calc(var(--mark-home-clear) + var(--safe-t));
 }
