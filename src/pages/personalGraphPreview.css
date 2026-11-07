@@ -118,16 +118,41 @@
   font-size: 0.95rem;
 }
 
+.pgp__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pgp__legend li {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  min-height: 28px;
+  color: #d5e6f7;
+  font-size: 0.95rem;
+}
+
+.pgp__swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
 .pgp__viewport {
   position: relative;
   height: min(62vh, 560px);
-  min-height: 280px;
+  min-height: 320px;
   overflow: hidden;
   touch-action: none;
   border: 1px solid rgba(34, 211, 238, 0.55);
   border-radius: 16px;
   background:
-    radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.08), transparent 40%),
+    radial-gradient(circle at 50% 45%, rgba(34, 211, 238, 0.1), transparent 55%),
     #0b1c33;
 }
 
@@ -136,52 +161,48 @@
   outline-offset: 2px;
 }
 
-.pgp__world {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform-origin: 0 0;
-}
-
 .pgp__edges {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: visible;
   pointer-events: none;
 }
 
-.pgp__node {
+.pgp__dot {
   position: absolute;
-  display: grid;
-  place-items: center;
-  padding: 0.2rem 0.45rem;
-  border: 2px solid #8fd3ff;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(7, 20, 34, 0.85);
   border-radius: 999px;
-  background: #12304f;
-  color: #f4f8ff;
-  font: inherit;
-  font-size: 15px;
-  line-height: 1.15;
-  text-align: center;
+  padding: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28);
   cursor: pointer;
 }
 
-.pgp__node--position {
-  border-radius: 16px;
-  background: #0a3d7a;
-  border-color: #22d3ee;
-  font-weight: 700;
+.pgp__dot.is-on {
+  box-shadow: 0 0 0 4px #f0b429;
 }
 
-.pgp__node.is-on {
-  box-shadow: 0 0 0 3px #f0b429;
+.pgp__name {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 4px);
+  transform: translateX(-50%);
+  max-width: 11rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 8px;
+  background: rgba(7, 20, 34, 0.88);
+  color: #f4f8ff;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
-.pgp__edge-label {
-  fill: #e8f4ff;
-  font-size: 13px;
-  font-family: inherit;
+.pgp__index-title {
+  margin: 1rem 0 0.35rem;
+  font-size: 1.15rem;
 }
 
 .pgp__detail,

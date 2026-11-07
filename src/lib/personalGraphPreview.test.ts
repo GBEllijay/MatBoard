@@ -1,17 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  CLOUD_CATEGORIES,
   PERSONAL_GRAPH_PREVIEW_BANNER,
+  RESET_POSE,
   basePositions,
-  centerNode,
+  categoryLabel,
+  directNodeIds,
   exampleEdges,
   exampleNodes,
-  fitView,
+  gestureIntent,
   goalCaption,
-  graphBounds,
+  poseFacing,
   practiceCaption,
+  projectNodes,
+  rotatePose,
   sharedArrivals,
-  zoomAt,
+  zoomPose,
 } from './personalGraphPreview.ts';
 
 test('the example is fifteen nodes, two bases, and one copy of each shared position', () => {
@@ -46,37 +51,69 @@ test('the example is fifteen nodes, two bases, and one copy of each shared posit
   assert.match(PERSONAL_GRAPH_PREVIEW_BANNER, /not belt requirements/i);
 });
 
-test('fit all keeps every bubble inside a phone viewport', () => {
-  const viewport = { width: 390, height: 480 };
-  const view = fitView(viewport, 16);
-  const bounds = graphBounds();
-  assert.ok(view.scale > 0 && view.scale < 1);
-  for (const node of exampleNodes()) {
-    const left = view.x + node.x * view.scale;
-    const top = view.y + node.y * view.scale;
-    const right = left + node.w * view.scale;
-    const bottom = top + node.h * view.scale;
-    assert.ok(left >= 15, `${node.title} left ${left}`);
-    assert.ok(top >= 15, `${node.title} top ${top}`);
-    assert.ok(right <= viewport.width - 15, `${node.title} right ${right}`);
-    assert.ok(bottom <= viewport.height - 15, `${node.title} bottom ${bottom}`);
-  }
-  const fittedWidth = bounds.width * view.scale;
-  assert.ok(fittedWidth <= viewport.width - 32);
+test('the cloud is not a set of flowchart rows, and every legend category is used', () => {
+  const nodes = exampleNodes();
+  const ys = new Set(nodes.map((node) => node.y));
+  const zs = nodes.map((node) => Math.abs(node.z));
+  assert.ok(ys.size >= 8);
+  assert.ok(Math.max(...zs) > 0.4);
+  const used = new Set(nodes.map((node) => node.category));
+  assert.deepEqual(
+    CLOUD_CATEGORIES.map((item) => item.id).filter((id) => used.has(id)),
+    CLOUD_CATEGORIES.map((item) => item.id),
+  );
+  assert.equal(categoryLabel('passing'), 'Guard Passing');
+  assert.equal(categoryLabel('standing'), 'Standing and Takedowns');
 });
 
-test('zoom stays bounded and a close-up centers the same node', () => {
-  const start = fitView({ width: 800, height: 600 }, 20);
-  const closer = zoomAt(start, 400, 300, start.scale * 4);
-  assert.ok(closer.scale <= 2.4);
-  const away = zoomAt(closer, 400, 300, 0.01);
-  assert.equal(away.scale, 0.18);
-  const node = exampleNodes()[0];
-  const centered = centerNode({ width: 390, height: 520 }, node, 1);
-  const midX = centered.x + (node.x + node.w / 2);
-  const midY = centered.y + (node.y + node.h / 2);
-  assert.ok(Math.abs(midX - 195) < 0.01);
-  assert.ok(Math.abs(midY - 260) < 0.01);
+test('fit keeps every dot inside a phone viewport, including after a turn', () => {
+  const viewport = { width: 390, height: 480 };
+  for (const pose of [RESET_POSE, rotatePose(RESET_POSE, 140, -40)]) {
+    const placed = projectNodes(viewport, pose, 28);
+    assert.equal(placed.length, 15);
+    for (const node of placed) {
+      assert.ok(node.x - node.r >= 8, `${node.id} left`);
+      assert.ok(node.y - node.r >= 8, `${node.id} top`);
+      assert.ok(node.x + node.r <= viewport.width - 8, `${node.id} right`);
+      assert.ok(node.y + node.r <= viewport.height - 8, `${node.id} bottom`);
+    }
+  }
+});
+
+test('drag rotates, a short press does not, and zoom stays bounded', () => {
+  assert.equal(gestureIntent(3), 'tap');
+  assert.equal(gestureIntent(12), 'rotate');
+  const turned = rotatePose(RESET_POSE, 40, 10);
+  assert.notEqual(turned.yaw, RESET_POSE.yaw);
+  assert.equal(turned.flat, false);
+  const capped = rotatePose(RESET_POSE, 0, 5000);
+  assert.ok(capped.pitch <= 1.05);
+  const closer = zoomPose(RESET_POSE, 8);
+  assert.equal(closer.zoom, 2.6);
+  const away = zoomPose(RESET_POSE, 0.01);
+  assert.equal(away.zoom, 0.55);
+  const flat = projectNodes({ width: 400, height: 400 }, { ...RESET_POSE, flat: true, yaw: 1, pitch: 1 });
+  const alsoFlat = projectNodes({ width: 400, height: 400 }, { yaw: 0, pitch: 0, zoom: 1, flat: true });
+  const left = flat.find((item) => item.id === 'p-closed');
+  const right = alsoFlat.find((item) => item.id === 'p-closed');
+  assert.equal(left?.x, right?.x);
+  assert.equal(left?.y, right?.y);
+});
+
+test('facing a node brings that same id forward, and only its direct steps are linked', () => {
+  const node = exampleNodes().find((item) => item.id === 'p-mount');
+  assert.ok(node);
+  const pose = poseFacing(node, RESET_POSE);
+  const placed = projectNodes({ width: 600, height: 600 }, pose);
+  const mount = placed.find((item) => item.id === 'p-mount');
+  const mean = placed.reduce((sum, item) => sum + item.depth, 0) / placed.length;
+  assert.ok(mount && mount.depth > mean);
+  const links = directNodeIds('p-mount');
+  assert.ok(links.includes('t-hip'));
+  assert.ok(links.includes('t-flower'));
+  assert.ok(links.includes('p-side'));
+  assert.equal(links.includes('t-uchi'), false);
+  assert.equal(new Set(links).size, links.length);
 });
 
 test('example goals and practice time are labels, not completed benchmarks', () => {

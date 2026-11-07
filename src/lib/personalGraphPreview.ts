@@ -1,5 +1,5 @@
 /**
- * Isolated example for the personal technique map preview.
+ * Isolated example for the personal technique cloud preview.
  * These names are an illustration. They are not belt requirements,
  * not a student's record, and not written to the student file.
  * The live working tree is still the nested list on /student/working.
@@ -17,17 +17,19 @@ export type PreviewRelation = 'branch' | 'defense' | 'follow' | 'transition';
 
 export type PreviewGoal = 'none' | 'personal' | 'coach-interval';
 
+export type CloudCategory = 'guard' | 'legs' | 'dominant' | 'dynamic' | 'standing' | 'passing';
+
 export type PreviewNode = {
   id: string;
   title: string;
   kind: PreviewKind;
   /** A place the example map can start. Other positions are the same node when a path returns. */
   base: boolean;
+  /** Cloud position. Not a row in a flowchart. */
   x: number;
   y: number;
-  w: number;
-  h: number;
-  category: string;
+  z: number;
+  category: CloudCategory;
   goal: PreviewGoal;
   /** Minutes in the illustration. Logging time is not mastery and not a finished benchmark. */
   practiceMinutes: number;
@@ -41,7 +43,20 @@ export type PreviewEdge = {
   label: string;
 };
 
-export type GraphView = { x: number; y: number; scale: number };
+export type CloudPose = {
+  yaw: number;
+  pitch: number;
+  zoom: number;
+  flat: boolean;
+};
+
+export type PlacedNode = {
+  id: string;
+  x: number;
+  y: number;
+  depth: number;
+  r: number;
+};
 
 export const PREVIEW_RELATION_LABEL: Record<PreviewRelation, string> = {
   branch: 'Branch',
@@ -50,22 +65,36 @@ export const PREVIEW_RELATION_LABEL: Record<PreviewRelation, string> = {
   transition: 'Transition',
 };
 
+export const CLOUD_CATEGORIES: readonly { id: CloudCategory; label: string; color: string }[] = [
+  { id: 'guard', label: 'Guard', color: '#22d3ee' },
+  { id: 'legs', label: 'Leg Entanglements', color: '#f0b429' },
+  { id: 'dominant', label: 'Dominant Positions', color: '#7eb6ff' },
+  { id: 'dynamic', label: 'Dynamic Positions', color: '#e7c56a' },
+  { id: 'standing', label: 'Standing and Takedowns', color: '#9ae6ff' },
+  { id: 'passing', label: 'Guard Passing', color: '#5eead4' },
+];
+
+/** A slight turn so the first view reads as a cloud, not a spinning animation. */
+export const RESET_POSE: CloudPose = { yaw: 0.55, pitch: 0.28, zoom: 1, flat: false };
+
+const TAP_PX = 8;
+
 const NODES: readonly PreviewNode[] = [
-  { id: 'p-closed', title: 'Closed guard', kind: 'position', base: true, x: 20, y: 20, w: 170, h: 58, category: 'Guard', goal: 'none', practiceMinutes: 0 },
-  { id: 'p-side', title: 'Side control', kind: 'position', base: false, x: 340, y: 20, w: 160, h: 58, category: 'Top pin', goal: 'none', practiceMinutes: 0 },
-  { id: 'p-sprawl', title: 'Sprawl', kind: 'position', base: true, x: 660, y: 20, w: 160, h: 58, category: 'Standing', goal: 'none', practiceMinutes: 0 },
-  { id: 't-hip', title: 'Hip bump sweep', kind: 'technique', base: false, x: 20, y: 140, w: 150, h: 52, category: 'Sweep', goal: 'coach-interval', practiceMinutes: 40 },
-  { id: 't-flower', title: 'Flower sweep', kind: 'technique', base: false, x: 190, y: 140, w: 150, h: 52, category: 'Sweep', goal: 'personal', practiceMinutes: 15 },
-  { id: 't-knee', title: 'Knee cut', kind: 'technique', base: false, x: 370, y: 140, w: 140, h: 52, category: 'Pass', goal: 'none', practiceMinutes: 20 },
-  { id: 't-uchi', title: 'Uchi Mata from Sprawl', kind: 'technique', base: false, x: 620, y: 140, w: 200, h: 52, category: 'Throw', goal: 'personal', practiceMinutes: 25 },
-  { id: 't-tri', title: 'Triangle', kind: 'technique', base: false, x: 20, y: 250, w: 140, h: 52, category: 'Submission', goal: 'none', practiceMinutes: 15 },
-  { id: 't-collar', title: 'Cross-collar choke', kind: 'technique', base: false, x: 190, y: 250, w: 180, h: 52, category: 'Submission', goal: 'coach-interval', practiceMinutes: 10 },
-  { id: 't-ankle', title: 'Ankle pick', kind: 'technique', base: false, x: 400, y: 250, w: 140, h: 52, category: 'Takedown', goal: 'personal', practiceMinutes: 12 },
-  { id: 't-head', title: 'Front headlock', kind: 'technique', base: false, x: 680, y: 250, w: 160, h: 52, category: 'Front head', goal: 'none', practiceMinutes: 0 },
-  { id: 't-arm', title: 'Armbar', kind: 'technique', base: false, x: 20, y: 370, w: 140, h: 52, category: 'Submission', goal: 'none', practiceMinutes: 8 },
-  { id: 't-post', title: 'Posture and frame', kind: 'technique', base: false, x: 180, y: 370, w: 180, h: 52, category: 'Defense', goal: 'none', practiceMinutes: 18 },
-  { id: 't-guill', title: 'Guillotine', kind: 'technique', base: false, x: 680, y: 370, w: 150, h: 52, category: 'Submission', goal: 'none', practiceMinutes: 0 },
-  { id: 'p-mount', title: 'Mount', kind: 'position', base: false, x: 340, y: 500, w: 160, h: 58, category: 'Top pin', goal: 'none', practiceMinutes: 0 },
+  { id: 'p-closed', title: 'Closed guard', kind: 'position', base: true, x: -0.18, y: 0.62, z: 0.28, category: 'guard', goal: 'none', practiceMinutes: 0 },
+  { id: 't-hip', title: 'Hip bump sweep', kind: 'technique', base: false, x: -0.62, y: 0.34, z: 0.18, category: 'guard', goal: 'coach-interval', practiceMinutes: 40 },
+  { id: 't-flower', title: 'Flower sweep', kind: 'technique', base: false, x: -0.28, y: 0.86, z: -0.22, category: 'guard', goal: 'personal', practiceMinutes: 15 },
+  { id: 't-collar', title: 'Cross-collar choke', kind: 'technique', base: false, x: 0.08, y: 0.48, z: 0.55, category: 'guard', goal: 'coach-interval', practiceMinutes: 10 },
+  { id: 't-post', title: 'Posture and frame', kind: 'technique', base: false, x: -0.72, y: 0.08, z: 0.36, category: 'guard', goal: 'none', practiceMinutes: 18 },
+  { id: 't-tri', title: 'Triangle', kind: 'technique', base: false, x: -0.36, y: 0.12, z: -0.58, category: 'legs', goal: 'none', practiceMinutes: 15 },
+  { id: 't-arm', title: 'Armbar', kind: 'technique', base: false, x: -0.58, y: -0.28, z: -0.32, category: 'legs', goal: 'none', practiceMinutes: 8 },
+  { id: 'p-mount', title: 'Mount', kind: 'position', base: false, x: 0.06, y: -0.72, z: 0.18, category: 'dominant', goal: 'none', practiceMinutes: 0 },
+  { id: 'p-side', title: 'Side control', kind: 'position', base: false, x: 0.42, y: -0.36, z: 0.52, category: 'dominant', goal: 'none', practiceMinutes: 0 },
+  { id: 't-head', title: 'Front headlock', kind: 'technique', base: false, x: 0.66, y: 0.22, z: -0.28, category: 'dynamic', goal: 'none', practiceMinutes: 0 },
+  { id: 't-guill', title: 'Guillotine', kind: 'technique', base: false, x: 0.28, y: -0.08, z: -0.74, category: 'dynamic', goal: 'none', practiceMinutes: 0 },
+  { id: 'p-sprawl', title: 'Sprawl', kind: 'position', base: true, x: 0.7, y: 0.55, z: 0.12, category: 'standing', goal: 'none', practiceMinutes: 0 },
+  { id: 't-uchi', title: 'Uchi Mata from Sprawl', kind: 'technique', base: false, x: 0.86, y: 0.08, z: 0.32, category: 'standing', goal: 'personal', practiceMinutes: 25 },
+  { id: 't-ankle', title: 'Ankle pick', kind: 'technique', base: false, x: 0.48, y: 0.4, z: -0.42, category: 'standing', goal: 'personal', practiceMinutes: 12 },
+  { id: 't-knee', title: 'Knee cut', kind: 'technique', base: false, x: 0.16, y: -0.16, z: 0.7, category: 'passing', goal: 'none', practiceMinutes: 20 },
 ];
 
 const EDGES: readonly PreviewEdge[] = [
@@ -106,6 +135,14 @@ export function basePositions(): readonly PreviewNode[] {
   return NODES.filter((node) => node.base);
 }
 
+export function categoryColor(id: CloudCategory): string {
+  return CLOUD_CATEGORIES.find((item) => item.id === id)?.color ?? '#22d3ee';
+}
+
+export function categoryLabel(id: CloudCategory): string {
+  return CLOUD_CATEGORIES.find((item) => item.id === id)?.label ?? id;
+}
+
 /** Positions or techniques that more than one step arrives at. Each id is still one node. */
 export function sharedArrivals(): { id: string; arrivals: number }[] {
   const counts = new Map<string, number>();
@@ -116,56 +153,74 @@ export function sharedArrivals(): { id: string; arrivals: number }[] {
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
-export function graphBounds(nodes: readonly PreviewNode[] = NODES): {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-  width: number;
-  height: number;
-} {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const node of nodes) {
-    minX = Math.min(minX, node.x);
-    minY = Math.min(minY, node.y);
-    maxX = Math.max(maxX, node.x + node.w);
-    maxY = Math.max(maxY, node.y + node.h);
+export function directNodeIds(id: string): string[] {
+  const found = new Set<string>();
+  for (const edge of EDGES) {
+    if (edge.fromId === id) found.add(edge.toId);
+    if (edge.toId === id) found.add(edge.fromId);
   }
-  if (!Number.isFinite(minX)) return { minX: 0, minY: 0, maxX: 1, maxY: 1, width: 1, height: 1 };
-  return { minX, minY, maxX, maxY, width: Math.max(1, maxX - minX), height: Math.max(1, maxY - minY) };
+  return [...found];
 }
 
-/** Scale and pan so every bubble sits inside the viewport, including on a narrow phone. */
-export function fitView(viewport: { width: number; height: number }, pad = 20, nodes: readonly PreviewNode[] = NODES): GraphView {
-  const bounds = graphBounds(nodes);
-  const availW = Math.max(1, viewport.width - pad * 2);
-  const availH = Math.max(1, viewport.height - pad * 2);
-  const scale = Math.min(availW / bounds.width, availH / bounds.height);
+/** A short press selects. A longer drag rotates. There is no automatic spin. */
+export function gestureIntent(distancePx: number): 'tap' | 'rotate' {
+  return distancePx > TAP_PX ? 'rotate' : 'tap';
+}
+
+export function rotatePose(pose: CloudPose, dx: number, dy: number): CloudPose {
   return {
-    scale,
-    x: (viewport.width - bounds.width * scale) / 2 - bounds.minX * scale,
-    y: (viewport.height - bounds.height * scale) / 2 - bounds.minY * scale,
+    ...pose,
+    flat: false,
+    yaw: pose.yaw + dx * 0.008,
+    pitch: Math.max(-1.05, Math.min(1.05, pose.pitch + dy * 0.006)),
   };
 }
 
-export function zoomAt(view: GraphView, anchorX: number, anchorY: number, nextScale: number): GraphView {
-  const scale = Math.min(2.4, Math.max(0.18, nextScale));
-  const worldX = (anchorX - view.x) / view.scale;
-  const worldY = (anchorY - view.y) / view.scale;
-  return { scale, x: anchorX - worldX * scale, y: anchorY - worldY * scale };
+export function zoomPose(pose: CloudPose, factor: number): CloudPose {
+  return { ...pose, zoom: Math.min(2.6, Math.max(0.55, pose.zoom * factor)) };
 }
 
-export function centerNode(
-  viewport: { width: number; height: number },
-  node: PreviewNode,
-  scale = 1,
-): GraphView {
-  const cx = node.x + node.w / 2;
-  const cy = node.y + node.h / 2;
-  return { scale, x: viewport.width / 2 - cx * scale, y: viewport.height / 2 - cy * scale };
+/** Turn the cloud until this node faces the viewer. Does not copy the node. */
+export function poseFacing(node: PreviewNode, pose: CloudPose): CloudPose {
+  const yaw = Math.atan2(node.x, node.z || 0.001);
+  const depth = Math.hypot(node.x, node.z);
+  const pitch = Math.max(-1.05, Math.min(1.05, Math.atan2(node.y, depth || 0.001)));
+  return { ...pose, yaw, pitch, flat: false };
+}
+
+function rotated(node: PreviewNode, pose: CloudPose): { x: number; y: number; z: number } {
+  const z0 = pose.flat ? 0 : node.z;
+  const yaw = pose.flat ? 0 : pose.yaw;
+  const pitch = pose.flat ? 0 : pose.pitch;
+  const cosY = Math.cos(yaw);
+  const sinY = Math.sin(yaw);
+  const x1 = node.x * cosY + z0 * sinY;
+  const z1 = -node.x * sinY + z0 * cosY;
+  const cosP = Math.cos(pitch);
+  const sinP = Math.sin(pitch);
+  return {
+    x: x1,
+    y: node.y * cosP - z1 * sinP,
+    z: node.y * sinP + z1 * cosP,
+  };
+}
+
+/** Screen points for the current turn. Back nodes come first so front nodes receive the tap. */
+export function projectNodes(viewport: { width: number; height: number }, pose: CloudPose, pad = 36): PlacedNode[] {
+  const span = Math.max(1, Math.min(viewport.width, viewport.height) - pad * 2);
+  const scale = (span / 2.5) * pose.zoom;
+  return NODES.map((node) => {
+    const point = rotated(node, pose);
+    const persp = 2.8 / (2.8 - point.z * 0.9);
+    const r = Math.max(15, Math.min(27, 16 * persp * Math.sqrt(pose.zoom)));
+    return {
+      id: node.id,
+      x: viewport.width / 2 + point.x * persp * scale,
+      y: viewport.height / 2 + point.y * persp * scale,
+      depth: point.z,
+      r,
+    };
+  }).sort((a, b) => a.depth - b.depth);
 }
 
 export function goalCaption(goal: PreviewGoal): string {
