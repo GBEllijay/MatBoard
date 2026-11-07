@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { bodyScanHref, isBodyZone, STATUS_LABEL, zoneFromText, zoneLabel } from '../lib/bodyScan';
 import './student/bodyScan.css';
 import { StudentHome } from './student/StudentHome';
@@ -60,7 +60,8 @@ import {
   viewJournalEntry,
   type JournalCardView,
 } from '../lib/studentEdition.ts';
-import { clearStudentDemoOverlay } from '../lib/studentDemo';
+import { demoCarryActive } from '../lib/demoCarryover';
+import { clearStudentDemoOverlay, STUDENT_FILE_STORAGE_KEY } from '../lib/studentDemo';
 import '../student-edition.css';
 import './student/arena.css';
 import './student/hub.css';
@@ -142,6 +143,15 @@ export function StudentEditionPage() {
     student: useStudentEditionUnlocked(),
   };
   const rest = path.startsWith('/student') ? path.slice('/student'.length).replace(/^\//, '') : '';
+  const demo = studentDemoMode(params, owner);
+  useEffect(() => {
+    if (!demo || !demoCarryActive(localStorage)) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [demo]);
   if (rest === 'claim' || rest.startsWith('claim/')) {
     const raw = rest.startsWith('claim/') ? rest.slice('claim/'.length) : '';
     let code = raw;
@@ -153,7 +163,6 @@ export function StudentEditionPage() {
     return <StudentLicenseClaimPage code={code} gymName={params.get('gym') ?? ''} />;
   }
   const open = studentEditionOpen(params, owner);
-  const demo = studentDemoMode(params, owner);
   if (!open) return <StudentClosed />;
 
   const screen = studentScreenNode(rest);
@@ -232,17 +241,55 @@ function studentScreenNode(rest: string) {
 }
 
 function StudentDemoBanner() {
+  const [ask, setAsk] = useState(false);
+  const [downloadNote, setDownloadNote] = useState('');
+  const leave = () => {
+    clearStudentDemoOverlay();
+    window.location.assign('/products');
+  };
+  const download = () => {
+    const text = localStorage.getItem(STUDENT_FILE_STORAGE_KEY) ?? '';
+    if (!text) {
+      setDownloadNote('There is no demo file to download.');
+      return;
+    }
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'advantage-student-demo.json';
+    link.click();
+    URL.revokeObjectURL(url);
+    setDownloadNote('The download has started. That does not by itself mean the file is stored on this phone.');
+  };
   return (
     <div className="student-demo-banner" role="note">
       <p>DEMO MODE. Sample journal on this screen. It is not saved to your real Student Edition.</p>
-      <a
-        href="/products"
+      <button
+        type="button"
         onClick={() => {
-          clearStudentDemoOverlay();
+          if (demoCarryActive(localStorage)) setAsk(true);
+          else leave();
         }}
       >
         Exit demo
-      </a>
+      </button>
+      {ask ? (
+        <div role="dialog" aria-label="Save the demo before leaving">
+          <p>Save a copy before you leave the demo? A purchase of Student Edition, Media Edition, Instructor, or Pro can use the copy saved on this phone. White does not open Student Edition.</p>
+          <button type="button" onClick={download}>
+            Download backup
+          </button>
+          <button type="button" onClick={() => setAsk(false)}>
+            Keep exploring
+          </button>
+          <button type="button" onClick={leave}>
+            Leave without saving
+          </button>
+          <p>Leave without saving keeps the copy on this phone for a later purchase. It does not copy it into a purchased edition.</p>
+          {downloadNote ? <p role="status">{downloadNote}</p> : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -23,6 +23,7 @@ import {
 } from '../lib/productPrices';
 import { COACH_UNLIMITED_PATH, INSTRUCTOR_HOME_TITLE, PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
 import { INSTRUCTOR_DISPLAY_PRICE_CENTS, TIER_BUY_PATHS } from '../lib/tierBuyPages';
+import { settleDemoCarryover } from '../lib/demoCarryover';
 import { rememberStudentPurchase, STUDENT_PRODUCT_ID, studentEditionEntitled } from '../lib/studentEdition';
 import { buyCheckoutBody } from '../lib/halfOff';
 import { MEDIA_EDITION_LIST_PRICE_CENTS, MEDIA_EDITION_NAME } from '../lib/mediaEdition';
@@ -108,6 +109,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<WhiteEntitlementStatus | null>(null);
+  const [carryNote, setCarryNote] = useState('');
   const [confirming, setConfirming] = useState(false);
   const halfOff = useHalfOffArrival();
   const proUnlocked = useProUnlocked();
@@ -169,6 +171,8 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
       if (tier.product === 'coach' && result.grants.includes('coach')) {
         /* Coach checkout confirm sets the flag inside applyServerGrant. */
       }
+      const carried = settleDemoCarryover(localStorage, result.grants);
+      if (carried.message) setCarryNote(carried.message);
       setRecord(status);
     });
     return () => {
@@ -245,6 +249,11 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
                         : record?.entitled
                         ? `${INSTRUCTOR_HOME_TITLE} is unlocked on this device.`
                         : "That payment isn't confirmed. Nothing was unlocked."}
+              </p>
+            ) : null}
+            {carryNote ? (
+              <p className="buy__status" role="status">
+                {carryNote}
               </p>
             ) : null}
             {checkout === 'cancel' ? (

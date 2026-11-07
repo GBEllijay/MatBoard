@@ -10,6 +10,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { settleDemoCarryover } from '../lib/demoCarryover';
 import { confirmCheckoutSession, withCheckoutNonce } from '../lib/codeRedeemClient';
 import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
 import { STUDENT_LIST_PRICE_CENTS, WHITE_STORAGE_LINE } from '../lib/productPrices';
@@ -39,6 +40,7 @@ export function BuyWhitePage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<WhiteEntitlementStatus | null>(null);
+  const [carryNote, setCarryNote] = useState('');
   const [freeUnlock, setFreeUnlock] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [promoInput, setPromoInput] = useState('');
@@ -72,6 +74,8 @@ export function BuyWhitePage() {
       setConfirming(false);
       if (result.ok && result.grants.includes('white')) {
         rememberWhitePurchase({ entitled: true, grants: result.grants });
+        const carried = settleDemoCarryover(localStorage, result.grants);
+        if (carried.message) setCarryNote(carried.message);
         setRecord({ entitled: true, product: result.product });
         return;
       }
@@ -204,6 +208,11 @@ export function BuyWhitePage() {
                   : record?.entitled
                     ? 'Advantage White is unlocked on this device.'
                     : "That payment isn't confirmed. Nothing was unlocked."}
+              </p>
+            ) : null}
+            {carryNote ? (
+              <p className="buy__status" role="status">
+                {carryNote}
               </p>
             ) : null}
             {checkout === 'cancel' ? (
