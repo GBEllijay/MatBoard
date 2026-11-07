@@ -72,26 +72,11 @@ import {
   type LadderRung,
 } from '../../lib/studentRank';
 import { GrandmasterCheer } from '../../components/GrandmasterCheer';
+import { AchievedDateField, formatAchieved } from './AchievedDateField';
 import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
+import { BeltPhotoSection } from './RankPhotoGallery';
 import { kidsClothStyle } from './wornBelt';
 import { StudentProfileFields } from './ProfileFields';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-const CAMERA = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1.2-2h5.6L16 7h2.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z" />
-    <circle cx="12" cy="13" r="3.4" />
-  </svg>
-);
-
-function formatAchieved(iso: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '';
-  const [year, month, day] = iso.split('-').map(Number);
-  const name = MONTHS[month - 1];
-  if (!name || !day || !year) return '';
-  return `${name} ${day}, ${year}`;
-}
 
 const FINAL_ROWS: { belt: FinalRankBelt; appearance: 'red-black' | 'red-white' | 'red'; title: string; detail: string; after: string }[] = [
   { belt: 'coral', appearance: 'red-black', title: 'Coral 7th degree', detail: 'Red-and-black belt', after: '7 years after 6th' },
@@ -112,17 +97,48 @@ export function RankPage() {
   const mode = beltModeOf(report);
   const [pendingMode, setPendingMode] = useState<'' | 'adult' | 'kids'>('');
   const [coachCheer, setCoachCheer] = useState(false);
+  const reportRef = useRef(report);
+  reportRef.current = report;
   useScrollToHash(mode === 'kids' ? `kids:${currentKidsBelt(report).beltId}` : report.profile.belt);
 
-  const run = (next: ReturnType<typeof setRankBelt>) => {
+  const commitReport = (next: StudentProgressReport) => {
     try {
-      commit(next);
+      const saved = commit(next);
+      reportRef.current = saved;
       setError('');
-      return true;
+      return saved;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save that.');
+      return null;
+    }
+  };
+
+  const run = (next: ReturnType<typeof setRankBelt>) => Boolean(commitReport(next));
+
+  const saveAdultAwarded = (isCurrent: boolean, historyId: string, value: string) => {
+    const base = reportRef.current;
+    let next = base;
+    try {
+      next = isCurrent ? setRankAwardedOn(base, value) : historyId ? setRankHistoryAwardedOn(base, historyId, value) : base;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save that.');
       return false;
     }
+    if (next === base) return true;
+    return Boolean(commitReport(next));
+  };
+
+  const saveKidsAwarded = (isCurrent: boolean, historyId: string, value: string) => {
+    const base = reportRef.current;
+    let next = base;
+    try {
+      next = isCurrent ? setKidsAwardedOn(base, value) : historyId ? setKidsHistoryAwardedOn(base, historyId, value) : base;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save that.');
+      return false;
+    }
+    if (next === base) return true;
+    return Boolean(commitReport(next));
   };
 
   const savePhoto = async (file: File | undefined, save: (image: string) => RankPhotoStore, savedKey: string) => {
@@ -181,6 +197,7 @@ export function RankPage() {
                 if (choice === 'blue') setCoachCheer(true);
               }}
               lineage={<LineageEditor lineage={rank.lineage ?? []} onSave={(lines) => run(setRankLineage(report, lines))} />}
+              saveAwarded={saveKidsAwarded}
               progressLink={<Link className="ink-btn" to={to('/student/rubric')}>Belt progress</Link>}
             />
           ) : (
@@ -250,43 +267,21 @@ export function RankPage() {
                   </div>
                   <StripePhotoMarks label={rung.label} slots={slots} photosFor={(index) => tapePhotos(photos, rung.belt, index)} />
                   <PhotoSavedLine show={photoSavedKey.startsWith(`tape:${rung.belt}:`)} />
-                  <div className="rung__foot">
-                    <label className={rung.awardedOn ? 'achieved' : 'achieved is-empty'}>
-                      Achieved <b>{rung.awardedOn ? formatAchieved(rung.awardedOn) : 'Add date'}</b>
-                      <input
-                        type="date"
-                        aria-label={rung.current ? 'Date of this belt' : `Date of ${rung.label} belt`}
-                        value={rung.awardedOn}
-                        disabled={!rung.current && !rung.historyId}
-                        onChange={(event) => {
-                          if (rung.current) run(setRankAwardedOn(report, event.target.value));
-                          else if (rung.historyId) run(setRankHistoryAwardedOn(report, rung.historyId, event.target.value));
-                        }}
-                      />
-                    </label>
-                    <label className="photo">
-                      {CAMERA}
-                      Photo
-                      {pictures.length ? <span className="n">{pictures.length}</span> : null}
-                      <input
-                        className="student-file"
-                        type="file"
-                        accept="image/*"
-                        aria-label={`Add ${rung.label} photo`}
-                        data-belt={rung.belt}
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          event.target.value = '';
-                          void savePhoto(file, (image) => addBeltPhoto(photos, rung.belt, image), `belt:${rung.belt}`);
-                        }}
-                      />
-                    </label>
-                  </div>
-                  <PhotoList
+                  <BeltPhotoSection
+                    label={rung.label}
                     photos={pictures}
-                    removeLabel={(index) => `Remove ${rung.label} photo ${index + 1}`}
-                    alt={(index) => `${rung.label} photo ${index + 1}`}
+                    addLabel={`Add ${rung.label} photo`}
+                    dataBelt={rung.belt}
+                    onAdd={(file) => void savePhoto(file, (image) => addBeltPhoto(photos, rung.belt, image), `belt:${rung.belt}`)}
                     onRemove={(index) => setPhotos(removeBeltPhoto(photos, rung.belt, index))}
+                    date={
+                      <AchievedDateField
+                        saved={rung.awardedOn}
+                        label={rung.current ? 'Date of this belt' : `Date of ${rung.label} belt`}
+                        disabled={!rung.current && !rung.historyId}
+                        onCommit={(value) => saveAdultAwarded(rung.current, rung.historyId, value)}
+                      />
+                    }
                   />
                   <PhotoSavedLine show={photoSavedKey === `belt:${rung.belt}`} />
                   {rung.belt === 'black' ? (
@@ -382,19 +377,12 @@ export function RankPage() {
                         <span>{row.detail}</span>
                       </span>
                     </button>
-                    <label className={awardedOn ? 'achieved' : 'achieved is-empty'}>
-                      Achieved <b>{awardedOn ? formatAchieved(awardedOn) : 'Add date'}</b>
-                      <input
-                        type="date"
-                        aria-label={current ? 'Date of this belt' : `Date of ${rankBeltLabel(row.belt)} belt`}
-                        value={awardedOn}
-                        disabled={!current && !historyId}
-                        onChange={(event) => {
-                          if (current) run(setRankAwardedOn(report, event.target.value));
-                          else if (historyId) run(setRankHistoryAwardedOn(report, historyId, event.target.value));
-                        }}
-                      />
-                    </label>
+                    <AchievedDateField
+                      saved={awardedOn}
+                      label={current ? 'Date of this belt' : `Date of ${rankBeltLabel(row.belt)} belt`}
+                      disabled={!current && !historyId}
+                      onCommit={(value) => saveAdultAwarded(current, historyId, value)}
+                    />
                   </div>
                 );
               })}
@@ -672,32 +660,6 @@ function PhotoSavedLine({ show }: { show: boolean }) {
   );
 }
 
-function PhotoList({
-  photos,
-  removeLabel,
-  alt,
-  onRemove,
-}: {
-  photos: string[];
-  removeLabel: (index: number) => string;
-  alt: (index: number) => string;
-  onRemove: (index: number) => void;
-}) {
-  if (!photos.length) return null;
-  return (
-    <div className="rank-photos">
-      {photos.map((image, index) => (
-        <figure key={`${image.slice(-24)}-${index}`}>
-          <img src={image} alt={alt(index)} />
-          <button type="button" className="ink-btn ink-btn--small" aria-label={removeLabel(index)} onClick={() => onRemove(index)}>
-            Remove
-          </button>
-        </figure>
-      ))}
-    </div>
-  );
-}
-
 function PhotoRow({
   photos,
   addLabel,
@@ -908,6 +870,7 @@ function KidsRank({
   photoSavedKey,
   onGraduate,
   lineage,
+  saveAwarded,
   progressLink,
 }: {
   report: StudentProgressReport;
@@ -918,6 +881,7 @@ function KidsRank({
   photoSavedKey: string;
   onGraduate: (choice: 'white' | 'blue' | 'purple') => void;
   lineage: ReactNode;
+  saveAwarded: (isCurrent: boolean, historyId: string, value: string) => boolean;
   progressLink: ReactNode;
 }) {
   const kids = kidsRankOf(report);
@@ -1092,42 +1056,21 @@ function KidsRank({
                 })}
               </div>
             </div>
-            <div className="rung__foot">
-              <label className={rung.awardedOn ? 'achieved' : 'achieved is-empty'}>
-                Achieved <b>{rung.awardedOn ? formatAchieved(rung.awardedOn) : 'Add date'}</b>
-                <input
-                  type="date"
-                  aria-label={rung.current ? 'Date of this belt' : `Date of ${rung.label} belt`}
-                  value={rung.awardedOn}
-                  disabled={!rung.current && !rung.historyId}
-                  onChange={(event) => {
-                    if (rung.current) run(setKidsAwardedOn(report, event.target.value));
-                    else if (rung.historyId) run(setKidsHistoryAwardedOn(report, rung.historyId, event.target.value));
-                  }}
-                />
-              </label>
-              <label className="photo">
-                {CAMERA}
-                Photo
-                {pictures.length ? <span className="n">{pictures.length}</span> : null}
-                <input
-                  className="student-file"
-                  type="file"
-                  accept="image/*"
-                  aria-label={`Add ${rung.label} photo`}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = '';
-                    onBeltPhoto(rung.beltId, file);
-                  }}
-                />
-              </label>
-            </div>
-            <PhotoList
+            <BeltPhotoSection
+              label={rung.label}
               photos={pictures}
-              removeLabel={(index) => `Remove ${rung.label} photo ${index + 1}`}
-              alt={(index) => `${rung.label} photo ${index + 1}`}
+              addLabel={`Add ${rung.label} photo`}
+              dataBelt={rung.beltId}
+              onAdd={(file) => onBeltPhoto(rung.beltId, file)}
               onRemove={(index) => onRemoveBeltPhoto(rung.beltId, index)}
+              date={
+                <AchievedDateField
+                  saved={rung.awardedOn}
+                  label={rung.current ? 'Date of this belt' : `Date of ${rung.label} belt`}
+                  disabled={!rung.current && !rung.historyId}
+                  onCommit={(value) => saveAwarded(rung.current, rung.historyId, value)}
+                />
+              }
             />
             <PhotoSavedLine show={photoSavedKey === `kids:${rung.beltId}`} />
             {note ? (

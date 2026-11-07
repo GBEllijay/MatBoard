@@ -367,6 +367,229 @@
   font-size: 13px;
 }
 
+.student.student--rank .rung__foot {
+  flex-wrap: wrap;
+}
+
+.student.student--rank .rung__photo-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex: 1 0 100%;
+  max-width: 100%;
+  margin-left: 0;
+}
+
+/* Overlapping real photos. The first saved photo is the front card. */
+.student.student--rank .rank-photo-stack {
+  position: relative;
+  width: 4.5rem;
+  height: 3.6rem;
+  margin-right: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  flex: 0 0 auto;
+}
+
+.student.student--rank .rank-photo-stack:focus-visible {
+  outline: 3px solid #fcc000;
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+.student.student--rank .rank-photo-stack__fan {
+  position: absolute;
+  inset: 0;
+}
+
+.student.student--rank .rank-photo-stack__card {
+  position: absolute;
+  width: 2.7rem;
+  height: 2.7rem;
+  object-fit: cover;
+  border-radius: 9px;
+  border: 2px solid #f5f5f7;
+  background: #1c1c1e;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.student.student--rank .rank-photo-stack__card--back {
+  left: 0;
+  top: 0;
+  z-index: 1;
+  transform: rotate(-11deg);
+}
+
+.student.student--rank .rank-photo-stack__card--mid {
+  left: 0.55rem;
+  top: 0.15rem;
+  z-index: 2;
+  transform: rotate(8deg);
+}
+
+.student.student--rank .rank-photo-stack__card--front {
+  left: 1.35rem;
+  top: 0.55rem;
+  z-index: 3;
+  width: 2.95rem;
+  height: 2.95rem;
+}
+
+.student.student--rank .rank-photo-stack--1 .rank-photo-stack__card--front {
+  left: 0.15rem;
+  top: 0.15rem;
+}
+
+.student.student--rank .rank-photos__open {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  line-height: 0;
+  min-height: 0;
+  border-radius: 4px;
+}
+
+.student.student--rank .rank-photos__open:focus-visible {
+  outline: 3px solid #fcc000;
+  outline-offset: 2px;
+}
+
+/* Portaled, so it is not inside the rank page. Same dark tile language as Skins. */
+.rank-gallery {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+}
+
+.rank-gallery__backdrop {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.55);
+  min-height: 0;
+}
+
+.rank-gallery__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 40rem);
+  max-height: min(92dvh, 48rem);
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 0.85rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  background: #0e1624;
+  color: #f7f4ee;
+  -webkit-text-fill-color: #f7f4ee;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+}
+
+.rank-gallery__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rank-gallery__bar h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.rank-gallery__close,
+.rank-gallery__remove {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #2c2c2e;
+  color: #f5f5f7;
+  -webkit-text-fill-color: #f5f5f7;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.rank-gallery__close:focus-visible,
+.rank-gallery__remove:focus-visible,
+.rank-gallery__strip button:focus-visible {
+  outline: 3px solid #fcc000;
+  outline-offset: 2px;
+}
+
+.rank-gallery__stage {
+  display: block;
+  width: 100%;
+  max-height: min(62dvh, 32rem);
+  margin-top: 0.75rem;
+  object-fit: contain;
+  background: #1a2436;
+  border-radius: 12px;
+}
+
+.rank-gallery__count,
+.rank-gallery__empty {
+  margin: 0.65rem 0;
+}
+
+.rank-gallery__strip {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 0.35rem;
+}
+
+.rank-gallery__strip button {
+  flex: 0 0 auto;
+  width: 4.15rem;
+  height: 4.15rem;
+  padding: 0.2rem;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+}
+
+.rank-gallery__strip button.is-on {
+  border-color: #004eba;
+  background: rgba(0, 78, 186, 0.35);
+}
+
+.rank-gallery__strip img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #1a2436;
+}
+
+.rank-gallery__remove {
+  margin-top: 0.35rem;
+}
+
+@media (min-width: 720px) {
+  .rank-gallery {
+    align-items: center;
+    padding: 1rem;
+  }
+
+  .rank-gallery__panel {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 16px;
+  }
+}
+
 :is(.student.student--rank, .s-belt-mark) .rank-stripe-date {
   position: absolute;
   width: 1px;
