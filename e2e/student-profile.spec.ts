@@ -79,7 +79,8 @@ test('my profile saves name, gym, and an optional start date at 390px', async ({
   await expect(filledAssessment).not.toContainText('Not set');
 
   await page.goto('/student/journal?student=1');
-  await expect(page.locator('main.student')).toHaveCSS('font-family', /Patrick Hand/);
+  await expect(page.locator('main.student')).toHaveCSS('font-family', /Inter/);
+  await expect(page.getByRole('textbox', { name: 'Class', exact: true })).toHaveCSS('font-family', /Patrick Hand/);
 
   const backupPath = '/tmp/student-profile-backup.json';
   page.on('download', async (download) => {

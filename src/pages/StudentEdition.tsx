@@ -36,7 +36,7 @@ import { VideoLibraryPage } from './student/VideoLibraryPage';
 import { WeightPage } from './student/WeightPage';
 import { CoachUpdateInbox } from '../components/CoachUpdateInbox';
 import { GymLogoPrompt } from '../components/GymLogoPrompt';
-import { LeatherHeader, StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './student/chrome';
+import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './student/chrome';
 import { studentScreen } from '../lib/studentHubMenu';
 import { BackupMenu, ClearStudentMenu } from './student/BackupMenu';
 import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from './student/StudentMenus';
@@ -67,6 +67,7 @@ import './student/hub.css';
 import './student/progressPages.css';
 import './student/beltWeave.css';
 import './student/journalPages.css';
+import './student/advantageJournal.css';
 import { ProfileReportPage } from './student/ProfileReport';
 import { StudentLicenseClaimPage } from './student/StudentLicenseClaim';
 import { highlightParts, techniqueLineHits, videosForTechnique } from '../lib/journalIndex';
@@ -264,6 +265,16 @@ function StudentClosed() {
   );
 }
 
+function JournalMast({ title, note }: { title: string; note: string }) {
+  return (
+    <header className="student-leather">
+      <p className="adv-journal__kicker">Advantage</p>
+      <h1>{title}</h1>
+      <p className="adv-journal__sub">{note}</p>
+    </header>
+  );
+}
+
 function JournalToday() {
   const to = useStudentPath();
   const { report, commit } = useStudentFile();
@@ -326,65 +337,69 @@ function JournalToday() {
   };
 
   return (
-    <main className="student student-frame">
+    <main className="student student-frame adv-journal">
       <StudentMarks />
-      <LeatherHeader title="Journal" />
+      <JournalMast title="Journal" note="Student journal" />
       <div className="student-paper">
         <form
-          className="student-sheet"
+          className="student-sheet adv-journal__grid"
           onSubmit={(event) => {
             event.preventDefault();
             save();
           }}
         >
-          <div className="student-top">
-            <JournalDateField label="Date" ariaLabel="Date" value={date} onChange={setDate} />
-            <label className="ink ink--wobble">
-              <span className="ink__label">Class</span>
-              <input
-                aria-label="Class"
-                spellCheck
-                autoCorrect="on"
-                value={className}
-                maxLength={PROGRESS_NAME_MAX}
-                placeholder={JOURNAL_CLASS_PLACEHOLDER}
-                onChange={(event) => setClassName(event.target.value)}
-              />
-            </label>
-          </div>
-          <MatTimeField idPrefix="" session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} sessionOther={sessionOther} onSessionOther={setSessionOther} />
-          <SessionExtras idPrefix="" report={report} value={extras} onChange={setExtras} />
-          <div className="student-split">
-            <div className="student-stack">
-              <label className="ink">
-                <span className="ink__label">{JOURNAL_PARTNERS_LABEL}</span>
-                <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_PARTNERS_LABEL} rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
-              </label>
+          <section className="adv-card adv-card--session" aria-label="Session">
+            <h2>Session</h2>
+            <div className="student-top">
+              <JournalDateField label="Date" ariaLabel="Date" value={date} onChange={setDate} />
               <label className="ink ink--wobble">
-                <span className="ink__label">{JOURNAL_DRILLS_LABEL}</span>
-                <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_DRILLS_LABEL} rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
-              </label>
-              <label className="ink">
-                <span className="ink__label">{JOURNAL_ROLLS_LABEL}</span>
-                <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_ROLLS_LABEL} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
+                <span className="ink__label">Class</span>
+                <input
+                  aria-label="Class"
+                  spellCheck
+                  autoCorrect="on"
+                  value={className}
+                  maxLength={PROGRESS_NAME_MAX}
+                  placeholder={JOURNAL_CLASS_PLACEHOLDER}
+                  onChange={(event) => setClassName(event.target.value)}
+                />
               </label>
             </div>
-          </div>
-          <label className="ink journal-note">
-            <span className="ink__label">{JOURNAL_NOTES_LABEL}</span>
-            <span className="student-quiet" aria-hidden="true">
-              What you drilled and what to remember.
-            </span>
-            <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_NOTES_LABEL} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
-          </label>
-          <label className="ink ink--wobble journal-note">
-            <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
-            <span className="student-quiet" aria-hidden="true">
-              Mistakes to stop making.
-            </span>
-            <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_STOP_LABEL} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
-          </label>
-          <section className="journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
+            <label className="ink">
+              <span className="ink__label">{JOURNAL_PARTNERS_LABEL}</span>
+              <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_PARTNERS_LABEL} rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
+            </label>
+            <label className="ink ink--wobble">
+              <span className="ink__label">{JOURNAL_DRILLS_LABEL}</span>
+              <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_DRILLS_LABEL} rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
+            </label>
+            <label className="ink">
+              <span className="ink__label">{JOURNAL_ROLLS_LABEL}</span>
+              <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_ROLLS_LABEL} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
+            </label>
+            <label className="ink journal-note">
+              <span className="ink__label">{JOURNAL_NOTES_LABEL}</span>
+              <span className="student-quiet" aria-hidden="true">
+                What you drilled and what to remember.
+              </span>
+              <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_NOTES_LABEL} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
+            </label>
+            <label className="ink ink--wobble journal-note">
+              <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
+              <span className="student-quiet" aria-hidden="true">
+                Mistakes to stop making.
+              </span>
+              <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_STOP_LABEL} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
+            </label>
+          </section>
+          <section className="adv-card adv-card--mat" aria-label="Mat time">
+            <h2>Mat time</h2>
+            <MatTimeField idPrefix="" session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} sessionOther={sessionOther} onSessionOther={setSessionOther} />
+          </section>
+          <section className="adv-card adv-card--marks" aria-label="Session marks">
+            <SessionExtras idPrefix="" report={report} value={extras} onChange={setExtras} />
+          </section>
+          <section className="adv-card adv-card--drills journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
             <h2 className="ink__label journal-techniques__title">Techniques drilled · optional</h2>
             <TechniqueLines idPrefix="" report={report} rows={techniques} onChange={setTechniques} />
           </section>
@@ -448,25 +463,28 @@ function JournalList() {
   const lineHits = techniqueLineHits(report.journal, query);
   const videos = videosForTechnique(report, query);
   return (
-    <main className="student student-frame student--arena student--cards">
+    <main className="student student-frame student--arena student--cards adv-journal">
       <StudentMarks />
-      <LeatherHeader title="Journal cards" />
+      <JournalMast title="Journal cards" note="Student journal" />
       <div className="student-paper">
         <div className="student-sheet">
-          <label className="ink student-search">
-            <span className="ink__label">Search</span>
-            <input
-              aria-label="Search journal"
-              value={query}
-              placeholder="Technique, note, opponent, or tournament"
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
-          <Link className="ink-btn" to={to('/student/journal')}>
-            Today’s page
-          </Link>
+          <section className="adv-card" aria-label="Find a card">
+            <label className="ink student-search">
+              <span className="ink__label">Search</span>
+              <input
+                aria-label="Search journal"
+                type="search"
+                value={query}
+                placeholder="Technique, note, opponent, or tournament"
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            <Link className="ink-btn" to={to('/student/journal')}>
+              Today’s page
+            </Link>
+          </section>
           {query.trim() && games.length ? (
-            <section className="ink" aria-label="Competition game">
+            <section className="ink adv-card" aria-label="Competition game">
               {games.map((tag) => {
                 const game = report.competition?.games[tag];
                 if (!game) return null;
@@ -480,7 +498,7 @@ function JournalList() {
             </section>
           ) : null}
           {query.trim() && results.length ? (
-            <section className="ink" aria-label="Competition results">
+            <section className="ink adv-card" aria-label="Competition results">
               {results.map((result) => (
                 <p key={result.id}>
                   <Link to={to('/student/results')}>{result.tournamentName}</Link>
@@ -490,7 +508,7 @@ function JournalList() {
             </section>
           ) : null}
           {lineHits.length ? (
-            <section className="ink" aria-label="Technique lines">
+            <section className="ink adv-card" aria-label="Technique lines">
               <h2 className="ink__label">Technique lines</h2>
               {lineHits.map((hit, index) => (
                 <p key={`${hit.entryId}-${index}`}>
@@ -508,7 +526,7 @@ function JournalList() {
             </section>
           ) : null}
           {videos.length ? (
-            <section className="ink" aria-label="Videos for this technique">
+            <section className="ink adv-card" aria-label="Videos for this technique">
               <h2 className="ink__label">Videos</h2>
               {videos.map((clip) => (
                 <p key={clip.id}>
@@ -521,7 +539,7 @@ function JournalList() {
           ) : null}
           {cards.length === 0 ? <p className="student-quiet">No cards match.</p> : null}
           {cards.map((card) => (
-            <article key={card.id} className="ink student-card">
+            <article key={card.id} className="ink student-card adv-card">
               <Link className="student-card-link" to={to(`/student/cards/${card.id}${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`)}>
                 <strong>
                   {formatJournalDate(card.date)}
@@ -585,12 +603,12 @@ function JournalCardPage({ id }: { id: string }) {
   const editing = params.get('edit') === '1' && Boolean(entry);
   if (!entry) {
     return (
-      <main className="student student-frame student--arena student--cards">
+      <main className="student student-frame student--arena student--cards adv-journal">
       <StudentMarks />
-        <LeatherHeader title="Journal card" />
+        <JournalMast title="Journal card" note="Student journal" />
         <div className="student-paper">
           <div className="student-sheet">
-            <p>That card is not on this device.</p>
+            <p className="adv-card">That card is not on this device.</p>
           </div>
         </div>
       </main>
@@ -598,9 +616,9 @@ function JournalCardPage({ id }: { id: string }) {
   }
   const card = viewJournalEntry(entry);
   return (
-    <main className="student student-frame student--arena student--cards">
+    <main className="student student-frame student--arena student--cards adv-journal">
       <StudentMarks />
-      <LeatherHeader title="Journal card" />
+      <JournalMast title="Journal card" note="Student journal" />
       <div className="student-paper">
         <div className="student-sheet">
           <EntrySavedToast open={saved && !editing} />
@@ -649,7 +667,7 @@ function JournalCardPage({ id }: { id: string }) {
             )}
           </div>
           <form
-            className="ink ink--wobble"
+            className="ink ink--wobble adv-card adv-card--wide"
             onSubmit={(event) => {
               event.preventDefault();
               if (!note.trim()) return;
@@ -712,7 +730,7 @@ function InjuryLine({ injury, date }: { injury: NonNullable<JournalCardView['inj
 
 function CardBody({ card, query = '' }: { card: JournalCardView; query?: string }) {
   return (
-    <div className="ink">
+    <div className="ink adv-card adv-card--wide">
       <p className="journal-card__when">
         {formatJournalDate(card.date)}
         {card.className ? ` · ${card.className}` : ''}
@@ -774,7 +792,7 @@ function JournalPages({ lines, query }: { lines: string[]; query: string }) {
 
 function Amendments({ card }: { card: JournalCardView }) {
   return (
-    <section className="ink" aria-label="Amendments">
+    <section className="ink adv-card adv-card--wide" aria-label="Amendments">
       <h2 className="ink__label">Later notes</h2>
       {card.amendments.length === 0 ? <p className="student-quiet">No later notes yet.</p> : null}
       {card.amendments.map((item) => (
@@ -825,7 +843,7 @@ function JournalEditor({
 
   return (
     <form
-      className="ink"
+      className="ink adv-journal__grid"
       aria-label={`Edit ${entryActionLabel(card)}`}
       onSubmit={(event) => {
         event.preventDefault();
@@ -837,53 +855,61 @@ function JournalEditor({
         }
       }}
     >
-      <div className="student-top">
-        <JournalDateField label="Date" ariaLabel="Edit date" value={date} onChange={setDate} />
-        <label className="ink ink--wobble">
-          <span className="ink__label">Class</span>
-          <input
-            aria-label="Edit class"
-            value={className}
-            maxLength={PROGRESS_NAME_MAX}
-            placeholder={JOURNAL_CLASS_PLACEHOLDER}
-            onChange={(event) => setClassName(event.target.value)}
-          />
+      <section className="adv-card adv-card--session" aria-label="Session">
+        <h2>Session</h2>
+        <div className="student-top">
+          <JournalDateField label="Date" ariaLabel="Edit date" value={date} onChange={setDate} />
+          <label className="ink ink--wobble">
+            <span className="ink__label">Class</span>
+            <input
+              aria-label="Edit class"
+              value={className}
+              maxLength={PROGRESS_NAME_MAX}
+              placeholder={JOURNAL_CLASS_PLACEHOLDER}
+              onChange={(event) => setClassName(event.target.value)}
+            />
+          </label>
+        </div>
+        <label className="ink">
+          <span className="ink__label">{JOURNAL_PARTNERS_LABEL}</span>
+          <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_PARTNERS_LABEL}`} rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
         </label>
-      </div>
-      <MatTimeField idPrefix="Edit " session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} sessionOther={sessionOther} onSessionOther={setSessionOther} />
-      <SessionExtras idPrefix="Edit " report={report} value={extras} onChange={setExtras} />
-      <label className="ink">
-        <span className="ink__label">{JOURNAL_PARTNERS_LABEL}</span>
-        <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_PARTNERS_LABEL}`} rows={3} value={partners} onChange={(event) => setPartners(event.target.value)} />
-      </label>
-      <label className="ink ink--wobble">
-        <span className="ink__label">{JOURNAL_DRILLS_LABEL}</span>
-        <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_DRILLS_LABEL}`} rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
-      </label>
-      <label className="ink">
-        <span className="ink__label">{JOURNAL_ROLLS_LABEL}</span>
-        <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_ROLLS_LABEL}`} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
-      </label>
-      <label className="ink journal-note">
-        <span className="ink__label">{JOURNAL_NOTES_LABEL}</span>
-        <span className="student-quiet" aria-hidden="true">
-          What you drilled and what to remember.
-        </span>
-        <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_NOTES_LABEL}`} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
-      </label>
-      <label className="ink ink--wobble journal-note">
-        <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
-        <span className="student-quiet" aria-hidden="true">
-          Mistakes to stop making.
-        </span>
-        <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_STOP_LABEL}`} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
-      </label>
-      <section className="journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
+        <label className="ink ink--wobble">
+          <span className="ink__label">{JOURNAL_DRILLS_LABEL}</span>
+          <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_DRILLS_LABEL}`} rows={2} value={drills} onChange={(event) => setDrills(event.target.value)} />
+        </label>
+        <label className="ink">
+          <span className="ink__label">{JOURNAL_ROLLS_LABEL}</span>
+          <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_ROLLS_LABEL}`} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
+        </label>
+        <label className="ink journal-note">
+          <span className="ink__label">{JOURNAL_NOTES_LABEL}</span>
+          <span className="student-quiet" aria-hidden="true">
+            What you drilled and what to remember.
+          </span>
+          <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_NOTES_LABEL}`} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
+        </label>
+        <label className="ink ink--wobble journal-note">
+          <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
+          <span className="student-quiet" aria-hidden="true">
+            Mistakes to stop making.
+          </span>
+          <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_STOP_LABEL}`} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
+        </label>
+      </section>
+      <section className="adv-card adv-card--mat" aria-label="Mat time">
+        <h2>Mat time</h2>
+        <MatTimeField idPrefix="Edit " session={session} minutes={minutes} onSession={setSession} onMinutes={setMinutes} sessionOther={sessionOther} onSessionOther={setSessionOther} />
+      </section>
+      <section className="adv-card adv-card--marks" aria-label="Session marks">
+        <SessionExtras idPrefix="Edit " report={report} value={extras} onChange={setExtras} />
+      </section>
+      <section className="adv-card adv-card--drills journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
         <h2 className="ink__label journal-techniques__title">Techniques drilled · optional</h2>
         <TechniqueLines idPrefix="Edit " report={report} rows={techniques} onChange={setTechniques} />
       </section>
       {error ? <p role="alert">{error}</p> : null}
-      <div className="student-card__actions">
+      <div className="student-card__actions journal-actions">
         <button type="submit" className="ink-btn ink-btn--save">
           Save card
         </button>
