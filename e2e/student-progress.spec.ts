@@ -24,8 +24,10 @@ test('calendar marks a journal day, stores an event, and can show the gym schedu
   await page.getByRole('button', { name: 'Save entry' }).click();
   await expect(page.getByRole('status')).toHaveText('Entry saved');
   await expect(page.getByRole('heading', { name: 'Journal', exact: true })).toBeVisible();
-  await expect(page.locator('main.student')).toHaveCSS('font-family', /Patrick Hand/);
-  await expect(page.locator('.student-paper')).toHaveCSS('background-color', 'rgb(244, 240, 228)');
+  await expect(page.locator('main.student')).toHaveCSS('font-family', /Inter/);
+  await expect(page.locator('.student-paper')).toHaveCSS('background-color', 'rgb(7, 20, 34)');
+  await expect(page.getByRole('textbox', { name: 'Class', exact: true })).toHaveCSS('font-family', /Patrick Hand/);
+  await expect(page.getByRole('button', { name: 'Class', exact: true })).toHaveCSS('font-family', /Inter/);
 
   await page.goto('/student/calendar?student=1');
   const marked = page.getByRole('button', { name: /journal entry/ });
