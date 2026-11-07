@@ -58,6 +58,7 @@ import {
   FINAL_RANK_BELTS,
   RANK_BELTS,
   RANK_TAPE_MAX,
+  OPEN_GOAL_PROMPTS,
   PROGRESS_SCHEMA_VERSION,
   PROGRESS_SCHEMA_VERSIONS,
   PROGRESS_SEQUENCE_MAX,
@@ -275,6 +276,8 @@ export function parseProgressValue(raw: unknown): ProgressParse {
       calendar: readCalendar(record.calendar, errors),
       goals: readGoals(record.goals, errors),
     };
+    const dismissedGoalPrompts = readDismissedGoalPrompts(record.dismissedGoalPrompts);
+    if (dismissedGoalPrompts) value.dismissedGoalPrompts = dismissedGoalPrompts;
     const clips = readClips(record.clips, errors);
     if (clips) value.clips = clips;
     value.competition = readCompetition(record, value.journal, errors);
@@ -565,6 +568,9 @@ export function mergeStudentProgress(local: StudentProgressReport, incoming: Stu
   mergeClips(report, incoming, conflicts);
   mergeCompetition(report, incoming, conflicts);
   mergeRank(report, incoming, conflicts);
+  const dismissedGoalPrompts = mergeDismissedGoalPrompts(report.dismissedGoalPrompts, incoming.dismissedGoalPrompts);
+  if (dismissedGoalPrompts) report.dismissedGoalPrompts = dismissedGoalPrompts;
+  else delete report.dismissedGoalPrompts;
   const beltBook = mergeBeltBooks(report.beltBook, incoming.beltBook);
   if (beltBook.book) report.beltBook = beltBook.book;
   conflicts.push(...beltBook.conflicts);
@@ -757,7 +763,29 @@ function mergeGoals(report: StudentProgressReport, incoming: StudentProgressRepo
     current.note = preferText(current.note, goal.note, `Goal ${goal.id} note was kept.`, conflicts);
     current.met = preferMet(current.met, goal.met, `Goal ${goal.id} mark was kept.`, conflicts);
     if (!current.belt && goal.belt) current.belt = goal.belt;
+    if (!current.prompt && goal.prompt) current.prompt = goal.prompt;
   }
+}
+
+/** Dismissals from either copy stay dismissed. An omitted list does not bring a suggestion back. */
+export function mergeDismissedGoalPrompts(
+  local: readonly string[] | undefined,
+  incoming: readonly string[] | undefined,
+): StudentProgressReport['dismissedGoalPrompts'] | undefined {
+  const seen = new Set<string>();
+  const prompts: NonNullable<StudentProgressReport['dismissedGoalPrompts']> = [];
+  for (const item of [...(local ?? []), ...(incoming ?? [])]) {
+    const canonical = canonicalGoalPrompt(item);
+    if (!canonical || seen.has(canonical)) continue;
+    seen.add(canonical);
+    prompts.push(canonical);
+  }
+  return prompts.length ? prompts : undefined;
+}
+
+function canonicalGoalPrompt(value: string): (typeof OPEN_GOAL_PROMPTS)[number] | null {
+  const key = value.trim().toLowerCase();
+  return OPEN_GOAL_PROMPTS.find((prompt) => prompt.toLowerCase() === key) ?? null;
 }
 
 function mergeChecklist(
@@ -2071,7 +2099,30 @@ function readGoal(value: unknown, index: number, errors: string[]): StudentGoal 
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(kidsBeltId)) errors.push(`${label} kids belt must be a stable id.`);
     else goal.kidsBeltId = kidsBeltId;
   }
+  if (typeof record.prompt === 'string') {
+    const prompt = canonicalGoalPrompt(record.prompt);
+    if (prompt) goal.prompt = prompt;
+  }
   return goal;
+}
+
+/**
+ * Personal-goal dismissals. A missing list, a bad value, or an unknown line is left out.
+ * That keeps an older progress file readable. Only the five suggestion names are kept.
+ */
+function readDismissedGoalPrompts(value: unknown): StudentProgressReport['dismissedGoalPrompts'] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const seen = new Set<string>();
+  const prompts: NonNullable<StudentProgressReport['dismissedGoalPrompts']> = [];
+  for (const item of value) {
+    if (typeof item !== 'string') continue;
+    const prompt = canonicalGoalPrompt(item);
+    if (!prompt || seen.has(prompt)) continue;
+    seen.add(prompt);
+    prompts.push(prompt);
+    if (prompts.length >= OPEN_GOAL_PROMPTS.length) break;
+  }
+  return prompts.length ? prompts : undefined;
 }
 
 function readCoachFeedback(value: unknown, errors: string[]): CoachFeedback {
