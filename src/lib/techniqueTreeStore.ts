@@ -82,10 +82,21 @@ export type TechniqueNode = {
   children: TechniqueNode[];
 };
 
+/** A step that is not a nested copy: a follow-up, a second parent, or a return to an existing node. */
+export type TechniqueTreeLink = {
+  id: string;
+  fromSlotId: string;
+  toSlotId: string;
+  relation: 'branch' | 'defense' | 'follow';
+  label: string;
+};
+
 export type TechniqueTreeDoc = {
   id: string;
   name: string;
   root: TechniqueNode | null;
+  /** Omitted when every step is a nested child. */
+  links?: TechniqueTreeLink[];
 };
 
 export type TechniqueTreeArchive = {
@@ -280,8 +291,14 @@ export function addChild(
 
 export function removeNode(doc: TechniqueTreeDoc, id: string): TechniqueTreeDoc {
   if (!doc.root) return doc;
+  const slotId = findNode(doc.root, id)?.node.slotId;
   const root = removeAt(doc.root, id);
-  return root === doc.root ? doc : { ...doc, root };
+  if (root === doc.root) return doc;
+  const links = (doc.links ?? []).filter((link) => link.fromSlotId !== slotId && link.toSlotId !== slotId);
+  const next: TechniqueTreeDoc = { ...doc, root };
+  if (links.length) next.links = links;
+  else delete next.links;
+  return next;
 }
 
 type SanitizeNode = { node: TechniqueNode | null; repaired: boolean };
@@ -380,13 +397,55 @@ function sanitizeTreeDoc(
   if (!raw || raw.name !== name) repaired = true;
 
   if (!raw || raw.root == null) {
+    if (raw?.links !== undefined) repaired = true;
     return { doc: { id: id.id, name, root: null }, repaired };
   }
 
   const budget = { left: MAX_TREE_NODES };
   const sanitized = sanitizeNode(raw.root, 0, 'root', nodeIds, slotIds, budget);
   if (sanitized.repaired || !sanitized.node) repaired = true;
-  return { doc: { id: id.id, name, root: sanitized.node }, repaired };
+  const links = sanitizeLinks(raw.links, slotIds);
+  if (raw.links !== undefined && !links.ok) repaired = true;
+  const doc: TechniqueTreeDoc = { id: id.id, name, root: sanitized.node };
+  if (links.links.length) doc.links = links.links;
+  return { doc, repaired };
+}
+
+function sanitizeLinks(value: unknown, slots: Set<string>): { links: TechniqueTreeLink[]; ok: boolean } {
+  if (value == null) return { links: [], ok: true };
+  if (!Array.isArray(value)) return { links: [], ok: false };
+  const links: TechniqueTreeLink[] = [];
+  const seen = new Set<string>();
+  let ok = true;
+  for (const item of value) {
+    const raw = asRecord(item);
+    if (!raw) {
+      ok = false;
+      continue;
+    }
+    const id = typeof raw.id === 'string' ? raw.id.trim().slice(0, 80) : '';
+    const fromSlotId = typeof raw.fromSlotId === 'string' ? raw.fromSlotId.trim().slice(0, 80) : '';
+    const toSlotId = typeof raw.toSlotId === 'string' ? raw.toSlotId.trim().slice(0, 80) : '';
+    const relation = raw.relation === 'defense' || raw.relation === 'follow' || raw.relation === 'branch' ? raw.relation : '';
+    if (!id || !fromSlotId || !toSlotId || !relation || fromSlotId === toSlotId || seen.has(id)) {
+      ok = false;
+      continue;
+    }
+    if (!slots.has(fromSlotId) || !slots.has(toSlotId)) {
+      ok = false;
+      continue;
+    }
+    seen.add(id);
+    links.push({
+      id,
+      fromSlotId,
+      toSlotId,
+      relation,
+      label: clampText(raw.label, TITLE_MAX),
+    });
+    if (links.length >= 80) break;
+  }
+  return { links, ok };
 }
 
 export function sanitizeArchive(value: unknown): { archive: TechniqueTreeArchive; repaired: boolean } {
@@ -473,6 +532,7 @@ export function updateActive(archive: TechniqueTreeArchive, doc: TechniqueTreeDo
     id: current.id,
     name: clampTreeName(doc.name),
     root: doc.root,
+    ...(doc.links?.length ? { links: doc.links } : {}),
   };
   return {
     ...archive,

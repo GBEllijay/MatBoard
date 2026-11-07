@@ -78,9 +78,17 @@ function readNode(value: unknown): WorkingNode | null {
     notes: clip(record.notes, PROGRESS_NOTE_MAX),
     kind,
     fundamentalId: isId(record.fundamentalId) ? record.fundamentalId : '',
+    ...(isId(record.shareId) ? { shareId: record.shareId } : {}),
+    ...aliasesOf(record.aliases),
     createdAt,
     updatedAt,
   };
+}
+
+function aliasesOf(value: unknown): { aliases: string[] } | Record<string, never> {
+  if (!Array.isArray(value)) return {};
+  const aliases = value.filter((item): item is string => isId(item)).slice(0, 8);
+  return aliases.length ? { aliases } : {};
 }
 
 function readEdge(value: unknown, nodes: ReadonlySet<string>): WorkingEdge | null {

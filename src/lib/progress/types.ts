@@ -481,6 +481,13 @@ export type WorkingNode = {
   kind: WorkingNodeKind;
   /** Checklist or catalog id when the student has put this on the fundamentals list. Empty otherwise. */
   fundamentalId: string;
+  /**
+   * Stable id used when this technique is shared. Missing on techniques saved before sharing.
+   * Repeated import matches this id, not the title.
+   */
+  shareId?: string;
+  /** Other share ids the student explicitly treated as this same technique. */
+  aliases?: string[];
   createdAt: number;
   updatedAt: number;
 };

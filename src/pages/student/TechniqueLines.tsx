@@ -10,9 +10,8 @@ import type { StudentProgressReport } from '../../lib/progress/types';
 import { ageIllegalTechniques } from '../../lib/studentBenchmarks';
 import {
   JOURNAL_TECHNIQUE_MAX,
-  addCustomFundamental,
-  fundamentalsBoard,
   isFundamentalLink,
+  placeOnFundamentals,
   techniqueDrilledLabel,
   techniqueNoteLabel,
   type FundamentalRow,
@@ -42,23 +41,6 @@ export function techniqueLinesFrom(rows: readonly JournalTechniqueLine[], min: n
 }
 
 const linkId = (item: FundamentalRow) => item.catalogItemId || item.entryId;
-
-function placeOnFundamentals(report: StudentProgressReport, name: string, now = Date.now()): { report: StudentProgressReport; id: string } {
-  const key = workingTitleKey(name);
-  if (!key) return { report, id: '' };
-  for (const category of fundamentalsBoard(report)) {
-    for (const item of category.items) {
-      if (workingTitleKey(item.label) !== key && workingTitleKey(item.name) !== key) continue;
-      const id = item.catalogItemId || item.entryId;
-      if (id) return { report, id };
-    }
-  }
-  const next = addCustomFundamental(report, 'movement', name.trim().replace(/\s+/g, ' '), now);
-  const entry = next.checklist.find(
-    (row) => row.categoryId === 'movement' && row.catalogItemId === '' && workingTitleKey(row.name) === key,
-  );
-  return { report: next, id: entry?.id ?? '' };
-}
 
 export function TechniqueLines({
   idPrefix,

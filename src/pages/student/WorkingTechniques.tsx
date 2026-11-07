@@ -1,5 +1,15 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import type { ShareChoice, SharePreview } from '../../lib/techniqueShare';
+import {
+  applyWorkingImport,
+  previewWorkingImport,
+  downloadTechniqueShare,
+  readTechniqueShare,
+  shareFromWorking,
+  workingImportBlocked,
+} from '../../lib/techniqueShare';
+import { placeOnFundamentals } from '../../lib/studentEdition';
 import type { WorkingNode, WorkingRelation } from '../../lib/progress/types';
 import {
   WORKING_RELATIONS,
@@ -11,6 +21,7 @@ import {
   relationLabel,
   removeWorkingNode,
   renameWorkingNode,
+  setWorkingFundamental,
   setWorkingNotes,
   treeFrom,
   unlinkWorkingEdge,
@@ -31,6 +42,8 @@ export function WorkingTechniquesPage() {
   const [kind, setKind] = useState<'technique' | 'position'>('technique');
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [incoming, setIncoming] = useState<SharePreview | null>(null);
+  const [choices, setChoices] = useState<Record<string, ShareChoice>>({});
 
   const open = (node: string, nextView = view) => {
     const query = new URLSearchParams(params);
@@ -69,7 +82,59 @@ export function WorkingTechniquesPage() {
             <Link className="work__btn" to={to('/student/fundamentals')}>
               Fundamentals
             </Link>
+            <button
+              type="button"
+              className="work__btn"
+              onClick={() => downloadTechniqueShare(shareFromWorking(graph, 'Techniques I am working on'))}
+            >
+              Export tree
+            </button>
+            <label className="work__btn">
+              Import tree
+              <input
+                className="work__file"
+                type="file"
+                accept="application/json,.json"
+                aria-label="Import technique share file"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  if (!file) return;
+                  const blocked = workingImportBlocked(localStorage);
+                  if (blocked) {
+                    setError(blocked);
+                    setIncoming(null);
+                    return;
+                  }
+                  void file.text().then((text) => {
+                    const read = readTechniqueShare(text);
+                    if (!read.ok) {
+                      setError(read.error);
+                      setIncoming(null);
+                      return;
+                    }
+                    setError('');
+                    setChoices({});
+                    setIncoming(previewWorkingImport(graph, read.file));
+                  });
+                }}
+              />
+            </label>
           </div>
+          {incoming ? (
+            <ShareReview
+              preview={incoming}
+              choices={choices}
+              onChoice={(shareId, choice) => setChoices((current) => ({ ...current, [shareId]: choice }))}
+              onCancel={() => setIncoming(null)}
+              onAccept={() => {
+                const next = applyWorkingImport(graph, incoming.file, new Map(Object.entries(choices)));
+                commit({ ...report, working: next });
+                setIncoming(null);
+                setStatus(`Imported ${incoming.file.name}. Nothing was marked learned.`);
+              }}
+            />
+          ) : null}
           <div className="work__tabs" role="tablist" aria-label="Working techniques">
             <button type="button" role="tab" className={view === 'list' ? 'work__tab is-on' : 'work__tab'} aria-selected={view === 'list'} onClick={() => open(focus, 'list')}>
               List
@@ -110,7 +175,10 @@ export function WorkingTechniquesPage() {
                 <li key={node.id}>
                   <article className={node.id === focus ? 'work__card is-on' : 'work__card'} id={`work-${node.id}`}>
                     <strong>{node.title}</strong>
-                    <span className="work__meta">{node.kind === 'position' ? 'Position' : 'Technique'}{node.fundamentalId ? ' · On fundamentals' : ''}</span>
+                    <span className="work__meta">
+                      {node.kind === 'position' ? 'Position' : 'Technique'}
+                      {node.fundamentalId ? ' · On fundamentals' : ' · Not on fundamentals'}
+                    </span>
                     <button type="button" className="work__btn" onClick={() => open(node.id, 'tree')}>
                       Show in tree
                     </button>
@@ -153,6 +221,27 @@ export function WorkingTechniquesPage() {
                 setStatus(linked.created ? 'Connected to the technique you already have.' : 'That step was already there.');
               }}
               onUnlink={(edgeId) => commit({ ...report, working: unlinkWorkingEdge(graph, edgeId) })}
+              fundamentalsTo={to('/student/fundamentals')}
+              onFundamental={() => {
+                const current = findWorkingNode(graph, focus);
+                if (!current) return;
+                if (current.fundamentalId) {
+                  commit({ ...report, working: setWorkingFundamental(graph, focus, '') });
+                  setStatus(`${current.title} stays on your working list and is off the fundamentals list.`);
+                  return;
+                }
+                const placed = placeOnFundamentals(report, current.title);
+                const withLevel = placed.report;
+                commit({
+                  ...withLevel,
+                  working: setWorkingFundamental(readWorkingGraph(withLevel.working) ?? graph, focus, placed.id),
+                });
+                setStatus(
+                  placed.id
+                    ? `${current.title} is on your fundamentals list at Not started. It is not marked learned.`
+                    : 'That name could not be added to fundamentals.',
+                );
+              }}
               onRemove={() => {
                 commit({ ...report, working: removeWorkingNode(graph, focus) });
                 open('', view);
@@ -240,6 +329,8 @@ function NodeEditor({
   onConnect,
   onUnlink,
   onRemove,
+  onFundamental,
+  fundamentalsTo,
 }: {
   node: WorkingNode;
   nodes: WorkingNode[];
@@ -249,6 +340,8 @@ function NodeEditor({
   onConnect: (toId: string, relation: WorkingRelation, label: string) => void;
   onUnlink: (edgeId: string) => void;
   onRemove: () => void;
+  onFundamental: () => void;
+  fundamentalsTo: string;
 }) {
   const [title, setTitle] = useState(node.title);
   const [notes, setNotes] = useState(node.notes);
@@ -260,6 +353,18 @@ function NodeEditor({
   return (
     <section className="work__form" aria-label={`Edit ${node.title}`}>
       <h2 className="ink__label">{node.title}</h2>
+      <div className="work__actions">
+        {node.fundamentalId ? (
+          <Link className="work__btn" to={fundamentalsTo}>
+            On fundamentals · Not started unless you set a level there
+          </Link>
+        ) : (
+          <span className="work__quiet">Not on the fundamentals list.</span>
+        )}
+        <button type="button" className="work__btn" onClick={onFundamental}>
+          {node.fundamentalId ? 'Take off fundamentals' : 'Put on fundamentals list'}
+        </button>
+      </div>
       <label>
         <span className="ink__label">Title</span>
         <input aria-label="Technique title" value={title} onChange={(event) => setTitle(event.target.value)} />
@@ -344,6 +449,81 @@ function NodeEditor({
           Remove from my list
         </button>
       )}
+    </section>
+  );
+}
+
+function ShareReview({
+  preview,
+  choices,
+  onChoice,
+  onCancel,
+  onAccept,
+}: {
+  preview: SharePreview;
+  choices: Record<string, ShareChoice>;
+  onChoice: (shareId: string, choice: ShareChoice) => void;
+  onCancel: () => void;
+  onAccept: () => void;
+}) {
+  return (
+    <section className="work__form" aria-label="Review technique share">
+      <h2 className="ink__label">Review {preview.file.name}</h2>
+      <p className="work__quiet">
+        Nothing is added until you accept. Imported techniques join your working list and are not marked learned.
+      </p>
+      <p className="work__quiet">
+        {preview.add.length} new, {preview.unchanged.length} already here, {preview.conflicts.length} need a choice.
+      </p>
+      <ul className="work__list">
+        {preview.add.map((node) => (
+          <li key={node.shareId}>Add {node.title}</li>
+        ))}
+        {preview.conflicts.map((conflict) => {
+          const chosen = choices[conflict.shareId] ?? (conflict.kind === 'title' ? 'keep' : 'skip');
+          return (
+            <li key={conflict.shareId} className="work__edge">
+              <span>
+                {conflict.kind === 'title'
+                  ? `You call this ${conflict.localTitle}. The file calls it ${conflict.title}.`
+                  : `${conflict.title} matches a technique already on your list, with a different id.`}
+              </span>
+              {conflict.kind === 'title' ? (
+                <>
+                  <button type="button" className="work__btn" aria-pressed={chosen === 'keep'} onClick={() => onChoice(conflict.shareId, 'keep')}>
+                    Keep my title
+                  </button>
+                  <button type="button" className="work__btn" aria-pressed={chosen === 'take'} onClick={() => onChoice(conflict.shareId, 'take')}>
+                    Use the file title
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="work__btn" aria-pressed={chosen === 'skip'} onClick={() => onChoice(conflict.shareId, 'skip')}>
+                    Leave them separate
+                  </button>
+                  <button
+                    type="button"
+                    className="work__btn"
+                    aria-pressed={chosen === 'use-local'}
+                    onClick={() => onChoice(conflict.shareId, 'use-local')}
+                  >
+                    Use the one already on my list
+                  </button>
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="work__actions">
+        <button type="button" className="work__btn work__btn--primary" onClick={onAccept}>
+          Accept import
+        </button>
+        <button type="button" className="work__btn" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
     </section>
   );
 }
