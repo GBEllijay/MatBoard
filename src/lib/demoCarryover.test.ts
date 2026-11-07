@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   DEMO_CARRY_KEY,
   DEMO_CARRY_MAX_CHARS,
+  demoBackupDownload,
   demoFingerprint,
   doorsForProduct,
   planDemoCarryover,
@@ -10,6 +11,9 @@ import {
   settleDemoCarryover,
   stageStudentDemoFile,
 } from './demoCarryover.ts';
+import { exportProgressPacket } from './progress/format.ts';
+import { parseStudentBackup } from './studentBackup.ts';
+import { blankStudentReport } from './studentEdition.ts';
 import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from '../server/routes.ts';
 
 function memory() {
@@ -111,6 +115,25 @@ test('cancel and a failed confirm leave the staged copy, and a later real edit i
   const second = planDemoCarryover(store, ['student'], store.getItem('matboard.studentEdition.v1'));
   assert.equal(second.action, 'needs-choice');
   assert.equal(second.writeText, null);
+});
+
+test('the download is a normal student backup and leaves out video files', () => {
+  const report = blankStudentReport(20);
+  report.profile = { ...report.profile, displayName: 'Alex' };
+  const text = exportProgressPacket(report);
+  const download = demoBackupDownload(text, '2026-11-07');
+  assert.equal(download.ok, true);
+  if (!download.ok) return;
+  assert.equal(download.json.includes('advantage.entitlement'), false);
+  assert.equal(download.json.includes('filmFiles'), true);
+  const parsed = parseStudentBackup(download.json);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.equal(parsed.file.report.profile.displayName, 'Alex');
+  assert.equal(parsed.file.filmFiles, undefined);
+  assert.equal(parsed.file.filmFilesOmitted?.[0]?.reason.includes('Video files'), true);
+  const raw = parseStudentBackup(text);
+  assert.equal(raw.ok, false);
 });
 
 test('a tampered stage is ignored', () => {

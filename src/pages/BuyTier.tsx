@@ -23,7 +23,7 @@ import {
 } from '../lib/productPrices';
 import { COACH_UNLIMITED_PATH, INSTRUCTOR_HOME_TITLE, PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
 import { INSTRUCTOR_DISPLAY_PRICE_CENTS, TIER_BUY_PATHS } from '../lib/tierBuyPages';
-import { settleDemoCarryover } from '../lib/demoCarryover';
+import { settleDemoCarryover, type CarryResult } from '../lib/demoCarryover';
 import { rememberStudentPurchase, STUDENT_PRODUCT_ID, studentEditionEntitled } from '../lib/studentEdition';
 import { buyCheckoutBody } from '../lib/halfOff';
 import { MEDIA_EDITION_LIST_PRICE_CENTS, MEDIA_EDITION_NAME } from '../lib/mediaEdition';
@@ -109,7 +109,8 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<WhiteEntitlementStatus | null>(null);
-  const [carryNote, setCarryNote] = useState('');
+  const [carry, setCarry] = useState<CarryResult | null>(null);
+  const [carryGrants, setCarryGrants] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
   const halfOff = useHalfOffArrival();
   const proUnlocked = useProUnlocked();
@@ -171,8 +172,9 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
       if (tier.product === 'coach' && result.grants.includes('coach')) {
         /* Coach checkout confirm sets the flag inside applyServerGrant. */
       }
+      setCarryGrants(result.grants);
       const carried = settleDemoCarryover(localStorage, result.grants);
-      if (carried.message) setCarryNote(carried.message);
+      if (carried.message) setCarry(carried);
       setRecord(status);
     });
     return () => {
@@ -251,10 +253,23 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
                         : "That payment isn't confirmed. Nothing was unlocked."}
               </p>
             ) : null}
-            {carryNote ? (
-              <p className="buy__status" role="status">
-                {carryNote}
-              </p>
+            {carry?.message ? (
+              <div className="buy__status" role="status">
+                <p>{carry.message}</p>
+                {carry.action === 'needs-choice' ? (
+                  <div role="group" aria-label="Choose what to keep">
+                    <button type="button" onClick={() => setCarry({ ...carry, action: 'kept-real', message: 'The file already on this phone stays. The demo copy remains saved here.' })}>
+                      Keep the file on this phone
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCarry(settleDemoCarryover(localStorage, carryGrants, 'use-demo'))}
+                    >
+                      Use the demo copy
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             ) : null}
             {checkout === 'cancel' ? (
               <p className="buy__status" role="status">

@@ -188,3 +188,35 @@ export function settleDemoCarryover(storage: Store, grants: readonly string[], c
 export function demoCarryActive(storage: Pick<Store, 'getItem'>): boolean {
   return readStagedDemo(storage) !== null;
 }
+
+/**
+ * A download the existing Student backup restore accepts.
+ * Video files and photos are not copied. Tokens are refused.
+ */
+export function demoBackupDownload(text: string, exportedAt = ''): { ok: true; json: string } | { ok: false; error: string } {
+  if (!text.trim()) return { ok: false, error: 'There is no demo file to download.' };
+  if (demoTextUnsafe(text)) return { ok: false, error: 'That demo file was not downloaded.' };
+  let report: unknown;
+  try {
+    report = JSON.parse(text);
+  } catch {
+    return { ok: false, error: 'That demo file is not JSON.' };
+  }
+  return {
+    ok: true,
+    json: JSON.stringify({
+      advantage: 'student-journal-backup',
+      version: 1,
+      exportedAt,
+      report,
+      assessment: { entries: [] },
+      scouting: [],
+      rankPhotos: { belts: {}, tapes: {} },
+      bracketPhotos: {},
+      coachPlan: null,
+      coachFeedback: null,
+      films: [],
+      filmFilesOmitted: [{ id: 'demo-media', reason: 'Video files and photos from the demo are not in this backup.' }],
+    }),
+  };
+}
