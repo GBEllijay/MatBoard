@@ -12,7 +12,9 @@ import {
   setBracketPhotoFlag,
 } from '../../lib/studentCompetition';
 import { bracketPhotoFromFile, deleteBracketPhoto, loadBracketPhoto, writeBracketPhoto } from '../../lib/bracketPhoto';
+import { forgetPodiumPhotos } from '../../lib/podiumPhotos';
 import { todayIso } from '../../lib/studentEdition';
+import { PodiumPhotoRow } from './PodiumPhotos';
 import { isIsoDate } from '../../lib/studentTools';
 import { LeatherHeader, StudentMarks, useStudentFile } from './chrome';
 
@@ -52,7 +54,7 @@ export function ResultsPage() {
       <div className="student-paper">
         <div className="student-sheet">
           <p className="student-quiet">
-            Record matches and a personal bracket. This is not a live scoreboard. A bracket photo stays on this phone and is not in the file you send.
+            Record matches and a personal bracket. This is not a live scoreboard. A bracket photo stays on this phone and is not in the file you send. Podium photos stay on this phone too. They are not sent to your coach.
           </p>
           <form
             className="ink comp-form"
@@ -131,6 +133,7 @@ function ResultCard({
     <li id={result.id} className="ink tournament-card">
       <strong>{result.tournamentName}</strong>
       {result.division ? <span>{result.division}</span> : null}
+      <PodiumPhotoRow studentId={report.studentId} resultId={result.id} label={result.tournamentName} />
       <ul className="comp-goals" aria-label={`Matches for ${result.tournamentName}`}>
         {result.matches.map((match) => (
           <li key={match.id}>
@@ -310,6 +313,7 @@ function ResultCard({
             className="ink-btn"
             onClick={() => {
               deleteBracketPhoto(result.id);
+              forgetPodiumPhotos(report.studentId, result.id);
               commit(removeCompetitionResult(report, result.id));
             }}
           >

@@ -157,7 +157,7 @@ export function BeltPhotoSection({
   );
 }
 
-function GalleryDialog({
+export function GalleryDialog({
   id,
   label,
   photos,
@@ -165,6 +165,7 @@ function GalleryDialog({
   onIndex,
   onClose,
   onRemove,
+  emptyNote = 'No photos on this belt yet. Photo adds one.',
 }: {
   id: string;
   label: string;
@@ -173,6 +174,7 @@ function GalleryDialog({
   onIndex: (index: number) => void;
   onClose: () => void;
   onRemove: (index: number) => void;
+  emptyNote?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -234,7 +236,7 @@ function GalleryDialog({
           </button>
         </div>
         {photos.length === 0 || !image ? (
-          <p className="rank-gallery__empty">No photos on this belt yet. Photo adds one.</p>
+          <p className="rank-gallery__empty">{emptyNote}</p>
         ) : (
           <>
             <img className="rank-gallery__stage" src={image} alt={`${label} photo ${index + 1}`} />
