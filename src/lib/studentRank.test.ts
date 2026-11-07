@@ -13,6 +13,7 @@ import {
   emptyRank,
   ladderRungs,
   normalizeStoredRank,
+  rankFaceLabel,
   rankMarks,
   rankOf,
   removeRankHistory,
@@ -25,6 +26,7 @@ import {
   setRankTapeDate,
   stripeCountControl,
   stripeReportLine,
+  wornBeltPreview,
 } from './studentRank.ts';
 import { addCalendarEvent, progressReportFiles, setStudentBelt } from './studentTools.ts';
 
@@ -429,6 +431,37 @@ test('kids belt taps stay on the kids ladder when adult belts move', () => {
   assert.equal(report.rank?.tapeCount, 6);
   assert.equal(report.rank?.instructorBars, true);
   assert.equal(report.beltBook?.kids?.history.filter((row) => row.beltId === 'grey-white').length, 1);
+});
+
+test('the profile rank line uses an ordinal degree and a stripe count', () => {
+  let black = setRankBelt(blankStudentReport(1), 'black', 2);
+  black = setRankTapeCount(black, 1, 3);
+  assert.equal(rankFaceLabel(wornBeltPreview(black)), 'Black belt · 1st degree');
+  black = setRankTapeCount(black, 3, 4);
+  assert.equal(rankFaceLabel(wornBeltPreview(black)), 'Black belt · 3rd degree');
+  black = setRankTapeCount(black, 0, 5);
+  assert.equal(rankFaceLabel(wornBeltPreview(black)), 'Black belt · 0 degrees');
+
+  let blue = setRankBelt(blankStudentReport(6), 'blue', 7);
+  blue = setRankTapeCount(blue, 2, 8);
+  assert.equal(rankFaceLabel(wornBeltPreview(blue)), 'Blue belt · 2 stripes');
+  blue = setRankTapeCount(blue, 1, 9);
+  assert.equal(rankFaceLabel(wornBeltPreview(blue)), 'Blue belt · 1 stripe');
+
+  const coral = setRankBelt(blankStudentReport(10), 'coral', 11);
+  assert.equal(rankFaceLabel(wornBeltPreview(coral)), 'Coral belt · 7th degree');
+  const redWhite = setRankBelt(blankStudentReport(12), 'redWhite', 13);
+  assert.equal(rankFaceLabel(wornBeltPreview(redWhite)), 'Red and white belt · 8th degree');
+  const red = setRankBelt(blankStudentReport(14), 'red', 15);
+  assert.equal(rankFaceLabel(wornBeltPreview(red)), 'Red belt · 9th degree');
+
+  let kids = setBeltMode(blankStudentReport(20), 'kids', 21);
+  kids = setKidsBelt(kids, 'grey-white', 22);
+  kids = setKidsTapeCount(kids, 2, 23);
+  const kidsLabel = rankFaceLabel(wornBeltPreview(kids));
+  assert.match(kidsLabel, /2 stripes$/);
+  assert.doesNotMatch(kidsLabel, /2nd stripe/);
+  assert.doesNotMatch(kidsLabel, /Black belt/);
 });
 
 test('coral and red are separate ranks after black', () => {

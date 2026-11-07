@@ -11,6 +11,8 @@ import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
+import { STUDENT_EDITION_UNLOCK_STORAGE_KEY } from '../../lib/studentUnlock.ts';
+import { setRankBelt, setRankTapeCount } from '../../lib/studentRank.ts';
 import { addJournalEntry, blankStudentReport, loadStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
 import { exportProgressPacket, parseProgressPacket } from '../../lib/progress/format.ts';
 import { StudentEditionPage } from '../StudentEdition.tsx';
@@ -518,4 +520,96 @@ test('card radar reads the latest check-in; the self-assessment page is unchange
   assert.ok(assess.host.querySelectorAll('button.assess-tap').length >= 5);
   assert.equal(assess.host.querySelector('[data-testid="card-radar"], [data-testid="card-medals"], [data-testid="mat-hours-frame"]'), null);
   unmount(assess);
+});
+
+test('the profile rank link is the rank only and still opens My rank', () => {
+  localStorage.clear();
+  let report = setRankBelt(blankStudentReport(10), 'black', 11);
+  report = setRankTapeCount(report, 1, 12);
+  saveStudentReport(localStorage, report);
+  const page = mount(<StudentEditionPage />, '/student/profile?student=1');
+  const belt = page.host.querySelector('a.profile-face__belt') as HTMLAnchorElement;
+  assert.ok(belt);
+  assert.equal(belt.querySelector('.profile-face__belt-text')?.textContent, 'Black belt · 1st degree');
+  assert.equal(belt.textContent?.includes('change on the rank page'), false);
+  assert.equal(belt.getAttribute('href'), '/student/rank?student=1');
+  assert.equal(belt.tabIndex >= 0, true);
+  unmount(page);
+
+  localStorage.clear();
+  let blue = setRankBelt(blankStudentReport(20), 'blue', 21);
+  blue = setRankTapeCount(blue, 2, 22);
+  saveStudentReport(localStorage, blue);
+  const stripes = mount(<StudentEditionPage />, '/student/profile?student=1');
+  assert.equal(stripes.host.querySelector('.profile-face__belt-text')?.textContent, 'Blue belt · 2 stripes');
+  unmount(stripes);
+});
+
+test('short and long mat-hour totals stay whole inside the frame, and the timer stays', () => {
+  const css = readFileSync('src/pages/student/profile.css', 'utf8');
+  const layout = readFileSync('src/pages/student/studentCardLayout.css', 'utf8');
+  assert.match(css, /\.profile-face \.mh-frame[\s\S]*padding: 8px 12px/);
+  assert.match(css, /\.profile-face \.mh-frame[\s\S]*flex-direction: column/);
+  assert.match(css, /@media \(min-width: 480px\) \{\s*\.profile-face \.mh-frame \{ flex-direction: row/);
+  assert.match(layout, /flex-direction: column/);
+  assert.match(layout, /flex-direction: row/);
+  assert.doesNotMatch(css, /\.profile-face \.mh-frame[\s\S]*overflow:\s*hidden/);
+  assert.match(css, /\.profile-face \.mh-timer[\s\S]*min-height: 44px/);
+
+  localStorage.clear();
+  const short = addJournalEntry(
+    blankStudentReport(1),
+    { date: '2026-10-11', className: 'Gi', gameTag: '', techniques: [], partners: '', drills: '', rolls: '', notes: 'n', minutes: 150 },
+    2,
+  );
+  saveStudentReport(localStorage, short);
+  const small = mount(<StudentEditionPage />, '/student/profile?student=1');
+  const shortFrame = small.host.querySelector('[data-testid="mat-hours-frame"]') as HTMLElement;
+  assert.equal(shortFrame.querySelector('.mh-frame__value')?.textContent, '2.5');
+  assert.equal(shortFrame.querySelector('.mh-frame__unit')?.textContent, 'mat hrs');
+  assert.ok(small.host.querySelector('[aria-label="Add mat time"]'));
+  unmount(small);
+
+  localStorage.clear();
+  const one = addJournalEntry(
+    blankStudentReport(3),
+    { date: '2026-10-11', className: 'Gi', gameTag: '', techniques: [], partners: '', drills: '', rolls: '', notes: 'n', minutes: 720 },
+    4,
+  ).journal[0];
+  const longReport = {
+    ...blankStudentReport(5),
+    journal: Array.from({ length: 500 }, (_, index) => ({ ...one, id: `hour-${index}`, createdAt: index, updatedAt: index })),
+  };
+  saveStudentReport(localStorage, longReport);
+  const big = mount(<StudentEditionPage />, '/student/profile?student=1');
+  const longFrame = big.host.querySelector('[data-testid="mat-hours-frame"]') as HTMLElement;
+  assert.equal(longFrame.querySelector('.mh-frame__value')?.textContent, '6000');
+  assert.equal(longFrame.querySelector('.mh-frame__unit')?.textContent, 'mat hrs');
+  click(longFrame);
+  assert.equal(longFrame.querySelector('.mh-frame__value')?.textContent, '250.0');
+  assert.equal(longFrame.querySelector('.mh-frame__unit')?.textContent, 'mat days');
+  assert.ok(big.host.querySelector('[aria-label="Add mat time"]'));
+  unmount(big);
+});
+
+test('a licensed profile shows the same rank link and mat-hours frame without the demo query', () => {
+  localStorage.clear();
+  localStorage.setItem(STUDENT_EDITION_UNLOCK_STORAGE_KEY, '1');
+  let report = setRankBelt(blankStudentReport(8), 'black', 9);
+  report = setRankTapeCount(report, 1, 10);
+  report = addJournalEntry(
+    report,
+    { date: '2026-10-11', className: 'Gi', gameTag: '', techniques: [], partners: '', drills: '', rolls: '', notes: 'n', minutes: 150 },
+    11,
+  );
+  saveStudentReport(localStorage, report);
+  const page = mount(<StudentEditionPage />, '/student/profile');
+  assert.equal(page.host.textContent?.includes('DEMO MODE'), false);
+  const belt = page.host.querySelector('a.profile-face__belt') as HTMLAnchorElement;
+  assert.equal(belt.querySelector('.profile-face__belt-text')?.textContent, 'Black belt · 1st degree');
+  assert.equal(belt.getAttribute('href'), '/student/rank');
+  const frame = page.host.querySelector('[data-testid="mat-hours-frame"]') as HTMLElement;
+  assert.equal(frame.querySelector('.mh-frame__value')?.textContent, '2.5');
+  assert.equal(frame.querySelector('.mh-frame__unit')?.textContent, 'mat hrs');
+  unmount(page);
 });
