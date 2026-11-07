@@ -27,3 +27,6 @@ mark.journal-hit { background: #ffe26a; color: inherit; border-radius: 2px; padd
 
 .technique-line .ink--tech input { min-height: 44px; }
 .technique-line .student-pick { min-height: 44px; }
+.technique-line__work { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+.technique-line__work .student-pick { min-height: 44px; margin: 0; }
+.technique-line__open { display: inline-flex; align-items: center; min-height: 44px; font-size: 1rem; text-decoration: underline; text-underline-offset: 0.15em; }
