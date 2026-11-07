@@ -31,9 +31,11 @@ import {
   checkpointTitle,
   copyFocusToGoal,
   copySuggestionToGoal,
+  dismissGoalPrompt,
   criterionCounts,
   eventsOnDate,
   goalCopied,
+  goalPromptsForBelt,
   goalsForBelt,
   gymClassesOnDate,
   isUntouchedLegacyBrown,
@@ -52,8 +54,11 @@ import {
   setCriterionMark,
   setGoalMet,
   updateGoal,
+  withGoalPromptLinks,
   withStarterRubric,
 } from './studentTools.ts';
+import { acceptCoachSyncUpdate, buildCoachBeltProgressUpdate, emptyCoachOverlay } from './coachSync.ts';
+import { emptyUpdateLedger } from './coachRankUpdate.ts';
 
 function legacyCriterion(belt: string, slug: string, requirement: string, techniqueId: string, techniqueName: string): RubricCriterion {
   return {
@@ -663,5 +668,179 @@ test('legacy progress files still load without checkpoint source or degree focus
   assert.equal(guard?.source, undefined);
   assert.equal(parsed.value.goals[0]?.name, 'Old goal');
   assert.equal(parsed.value.goals[0]?.belt, undefined);
+  assert.equal(parsed.value.goals[0]?.prompt, undefined);
+  assert.equal(parsed.value.dismissedGoalPrompts, undefined);
   assert.equal(goalsForBelt(parsed.value, 'white').some((goal) => goal.name === 'Old goal'), true);
+});
+
+test('dismissing a suggestion, then reloading, keeps it gone without adding a goal', () => {
+  let report = setRankBelt(withStarterRubric(blankStudentReport(40), 40), 'brown', 41);
+  report = setRankAwardedOn(report, '2024-03-04', 42);
+  report = setRankTapeCount(report, 1, 43);
+  const before = structuredClone(report.rubric);
+  report = dismissGoalPrompt(report, 'Lineage and history', 44);
+  assert.equal(report.goals.length, 0);
+  assert.deepEqual(report.dismissedGoalPrompts, ['Lineage and history']);
+  assert.equal(goalPromptsForBelt(report, 'brown').includes('Lineage and history'), false);
+  assert.equal(goalPromptsForBelt(report, 'brown').includes('Teaching: lead a class'), true);
+  assert.equal(report.profile.belt, 'brown');
+  assert.equal(report.rank?.tapeCount, 1);
+  assert.equal(report.rank?.awardedOn, '2024-03-04');
+  assert.equal(JSON.stringify(report.rubric), JSON.stringify(before));
+  const again = dismissGoalPrompt(report, 'lineage and history', 45);
+  assert.equal(again, report);
+  const roundTrip = parseProgressPacket(exportProgressPacket(report));
+  assert.equal(roundTrip.ok, true);
+  if (!roundTrip.ok || roundTrip.value.kind !== 'student-progress-report') return;
+  assert.deepEqual(roundTrip.value.dismissedGoalPrompts, ['Lineage and history']);
+  assert.equal(roundTrip.value.goals.length, 0);
+  const reloaded = saveStudentReport({ getItem: () => null, setItem() {}, removeItem() {} }, roundTrip.value);
+  assert.equal(goalPromptsForBelt(reloaded, 'brown').includes('Lineage and history'), false);
+});
+
+test('removing an adopted suggestion does not bring it back, and a custom goal still edits', () => {
+  let report = setRankBelt(blankStudentReport(50), 'black', 51);
+  report = addGoal(report, 'Teaching: lead a class', '', 52, 'black', undefined, 'Teaching: lead a class');
+  assert.equal(report.goals[0]?.prompt, 'Teaching: lead a class');
+  assert.equal(goalPromptsForBelt(report, 'black').includes('Teaching: lead a class'), false);
+  report = updateGoal(report, report.goals[0]!.id, 'Lead the kids class', 'Thursday', 53);
+  assert.equal(report.goals[0]?.name, 'Lead the kids class');
+  assert.equal(report.goals[0]?.prompt, 'Teaching: lead a class');
+  assert.equal(goalPromptsForBelt(report, 'black').includes('Teaching: lead a class'), false);
+  report = setGoalMet(report, report.goals[0]!.id, true, 54);
+  assert.equal(report.goals[0]?.met, true);
+  report = removeGoal(report, report.goals[0]!.id, 55);
+  assert.equal(report.goals.length, 0);
+  assert.deepEqual(report.dismissedGoalPrompts, ['Teaching: lead a class']);
+  assert.equal(goalPromptsForBelt(report, 'black').includes('Teaching: lead a class'), false);
+  report = addGoal(report, 'Film my guard', 'slow rounds', 56, 'black');
+  report = updateGoal(report, report.goals[0]!.id, 'Film my closed guard', 'from the knees', 57);
+  report = setGoalMet(report, report.goals[0]!.id, true, 58);
+  assert.equal(report.goals[0]?.name, 'Film my closed guard');
+  assert.equal(report.goals[0]?.note, 'from the knees');
+  assert.equal(report.goals[0]?.met, true);
+  assert.equal(report.goals[0]?.prompt, undefined);
+  assert.deepEqual(report.dismissedGoalPrompts, ['Teaching: lead a class']);
+  report = removeGoal(report, report.goals[0]!.id, 59);
+  assert.equal(report.goals.length, 0);
+  assert.deepEqual(report.dismissedGoalPrompts, ['Teaching: lead a class']);
+  assert.equal(report.profile.belt, 'black');
+  assert.equal(report.rank?.tapeCount, 0);
+});
+
+test('older files migrate an adopted suggestion and leave other belts and kids goals alone', () => {
+  let report = setRankBelt(blankStudentReport(60), 'brown', 61);
+  report = addGoal(report, 'Personal game refinement', 'old', 62, 'brown');
+  report = addGoal(report, 'Teaching: lead a class', 'white belt note', 63, 'white');
+  report = addGoal(report, 'Giving back to the gym', 'kids note', 64, undefined, 'grey-white');
+  const raw = JSON.parse(exportProgressPacket(report)) as {
+    goals: { name: string; prompt?: string; belt?: string; kidsBeltId?: string }[];
+    dismissedGoalPrompts?: string[];
+  };
+  delete raw.dismissedGoalPrompts;
+  for (const goal of raw.goals) delete goal.prompt;
+  const parsed = parseProgressPacket(JSON.stringify(raw));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  assert.equal(parsed.value.dismissedGoalPrompts, undefined);
+  assert.equal(parsed.value.goals.every((goal) => goal.prompt === undefined), true);
+  assert.equal(parsed.value.goals[1]?.belt, 'white');
+  assert.equal(parsed.value.goals[2]?.kidsBeltId, 'grey-white');
+  const linked = withGoalPromptLinks(parsed.value);
+  assert.equal(linked.goals[0]?.prompt, 'Personal game refinement');
+  assert.equal(linked.goals[1]?.prompt, undefined);
+  assert.equal(linked.goals[2]?.prompt, undefined);
+  assert.equal(withGoalPromptLinks(linked), linked);
+  const removedBrown = removeGoal(linked, linked.goals[0]!.id, 65);
+  assert.deepEqual(removedBrown.dismissedGoalPrompts, ['Personal game refinement']);
+  const removedWhite = removeGoal(removedBrown, removedBrown.goals[0]!.id, 66);
+  const removedKids = removeGoal(removedWhite, removedWhite.goals[0]!.id, 67);
+  assert.deepEqual(removedKids.dismissedGoalPrompts, ['Personal game refinement']);
+  assert.equal(removedKids.goals.length, 0);
+  const junk = JSON.parse(exportProgressPacket(removedKids)) as { dismissedGoalPrompts: unknown };
+  junk.dismissedGoalPrompts = ['Not a suggestion', 'Personal game refinement', 4, 'personal game refinement'];
+  const kept = parseProgressPacket(JSON.stringify(junk));
+  assert.equal(kept.ok, true);
+  if (!kept.ok || kept.value.kind !== 'student-progress-report') return;
+  assert.deepEqual(kept.value.dismissedGoalPrompts, ['Personal game refinement']);
+});
+
+test('personal goal dismissals stay on this student and do not change coach requirements or milestones', () => {
+  let report = setRankBelt(withStarterRubric(blankStudentReport(70), 70), 'brown', 71);
+  report = setRankAwardedOn(report, '2022-05-06', 72);
+  report = setRankTapeCount(report, 3, 73);
+  report.rubric.studentsCanEdit = false;
+  const brown = report.rubric.levels.find((level) => level.belt === 'brown');
+  assert.ok(brown);
+  brown.checkpoints = [
+    ...brown.checkpoints,
+    { id: 'checkpoint.brown.coach-lock', name: 'Coach requires this', met: null, note: 'Keep this', source: 'coach', criteria: [] },
+  ];
+  const coach = brown.checkpoints.find((row) => row.id === 'checkpoint.brown.coach-lock');
+  assert.ok(coach);
+  report = dismissGoalPrompt(report, 'Competition or rolling goals', 74);
+  report = addGoal(report, 'Giving back to the gym', '', 75, 'brown', undefined, 'Giving back to the gym');
+  report = removeGoal(report, report.goals[0]!.id, 76);
+  assert.throws(() => removeCheckpoint(report, coach.id, 77), /coach/);
+  assert.throws(() => renameCheckpoint(report, coach.id, 'Other', 78), /coach/);
+  assert.equal(coach.name, 'Coach requires this');
+  assert.equal(coach.note, 'Keep this');
+  assert.equal(coach.met, null);
+  assert.equal(report.profile.belt, 'brown');
+  assert.equal(report.rank?.tapeCount, 3);
+  assert.equal(report.rank?.awardedOn, '2022-05-06');
+  assert.equal(report.rubric.studentsCanEdit, false);
+  assert.deepEqual(report.dismissedGoalPrompts, ['Competition or rolling goals', 'Giving back to the gym']);
+
+  const suggestion = { id: 'note-1', targetId: 'checkpoint.brown.coach-lock', note: 'Showing up in live rounds.' };
+  report = copySuggestionToGoal(report, suggestion, 79);
+  assert.equal(goalCopied(report, suggestion.id), true);
+  report = removeGoal(report, report.goals[0]!.id, 80);
+  assert.deepEqual(report.dismissedGoalPrompts, ['Competition or rolling goals', 'Giving back to the gym']);
+  assert.equal(report.rubric.levels.find((level) => level.belt === 'brown')?.checkpoints.some((row) => row.id === coach.id), true);
+
+  const shelf = { plan: null, feedback: null };
+  const imported = applyCoachFile(report, shelf, sampleCoachPlanFile(report.studentId, 81).json);
+  assert.equal(imported.error, '');
+  assert.equal(imported.report.goals.length, 0);
+  assert.deepEqual(imported.report.dismissedGoalPrompts, report.dismissedGoalPrompts);
+  assert.equal(JSON.stringify(imported.report.rubric), JSON.stringify(report.rubric));
+  assert.equal(imported.report.rank?.tapeCount, 3);
+
+  const built = buildCoachBeltProgressUpdate({
+    studentId: report.studentId,
+    belt: 'brown',
+    issuedOn: '2026-11-01',
+    benchmarks: [{ targetId: coach.id, name: 'Coach requires this', coachStatus: 'ready', note: 'private note stays on the coach file' }],
+    now: 82,
+    updateId: 'belt-brown-1',
+  });
+  assert.equal(built.ok, true);
+  if (!built.ok) return;
+  const accepted = acceptCoachSyncUpdate(imported.report, built.packet, emptyUpdateLedger(), emptyCoachOverlay(), 83);
+  assert.equal(accepted.applied, true);
+  assert.equal(accepted.report, imported.report);
+  assert.equal(accepted.overlay.beltProgress.brown?.benchmarks[0]?.name, 'Coach requires this');
+  assert.equal(accepted.report.goals.length, 0);
+  assert.deepEqual(accepted.report.dismissedGoalPrompts, imported.report.dismissedGoalPrompts);
+
+  const other = dismissGoalPrompt(
+    { ...structuredClone(blankStudentReport(90)), studentId: 'other-student', profile: { ...blankStudentReport(90).profile, id: 'other-student' } },
+    'Lineage and history',
+    91,
+  );
+  const refused = mergeStudentProgress(imported.report, other);
+  assert.match(refused.conflicts.join(' '), /different student/);
+  assert.deepEqual(refused.report.dismissedGoalPrompts, imported.report.dismissedGoalPrompts);
+  assert.equal(refused.report.goals.length, imported.report.goals.length);
+
+  const incoming = dismissGoalPrompt(structuredClone(imported.report), 'Lineage and history', 92);
+  delete incoming.dismissedGoalPrompts;
+  incoming.dismissedGoalPrompts = ['Lineage and history'];
+  const merged = mergeStudentProgress(imported.report, incoming);
+  assert.deepEqual(merged.report.dismissedGoalPrompts, ['Competition or rolling goals', 'Giving back to the gym', 'Lineage and history']);
+  const older = structuredClone(imported.report);
+  delete older.dismissedGoalPrompts;
+  const kept = mergeStudentProgress(merged.report, older);
+  assert.deepEqual(kept.report.dismissedGoalPrompts, merged.report.dismissedGoalPrompts);
 });

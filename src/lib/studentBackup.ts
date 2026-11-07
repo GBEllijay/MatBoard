@@ -11,7 +11,7 @@ import {
 } from './academyPathway.ts';
 import { competitionOf } from './progress/competition.ts';
 import { shareTournaments } from './sharedTournaments.ts';
-import { PROGRESS_CSV_HEADERS, exportProgressCsv, parseProgressPacket, parseProgressValue } from './progress/format.ts';
+import { PROGRESS_CSV_HEADERS, exportProgressCsv, mergeDismissedGoalPrompts, parseProgressPacket, parseProgressValue } from './progress/format.ts';
 import { RANK_BELTS, type StudentProgressReport } from './progress/types.ts';
 import { RANK_PHOTO_KEY, emptyRankPhotoStore, type RankPhotoStore } from './rankPhotos.ts';
 import { assessmentReportPdf, progressReportPdf } from './reportPdf.ts';
@@ -452,7 +452,11 @@ export function mergeStudentReports(local: StudentProgressReport, incoming: Stud
   const incomingComp = competitionOf(incoming);
   const rank = incomingNewer ? incoming.rank ?? local.rank ?? emptyRank() : local.rank ?? incoming.rank ?? emptyRank();
   const history = mergeById(local.rank?.history ?? [], incoming.rank?.history ?? [], (_left, right) => right);
-  return shareTournaments({
+  const sameStudent = local.studentId === incoming.studentId;
+  const dismissedGoalPrompts = sameStudent
+    ? mergeDismissedGoalPrompts(local.dismissedGoalPrompts, incoming.dismissedGoalPrompts)
+    : local.dismissedGoalPrompts;
+  const merged = shareTournaments({
     ...local,
     updatedAt: Math.max(local.updatedAt, incoming.updatedAt),
     profile: incomingNewer ? incoming.profile : local.profile,
@@ -475,6 +479,9 @@ export function mergeStudentReports(local: StudentProgressReport, incoming: Stud
       results: mergeById(localComp.results, incomingComp.results, (_left, right) => right),
     },
   });
+  if (dismissedGoalPrompts?.length) merged.dismissedGoalPrompts = dismissedGoalPrompts;
+  else delete merged.dismissedGoalPrompts;
+  return merged;
 }
 
 function mergeAssessments(local: AssessmentState, incoming: AssessmentState): AssessmentState {

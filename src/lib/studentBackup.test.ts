@@ -2,14 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { exportProgressPacket } from './progress/format.ts';
 import { addTournament } from './studentCompetition.ts';
-import { addJournalClip, addJournalEntry, blankStudentReport, loadStudentReport, setStudentProfile } from './studentEdition.ts';
-import { setRankLineage } from './studentRank.ts';
+import { addJournalClip, addJournalEntry, blankStudentReport, loadStudentReport, saveStudentReport, setStudentProfile } from './studentEdition.ts';
+import { setRankBelt, setRankLineage } from './studentRank.ts';
 import { loadAssessments, saveAssessment } from './studentAssessment.ts';
 import {
   BACKUP_BEFORE_CLEAR,
   BACKUP_NOT_A_BACKUP,
   STUDENT_BACKUP_VIDEO_MAX_BYTES,
   applyBackupToMemory,
+  mergeStudentReports,
+  STUDENT_BACKUP_KIND,
+  STUDENT_BACKUP_VERSION,
   JOURNAL_BACKUP_LABEL,
   backupFileGuide,
   backupVideoTooLargeMessage,
@@ -32,6 +35,7 @@ import { backupStampLabel, readStudentBackupStamp } from './studentBackupStamp.t
 import { emptyRankPhotoStore } from './rankPhotos.ts';
 import { pdfToText, textToPdf } from './simplePdf.ts';
 import { setBeltMode } from './beltBook.ts';
+import { dismissGoalPrompt } from './studentTools.ts';
 import { pdfImageFromRgb } from './pdfRaster.ts';
 import { readProfilePortrait } from './profilePortrait.ts';
 import { readStudentGymLogo } from './studentGymMark.ts';
@@ -564,4 +568,49 @@ test('an older journal backup still loads its self-assessment', async () => {
   assert.equal(missing.ok, true);
   if (!missing.ok) return;
   assert.deepEqual(missing.file.assessment.entries, []);
+});
+
+test('personal goal dismissals travel in a backup for this student only', () => {
+  const local = dismissGoalPrompt(setRankBelt(blankStudentReport(1), 'brown', 2), 'Lineage and history', 3);
+  const incoming = dismissGoalPrompt(structuredClone(local), 'Giving back to the gym', 4);
+  const merged = mergeStudentReports(local, incoming);
+  assert.deepEqual(merged.dismissedGoalPrompts, ['Lineage and history', 'Giving back to the gym']);
+  const foreign = dismissGoalPrompt(
+    { ...structuredClone(blankStudentReport(5)), studentId: 'other-student' },
+    'Competition or rolling goals',
+    6,
+  );
+  const kept = mergeStudentReports(local, foreign);
+  assert.equal(kept.studentId, local.studentId);
+  assert.deepEqual(kept.dismissedGoalPrompts, ['Lineage and history']);
+  const file = {
+    advantage: STUDENT_BACKUP_KIND,
+    version: STUDENT_BACKUP_VERSION,
+    exportedAt: '2026-11-07T00:00:00.000Z',
+    report: JSON.parse(exportProgressPacket(merged)),
+    assessment: { entries: [] },
+    scouting: [],
+    rankPhotos: emptyRankPhotoStore(),
+    bracketPhotos: {},
+    coachPlan: null,
+    coachFeedback: null,
+    films: [],
+  };
+  const parsed = parseStudentBackup(JSON.stringify(file));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.deepEqual(parsed.file.report.dismissedGoalPrompts, ['Lineage and history', 'Giving back to the gym']);
+  const storage = memory();
+  saveStudentReport(storage, local);
+  const applied = applyBackupToMemory(storage, parsed.file, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.match(applied.note, /merged/);
+  assert.deepEqual(loadStudentReport(storage).dismissedGoalPrompts, ['Lineage and history', 'Giving back to the gym']);
+  const olderFile = { ...file, report: JSON.parse(exportProgressPacket(blankStudentReport(1))) };
+  delete (olderFile.report as { dismissedGoalPrompts?: unknown }).dismissedGoalPrompts;
+  const older = parseStudentBackup(JSON.stringify(olderFile));
+  assert.equal(older.ok, true);
+  if (!older.ok) return;
+  assert.equal(older.file.report.dismissedGoalPrompts, undefined);
+  applyBackupToMemory(storage, older.file, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.deepEqual(loadStudentReport(storage).dismissedGoalPrompts, ['Lineage and history', 'Giving back to the gym']);
 });

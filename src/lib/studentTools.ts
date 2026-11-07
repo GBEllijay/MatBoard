@@ -30,6 +30,7 @@ import {
   PROGRESS_ID_MAX,
   PROGRESS_NAME_MAX,
   PROGRESS_NOTE_MAX,
+  OPEN_GOAL_PROMPTS,
   PROGRESS_SCHEMA_VERSION,
   CALENDAR_REPEATS,
   type CalendarEvent,
@@ -613,13 +614,7 @@ export const PERSONAL_GOALS_LINE = 'Your own goals, which never affect belt or d
 export const NO_PRACTICAL_BENCHMARKS = 'No practical benchmarks yet.';
 export const NO_PERSONAL_GOALS = 'No personal goals yet.';
 
-export const OPEN_GOAL_PROMPTS = [
-  'Teaching: lead a class',
-  'Competition or rolling goals',
-  'Giving back to the gym',
-  'Personal game refinement',
-  'Lineage and history',
-] as const;
+export { OPEN_GOAL_PROMPTS };
 
 export const OPEN_GOAL_LINE = 'Set the personal goals that matter to you at this stage';
 export const INSTRUCTOR_FINAL_SAY = 'Your instructor always has the final say.';
@@ -628,6 +623,61 @@ export const TIME_BASED_PROGRESS =
 
 export function openGoalBelt(belt: ProgressBelt): boolean {
   return (OPEN_GOAL_BELTS as readonly string[]).includes(belt);
+}
+
+/** The suggestion text, or null when the line is a custom goal. Matching ignores case and surrounding space. */
+export function canonicalGoalPrompt(name: string): (typeof OPEN_GOAL_PROMPTS)[number] | null {
+  const key = name.trim().toLowerCase();
+  return OPEN_GOAL_PROMPTS.find((prompt) => prompt.toLowerCase() === key) ?? null;
+}
+
+/**
+ * Suggestions still offered on this belt.
+ * A dismissed suggestion stays hidden. A goal adopted from one stays hidden after a rename.
+ * A goal whose name still matches one stays hidden, which is how older files behaved.
+ */
+export function goalPromptsForBelt(report: StudentProgressReport, belt: ProgressBelt): readonly string[] {
+  if (!openGoalBelt(belt)) return [];
+  const hidden = new Set((report.dismissedGoalPrompts ?? []).map((prompt) => prompt.toLowerCase()));
+  for (const goal of goalsForBelt(report, belt)) {
+    const prompt = goal.prompt ? canonicalGoalPrompt(goal.prompt) : canonicalGoalPrompt(goal.name);
+    if (prompt) hidden.add(prompt.toLowerCase());
+  }
+  return OPEN_GOAL_PROMPTS.filter((prompt) => !hidden.has(prompt.toLowerCase()));
+}
+
+/** Remember that this student does not want a suggestion. Another student's file is a different report. */
+export function dismissGoalPrompt(report: StudentProgressReport, name: string, now = Date.now()): StudentProgressReport {
+  const prompt = canonicalGoalPrompt(name);
+  if (!prompt) return report;
+  if (report.dismissedGoalPrompts?.some((item) => item.toLowerCase() === prompt.toLowerCase())) return report;
+  return touch({ ...report, dismissedGoalPrompts: [...(report.dismissedGoalPrompts ?? []), prompt] }, now);
+}
+
+/**
+ * Link older adopted suggestions to the prompt they still name.
+ * A custom goal on another belt, and a kids goal, stay unlinked.
+ * Returns the same report when nothing needs a link.
+ */
+export function withGoalPromptLinks(report: StudentProgressReport): StudentProgressReport {
+  let changed = false;
+  const goals = report.goals.map((goal) => {
+    if (goal.prompt || goal.kidsBeltId) return goal;
+    if (goal.belt && !openGoalBelt(goal.belt)) return goal;
+    const prompt = canonicalGoalPrompt(goal.name);
+    if (!prompt) return goal;
+    changed = true;
+    return { ...goal, prompt };
+  });
+  return changed ? { ...report, goals } : report;
+}
+
+/** The suggestion to keep dismissed when this goal is removed. Kids goals and other belts do not dismiss one. */
+function promptDismissedBy(goal: StudentGoal): (typeof OPEN_GOAL_PROMPTS)[number] | null {
+  if (goal.prompt) return canonicalGoalPrompt(goal.prompt);
+  if (goal.kidsBeltId) return null;
+  if (goal.belt && !openGoalBelt(goal.belt)) return null;
+  return canonicalGoalPrompt(goal.name);
 }
 
 /** Coach checkpoints are locked only when the template says students cannot edit them. */
@@ -904,9 +954,12 @@ export function addGoal(
   now = Date.now(),
   belt?: ProgressBelt,
   kidsBeltId?: string,
+  prompt?: string,
 ): StudentProgressReport {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Add a personal goal name.');
+  const linked = prompt ? canonicalGoalPrompt(prompt) : null;
+  if (prompt && !linked) throw new Error('Add a personal goal name.');
   if (report.goals.length >= PROGRESS_GOALS_MAX) throw new Error('The personal goal list is full.');
   const goal: StudentGoal = {
     id: newId('goal', now),
@@ -916,12 +969,16 @@ export function addGoal(
   };
   if (belt) goal.belt = belt;
   if (kidsBeltId) goal.kidsBeltId = kidsBeltId;
+  if (linked) goal.prompt = linked;
   return touch({ ...report, goals: [...report.goals, goal] }, now);
 }
 
 export function removeGoal(report: StudentProgressReport, id: string, now = Date.now()): StudentProgressReport {
-  if (!report.goals.some((goal) => goal.id === id)) return report;
-  return touch({ ...report, goals: report.goals.filter((goal) => goal.id !== id) }, now);
+  const goal = report.goals.find((item) => item.id === id);
+  if (!goal) return report;
+  const next = touch({ ...report, goals: report.goals.filter((item) => item.id !== id) }, now);
+  const prompt = promptDismissedBy(goal);
+  return prompt ? dismissGoalPrompt(next, prompt, now) : next;
 }
 
 export function updateGoal(

@@ -986,8 +986,91 @@ test('brown tap-to-add goals can be edited and removed without becoming checkpoi
     assert.equal(brownCount, added.rubric.levels.find((level) => level.belt === 'brown')?.checkpoints.length);
     await click(buttonNamed('Remove Lead the kids class'));
     assert.equal(loadStudentReport(localStorage).goals.length, 0);
+    assert.equal(hasButton('Teaching: lead a class'), false);
   } finally {
     unmount(mounted);
+  }
+});
+
+test('a dismissed suggestion stays gone after reload, and removing an adopted one does not bring it back', async () => {
+  let report = setRankBelt(withStarterRubric(blankStudentReport(300), 300), 'brown', 301);
+  report = setRankAwardedOn(report, '2021-02-03', 302);
+  report = setRankTapeCount(report, 2, 303);
+  report.rubric.studentsCanEdit = false;
+  const brown = report.rubric.levels.find((level) => level.belt === 'brown');
+  assert.ok(brown);
+  brown.checkpoints = [
+    ...brown.checkpoints,
+    {
+      id: 'checkpoint.brown.coach-lock',
+      name: 'Coach requires this',
+      met: null,
+      note: 'Keep this',
+      source: 'coach',
+      criteria: [],
+    },
+  ];
+  saveStudentReport(localStorage, report);
+  const first = mount(<BeltPage />);
+  try {
+    assert.ok(buttonNamed('Dismiss Lineage and history'));
+    assert.match(document.body.textContent ?? '', /From your coach\. This practical benchmark stays as they sent it\./);
+    assert.equal(hasButton('Remove Coach requires this'), false);
+    await click(buttonNamed('Dismiss Lineage and history'));
+    assert.equal(hasButton('Lineage and history'), false);
+    assert.equal(hasButton('Dismiss Lineage and history'), false);
+    const stored = loadStudentReport(localStorage);
+    assert.deepEqual(stored.dismissedGoalPrompts, ['Lineage and history']);
+    assert.equal(stored.goals.length, 0);
+    assert.equal(stored.profile.belt, 'brown');
+    assert.equal(stored.rank?.tapeCount, 2);
+    assert.equal(stored.rank?.awardedOn, '2021-02-03');
+    assert.equal(stored.rubric.studentsCanEdit, false);
+    assert.equal(
+      stored.rubric.levels.find((level) => level.belt === 'brown')?.checkpoints.some((row) => row.id === 'checkpoint.brown.coach-lock' && row.note === 'Keep this'),
+      true,
+    );
+  } finally {
+    unmount(first);
+  }
+
+  const again = mount(<BeltPage />);
+  try {
+    assert.equal(hasButton('Lineage and history'), false);
+    assert.equal(hasButton('Dismiss Lineage and history'), false);
+    assert.ok(buttonNamed('Teaching: lead a class'));
+    await click(buttonNamed('Teaching: lead a class'));
+    await typeControl(labeled('Edit Teaching: lead a class') as HTMLInputElement, 'Lead the kids class');
+    await submitNamed('Save Teaching: lead a class');
+    assert.equal(hasButton('Teaching: lead a class'), false);
+    await click(buttonNamed('Remove Lead the kids class'));
+    assert.equal(hasButton('Teaching: lead a class'), false);
+    assert.equal(loadStudentReport(localStorage).goals.length, 0);
+    assert.ok(loadStudentReport(localStorage).dismissedGoalPrompts?.includes('Teaching: lead a class'));
+    await typeControl(labeled('Personal goal name') as HTMLInputElement, 'Film my guard');
+    await submitNamed('Add personal goal');
+    await typeControl(labeled('Edit Film my guard') as HTMLInputElement, 'Film my closed guard');
+    await typeControl(labeled('Note for Film my guard') as HTMLInputElement, 'from the knees');
+    await submitNamed('Save Film my guard');
+    await click(buttonNamed('Mark Film my closed guard met'));
+    const custom = loadStudentReport(localStorage);
+    assert.equal(custom.goals[0]?.name, 'Film my closed guard');
+    assert.equal(custom.goals[0]?.note, 'from the knees');
+    assert.equal(custom.goals[0]?.met, true);
+    assert.equal(custom.goals[0]?.prompt, undefined);
+    await click(buttonNamed('Remove Film my closed guard'));
+    const cleared = loadStudentReport(localStorage);
+    assert.equal(cleared.goals.length, 0);
+    assert.equal(cleared.dismissedGoalPrompts?.includes('Film my closed guard'), false);
+    assert.equal(cleared.dismissedGoalPrompts?.includes('Lineage and history'), true);
+    assert.equal(cleared.dismissedGoalPrompts?.includes('Teaching: lead a class'), true);
+    assert.equal(hasButton('Remove Coach requires this'), false);
+    assert.equal(cleared.profile.belt, 'brown');
+    assert.equal(cleared.rank?.tapeCount, 2);
+    assert.ok(buttonNamed('Add personal goal'));
+    assert.ok(buttonNamed('Competition or rolling goals'));
+  } finally {
+    unmount(again);
   }
 });
 

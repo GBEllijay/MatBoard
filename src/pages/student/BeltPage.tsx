@@ -49,7 +49,9 @@ import {
   copySuggestionToGoal,
   criterionFromFundamentals,
   degreeProgressIsTimeBased,
+  dismissGoalPrompt,
   goalCopied,
+  goalPromptsForBelt,
   goalsForBelt,
   goalsForKidsBelt,
   INSTRUCTOR_FINAL_SAY,
@@ -59,7 +61,6 @@ import {
   NO_PERSONAL_GOALS,
   NO_PRACTICAL_BENCHMARKS,
   OPEN_GOAL_LINE,
-  OPEN_GOAL_PROMPTS,
   openGoalBelt,
   PERSONAL_GOALS_HEADING,
   PERSONAL_GOALS_LINE,
@@ -76,6 +77,7 @@ import {
   splitMarkNote,
   TIME_BASED_PROGRESS,
   updateGoal,
+  withGoalPromptLinks,
   withStarterRubric,
 } from '../../lib/studentTools';
 import { COACH_FILE_LABEL } from '../../lib/studentHubMenu';
@@ -92,7 +94,7 @@ export function BeltPage() {
   useEffect(() => {
     try {
       const current = loadStudentReport(localStorage);
-      const next = withStarterRubric(current);
+      const next = withGoalPromptLinks(withStarterRubric(current));
       if (next !== current) commit(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not open belt progress.');
@@ -124,8 +126,7 @@ export function BeltPage() {
   const openGoals = openGoalBelt(belt);
   const share = to('/student/share?from=rubric');
   const stageGoals = goalsForBelt(report, belt);
-  const usedPrompts = new Set(stageGoals.map((goal) => goal.name.trim().toLowerCase()));
-  const prompts = OPEN_GOAL_PROMPTS.filter((prompt) => !usedPrompts.has(prompt.toLowerCase()));
+  const prompts = goalPromptsForBelt(report, belt);
 
   const run = (next: ReturnType<typeof commit>) => {
     try {
@@ -291,7 +292,8 @@ export function BeltPage() {
             personal
             showForm={adultPath ? !openGoals : true}
             prompts={adultPath && openGoals ? prompts : []}
-            onPrompt={(name) => run(addGoal(report, name, '', Date.now(), belt))}
+            onPrompt={(name) => run(addGoal(report, name, '', Date.now(), belt, undefined, name))}
+            onDismiss={(name) => run(dismissGoalPrompt(report, name))}
             onAdd={(name, note) =>
               run(addGoal(report, name, note, Date.now(), adultPath ? belt : undefined, adultPath ? undefined : currentKidsBelt(report).beltId))
             }
@@ -494,10 +496,12 @@ function DegreeFocus({
 function OpenGoals({
   prompts,
   onPrompt,
+  onDismiss,
   onAdd,
 }: {
   prompts: readonly string[];
   onPrompt: (name: string) => void;
+  onDismiss: (name: string) => void;
   onAdd: (name: string) => void;
 }) {
   return (
@@ -507,9 +511,14 @@ function OpenGoals({
       {prompts.length ? (
         <div className="belt-chips" role="group" aria-label="Tap to add">
           {prompts.map((prompt) => (
-            <button key={prompt} type="button" className="belt-chip" onClick={() => onPrompt(prompt)}>
-              {prompt}
-            </button>
+            <div key={prompt} className="belt-chip-row">
+              <button type="button" className="belt-chip" onClick={() => onPrompt(prompt)}>
+                {prompt}
+              </button>
+              <button type="button" className="belt-chip-dismiss" aria-label={`Dismiss ${prompt}`} onClick={() => onDismiss(prompt)}>
+                Dismiss
+              </button>
+            </div>
           ))}
         </div>
       ) : null}
@@ -963,6 +972,7 @@ function GoalsSection({
   showForm,
   prompts,
   onPrompt,
+  onDismiss,
   onAdd,
   onUpdate,
   onMet,
@@ -973,6 +983,7 @@ function GoalsSection({
   showForm: boolean;
   prompts: readonly string[];
   onPrompt: (name: string) => void;
+  onDismiss: (name: string) => void;
   onAdd: (name: string, note: string) => void;
   onUpdate: (id: string, name: string, note: string) => void;
   onMet: (id: string, met: boolean) => void;
@@ -988,7 +999,7 @@ function GoalsSection({
       <h2>{personal ? PERSONAL_GOALS_HEADING : 'Goals'}</h2>
       {personal ? <p className="student-quiet">{PERSONAL_GOALS_LINE}</p> : null}
       {personal && !showForm ? (
-        <OpenGoals prompts={prompts} onPrompt={onPrompt} onAdd={(value) => onAdd(value, '')} />
+        <OpenGoals prompts={prompts} onPrompt={onPrompt} onDismiss={onDismiss} onAdd={(value) => onAdd(value, '')} />
       ) : null}
       {showForm ? (
         <form

@@ -379,9 +379,25 @@ export type StudentRubric = {
 };
 
 /**
+ * Suggestions offered on brown, black, and the final ranks.
+ * The student can add one or dismiss it. These are not coach requirements.
+ */
+export const OPEN_GOAL_PROMPTS = [
+  'Teaching: lead a class',
+  'Competition or rolling goals',
+  'Giving back to the gym',
+  'Personal game refinement',
+  'Lineage and history',
+] as const;
+
+export type OpenGoalPrompt = (typeof OPEN_GOAL_PROMPTS)[number];
+
+/**
  * A goal the student owns. Coach files do not write these.
  * Goals never change a belt, a stripe, or a degree.
  * `belt` is the stage the goal was added on. Absent on older goals, which stay visible.
+ * `prompt` is set when the goal came from a personal-goal suggestion, including an older
+ * goal whose name still matches one. Absent on custom goals and on older files.
  */
 export type StudentGoal = {
   id: string;
@@ -391,6 +407,8 @@ export type StudentGoal = {
   belt?: ProgressBelt;
   /** Kids belt this goal was added on. Absent on adult goals. */
   kidsBeltId?: string;
+  /** Personal-goal suggestion this goal was adopted from. */
+  prompt?: OpenGoalPrompt;
 };
 
 /** One fundamentals name. `examples` stays empty while the sheet is names only. */
@@ -781,6 +799,11 @@ export type StudentProgressReport = PacketBase & {
   journal: JournalEntry[];
   calendar: CalendarEvent[];
   goals: StudentGoal[];
+  /**
+   * Personal-goal suggestions this student dismissed, or removed after adding.
+   * Canonical prompt text. Omitted on older files. Another student's file does not inherit it.
+   */
+  dismissedGoalPrompts?: OpenGoalPrompt[];
   /** Optional. Omitted on files written before the clipboard. */
   clips?: JournalClip[];
   /**
