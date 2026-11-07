@@ -463,6 +463,40 @@ export type TechniqueRef = {
   style?: TrainingStyle;
   /** Missing means the benchmark target, or level 3. */
   targetLevel?: 1 | 2 | 3 | 4 | 5;
+  /**
+   * Node on this student's working list. Missing on older cards.
+   * The journal keeps its own wording. This id is the shared technique.
+   */
+  workingId?: string;
+};
+
+export type WorkingNodeKind = 'technique' | 'position';
+export type WorkingRelation = 'branch' | 'defense' | 'follow';
+
+/** One technique or position. The working list and the tree both use this id. */
+export type WorkingNode = {
+  id: string;
+  title: string;
+  notes: string;
+  kind: WorkingNodeKind;
+  /** Checklist or catalog id when the student has put this on the fundamentals list. Empty otherwise. */
+  fundamentalId: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+/** A step from one existing node to another. Not a copy of either node. */
+export type WorkingEdge = {
+  id: string;
+  fromId: string;
+  toId: string;
+  relation: WorkingRelation;
+  label: string;
+};
+
+export type WorkingGraph = {
+  nodes: WorkingNode[];
+  edges: WorkingEdge[];
 };
 
 /** A later-cycle note on a journal card. Append-only. Never replaces the card. */
@@ -821,6 +855,11 @@ export type StudentProgressReport = PacketBase & {
    * Switching ladders does not erase the other one.
    */
   beltBook?: BeltBook;
+  /**
+   * Techniques this student is working on, and the links between them.
+   * Omitted on older files. Fundamentals stay on `checklist`.
+   */
+  working?: WorkingGraph;
 };
 
 /**

@@ -430,7 +430,12 @@ export function viewJournalEntry(entry: JournalEntry): JournalCardView {
     date: entry.date,
     className: decoded.className,
     gameTag: entry.gameTag,
-    techniques: entry.techniqueRefs.map((item, index) => ({ id: item.id, name: item.name, note: techniqueNoteOf(entry.body, index) })),
+    techniques: entry.techniqueRefs.map((item, index) => ({
+      id: item.id,
+      name: item.name,
+      note: techniqueNoteOf(entry.body, index),
+      ...(item.workingId ? { workingId: item.workingId } : {}),
+    })),
     partners: decoded.partners,
     drills: decoded.drills,
     rolls: decoded.rolls,
@@ -469,6 +474,7 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
       id: item.id.trim() || techniqueId(item.name, now, index),
       name: item.name.trim(),
       note: (item.note ?? '').trim(),
+      workingId: item.workingId?.trim() ?? '',
     }))
     .filter((item) => item.name)
     .slice(0, JOURNAL_TECHNIQUE_MAX);
@@ -477,7 +483,12 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
     date: draft.date,
     gameTag: (GAME_TAGS as readonly string[]).includes(draft.gameTag) ? draft.gameTag : '',
     body: encodeJournalBody({ ...draft, techniques }),
-    techniqueRefs: techniques.map(({ id, name }) => ({ id, name })),
+    techniqueRefs: techniques.map(({ id, name, workingId }) => {
+      const ref: TechniqueRef = { id, name };
+      const linked = workingId?.trim() ?? '';
+      if (linked) ref.workingId = linked;
+      return ref;
+    }),
     amendments: [],
     createdAt: now,
     updatedAt: now,
