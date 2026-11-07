@@ -11,6 +11,7 @@ import { matHoursSplit, matHoursTotal } from '../../lib/matHours';
 import { wornBeltPreview, type WornBeltPreview } from '../../lib/studentRank';
 import { readStreakTarget, streakLabel, streakWeekLine, trainingStreak } from '../../lib/trainingStreak';
 import { MEDAL_LABEL, recentMedals, type CardMedal, type MedalKind } from '../../lib/cardMedals';
+import { PodiumPhotoRow } from './PodiumPhotos';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { WIN_METHOD_LONG, winsBreakdownLine, winsSummary } from '../../lib/winsSummary';
 import { MatQuickAddSheet } from './MatQuickAdd';
@@ -197,6 +198,7 @@ export function CardMedals({ report, to, rail = false }: { report: StudentProgre
                 <b>{m.name}</b>
                 <span>{m.place}</span>
               </button>
+              <PodiumPhotoRow studentId={report.studentId} resultId={m.resultId} label={m.name} />
             </li>
           ))}
         </ul>
