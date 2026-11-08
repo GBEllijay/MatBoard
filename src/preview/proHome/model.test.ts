@@ -102,7 +102,11 @@ test('the Media preview keeps the three live subtitles and drops the belt rails'
   const ladderAt = page.indexOf('EditionLadder page="media"');
   const toolsAt = page.indexOf('aria-label="Advantage Media Edition menu"');
   assert.ok(toolsAt > 0 && studentAt > toolsAt && ladderAt > studentAt);
-  assert.doesNotMatch(page, /student-roster|white-hub|\/white"/);
+  assert.doesNotMatch(page, /student-roster|white-hub|\/white"|joinAcademy|writeGymName|\/student\/academy|localStorage/);
+  assert.match(page, /data-testid="media-gym-connect"/);
+  assert.match(page, /Example only\. Not connected/);
+  assert.match(page, /type="button"/);
+  assert.doesNotMatch(readFileSync('src/pages/MediaEditionHub.tsx', 'utf8'), /Connect to a gym|media-gym-connect/);
   const css = readFileSync('src/preview/proHome/proHome.css', 'utf8');
   assert.match(css, /\.php \.home__mark \{[^}]*grid-area:\s*auto/);
   assert.match(css, /\.php-card \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 92px/);

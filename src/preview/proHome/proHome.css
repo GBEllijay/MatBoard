@@ -121,6 +121,23 @@
 
 .php-jump { color: #d7e6ff; font-weight: 700; }
 
+.php-connect { display: grid; gap: 10px; }
+.php-connect h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.03em; }
+.php-example {
+  justify-self: start;
+  max-width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #004eba;
+  background: #0c2344;
+  color: #f5f1e8;
+  font: inherit;
+  font-weight: 750;
+  text-align: left;
+}
+.php-example:focus-visible { outline: 3px solid #6ea8ff; outline-offset: 3px; }
+
 /* Instructor concept only. Not used on the cream Pro preview. */
 .php-card {
   display: grid;

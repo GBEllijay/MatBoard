@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BeltHeader } from '../../components/BeltHeader';
 import { EditionLadder } from '../../components/EditionLadder';
@@ -27,6 +28,43 @@ function ConsoleMark() {
       <rect x="38" y="52" width="16" height="4" fill="#6ea8ff" />
       <rect x="30" y="56" width="32" height="3" rx="1" fill="#6ea8ff" />
     </svg>
+  );
+}
+
+/**
+ * Visual stand-in. It does not read the device gym name, open Connect to my
+ * academy, or write a membership. The example line lives in this render only.
+ */
+function MediaGymConnectPreview() {
+  const [exampleOn, setExampleOn] = useState(false);
+  return (
+    <section className="ip-sheet php-connect" aria-label="Connect to a gym" data-testid="media-gym-connect">
+      <header className="ip-sheet__head">
+        <p className="ip-kicker">Preview · not a membership</p>
+        <h2>Connect to a gym</h2>
+        <p className="ip-quiet">Example only. Not connected. This preview does not join a gym, and nothing is saved.</p>
+      </header>
+      <div className="ip-id">
+        <p>
+          <span>Fictional label</span>
+          <strong>{MEDIA_EXAMPLE.gym}</strong>
+        </p>
+        <p>
+          <span>Device branding</span>
+          <strong>Not read on this preview</strong>
+        </p>
+        <p>
+          <span>Membership</span>
+          <strong>Not connected</strong>
+        </p>
+      </div>
+      <p className="ip-quiet">
+        The name above is a fictional label on the identity card. The academy name Media uses on this phone is a separate device setting, and a Student Edition membership is a separate link. Neither is opened or changed here.
+      </p>
+      <button type="button" className="php-example" onClick={() => setExampleOn(true)}>
+        {exampleOn ? 'Example Gym (preview). Not connected. Nothing was saved.' : 'Show a preview example'}
+      </button>
+    </section>
   );
 }
 
@@ -70,6 +108,7 @@ export function MediaMenuPreviewPage() {
           </div>
           <p className="ip-quiet">Slideshows, the schedule, and events stay on the live Media Console. This card does not count them.</p>
         </section>
+        <MediaGymConnectPreview />
         <nav className="php-cards" aria-label="Advantage Media Edition menu">
           {cards.map((card) => (
             <Link key={card.title} className="php-card" to={card.to} data-mark={card.mark}>
