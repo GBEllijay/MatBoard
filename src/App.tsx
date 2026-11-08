@@ -78,6 +78,8 @@ import {
 import { TechniqueTreePage } from './pages/TechniqueTree';
 import { PersonalGraphPreviewPage } from './pages/PersonalGraphPreview';
 import { TechniqueTreePreviewPage } from './pages/TechniqueTreePreview';
+import { TechniqueCloudPreview } from './preview/techniqueCloud/TechniqueCloudPreview';
+import { VideoLibraryPreview } from './preview/techniqueCloud/VideoLibraryPreview';
 import { TechniquesPage } from './pages/Techniques';
 import { TermsPage } from './pages/Terms';
 import { RankingsPage } from './pages/Rankings';
@@ -753,6 +755,8 @@ export default function App() {
       <Route path="/student/*" element={<StudentEditionPage />} />
       {/* Public owner preview. The live Technique Tree stays at /technique-tree. */}
       <Route path="/preview/technique-tree" element={<TechniqueTreePreviewPage />} />
+      <Route path="/preview/technique-cloud" element={<TechniqueCloudPreview />} />
+      <Route path="/preview/video-library" element={<VideoLibraryPreview />} />
       {/* Public owner preview. The live working tree stays at /student/working. */}
       <Route path="/preview/personal-graph" element={<PersonalGraphPreviewPage />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
