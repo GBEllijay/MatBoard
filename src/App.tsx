@@ -46,6 +46,7 @@ import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { StudentEditionPage } from './pages/StudentEdition';
 import { Journal2036Page } from './preview/journal2036/Journal2036Page';
 import { AssessmentRadarPreviewPage } from './preview/assessmentRadar/AssessmentRadarPreview';
+import { AssessmentSpherePreview } from './preview/assessmentSphere/AssessmentSpherePreview';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
 import { ConnectCoachPreviewPage } from './preview/proHome/ConnectCoachPreview';
 import { InstructorCardsPreviewPage } from './preview/proHome/InstructorCardsPreview';
@@ -767,6 +768,7 @@ export default function App() {
       <Route path="/preview/journal-2036" element={<Journal2036Page />} />
       {/* Owner previews. Direct links only. They do not write a student record. */}
       <Route path="/preview/assessment-radar" element={<AssessmentRadarPreviewPage />} />
+      <Route path="/preview/assessment-sphere" element={<AssessmentSpherePreview />} />
       <Route path="/preview/student-ancestry" element={<StudentAncestryPreview />} />
       <Route path="/preview/student-hours" element={<StudentHoursPreview />} />
       <Route path="/student/*" element={<StudentEditionPage />} />
