@@ -5,7 +5,9 @@ import { blankStudentReport, addJournalClip, addJournalEntry, setFundamentalLeve
 import { loadFilms, writeFilms, type StudentFilm } from './studentFilm.ts';
 import {
   applyLinkIntent,
+  DAY_FILM_SAVED,
   associationAfterSave,
+  saveDayCardFilm,
   clipsForJournal,
   comparePractice,
   earlierPractices,
@@ -297,6 +299,86 @@ test('two techniques on one card do not share each others videos', () => {
     notes: '',
   }, 13);
   assert.equal(videosForCard(kneeCard, kneeCard.clips ?? [], [], kneeCard.journal.at(-1)?.id ?? '').length, 0);
+});
+
+test('keeping a day-card film writes one library row; a failed save writes nothing', async () => {
+  const report = blankStudentReport(1);
+  const blob = new Blob(['12345678'], { type: 'video/mp4' });
+  const failed = await saveDayCardFilm({
+    report,
+    films: [],
+    file: { name: 'a.mp4', type: 'video/mp4', size: blob.size, blob },
+    title: 'Waiter sweep',
+    date: '2026-11-06',
+    entryId: 'card.a',
+    intent: { kind: 'create-fundamental' },
+    now: 4,
+    deps: { canStore: async () => true },
+  });
+  assert.equal(failed.ok, false);
+  if (!failed.ok) {
+    assert.equal(failed.report, report);
+    assert.equal(failed.films.length, 0);
+    assert.equal(report.checklist.length, 0);
+  }
+  const kept = await saveDayCardFilm({
+    report,
+    films: [],
+    file: { name: 'a.mp4', type: 'video/mp4', size: blob.size, blob },
+    title: 'Waiter sweep',
+    date: '2026-11-06',
+    entryId: 'card.a',
+    intent: { kind: 'none' },
+    now: 5,
+    deps: { canStore: async () => true, putBlob: async () => {} },
+  });
+  assert.equal(kept.ok, true);
+  if (!kept.ok) return;
+  assert.equal(kept.films.length, 1);
+  assert.equal(kept.films[0]?.journalEntryId, 'card.a');
+  assert.equal(kept.films[0]?.techniqueAnchor, undefined);
+  assert.equal(kept.report, report);
+  assert.match(kept.note, new RegExp(DAY_FILM_SAVED.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  const second = await saveDayCardFilm({
+    report: kept.report,
+    films: kept.films,
+    file: { name: 'b.mp4', type: 'video/mp4', size: blob.size, blob },
+    title: 'Waiter sweep',
+    date: '2026-11-08',
+    entryId: 'card.b',
+    intent: { kind: 'none' },
+    now: 6,
+    deps: { canStore: async () => true, putBlob: async () => {} },
+  });
+  assert.equal(second.ok, true);
+  if (!second.ok) return;
+  assert.equal(second.films.length, 2);
+  assert.equal(second.films.find((item) => item.id === kept.film.id)?.journalEntryId, 'card.a');
+});
+
+test('a kept day-card film can tag fundamentals without marking the move learned', async () => {
+  const report = blankStudentReport(1);
+  const blob = new Blob(['12345678'], { type: 'video/mp4' });
+  const kept = await saveDayCardFilm({
+    report,
+    films: [],
+    file: { name: 'hip.mp4', type: 'video/mp4', size: blob.size, blob },
+    title: 'Day card waiter',
+    date: '2026-11-06',
+    entryId: 'card.hip',
+    intent: { kind: 'create-fundamental' },
+    now: 7,
+    deps: { canStore: async () => true, putBlob: async () => {} },
+  });
+  assert.equal(kept.ok, true);
+  if (!kept.ok) return;
+  assert.equal(kept.films.length, 1);
+  assert.equal(kept.films[0]?.journalEntryId, 'card.hip');
+  assert.equal(kept.films[0]?.techniqueAnchor?.kind, 'fundamental');
+  const row = kept.report.checklist.find((item) => item.id === kept.films[0]?.techniqueAnchor?.id);
+  assert.equal(row?.level, 0);
+  assert.equal(row?.learnedOn, '');
+  assert.equal(report.checklist.length, 0);
 });
 
 test('journal film navigation keeps the card, date, and technique, and rejects an off-site return', () => {

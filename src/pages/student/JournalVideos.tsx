@@ -1,20 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { DeviceMediaInput } from '../../components/DeviceMediaInput';
+import { VIDEO_CAPTURE } from '../../lib/mediaPicker';
 import type { JournalClip } from '../../lib/progress/types';
-import { loadFilms, writeFilms, type StudentFilm } from '../../lib/studentFilm';
+import { filmFileError, loadFilms, putFilmBlob, writeFilms, type StudentFilm } from '../../lib/studentFilm';
+import { originCanStore } from '../../lib/storageQuota';
 import {
   clearClipJournal,
   clearFilmJournal,
-  journalFilmHref,
+  saveDayCardFilm,
   setClipAnchor,
   setClipJournal,
   setFilmAnchor,
   setFilmJournal,
   videosForCard,
   type CardTechnique,
+  type LinkIntent,
   type TechniqueAnchor,
 } from '../../lib/videoAssociation';
 import { useStudentFile, useStudentPath } from './chrome';
+import { TechniqueLinkPicker } from './TechniqueLinkPicker';
 import { TechniquePractice } from './TechniquePractice';
 
 /**
@@ -36,14 +41,29 @@ export function JournalVideos({
   const [choosing, setChoosing] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const technique = techniques.find((row) => row.name.trim())?.name ?? '';
+  const recordId = `journal-film-record-${entryId}`;
+  const libraryId = `journal-film-library-${entryId}`;
+  const recordRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState<File | null>(null);
+  const [preview, setPreview] = useState('');
+  const [title, setTitle] = useState(technique);
+  const [intent, setIntent] = useState<LinkIntent>({ kind: 'none' });
+  const [busy, setBusy] = useState(false);
+  const [filmError, setFilmError] = useState('');
+  const [filmNote, setFilmNote] = useState('');
+
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
 
   useEffect(() => {
     setFilms(loadFilms(localStorage));
   }, [report.updatedAt, entryId]);
 
   const shown = videosForCard(report, report.clips ?? [], films, entryId);
-  const back = to(`/student/cards/${entryId}#journal-videos`);
-  const filmHref = to(journalFilmHref({ entryId, date, technique, back }));
   const anchors = techniques.flatMap((row) => {
     const anchor = anchorForLine(row);
     return anchor ? [{ ...row, anchor }] : [];
@@ -62,6 +82,58 @@ export function JournalVideos({
     }
     setPending(null);
     setChoosing(false);
+  };
+
+  const take = (files: readonly File[]) => {
+    const file = files[0];
+    if (!file) return;
+    const problem = filmFileError(file);
+    if (preview) URL.revokeObjectURL(preview);
+    if (problem) {
+      setDraft(null);
+      setPreview('');
+      setFilmError(problem);
+      return;
+    }
+    setDraft(file);
+    setPreview(URL.createObjectURL(file));
+    setTitle((current) => current.trim() || technique);
+    setFilmError('');
+    setFilmNote('');
+  };
+
+  const discardFilm = () => {
+    if (preview) URL.revokeObjectURL(preview);
+    setDraft(null);
+    setPreview('');
+    setIntent({ kind: 'none' });
+    setFilmError('');
+  };
+
+  const keepFilm = async () => {
+    if (!draft || busy) return;
+    setBusy(true);
+    setFilmError('');
+    const result = await saveDayCardFilm({
+      report,
+      films,
+      file: { name: draft.name, type: draft.type, size: draft.size, blob: draft },
+      title,
+      date,
+      entryId,
+      intent,
+      deps: { canStore: originCanStore, putBlob: putFilmBlob },
+    });
+    setBusy(false);
+    if (!result.ok) {
+      setFilmError(result.error);
+      return;
+    }
+    writeFilms(localStorage, result.films);
+    setFilms(result.films);
+    if (result.report !== report) commit(result.report);
+    discardFilm();
+    setFilmNote(result.note);
   };
 
   return (
@@ -120,10 +192,48 @@ export function JournalVideos({
         <button type="button" className="ink-btn" onClick={() => { setChoosing((open) => !open); setPending(null); }}>
           {choosing ? 'Cancel choose' : 'Choose a saved video'}
         </button>
-        <Link className="ink-btn" to={filmHref}>
+        <label className="ink-btn" htmlFor={recordId}>
           Film a move
-        </Link>
+        </label>
+        <label className="ink-btn" htmlFor={libraryId}>
+          Pick from gallery
+        </label>
       </div>
+      <p className="student-quiet">
+        Film a move opens this phone&apos;s camera when the browser allows it. Some phones open the gallery instead. Nothing is saved until you tap Keep.
+      </p>
+      <DeviceMediaInput id={recordId} inputRef={recordRef} accept="video/*" capture={VIDEO_CAPTURE} onFiles={take} />
+      <DeviceMediaInput id={libraryId} inputRef={libraryRef} accept="video/*" onFiles={take} />
+      {draft && preview ? (
+        <div
+          className="journal-film-review"
+          role="group"
+          aria-label="Review filmed move"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && event.target instanceof HTMLInputElement) event.preventDefault();
+          }}
+        >
+          <video controls playsInline src={preview} aria-label="Preview filmed move" />
+          <label className="ink">
+            <span className="ink__label">Technique or title</span>
+            <input aria-label="Filmed technique or title" value={title} onChange={(event) => setTitle(event.target.value)} />
+          </label>
+          <TechniqueLinkPicker report={report} title={title} intent={intent} onChange={setIntent} />
+          <div className="journal-videos__actions">
+            <label className="ink-btn" htmlFor={recordId}>
+              Retry
+            </label>
+            <button type="button" className="ink-btn ink-btn--save" disabled={busy} onClick={() => void keepFilm()}>
+              {busy ? 'Saving filmed video…' : 'Keep'}
+            </button>
+            <button type="button" className="ink-btn" disabled={busy} onClick={discardFilm}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {filmNote ? <p role="status">{filmNote}</p> : null}
+      {filmError ? <p role="alert">{filmError}</p> : null}
       {choosing ? (
         <ChooseSaved
           clips={report.clips ?? []}

@@ -5,7 +5,7 @@ import { BODY_ZONES, INJURY_STATUSES, STATUS_LABEL, zoneFromText, zoneLabel } fr
  * student's own card. The stat wears the student's current belt cloth, reusing
  * the woven-belt treatment from My rank (beltWeave.css, .s-belt-mark .rung--*).
  */
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { QUALITY_SCALES, qualityStage } from '../../lib/sessionQuality';
 import {
   JOURNAL_SESSION_LABELS,
@@ -18,7 +18,7 @@ import {
   matHoursLongLabel,
   matHoursSplit,
   matHoursTotal,
-  matMinuteOptions,
+  journalMatWheelOptions,
   matQuarterOptions,
   sessionLabel,
 } from '../../lib/matHours';
@@ -29,7 +29,6 @@ import { kidsClothStyle } from './wornBelt';
 import './beltWeave.css';
 import './matHours.css';
 
-const MINUTE_OPTIONS = matMinuteOptions();
 const QUARTER_OPTIONS = matQuarterOptions();
 
 export function MatTimeField({
@@ -40,7 +39,7 @@ export function MatTimeField({
   onMinutes,
   sessionOther = '',
   onSessionOther,
-  /** Log mat time: three types and a 15-minute wheel. The journal keeps every minute and Other. */
+  /** Log mat time: three types and a 15-minute wheel. The journal uses the same steps and still offers Other. */
   logTime = false,
 }: {
   idPrefix: string;
@@ -54,7 +53,7 @@ export function MatTimeField({
 }) {
   const value = clampMinutes(minutes);
   const kinds = logTime ? MAT_LOG_SESSIONS : JOURNAL_SESSIONS;
-  const options = logTime ? QUARTER_OPTIONS : MINUTE_OPTIONS;
+  const options = useMemo(() => (logTime ? QUARTER_OPTIONS : journalMatWheelOptions(value)), [logTime, value]);
   return (
     <fieldset className="ink mat-time" aria-label={`${idPrefix}Mat time`}>
       <legend className="ink__label">Time on the mat</legend>
@@ -98,9 +97,7 @@ export function MatTimeField({
         ) : null}
       </div>
       <small className="mat-time__note">
-        {logTime
-          ? "Scroll in 15-minute steps. Just for you. Counts toward your mat hours. Coaches don't see it."
-          : "Scroll to any minute; it settles gently on 10s. Just for you. Counts toward your mat hours. Coaches don't see it."}
+        {"Scroll in 15-minute steps. A time you already saved stays until you change it. Just for you. Counts toward your mat hours. Coaches don't see it."}
       </small>
     </fieldset>
   );

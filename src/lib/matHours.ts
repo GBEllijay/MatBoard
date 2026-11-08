@@ -14,18 +14,28 @@ export function sessionLabel(session: JournalSession, other = ''): string {
   return session === 'other' && other.trim() ? `Other · ${other.trim()}` : JOURNAL_SESSION_LABELS[session];
 }
 
-/** Time picker: every minute from 0 (untimed) to 12h; 10-minute marks are soft detents. */
-export function matMinuteOptions(): { value: number; label: string; detent?: boolean }[] {
-  return Array.from({ length: JOURNAL_MINUTES_MAX + 1 }, (_, value) => ({ value, label: value ? clockMatTime(value) : 'Untimed', detent: value > 0 && value % 10 === 0 }));
-}
-
-/** Log mat time only. 0, then every 15 minutes through 12h. Hour marks are the soft detents. */
+/**
+ * Journal and log wheels. 0, then every 15 minutes through 12h.
+ * Hour marks are the soft detents. There is no minute-by-minute row.
+ */
 export function matQuarterOptions(): { value: number; label: string; detent?: boolean }[] {
   const options: { value: number; label: string; detent?: boolean }[] = [];
   for (let value = 0; value <= JOURNAL_MINUTES_MAX; value += 15) {
     options.push({ value, label: value ? clockMatTime(value) : 'Untimed', detent: value > 0 && value % 60 === 0 });
   }
   return options;
+}
+
+/**
+ * Quarter-hour rows, plus one saved off-step time if the card already has one.
+ * Opening the wheel does not rewrite that saved time. Choosing another row does.
+ */
+export function journalMatWheelOptions(minutes: number): { value: number; label: string; detent?: boolean }[] {
+  const quarters = matQuarterOptions().map((option) => (option.value === 0 ? { ...option, label: '0:00' } : option));
+  const value = clampMinutes(minutes);
+  if (quarters.some((option) => option.value === value)) return quarters;
+  const saved = { value, label: clockMatTime(value), detent: false };
+  return [...quarters, saved].sort((a, b) => a.value - b.value);
 }
 
 /** Types offered on Log mat time. Other stays in the journal model and is not a choice here. */

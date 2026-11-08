@@ -45,7 +45,7 @@ function button(host: ParentNode, text: string) {
   return found as HTMLButtonElement;
 }
 
-test('the card shows the latest practice date and a cancelled choose does not move the original class', () => {
+test('the card shows the latest practice date and a cancelled choose does not move the original class', async () => {
   localStorage.clear();
   let report = applyLinkIntent(blankStudentReport(1), 'Waiter sweep', { kind: 'create-working' }, 2).report;
   const workingId = readWorkingGraph(report.working)?.nodes[0]?.id ?? '';
@@ -100,6 +100,44 @@ test('the card shows the latest practice date and a cancelled choose does not mo
   const text = host.textContent ?? '';
   assert.match(text, /Latest practice · 2026-11-08/);
   assert.match(text, /Original class for this video/);
+  const record = document.getElementById(`journal-film-record-${origin}`) as HTMLInputElement | null;
+  const gallery = document.getElementById(`journal-film-library-${origin}`) as HTMLInputElement | null;
+  assert.equal(record?.getAttribute('capture'), 'environment');
+  assert.equal(record?.getAttribute('accept'), 'video/*');
+  assert.equal(gallery?.hasAttribute('capture'), false);
+  assert.equal(
+    [...host.querySelectorAll('label')].find((item) => item.getAttribute('for') === `journal-film-record-${origin}`)?.textContent?.trim(),
+    'Film a move',
+  );
+  assert.equal(
+    [...host.querySelectorAll('label')].find((item) => item.getAttribute('for') === `journal-film-library-${origin}`)?.textContent?.trim(),
+    'Pick from gallery',
+  );
+  if (typeof URL.createObjectURL !== 'function') {
+    URL.createObjectURL = () => 'blob:journal-film';
+    URL.revokeObjectURL = () => {};
+  }
+  const clip = new File([new Uint8Array(8)], 'move.mp4', { type: 'video/mp4' });
+  const files = {
+    0: clip,
+    length: 1,
+    item: (index: number) => (index === 0 ? clip : null),
+    *[Symbol.iterator]() {
+      yield clip;
+    },
+  };
+  Object.defineProperty(gallery, 'files', { configurable: true, value: files });
+  await act(async () => {
+    gallery?.dispatchEvent(new view.Event('change', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 40));
+  });
+  assert.match(host.textContent ?? '', /Review filmed move|Preview filmed move|Keep/);
+  act(() => {
+    button(host, 'Cancel').click();
+  });
+  assert.equal(host.querySelector('[aria-label="Review filmed move"]'), null);
+  const afterCancel = JSON.parse(localStorage.getItem('matboard.studentEdition.films.v1') ?? '{}') as { films?: unknown[] };
+  assert.equal(afterCancel.films?.length, 1);
   const latest = [...host.querySelectorAll('a')].find((link) => link.textContent?.includes('Latest practice'));
   assert.match(latest?.getAttribute('href') ?? '', new RegExp(later));
   act(() => {
