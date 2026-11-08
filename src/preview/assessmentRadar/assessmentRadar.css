@@ -1,12 +1,12 @@
 .oct-preview {
-  --oct-ink: #f5f5f7;
-  --oct-muted: #c7c7cc;
-  --oct-card: #2c2c2e;
-  --oct-panel: #1c1c1e;
-  --oct-blue: #0a84ff;
-  --oct-line: rgba(255, 255, 255, 0.14);
+  --oct-ink: #f5f1e8;
+  --oct-muted: #d7e6ff;
+  --oct-card: #0c2344;
+  --oct-panel: #0c2344;
+  --oct-blue: #004eba;
+  --oct-line: rgba(0, 78, 186, 0.7);
   min-height: 100dvh;
-  background: #000000;
+  background: #061428;
   color: var(--oct-ink);
   color-scheme: dark;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
@@ -95,11 +95,11 @@
 .oct-chip,
 .oct-rate,
 .oct-text-btn {
-  border: 0;
+  border: 1.5px solid #004eba;
   border-radius: 12px;
-  background: #2c2c2e;
-  color: var(--oct-ink);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  background: #0c2344;
+  color: #f5f1e8;
+  box-shadow: none;
 }
 
 .oct-mode {
@@ -127,6 +127,13 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.oct-stage,
+.oct-detail,
+.oct-block,
+.oct-copy {
+  border: 1.5px solid #004eba;
 }
 
 .oct-stage {
@@ -173,7 +180,7 @@
 
 .oct-variants {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 8px;
 }
@@ -251,7 +258,7 @@
   border: 1.5px solid #1f7ae0;
 }
 
-.oct-figure--sheet {
+.oct-figure--placed {
   grid-template-columns: minmax(4.5rem, 0.82fr) minmax(0, 1.9fr) minmax(4.5rem, 0.82fr);
   grid-template-areas:
     'mindset guard passing'
@@ -312,9 +319,70 @@
   fill: #1f7ae0;
 }
 
-.oct-svg--sheet .oct-shape--closed {
-  fill: rgba(31, 122, 224, 0.28);
+.oct-svg--sheet .oct-shape--closed,
+.oct-shape--filled {
+  fill: rgba(31, 122, 224, 0.55);
   stroke: #1f7ae0;
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+}
+
+.oct-stage--center {
+  background: #0c2344;
+  color: #f5f1e8;
+  border-radius: 16px;
+  margin-bottom: 12px;
+}
+
+.oct-stage--center + .oct-copy {
+  margin-top: 0;
+  border-radius: 14px;
+}
+
+.oct-stage--center .oct-label[aria-pressed='true'],
+.oct-stage--center .oct-label[aria-pressed='true'] .oct-label__name,
+.oct-stage--center .oct-label[aria-pressed='true'] .oct-label__score,
+.oct-stage--center .oct-label[aria-pressed='true'] .oct-label__words,
+.oct-stage--center .oct-label[aria-pressed='true'] .oct-label__state {
+  background: #f5f1e8;
+  color: #0c2344;
+}
+
+.oct-stage--center .oct-label__name,
+.oct-stage--center .oct-label {
+  color: #f5f1e8;
+}
+
+.oct-stage--center .oct-label__score {
+  color: #8eb7ff;
+}
+
+.oct-stage--center .oct-label__words {
+  color: #d7e6ff;
+}
+
+.oct-stage--center .oct-sheet-bar {
+  background: #061428;
+  border-bottom: 1.5px solid #004eba;
+}
+
+.oct-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18%;
+  height: 18%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: rgba(245, 241, 232, 0.72);
+  -webkit-mask-image: url('/student/advantage-deboss-mask.png');
+  mask-image: url('/student/advantage-deboss-mask.png');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
 .oct-scale {
@@ -666,8 +734,9 @@
     width: min(100%, 200px);
   }
 
-  .oct-stage--sheet .oct-chart {
-    width: min(100%, 150px);
+  .oct-stage--sheet .oct-chart,
+  .oct-stage--center .oct-chart {
+    width: min(100%, 142px);
   }
 
   .oct-sheet-bar {
@@ -685,6 +754,11 @@
     padding: 8px 10px 10px;
   }
   .oct-detail { grid-area: detail; }
+
+  #area-panel {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
 
   .oct-copy .oct-legend {
     margin-top: 6px;

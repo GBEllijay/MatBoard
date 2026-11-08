@@ -5,6 +5,7 @@
  */
 
 import { FUNDAMENTALS_CATALOG } from '../../lib/progress/catalog.ts';
+import { adultStarterLevels } from '../../lib/studentBenchmarks.ts';
 
 export const ASSESSMENT_RADAR_PREVIEW_PATH = '/preview/assessment-radar';
 
@@ -205,61 +206,120 @@ export const SHEET_AXIS_IDS = [
 ] as const satisfies readonly AxisId[];
 
 /**
- * Fundamentals categories that already are one assessment area.
- * Positions, sweeps, movement, and defense are not refiled.
+ * Canonical fundamentals ids for each area.
+ * A whole catalog category is included only when that category already is the area.
+ * Guard and Control use the catalog ids whose names are those positions.
+ * Sweeps, movement, and the remaining positions and defenses are not forced in.
  */
-const CATALOG_CATEGORY_AREA = {
-  passes: 'passing',
-  escapes: 'escapes',
-  submissions: 'submissions',
-  takedowns: 'takedowns',
-} as const satisfies Record<string, AxisId>;
+export const CANONICAL_AREA_IDS = {
+  guard: ['pos.closed-guard', 'pos.open-guard', 'pos.half-guard', 'pos.butterfly-guard', 'def.guard-retention'],
+  passing: ['pass.torreando', 'pass.knee-slice', 'pass.leg-drag', 'pass.stack'],
+  control: ['pos.side-control', 'pos.mount', 'pos.back-control'],
+  takedowns: ['td.double-leg', 'td.single-leg', 'td.arm-drag', 'td.hip-throw'],
+  escapes: ['escape.mount', 'escape.side-control', 'escape.back', 'escape.headlock'],
+  submissions: [
+    'sub.armbar-guard',
+    'sub.triangle',
+    'sub.kimura',
+    'sub.guillotine',
+    'sub.rear-naked-choke',
+    'sub.cross-collar',
+    'sub.straight-ankle-lock',
+    'sub.americana',
+    'sub.omoplata',
+    'sub.wrist-lock',
+  ],
+} as const satisfies Record<SkillAxisId, readonly string[]>;
 
 export type DestinationItem = {
   id: string;
   name: string;
-  source: 'sample' | 'fundamentals';
+  source: 'sample' | 'fundamentals' | 'benchmark';
   detail: string;
 };
 
+const catalogItems = () => FUNDAMENTALS_CATALOG.categories.flatMap((category) => category.items.map((item) => ({ ...item, category: category.name, categoryId: category.id })));
+
+function nameKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 export function categoryDestination(model: PreviewModel, axisId: AxisId): {
   items: DestinationItem[];
+  samples: DestinationItem[];
+  fundamentals: DestinationItem[];
+  benchmarks: DestinationItem[];
   note: string;
 } {
   const axis = axisById(axisId);
-  const samples: DestinationItem[] = model.techniques
-    .filter((row) => !axis.manualOnly && row.categories.includes(axisId as SkillAxisId))
-    .map((row) => {
+  const canonical = new Set<string>(axis.manualOnly ? [] : CANONICAL_AREA_IDS[axisId as SkillAxisId]);
+  const byId = new Map(catalogItems().map((item) => [item.id, item]));
+  const byName = new Map(catalogItems().map((item) => [nameKey(item.name), item]));
+  const sampleRating = new Map<string, string>();
+  const samples: DestinationItem[] = [];
+  if (!axis.manualOnly) {
+    for (const row of model.techniques.filter((item) => item.categories.includes(axisId as SkillAxisId))) {
       const latest = latestCard(cardsFor(model, row.id));
-      const rating = latest ? `Latest ${latest.rating} (${TECHNIQUE_RATING_WORDS[latest.rating]}).` : 'No rating.';
-      return {
+      const rating = latest ? `Example rating ${latest.rating} (${TECHNIQUE_RATING_WORDS[latest.rating]}).` : 'No example rating.';
+      const canonicalHit = byName.get(nameKey(row.name));
+      if (canonicalHit && canonical.has(canonicalHit.id)) {
+        sampleRating.set(canonicalHit.id, rating);
+        continue;
+      }
+      samples.push({
         id: row.id,
         name: row.name,
-        source: 'sample' as const,
+        source: 'sample',
         detail: `Sample for this preview, not a saved student record. Tagged ${axis.label}. ${rating}`,
-      };
-    });
-  const fundamentals: DestinationItem[] = FUNDAMENTALS_CATALOG.categories
-    .filter((category) => CATALOG_CATEGORY_AREA[category.id as keyof typeof CATALOG_CATEGORY_AREA] === axisId)
-    .flatMap((category) =>
-      category.items.map((row) => ({
-        id: row.id,
-        name: row.name,
-        source: 'fundamentals' as const,
-        detail: `From the fundamentals list, category ${category.name}. Not a score and not a mastery mark.`,
-      })),
-    );
-  return { items: [...samples, ...fundamentals], note: destinationNote(axis, samples.length, fundamentals.length) };
+      });
+    }
+  }
+  const fundamentals: DestinationItem[] = [...canonical].flatMap((id) => {
+    const row = byId.get(id);
+    if (!row) return [];
+    const extra = sampleRating.get(id);
+    return [{
+      id: row.id,
+      name: row.name,
+      source: 'fundamentals' as const,
+      detail: `Fundamentals id ${row.id}, category ${row.category}. Not a score and not a mastery mark.${extra ? ` ${extra}` : ''}`,
+    }];
+  });
+  const benchmarks = benchmarksFor(axisId, new Set(canonical));
+  const items = [...samples, ...fundamentals, ...benchmarks];
+  return { items, samples, fundamentals, benchmarks, note: destinationNote(axis, samples.length, fundamentals.length, benchmarks.length) };
 }
 
-function destinationNote(axis: AxisDefinition, samples: number, fundamentals: number): string {
+function benchmarksFor(axisId: AxisId, canonical: ReadonlySet<string>): DestinationItem[] {
+  if (canonical.size === 0) return [];
+  const areaOf = new Map<string, SkillAxisId>();
+  for (const area of Object.keys(CANONICAL_AREA_IDS) as SkillAxisId[]) {
+    for (const id of CANONICAL_AREA_IDS[area]) areaOf.set(id, area);
+  }
+  const rows: DestinationItem[] = [];
+  for (const level of adultStarterLevels()) {
+    for (const checkpoint of level.checkpoints) {
+      const refs = [...new Set(checkpoint.criteria.flatMap((row) => row.techniqueRefs.map((ref) => ref.id)))];
+      if (!refs.length) continue;
+      const areas = [...new Set(refs.map((id) => areaOf.get(id)).filter((id): id is SkillAxisId => Boolean(id)))];
+      const unmapped = refs.filter((id) => !areaOf.has(id));
+      if (unmapped.length || areas.length !== 1 || areas[0] !== axisId) continue;
+      rows.push({
+        id: checkpoint.id,
+        name: checkpoint.name,
+        source: 'benchmark',
+        detail: `Benchmark ${checkpoint.id}. It lists only fundamentals already tagged ${axisId}. Not a mastery mark.`,
+      });
+    }
+  }
+  return rows;
+}
+
+function destinationNote(axis: AxisDefinition, samples: number, fundamentals: number, benchmarks: number): string {
   if (axis.manualOnly) {
-    return `${axis.label} stays on your manual check-in. The fundamentals list does not file anything under ${axis.label}.`;
+    return `${axis.label} stays on your manual check-in. No fundamentals id is tagged to ${axis.label}, so this list is empty on purpose.`;
   }
-  if (fundamentals === 0) {
-    return `The fundamentals list has no category named ${axis.label}. ${samples === 0 ? 'Nothing is tagged here.' : 'The rows below are samples tagged for this preview. Positions, sweeps, movement, and defense are not refiled.'}`;
-  }
-  return `The fundamentals rows are from the list category that is already ${axis.label === 'Passing' ? 'Passes' : axis.label}. A sample row is example data for this preview. Nothing here is a mastery mark.`;
+  return `${samples} example ${samples === 1 ? 'technique' : 'techniques'}, ${fundamentals} fundamentals, and ${benchmarks} benchmarks. A row is here only when its fundamentals id is already that category. This is not a mastery mark.`;
 }
 
 export const PAGE_TITLE = 'Assessment radar';

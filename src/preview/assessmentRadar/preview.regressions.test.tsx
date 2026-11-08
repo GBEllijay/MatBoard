@@ -137,9 +137,19 @@ test('the sheet comparison uses the character-sheet radar and does not score a g
   unmount(mounted);
 });
 
-test('the earlier center comparison link opens the sheet radar', () => {
+test('the center mark keeps a filled shape, the pressed logo, and no spider web', () => {
   const mounted = mount(<AssessmentRadarPreviewPage />, `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=center`);
-  assert.equal(labeled(mounted.host, 'Sheet radar').getAttribute('aria-pressed'), 'true');
-  assert.equal(mounted.host.querySelectorAll('polygon.oct-grid').length, 5);
+  const { host } = mounted;
+  assert.equal(labeled(host, 'Center mark').getAttribute('aria-pressed'), 'true');
+  assert.equal(host.querySelector('.oct-stage--sheet'), null);
+  assert.equal(host.querySelectorAll('line.oct-grid').length, 0);
+  assert.equal(host.querySelectorAll('polygon.oct-grid--outer').length, 1);
+  assert.equal(host.querySelectorAll('polygon.oct-grid:not(.oct-grid--outer)').length, 0);
+  assert.ok(host.querySelector('.oct-mark'));
+  assert.ok(host.querySelector('.oct-shape--filled'));
+  assert.equal(host.querySelector('#area-first-example strong')?.textContent, 'Deep half guard');
+  assert.match(host.textContent ?? '', /Closed guard/);
+  assert.match(host.textContent ?? '', /Guard retention/);
+  click(labeled(host, 'Back to assessment radar'));
   unmount(mounted);
 });

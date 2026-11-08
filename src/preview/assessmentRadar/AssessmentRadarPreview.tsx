@@ -19,6 +19,7 @@ import {
   cardsFor,
   chartLabel,
   closedRatingPoints,
+  contiguousRuns,
   detailCopy,
   formatPoint,
   latestCard,
@@ -43,12 +44,12 @@ import './assessmentRadar.css';
 const RATINGS: readonly Rating[] = [1, 2, 3, 4, 5];
 const SKILL_AXES = AXES.filter((axis) => !axis.manualOnly);
 
-export type ChartVariant = 'current' | 'sheet';
+export type ChartVariant = 'current' | 'sheet' | 'center';
 
 export function AssessmentRadarPreviewPage() {
   const [params, setParams] = useSearchParams();
   const variantParam = params.get('variant');
-  const variant: ChartVariant = variantParam === 'current' ? 'current' : 'sheet';
+  const variant: ChartVariant = variantParam === 'current' || variantParam === 'center' ? variantParam : 'sheet';
   const areaParam = params.get('area');
   const initialArea = AXES.some((axis) => axis.id === areaParam) ? (areaParam as AxisId) : 'guard';
   const [model, setModel] = useState(seedPreview);
@@ -56,8 +57,8 @@ export function AssessmentRadarPreviewPage() {
   const [selected, setSelected] = useState<AxisId>(initialArea);
   const chooseVariant = (next: ChartVariant) => {
     const query = new URLSearchParams(params);
-    if (next === 'current') query.set('variant', 'current');
-    else query.delete('variant');
+    if (next === 'sheet') query.delete('variant');
+    else query.set('variant', next);
     setParams(query, { replace: true });
   };
   const chooseArea = (id: AxisId) => {
@@ -73,7 +74,7 @@ export function AssessmentRadarPreviewPage() {
     document.getElementById('assessment-radar')?.scrollIntoView({ block: 'start' });
     document.getElementById('assessment-radar')?.focus();
   };
-  const displayIds = variant === 'sheet' ? SHEET_AXIS_IDS : AXES.map((axis) => axis.id);
+  const displayIds = variant === 'current' ? AXES.map((axis) => axis.id) : SHEET_AXIS_IDS;
   const values = useMemo(() => {
     const scored = shapeValues(model, mode);
     return displayIds.map((id) => scored[AXES.findIndex((axis) => axis.id === id)] ?? null);
@@ -112,6 +113,16 @@ export function AssessmentRadarPreviewPage() {
               <button
                 type="button"
                 className="oct-mode"
+                aria-pressed={variant === 'center'}
+                aria-label="Center mark"
+                onClick={() => chooseVariant('center')}
+              >
+                Center mark
+                {variant === 'center' ? <span className="oct-mode__state">Showing</span> : null}
+              </button>
+              <button
+                type="button"
+                className="oct-mode"
                 aria-pressed={variant === 'sheet'}
                 aria-label="Sheet radar"
                 onClick={() => chooseVariant('sheet')}
@@ -135,8 +146,8 @@ export function AssessmentRadarPreviewPage() {
             <p className="oct-note">{mode === 'manual' ? 'Showing the manual check-in.' : 'Showing the technique summary.'}</p>
           </div>
 
-          <section id="assessment-radar" className={variant === 'sheet' ? 'oct-stage oct-stage--sheet' : 'oct-stage'} aria-label="Assessment radar" tabIndex={-1}>
-            {variant === 'sheet' ? (
+          <section id="assessment-radar" className={variant === 'current' ? 'oct-stage' : `oct-stage oct-stage--${variant}`} aria-label="Assessment radar" tabIndex={-1}>
+            {variant === 'sheet' || variant === 'center' ? (
               <div className="oct-sheet-bar">
                 <h2>Attribute radar</h2>
                 <p>Self-assessment · 1–5 scale · Illustrative</p>
@@ -144,7 +155,7 @@ export function AssessmentRadarPreviewPage() {
             ) : (
               <h2>Shape</h2>
             )}
-            <div className={variant === 'sheet' ? 'oct-figure oct-figure--sheet' : 'oct-figure'}>
+            <div className={variant === 'current' ? 'oct-figure' : variant === 'sheet' ? 'oct-figure oct-figure--placed oct-figure--sheet' : 'oct-figure oct-figure--placed'}>
               {AXES.map((axis) => {
                 const text = shownScore(scoreText(model, mode, axis.id), variant);
                 const on = selected === axis.id;
@@ -167,6 +178,7 @@ export function AssessmentRadarPreviewPage() {
               })}
               <div className="oct-chart">
                 <Chart values={values} selected={selected} label={chartLabel(model, mode)} variant={variant} />
+                {variant === 'center' ? <div className="oct-mark" aria-hidden="true" /> : null}
               </div>
             </div>
             {variant === 'sheet' ? (
@@ -233,14 +245,34 @@ export function AssessmentRadarPreviewPage() {
             </button>
             <p className="oct-how">{destination.note}</p>
             {destination.items.length ? (
-              <ol className="oct-tech-list">
-                {destination.items.map((item, index) => (
-                  <li key={item.id} id={index === 0 ? 'area-first-example' : undefined}>
-                    <strong className={item.name === SAMPLE_GUARD_NAME ? 'oct-sample' : undefined}>{item.name}</strong>
-                    <p>{item.detail}</p>
-                  </li>
-                ))}
-              </ol>
+              <div className="oct-groups">
+                {(['sample', 'fundamentals', 'benchmark'] as const).map((source) => {
+                  const rows = destination.items.filter((item) => item.source === source);
+                  const heading = source === 'sample' ? 'Example techniques' : source === 'fundamentals' ? 'Fundamentals' : 'Benchmarks';
+                  return (
+                    <section key={source} aria-label={`${selectedAxis.label} ${heading}`}>
+                      <h3>{heading}</h3>
+                      {rows.length ? (
+                        <ol className="oct-tech-list">
+                          {rows.map((item) => {
+                            const first = destination.items[0]?.id === item.id;
+                            return (
+                              <li key={item.id} id={first ? 'area-first-example' : undefined}>
+                                <strong className={item.name === SAMPLE_GUARD_NAME ? 'oct-sample' : undefined}>{item.name}</strong>
+                                <p>{item.detail}</p>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      ) : (
+                        <p id={destination.items.length === 0 ? undefined : source === 'sample' && destination.items[0]?.source !== 'sample' ? undefined : undefined}>
+                          None.
+                        </p>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
             ) : (
               <p id="area-first-example">Nothing is tagged to {selectedAxis.label}.</p>
             )}
@@ -295,7 +327,7 @@ function ModeButton({ pressed, label, onClick }: { pressed: boolean; label: stri
 }
 
 function shownScore(text: string, variant: ChartVariant): string {
-  return variant === 'sheet' && /^\d/.test(text) ? `${text} / 5` : text;
+  return variant !== 'current' && /^\d/.test(text) ? `${text} / 5` : text;
 }
 
 function Chart({
@@ -328,12 +360,23 @@ function Chart({
         />
       ))}
       {variant === 'current' ? <polygon className="oct-grid" points={ringPoints(3)} /> : null}
-      {AXES.map((axis, index) => {
-        const end = pointOnAxis(index, 5);
-        return (
-          <line key={axis.id} className="oct-grid" x1={OCTAGON_CENTER} y1={OCTAGON_CENTER} x2={end.x} y2={end.y} />
-        );
-      })}
+      {variant === 'center'
+        ? null
+        : values.map((_, index) => {
+            const end = pointOnAxis(index, 5);
+            return <line key={index} className="oct-grid" x1={OCTAGON_CENTER} y1={OCTAGON_CENTER} x2={end.x} y2={end.y} />;
+          })}
+      {variant === 'center'
+        ? contiguousRuns(values)
+            .filter((run) => run.length >= 3)
+            .map((run) => (
+              <polygon
+                key={run.join('-')}
+                className="oct-shape--filled"
+                points={run.map((index) => formatPoint(pointOnAxis(index, values[index] ?? 0))).join(' ')}
+              />
+            ))
+        : null}
       {variant === 'sheet'
         ? [1, 2, 3, 4, 5].map((step) => {
             const spot = pointOnAxis(0, step);
