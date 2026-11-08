@@ -3,7 +3,7 @@ import { useGymName } from '../hooks/useGymBrand';
 import { DRIVE_HANDOFF_SAVED, publishSeatToGym } from '../lib/driveHandoff';
 import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
 import { DriveHandoffGuide, useDriveConnected } from './DriveHandoffGuide';
-import { useCurrentSeat } from './SeatSessionBar';
+import { useSeatDoor } from '../hooks/useSeatDoor';
 import {
   INSTRUCTOR_PERMISSION_FIELDS,
   INSTRUCTOR_PRESETS,
@@ -108,7 +108,7 @@ function useInstructorSeats(): InstructorSeat[] {
 export function InstructorInvitePanel() {
   const formId = useId();
   const gymName = useGymName();
-  const currentSeat = useCurrentSeat();
+  const door = useSeatDoor();
   const seats = useInstructorSeats();
   const [email, setEmail] = useState('');
   const [permissions, setPermissions] = useState<InstructorPermissions>(() => defaultInstructorPermissions());
@@ -140,10 +140,10 @@ export function InstructorInvitePanel() {
     void syncLegacySeats();
   }, []);
 
-  if (currentSeat) {
+  if (door.seat) {
     return (
       <section className="invite-owner-only" aria-label="Instructor invites">
-        <GalleryApprovalSwitch viewer={{ role: 'seat', presetId: currentSeat.presetId }} />
+        <GalleryApprovalSwitch viewer={{ role: 'seat', presetId: door.seat.presetId }} />
         <p>Only the gym owner can issue invites. This seat cannot create or send them.</p>
       </section>
     );

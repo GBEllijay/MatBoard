@@ -115,6 +115,14 @@ export function grantRowOpensPlusCloud(row: { product: string; source: string })
 }
 
 /**
+ * Cloud recorded for an owner unlock. Same product names as the paid add-on.
+ * There is no Stripe subscription on this row.
+ */
+export function ownerCloudGrantOpen(row: { product: string; source: string }): boolean {
+  return row.source === 'owner' && (row.product === 'advantage-cloud-pro' || row.product === 'advantage-cloud-media' || row.product === 'advantage-cloud-coach');
+}
+
+/**
  * Assistant coach can play and download. Coach and Instructors can upload.
  * The owner can upload. A program director does not use daily videos or lesson plans.
  */
