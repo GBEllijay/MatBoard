@@ -3,7 +3,10 @@ import { isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 /**
  * Default gym logo for Advantage Pro. Saved on this device only.
- * Pro Shop cast reads `GYM_LOGO_STORAGE_KEY` through `readGymLogo()`.
+ * The academy profile on Pro and Media Console both write this key.
+ * Pro Shop cast, the timer, and the class board read it through `readGymLogo()`.
+ * A board picture is only the fallback when this slot is empty.
+ * A student's own logo (`matboard.studentGymLogo.v1`) is a different key.
  * Do not copy the bytes into another key.
  */
 
@@ -64,8 +67,8 @@ export type GymLogoSource = {
 };
 
 /**
- * Master gym logo for any surface (share pages now; student journals and
- * lower licenses in a later PR). Set on the Gallery "Custom gym logo" slot.
+ * Master gym logo for share pages, the gallery, the timer, and the class board.
+ * Edited on the academy profile and on the Gallery gym-identity slot. Same key.
  * Pair with subscribeGymLogo for live updates.
  */
 export function getGymLogo(): GymLogoSource {

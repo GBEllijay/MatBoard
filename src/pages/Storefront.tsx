@@ -1,4 +1,9 @@
 import { Link, useSearchParams } from 'react-router-dom';
+import { useEntitlementSettled } from '../hooks/useEntitlementSettled';
+import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
+import { useSeatDoor } from '../hooks/useSeatDoor';
+import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
+import { ownerEditionTarget } from '../lib/ownerHome';
 import { UpdateToLatestButton } from '../components/UpdateToLatestButton';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import {
@@ -23,7 +28,7 @@ import {
   type BeltRung,
   type BeltsVariant,
 } from '../lib/storefrontBelts';
-import { PRODUCTS_PATH } from '../lib/productNames';
+import { PRODUCTS_PATH, proConsoleEntryOpen } from '../lib/productNames';
 import { StorefrontHero } from './StorefrontHero';
 import './storefront.css';
 
@@ -31,6 +36,21 @@ export function StorefrontPage() {
   const unlocked = useWhiteUnlocked();
   const [params] = useSearchParams();
   const belts = beltsVariantOf(params.get('belts'));
+  const door = useSeatDoor();
+  const settled = useEntitlementSettled();
+  const cloudOpen = useProPlusCloudUnlocked();
+  const access = entitlementSnapshot();
+  const proConsoleOpen = proConsoleEntryOpen(door, access.claims, entitlementNowMs(), access.amnesty);
+  const editionTo = {
+    pro: ownerEditionTarget({ entry: 'pro', settled, seated: door.seated, proConsoleOpen, cloudOpen }),
+    'pro-cloud': ownerEditionTarget({
+      entry: 'pro-cloud',
+      settled,
+      seated: door.seated,
+      proConsoleOpen,
+      cloudOpen,
+    }),
+  };
 
   return (
     <main className="home home--store">
@@ -96,7 +116,12 @@ export function StorefrontPage() {
           </div>
           <div className="sf-steps">
             {STOREFRONT_BELT_LADDER.map((rung) => (
-              <ProgressStep key={rung.id} step={rung} belts={belts} />
+              <ProgressStep
+                key={rung.id}
+                step={rung}
+                belts={belts}
+                to={rung.id === 'pro' ? editionTo.pro : rung.id === 'pro-cloud' ? editionTo['pro-cloud'] : undefined}
+              />
             ))}
           </div>
           <p className="sf-note">{STOREFRONT_LADDER_NOTE}</p>
@@ -155,7 +180,8 @@ function Woodblock({
   );
 }
 
-function ProgressStep({ step, belts }: { step: BeltRung; belts: BeltsVariant }) {
+function ProgressStep({ step, belts, to }: { step: BeltRung; belts: BeltsVariant; to?: string }) {
+  const dest = to ?? step.to;
   const body = (
     <>
       <div className="sf-rank">
@@ -195,12 +221,12 @@ function ProgressStep({ step, belts }: { step: BeltRung; belts: BeltsVariant }) 
     // The Learn more control is the button. The rest of the tile opens `to` when it has one.
     return (
       <article className={className}>
-        {step.to ? <Link className="sf-step__hit" to={step.to} tabIndex={-1} aria-hidden="true" /> : null}
+        {dest ? <Link className="sf-step__hit" to={dest} tabIndex={-1} aria-hidden="true" /> : null}
         {body}
       </article>
     );
   }
-  if (step.to === null) {
+  if (dest === null) {
     // No product yet: the tile is the alpha request, same as the section button.
     return (
       <a className={className} href={alphaRequestMailto()}>
@@ -209,7 +235,7 @@ function ProgressStep({ step, belts }: { step: BeltRung; belts: BeltsVariant }) 
     );
   }
   return (
-    <Link className={className} to={step.to}>
+    <Link className={className} to={dest}>
       {body}
     </Link>
   );

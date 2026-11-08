@@ -6,10 +6,11 @@ import { OpenMyDrive } from './OpenMyDrive';
 import { MediaSourceSheet } from './VideoSourceSheet';
 import { buildGymBrandFile, GYM_BRAND_FILE_NAME } from '../lib/coachGymFile';
 import { getDriveBindingSnapshot, subscribeDriveBinding } from '../lib/googleDrive';
-import { clearGymLogo, readGymLogo, saveGymLogoFile } from '../lib/gymLogo';
+import { clearGymLogo, saveGymLogoFile } from '../lib/gymLogo';
 import { saveGymLogoToDrive } from '../lib/gymLogoDrive';
 import { quotaAddNote } from '../lib/storageQuota';
-import { GYM_NAME_MAX, readGymName, writeGymName } from '../lib/gymName';
+import { GYM_NAME_MAX, writeGymName } from '../lib/gymName';
+import { useGymLogo, useGymName } from '../hooks/useGymBrand';
 import { PHOTO_PICKER_ACCEPT, VIDEO_CAPTURE } from '../lib/mediaPicker';
 import { todayIso } from '../lib/studentEdition';
 
@@ -27,8 +28,8 @@ const LIBRARY_ID = 'gym-logo-library';
 export function GymLogoControl() {
   const captureRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
-  const [logoUrl, setLogoUrl] = useState<string | null>(() => readGymLogo());
-  const [gymName, setGymName] = useState(() => readGymName());
+  const logoUrl = useGymLogo();
+  const gymName = useGymName();
   const [chooserOpen, setChooserOpen] = useState(false);
   const [note, setNote] = useState('');
   const [driveNote, setDriveNote] = useState('');
@@ -40,8 +41,7 @@ export function GymLogoControl() {
     if (!file) return;
     setChooserOpen(false);
     try {
-      const saved = await saveGymLogoFile(file);
-      setLogoUrl(saved);
+      await saveGymLogoFile(file);
       setNote('');
     } catch (error) {
       setNote(quotaAddNote(error) ?? 'That file is not a photo this logo can keep.');
@@ -50,7 +50,6 @@ export function GymLogoControl() {
 
   const clear = () => {
     clearGymLogo();
-    setLogoUrl(null);
     setNote('');
   };
 
@@ -117,11 +116,7 @@ export function GymLogoControl() {
         Gym name
         <input
           value={gymName}
-          onChange={(event) => {
-            const next = event.target.value.slice(0, GYM_NAME_MAX);
-            setGymName(next);
-            writeGymName(next);
-          }}
+          onChange={(event) => writeGymName(event.target.value.slice(0, GYM_NAME_MAX))}
           placeholder="School or academy"
           aria-label="Gym name"
           autoComplete="organization"
@@ -129,7 +124,7 @@ export function GymLogoControl() {
         />
       </label>
       <p className="gym-logo__hint">
-        Saved on this device. The gym file carries the name and logo to students. They can replace or remove the logo. A new competitor starts with this name when their gym is empty.
+        Saved on this device. This is the same academy name and logo as the academy profile on Pro. The gym file carries them to students. They can replace or remove the logo. A new competitor starts with this name when their gym is empty.
         {logoUrl && !driveFolder ? ' Connect Google Drive to copy the logo into the gym folder.' : ''}
       </p>
       <MediaSourceSheet

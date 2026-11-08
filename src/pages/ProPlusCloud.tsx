@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { AdvantageCloudHome } from '../components/AdvantageCloudHome';
+import { GymCharacterSheet } from '../components/GymCharacterSheet';
 import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
 import { PlusCloudConduct } from '../components/PlusCloudConduct';
@@ -42,12 +43,13 @@ export function ProPlusCloudPage() {
       <div className="home__inner">
         <PlayExitMark to={PRODUCTS_PATH} />
         <HomeMark to={PRODUCTS_PATH} />
-        <PlusCloudConduct />
+        <GymCharacterSheet />
 
         <nav className="home__modes" aria-label={PRO_PLUS_CLOUD_NAME}>
           <BeltHeader kind="black" worn title={PRO_PLUS_CLOUD_NAME} blurb={PRO_PLUS_CLOUD_BELT_BLURB} />
-          <ProToolboxCard hubs={hubs} label={`${PRO_PLUS_CLOUD_NAME} hubs`} />
+          <PlusCloudConduct />
           <AdvantageCloudHome />
+          <ProToolboxCard hubs={hubs} label={`${PRO_PLUS_CLOUD_NAME} hubs`} />
           <InstructorInvitePanel />
         </nav>
 

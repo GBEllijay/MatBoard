@@ -32,7 +32,7 @@ import {
   EVENTS_CAST_MODE_OPTIONS,
   type EventsCastMode,
 } from '../lib/eventSlides';
-import { readGymLogo } from '../lib/gymLogo';
+import { readGymLogo, subscribeGymLogo } from '../lib/gymLogo';
 import { isProgramDirectorSeat, seatPermissionAllows } from '../lib/instructorSeats';
 import { APPROVAL_WAITING, readGalleryApproval } from '../lib/galleryApproval';
 import { addClassPhotoPromotionFiles } from '../lib/classPhotoPromotions';
@@ -257,7 +257,9 @@ export function ScreensaverPage() {
   }, []);
 
   useEffect(() => {
-    if (!options) setGymLogoUrl(readGymLogo());
+    if (options) return;
+    setGymLogoUrl(readGymLogo());
+    return subscribeGymLogo(() => setGymLogoUrl(readGymLogo()));
   }, [options]);
 
   const photosRef = useRef(photos);

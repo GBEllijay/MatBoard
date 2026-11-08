@@ -7,6 +7,11 @@
   justify-self: stretch;
 }
 
+/* The center mark is fixed. Keep the academy profile under it, above the belt. */
+.home--pro .home__inner {
+  padding-top: calc(var(--mark-home) + 1rem + var(--safe-t));
+}
+
 .gym-pulse {
   display: grid;
   gap: 8px;

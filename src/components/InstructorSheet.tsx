@@ -18,8 +18,8 @@ import {
   studentLabel,
 } from '../lib/gymEvents.ts';
 import { getGymEventsSnapshot, readGymEvents, readGymMeta, subscribeGymEvents } from '../lib/gymEventLog.ts';
-import { ADVANTAGE_MARK_SRC, readGymLogo } from '../lib/gymLogo.ts';
-import { readGymName } from '../lib/gymName.ts';
+import { ADVANTAGE_MARK_SRC } from '../lib/gymLogo.ts';
+import { useGymLogo, useGymName } from '../hooks/useGymBrand.ts';
 import { getRoster } from '../lib/rosterStore.ts';
 import { useCurrentSeat } from './SeatSessionBar';
 import type { GymEvent } from '../lib/gymEvents.ts';
@@ -64,10 +64,10 @@ export function InstructorSheet() {
   const events = useEvents();
   const seat = useCurrentSeat();
   const [marked, setMarked] = useState<number | null>(null);
-  const [logo, setLogo] = useState<string | null>(null);
+  const logo = useGymLogo();
+  const deviceGymName = useGymName();
   useEffect(() => {
     ensureGymBackfill();
-    setLogo(readGymLogo());
     void syncGymEvents();
   }, []);
   const year = new Date().getFullYear();
@@ -83,7 +83,7 @@ export function InstructorSheet() {
   const cloud = readGymMeta().cloudSynced;
   const academy = readGymMeta().cloudTotals;
   const students = getRoster().students;
-  const name = seat ? seat.email.split('@')[0] || 'Instructor' : readGymName() || 'Owner';
+  const name = seat ? seat.email.split('@')[0] || 'Instructor' : deviceGymName || 'Owner';
   const role = seat?.presetId === 'instructors' ? 'Instructors' : seat?.presetId === 'coach' ? 'Coach' : seat ? 'Instructor' : 'Owner';
   const log = [...promotions, ...split.detail.filter((event) => event.type === 'stripe.awarded')].sort((a, b) => (a.at < b.at ? 1 : -1));
 
@@ -97,7 +97,7 @@ export function InstructorSheet() {
             <h2>{name}</h2>
             <p>
               {role}
-              {readGymName() && seat ? ` · ${readGymName()}` : ''} · {cloud ? 'Advantage Cloud' : 'This device'}
+              {deviceGymName && seat ? ` · ${deviceGymName}` : ''} · {cloud ? 'Advantage Cloud' : 'This device'}
             </p>
           </div>
         </div>

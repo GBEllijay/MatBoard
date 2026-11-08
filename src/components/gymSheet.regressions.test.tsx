@@ -8,8 +8,11 @@ import { Window } from 'happy-dom';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GymCharacterSheet } from './GymCharacterSheet.tsx';
-import { clearGymLogo, writeGymLogo } from '../lib/gymLogo.ts';
+import { clearGymLogo, readGymLogo, writeGymLogo } from '../lib/gymLogo.ts';
+import { GYM_NAME_STORAGE_KEY, readGymName, writeGymName } from '../lib/gymName.ts';
 import { readGymProfile, writeGymProfile } from '../lib/gymProfile.ts';
+import { installAcceptedSeat, signOutInstructorSeat } from '../lib/instructorSeats.ts';
+import { getSchedule, setBoardTitle } from '../lib/scheduleStore.ts';
 
 const dom = new Window({ url: 'http://localhost/pro' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -35,6 +38,8 @@ const LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ
 function blankProfile() {
   writeGymProfile({ foundedOn: '', founders: '', lineage: '', optIn: [] });
   clearGymLogo();
+  writeGymName('');
+  signOutInstructorSeat();
 }
 
 async function renderSheet() {
@@ -162,6 +167,74 @@ test('a gym logo replaces the upload prompt and stays tappable', async () => {
   assert.equal(img?.getAttribute('src'), LOGO);
   assert.equal(filled?.querySelector('input[type="file"]')?.getAttribute('aria-label'), 'Replace gym logo');
   await sheet.unmount();
+});
+
+test('academy name is the device gym name, and a board title and a student academy stay separate', async () => {
+  blankProfile();
+  writeGymName('Legacy Academy');
+  writeGymLogo(LOGO);
+  const story = 'Founded under Teacher A.\nThat teacher under Teacher B.';
+  writeGymProfile({ lineage: story });
+  localStorage.setItem('matboard.studentEdition.v1', '{"profile":{"gymName":"Student Gym"}}');
+  localStorage.setItem('matboard.studentGymLogo.v1', 'student-mark');
+  setBoardTitle('Open Mat Night');
+
+  const sheet = await renderSheet();
+  const name = field(sheet.host, 'Academy name') as HTMLInputElement;
+  assert.equal(name.value, 'Legacy Academy');
+  assert.equal(sheet.host.querySelector('h2')?.textContent, 'Legacy Academy');
+  assert.equal(sheet.host.querySelector('img[alt="Gym logo"]')?.getAttribute('src'), LOGO);
+  setValue(name, 'North Academy');
+  assert.equal(readGymName(), 'North Academy');
+  assert.equal(name.value, 'North Academy');
+  assert.equal(sheet.host.querySelector('h2')?.textContent, 'North Academy');
+  assert.equal(readGymLogo(), LOGO);
+  assert.equal(getSchedule().title, 'Open Mat Night');
+  assert.equal(localStorage.getItem('matboard.studentEdition.v1'), '{"profile":{"gymName":"Student Gym"}}');
+  assert.equal(localStorage.getItem('matboard.studentGymLogo.v1'), 'student-mark');
+  assert.equal(readGymProfile().lineage, story);
+
+  const toggle = sheet.host.querySelector('[role="switch"]') as HTMLButtonElement;
+  await act(async () => {
+    toggle.click();
+  });
+  assert.equal(readGymProfile().lineage, story);
+  assert.equal(readGymProfile().lineageVisible, false);
+  assert.equal(readGymName(), 'North Academy');
+  await sheet.unmount();
+
+  const again = await renderSheet();
+  assert.equal((field(again.host, 'Academy name') as HTMLInputElement).value, 'North Academy');
+  assert.equal(again.host.querySelector('h2')?.textContent, 'North Academy');
+  assert.equal(again.host.querySelector('textarea[aria-label="Lineage"]'), null);
+  assert.equal(readGymProfile().lineage, story);
+  setValue(field(again.host, 'Academy name'), '   ');
+  assert.equal(readGymName(), '');
+  assert.equal(localStorage.getItem(GYM_NAME_STORAGE_KEY), null);
+  assert.equal(again.host.querySelector('h2')?.textContent, 'Your academy');
+  assert.equal(getSchedule().title, 'Open Mat Night');
+  assert.equal(readGymProfile().lineage, story);
+  await again.unmount();
+});
+
+test('a signed-in seat sees the academy name and cannot edit it', async () => {
+  blankProfile();
+  writeGymName('Legacy Academy');
+  const installed = installAcceptedSeat({
+    id: 'seat-coach',
+    email: 'coach@example.test',
+    presetId: 'coach',
+    inviteToken: 'tok-seat-coach',
+  });
+  assert.equal(installed.ok, true);
+  const sheet = await renderSheet();
+  assert.equal(sheet.host.querySelector('h2')?.textContent, 'Legacy Academy');
+  assert.equal(sheet.host.querySelector('input[aria-label="Academy name"]'), null);
+  assert.equal(sheet.host.querySelector('input[type="file"]'), null);
+  assert.equal(readGymName(), 'Legacy Academy');
+  await sheet.unmount();
+  signOutInstructorSeat();
+  assert.equal(readGymName(), 'Legacy Academy');
 });
 
 test('with no logo the prompt is the empty state, and it is gone when a logo was already saved', async () => {

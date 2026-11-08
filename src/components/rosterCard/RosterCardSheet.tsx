@@ -28,7 +28,7 @@ import { cardLookCode, readCardLook, subscribeCardLook } from '../../lib/cardLoo
 import { readPhotoReviews } from '../../lib/rosterPhotoApproval';
 import { ASSESSMENT_AREAS, type AssessmentScore, type AssessmentScores } from '../../lib/studentAssessment';
 import { readGymLogo, subscribeGymLogo } from '../../lib/gymLogo';
-import { readGymName } from '../../lib/gymName';
+import { useGymName } from '../../hooks/useGymBrand';
 import { getRoster, setNoPhotos, subscribeRoster, type Student } from '../../lib/rosterStore';
 import type { TournamentRegistrationEvent } from '../../lib/studentEvents';
 
@@ -142,7 +142,8 @@ export function RosterCardBody({
   const [askRemoveCompetitor, setAskRemoveCompetitor] = useState(false);
   const snapshotRef = useRef<HTMLInputElement>(null);
   const gymLogo = useMemo(() => readGymLogo(), [tick]);
-  const gymName = student.gym || readGymName();
+  const deviceGymName = useGymName();
+  const gymName = student.gym || deviceGymName;
   const studentId = student.linkedStudentId ?? '';
   const gym = { name: gymName, logo: gymLogo ?? undefined, cardLook: cardLookCode(look) };
 

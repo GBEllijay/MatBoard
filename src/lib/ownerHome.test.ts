@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { ownerEditionTarget } from './ownerHome.ts';
+
+const open = { settled: true, seated: false, proConsoleOpen: true, cloudOpen: false };
+const cloud = { settled: true, seated: false, proConsoleOpen: true, cloudOpen: true };
+const locked = { settled: true, seated: false, proConsoleOpen: false, cloudOpen: false };
+const seat = { settled: true, seated: true, proConsoleOpen: false, cloudOpen: false };
+const pending = { settled: false, seated: false, proConsoleOpen: false, cloudOpen: false };
+
+test('a valid Pro owner opens /pro, and Pro + Cloud stays its own page', () => {
+  assert.equal(ownerEditionTarget({ entry: 'pro', ...open }), '/pro');
+  assert.equal(ownerEditionTarget({ entry: 'pro-cloud', ...open }), '/editions/pro-cloud');
+  assert.equal(ownerEditionTarget({ entry: 'pro', ...cloud }), '/pro');
+  assert.equal(ownerEditionTarget({ entry: 'pro-cloud', ...cloud }), '/pro-plus-cloud');
+});
+
+test('a paid Pro pass without Cloud does not open the Cloud homepage', () => {
+  assert.equal(ownerEditionTarget({ entry: 'pro', ...open }), '/pro');
+  assert.equal(ownerEditionTarget({ entry: 'pro-cloud', ...open }), '/editions/pro-cloud');
+});
+
+test('a locked visitor gets the public Pro and Pro + Cloud pages', () => {
+  assert.equal(ownerEditionTarget({ entry: 'pro', ...locked }), '/editions/pro');
+  assert.equal(ownerEditionTarget({ entry: 'pro-cloud', ...locked }), '/editions/pro-cloud');
+});
+
+test('a coach seat is not sent to the owner homepage', () => {
+  assert.equal(ownerEditionTarget({ entry: 'pro', ...seat }), '/editions/pro');
+  assert.equal(ownerEditionTarget({ entry: 'pro-cloud', ...seat }), '/editions/pro-cloud');
+  assert.equal(
+    ownerEditionTarget({ entry: 'pro-cloud', settled: true, seated: true, proConsoleOpen: true, cloudOpen: true }),
+    '/editions/pro-cloud',
+  );
+  assert.equal(
+    ownerEditionTarget({ entry: 'pro', settled: true, seated: true, proConsoleOpen: true, cloudOpen: false }),
+    '/pro',
+  );
+});
+
+test('a saved pass that is still loading is not sent to a buy or alpha page', () => {
+  assert.equal(ownerEditionTarget({ entry: 'pro', ...pending }), '/pro');
+  assert.equal(ownerEditionTarget({ entry: 'pro-cloud', ...pending }), '/pro-plus-cloud');
+});

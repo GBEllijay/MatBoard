@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useEntitlementSettled } from '../hooks/useEntitlementSettled';
+import { ownerEditionTarget } from '../lib/ownerHome';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HistoryBackMark } from '../components/HistoryBackMark';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
@@ -32,8 +34,8 @@ import {
   STUDENT_HOME_DESCRIPTION,
   WHITE_HOME_DESCRIPTION,
   coachDoorOpen,
-  coachUnlimitedDoorOpen,
   homeConsoleLabel,
+  coachUnlimitedDoorOpen,
   proConsoleEntryOpen,
 } from '../lib/productNames';
 import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
@@ -79,6 +81,23 @@ export function HomePage() {
   const studentDemo = studentDemoMode(params, studentOwner) || !studentEditionEntitled(studentOwner);
   const studentTo = studentPreview || !studentEditionEntitled(studentOwner) ? '/student?student=1' : '/student';
   const cloudOpen = useProPlusCloudUnlocked();
+  const settled = useEntitlementSettled();
+  const proTo = ownerEditionTarget({
+    entry: 'pro',
+    settled,
+    seated,
+    proConsoleOpen: consoleOpen,
+    cloudOpen,
+  });
+  const cloudTo = ownerEditionTarget({
+    entry: 'pro-cloud',
+    settled,
+    seated,
+    proConsoleOpen: consoleOpen,
+    cloudOpen,
+  });
+  const openProHome = proTo === '/pro' && (!seated || Boolean(consoleLabel));
+  const openCloudHome = cloudOpen && cloudTo === '/pro-plus-cloud';
   const instructorUnlimited = coachUnlimitedDoorOpen(door);
   const instructorOpenTo = instructorUnlimited ? COACH_UNLIMITED_PATH : '/coach';
   const instructorOpenLabel = instructorUnlimited ? 'Open Advantage Instructor Edition' : 'Open Coach';
@@ -163,19 +182,26 @@ export function HomePage() {
             </article>
           )}
 
-          {(consoleOpen && consoleLabel) || cloudOpen ? (
+          {openProHome || openCloudHome ? (
             <article className="mode-card mode-card--pro">
               <Link
                 className="mode-card__hit"
-                to={cloudOpen ? PRO_PLUS_CLOUD_PATH : '/pro'}
+                to={openProHome ? '/pro' : PRO_PLUS_CLOUD_PATH}
                 tabIndex={-1}
-                aria-label={cloudOpen ? PRO_PLUS_CLOUD_OPEN_LABEL : 'Open Pro Console'}
+                aria-label={openProHome ? 'Open Pro Console' : PRO_PLUS_CLOUD_OPEN_LABEL}
               />
               <ProHomeCopy />
               <div className="mode-card__actions">
-                <Link className="btn btn--white" to={cloudOpen ? PRO_PLUS_CLOUD_PATH : '/pro'}>
-                  {cloudOpen ? PRO_PLUS_CLOUD_OPEN_LABEL : 'Open Pro Console'}
-                </Link>
+                {openProHome ? (
+                  <Link className="btn btn--white" to="/pro">
+                    Open Pro Console
+                  </Link>
+                ) : null}
+                {openCloudHome ? (
+                  <Link className="btn btn--white" to={PRO_PLUS_CLOUD_PATH}>
+                    {PRO_PLUS_CLOUD_OPEN_LABEL}
+                  </Link>
+                ) : null}
               </div>
             </article>
           ) : (

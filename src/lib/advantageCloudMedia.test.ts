@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   CLOUD_HOME_CONNECTED,
+  CLOUD_HOME_ERROR,
   CLOUD_HOME_UNBOUND,
+  CLOUD_UNAVAILABLE_MESSAGE,
+  cloudHomeStatusLine,
   CLOUD_ROLE_HOME,
   CLOUD_ROLE_MESSAGE,
   CLOUD_SAVED_MESSAGE,
@@ -191,7 +194,7 @@ test('Advantage Cloud is an added choice and does not replace Drive, OneDrive, o
 });
 
 test('the head instructor home says when Cloud is unbound, connected, or how full it is', async () => {
-  const unbound = await loadAdvantageCloudHome(async () => new Response(JSON.stringify({ ok: false }), { status: 503 }));
+  const unbound = await loadAdvantageCloudHome(async () => new Response(JSON.stringify({ ok: false, reason: 'unbound' }), { status: 503 }));
   assert.deepEqual(unbound, { phase: 'unbound' });
   assert.match(CLOUD_HOME_UNBOUND, /not connected/);
   assert.doesNotMatch(CLOUD_HOME_UNBOUND, /Coming soon/);
@@ -235,7 +238,23 @@ test('the head instructor home says when Cloud is unbound, connected, or how ful
   if (ready.phase === 'ready') {
     assert.equal(ready.licenseUsedBytes, 1800000);
     assert.equal(ready.capBytes, 8000000000);
+    assert.match(cloudHomeStatusLine(ready), /1\.8 MB/);
   }
+
+  const refused = await loadAdvantageCloudHome(async (input) => {
+    const url = String(input);
+    if (url.includes('probe=1')) return new Response(JSON.stringify({ ok: true, bound: true }), { status: 200 });
+    return new Response(JSON.stringify({ ok: true, cloud: false }), { status: 200 });
+  });
+  assert.deepEqual(refused, { phase: 'unavailable' });
+  assert.equal(cloudHomeStatusLine(refused), CLOUD_UNAVAILABLE_MESSAGE);
+
+  const broken = await loadAdvantageCloudHome(async () => {
+    throw new Error('offline');
+  });
+  assert.deepEqual(broken, { phase: 'error' });
+  assert.equal(cloudHomeStatusLine(broken), CLOUD_HOME_ERROR);
+  assert.doesNotMatch(CLOUD_HOME_ERROR, /connected/);
 });
 
 test('a file larger than one part is uploaded in chunks', async () => {

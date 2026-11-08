@@ -183,7 +183,7 @@ test('Media Edition (purple) has no product: display price only, no checkout, th
   assert.equal(academy.status, 'This product is in alpha');
   assert.equal(academy.to, '/media');
   // The mail-link branch stays for any future rung without a page.
-  assert.match(tsx, /if \(step\.to === null\)[\s\S]*?href=\{alphaRequestMailto\(\)\}/);
+  assert.match(tsx, /if \(dest === null\)[\s\S]*?href=\{alphaRequestMailto\(\)\}/);
   // The section keeps its heading and the alpha button.
   assert.equal(STOREFRONT_PROGRESS_HEADING, 'Start with White. Grow into Pro.');
   assert.match(tsx, /Request to join alpha/);

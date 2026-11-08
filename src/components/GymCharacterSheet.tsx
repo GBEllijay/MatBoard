@@ -25,7 +25,7 @@ import {
 } from '../lib/gymEvents.ts';
 import { getGymEventsSnapshot, readGymMeta, subscribeGymEvents } from '../lib/gymEventLog.ts';
 import { ADVANTAGE_MARK_SRC, readGymLogo, saveGymLogoFile, subscribeGymLogo } from '../lib/gymLogo.ts';
-import { readGymName } from '../lib/gymName.ts';
+import { GYM_NAME_MAX, readGymName, subscribeGymName, writeGymName } from '../lib/gymName.ts';
 import {
   getGymProfileSnapshot,
   gymLineageText,
@@ -50,11 +50,16 @@ function useLogo(): string | null {
   return useSyncExternalStore(subscribeGymLogo, readGymLogo, readGymLogo);
 }
 
+function useDeviceGymName(): string {
+  return useSyncExternalStore(subscribeGymName, readGymName, readGymName);
+}
+
 export function GymCharacterSheet() {
   installGymActor();
   const events = useEvents();
   const profile = useProfile();
   const logo = useLogo();
+  const deviceGymName = useDeviceGymName();
   const seat = useCurrentSeat();
   const [logoNote, setLogoNote] = useState('');
   useEffect(() => {
@@ -83,7 +88,7 @@ export function GymCharacterSheet() {
       ? instructorTallies(split.totals).map((row) => (row.seatId === view.seatId ? row : { ...row, name: 'Other instructors', seatId: 'other' }))
       : instructorTallies(events);
   const collapsed = collapseOthers(instructors, view.kind === 'own' ? view.seatId : null);
-  const gymName = readGymName() || 'Your academy';
+  const gymName = deviceGymName || 'Your academy';
   const owner = !seat;
 
   const onLogoFile = (event: ChangeEvent<HTMLInputElement>) => {
@@ -133,6 +138,19 @@ export function GymCharacterSheet() {
         </div>
         {owner ? (
           <form className="gym-fields" onSubmit={(event) => event.preventDefault()}>
+            <label>
+              Academy name
+              <input
+                aria-label="Academy name"
+                value={deviceGymName}
+                maxLength={GYM_NAME_MAX}
+                autoComplete="organization"
+                onChange={(event) => writeGymName(event.target.value)}
+              />
+            </label>
+            <p className="gym-sheet__note">
+              Saved on this device. Media, the gallery, the timer, and the class board use this name and the logo above. A board title, when one is set, shows on that board instead. A student&apos;s own academy name is separate.
+            </p>
             <label>
               Founded
               <input type="date" value={profile.foundedOn} onChange={(event) => writeGymProfile({ foundedOn: event.target.value })} />
