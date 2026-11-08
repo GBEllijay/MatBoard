@@ -71,43 +71,43 @@ test('axis labels stay visible, Control is not zero, and Deep half guard is a Gu
   assert.equal(host.querySelectorAll('line.oct-grid').length, 8);
   assert.equal(host.querySelector('.oct-mark'), null);
   assert.equal(host.querySelector('#area-first-example strong')?.textContent, 'Deep half guard');
-  assert.equal(labeled(host, 'Guard axis, 5 / 5, selected').textContent?.includes('Guard'), true);
+  assert.equal(labeled(host, 'Guard/Control axis, Not rated, selected').textContent?.includes('Guard/Control'), true);
   assert.equal(labeled(host, 'Passing axis, 3 / 5').textContent?.includes('Passing'), true);
-  assert.equal(labeled(host, 'Control axis, Not rated').textContent?.includes('Not rated'), true);
+  assert.equal(labeled(host, 'Sweeps axis, Not rated').textContent?.includes('Not rated'), true);
   assert.equal(host.querySelector('.oct-shape--closed'), null);
-  const detail = labeled(host, 'Guard explanation');
+  const detail = labeled(host, 'Guard/Control explanation');
   assert.match(detail.textContent ?? '', /Deep half guard/);
   assert.match(detail.textContent ?? '', /not a saved student record/);
-  assert.match(detail.textContent ?? '', /Manual check-in: 5/);
+  assert.match(detail.textContent ?? '', /Manual check-in: not rated/);
   assert.doesNotMatch(host.textContent ?? '', /UFC|Ultimate Fighting/);
   assert.equal(localStorage.getItem('matboard.studentEdition.assessment.v1'), null);
 
-  click(labeled(host, 'Control axis, Not rated'));
-  const control = labeled(host, 'Control explanation');
-  assert.match(control.textContent ?? '', /side control/i);
-  assert.match(control.textContent ?? '', /not a score of 0/);
-  assert.match(control.textContent ?? '', /Back control/);
-  assert.match(labeled(host, 'Control axis, Not rated, selected').textContent ?? '', /Selected/);
+  click(labeled(host, 'Sweeps axis, Not rated'));
+  const sweeps = labeled(host, 'Sweeps explanation');
+  assert.match(sweeps.textContent ?? '', /not a score of 0/);
+  assert.match(sweeps.textContent ?? '', /Sit-up sweep/i);
+  assert.match(labeled(host, 'Sweeps axis, Not rated, selected').textContent ?? '', /Selected/);
 
   click(labeled(host, 'From techniques'));
   assert.equal(labeled(host, 'From techniques').getAttribute('aria-pressed'), 'true');
-  assert.ok(host.querySelector('[aria-label="Control axis, 4.3 / 5, selected"]'));
+  assert.ok(host.querySelector('[aria-label="Sweeps axis, Not rated, selected"]'));
   assert.ok(host.querySelector('[aria-label="Conditioning axis, Manual only"]'));
   assert.equal(host.querySelector('.oct-shape--closed'), null);
-  click(labeled(host, 'Guard axis, 3.5 / 5'));
-  assert.match(labeled(host, 'Guard explanation').textContent ?? '', /3\.5/);
-  assert.match(labeled(host, 'Guard explanation').textContent ?? '', /Deep half guard/);
+  click(labeled(host, 'Guard/Control axis, 4.0 / 5'));
+  assert.match(labeled(host, 'Guard/Control explanation').textContent ?? '', /4/);
+  assert.match(labeled(host, 'Guard/Control explanation').textContent ?? '', /Deep half guard/);
 
   click(labeled(host, 'Deep half guard rating 1'));
-  assert.ok(host.querySelector('[aria-label="Guard axis, 2.0 / 5, selected"]'));
+  assert.ok(host.querySelector('[aria-label="Guard/Control axis, 3.3 / 5, selected"]'));
   click(labeled(host, 'Manual check-in'));
-  assert.ok(host.querySelector('[aria-label="Guard axis, 5 / 5, selected"]'));
+  assert.ok(host.querySelector('[aria-label="Guard/Control axis, Not rated, selected"]'));
   assert.equal(labeled(host, 'Manual check-in').getAttribute('aria-pressed'), 'true');
 
-  click(labeled(host, 'Manual Control rating 4'));
+  click(labeled(host, 'Manual Guard/Control rating 4'));
+  click(labeled(host, 'Manual Sweeps rating 4'));
   assert.ok(host.querySelector('.oct-shape--closed'));
-  assert.ok(host.querySelector('[aria-label="Control axis, 4 / 5"]'));
-  click(labeled(host, 'Manual Control no score'));
+  assert.ok(host.querySelector('[aria-label="Guard/Control axis, 4 / 5, selected"]'));
+  click(labeled(host, 'Manual Sweeps no score'));
   assert.equal(host.querySelector('.oct-shape--closed'), null);
   assert.equal(localStorage.length, before);
   unmount(mounted);
@@ -121,10 +121,10 @@ test('the sheet comparison uses the character-sheet radar and does not score a g
   assert.equal(host.querySelectorAll('line.oct-grid').length, 8);
   assert.equal(host.querySelectorAll('.oct-scale').length, 5);
   assert.equal(host.querySelectorAll('.oct-label').length, 8);
-  assert.ok(host.querySelector('[aria-label="Guard axis, 5 / 5, selected"]'));
-  assert.ok(host.querySelector('[aria-label="Control axis, Not rated"]'));
-  assert.equal(host.querySelector('[aria-label="Control axis, 0/5"]'), null);
-  assert.equal(host.querySelectorAll('.oct-dot').length, 7);
+  assert.ok(host.querySelector('[aria-label="Guard/Control axis, Not rated, selected"]'));
+  assert.ok(host.querySelector('[aria-label="Sweeps axis, Not rated"]'));
+  assert.equal(host.querySelector('[aria-label="Sweeps axis, 0/5"]'), null);
+  assert.equal(host.querySelectorAll('.oct-dot').length, 6);
   assert.match(host.textContent ?? '', /Attribute radar/);
   assert.match(host.textContent ?? '', /1 = Developing/);
   assert.match(host.textContent ?? '', /Assessment radar/);
@@ -150,15 +150,24 @@ test('the center mark keeps a filled shape, the pressed logo, and no spider web'
   const closing = host.querySelector('.oct-shape-line')?.getAttribute('points')?.trim().split(/\s+/) ?? [];
   assert.equal(closing[0], closing[closing.length - 1]);
   assert.ok(host.querySelector('.oct-mark'));
-  assert.ok(host.querySelector('[aria-label="Guard axis, Stat-sheet example 4 / 5, selected"]'));
-  assert.ok(host.querySelector('[aria-label="Control axis, Stat-sheet example 3 / 5"]'));
+  assert.ok(host.querySelector('[aria-label="Guard/Control axis, Fictional cage 4 / 5, selected"]'));
+  assert.ok(host.querySelector('[aria-label="Sweeps axis, Fictional cage 4 / 5"]'));
   assert.match(host.textContent ?? '', /not stored as zero/i);
   assert.equal(host.querySelector('#area-first-example strong')?.textContent, 'Deep half guard');
   assert.match(host.textContent ?? '', /Guard retention/);
-  for (const id of ['passing', 'takedowns', 'escapes', 'submissions', 'control', 'conditioning', 'mindset', 'guard']) {
+  for (const [id, label] of [
+    ['passing', 'Passing'],
+    ['sweeps', 'Sweeps'],
+    ['takedowns', 'Takedowns'],
+    ['escapes-defense', 'Escapes/Defense'],
+    ['submissions', 'Submissions'],
+    ['guard-control', 'Guard/Control'],
+    ['conditioning', 'Conditioning'],
+    ['mindset', 'Mindset'],
+  ] as const) {
     click(host.querySelector(`.oct-label[data-area="${id}"]`) as HTMLElement);
     assert.ok(host.querySelector('#area-first-example'));
-    assert.match(host.querySelector('#area-panel')?.textContent ?? '', new RegExp(id === 'takedowns' ? 'Takedowns' : id[0].toUpperCase() + id.slice(1), 'i'));
+    assert.match(host.querySelector('#area-panel')?.textContent ?? '', new RegExp(label.replace('/', '\\/')));
   }
   unmount(mounted);
 });
@@ -167,14 +176,14 @@ test('coach, opponent, and the comparison stay fictional and share the cage', ()
   const before = localStorage.length;
   const coach = mount(<AssessmentRadarPreviewPage />, `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=coach`);
   assert.equal(labeled(coach.host, 'Coach radar').getAttribute('aria-pressed'), 'true');
-  assert.ok(coach.host.querySelector('[aria-label="Guard axis, Coach 5 / 5, selected"]'));
+  assert.ok(coach.host.querySelector('[aria-label="Guard/Control axis, Coach 5 / 5, selected"]'));
   assert.equal(coach.host.querySelectorAll('line.oct-grid').length, 0);
   assert.equal(coach.host.querySelectorAll('polygon.oct-shape--filled').length, 1);
   assert.match(coach.host.textContent ?? '', /Coach example \(fictional\)/);
   unmount(coach);
 
   const opponent = mount(<AssessmentRadarPreviewPage />, `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=opponent`);
-  assert.ok(opponent.host.querySelector('[aria-label="Control axis, Opponent 2 / 5"]'));
+  assert.ok(opponent.host.querySelector('[aria-label="Guard/Control axis, Opponent 2 / 5, selected"]'));
   assert.match(opponent.host.textContent ?? '', /Opponent example \(fictional\)/);
   unmount(opponent);
 
@@ -183,9 +192,9 @@ test('coach, opponent, and the comparison stay fictional and share the cage', ()
   assert.equal(both.host.querySelectorAll('polygon.oct-shape--coach').length, 1);
   assert.equal(both.host.querySelectorAll('polygon.oct-shape--opponent').length, 1);
   assert.equal(both.host.querySelectorAll('line.oct-grid').length, 0);
-  assert.ok(both.host.querySelector('[aria-label="Guard axis, Coach 5 / 5, Opponent 2 / 5, selected"]'));
-  assert.match(both.host.querySelector('.oct-label[data-area="guard"]')?.textContent ?? '', /Coach 5\/5/);
-  assert.match(both.host.querySelector('.oct-label[data-area="guard"]')?.textContent ?? '', /Opponent 2\/5/);
+  assert.ok(both.host.querySelector('[aria-label="Guard/Control axis, Coach 5 / 5, Opponent 2 / 5, selected"]'));
+  assert.match(both.host.querySelector('.oct-label[data-area="guard-control"]')?.textContent ?? '', /Coach 5\/5/);
+  assert.match(both.host.querySelector('.oct-label[data-area="guard-control"]')?.textContent ?? '', /Opponent 2\/5/);
   assert.match(both.host.textContent ?? '', /Coach/);
   assert.match(both.host.textContent ?? '', /Opponent/);
   assert.equal(localStorage.length, before);

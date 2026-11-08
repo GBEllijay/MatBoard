@@ -4,8 +4,7 @@
  * The live seven-area chart stays on its own module.
  */
 
-import { FUNDAMENTALS_CATALOG } from '../../lib/progress/catalog.ts';
-import { adultStarterLevels } from '../../lib/studentBenchmarks.ts';
+import { DEFAULT_EVALUATION_OMITTED_IDS, FUNDAMENTALS_CATALOG } from '../../lib/progress/catalog.ts';
 
 export const ASSESSMENT_RADAR_PREVIEW_PATH = '/preview/assessment-radar';
 
@@ -37,24 +36,23 @@ export const OCTAGON_RADIUS = 96;
 
 export const AXES = [
   {
-    id: 'guard',
-    label: 'Guard',
+    id: 'guard-control',
+    label: 'Guard/Control',
     manualOnly: false,
     meaning:
-      'Keeping your own guard and getting it back, such as closed guard, half guard, and deep half. This is not escaping a pin, and it is not passing.',
+      'One area with two parts. Guard is keeping your own guard. Control is a top position you already have, including side control, north-south, mount, scarf hold, knee on belly, and back control. This is not a ninth area, and it is not a pass or a sweep.',
   },
   {
     id: 'passing',
     label: 'Passing',
     manualOnly: false,
-    meaning: 'Getting past their guard into a top position. This is not the same as keeping your own guard.',
+    meaning: 'Getting past their guard into a top position. Sweeps are a separate area.',
   },
   {
-    id: 'control',
-    label: 'Control',
+    id: 'sweeps',
+    label: 'Sweeps',
     manualOnly: false,
-    meaning:
-      'Staying in a position you already have: side control, mount, and back holds. This is not a guard, a pass, or an escape.',
+    meaning: 'Turning a bottom position into a top position. Sit-up sweep is left off on purpose.',
   },
   {
     id: 'takedowns',
@@ -63,16 +61,17 @@ export const AXES = [
     meaning: 'Taking the fight from standing to the mat.',
   },
   {
-    id: 'escapes',
-    label: 'Escapes',
+    id: 'escapes-defense',
+    label: 'Escapes/Defense',
     manualOnly: false,
-    meaning: 'Getting out when they have side control, mount, or your back. This is not the same as keeping your guard.',
+    meaning:
+      'Getting out, and the defensive work named with it. Turtle is defense here, not an escape. Submission defense is here, not under Submissions. Sprawl is not on the default list.',
   },
   {
     id: 'submissions',
     label: 'Submissions',
     manualOnly: false,
-    meaning: 'Finishing a submission.',
+    meaning: 'Finishing a submission. Submission defense is not in this area.',
   },
   {
     id: 'conditioning',
@@ -120,7 +119,7 @@ export type PreviewModel = {
   cards: JournalCard[];
   /** Overall self-assessment. Separate from technique ratings. */
   manual: ManualScores;
-  /** Axes a saved 7-area check-in did not have. Control starts here. */
+  /** Areas this example check-in does not score. An open corner is not a zero. */
   legacyOmitted: AxisId[];
 };
 
@@ -145,31 +144,30 @@ export type CategorySummary = {
   manualScore: Rating | null;
 };
 
-const SKILL_IDS: readonly SkillAxisId[] = ['guard', 'passing', 'control', 'takedowns', 'escapes', 'submissions'];
+const SKILL_IDS: readonly SkillAxisId[] = ['guard-control', 'passing', 'sweeps', 'takedowns', 'escapes-defense', 'submissions'];
 
 const SEED: PreviewModel = {
-  legacyOmitted: ['control'],
+  legacyOmitted: ['guard-control', 'sweeps'],
   manual: {
-    guard: 5,
     passing: 3,
     takedowns: 4,
-    escapes: 2,
+    'escapes-defense': 2,
     submissions: 4,
     conditioning: 2,
     mindset: 3,
   },
   techniques: [
-    technique('tech-deep-half', 'Deep half guard', 'position', ['guard']),
-    technique('tech-closed', 'Closed guard', 'position', ['guard']),
+    technique('tech-deep-half', 'Deep half guard', 'position', ['guard-control']),
+    technique('tech-closed', 'Closed guard', 'position', ['guard-control']),
     technique('tech-knee', 'Knee slice', 'movement', ['passing']),
     technique('tech-pressure', 'Pressure pass', 'movement', ['passing']),
     technique('tech-double', 'Double leg', 'movement', ['takedowns']),
-    technique('tech-arm-drag', 'Arm drag to the back', 'movement', ['takedowns', 'control']),
-    technique('tech-side', 'Side control', 'position', ['control']),
-    technique('tech-mount', 'Mount', 'position', ['control']),
-    technique('tech-back', 'Back control', 'position', ['control']),
-    technique('tech-elbow', 'Elbow-knee escape', 'movement', ['escapes']),
-    technique('tech-mount-escape', 'Mount escape', 'movement', ['escapes']),
+    technique('tech-arm-drag', 'Arm drag to the back', 'movement', ['takedowns']),
+    technique('tech-side', 'Side control', 'position', ['guard-control']),
+    technique('tech-mount', 'Mount', 'position', ['guard-control']),
+    technique('tech-back', 'Back control', 'position', ['guard-control']),
+    technique('tech-elbow', 'Elbow-knee escape', 'movement', ['escapes-defense']),
+    technique('tech-mount-escape', 'Mount escape', 'movement', ['escapes-defense']),
     technique('tech-armbar', 'Armbar', 'movement', ['submissions']),
     technique('tech-triangle', 'Triangle', 'movement', ['submissions']),
   ],
@@ -192,44 +190,65 @@ const SEED: PreviewModel = {
 
 export const SAMPLE_GUARD_NAME = 'Deep half guard';
 
-/** Same compass order as the Student Profile and Stat Sheet attribute radar. */
+/** Clockwise from the top. Guard and Control share the first area. */
 export const SHEET_AXIS_IDS = [
-  'guard',
+  'guard-control',
   'passing',
+  'sweeps',
   'takedowns',
-  'escapes',
+  'escapes-defense',
   'submissions',
-  'control',
   'conditioning',
   'mindset',
 ] as const satisfies readonly AxisId[];
 
 /**
- * Preview list only. The fundamentals sheet stores `category` and `name`.
- * It does not store a radar area, and `examples` stays empty, so this is not a tag list.
- * Passes, escapes, submissions, and takedowns are the whole sheet category.
- * Guard and Control rows are a proposal. Sweeps, movement, and the other
- * positions and defenses stay off this list until the owner chooses a map.
+ * Owner assignment for this preview. The catalog still has no radar field.
+ * Standing is not here. The five default omissions are not here.
  */
-export const CANONICAL_AREA_IDS = {
-  guard: ['pos.closed-guard', 'pos.open-guard', 'pos.half-guard', 'pos.butterfly-guard', 'def.guard-retention'],
-  passing: ['pass.torreando', 'pass.knee-slice', 'pass.leg-drag', 'pass.stack'],
-  control: ['pos.side-control', 'pos.mount', 'pos.back-control'],
-  takedowns: ['td.double-leg', 'td.single-leg', 'td.arm-drag', 'td.hip-throw'],
-  escapes: ['escape.mount', 'escape.side-control', 'escape.back', 'escape.headlock'],
-  submissions: [
-    'sub.armbar-guard',
-    'sub.triangle',
-    'sub.kimura',
-    'sub.guillotine',
-    'sub.rear-naked-choke',
-    'sub.cross-collar',
-    'sub.straight-ankle-lock',
-    'sub.americana',
-    'sub.omoplata',
-    'sub.wrist-lock',
-  ],
-} as const satisfies Record<SkillAxisId, readonly string[]>;
+export const APPROVED_FUNDAMENTALS = [
+  { id: 'pos.closed-guard', axis: 'guard-control', subtype: 'Guard' },
+  { id: 'pos.open-guard', axis: 'guard-control', subtype: 'Guard' },
+  { id: 'pos.half-guard', axis: 'guard-control', subtype: 'Guard' },
+  { id: 'pos.butterfly-guard', axis: 'guard-control', subtype: 'Guard' },
+  { id: 'def.guard-retention', axis: 'guard-control', subtype: 'Guard' },
+  { id: 'pos.side-control', axis: 'guard-control', subtype: 'Control' },
+  { id: 'pos.north-south', axis: 'guard-control', subtype: 'Control' },
+  { id: 'pos.mount', axis: 'guard-control', subtype: 'Control' },
+  { id: 'pos.scarf-hold', axis: 'guard-control', subtype: 'Control' },
+  { id: 'pos.knee-on-belly', axis: 'guard-control', subtype: 'Control' },
+  { id: 'pos.back-control', axis: 'guard-control', subtype: 'Control' },
+  { id: 'pass.torreando', axis: 'passing', subtype: 'Pass' },
+  { id: 'pass.knee-slice', axis: 'passing', subtype: 'Pass' },
+  { id: 'pass.leg-drag', axis: 'passing', subtype: 'Pass' },
+  { id: 'pass.stack', axis: 'passing', subtype: 'Pass' },
+  { id: 'sweep.scissor', axis: 'sweeps', subtype: 'Sweep' },
+  { id: 'sweep.hip-bump', axis: 'sweeps', subtype: 'Sweep' },
+  { id: 'sweep.pendulum', axis: 'sweeps', subtype: 'Sweep' },
+  { id: 'sweep.flower', axis: 'sweeps', subtype: 'Sweep' },
+  { id: 'sweep.tripod', axis: 'sweeps', subtype: 'Sweep' },
+  { id: 'sweep.butterfly', axis: 'sweeps', subtype: 'Sweep' },
+  { id: 'td.double-leg', axis: 'takedowns', subtype: 'Takedown' },
+  { id: 'td.single-leg', axis: 'takedowns', subtype: 'Takedown' },
+  { id: 'td.arm-drag', axis: 'takedowns', subtype: 'Takedown' },
+  { id: 'td.hip-throw', axis: 'takedowns', subtype: 'Takedown' },
+  { id: 'escape.mount', axis: 'escapes-defense', subtype: 'Escape' },
+  { id: 'escape.side-control', axis: 'escapes-defense', subtype: 'Escape' },
+  { id: 'escape.back', axis: 'escapes-defense', subtype: 'Escape' },
+  { id: 'escape.headlock', axis: 'escapes-defense', subtype: 'Escape' },
+  { id: 'pos.turtle', axis: 'escapes-defense', subtype: 'Defense' },
+  { id: 'def.submission-defense', axis: 'escapes-defense', subtype: 'Defense' },
+  { id: 'sub.armbar-guard', axis: 'submissions', subtype: 'Submission' },
+  { id: 'sub.triangle', axis: 'submissions', subtype: 'Submission' },
+  { id: 'sub.kimura', axis: 'submissions', subtype: 'Submission' },
+  { id: 'sub.guillotine', axis: 'submissions', subtype: 'Submission' },
+  { id: 'sub.rear-naked-choke', axis: 'submissions', subtype: 'Submission' },
+  { id: 'sub.cross-collar', axis: 'submissions', subtype: 'Submission' },
+  { id: 'sub.straight-ankle-lock', axis: 'submissions', subtype: 'Submission' },
+  { id: 'sub.americana', axis: 'submissions', subtype: 'Submission' },
+  { id: 'sub.omoplata', axis: 'submissions', subtype: 'Submission' },
+  { id: 'sub.wrist-lock', axis: 'submissions', subtype: 'Submission' },
+] as const satisfies readonly { id: string; axis: SkillAxisId; subtype: string }[];
 
 export type DestinationItem = {
   id: string;
@@ -240,19 +259,7 @@ export type DestinationItem = {
 
 const catalogItems = () => FUNDAMENTALS_CATALOG.categories.flatMap((category) => category.items.map((item) => ({ ...item, category: category.name, categoryId: category.id })));
 
-/** Sheet category id to the radar label, only where the category itself is that label. */
-export const SHEET_CATEGORY_AXIS = {
-  passes: 'passing',
-  escapes: 'escapes',
-  submissions: 'submissions',
-  takedowns: 'takedowns',
-} as const satisfies Record<string, SkillAxisId>;
-
-export type PreviewListBasis = 'sheet-category' | 'proposal';
-
-export function previewListBasis(axisId: SkillAxisId): PreviewListBasis {
-  return axisId === 'guard' || axisId === 'control' ? 'proposal' : 'sheet-category';
-}
+export type CatalogBasis = 'approved' | 'omitted-from-default' | 'unassigned';
 
 export type CatalogCoverageRow = {
   id: string;
@@ -261,79 +268,185 @@ export type CatalogCoverageRow = {
   sheetCategoryName: string;
   examples: number;
   previewLabel: SkillAxisId | null;
-  basis: PreviewListBasis | 'unmatched';
+  subtype: string;
+  basis: CatalogBasis;
 };
 
 export function catalogCoverage(): CatalogCoverageRow[] {
-  const listed = new Map<string, SkillAxisId>();
-  for (const area of Object.keys(CANONICAL_AREA_IDS) as SkillAxisId[]) {
-    for (const id of CANONICAL_AREA_IDS[area]) listed.set(id, area);
-  }
+  const approved = new Map<string, (typeof APPROVED_FUNDAMENTALS)[number]>(APPROVED_FUNDAMENTALS.map((row) => [row.id, row]));
+  const omitted = new Set<string>(DEFAULT_EVALUATION_OMITTED_IDS);
   return catalogItems().map((item) => {
-    const previewLabel = listed.get(item.id) ?? null;
-    const sheetAxis = SHEET_CATEGORY_AXIS[item.categoryId as keyof typeof SHEET_CATEGORY_AXIS];
-    const basis: CatalogCoverageRow['basis'] = previewLabel == null
-      ? 'unmatched'
-      : sheetAxis === previewLabel
-        ? 'sheet-category'
-        : 'proposal';
+    const match = approved.get(item.id);
+    const basis: CatalogBasis = match ? 'approved' : omitted.has(item.id) ? 'omitted-from-default' : 'unassigned';
     return {
       id: item.id,
       name: item.name,
       sheetCategoryId: item.categoryId,
       sheetCategoryName: item.category,
       examples: item.examples.length,
-      previewLabel,
+      previewLabel: match?.axis ?? null,
+      subtype: match?.subtype ?? '',
       basis,
     };
   });
 }
 
-export type BenchmarkCoverageStatus = 'included' | 'no-technique-refs' | 'outside-preview-list' | 'more-than-one-label';
+export const SUGGESTED_HEADING = 'Suggested minimum technical requirements';
 
-export type BenchmarkCoverageRow = {
+export const SUGGESTED_DISCLAIMER =
+  'These are suggestions, not a curriculum and not a promotion requirement. Personal benchmarks can be added. Above white, this default list has at most three per belt.';
+
+export type SuggestedBelt = 'white' | 'blue' | 'purple' | 'brown' | 'black';
+
+export type SuggestedRequirement = {
   id: string;
+  belt: SuggestedBelt;
   name: string;
-  status: BenchmarkCoverageStatus;
-  labels: SkillAxisId[];
-  outsideIds: string[];
+  areas: readonly SkillAxisId[];
+  catalogIds: readonly string[];
+  note: string;
 };
 
-/**
- * A benchmark is included only when every fundamentals id on it is on this
- * preview list and they all use one label. A mixed checkpoint is left off,
- * because one checkpoint would otherwise be claimed by two labels.
- * A checkpoint with an id outside the preview list is left off too.
- */
-export function benchmarkCoverage(): BenchmarkCoverageRow[] {
-  const areaOf = new Map<string, SkillAxisId>();
-  for (const area of Object.keys(CANONICAL_AREA_IDS) as SkillAxisId[]) {
-    for (const id of CANONICAL_AREA_IDS[area]) areaOf.set(id, area);
-  }
-  const rows: BenchmarkCoverageRow[] = [];
-  for (const level of adultStarterLevels()) {
-    for (const checkpoint of level.checkpoints) {
-      const refs = [...new Set(checkpoint.criteria.flatMap((row) => row.techniqueRefs.map((ref) => ref.id)))];
-      if (!refs.length) {
-        rows.push({ id: checkpoint.id, name: checkpoint.name, status: 'no-technique-refs', labels: [], outsideIds: [] });
-        continue;
-      }
-      const labels: SkillAxisId[] = [];
-      const outsideIds: string[] = [];
-      for (const id of refs) {
-        const area = areaOf.get(id);
-        if (!area) outsideIds.push(id);
-        else if (!labels.includes(area)) labels.push(area);
-      }
-      const status: BenchmarkCoverageStatus = outsideIds.length
-        ? 'outside-preview-list'
-        : labels.length === 1
-          ? 'included'
-          : 'more-than-one-label';
-      rows.push({ id: checkpoint.id, name: checkpoint.name, status, labels, outsideIds });
-    }
-  }
-  return rows;
+/** Approved default suggestions. Items 28–47 of the old mixed list are not included. */
+export const SUGGESTED_REQUIREMENTS = [
+  {
+    id: 'suggested.white.positions',
+    belt: 'white',
+    name: 'Four basic positions: closed guard, side control, mount, and back control',
+    areas: ['guard-control'],
+    catalogIds: ['pos.closed-guard', 'pos.side-control', 'pos.mount', 'pos.back-control'],
+    note: 'Guard and Control on the one Guard/Control area.',
+  },
+  {
+    id: 'suggested.white.back-escape',
+    belt: 'white',
+    name: 'Escape back control',
+    areas: ['escapes-defense'],
+    catalogIds: ['escape.back'],
+    note: 'The catalog name is Back escape.',
+  },
+  {
+    id: 'suggested.white.recover-guard',
+    belt: 'white',
+    name: 'Recover guard from side control',
+    areas: ['escapes-defense'],
+    catalogIds: [],
+    note: 'Not the same name as Side control escape. No catalog row was added or renamed.',
+  },
+  {
+    id: 'suggested.white.scissor',
+    belt: 'white',
+    name: 'Scissor sweep',
+    areas: ['sweeps'],
+    catalogIds: ['sweep.scissor'],
+    note: 'Sit-up sweep is omitted on purpose.',
+  },
+  {
+    id: 'suggested.white.hold',
+    belt: 'white',
+    name: 'Hold mount, side control, and back control',
+    areas: ['guard-control', 'submissions'],
+    catalogIds: ['pos.mount', 'pos.side-control', 'pos.back-control'],
+    note: 'Control on the Guard/Control area, with Submissions named beside it. One suggestion, not a new area.',
+  },
+  {
+    id: 'suggested.white.mount-finish',
+    belt: 'white',
+    name: 'A submission from mount: Americana, armbar, or cross collar choke',
+    areas: ['submissions'],
+    catalogIds: ['sub.americana', 'sub.cross-collar'],
+    note: 'Americana and Cross collar choke are catalog names. Armbar from mount is not a separate catalog row, and Armbar from guard was not renamed.',
+  },
+  {
+    id: 'suggested.blue.mount-side',
+    belt: 'blue',
+    name: 'Mount and side control with connected finishes',
+    areas: ['submissions'],
+    catalogIds: [],
+    note: 'A suggestion. No new catalog row was added.',
+  },
+  {
+    id: 'suggested.blue.back',
+    belt: 'blue',
+    name: 'Take, keep, and finish the back against resistance: collar choke, rear naked choke, or armbar from the back',
+    areas: ['submissions'],
+    catalogIds: ['sub.cross-collar', 'sub.rear-naked-choke'],
+    note: 'Armbar from the back is not a catalog row. Rear naked choke and Cross collar choke are.',
+  },
+  {
+    id: 'suggested.blue.pendulum',
+    belt: 'blue',
+    name: 'Pendulum sweep',
+    areas: ['sweeps'],
+    catalogIds: ['sweep.pendulum'],
+    note: 'Catalog name Pendulum sweep.',
+  },
+  {
+    id: 'suggested.purple.mount-transitions',
+    belt: 'purple',
+    name: 'Technical mount and mount transitions',
+    areas: ['guard-control'],
+    catalogIds: [],
+    note: 'Positional work inside Guard/Control. Not a ninth area. Not a catalog row.',
+  },
+  {
+    id: 'suggested.purple.deep-half',
+    belt: 'purple',
+    name: 'Deep half guard',
+    areas: ['guard-control'],
+    catalogIds: [],
+    note: 'Guard part of Guard/Control. Not a catalog row. The preview sample of the same name is not a saved record.',
+  },
+  {
+    id: 'suggested.purple.s-mount',
+    belt: 'purple',
+    name: 'S-mount armbar',
+    areas: ['submissions'],
+    catalogIds: [],
+    note: 'Not the catalog row Armbar from guard, and that row was not renamed.',
+  },
+  {
+    id: 'suggested.brown.x-guard',
+    belt: 'brown',
+    name: 'X guard',
+    areas: ['guard-control'],
+    catalogIds: [],
+    note: 'Guard part of Guard/Control, and a technical-tree base. Not a catalog row.',
+  },
+  {
+    id: 'suggested.brown.kneebar',
+    belt: 'brown',
+    name: 'Kneebar',
+    areas: ['submissions'],
+    catalogIds: [],
+    note: 'Not a catalog row.',
+  },
+  {
+    id: 'suggested.brown.fifty',
+    belt: 'brown',
+    name: '50/50',
+    areas: ['guard-control'],
+    catalogIds: [],
+    note: 'Guard part of Guard/Control. Not a catalog row.',
+  },
+] as const satisfies readonly SuggestedRequirement[];
+
+export const PERSONAL_BENCHMARK_EXAMPLES = [
+  { belt: 'blue', area: 'mindset', name: 'Competed without losing cool' },
+  { belt: 'blue', area: 'conditioning', name: '10 pull-ups' },
+] as const;
+
+export const OMITTED_ON_PURPOSE = ['Sit-up sweep'] as const;
+
+export function suggestedFor(axisId: AxisId): SuggestedRequirement[] {
+  if (axisId === 'conditioning' || axisId === 'mindset') return [];
+  return SUGGESTED_REQUIREMENTS.filter((row) => (row.areas as readonly string[]).includes(axisId));
+}
+
+export function suggestedCountByBelt(): Record<SuggestedBelt, number> {
+  const counts: Record<SuggestedBelt, number> = { white: 0, blue: 0, purple: 0, brown: 0, black: 0 };
+  for (const row of SUGGESTED_REQUIREMENTS) counts[row.belt] += 1;
+  return counts;
 }
 
 export function categoryDestination(model: PreviewModel, axisId: AxisId): {
@@ -344,8 +457,8 @@ export function categoryDestination(model: PreviewModel, axisId: AxisId): {
   note: string;
 } {
   const axis = axisById(axisId);
-  const canonical = new Set<string>(axis.manualOnly ? [] : CANONICAL_AREA_IDS[axisId as SkillAxisId]);
   const byId = new Map(catalogItems().map((item) => [item.id, item]));
+  const approved = APPROVED_FUNDAMENTALS.filter((row) => row.axis === axisId);
   const samples: DestinationItem[] = [];
   if (!axis.manualOnly) {
     for (const row of model.techniques.filter((item) => item.categories.includes(axisId as SkillAxisId))) {
@@ -359,47 +472,39 @@ export function categoryDestination(model: PreviewModel, axisId: AxisId): {
       });
     }
   }
-  const basis = axis.manualOnly ? null : previewListBasis(axisId as SkillAxisId);
-  const fundamentals: DestinationItem[] = [...canonical].flatMap((id) => {
-    const row = byId.get(id);
-    if (!row) return [];
-    const place = basis === 'sheet-category'
-      ? `Sheet category ${row.category}. That category is this label.`
-      : `Sheet category ${row.category}. Preview proposal, not a stored radar area.`;
+  const fundamentals: DestinationItem[] = approved.flatMap((row) => {
+    const item = byId.get(row.id);
+    if (!item) return [];
     return [{
-      id: row.id,
-      name: row.name,
+      id: item.id,
+      name: item.name,
       source: 'fundamentals' as const,
-      detail: `Fundamentals id ${row.id}. ${place} Not a score and not a mastery mark.`,
+      detail: `Fundamentals id ${item.id}, sheet category ${item.category}, ${row.subtype} inside ${axis.label}. The catalog does not store this radar label. Not a score and not a mastery mark.`,
     }];
   });
-  const benchmarks = benchmarksFor(axisId);
+  const benchmarks: DestinationItem[] = axis.manualOnly
+    ? PERSONAL_BENCHMARK_EXAMPLES.filter((row) => row.area === axisId).map((row) => ({
+        id: `personal.${row.area}.${row.belt}`,
+        name: row.name,
+        source: 'benchmark' as const,
+        detail: `Example personal benchmark for ${axis.label}. Not an automatic technique score, and not saved.`,
+      }))
+    : suggestedFor(axisId).map((row) => ({
+        id: row.id,
+        name: row.name,
+        source: 'benchmark' as const,
+        detail: `${SUGGESTED_HEADING}. ${row.note}`,
+      }));
   const items = [...samples, ...fundamentals, ...benchmarks];
   return { items, samples, fundamentals, benchmarks, note: destinationNote(axis, samples.length, fundamentals.length, benchmarks.length) };
 }
 
-function benchmarksFor(axisId: AxisId): DestinationItem[] {
-  return benchmarkCoverage()
-    .filter((row) => row.status === 'included' && row.labels[0] === axisId)
-    .map((row) => ({
-      id: row.id,
-      name: row.name,
-      source: 'benchmark' as const,
-      detail: `Benchmark ${row.id}. Every fundamentals id on it is on this one preview label. A checkpoint that lists another label, or an id outside this list, is left off. Not a mastery mark.`,
-    }));
-}
-
 function destinationNote(axis: AxisDefinition, samples: number, fundamentals: number, benchmarks: number): string {
-  if (axis.id === 'conditioning') {
-    return 'Conditioning stays on your manual check-in. The fundamentals sheet has no Conditioning category, so this list is empty. Movement stays in its own sheet category.';
+  if (axis.manualOnly) {
+    return `${axis.label} stays on the manual check-in. There is no automatic technique score. The row below is an example of a personal benchmark, not a saved requirement.`;
   }
-  if (axis.id === 'mindset') {
-    return 'Mindset stays on your manual check-in. The fundamentals sheet has no Mindset category, so this list is empty.';
-  }
-  const place = previewListBasis(axis.id as SkillAxisId) === 'sheet-category'
-    ? `The ${axis.label} rows are the whole sheet category.`
-    : `${axis.label} on this list is a preview proposal. The sheet does not store a ${axis.label} area.`;
-  return `${samples} example ${samples === 1 ? 'technique' : 'techniques'}, ${fundamentals} fundamentals, and ${benchmarks} benchmarks. ${place} A benchmark is listed only when every fundamentals id on it is on this one label. This is not a mastery mark.`;
+  const sweep = axis.id === 'sweeps' ? ' Sit-up sweep is omitted on purpose.' : '';
+  return `${samples} example ${samples === 1 ? 'technique' : 'techniques'}, ${fundamentals} fundamentals, and ${benchmarks} suggested requirements.${sweep} ${SUGGESTED_DISCLAIMER}`;
 }
 
 export const PAGE_TITLE = 'Assessment radar';
@@ -415,38 +520,37 @@ export const CAGE_NOTE =
 
 /**
  * Fictional scores for the cage drawings only.
- * They are not written onto the check-in, and they are not a 7-area import.
- * The stat-sheet example matches the dark Student Profile radar: every area is rated, so the shape can close.
+ * They close the shape. They are not a check-in and they are not written anywhere.
  */
 export const SHEET_EXAMPLE_SCORES = {
-  guard: 4,
+  'guard-control': 4,
   passing: 3,
+  sweeps: 4,
   takedowns: 2,
-  escapes: 4,
-  submissions: 3,
-  control: 3,
+  'escapes-defense': 3,
+  submissions: 4,
   conditioning: 4,
   mindset: 5,
 } as const satisfies Record<AxisId, Rating>;
 
 export const COACH_EXAMPLE_SCORES = {
-  guard: 5,
+  'guard-control': 5,
   passing: 4,
+  sweeps: 3,
   takedowns: 3,
-  escapes: 3,
+  'escapes-defense': 3,
   submissions: 2,
-  control: 4,
   conditioning: 3,
   mindset: 4,
 } as const satisfies Record<AxisId, Rating>;
 
 export const OPPONENT_EXAMPLE_SCORES = {
-  guard: 2,
+  'guard-control': 2,
   passing: 5,
+  sweeps: 2,
   takedowns: 4,
-  escapes: 2,
+  'escapes-defense': 2,
   submissions: 5,
-  control: 2,
   conditioning: 5,
   mindset: 3,
 } as const satisfies Record<AxisId, Rating>;
@@ -456,7 +560,7 @@ export const OPPONENT_VARIANT_PATH = `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=o
 export const COMPARISON_VARIANT_PATH = `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=comparison`;
 
 export const CAGE_FICTION_NOTE =
-  'The cage uses fictional scores so the shape can close. A missing check-in score is not stored as zero. Sheet radar still shows this page’s check-in, where Control stays open.';
+  'The cage uses fictional scores so the shape can close. A missing check-in score is not stored as zero. Sheet radar still shows this page’s check-in, where Guard/Control and Sweeps stay open.';
 
 export type CageView = 'center' | 'coach' | 'opponent' | 'comparison';
 
@@ -483,7 +587,7 @@ export const CALCULATION_PROPOSAL = [
   'A tagged technique with no rating is left out. It is not a zero.',
   'A category with no rated techniques stays not rated. That corner stays open.',
   'Conditioning and Mindset stay on the manual check-in. Technique ratings are not used for them.',
-  'This example check-in has no Control score. That corner stays open.',
+  'This example check-in has no Guard/Control score and no Sweeps score. Those corners stay open. They are not zeroes.',
   'The manual check-in and the technique summary stay separate. Editing one does not replace the other.',
 ] as const;
 
@@ -774,7 +878,7 @@ export function setManualScore(model: PreviewModel, axisId: AxisId, rating: Rati
 }
 
 export function legacyControlMissing(model: PreviewModel): boolean {
-  return model.legacyOmitted.includes('control') && model.manual.control == null;
+  return model.legacyOmitted.includes('guard-control') && model.manual['guard-control'] == null;
 }
 
 function manualDetail(
@@ -785,19 +889,19 @@ function manualDetail(
 ): DetailCopy {
   const score = model.manual[axis.id] ?? null;
   const techniques = relatedLines(summary, false);
-  if (axis.id === 'control' && legacyControlMissing(model)) {
+  if (model.legacyOmitted.includes(axis.id) && score == null) {
     return {
       meaning,
       scoreLine: 'Manual check-in: not rated.',
-      how: 'This sample is a 7-area check-in. Control was not on it. The open corner is not a score of 0. Technique ratings are not copied into this check-in.',
+      how: 'This example check-in has no score here. The open corner is not a score of 0. An older seven-area check-in is not rewritten, and no score is invented.',
       techniques,
     };
   }
-  if (axis.id === 'control' && model.legacyOmitted.includes('control') && score != null) {
+  if (model.legacyOmitted.includes(axis.id) && score != null) {
     return {
       meaning,
       scoreLine: `Manual check-in draft: ${score}.`,
-      how: `The sample 7-area check-in had no Control score. ${score} is only a preview draft. It is not written back onto that check-in.`,
+      how: `The example check-in had no ${axis.label} score. ${score} is only a preview draft. It is not written onto a saved check-in.`,
       techniques,
     };
   }
@@ -810,8 +914,8 @@ function manualDetail(
     };
   }
   const guardNote =
-    axis.id === 'guard'
-      ? ' Deep half guard is a sample position tagged to Guard. A typed phrase like “D-path guard” is not guessed on this page. The technique ratings do not change this manual score.'
+    axis.id === 'guard-control'
+      ? ' Deep half guard is a sample position on Guard/Control. A typed phrase like “D-path guard” is not guessed on this page. The technique ratings do not change this manual score.'
       : ' Technique ratings do not change this manual score.';
   return {
     meaning,

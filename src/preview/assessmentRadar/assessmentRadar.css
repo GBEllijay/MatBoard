@@ -161,9 +161,9 @@
   display: grid;
   grid-template-columns: minmax(5.35rem, 0.92fr) minmax(0, 1.7fr) minmax(5.35rem, 0.92fr);
   grid-template-areas:
-    'mindset guard passing'
-    'conditioning chart control'
-    'submissions escapes takedowns';
+    'mindset guard-control passing'
+    'conditioning chart sweeps'
+    'submissions escapes-defense takedowns';
   gap: 4px;
   align-items: center;
   justify-items: stretch;
@@ -261,9 +261,9 @@
 .oct-figure--placed {
   grid-template-columns: minmax(4.5rem, 0.82fr) minmax(0, 1.9fr) minmax(4.5rem, 0.82fr);
   grid-template-areas:
-    'mindset guard passing'
-    'conditioning chart takedowns'
-    'control submissions escapes';
+    'mindset guard-control passing'
+    'conditioning chart sweeps'
+    'submissions escapes-defense takedowns';
 }
 
 .oct-figure--sheet .oct-label {
@@ -615,11 +615,11 @@
   text-align: center;
 }
 
-.oct-label[data-area='guard'] { grid-area: guard; }
+.oct-label[data-area='guard-control'] { grid-area: guard-control; }
 .oct-label[data-area='passing'] { grid-area: passing; }
-.oct-label[data-area='control'] { grid-area: control; }
+.oct-label[data-area='sweeps'] { grid-area: sweeps; }
 .oct-label[data-area='takedowns'] { grid-area: takedowns; }
-.oct-label[data-area='escapes'] { grid-area: escapes; }
+.oct-label[data-area='escapes-defense'] { grid-area: escapes-defense; }
 .oct-label[data-area='submissions'] { grid-area: submissions; }
 .oct-label[data-area='conditioning'] { grid-area: conditioning; }
 .oct-label[data-area='mindset'] { grid-area: mindset; }

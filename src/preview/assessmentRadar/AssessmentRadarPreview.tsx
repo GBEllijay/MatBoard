@@ -12,8 +12,12 @@ import {
   PAGE_LEAD,
   PAGE_TITLE,
   PREVIEW_BANNER,
+  PERSONAL_BENCHMARK_EXAMPLES,
   SAMPLE_GUARD_NAME,
   SELF_ASSESSMENT_SCALE,
+  SUGGESTED_DISCLAIMER,
+  SUGGESTED_HEADING,
+  SUGGESTED_REQUIREMENTS,
   SHAPE_NOTE,
   SHEET_AXIS_IDS,
   SHEET_EXAMPLE_SCORES,
@@ -59,7 +63,7 @@ export function AssessmentRadarPreviewPage() {
   const variantParam = params.get('variant');
   const variant: ChartVariant = CAGE_VARIANTS.includes(variantParam as ChartVariant) || variantParam === 'current' ? (variantParam as ChartVariant) : 'sheet';
   const areaParam = params.get('area');
-  const initialArea = AXES.some((axis) => axis.id === areaParam) ? (areaParam as AxisId) : 'guard';
+  const initialArea = AXES.some((axis) => axis.id === areaParam) ? (areaParam as AxisId) : 'guard-control';
   const [model, setModel] = useState(seedPreview);
   const [mode, setMode] = useState<PreviewMode>('manual');
   const [selected, setSelected] = useState<AxisId>(initialArea);
@@ -288,7 +292,7 @@ export function AssessmentRadarPreviewPage() {
               <div className="oct-groups">
                 {(['sample', 'fundamentals', 'benchmark'] as const).map((source) => {
                   const rows = destination.items.filter((item) => item.source === source);
-                  const heading = source === 'sample' ? 'Example techniques' : source === 'fundamentals' ? 'Fundamentals' : 'Benchmarks';
+                  const heading = source === 'sample' ? 'Example techniques' : source === 'fundamentals' ? 'Fundamentals' : 'Suggested requirements';
                   return (
                     <section key={source} aria-label={`${selectedAxis.label} ${heading}`}>
                       <h3>{heading}</h3>
@@ -326,6 +330,29 @@ export function AssessmentRadarPreviewPage() {
             onRating={(id, rating) => setModel((current) => setLatestRating(current, id, rating))}
             onCategories={(id, categories) => setModel((current) => setTechniqueCategories(current, id, categories))}
           />
+          <section className="oct-block" aria-label={SUGGESTED_HEADING}>
+            <h2>{SUGGESTED_HEADING}</h2>
+            <p className="oct-note">{SUGGESTED_DISCLAIMER}</p>
+            {(['white', 'blue', 'purple', 'brown', 'black'] as const).map((belt) => {
+              const rows = SUGGESTED_REQUIREMENTS.filter((row) => row.belt === belt);
+              return (
+                <div key={belt}>
+                  <h3>{belt[0].toUpperCase() + belt.slice(1)}</h3>
+                  {rows.length ? (
+                    <ul className="oct-proposal">
+                      {rows.map((row) => (
+                        <li key={row.id}>{row.name}. {row.note}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="oct-note">Fill in your own goals. This default list adds none.</p>
+                  )}
+                </div>
+              );
+            })}
+            <p className="oct-note">Personal examples, not automatic scores: {PERSONAL_BENCHMARK_EXAMPLES.map((row) => `${row.name} (${row.area})`).join('; ')}.</p>
+            <p className="oct-note">A later profile may tie conditioning to goal weights. That is not built on this page.</p>
+          </section>
           <section className="oct-block" aria-label="Calculation proposal">
             <h2>How the summary is figured</h2>
             <p className="oct-note">{SELF_ASSESSMENT_SCALE}</p>
@@ -342,7 +369,7 @@ export function AssessmentRadarPreviewPage() {
               onClick={() => {
                 setModel(seedPreview());
                 setMode('manual');
-                setSelected('guard');
+                setSelected('guard-control');
                 const query = new URLSearchParams(params);
                 query.delete('area');
                 setParams(query, { replace: true });
@@ -394,7 +421,7 @@ function cageChartLabel(variant: ChartVariant): string {
   if (variant === 'coach') return 'Fictional coach cage. All eight areas are rated. Nothing is saved.';
   if (variant === 'opponent') return 'Fictional opponent cage. All eight areas are rated. Nothing is saved.';
   const sheet = SHEET_EXAMPLE_SCORES;
-  return `Fictional stat-sheet cage. Guard ${sheet.guard}, Passing ${sheet.passing}, Takedowns ${sheet.takedowns}, Escapes ${sheet.escapes}, Submissions ${sheet.submissions}, Control ${sheet.control}, Conditioning ${sheet.conditioning}, Mindset ${sheet.mindset}. Nothing is saved.`;
+  return `Fictional closed cage for the approved eight areas. Guard/Control ${sheet['guard-control']}, Passing ${sheet.passing}, Sweeps ${sheet.sweeps}, Takedowns ${sheet.takedowns}, Escapes/Defense ${sheet['escapes-defense']}, Submissions ${sheet.submissions}, Conditioning ${sheet.conditioning}, Mindset ${sheet.mindset}. Nothing is saved.`;
 }
 
 function displayIndex(variant: ChartVariant, selected: AxisId): number {
@@ -431,7 +458,7 @@ function axisBits(
   }
   if (variant === 'center' || variant === 'coach' || variant === 'opponent') {
     const scores = cageScores(variant);
-    const who = variant === 'coach' ? 'Coach' : variant === 'opponent' ? 'Opponent' : 'Stat-sheet example';
+    const who = variant === 'coach' ? 'Coach' : variant === 'opponent' ? 'Opponent' : 'Fictional cage';
     return {
       aria: `${axis.label} axis, ${who} ${scores[axisId]} / 5`,
       lines: [{ className: variant === 'opponent' ? 'oct-label__score oct-label__opponent' : 'oct-label__score', text: `${scores[axisId]} / 5` }],
