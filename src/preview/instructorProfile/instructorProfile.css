@@ -1,0 +1,381 @@
+/* Isolated instructor sheet. Navy, logo blue, cream. Not the live student or academy sheet. */
+.ip-preview {
+  --ip-navy: #0c2344;
+  --ip-ink: #f5f1e8;
+  --ip-blue: #6ea8ff;
+  --ip-line: rgba(110, 168, 255, 0.35);
+  box-sizing: border-box;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px 16px 48px;
+  background: linear-gradient(180deg, #0c2344 0%, #06101f 100%);
+  color: var(--ip-ink);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.45;
+}
+
+.ip-preview *,
+.ip-preview *::before,
+.ip-preview *::after {
+  box-sizing: border-box;
+}
+
+.ip-banner {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid #c9a227;
+  border-radius: 8px;
+  background: rgba(201, 162, 39, 0.16);
+  color: #f6e7b2;
+  font-weight: 700;
+}
+
+.ip-kicker {
+  margin: 0;
+  color: var(--ip-blue);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.ip-preview h1 {
+  margin: 4px 0 0;
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+  line-height: 1.1;
+}
+
+.ip-preview .belt-header {
+  margin: 0 0 12px;
+}
+
+.ip-sheet {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1.5px solid #004eba;
+  border-radius: 6px;
+  background: rgba(8, 18, 36, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(110, 168, 255, 0.18);
+}
+
+.ip-sheet__head {
+  margin-bottom: 8px;
+}
+
+.ip-id,
+.ip-hours,
+.ip-side {
+  display: grid;
+  gap: 8px;
+}
+
+.ip-id p,
+.ip-hours div,
+.ip-side p,
+.ip-side div {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--ip-line);
+  border-radius: 6px;
+}
+
+.ip-id span,
+.ip-hours span,
+.ip-side span {
+  display: block;
+  color: var(--ip-blue);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ip-id strong,
+.ip-side strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 1.05rem;
+}
+
+.ip-since {
+  border-color: #c9a227 !important;
+  background: rgba(201, 162, 39, 0.14);
+}
+
+.ip-since strong {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.ip-since em {
+  display: block;
+  margin-top: 4px;
+  color: #f6e7b2;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.ip-hours strong {
+  display: block;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.ip-hours small,
+.ip-side small {
+  display: block;
+  margin-top: 4px;
+  color: rgba(245, 241, 232, 0.78);
+}
+
+.ip-blocks {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ip-blocks li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--ip-line);
+}
+
+.ip-path,
+.ip-quiet {
+  color: rgba(245, 241, 232, 0.78);
+}
+
+.ip-path {
+  margin: 6px 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.ip-grid,
+.ip-card {
+  min-width: 0;
+}
+
+.ip-card {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1.5px solid #004eba;
+  border-radius: 6px;
+  background: rgba(12, 35, 68, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(110, 168, 255, 0.18);
+}
+
+.ip-card h2,
+.ip-card h3 {
+  margin: 0 0 8px;
+  color: var(--ip-blue);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ip-card h3 {
+  margin-top: 16px;
+}
+
+.ip-facts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 0;
+}
+
+.ip-facts div {
+  display: grid;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ip-line);
+}
+
+.ip-facts dt {
+  color: var(--ip-blue);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ip-facts dd {
+  margin: 0;
+}
+
+.ip-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ip-stats p {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--ip-line);
+  border-radius: 6px;
+}
+
+.ip-stats strong {
+  display: block;
+  font-size: 40px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.ip-list,
+.ip-updates,
+.ip-days {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ip-list li,
+.ip-updates li,
+.ip-days li {
+  margin: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--ip-line);
+}
+
+.ip-status {
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ip-status--applied {
+  background: #16325c;
+  color: #d5e6ff;
+}
+
+.ip-status--pending {
+  background: rgba(201, 162, 39, 0.25);
+  color: #f6e7b2;
+}
+
+.ip-status--declined {
+  background: rgba(180, 70, 70, 0.28);
+  color: #ffd0d0;
+}
+
+.ip-switch,
+.ip-log-btn,
+.ip-preview input,
+.ip-preview select {
+  min-height: 44px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(6, 16, 31, 0.65);
+  color: inherit;
+  font: inherit;
+}
+
+.ip-switch {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  font-weight: 700;
+}
+
+.ip-week {
+  font-size: 1.1rem;
+}
+
+.ip-days li {
+  display: grid;
+  gap: 6px;
+}
+
+.ip-day {
+  font-weight: 800;
+}
+
+.ip-class {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ip-log,
+.ip-estimate {
+  display: grid;
+  gap: 12px;
+}
+
+.ip-estimate label,
+.ip-field-label {
+  display: grid;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.ip-preview input,
+.ip-preview select,
+.ip-preview textarea {
+  width: 100%;
+  padding: 8px 10px;
+}
+
+.ip-preview textarea {
+  min-height: 88px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(6, 16, 31, 0.65);
+  color: inherit;
+  font: inherit;
+}
+
+.ip-log-btn {
+  padding: 8px 14px;
+  background: #004eba;
+  font-weight: 800;
+}
+
+.ip-log-btn:focus-visible,
+.ip-switch:focus-visible,
+.ip-preview input:focus-visible,
+.ip-preview select:focus-visible {
+  outline: 3px solid #6ea8ff;
+  outline-offset: 2px;
+}
+
+@media (min-width: 720px) {
+  .ip-preview {
+    padding: 20px 28px 64px;
+  }
+
+  .ip-id {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ip-hours,
+  .ip-side {
+    grid-template-columns: 1.4fr 1fr 1fr;
+  }
+
+  .ip-facts {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ip-estimate {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .ip-stats strong {
+    font-size: 32px;
+  }
+}
