@@ -49,6 +49,8 @@ import { InstructorProfilePreviewPage } from './preview/instructorProfile/Instru
 import { AncestryAcademyPreview, AncestryInstructorPreview, AncestryStudentPreview } from './preview/ancestryScope/AncestryScopePreview';
 import { AcademyFullPage, InstructorFullPage, ProfileHubPage, StudentFullPage } from './preview/ancestryScope/ProfilePages';
 import { Future2036Page } from './preview/ancestryScope/Future2036';
+import { StudentAncestryPreview } from './preview/studentRecord/StudentAncestryPreview';
+import { StudentHoursPreview } from './preview/studentRecord/StudentHoursPreview';
 import { CoachPage } from './pages/Coach';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
@@ -754,6 +756,9 @@ export default function App() {
         }
       />
       <Route path="/preview/journal-2036" element={<Journal2036Page />} />
+      {/* Owner previews. Direct links only. They do not write a student record. */}
+      <Route path="/preview/student-ancestry" element={<StudentAncestryPreview />} />
+      <Route path="/preview/student-hours" element={<StudentHoursPreview />} />
       <Route path="/student/*" element={<StudentEditionPage />} />
       {/* Public owner preview. The live Technique Tree stays at /technique-tree. */}
       <Route path="/preview/technique-tree" element={<TechniqueTreePreviewPage />} />
