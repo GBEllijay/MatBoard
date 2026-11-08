@@ -20,6 +20,8 @@ import { whiteEntryPath } from '../../lib/whiteUnlock.ts';
 
 export const PRO_PREVIEW_PATH = '/preview/pro-home';
 export const INSTRUCTOR_CARDS_PREVIEW_PATH = '/preview/instructor-cards';
+/** Both suite tools. The match controller does not link to the round timer. */
+export const WHITE_HUB_PREVIEW_PATH = '/preview/white-hub';
 
 export const PREVIEW_BANNER =
   'Preview only. Fictional labels. Nothing here is saved, and the live Pro and Instructor pages are unchanged.';
@@ -62,9 +64,9 @@ export function previewProHubs(): PreviewHub[] {
   return [
     {
       title: 'White',
-      to: SKINS_SCOREBOARD,
+      to: WHITE_HUB_PREVIEW_PATH,
       belt: 'white',
-      note: 'Scoreboard and round timer. Opens the skins-enabled scoreboard.',
+      note: 'Scoreboard and round timer. Opens both skins-enabled suite tools.',
       whitePath: 'button',
     },
     {
@@ -78,12 +80,20 @@ export function previewProHubs(): PreviewHub[] {
   ];
 }
 
-/** The three White entries this preview sends to one skins-enabled scoreboard. */
+/** The three White entries this preview sends to the same White hub. */
 export function previewWhitePaths(): { id: 'button' | 'ladder' | 'menu'; label: string; to: string }[] {
   return [
-    { id: 'button', label: 'White button', to: SKINS_SCOREBOARD },
-    { id: 'ladder', label: 'Edition ladder White', to: SKINS_SCOREBOARD },
-    { id: 'menu', label: 'White menu Scoreboard', to: SKINS_SCOREBOARD },
+    { id: 'button', label: 'White button', to: WHITE_HUB_PREVIEW_PATH },
+    { id: 'ladder', label: 'Edition ladder White', to: WHITE_HUB_PREVIEW_PATH },
+    { id: 'menu', label: 'White menu Scoreboard', to: WHITE_HUB_PREVIEW_PATH },
+  ];
+}
+
+/** Scoreboard and round timer already used by the suite. The hub only links to them. */
+export function whiteHubTools(): { title: string; to: string; note: string }[] {
+  return [
+    { title: 'Scoreboard', to: SKINS_SCOREBOARD, note: 'Match controller. from=suite keeps the skins-enabled board.' },
+    { title: 'Round Timer', to: SKINS_TIMER, note: 'Rounds controller. Same from=suite context.' },
   ];
 }
 
@@ -109,7 +119,8 @@ export const PRODUCTION_WHITE_GAP = [
   'The White page Scoreboard opens /match, and its Controller opens /match/control. Without from=suite that board is the plain Live Bout: Mock-Tournament only when any higher tier is open.',
   'Instructor Scoreboard opens /match/control?from=unlimited. That is also a plain board unless a bracket bout is linked.',
   'The skins-enabled scoreboard picker already exists at /match/control?from=suite. The suite round timer is /training/control?from=suite.',
-  'This preview points its three White controls at that scoreboard. Live links were not rewired.',
+  'The suite scoreboard page does not link to the round timer. Back from it opens the competition suite, not a White hub.',
+  'This preview points its three White controls at /preview/white-hub. That hub links to the two existing suite URLs. Live links were not rewired.',
 ] as const;
 
 export type InstructorCard = {

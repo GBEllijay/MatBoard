@@ -9,10 +9,12 @@ import {
   PRO_PREVIEW_PATH,
   SKINS_SCOREBOARD,
   SKINS_TIMER,
+  WHITE_HUB_PREVIEW_PATH,
   instructorConceptCards,
   previewProHubs,
   previewWhitePaths,
   productionWhitePaths,
+  whiteHubTools,
   productionWhitePathsDiffer,
   referenceProHubs,
 } from './model.ts';
@@ -36,18 +38,20 @@ test('preview hubs put White, then Student Edition, above the renamed purple hub
     ['Student Edition', 'blue'],
     [MEDIA_PREVIEW_LABEL, 'purple'],
   ]);
-  assert.equal(hubs[0]?.to, SKINS_SCOREBOARD);
+  assert.equal(hubs[0]?.to, WHITE_HUB_PREVIEW_PATH);
   assert.equal(hubs[1]?.to, JOURNAL_DESTINATION);
   assert.equal(hubs[2]?.to, PRO_HUBS[0].to);
   assert.deepEqual(hubs.slice(3).map((hub) => hub.title), PRO_HUBS.slice(1).map((hub) => hub.title));
   assert.equal(referenceProHubs()[0]?.title, MEDIA_CONSOLE_NAME);
 });
 
-test('the three preview White paths share the skins scoreboard, and live paths do not', () => {
+test('the three preview White paths share the hub that lists both suite tools', () => {
   const preview = previewWhitePaths();
-  assert.deepEqual(preview.map((path) => path.to), [SKINS_SCOREBOARD, SKINS_SCOREBOARD, SKINS_SCOREBOARD]);
+  assert.deepEqual(preview.map((path) => path.to), [WHITE_HUB_PREVIEW_PATH, WHITE_HUB_PREVIEW_PATH, WHITE_HUB_PREVIEW_PATH]);
+  assert.deepEqual(whiteHubTools().map((tool) => tool.to), [SKINS_SCOREBOARD, SKINS_TIMER]);
   assert.equal(SKINS_SCOREBOARD, '/match/control?from=suite');
   assert.equal(SKINS_TIMER, '/training/control?from=suite');
+  assert.doesNotMatch(readFileSync('src/pages/MatchController.tsx', 'utf8'), /training\/control|Round Timer/);
   assert.equal(productionWhitePathsDiffer(), true);
   assert.deepEqual(productionWhitePaths().map((path) => path.to), ['/white', '/white', '/match']);
 });
@@ -62,6 +66,7 @@ test('instructor concept cards keep the seven live destinations and add no belt'
 test('live Pro, Instructor, and hub paint are not edited for this preview', () => {
   assert.match(app, new RegExp(`path="${PRO_PREVIEW_PATH}"`));
   assert.match(app, new RegExp(`path="${INSTRUCTOR_CARDS_PREVIEW_PATH}"`));
+  assert.match(app, new RegExp(`path="${WHITE_HUB_PREVIEW_PATH}"`));
   assert.doesNotMatch(pro, /preview\/proHome|Advantage Media Edition|php-tile/);
   assert.doesNotMatch(coach, /preview\/proHome|php-card/);
   assert.match(css, /\.pro-hub,[\s\S]*background:\s*#0c2344/);

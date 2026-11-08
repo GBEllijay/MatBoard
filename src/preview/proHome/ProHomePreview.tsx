@@ -8,7 +8,6 @@ import {
   PREVIEW_BANNER,
   PRODUCTION_WHITE_GAP,
   PRO_PREVIEW_PATH,
-  SKINS_TIMER,
   previewProHubs,
   previewWhitePaths,
   productionWhitePaths,
@@ -61,8 +60,7 @@ export function ProHomePreviewPage() {
             <section className="php-gap" aria-label="White paths">
               <h2>White paths in this preview</h2>
               <p className="php-note">
-                These three open the same skins-enabled scoreboard. The round timer for that suite is{' '}
-                <Link to={SKINS_TIMER}>{SKINS_TIMER}</Link>.
+                These three open the same preview White hub. That hub links to the suite scoreboard and the suite round timer.
               </p>
               <ul>
                 {whitePaths.map((path) => (
