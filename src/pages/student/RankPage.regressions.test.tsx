@@ -1412,6 +1412,27 @@ test('a first achieved date still saves when the picker only publishes it on blu
   }
 });
 
+test('My rank keeps the shared mat behind the belt cards and drops the center photo row', () => {
+  const pages = readFileSync('src/pages/student/progressPages.css', 'utf8');
+  const hub = readFileSync('src/pages/student/hub.css', 'utf8');
+  const mat = hub.slice(hub.indexOf('.student.student--arena.s-group {'), hub.indexOf('}', hub.indexOf('.student.student--arena.s-group {')));
+  assert.match(mat, /background-color:\s*var\(--mat-fill\)/);
+  assert.match(mat, /background-image:\s*var\(--mat-image\)/);
+  assert.doesNotMatch(mat, /url\(/);
+  assert.doesNotMatch(pages, /\.student\.student--arena\.student--rank,\s*\n\.student\.student--arena\.student--belt \{\s*\n\s*background:\s*#000000/);
+  const hero = pages.slice(pages.indexOf('.student.student--arena.student--rank .rank-hero {'), pages.indexOf('}', pages.indexOf('.student.student--arena.student--rank .rank-hero {')));
+  assert.match(hero, /background:\s*transparent/);
+  const mounted = mount(<RankPage />);
+  try {
+    const page = document.querySelector('main.student--rank');
+    assert.equal(page?.classList.contains('s-group'), true);
+    assert.equal(page?.classList.contains('student--belt'), false);
+    assert.equal(document.querySelector('.rung .rank-photos'), null);
+  } finally {
+    unmount(mounted);
+  }
+});
+
 test('each belt gallery shows only that belt and opens a photo larger', async () => {
   let report = setRankAwardedOn(blankStudentReport(40), '2014-02-15', 41);
   report = setRankBelt(report, 'blue', 42);
@@ -1426,12 +1447,18 @@ test('each belt gallery shows only that belt and opens a photo larger', async ()
     const tools = document.querySelector('.rung--blue .rung__photo-tools');
     const stack = labeled('Open Blue photos, 2 photos');
     assert.equal(stack.classList.contains('rank-photo-stack'), true);
+    assert.equal(tools?.firstElementChild, stack);
     assert.equal(stack.nextElementSibling?.classList.contains('photo'), true);
+    assert.equal(tools?.lastElementChild?.classList.contains('photo'), true);
     assert.equal(stack.getAttribute('aria-haspopup'), 'dialog');
     assert.equal(stack.querySelector('.rank-photo-stack__card--front')?.getAttribute('src'), BLUE_PHOTO_A);
     assert.equal(stack.querySelector('.rank-photo-stack__card--mid')?.getAttribute('src'), BLUE_PHOTO_B);
     assert.equal(stack.textContent?.trim(), '');
     assert.equal(tools?.querySelector('.photo .n')?.textContent, '2');
+    assert.equal(document.querySelector('.rung--blue .rank-photos'), null);
+    assert.equal(document.querySelector('.rung .rank-photos'), null);
+    const blueOutside = [...(document.querySelector('.rung--blue')?.querySelectorAll('img') ?? [])].filter((img) => !img.closest('.rank-photo-stack'));
+    assert.equal(blueOutside.length, 0);
     const whiteStack = labeled('Open White photos, 1 photo');
     assert.equal(whiteStack.querySelectorAll('img').length, 1);
     assert.equal(whiteStack.querySelector('.rank-photo-stack__card--front')?.getAttribute('src'), STRIPE_PHOTO);
@@ -1456,8 +1483,9 @@ test('each belt gallery shows only that belt and opens a photo larger', async ()
     assert.equal(document.querySelector('[aria-label="Blue gallery"]'), null);
     assert.equal(labeled('Open Blue photos, 2 photos').getAttribute('aria-expanded'), 'false');
 
-    await click(labeled('Remove Blue photo 1'));
-    assert.equal(document.querySelector('[aria-label="Open Blue photo 2"]'), null);
+    await click(stack);
+    await click(labeled('Remove Blue photo 1 from gallery'));
+    assert.equal(document.querySelector('.rung--blue .rank-photos'), null);
     assert.equal(labeled('Open Blue photos, 1 photo').querySelector('.rank-photo-stack__card--front')?.getAttribute('src'), BLUE_PHOTO_B);
     assert.equal(document.querySelector('.rung--purple .rank-photo-stack'), null);
     const kept = JSON.parse(localStorage.getItem(RANK_PHOTO_KEY) ?? '{}') as { belts?: { blue?: string[]; white?: string[] } };
