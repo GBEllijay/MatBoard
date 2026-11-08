@@ -5,6 +5,7 @@ import { expandGrants, tierForGrants } from './grantMatrix.ts';
 import { claimForAccess } from './subscriptionAccess.ts';
 import { accessForLicense } from './subscriptionSync.ts';
 import { grantRowOpensPlusCloud, ownerCloudGrantOpen } from '../lib/advantageCloudMedia.ts';
+import { isPerpetualOwnerAcademyGrant, OWNER_SESSION_SECONDS } from './ownerCloudProvision.ts';
 import { cloudAccessForLicense } from './cloudSubscription.ts';
 import { doorsFromStored, grantsForLicense, linkedCodeProLicense, type StoredGrant } from './purchaseRecords.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
@@ -118,13 +119,16 @@ export async function handleTokenRefresh(
     doors = doorsForRefresh(rows, proOpen ? true : null);
     subs = undefined;
     kind = 'owner-test';
-    const ends = rows.reduce((latest, row) => {
-      const at = row.endsAt ? Date.parse(row.endsAt) : Number.NaN;
-      return Number.isFinite(at) && at > latest ? at : latest;
-    }, 0);
-    absoluteExp = ends > stamp.getTime() ? Math.floor(ends / 1000) : claims.exp;
-    if (absoluteExp <= nowSeconds) {
-      return json(401, { ok: false, revoked: true, error: 'This access is no longer active.' });
+    const perpetual = rows.some((row) => isPerpetualOwnerAcademyGrant(row));
+    if (!perpetual) {
+      const ends = rows.reduce((latest, row) => {
+        const at = row.endsAt ? Date.parse(row.endsAt) : Number.NaN;
+        return Number.isFinite(at) && at > latest ? at : latest;
+      }, 0);
+      absoluteExp = ends > stamp.getTime() ? Math.floor(ends / 1000) : claims.exp;
+      if (absoluteExp <= nowSeconds) {
+        return json(401, { ok: false, revoked: true, error: 'This access is no longer active.' });
+      }
     }
   } else if (claims.src === 'owner') {
     if (nowSeconds >= claims.exp) return json(401, { ok: false, revoked: true, error: 'That test unlock has ended.' });
@@ -199,6 +203,7 @@ export async function handleTokenRefresh(
       now: stamp,
       kind,
       absoluteExp,
+      ownerTestSeconds: claims.src === 'owner' ? OWNER_SESSION_SECONDS : undefined,
       emailHint: claims.eh,
       thumbprint: claims.cnf,
       // Owner and owner-test passes are not subscriptions. A seat refresh must

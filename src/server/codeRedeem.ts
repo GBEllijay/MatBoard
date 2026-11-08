@@ -3,6 +3,7 @@ import { catalogHasCaps, findCode, loadCodeCatalog, type CodeRecord, type KvList
 import { keyedHash, normalizeCode, normalizeEmail } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
 import { expandGrants, tierForGrants } from './grantMatrix.ts';
+import { OWNER_SESSION_SECONDS, provisionOwnerAcademy } from './ownerCloudProvision.ts';
 import { emailHint, recordPurchase } from './purchaseRecords.ts';
 import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 import { appVersionOf } from '../lib/appCapability.ts';
@@ -138,7 +139,14 @@ export async function handleCodeRedeem(
 
   const listed = record.grants.filter((door) => door !== 'seat');
   const doors = expandGrants(listed);
-  const expiresAt = grantExpiry(record, now());
+  const ownerPerpetual = record.kind === 'owner';
+  if (ownerPerpetual && !services.db) {
+    return json(503, { ok: false, error: 'Entitlement storage is not set up yet. Bind ENTITLEMENTS_DB.' });
+  }
+  if (ownerPerpetual && !services.signingKey) {
+    return json(503, { ok: false, error: 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY.' });
+  }
+  const expiresAt = ownerPerpetual ? null : grantExpiry(record, now());
   const deviceField = (body as { deviceId?: unknown }).deviceId;
   const deviceId = typeof deviceField === 'string' && deviceField.trim() ? deviceField.trim().slice(0, 80) : crypto.randomUUID();
   let token: string | null = null;
@@ -147,7 +155,9 @@ export async function handleCodeRedeem(
     const refSalt = email ? await keyedHash(normalizeEmail(email), pepper, 'email') : deviceId;
     const source = src === 'free' ? 'free' : src === 'owner' ? 'owner' : 'code';
     let licenseId: string = crypto.randomUUID();
-    if (services.db) {
+    if (ownerPerpetual && services.db) {
+      licenseId = (await provisionOwnerAcademy(services.db, { now: now(), endsAt: null })).licenseId;
+    } else if (services.db) {
       const writeDoor = async (door: Door, attachTo?: string) =>
         recordPurchase(services.db!, {
           email,
@@ -184,7 +194,8 @@ export async function handleCodeRedeem(
         src,
         deviceId,
         now: now(),
-        kind: 'code',
+        kind: ownerPerpetual ? 'owner-test' : 'code',
+        ownerTestSeconds: ownerPerpetual ? OWNER_SESSION_SECONDS : undefined,
         grantEndsAt: expiresAt,
         emailHint: await emailHint(email, pepper),
         appVersion: appVersionOf(request),
