@@ -130,11 +130,17 @@ export async function handleTokenRefresh(
     if (view) subs = claimForAccess(view.access);
     else if (doors.includes('pro')) subs = { state: 'active' };
     else subs = undefined;
-    // Cloud is its own grant. The server decides, not the token that was sent:
-    // a wiped phone has no old flag, and a canceled add-on must not keep one.
+    // Cloud is its own grant on this same license. The server decides, not the
+    // token that was sent. An active add-on sets the flag. A lapsed add-on
+    // clears it. The license id does not change, so existing R2 groups stay put.
     const cloud = await cloudAccessForLicense(db, claims.sub, stamp, { env, fetchImpl });
     if (cloud.tracked && cloud.entitled) {
       subs = subs ? { ...subs, cloud: true } : { state: 'active', cloud: true };
+    } else if (cloud.tracked && subs) {
+      const next: SubscriptionClaim = { state: subs.state };
+      if (subs.lock_at) next.lock_at = subs.lock_at;
+      if (subs.ends_at) next.ends_at = subs.ends_at;
+      subs = next;
     }
     if (!doors.length && subs?.state !== 'locked') {
       return json(401, { ok: false, revoked: true, error: 'This access is no longer active.' });

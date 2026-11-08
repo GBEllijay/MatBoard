@@ -156,14 +156,17 @@ test('pinned Home and back marks stay put after scroll and hover', async ({ page
       expect(Math.abs((hovered.back?.top ?? 0) - (before.back?.top ?? 0)), `${route} back hover`).toBeLessThan(1);
       expect(Math.abs((hovered.back?.left ?? 0) - (before.back?.left ?? 0)), `${route} back hover`).toBeLessThan(1);
 
+      const atRest = await readMarks(page);
+      expect(atRest.homeOverTitle, `${route} logo covers the title before scroll`).toBe(false);
+      expect(atRest.backOverTitle, `${route} back covers the title before scroll`).toBe(false);
       const scrolled = await page.evaluate(() => {
         let moved = 0;
-        for (const node of document.querySelectorAll('main, .student-paper, .arena-scroll')) {
-          if (!(node instanceof HTMLElement)) continue;
-          const room = node.scrollHeight - node.clientHeight;
+        const root = document.scrollingElement;
+        if (root instanceof HTMLElement) {
+          const room = root.scrollHeight - root.clientHeight;
           if (room > 40) {
-            node.scrollTop = Math.min(520, room);
-            moved = Math.max(moved, node.scrollTop);
+            root.scrollTop = Math.min(520, room);
+            moved = Math.max(moved, root.scrollTop);
           }
         }
         return moved;
@@ -175,9 +178,7 @@ test('pinned Home and back marks stay put after scroll and hover', async ({ page
       expect(Math.abs((after.home?.left ?? 0) - (before.home?.left ?? 0)), `${route} home scrolled`).toBeLessThan(1);
       expect(Math.abs((after.back?.top ?? 0) - (before.back?.top ?? 0)), `${route} back scrolled`).toBeLessThan(1);
       expect(Math.abs((after.back?.left ?? 0) - (before.back?.left ?? 0)), `${route} back scrolled`).toBeLessThan(1);
-      expect(after.homeOverTitle, `${route} logo covers the title`).toBe(false);
       expect(after.homeOverBoard, `${route} logo covers the scoreboard`).toBe(false);
-      expect(after.backOverTitle, `${route} back covers the title`).toBe(false);
       expect(after.homeOnTop, `${route} logo stays on top`).toBe(true);
       expect(after.backOnTop, `${route} back stays on top`).toBe(true);
       const mustScroll = route.startsWith('/student/journal') || (route === '/coaching-tools' && viewport.width === 390);

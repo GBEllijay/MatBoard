@@ -21,12 +21,10 @@ import {
   BACKUP_GROUP_LABEL,
   COACH_GROUP_LABEL,
   COACH_LINKS,
-  COMPETE_EXTRAS,
   COMPETE_GROUP_LABEL,
   COMPETE_LINKS,
   RANK_GROUP_LABEL,
   RANK_MENU_STRIPES,
-  TRAINING_EXTRAS,
   TRAINING_GROUP_LABEL,
   TRAINING_LINKS,
   competitorHubSummary,
@@ -198,7 +196,6 @@ export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
 }
 
 export function TrainingMenu() {
-  const to = useStudentPath();
   return (
     <GroupFrame title={TRAINING_GROUP_LABEL}>
       <MenuList label={TRAINING_GROUP_LABEL}>
@@ -206,13 +203,6 @@ export function TrainingMenu() {
           <MenuRow key={item.to} skin="leather" label={item.label} note={item.note} to={item.to} />
         ))}
       </MenuList>
-      <p className="s-extra">
-        {TRAINING_EXTRAS.map((item) => (
-          <Link key={item.label} className="s-extra__link" to={to(item.to)}>
-            {item.label}
-          </Link>
-        ))}
-      </p>
     </GroupFrame>
   );
 }
@@ -286,13 +276,6 @@ export function CompeteMenu() {
           />
         ))}
       </MenuList>
-      <p className="s-extra">
-        {COMPETE_EXTRAS.map((item) => (
-          <Link key={item.label} className="s-extra__link" to={to(item.to)}>
-            {item.label}
-          </Link>
-        ))}
-      </p>
     </GroupFrame>
   );
 }

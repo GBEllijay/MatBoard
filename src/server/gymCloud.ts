@@ -43,7 +43,8 @@ import {
 import { STUDENT_CLOUD_REFUSED, STUDENT_LICENSE_PRESET } from '../lib/studentLicensePool.ts';
 import { verifyToken, type EntitlementClaims } from '../lib/entitlementToken.ts';
 import type { D1Database } from './d1.ts';
-import { grantOpen, grantsForLicense } from './purchaseRecords.ts';
+import { cloudAccessForLicense } from './cloudSubscription.ts';
+import { grantsForLicense } from './purchaseRecords.ts';
 import { signingMaterial } from './tokenIssue.ts';
 
 export type R2HttpMetadata = { contentType?: string };
@@ -119,13 +120,23 @@ function bearer(request: Request): string {
   return match?.[1] ?? '';
 }
 
+/**
+ * Plus Cloud for one academy license.
+ * Owner and alpha-pro codes keep the `advantage-pro` exemption.
+ * A paid add-on is the `advantage-cloud-*` row plus its subscription:
+ * active and trialing are on, past_due stays on for the existing 7-day grace,
+ * cancel-at-period-end stays on until that end, and paused, unpaid, canceled,
+ * and incomplete are off. This does not call Stripe and does not create a license.
+ */
 async function licenseHasPlusCloud(env: GymCloudEnv, licenseId: string, now: Date): Promise<boolean> {
   if (licenseId === 'owner-test') return true;
   const db = env.ENTITLEMENTS_DB;
   if (!db) return false;
   try {
     const grants = await grantsForLicense(db, licenseId, now);
-    return grants.some((row) => grantRowOpensPlusCloud(row) && grantOpen(row, now));
+    if (grants.some((row) => grantRowOpensPlusCloud(row))) return true;
+    const cloud = await cloudAccessForLicense(db, licenseId, now);
+    return cloud.entitled;
   } catch {
     return false;
   }
@@ -177,7 +188,12 @@ async function actorForClaims(env: GymCloudEnv, claims: EntitlementClaims, now: 
   const seat = claims.src === 'seat' || claims.tier === 'seat';
   const licenseId = seat ? claims.gym || claims.sub : claims.sub;
   if (!licenseId) return json(401, { ok: false, error: CLOUD_SIGN_IN_MESSAGE });
-  const plusCloud = seat ? await licenseHasPlusCloud(env, licenseId, now) : claimsOpenPlusCloud(claims);
+  // The license row wins when entitlement storage is bound. A stale `subs.cloud`
+  // flag cannot keep a lapsed add-on open, and a missing flag cannot hide an
+  // active one. With no database, the signed pass is the only record.
+  const plusCloud =
+    (await licenseHasPlusCloud(env, licenseId, now)) ||
+    (!seat && !env.ENTITLEMENTS_DB && claimsOpenPlusCloud(claims));
   if (seat) {
     const seatId = claims.sid ?? '';
     if (!seatId || !(await seatIsActive(env, licenseId, seatId))) {

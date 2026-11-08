@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { DeviceMediaInput } from '../../components/DeviceMediaInput';
@@ -7,8 +7,8 @@ import { useStudentNoPhotos } from '../../components/rosterCard/StudentNoPhotos'
 import { beltModeOf } from '../../lib/beltBook';
 import { PHOTO_PICKER_ACCEPT } from '../../lib/mediaPicker';
 import { headerVisibility, readProfileMarks, writeProfileMark, type ProfileMark } from '../../lib/profileMarks';
+import { localPhotoError } from '../../lib/localPhotoError';
 import { clearProfilePortrait, portraitFromFile, readProfilePortrait, saveProfilePortrait } from '../../lib/profilePortrait';
-import { quotaAddNote } from '../../lib/storageQuota';
 import {
   chooseStudentLogo,
   clearStudentGymLogo,
@@ -37,62 +37,63 @@ export function useProfileMedia() {
   const logoLibrary = useRef<HTMLInputElement>(null);
   const [portrait, setPortrait] = useState<string | null>(() => readProfilePortrait());
   const [logo, setLogo] = useState<string | null>(() => readStudentGymLogo());
-  const [note, setNote] = useState('');
-  const [error, setError] = useState('');
-
-  const remember = (message: string) => {
-    setError('');
-    setNote(message);
-  };
-
-  const fail = (err: unknown) => {
-    setNote('');
-    const fallback = err instanceof Error && err.message === 'not-image' ? 'That file is not a photo.' : 'That photo is too large to keep on this phone.';
-    setError(quotaAddNote(err) ?? fallback);
-  };
+  const [portraitNote, setPortraitNote] = useState('');
+  const [portraitError, setPortraitError] = useState('');
+  const [logoNote, setLogoNote] = useState('');
+  const [logoError, setLogoError] = useState('');
 
   const onPortrait = async (files: readonly File[]) => {
     const file = files[0];
-    if (!file) return;
+    setPortraitNote('');
+    if (!file) {
+      setPortraitError('No photo was selected. Choose a photo and try again.');
+      return;
+    }
     try {
       const saved = await portraitFromFile(file);
       await saveProfilePortrait(saved);
       setPortrait(saved);
-      remember('Saved on this phone. Shows on your profile.');
+      setPortraitError('');
+      setPortraitNote('Saved on this phone. Shows on your profile.');
     } catch (err) {
-      fail(err);
+      setPortraitError(localPhotoError(err, 'photo'));
     }
   };
 
   const onLogo = async (files: readonly File[]) => {
     const file = files[0];
-    if (!file) return;
+    setLogoNote('');
+    if (!file) {
+      setLogoError('No logo photo was selected. Choose a logo and try again.');
+      return;
+    }
     try {
       const saved = await saveStudentGymLogoFile(file);
       setLogo(saved);
-      remember('Gym logo saved on this phone.');
+      setLogoError('');
+      setLogoNote('Gym logo saved on this phone.');
     } catch (err) {
-      fail(err);
+      setLogoError(localPhotoError(err, 'logo'));
     }
   };
 
   return {
     portrait,
     logo,
-    note,
-    error,
     onPortrait,
     onLogo,
     removePortrait: () => {
       void clearProfilePortrait();
       setPortrait(null);
-      remember('Photo removed from this phone.');
+      setPortraitError('');
+      setPortraitNote('Photo removed from this phone.');
     },
     removeLogo: () => {
       clearStudentGymLogo();
       chooseStudentLogo('default');
       setLogo(null);
-      remember('Gym logo removed from this phone.');
+      setLogoError('');
+      setLogoNote('Gym logo removed from this phone.');
     },
     /** Shown when the gym has sent a logo. Reverts to it at any time. */
     gymLogoAvailable: Boolean(readGymLogoSync().latest),
@@ -100,13 +101,19 @@ export function useProfileMedia() {
     useGymLogo: () => {
       chooseStudentLogo('gym');
       setLogo(readStudentGymLogo());
-      remember('Showing your gym logo.');
+      setLogoError('');
+      setLogoNote('Showing your gym logo.');
     },
     useAdvantageDefault: () => {
       chooseStudentLogo('default');
       setLogo(null);
-      remember('Showing the Advantage logo.');
+      setLogoError('');
+      setLogoNote('Showing the Advantage logo.');
     },
+    portraitNote,
+    portraitError,
+    logoNote,
+    logoError,
     portraitCapture,
     portraitLibrary,
     logoCapture,
@@ -134,12 +141,32 @@ export function ProfileCornerMarks({
   );
 }
 
+function FieldAlert({ id, message }: { id: string; message: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || typeof node.scrollIntoView !== 'function') return;
+    const reduce =
+      typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    node.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }, [message]);
+  return (
+    <p ref={ref} id={id} className="profile-photo__error" role="alert">
+      {message}
+    </p>
+  );
+}
+
 export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof useProfileMedia>; kids?: boolean }) {
-  const { portrait, logo, note, error, onPortrait, onLogo, removePortrait, removeLogo } = media;
+  const { portrait, logo, onPortrait, onLogo, removePortrait, removeLogo } = media;
   const noPhotos = useStudentNoPhotos();
   return (
     <div className="profile-identity">
-      <section className="profile-card profile-photo" aria-label="Profile photo">
+      <section
+        className="profile-card profile-photo"
+        aria-label="Profile photo"
+        aria-describedby={media.portraitError ? 'profile-portrait-error' : undefined}
+      >
         {portrait ? <img className="profile-avatar" src={portrait} alt="Profile photo" /> : null}
         <div className="profile-photo__copy">
           <h2>Photo</h2>
@@ -162,6 +189,12 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
             </button>
           ) : null}
         </div>
+        {media.portraitError ? <FieldAlert id="profile-portrait-error" message={media.portraitError} /> : null}
+        {media.portraitNote ? (
+          <p className="student-quiet" role="status">
+            {media.portraitNote}
+          </p>
+        ) : null}
         {noPhotos.on ? (
           <p className="profile-nophotos" data-testid="profile-no-photos">
             <strong>No photos</strong> · nothing is sent to your coach.
@@ -171,7 +204,11 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
         )}
       </section>
 
-      <section className="profile-card profile-logo" aria-label="Gym logo">
+      <section
+        className="profile-card profile-logo"
+        aria-label="Gym logo"
+        aria-describedby={media.logoError ? 'profile-logo-error' : undefined}
+      >
         <div className="profile-photo__copy">
           <h2>Gym logo</h2>
           <p>From your coach, or one you choose. You can replace or remove it.</p>
@@ -199,13 +236,13 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
             </button>
           ) : null}
         </div>
+        {media.logoError ? <FieldAlert id="profile-logo-error" message={media.logoError} /> : null}
+        {media.logoNote ? (
+          <p className="student-quiet" role="status">
+            {media.logoNote}
+          </p>
+        ) : null}
       </section>
-      {error ? <p role="alert">{error}</p> : null}
-      {note ? (
-        <p className="student-quiet" role="status">
-          {note}
-        </p>
-      ) : null}
       {typeof document === 'undefined'
         ? null
         : createPortal(

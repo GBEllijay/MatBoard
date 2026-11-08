@@ -3,9 +3,9 @@
  * report from src/lib/progress. Nothing here is sent to a server.
  */
 
-import { beltModeOf, ibjjfAge, withBeltTemplate } from './beltBook.ts';
+import { beltModeOf, withBeltTemplate } from './beltBook.ts';
 import { fundamentalLevelOf, FUNDAMENTAL_LIVE_LEVEL, isFundamentalLevel, type FundamentalLevel } from './fundamentals.ts';
-import { ageIllegalTechniques, defaultTechniquePolicy } from './studentBenchmarks.ts';
+import { ageIllegalTechniques } from './studentBenchmarks.ts';
 import { joinJournalNotes, splitJournalNotes } from './journalNotes.ts';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
@@ -344,8 +344,9 @@ export function setTrainingStyle(report: StudentProgressReport, style: TrainingS
 }
 
 /**
- * Save one technique override.
- * A value that matches the age and belt default is left off the file.
+ * Save one technique choice.
+ * True and false are both stored. A key that was never saved stays absent,
+ * and the age and belt default still applies to that key.
  */
 export function setTechniquePolicy(
   report: StudentProgressReport,
@@ -353,17 +354,9 @@ export function setTechniquePolicy(
   value: boolean,
   now = Date.now(),
 ): StudentProgressReport {
-  const year = report.beltBook?.birthYear;
-  const age = typeof year === 'number' ? ibjjfAge(year) : null;
-  const defaults = defaultTechniquePolicy(report.profile.belt, age, beltModeOf(report));
-  const next: TechniquePolicy = { ...(report.profile.techniquePolicy ?? {}) };
-  if (value === defaults[key]) delete next[key];
-  else next[key] = value;
-  const profile = { ...report.profile };
-  if (Object.keys(next).length) profile.techniquePolicy = next;
-  else delete profile.techniquePolicy;
-  if (samePolicy(report.profile.techniquePolicy, profile.techniquePolicy)) return report;
-  return { ...report, updatedAt: now, profile };
+  const next: TechniquePolicy = { ...(report.profile.techniquePolicy ?? {}), [key]: value };
+  if (samePolicy(report.profile.techniquePolicy, next)) return report;
+  return { ...report, updatedAt: now, profile: { ...report.profile, techniquePolicy: next } };
 }
 
 export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes' | 'stopDoing' | 'howItWent'>): string {

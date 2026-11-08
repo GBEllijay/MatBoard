@@ -52,10 +52,8 @@ export const TRAINING_LINKS: readonly MenuLink[] = [
   { label: "Techniques I'm working on", note: 'Same techniques as the tree', to: '/student/working' },
 ];
 
-export const TRAINING_EXTRAS: readonly MenuLink[] = [
-  { label: 'Film a move', note: '', to: '/student/videos#student-film-record' },
-  { label: 'Log a roll result', note: '', to: '/student/results' },
-];
+/** Kept empty. Film a move stays on Video Library. Roll results stay on Results. */
+export const TRAINING_EXTRAS: readonly MenuLink[] = [];
 
 export const PROFILE_LINK: MenuLink = {
   label: 'My profile',
@@ -86,11 +84,11 @@ export const COMPETE_LINKS: readonly MenuLink[] = [
   },
   { label: 'Results', note: 'Matches and bracket notes', to: '/student/results' },
   { label: 'Self-assessment', note: 'Shortcut', to: '/student/self-assessment?from=compete' },
+  { label: 'Calendar', note: 'Classes, open mats, and tournaments', to: '/student/calendar' },
 ];
 
-export const COMPETE_EXTRAS: readonly MenuLink[] = [
-  { label: 'Calendar', note: 'Tournament dates', to: '/student/calendar' },
-];
+/** The competitor Calendar row is the same /student/calendar list. No second store. */
+export const COMPETE_EXTRAS: readonly MenuLink[] = [];
 
 export const COACH_LINKS: readonly MenuLink[] = [
   { label: 'Connect to my academy', note: 'Scan the academy QR or paste a link', to: '/student/academy' },
