@@ -9,7 +9,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { AssessmentRadarPreviewPage } from './AssessmentRadarPreview.tsx';
-import { ASSESSMENT_RADAR_PREVIEW_PATH, CENTER_VARIANT_PATH } from './model.ts';
+import { ASSESSMENT_RADAR_PREVIEW_PATH, COMPARISON_VARIANT_PATH, SHEET_VARIANT_PATH } from './model.ts';
 
 const dom = new Window({ url: 'http://localhost/preview/assessment-radar' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -114,7 +114,7 @@ test('axis labels stay visible, Control is not zero, and Deep half guard is a Gu
 });
 
 test('the sheet comparison uses the character-sheet radar and does not score a gap as zero', () => {
-  const mounted = mount(<AssessmentRadarPreviewPage />, CENTER_VARIANT_PATH);
+  const mounted = mount(<AssessmentRadarPreviewPage />, SHEET_VARIANT_PATH);
   const { host } = mounted;
   assert.equal(labeled(host, 'Sheet radar').getAttribute('aria-pressed'), 'true');
   assert.equal(host.querySelectorAll('polygon.oct-grid').length, 5);
@@ -143,13 +143,51 @@ test('the center mark keeps a filled shape, the pressed logo, and no spider web'
   assert.equal(labeled(host, 'Center mark').getAttribute('aria-pressed'), 'true');
   assert.equal(host.querySelector('.oct-stage--sheet'), null);
   assert.equal(host.querySelectorAll('line.oct-grid').length, 0);
-  assert.equal(host.querySelectorAll('polygon.oct-grid--outer').length, 1);
-  assert.equal(host.querySelectorAll('polygon.oct-grid:not(.oct-grid--outer)').length, 0);
+  assert.equal(host.querySelectorAll('polygon.oct-grid').length, 0);
+  assert.equal(host.querySelectorAll('polygon.oct-cage').length, 1);
+  assert.equal(host.querySelectorAll('polygon.oct-shape--filled').length, 1);
+  assert.equal(host.querySelectorAll('.oct-dot').length, 8);
+  const closing = host.querySelector('.oct-shape-line')?.getAttribute('points')?.trim().split(/\s+/) ?? [];
+  assert.equal(closing[0], closing[closing.length - 1]);
   assert.ok(host.querySelector('.oct-mark'));
-  assert.ok(host.querySelector('.oct-shape--filled'));
+  assert.ok(host.querySelector('[aria-label="Guard axis, Stat-sheet example 4 / 5, selected"]'));
+  assert.ok(host.querySelector('[aria-label="Control axis, Stat-sheet example 3 / 5"]'));
+  assert.match(host.textContent ?? '', /not stored as zero/i);
   assert.equal(host.querySelector('#area-first-example strong')?.textContent, 'Deep half guard');
-  assert.match(host.textContent ?? '', /Closed guard/);
   assert.match(host.textContent ?? '', /Guard retention/);
-  click(labeled(host, 'Back to assessment radar'));
+  for (const id of ['passing', 'takedowns', 'escapes', 'submissions', 'control', 'conditioning', 'mindset', 'guard']) {
+    click(host.querySelector(`.oct-label[data-area="${id}"]`) as HTMLElement);
+    assert.ok(host.querySelector('#area-first-example'));
+    assert.match(host.querySelector('#area-panel')?.textContent ?? '', new RegExp(id === 'takedowns' ? 'Takedowns' : id[0].toUpperCase() + id.slice(1), 'i'));
+  }
   unmount(mounted);
+});
+
+test('coach, opponent, and the comparison stay fictional and share the cage', () => {
+  const before = localStorage.length;
+  const coach = mount(<AssessmentRadarPreviewPage />, `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=coach`);
+  assert.equal(labeled(coach.host, 'Coach radar').getAttribute('aria-pressed'), 'true');
+  assert.ok(coach.host.querySelector('[aria-label="Guard axis, Coach 5 / 5, selected"]'));
+  assert.equal(coach.host.querySelectorAll('line.oct-grid').length, 0);
+  assert.equal(coach.host.querySelectorAll('polygon.oct-shape--filled').length, 1);
+  assert.match(coach.host.textContent ?? '', /Coach example \(fictional\)/);
+  unmount(coach);
+
+  const opponent = mount(<AssessmentRadarPreviewPage />, `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=opponent`);
+  assert.ok(opponent.host.querySelector('[aria-label="Control axis, Opponent 2 / 5"]'));
+  assert.match(opponent.host.textContent ?? '', /Opponent example \(fictional\)/);
+  unmount(opponent);
+
+  const both = mount(<AssessmentRadarPreviewPage />, COMPARISON_VARIANT_PATH);
+  assert.equal(labeled(both.host, 'Coach and opponent comparison').getAttribute('aria-pressed'), 'true');
+  assert.equal(both.host.querySelectorAll('polygon.oct-shape--coach').length, 1);
+  assert.equal(both.host.querySelectorAll('polygon.oct-shape--opponent').length, 1);
+  assert.equal(both.host.querySelectorAll('line.oct-grid').length, 0);
+  assert.ok(both.host.querySelector('[aria-label="Guard axis, Coach 5 / 5, Opponent 2 / 5, selected"]'));
+  assert.match(both.host.querySelector('.oct-label[data-area="guard"]')?.textContent ?? '', /Coach 5\/5/);
+  assert.match(both.host.querySelector('.oct-label[data-area="guard"]')?.textContent ?? '', /Opponent 2\/5/);
+  assert.match(both.host.textContent ?? '', /Coach/);
+  assert.match(both.host.textContent ?? '', /Opponent/);
+  assert.equal(localStorage.length, before);
+  unmount(both);
 });

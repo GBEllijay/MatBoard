@@ -3,9 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import { PlayExitMark } from '../../components/PlayExitMark';
 import {
   AXES,
+  CAGE_FICTION_NOTE,
   CAGE_NOTE,
   CALCULATION_PROPOSAL,
+  COACH_EXAMPLE_SCORES,
   OCTAGON_CENTER,
+  OPPONENT_EXAMPLE_SCORES,
   PAGE_LEAD,
   PAGE_TITLE,
   PREVIEW_BANNER,
@@ -13,13 +16,16 @@ import {
   SELF_ASSESSMENT_SCALE,
   SHAPE_NOTE,
   SHEET_AXIS_IDS,
+  SHEET_EXAMPLE_SCORES,
+  cageScores,
+  cageValueList,
   categoryDestination,
+  isCageView,
   SVG_SIZE,
   TECHNIQUE_RATING_WORDS,
   cardsFor,
   chartLabel,
   closedRatingPoints,
-  contiguousRuns,
   detailCopy,
   formatPoint,
   latestCard,
@@ -44,12 +50,14 @@ import './assessmentRadar.css';
 const RATINGS: readonly Rating[] = [1, 2, 3, 4, 5];
 const SKILL_AXES = AXES.filter((axis) => !axis.manualOnly);
 
-export type ChartVariant = 'current' | 'sheet' | 'center';
+export type ChartVariant = 'current' | 'sheet' | 'center' | 'coach' | 'opponent' | 'comparison';
+
+const CAGE_VARIANTS: readonly ChartVariant[] = ['center', 'coach', 'opponent', 'comparison'];
 
 export function AssessmentRadarPreviewPage() {
   const [params, setParams] = useSearchParams();
   const variantParam = params.get('variant');
-  const variant: ChartVariant = variantParam === 'current' || variantParam === 'center' ? variantParam : 'sheet';
+  const variant: ChartVariant = CAGE_VARIANTS.includes(variantParam as ChartVariant) || variantParam === 'current' ? (variantParam as ChartVariant) : 'sheet';
   const areaParam = params.get('area');
   const initialArea = AXES.some((axis) => axis.id === areaParam) ? (areaParam as AxisId) : 'guard';
   const [model, setModel] = useState(seedPreview);
@@ -74,11 +82,14 @@ export function AssessmentRadarPreviewPage() {
     document.getElementById('assessment-radar')?.scrollIntoView({ block: 'start' });
     document.getElementById('assessment-radar')?.focus();
   };
+  const cage = isCageView(variant);
   const displayIds = variant === 'current' ? AXES.map((axis) => axis.id) : SHEET_AXIS_IDS;
   const values = useMemo(() => {
+    if (variant === 'center' || variant === 'coach' || variant === 'opponent') return cageValueList(cageScores(variant));
+    if (variant === 'comparison') return cageValueList(COACH_EXAMPLE_SCORES);
     const scored = shapeValues(model, mode);
     return displayIds.map((id) => scored[AXES.findIndex((axis) => axis.id === id)] ?? null);
-  }, [model, mode, variant]);
+  }, [model, mode, variant, displayIds]);
   const detail = useMemo(() => detailCopy(model, selected, mode), [model, selected, mode]);
   const destination = useMemo(() => categoryDestination(model, selected), [model, selected]);
   const selectedAxis = AXES.find((axis) => axis.id === selected) ?? AXES[0];
@@ -131,6 +142,20 @@ export function AssessmentRadarPreviewPage() {
                 {variant === 'sheet' ? <span className="oct-mode__state">Showing</span> : null}
               </button>
             </div>
+            <div className="oct-variants" role="group" aria-label="Cage views">
+              <button type="button" className="oct-mode" aria-pressed={variant === 'coach'} aria-label="Coach radar" onClick={() => chooseVariant('coach')}>
+                Coach
+                {variant === 'coach' ? <span className="oct-mode__state">Showing</span> : null}
+              </button>
+              <button type="button" className="oct-mode" aria-pressed={variant === 'opponent'} aria-label="Opponent radar" onClick={() => chooseVariant('opponent')}>
+                Opponent
+                {variant === 'opponent' ? <span className="oct-mode__state">Showing</span> : null}
+              </button>
+              <button type="button" className="oct-mode" aria-pressed={variant === 'comparison'} aria-label="Coach and opponent comparison" onClick={() => chooseVariant('comparison')}>
+                Both
+                {variant === 'comparison' ? <span className="oct-mode__state">Showing</span> : null}
+              </button>
+            </div>
             <div className="oct-modes" role="group" aria-label="Chart mode">
               <ModeButton
                 pressed={mode === 'manual'}
@@ -146,8 +171,14 @@ export function AssessmentRadarPreviewPage() {
             <p className="oct-note">{mode === 'manual' ? 'Showing the manual check-in.' : 'Showing the technique summary.'}</p>
           </div>
 
-          <section id="assessment-radar" className={variant === 'current' ? 'oct-stage' : `oct-stage oct-stage--${variant}`} aria-label="Assessment radar" tabIndex={-1}>
-            {variant === 'sheet' || variant === 'center' ? (
+          <section id="assessment-radar" className={stageClass(variant)} aria-label="Assessment radar" tabIndex={-1}>
+            {cage ? (
+              <div className="oct-cage-bar">
+                <span className="oct-cage-notch" aria-hidden="true" />
+                <h2>Attribute radar</h2>
+                <p>{cageHeader(variant)}</p>
+              </div>
+            ) : variant === 'sheet' ? (
               <div className="oct-sheet-bar">
                 <h2>Attribute radar</h2>
                 <p>Self-assessment · 1–5 scale · Illustrative</p>
@@ -155,9 +186,10 @@ export function AssessmentRadarPreviewPage() {
             ) : (
               <h2>Shape</h2>
             )}
-            <div className={variant === 'current' ? 'oct-figure' : variant === 'sheet' ? 'oct-figure oct-figure--placed oct-figure--sheet' : 'oct-figure oct-figure--placed'}>
-              {AXES.map((axis) => {
-                const text = shownScore(scoreText(model, mode, axis.id), variant);
+            <div className={figureClass(variant)}>
+              {displayIds.map((id) => {
+                const axis = AXES.find((item) => item.id === id) ?? AXES[0];
+                const bits = axisBits(variant, axis.id, model, mode);
                 const on = selected === axis.id;
                 return (
                   <button
@@ -167,18 +199,20 @@ export function AssessmentRadarPreviewPage() {
                     data-area={axis.id}
                     aria-pressed={on}
                     aria-controls="oct-detail"
-                    aria-label={`${axis.label} axis, ${text}${on ? ', selected' : ''}`}
+                    aria-label={`${bits.aria}${on ? ', selected' : ''}`}
                     onClick={() => chooseArea(axis.id)}
                   >
                     <span className="oct-label__name">{axis.label}</span>
-                    <span className={/^\d/.test(text) ? 'oct-label__score' : 'oct-label__words'}>{text}</span>
+                    {bits.lines.map((line) => (
+                      <span key={line.text} className={line.className}>{line.text}</span>
+                    ))}
                     {on ? <span className="oct-label__state">Selected</span> : null}
                   </button>
                 );
               })}
               <div className="oct-chart">
-                <Chart values={values} selected={selected} label={chartLabel(model, mode)} variant={variant} />
-                {variant === 'center' ? <div className="oct-mark" aria-hidden="true" /> : null}
+                <Chart values={values} selected={selected} label={cage ? cageChartLabel(variant) : chartLabel(model, mode)} variant={variant} />
+                {cage ? <div className="oct-mark" aria-hidden="true" /> : null}
               </div>
             </div>
             {variant === 'sheet' ? (
@@ -190,10 +224,15 @@ export function AssessmentRadarPreviewPage() {
                 <p>Student&apos;s own illustrative rating — not an official grade, rank, or promotion assessment.</p>
               </div>
             ) : null}
+            {cage ? <CageLegend variant={variant} /> : null}
           </section>
           <div className="oct-copy">
-            <p className="oct-note">{SHAPE_NOTE}</p>
-            <p className="oct-note">{CAGE_NOTE}</p>
+            {cage ? <p className="oct-note">{CAGE_FICTION_NOTE}</p> : (
+              <>
+                <p className="oct-note">{SHAPE_NOTE}</p>
+                <p className="oct-note">{CAGE_NOTE}</p>
+              </>
+            )}
             <ul className="oct-legend" aria-label="Area scores">
               {AXES.map((axis) => {
                 const text = scoreText(model, mode, axis.id);
@@ -221,6 +260,7 @@ export function AssessmentRadarPreviewPage() {
 
           <section className="oct-detail" id="oct-detail" aria-label={`${selectedAxis.label} explanation`} tabIndex={-1}>
             <h2>{selectedAxis.label}</h2>
+            {cage ? <p className="oct-how">{cageExplain(variant, selected)}</p> : null}
             <p className="oct-scoreline">{detail.scoreLine}</p>
             <p>{detail.meaning}</p>
             <p className="oct-how">{detail.how}</p>
@@ -274,7 +314,7 @@ export function AssessmentRadarPreviewPage() {
                 })}
               </div>
             ) : (
-              <p id="area-first-example">Nothing is tagged to {selectedAxis.label}.</p>
+              <p id="area-first-example">The fundamentals sheet has no {selectedAxis.label} category.</p>
             )}
           </section>
         </div>
@@ -330,6 +370,122 @@ function shownScore(text: string, variant: ChartVariant): string {
   return variant !== 'current' && /^\d/.test(text) ? `${text} / 5` : text;
 }
 
+function stageClass(variant: ChartVariant): string {
+  if (variant === 'current') return 'oct-stage';
+  if (variant === 'sheet') return 'oct-stage oct-stage--sheet';
+  return `oct-stage oct-stage--cage oct-stage--${variant}`;
+}
+
+function figureClass(variant: ChartVariant): string {
+  if (variant === 'current') return 'oct-figure';
+  if (variant === 'sheet') return 'oct-figure oct-figure--placed oct-figure--sheet';
+  return 'oct-figure oct-figure--placed oct-figure--cage';
+}
+
+function cageHeader(variant: ChartVariant): string {
+  if (variant === 'coach') return 'Coach example · Fictional';
+  if (variant === 'opponent') return 'Opponent example · Fictional';
+  if (variant === 'comparison') return 'Coach and opponent · Fictional';
+  return 'Self-assessment · 1–5 scale · Illustrative';
+}
+
+function cageChartLabel(variant: ChartVariant): string {
+  if (variant === 'comparison') return 'Fictional coach and opponent cages. Blue is Coach. Amber is Opponent. All eight areas are rated in each example. Nothing is saved.';
+  if (variant === 'coach') return 'Fictional coach cage. All eight areas are rated. Nothing is saved.';
+  if (variant === 'opponent') return 'Fictional opponent cage. All eight areas are rated. Nothing is saved.';
+  const sheet = SHEET_EXAMPLE_SCORES;
+  return `Fictional stat-sheet cage. Guard ${sheet.guard}, Passing ${sheet.passing}, Takedowns ${sheet.takedowns}, Escapes ${sheet.escapes}, Submissions ${sheet.submissions}, Control ${sheet.control}, Conditioning ${sheet.conditioning}, Mindset ${sheet.mindset}. Nothing is saved.`;
+}
+
+function displayIndex(variant: ChartVariant, selected: AxisId): number {
+  const order = variant === 'current' ? AXES.map((axis) => axis.id) : [...SHEET_AXIS_IDS];
+  return order.indexOf(selected);
+}
+
+function cageLayers(variant: ChartVariant, values: readonly (number | null)[]): { id: string; values: number[] }[] {
+  if (variant === 'comparison') {
+    return [
+      { id: 'coach', values: cageValueList(COACH_EXAMPLE_SCORES) },
+      { id: 'opponent', values: cageValueList(OPPONENT_EXAMPLE_SCORES) },
+    ];
+  }
+  if (!isCageView(variant)) return [];
+  return [{ id: variant === 'center' ? 'sheet' : variant, values: values.map((value) => value ?? 0) }];
+}
+
+function axisBits(
+  variant: ChartVariant,
+  axisId: AxisId,
+  model: PreviewModel,
+  mode: PreviewMode,
+): { aria: string; lines: { className: string; text: string }[] } {
+  const axis = AXES.find((item) => item.id === axisId) ?? AXES[0];
+  if (variant === 'comparison') {
+    return {
+      aria: `${axis.label} axis, Coach ${COACH_EXAMPLE_SCORES[axisId]} / 5, Opponent ${OPPONENT_EXAMPLE_SCORES[axisId]} / 5`,
+      lines: [
+        { className: 'oct-label__score', text: `Coach ${COACH_EXAMPLE_SCORES[axisId]}/5` },
+        { className: 'oct-label__score oct-label__opponent', text: `Opponent ${OPPONENT_EXAMPLE_SCORES[axisId]}/5` },
+      ],
+    };
+  }
+  if (variant === 'center' || variant === 'coach' || variant === 'opponent') {
+    const scores = cageScores(variant);
+    const who = variant === 'coach' ? 'Coach' : variant === 'opponent' ? 'Opponent' : 'Stat-sheet example';
+    return {
+      aria: `${axis.label} axis, ${who} ${scores[axisId]} / 5`,
+      lines: [{ className: variant === 'opponent' ? 'oct-label__score oct-label__opponent' : 'oct-label__score', text: `${scores[axisId]} / 5` }],
+    };
+  }
+  const text = shownScore(scoreText(model, mode, axisId), variant);
+  return {
+    aria: `${axis.label} axis, ${text}`,
+    lines: [{ className: /^\d/.test(text) ? 'oct-label__score' : 'oct-label__words', text }],
+  };
+}
+
+function cageExplain(variant: ChartVariant, axisId: AxisId): string {
+  if (variant === 'comparison') {
+    return `Coach example ${COACH_EXAMPLE_SCORES[axisId]} / 5. Opponent example ${OPPONENT_EXAMPLE_SCORES[axisId]} / 5. Both are fictional. The check-in below is separate and is not saved.`;
+  }
+  const scores = cageScores(variant === 'coach' || variant === 'opponent' ? variant : 'center');
+  const who = variant === 'coach' ? 'Coach example' : variant === 'opponent' ? 'Opponent example' : 'Stat-sheet example';
+  return `${who} ${scores[axisId]} / 5. This number is fictional. It does not replace the check-in, and a missing check-in score is not a zero.`;
+}
+
+function CageLegend({ variant }: { variant: ChartVariant }) {
+  if (variant === 'comparison') {
+    return (
+      <div className="oct-cage-key">
+        <p><span className="oct-cage-swatch oct-cage-swatch--coach" aria-hidden="true" /> Coach</p>
+        <p><span className="oct-cage-swatch oct-cage-swatch--opponent" aria-hidden="true" /> Opponent</p>
+        <p className="oct-cage-key__note">Both are fictional, on the same eight areas. Nothing is saved or sent.</p>
+      </div>
+    );
+  }
+  if (variant === 'coach' || variant === 'opponent') {
+    const name = variant === 'coach' ? 'Coach' : 'Opponent';
+    return (
+      <div className="oct-cage-key">
+        <p>
+          <span className={variant === 'coach' ? 'oct-cage-swatch oct-cage-swatch--coach' : 'oct-cage-swatch oct-cage-swatch--opponent'} aria-hidden="true" />
+          {name} example (fictional)
+        </p>
+        <p className="oct-cage-key__note">Not a saved assessment, and not sent to anyone.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="oct-cage-key">
+      <p>
+        <span className="oct-cage-swatch oct-cage-swatch--coach" aria-hidden="true" />
+        Example self-assessment (fictional) · 1 = Developing · 3 = Consistent · 5 = Strong
+      </p>
+      <p className="oct-cage-key__note">Student’s own illustrative rating — not an official grade, rank, or promotion assessment.</p>
+    </div>
+  );
+}
+
 function Chart({
   values,
   selected,
@@ -344,39 +500,55 @@ function Chart({
   const closed = closedRatingPoints(values);
   const segments = ratingSegments(values);
   const dots = ratingDots(values);
-  const selectedIndex = AXES.findIndex((axis) => axis.id === selected);
+  const selectedIndex = displayIndex(variant, selected);
+  const cage = isCageView(variant);
+  const layers = cageLayers(variant, values);
   return (
     <svg
-      className={variant === 'sheet' ? 'oct-svg oct-svg--sheet' : 'oct-svg'}
+      className={variant === 'sheet' ? 'oct-svg oct-svg--sheet' : cage ? 'oct-svg oct-svg--cage' : 'oct-svg'}
       viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
       role="img"
       aria-label={label}
     >
-      {(variant === 'sheet' ? [1, 2, 3, 4, 5] : [5]).map((ring) => (
-        <polygon
-          key={ring}
-          className={ring === 5 ? 'oct-grid oct-grid--outer' : 'oct-grid'}
-          points={ringPoints(ring)}
-        />
-      ))}
+      {cage ? <polygon className="oct-cage" points={ringPoints(5)} /> : null}
+      {cage
+        ? null
+        : (variant === 'sheet' ? [1, 2, 3, 4, 5] : [5]).map((ring) => (
+            <polygon
+              key={ring}
+              className={ring === 5 ? 'oct-grid oct-grid--outer' : 'oct-grid'}
+              points={ringPoints(ring)}
+            />
+          ))}
       {variant === 'current' ? <polygon className="oct-grid" points={ringPoints(3)} /> : null}
-      {variant === 'center'
+      {cage
         ? null
         : values.map((_, index) => {
             const end = pointOnAxis(index, 5);
             return <line key={index} className="oct-grid" x1={OCTAGON_CENTER} y1={OCTAGON_CENTER} x2={end.x} y2={end.y} />;
           })}
-      {variant === 'center'
-        ? contiguousRuns(values)
-            .filter((run) => run.length >= 3)
-            .map((run) => (
-              <polygon
-                key={run.join('-')}
-                className="oct-shape--filled"
-                points={run.map((index) => formatPoint(pointOnAxis(index, values[index] ?? 0))).join(' ')}
-              />
-            ))
-        : null}
+      {layers.map((layer) => {
+        const pts = layer.values.map((value, index) => formatPoint(pointOnAxis(index, value)));
+        const line = [...pts, pts[0]].join(' ');
+        return (
+          <g key={layer.id}>
+            <polygon className={`oct-shape--filled oct-shape--${layer.id}`} points={pts.join(' ')} />
+            <polyline className={`oct-shape-line oct-shape-line--${layer.id}`} points={line} />
+            {layer.values.map((value, index) => {
+              const point = pointOnAxis(index, value);
+              return (
+                <circle
+                  key={index}
+                  className={`oct-dot oct-dot--${layer.id}${index === selectedIndex ? ' oct-dot--on' : ''}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r="3.2"
+                />
+              );
+            })}
+          </g>
+        );
+      })}
       {variant === 'sheet'
         ? [1, 2, 3, 4, 5].map((step) => {
             const spot = pointOnAxis(0, step);
@@ -387,22 +559,26 @@ function Chart({
             );
           })
         : null}
-      {closed ? <polygon className="oct-shape--closed" points={closed.map((point) => formatPoint(point)).join(' ')} /> : null}
-      {segments.map((segment, index) => (
-        <g key={index}>
-          <polyline className="oct-shape" points={segment.map((point) => formatPoint(point)).join(' ')} />
-          <polyline className="oct-shape-line" points={segment.map((point) => formatPoint(point)).join(' ')} />
-        </g>
-      ))}
-      {dots.map((dot) => (
-        <circle
-          key={dot.index}
-          className={dot.index === selectedIndex ? 'oct-dot oct-dot--on' : 'oct-dot'}
-          cx={dot.x}
-          cy={dot.y}
-          r={dot.index === selectedIndex ? 5.5 : 4.2}
-        />
-      ))}
+      {cage || !closed ? null : <polygon className="oct-shape--closed" points={closed.map((point) => formatPoint(point)).join(' ')} />}
+      {cage
+        ? null
+        : segments.map((segment, index) => (
+            <g key={index}>
+              <polyline className="oct-shape" points={segment.map((point) => formatPoint(point)).join(' ')} />
+              <polyline className="oct-shape-line" points={segment.map((point) => formatPoint(point)).join(' ')} />
+            </g>
+          ))}
+      {cage
+        ? null
+        : dots.map((dot) => (
+            <circle
+              key={dot.index}
+              className={dot.index === selectedIndex ? 'oct-dot oct-dot--on' : 'oct-dot'}
+              cx={dot.x}
+              cy={dot.y}
+              r={dot.index === selectedIndex ? 5.5 : 4.2}
+            />
+          ))}
     </svg>
   );
 }

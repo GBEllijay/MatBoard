@@ -9,9 +9,8 @@ import { adultStarterLevels } from '../../lib/studentBenchmarks.ts';
 
 export const ASSESSMENT_RADAR_PREVIEW_PATH = '/preview/assessment-radar';
 
-/** Character-sheet comparison. `center` still opens it so the earlier comparison link stays. */
 export const SHEET_VARIANT_PATH = `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=sheet`;
-export const CENTER_VARIANT_PATH = SHEET_VARIANT_PATH;
+export const CENTER_VARIANT_PATH = `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=center`;
 
 export const PREVIEW_BANNER =
   'Preview with example scores. Nothing on this page is saved to your record.';
@@ -206,10 +205,11 @@ export const SHEET_AXIS_IDS = [
 ] as const satisfies readonly AxisId[];
 
 /**
- * Canonical fundamentals ids for each area.
- * A whole catalog category is included only when that category already is the area.
- * Guard and Control use the catalog ids whose names are those positions.
- * Sweeps, movement, and the remaining positions and defenses are not forced in.
+ * Preview list only. The fundamentals sheet stores `category` and `name`.
+ * It does not store a radar area, and `examples` stays empty, so this is not a tag list.
+ * Passes, escapes, submissions, and takedowns are the whole sheet category.
+ * Guard and Control rows are a proposal. Sweeps, movement, and the other
+ * positions and defenses stay off this list until the owner chooses a map.
  */
 export const CANONICAL_AREA_IDS = {
   guard: ['pos.closed-guard', 'pos.open-guard', 'pos.half-guard', 'pos.butterfly-guard', 'def.guard-retention'],
@@ -240,8 +240,100 @@ export type DestinationItem = {
 
 const catalogItems = () => FUNDAMENTALS_CATALOG.categories.flatMap((category) => category.items.map((item) => ({ ...item, category: category.name, categoryId: category.id })));
 
-function nameKey(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+/** Sheet category id to the radar label, only where the category itself is that label. */
+export const SHEET_CATEGORY_AXIS = {
+  passes: 'passing',
+  escapes: 'escapes',
+  submissions: 'submissions',
+  takedowns: 'takedowns',
+} as const satisfies Record<string, SkillAxisId>;
+
+export type PreviewListBasis = 'sheet-category' | 'proposal';
+
+export function previewListBasis(axisId: SkillAxisId): PreviewListBasis {
+  return axisId === 'guard' || axisId === 'control' ? 'proposal' : 'sheet-category';
+}
+
+export type CatalogCoverageRow = {
+  id: string;
+  name: string;
+  sheetCategoryId: string;
+  sheetCategoryName: string;
+  examples: number;
+  previewLabel: SkillAxisId | null;
+  basis: PreviewListBasis | 'unmatched';
+};
+
+export function catalogCoverage(): CatalogCoverageRow[] {
+  const listed = new Map<string, SkillAxisId>();
+  for (const area of Object.keys(CANONICAL_AREA_IDS) as SkillAxisId[]) {
+    for (const id of CANONICAL_AREA_IDS[area]) listed.set(id, area);
+  }
+  return catalogItems().map((item) => {
+    const previewLabel = listed.get(item.id) ?? null;
+    const sheetAxis = SHEET_CATEGORY_AXIS[item.categoryId as keyof typeof SHEET_CATEGORY_AXIS];
+    const basis: CatalogCoverageRow['basis'] = previewLabel == null
+      ? 'unmatched'
+      : sheetAxis === previewLabel
+        ? 'sheet-category'
+        : 'proposal';
+    return {
+      id: item.id,
+      name: item.name,
+      sheetCategoryId: item.categoryId,
+      sheetCategoryName: item.category,
+      examples: item.examples.length,
+      previewLabel,
+      basis,
+    };
+  });
+}
+
+export type BenchmarkCoverageStatus = 'included' | 'no-technique-refs' | 'outside-preview-list' | 'more-than-one-label';
+
+export type BenchmarkCoverageRow = {
+  id: string;
+  name: string;
+  status: BenchmarkCoverageStatus;
+  labels: SkillAxisId[];
+  outsideIds: string[];
+};
+
+/**
+ * A benchmark is included only when every fundamentals id on it is on this
+ * preview list and they all use one label. A mixed checkpoint is left off,
+ * because one checkpoint would otherwise be claimed by two labels.
+ * A checkpoint with an id outside the preview list is left off too.
+ */
+export function benchmarkCoverage(): BenchmarkCoverageRow[] {
+  const areaOf = new Map<string, SkillAxisId>();
+  for (const area of Object.keys(CANONICAL_AREA_IDS) as SkillAxisId[]) {
+    for (const id of CANONICAL_AREA_IDS[area]) areaOf.set(id, area);
+  }
+  const rows: BenchmarkCoverageRow[] = [];
+  for (const level of adultStarterLevels()) {
+    for (const checkpoint of level.checkpoints) {
+      const refs = [...new Set(checkpoint.criteria.flatMap((row) => row.techniqueRefs.map((ref) => ref.id)))];
+      if (!refs.length) {
+        rows.push({ id: checkpoint.id, name: checkpoint.name, status: 'no-technique-refs', labels: [], outsideIds: [] });
+        continue;
+      }
+      const labels: SkillAxisId[] = [];
+      const outsideIds: string[] = [];
+      for (const id of refs) {
+        const area = areaOf.get(id);
+        if (!area) outsideIds.push(id);
+        else if (!labels.includes(area)) labels.push(area);
+      }
+      const status: BenchmarkCoverageStatus = outsideIds.length
+        ? 'outside-preview-list'
+        : labels.length === 1
+          ? 'included'
+          : 'more-than-one-label';
+      rows.push({ id: checkpoint.id, name: checkpoint.name, status, labels, outsideIds });
+    }
+  }
+  return rows;
 }
 
 export function categoryDestination(model: PreviewModel, axisId: AxisId): {
@@ -254,72 +346,60 @@ export function categoryDestination(model: PreviewModel, axisId: AxisId): {
   const axis = axisById(axisId);
   const canonical = new Set<string>(axis.manualOnly ? [] : CANONICAL_AREA_IDS[axisId as SkillAxisId]);
   const byId = new Map(catalogItems().map((item) => [item.id, item]));
-  const byName = new Map(catalogItems().map((item) => [nameKey(item.name), item]));
-  const sampleRating = new Map<string, string>();
   const samples: DestinationItem[] = [];
   if (!axis.manualOnly) {
     for (const row of model.techniques.filter((item) => item.categories.includes(axisId as SkillAxisId))) {
       const latest = latestCard(cardsFor(model, row.id));
       const rating = latest ? `Example rating ${latest.rating} (${TECHNIQUE_RATING_WORDS[latest.rating]}).` : 'No example rating.';
-      const canonicalHit = byName.get(nameKey(row.name));
-      if (canonicalHit && canonical.has(canonicalHit.id)) {
-        sampleRating.set(canonicalHit.id, rating);
-        continue;
-      }
       samples.push({
         id: row.id,
         name: row.name,
         source: 'sample',
-        detail: `Sample for this preview, not a saved student record. Tagged ${axis.label}. ${rating}`,
+        detail: `Sample ${row.id} for this preview, not a saved student record. ${rating}`,
       });
     }
   }
+  const basis = axis.manualOnly ? null : previewListBasis(axisId as SkillAxisId);
   const fundamentals: DestinationItem[] = [...canonical].flatMap((id) => {
     const row = byId.get(id);
     if (!row) return [];
-    const extra = sampleRating.get(id);
+    const place = basis === 'sheet-category'
+      ? `Sheet category ${row.category}. That category is this label.`
+      : `Sheet category ${row.category}. Preview proposal, not a stored radar area.`;
     return [{
       id: row.id,
       name: row.name,
       source: 'fundamentals' as const,
-      detail: `Fundamentals id ${row.id}, category ${row.category}. Not a score and not a mastery mark.${extra ? ` ${extra}` : ''}`,
+      detail: `Fundamentals id ${row.id}. ${place} Not a score and not a mastery mark.`,
     }];
   });
-  const benchmarks = benchmarksFor(axisId, new Set(canonical));
+  const benchmarks = benchmarksFor(axisId);
   const items = [...samples, ...fundamentals, ...benchmarks];
   return { items, samples, fundamentals, benchmarks, note: destinationNote(axis, samples.length, fundamentals.length, benchmarks.length) };
 }
 
-function benchmarksFor(axisId: AxisId, canonical: ReadonlySet<string>): DestinationItem[] {
-  if (canonical.size === 0) return [];
-  const areaOf = new Map<string, SkillAxisId>();
-  for (const area of Object.keys(CANONICAL_AREA_IDS) as SkillAxisId[]) {
-    for (const id of CANONICAL_AREA_IDS[area]) areaOf.set(id, area);
-  }
-  const rows: DestinationItem[] = [];
-  for (const level of adultStarterLevels()) {
-    for (const checkpoint of level.checkpoints) {
-      const refs = [...new Set(checkpoint.criteria.flatMap((row) => row.techniqueRefs.map((ref) => ref.id)))];
-      if (!refs.length) continue;
-      const areas = [...new Set(refs.map((id) => areaOf.get(id)).filter((id): id is SkillAxisId => Boolean(id)))];
-      const unmapped = refs.filter((id) => !areaOf.has(id));
-      if (unmapped.length || areas.length !== 1 || areas[0] !== axisId) continue;
-      rows.push({
-        id: checkpoint.id,
-        name: checkpoint.name,
-        source: 'benchmark',
-        detail: `Benchmark ${checkpoint.id}. It lists only fundamentals already tagged ${axisId}. Not a mastery mark.`,
-      });
-    }
-  }
-  return rows;
+function benchmarksFor(axisId: AxisId): DestinationItem[] {
+  return benchmarkCoverage()
+    .filter((row) => row.status === 'included' && row.labels[0] === axisId)
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      source: 'benchmark' as const,
+      detail: `Benchmark ${row.id}. Every fundamentals id on it is on this one preview label. A checkpoint that lists another label, or an id outside this list, is left off. Not a mastery mark.`,
+    }));
 }
 
 function destinationNote(axis: AxisDefinition, samples: number, fundamentals: number, benchmarks: number): string {
-  if (axis.manualOnly) {
-    return `${axis.label} stays on your manual check-in. No fundamentals id is tagged to ${axis.label}, so this list is empty on purpose.`;
+  if (axis.id === 'conditioning') {
+    return 'Conditioning stays on your manual check-in. The fundamentals sheet has no Conditioning category, so this list is empty. Movement stays in its own sheet category.';
   }
-  return `${samples} example ${samples === 1 ? 'technique' : 'techniques'}, ${fundamentals} fundamentals, and ${benchmarks} benchmarks. A row is here only when its fundamentals id is already that category. This is not a mastery mark.`;
+  if (axis.id === 'mindset') {
+    return 'Mindset stays on your manual check-in. The fundamentals sheet has no Mindset category, so this list is empty.';
+  }
+  const place = previewListBasis(axis.id as SkillAxisId) === 'sheet-category'
+    ? `The ${axis.label} rows are the whole sheet category.`
+    : `${axis.label} on this list is a preview proposal. The sheet does not store a ${axis.label} area.`;
+  return `${samples} example ${samples === 1 ? 'technique' : 'techniques'}, ${fundamentals} fundamentals, and ${benchmarks} benchmarks. ${place} A benchmark is listed only when every fundamentals id on it is on this one label. This is not a mastery mark.`;
 }
 
 export const PAGE_TITLE = 'Assessment radar';
@@ -332,6 +412,68 @@ export const SHAPE_NOTE =
 
 export const CAGE_NOTE =
   'The outside line has eight equal sides. There is no league name and no league marks.';
+
+/**
+ * Fictional scores for the cage drawings only.
+ * They are not written onto the check-in, and they are not a 7-area import.
+ * The stat-sheet example matches the dark Student Profile radar: every area is rated, so the shape can close.
+ */
+export const SHEET_EXAMPLE_SCORES = {
+  guard: 4,
+  passing: 3,
+  takedowns: 2,
+  escapes: 4,
+  submissions: 3,
+  control: 3,
+  conditioning: 4,
+  mindset: 5,
+} as const satisfies Record<AxisId, Rating>;
+
+export const COACH_EXAMPLE_SCORES = {
+  guard: 5,
+  passing: 4,
+  takedowns: 3,
+  escapes: 3,
+  submissions: 2,
+  control: 4,
+  conditioning: 3,
+  mindset: 4,
+} as const satisfies Record<AxisId, Rating>;
+
+export const OPPONENT_EXAMPLE_SCORES = {
+  guard: 2,
+  passing: 5,
+  takedowns: 4,
+  escapes: 2,
+  submissions: 5,
+  control: 2,
+  conditioning: 5,
+  mindset: 3,
+} as const satisfies Record<AxisId, Rating>;
+
+export const COACH_VARIANT_PATH = `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=coach`;
+export const OPPONENT_VARIANT_PATH = `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=opponent`;
+export const COMPARISON_VARIANT_PATH = `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=comparison`;
+
+export const CAGE_FICTION_NOTE =
+  'The cage uses fictional scores so the shape can close. A missing check-in score is not stored as zero. Sheet radar still shows this page’s check-in, where Control stays open.';
+
+export type CageView = 'center' | 'coach' | 'opponent' | 'comparison';
+
+export function isCageView(variant: string): variant is CageView {
+  return variant === 'center' || variant === 'coach' || variant === 'opponent' || variant === 'comparison';
+}
+
+export function cageScores(view: Exclude<CageView, 'comparison'>): Record<AxisId, Rating> {
+  if (view === 'coach') return COACH_EXAMPLE_SCORES;
+  if (view === 'opponent') return OPPONENT_EXAMPLE_SCORES;
+  return SHEET_EXAMPLE_SCORES;
+}
+
+/** Compass order used by the stat-sheet cage. A missing value is never filled in here. */
+export function cageValueList(scores: Record<AxisId, Rating>): number[] {
+  return SHEET_AXIS_IDS.map((id) => scores[id]);
+}
 
 export const CALCULATION_PROPOSAL = [
   'A category summary is the average of the latest 1–5 rating on each example technique tagged to that category.',

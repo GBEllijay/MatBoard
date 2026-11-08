@@ -26,6 +26,9 @@ import {
   ratedTechniqueIds,
   ratingDots,
   ratingSegments,
+  SHEET_EXAMPLE_SCORES,
+  benchmarkCoverage,
+  catalogCoverage,
   categoryDestination,
   seedPreview,
   setLatestRating,
@@ -272,9 +275,45 @@ test('a category opens only records already tagged to it, with the sample first'
   const conditioning = categoryDestination(seed, 'conditioning');
   assert.equal(conditioning.fundamentals.length, 0);
   assert.equal(conditioning.benchmarks.length, 0);
-  assert.match(conditioning.note, /empty on purpose/);
+  assert.match(conditioning.note, /no Conditioning category/);
   const mindset = categoryDestination(seed, 'mindset');
   assert.equal(mindset.items.length, 0);
+  assert.match(mindset.note, /no Mindset category/);
   const escapes = categoryDestination(seed, 'escapes');
   assert.equal(escapes.items.some((item) => item.name === 'Mount escape' && item.source === 'fundamentals'), true);
+  assert.match(guard.items.find((item) => item.id === 'pos.closed-guard')?.detail ?? '', /Preview proposal/);
+  assert.match(passing.items.find((item) => item.name === 'Knee slice pass')?.detail ?? '', /Sheet category/);
+});
+
+test('the cage examples are fictional and do not fill a missing check-in', () => {
+  const seed = seedPreview();
+  assert.equal(seed.manual.control, undefined);
+  assert.equal(seed.manual.guard, 5);
+  assert.deepEqual(
+    [SHEET_EXAMPLE_SCORES.guard, SHEET_EXAMPLE_SCORES.passing, SHEET_EXAMPLE_SCORES.takedowns, SHEET_EXAMPLE_SCORES.escapes, SHEET_EXAMPLE_SCORES.submissions, SHEET_EXAMPLE_SCORES.control, SHEET_EXAMPLE_SCORES.conditioning, SHEET_EXAMPLE_SCORES.mindset],
+    [4, 3, 2, 4, 3, 3, 4, 5],
+  );
+  const edited = setManualScore(seed, 'guard', 1);
+  assert.equal(SHEET_EXAMPLE_SCORES.guard, 4);
+  assert.equal(edited.manual.control, undefined);
+});
+
+test('catalog coverage stays a sheet category, a proposal, or unmatched', () => {
+  const rows = catalogCoverage();
+  assert.equal(rows.every((row) => row.examples === 0), true);
+  for (const id of ['pos.knee-on-belly', 'pos.north-south', 'pos.scarf-hold', 'pos.standing', 'pos.turtle', 'sweep.scissor', 'def.submission-defense', 'def.sprawl', 'move.shrimp']) {
+    assert.equal(rows.find((row) => row.id === id)?.basis, 'unmatched', id);
+  }
+  assert.equal(rows.filter((row) => row.sheetCategoryId === 'passes').every((row) => row.basis === 'sheet-category' && row.previewLabel === 'passing'), true);
+  assert.equal(rows.filter((row) => row.sheetCategoryId === 'sweeps').every((row) => row.basis === 'unmatched'), true);
+  assert.equal(rows.filter((row) => row.sheetCategoryId === 'movement').every((row) => row.basis === 'unmatched'), true);
+  assert.equal(rows.filter((row) => row.previewLabel === 'guard').every((row) => row.basis === 'proposal'), true);
+  assert.equal(rows.filter((row) => row.previewLabel === 'control').every((row) => row.basis === 'proposal'), true);
+  const bench = benchmarkCoverage();
+  assert.equal(bench.find((row) => row.id === 'checkpoint.white.s1-positions')?.status, 'more-than-one-label');
+  const attack = bench.find((row) => row.id === 'checkpoint.white.s1-guard-attack');
+  assert.equal(attack?.status, 'outside-preview-list');
+  assert.equal(attack?.outsideIds.includes('sweep.scissor'), true);
+  assert.equal(bench.find((row) => row.id === 'checkpoint.white.s2-movement')?.status, 'outside-preview-list');
+  assert.equal(bench.filter((row) => row.status === 'included').every((row) => row.labels.length === 1 && row.outsideIds.length === 0), true);
 });
