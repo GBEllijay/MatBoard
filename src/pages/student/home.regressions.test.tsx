@@ -12,6 +12,8 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { addJournalEntry, blankStudentReport, loadStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
+import { applyBackupToMemory, parseStudentBackup } from '../../lib/studentBackup.ts';
+import { emptyRankPhotoStore } from '../../lib/rankPhotos.ts';
 import { exportProgressPacket, parseProgressPacket } from '../../lib/progress/format.ts';
 import { StudentEditionPage } from '../StudentEdition.tsx';
 import { MatHoursStat } from './MatTime.tsx';
@@ -319,7 +321,63 @@ test('home: no profile yet goes to setup first', () => {
   assert.equal(q(m.host, '[data-testid="student-home"]') === null, true);
   assert.match(here, /^\/student\/profile\?/);
   assert.match(here, /setup=1/);
+  const link = m.host.querySelector('.profile-restore a');
+  assert.equal(link?.textContent?.trim(), 'Already have a backup? Restore it here');
+  assert.equal(link?.getAttribute('href'), '/student/backup?student=1');
   unmount(m);
+});
+
+test('a blank or whitespace name can open restore without saving, and a restored name hides that offer', () => {
+  localStorage.clear();
+  const blank = blankStudentReport(10);
+  blank.profile.displayName = '   ';
+  saveStudentReport(localStorage, blank);
+  const before = localStorage.getItem('matboard.studentEdition.v1');
+  const setup = mount(<StudentEditionPage />, '/student/profile?setup=1&student=1');
+  const link = setup.host.querySelector('.profile-restore a') as HTMLAnchorElement | null;
+  assert.ok(link);
+  assert.equal(link.textContent?.trim(), 'Already have a backup? Restore it here');
+  assert.equal(link.getAttribute('href'), '/student/backup?student=1');
+  assert.equal(link.tabIndex, 0);
+  click(link);
+  assert.equal(here.split('?')[0], '/student/backup');
+  assert.equal(localStorage.getItem('matboard.studentEdition.v1'), before);
+  assert.match(setup.host.textContent ?? '', /A PDF or a spreadsheet is not a backup/);
+  assert.ok(setup.host.querySelector('input[aria-label="Restore from backup"]'));
+  unmount(setup);
+
+  const named = blankStudentReport(12);
+  named.profile.displayName = 'Restored Alex';
+  const parsed = parseStudentBackup(
+    JSON.stringify({
+      advantage: 'student-journal-backup',
+      version: 1,
+      exportedAt: '2026-11-07',
+      report: JSON.parse(exportProgressPacket(named)),
+      assessment: { entries: [] },
+      scouting: [],
+      rankPhotos: emptyRankPhotoStore(),
+      bracketPhotos: {},
+      coachPlan: null,
+      coachFeedback: null,
+      films: [],
+    }),
+  );
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  applyBackupToMemory(localStorage, parsed.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.equal(loadStudentReport(localStorage).profile.displayName, 'Restored Alex');
+
+  const home = mount(<StudentEditionPage />, '/student?student=1');
+  assert.ok(q(home.host, '[data-testid="student-home"]'));
+  assert.equal(home.host.querySelector('.profile-restore'), null);
+  assert.match(home.host.textContent ?? '', /Backup & Print/);
+  unmount(home);
+
+  const edited = mount(<StudentEditionPage />, '/student/profile?setup=1&student=1');
+  assert.equal(edited.host.querySelector('.profile-restore'), null);
+  assert.match(edited.host.textContent ?? '', /Save profile/);
+  unmount(edited);
 });
 
 test('home: every former hub item is reachable from the menu; classic hub still works', () => {
