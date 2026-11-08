@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { OWNER_LINE_NOTE, PROMOTION_NOTE, PROPOSED_LINE, PROPOSED_SOURCES } from './model';
 import '../../student-edition.css';
 import '../../pages/student/arena.css';
@@ -6,7 +6,42 @@ import '../../pages/student/profile.css';
 import '../../components/rosterCard/coachClipboard.css';
 import './ownerLineage.css';
 
-function Shell({ title, children }: { title: string; children: ReactNode }) {
+function ProfileDetails() {
+  return (
+    <section className="profile-card" aria-label="Profile details" data-testid="profile-details">
+      <div className="profile-row">
+        <span className="ink__label">Name</span>
+        <strong>You</strong>
+      </div>
+      <div className="profile-row">
+        <span className="ink__label">Belt</span>
+        <strong>Black belt</strong>
+      </div>
+      <div className="profile-row">
+        <span className="ink__label">Award</span>
+        <strong data-testid="promotion-note">{PROMOTION_NOTE}</strong>
+      </div>
+    </section>
+  );
+}
+
+function EditForm({ onClose }: { onClose: () => void }) {
+  return (
+    <form className="owner-line__form" aria-label="Edit teaching lineage" data-testid="lineage-form" onSubmit={(event) => event.preventDefault()}>
+      {PROPOSED_LINE.filter((step) => step.name !== 'You').map((step) => (
+        <label key={step.name}>
+          {step.name}
+          <input type="text" defaultValue={step.name} aria-label={step.name} />
+        </label>
+      ))}
+      <button type="button" className="ink-btn" onClick={onClose}>
+        Done
+      </button>
+    </form>
+  );
+}
+
+function Shell({ children }: { children: ReactNode }) {
   return (
     <main className="student student-frame student--arena student--profile owner-line">
       <p className="owner-line__banner" role="note">
@@ -14,72 +49,82 @@ function Shell({ title, children }: { title: string; children: ReactNode }) {
       </p>
       <header className="arena-hero profile-hero">
         <div className="profile-hero__copy">
-          <p className="owner-line__kicker">Student profile</p>
-          <h1>{title}</h1>
+          <h1>My profile</h1>
         </div>
       </header>
-      <div className="owner-line__sheet">{children}</div>
+      <div className="owner-line__sheet">
+        <ProfileDetails />
+        {children}
+      </div>
     </main>
   );
 }
 
-function AwardNote() {
+function LineHead({ editing, onEdit }: { editing: boolean; onEdit: () => void }) {
   return (
-    <p className="owner-line__award" data-testid="promotion-note">
-      {PROMOTION_NOTE}
-    </p>
+    <div className="owner-line__head">
+      <h2>Teaching lineage</h2>
+      {editing ? null : (
+        <button type="button" className="owner-line__edit" onClick={onEdit}>
+          Edit
+        </button>
+      )}
+    </div>
   );
 }
 
-/** Names only, in the profile card. Relationship sentences stay off this face. */
+/** Read view under the profile details. Names only. Edit opens the form. */
 export function CompactLineageCard() {
+  const [editing, setEditing] = useState(false);
   return (
-    <Shell title="My profile">
-      <section className="clipboard profile-face__card" aria-label="You">
-        <div className="clipboard__sheet profile-face__sheet">
-          <p className="profile-face__name">You</p>
-          <p className="profile-face__belt-text">Black belt</p>
-          <AwardNote />
-        </div>
-      </section>
+    <Shell>
       <section className="profile-card owner-line__card" aria-label="Teaching lineage" data-testid="lineage-compact">
-        <h2>Teaching lineage</h2>
-        <p className="owner-line__label">Proposed line</p>
-        <ol className="owner-line__names">
-          {PROPOSED_LINE.map((step) => (
-            <li key={step.name} data-you={step.name === 'You' ? 'true' : undefined}>
-              {step.name}
-            </li>
-          ))}
-        </ol>
+        <LineHead editing={editing} onEdit={() => setEditing(true)} />
+        {editing ? (
+          <EditForm onClose={() => setEditing(false)} />
+        ) : (
+          <ol className="owner-line__names">
+            {PROPOSED_LINE.map((step) => (
+              <li key={step.name} data-you={step.name === 'You' ? 'true' : undefined}>
+                {step.name}
+              </li>
+            ))}
+          </ol>
+        )}
       </section>
     </Shell>
   );
 }
 
-/** Same names, with the relationship written on each step. */
+/** Same place under the profile details, with the relationship on each step. */
 export function ExpandedLineageLine() {
+  const [editing, setEditing] = useState(false);
   return (
-    <Shell title="Teaching lineage">
-      <section className="profile-card owner-line__card" aria-label="Proposed lineage" data-testid="lineage-expanded">
-        <h2>Proposed line</h2>
-        <ol className="owner-line__spine">
-          {PROPOSED_LINE.map((step) => (
-            <li key={step.name} data-you={step.name === 'You' ? 'true' : undefined}>
-              <strong>{step.name}</strong>
-              {step.linkBelow ? <span>{step.linkBelow}</span> : null}
-              {step.detail ? <small>{step.detail}</small> : null}
-            </li>
-          ))}
-        </ol>
-        <AwardNote />
-        <ul className="owner-line__sources">
-          {PROPOSED_SOURCES.map((url) => (
-            <li key={url}>
-              <a href={url}>{url}</a>
-            </li>
-          ))}
-        </ul>
+    <Shell>
+      <section className="profile-card owner-line__card" aria-label="Teaching lineage" data-testid="lineage-expanded">
+        <LineHead editing={editing} onEdit={() => setEditing(true)} />
+        {editing ? (
+          <EditForm onClose={() => setEditing(false)} />
+        ) : (
+          <>
+            <ol className="owner-line__spine">
+              {PROPOSED_LINE.map((step) => (
+                <li key={step.name} data-you={step.name === 'You' ? 'true' : undefined}>
+                  <strong>{step.name}</strong>
+                  {step.linkBelow ? <span>{step.linkBelow}</span> : null}
+                  {step.detail ? <small>{step.detail}</small> : null}
+                </li>
+              ))}
+            </ol>
+            <ul className="owner-line__sources">
+              {PROPOSED_SOURCES.map((url) => (
+                <li key={url}>
+                  <a href={url}>{url}</a>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </section>
     </Shell>
   );

@@ -25,8 +25,23 @@
   padding: 0 16px 32px;
   box-sizing: border-box;
 }
-.owner-line__card { padding: 14px 16px 16px; display: grid; gap: 10px; }
+.owner-line .profile-card { overflow: visible; }
+.owner-line__card { padding: 14px 16px 16px; display: grid; gap: 10px; min-width: 0; }
+.owner-line__spine, .owner-line__spine li, .owner-line__spine small, .owner-line__spine strong, .owner-line__sources { min-width: 0; overflow-wrap: break-word; }
+.owner-line__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .owner-line__card h2 { margin: 0; font-size: 1.15rem; }
+.owner-line__edit {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: #8fb6ff;
+  font: inherit;
+  font-weight: 700;
+}
+.owner-line__form { display: grid; gap: 8px; }
+.owner-line__form label { display: grid; gap: 4px; font-size: 14px; color: #c7c7cc; }
+.owner-line__form input { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.16); background: #2c2c2e; color: #f5f5f7; font: inherit; }
 .owner-line__label {
   margin: 0;
   color: #c7c7cc;

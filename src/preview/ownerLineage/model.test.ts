@@ -19,5 +19,7 @@ test('the proposed line names each relationship and keeps the award off the line
   assert.equal(PROPOSED_LINE.some((step) => /Ribeiro|Rolls|tattoo/i.test(step.name)), false);
   const views = readFileSync(new URL('./OwnerLineageViews.tsx', import.meta.url), 'utf8');
   assert.equal(views.includes('localStorage'), false);
-  assert.equal(views.includes(PROMOTION_NOTE) || views.includes('PROMOTION_NOTE'), true);
+  assert.equal(views.includes('PROMOTION_NOTE'), true);
+  assert.equal(views.includes('profile-details'), true);
+  assert.equal(/Up|Remove/.test(views), false);
 });

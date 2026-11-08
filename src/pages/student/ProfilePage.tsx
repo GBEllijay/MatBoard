@@ -49,7 +49,6 @@ export function ProfilePage() {
           </p>
         ) : null}
         <StudentCardLayout portrait={showPhoto ? media.portrait : null} logo={media.logo} to={to} />
-        <TeachingLineageCard report={report} commit={commit} />
         <div className="profile-stack">
           <ProfileMedia media={media} kids={kids} />
           <KidAdultFields report={report} commit={commit} />
@@ -66,6 +65,7 @@ export function ProfilePage() {
               face?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
             }}
           />
+          <TeachingLineageCard report={report} commit={commit} />
           <StudentCompetitorSwitch report={report} />
           <TrainingSettings report={report} commit={commit} />
           <ProfileSwitches report={report} />

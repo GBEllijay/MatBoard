@@ -13,10 +13,8 @@ import {
   sanitizeTeaching,
   setTeachingVisible,
   suggestionForTree,
-  teachingChain,
   unknownContinuation,
   teachingFromLineage,
-  teachingTimeline,
 } from '../../lib/teachingLineage';
 import './teachingLineage.css';
 
@@ -29,7 +27,7 @@ export function TeachingLineageCard({
 }) {
   const stored = report.rank?.teaching ? sanitizeTeaching(report.rank.teaching) : undefined;
   const view = stored ?? teachingFromLineage(report.rank?.lineage ?? []);
-  const [open, setOpen] = useState(view.trees.every((tree) => chainNames(tree).length === 0));
+  const [open, setOpen] = useState(false);
   const save = (next: typeof view) => commit(setTeachingLineage(report, next));
 
   const update = (id: string, tree: (typeof view.trees)[number]) => {
@@ -49,32 +47,40 @@ export function TeachingLineageCard({
           Show lineage
         </label>
       </div>
-      {view.visible ? (
-        <>
-          <ol className="teach__graphic" data-testid="teaching-graphic">
-            {view.trees.length === 0 ? <li>You</li> : null}
-            {view.trees.map((tree) => (
+      {view.visible && !open ? (
+        <ol className="teach__graphic" data-testid="teaching-graphic">
+          {view.trees.length === 0 ? (
+            <li>You</li>
+          ) : (
+            view.trees.map((tree) => (
               <li key={tree.id}>
-                <span>{teachingChain(tree)}</span>
-                {teachingTimeline(tree) ? <small>{teachingTimeline(tree)}</small> : null}
+                {[...chainNames(tree)].reverse().concat('You').map((name) => (
+                  <span key={`${tree.id}-${name}`}>{name}</span>
+                ))}
               </li>
-            ))}
-          </ol>
-          <button type="button" className="ink-btn" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-            {open ? 'Hide full lines' : 'Full lines'}
+            ))
+          )}
+        </ol>
+      ) : null}
+      {view.visible && !open ? (
+        <button type="button" className="teach__edit" onClick={() => setOpen(true)}>
+          Edit
+        </button>
+      ) : null}
+      {view.visible && open ? (
+        <div className="teach__editor" data-testid="teaching-editor">
+          {view.trees.map((tree, index) => (
+            <TreeEditor key={tree.id} index={index} tree={tree} onChange={(next) => update(tree.id, next)} />
+          ))}
+          <button type="button" className="ink-btn ink-btn--save" onClick={() => save(addHeadTree(view))}>
+            Add head instructor
           </button>
-          {open ? (
-            <div className="teach__editor" data-testid="teaching-editor">
-              {view.trees.map((tree, index) => (
-                <TreeEditor key={tree.id} index={index} tree={tree} onChange={(next) => update(tree.id, next)} />
-              ))}
-              <button type="button" className="ink-btn ink-btn--save" onClick={() => save(addHeadTree(view))}>
-                Add head instructor
-              </button>
-            </div>
-          ) : null}
-        </>
-      ) : (
+          <button type="button" className="ink-btn" onClick={() => setOpen(false)}>
+            Done
+          </button>
+        </div>
+      ) : null}
+      {view.visible ? null : (
         <p data-testid="teaching-hidden">Lineage is hidden. The names and dates stay on this phone.</p>
       )}
       <p className="teach__note">
