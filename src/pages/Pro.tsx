@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
 import { EditionLadder } from '../components/EditionLadder';
 import { HomeMark } from '../components/HomeMark';
+import { FaqLink } from '../components/FaqLink';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { LicenseShareButton } from '../components/LicenseShareButton';
 import { ProToolboxCard } from '../components/ProToolboxCard';
@@ -71,6 +72,7 @@ export function ProPage() {
               screen or computer.
             </p>
           </InstructionsButton>
+          <FaqLink />
           {purchasePromptsHidden(seat) ? null : (
             <p className="home__soon">
               <Link className="home__text-btn" to={CHECKOUT_BUY_PATH.pro}>

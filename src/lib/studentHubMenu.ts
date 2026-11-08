@@ -172,6 +172,7 @@ const PAGE_PARENT: Record<string, string> = {
   '/student/academy': '/student/coach',
   '/student/share': '/student/coach',
   '/student/connections': '/student/backup',
+  '/student/faq': '/student',
   '/student/print/progress': '/student/backup',
   '/student/print/assessment': '/student/backup',
 };
@@ -264,7 +265,8 @@ export type StudentScreen =
   | 'academy'
   | 'print-progress'
   | 'print-assessment'
-  | 'scouting';
+  | 'scouting'
+  | 'faq';
 
 /** Which screen a /student path renders. Unknown paths stay on the hub. */
 export function studentScreen(rest: string): StudentScreen {
@@ -295,6 +297,7 @@ export function studentScreen(rest: string): StudentScreen {
     case 'connections':
     case 'academy':
     case 'scouting':
+    case 'faq':
       return rest;
     case 'backup/clear':
       return 'backup-clear';

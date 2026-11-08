@@ -70,6 +70,7 @@ import './student/progressPages.css';
 import './student/beltWeave.css';
 import './student/journalPages.css';
 import './student/advantageJournal.css';
+import { StudentFaqPage } from './Faq';
 import { ProfileReportPage } from './student/ProfileReport';
 import { StudentLicenseClaimPage } from './student/StudentLicenseClaim';
 import { highlightParts, techniqueLineHits, videosForTechnique } from '../lib/journalIndex';
@@ -223,6 +224,8 @@ function studentScreenNode(rest: string) {
       return <PrintReportPage kind="assessment" />;
     case 'scouting':
       return <ScoutingPage />;
+    case 'faq':
+      return <StudentFaqPage />;
     case 'training':
       return <TrainingMenu />;
     case 'progress':

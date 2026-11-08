@@ -58,6 +58,7 @@ import { GamePlanPage } from './pages/GamePlan';
 import { HomePage } from './pages/Home';
 import { ProPlusCloudPage } from './pages/ProPlusCloud';
 import { StorefrontPage } from './pages/Storefront';
+import { FaqPage } from './pages/Faq';
 import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
@@ -757,6 +758,7 @@ export default function App() {
       <Route path="/coming-soon" element={<ComingSoonPage />} />
       <Route path="/card" element={<CardPage />} />
       <Route path="/half-off" element={<HalfOffPage />} />
+      <Route path="/faq" element={<FaqPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
