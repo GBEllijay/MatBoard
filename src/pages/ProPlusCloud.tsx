@@ -22,6 +22,7 @@ import {
   consoleHubs,
 } from '../lib/productNames';
 import { ownerIdentitySheetVisible } from '../lib/ownerIdentitySheet';
+import './proHomeMenu.css';
 
 /**
  * Advantage Pro Plus Cloud menu. Same four hubs as Advantage Pro.
@@ -41,17 +42,17 @@ export function ProPlusCloudPage() {
   }, []);
 
   return (
-    <main className="home home--pro" data-page={PRO_PLUS_CLOUD_PATH}>
+    <main className="home home--pro home--pro-menu" data-page={PRO_PLUS_CLOUD_PATH}>
       <div className="home__inner">
         <PlayExitMark to={PRODUCTS_PATH} />
         <HomeMark to={PRODUCTS_PATH} />
-        <GymCharacterSheet />
-        {ownerIdentitySheetVisible({ page: 'pro-cloud', proUnlocked: door.proUnlocked, seated: door.seated }) ? (
-          <InstructorSheet />
-        ) : null}
 
         <nav className="home__modes" aria-label={PRO_PLUS_CLOUD_NAME}>
           <BeltHeader kind="black" worn title={PRO_PLUS_CLOUD_NAME} blurb={PRO_PLUS_CLOUD_BELT_BLURB} />
+          <GymCharacterSheet />
+          {ownerIdentitySheetVisible({ page: 'pro-cloud', proUnlocked: door.proUnlocked, seated: door.seated }) ? (
+            <InstructorSheet />
+          ) : null}
           <PlusCloudConduct />
           <AdvantageCloudHome />
           <ProToolboxCard hubs={hubs} label={`${PRO_PLUS_CLOUD_NAME} hubs`} />
