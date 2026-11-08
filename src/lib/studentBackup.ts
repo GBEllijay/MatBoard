@@ -446,11 +446,59 @@ function mergeById<T extends { id: string }>(local: readonly T[], incoming: read
   return [...map.values()];
 }
 
+const POLICY_KEYS = ['straightAnkleLock', 'wristLocks', 'legLocks', 'heelHooks', 'competition'] as const;
+
+function profileUnset(profile: StudentProgressReport['profile']): boolean {
+  return !profile.displayName.trim() && !profile.gymName.trim() && !profile.startedOn.trim();
+}
+
+/** Keep an explicit true or false. Fill only keys the phone never saved. */
+function mergePolicy(
+  primary: StudentProgressReport['profile']['techniquePolicy'],
+  fallback: StudentProgressReport['profile']['techniquePolicy'],
+): StudentProgressReport['profile']['techniquePolicy'] {
+  const next = { ...(primary ?? {}) };
+  for (const key of POLICY_KEYS) {
+    if (next[key] === undefined && (fallback?.[key] === true || fallback?.[key] === false)) next[key] = fallback[key];
+  }
+  return POLICY_KEYS.some((key) => next[key] !== undefined) ? next : undefined;
+}
+
+function mergeProfile(
+  local: StudentProgressReport['profile'],
+  incoming: StudentProgressReport['profile'],
+  incomingNewer: boolean,
+): StudentProgressReport['profile'] {
+  const primary = incomingNewer || (profileUnset(local) && !profileUnset(incoming)) ? incoming : local;
+  const fallback = primary === incoming ? local : incoming;
+  const profile = { ...primary };
+  if (!profile.displayName.trim() && fallback.displayName.trim()) profile.displayName = fallback.displayName;
+  if (!profile.gymName.trim() && fallback.gymName.trim()) profile.gymName = fallback.gymName;
+  if (!profile.startedOn.trim() && fallback.startedOn.trim()) profile.startedOn = fallback.startedOn;
+  if (!profile.trainingStyle && fallback.trainingStyle) profile.trainingStyle = fallback.trainingStyle;
+  const policy = mergePolicy(primary.techniquePolicy, fallback.techniquePolicy);
+  if (policy) profile.techniquePolicy = policy;
+  else delete profile.techniquePolicy;
+  return profile;
+}
+
+function rankUnset(rank: StudentProgressReport['rank'] | undefined): boolean {
+  if (!rank) return true;
+  return (
+    rank.tapeCount === 0 &&
+    !rank.awardedOn &&
+    rank.history.length === 0 &&
+    !(rank.lineage?.length) &&
+    !rank.instructorBars
+  );
+}
+
 export function mergeStudentReports(local: StudentProgressReport, incoming: StudentProgressReport): StudentProgressReport {
   const incomingNewer = incoming.updatedAt >= local.updatedAt;
   const localComp = competitionOf(local);
   const incomingComp = competitionOf(incoming);
-  const rank = incomingNewer ? incoming.rank ?? local.rank ?? emptyRank() : local.rank ?? incoming.rank ?? emptyRank();
+  const preferIncomingRank = incomingNewer || (rankUnset(local.rank) && !rankUnset(incoming.rank));
+  const rank = preferIncomingRank ? incoming.rank ?? local.rank ?? emptyRank() : local.rank ?? incoming.rank ?? emptyRank();
   const history = mergeById(local.rank?.history ?? [], incoming.rank?.history ?? [], (_left, right) => right);
   const sameStudent = local.studentId === incoming.studentId;
   const dismissedGoalPrompts = sameStudent
@@ -459,7 +507,7 @@ export function mergeStudentReports(local: StudentProgressReport, incoming: Stud
   const merged = shareTournaments({
     ...local,
     updatedAt: Math.max(local.updatedAt, incoming.updatedAt),
-    profile: incomingNewer ? incoming.profile : local.profile,
+    profile: mergeProfile(local.profile, incoming.profile, incomingNewer),
     rubric: incomingNewer ? incoming.rubric : local.rubric,
     checklist: mergeById(local.checklist, incoming.checklist, mergeChecklistRow),
     journal: mergeById(local.journal, incoming.journal, later),

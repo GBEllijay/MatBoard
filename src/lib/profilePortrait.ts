@@ -2,7 +2,11 @@
  * Optional profile photo. It stays on this phone: localStorage, and IndexedDB
  * when the browser has it. Nothing here calls the network.
  * The picture is downscaled and center-cropped. The profile draws it as a circle.
+ * A normal camera photo is shrunk until it fits. The stored cap does not change.
  */
+
+import { canvasBlob, openStill, type StillSource } from './phoneStill.ts';
+import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 const PORTRAIT_KEY = 'matboard.studentPortrait.v1';
 const DB_NAME = 'matboard.studentPortrait';
@@ -11,6 +15,18 @@ const DB_ID = 'selfie';
 
 export const PORTRAIT_MAX_EDGE = 320;
 export const PORTRAIT_MAX_CHARS = 70_000;
+
+/**
+ * First entry is the stored size for a photo that fits.
+ * Later entries are only used when that JPEG is still over {@link PORTRAIT_MAX_CHARS}.
+ */
+export const PORTRAIT_ENCODE_STEPS = [
+  { edge: PORTRAIT_MAX_EDGE, quality: 0.72 },
+  { edge: PORTRAIT_MAX_EDGE, quality: 0.56 },
+  { edge: PORTRAIT_MAX_EDGE, quality: 0.42 },
+  { edge: 256, quality: 0.5 },
+  { edge: 192, quality: 0.42 },
+] as const;
 
 const PORTRAIT_RE = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=\s]+$/;
 
@@ -58,7 +74,12 @@ export function writeProfilePortraitSync(dataUrl: string, storage: Store | null 
   if (!portraitFits(dataUrl)) throw new Error('too-large');
   if (!storage) return;
   const record: PortraitRecord = { version: 1, dataUrl };
-  storage.setItem(PORTRAIT_KEY, JSON.stringify(record));
+  try {
+    storage.setItem(PORTRAIT_KEY, JSON.stringify(record));
+  } catch (error) {
+    if (isStorageQuotaError(error)) throw new StorageQuotaError(0);
+    throw error;
+  }
 }
 
 export async function saveProfilePortrait(
@@ -66,6 +87,9 @@ export async function saveProfilePortrait(
   storage: Store | null = defaultStorage(),
   mirror: PortraitMirror | null = idbMirror(),
 ): Promise<void> {
+  if (!portraitFits(dataUrl)) throw new Error('too-large');
+  const record: PortraitRecord = { version: 1, dataUrl };
+  await assertOriginRoom(JSON.stringify(record).length);
   writeProfilePortraitSync(dataUrl, storage);
   if (mirror) await mirror.put(dataUrl);
 }
@@ -99,49 +123,53 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
   return `data:${mime};base64,${btoa(binary)}`;
 }
 
+function drawPortrait(still: StillSource, edge: number): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = edge;
+  canvas.height = edge;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const side = Math.min(still.width, still.height);
+  const sx = Math.floor((still.width - side) / 2);
+  const sy = Math.floor((still.height - side) / 2);
+  ctx.fillStyle = '#1c1c1e';
+  ctx.fillRect(0, 0, edge, edge);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(edge / 2, edge / 2, edge / 2, 0, Math.PI * 2);
+  ctx.clip();
+  still.draw(ctx, sx, sy, side, side, 0, 0, edge, edge);
+  ctx.restore();
+  return canvas;
+}
+
 /**
  * Center-crop a camera or gallery still and keep it small.
  * Corners outside the circle are filled so a round frame shows the face.
- * Throws `not-image` or `too-large`. Does not upload the file.
+ * Throws `not-image`, `undecodable`, `unencoded`, or `too-large`.
+ * Does not upload the file and does not replace a photo already stored.
  */
 export async function portraitFromFile(file: File): Promise<string> {
   if (!isImageFile(file)) throw new Error('not-image');
-  if (typeof document === 'undefined' || typeof createImageBitmap !== 'function') {
-    const dataUrl = await blobToDataUrl(file);
-    if (!portraitFits(dataUrl)) throw new Error('too-large');
-    return dataUrl;
-  }
-  let bitmap: ImageBitmap;
+  const still = await openStill(file);
   try {
-    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-  } catch {
-    bitmap = await createImageBitmap(file);
+    let produced = false;
+    for (const step of PORTRAIT_ENCODE_STEPS) {
+      const canvas = drawPortrait(still, step.edge);
+      if (!canvas) throw new Error('unencoded');
+      for (const mime of ['image/jpeg', 'image/webp'] as const) {
+        const blob = await canvasBlob(canvas, mime, step.quality);
+        if (!blob) continue;
+        produced = true;
+        const dataUrl = await blobToDataUrl(blob);
+        if (portraitFits(dataUrl)) return dataUrl;
+      }
+    }
+    throw new Error(produced ? 'too-large' : 'unencoded');
+  } finally {
+    still.close();
   }
-  const side = Math.min(bitmap.width, bitmap.height);
-  const sx = Math.floor((bitmap.width - side) / 2);
-  const sy = Math.floor((bitmap.height - side) / 2);
-  const canvas = document.createElement('canvas');
-  canvas.width = PORTRAIT_MAX_EDGE;
-  canvas.height = PORTRAIT_MAX_EDGE;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    bitmap.close?.();
-    throw new Error('too-large');
-  }
-  ctx.fillStyle = '#1c1c1e';
-  ctx.fillRect(0, 0, PORTRAIT_MAX_EDGE, PORTRAIT_MAX_EDGE);
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(PORTRAIT_MAX_EDGE / 2, PORTRAIT_MAX_EDGE / 2, PORTRAIT_MAX_EDGE / 2, 0, Math.PI * 2);
-  ctx.clip();
-  ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, PORTRAIT_MAX_EDGE, PORTRAIT_MAX_EDGE);
-  ctx.restore();
-  bitmap.close?.();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.72));
-  if (!blob) throw new Error('too-large');
-  const dataUrl = await blobToDataUrl(blob);
-  if (!portraitFits(dataUrl)) throw new Error('too-large');
-  return dataUrl;
 }
 
 function idbMirror(): PortraitMirror | null {
