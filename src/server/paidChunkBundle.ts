@@ -178,6 +178,22 @@ function rewriteSpec(spec: string, fromOld: string, fromNew: string, oldToNew: R
   return `${next}${suffix}`;
 }
 
+/** Vite rebuilds the preload list from each chunk's importedCss after this plugin runs. */
+export function remapImportedStyles(files: Iterable<string>, oldToNew: ReadonlyMap<string, string>): string[] {
+  return [...files].map((file) => oldToNew.get(file) ?? file);
+}
+
+/** Vite's preload list quotes bare paths such as "assets/file.css", not ./assets. */
+export function rewriteMovedAssetPaths(code: string, oldToNew: ReadonlyMap<string, string>): string {
+  let next = code;
+  for (const [from, to] of oldToNew) {
+    if (from === to) continue;
+    next = next.replaceAll(`"${from}"`, `"${to}"`);
+    next = next.replaceAll(`'${from}'`, `'${to}'`);
+  }
+  return next;
+}
+
 /** Point relative chunk and asset URLs at the path they will be written to. */
 export function rewriteRelativeUrls(
   code: string,

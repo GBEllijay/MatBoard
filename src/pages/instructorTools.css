@@ -1,44 +1,47 @@
-/* Instructor tool cards on the live Coach Unlimited page. No left belt rail. */
+/*
+ * The Instructor rows are the pre-icon .pro-hub buttons from 371ef25.
+ * A later rule paints every .pro-hub navy and widens the belt to 12px.
+ * This file is imported only by the paid Instructor page.
+ * The label is the only span this file positions. The belt rail stays
+ * the shared absolute .belt-rail (weave, edge, and tip), brown, 8px.
+ */
 
-.instructor-tools {
-  display: grid;
-  gap: 0.75rem;
+.instructor-hub .pro-hubs .pro-hub.instructor-tool {
+  background: var(--white);
+  color: #14161c;
+  border: 0;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
-.instructor-tool {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px;
-  gap: 10px;
-  align-items: center;
-  min-height: 96px;
-  padding: 14px 14px 14px 16px;
-  border-radius: 16px;
-  border: 1.5px solid #004eba;
-  background: #0c2344;
-  color: #f5f1e8;
-  font-weight: 800;
-  font-size: clamp(1.05rem, 2.7vw, 1.28rem);
-  letter-spacing: -0.03em;
-  line-height: 1.2;
-  text-align: left;
-  text-decoration: none;
-  box-shadow: none;
+.instructor-hub .pro-hubs .pro-hub.instructor-tool > .instructor-tool__label {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #14161c;
+  -webkit-text-fill-color: #14161c;
 }
 
-.instructor-tool:focus-visible {
-  outline: 3px solid #6ea8ff;
-  outline-offset: 3px;
+.instructor-hub .pro-hubs .pro-hub.instructor-tool > .belt-rail {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  flex: none;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  --belt-rail-width: 8px;
+  --belt-block: 0.55rem;
 }
 
 .instructor-tool__mark {
-  width: 92px;
-  height: 72px;
-  border-radius: 12px;
-  background: rgba(110, 168, 255, 0.12);
-}
-
-@media (orientation: landscape) and (min-width: 740px) {
-  .instructor-tools {
-    grid-template-columns: 1fr 1fr;
-  }
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 44px;
+  height: 34px;
+  max-width: 44px;
+  max-height: 34px;
+  flex: 0 0 44px;
+  background: transparent;
 }

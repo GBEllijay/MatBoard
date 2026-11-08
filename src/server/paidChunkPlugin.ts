@@ -5,6 +5,8 @@ import {
   addPaidStylesheet,
   paidChunkNameForModule,
   planPaidBundle,
+  remapImportedStyles,
+  rewriteMovedAssetPaths,
   rewriteRelativeUrls,
   type BundleChunk,
 } from './paidChunkBundle.ts';
@@ -37,6 +39,9 @@ export function paidChunkPlugin(): Plugin {
   let command = 'serve';
   return {
     name: 'paid-chunks',
+    // Vite rebuilds the preload list from importedCss in its own generateBundle.
+    // The moved stylesheet path has to be in that set, or the browser asks /assets for a file that lives under /paid.
+    enforce: 'post',
     config(_config, env) {
       command = env.command;
     },
@@ -81,11 +86,23 @@ export function paidChunkPlugin(): Plugin {
       for (const [from, to] of plan.moves) oldToNew.set(from, to);
 
       for (const item of files) {
+        const css = item.viteMetadata?.importedCss;
+        if (css instanceof Set) {
+          const next = remapImportedStyles(css, oldToNew);
+          css.clear();
+          for (const file of next) css.add(file);
+        }
         const nextName = oldToNew.get(item.fileName) ?? item.fileName;
         if (isChunk(item)) {
-          item.code = rewriteRelativeUrls(item.code, item.fileName, nextName, oldToNew);
+          item.code = rewriteMovedAssetPaths(
+            rewriteRelativeUrls(item.code, item.fileName, nextName, oldToNew),
+            oldToNew,
+          );
         } else if (typeof item.source === 'string') {
-          item.source = rewriteRelativeUrls(item.source, item.fileName, nextName, oldToNew);
+          item.source = rewriteMovedAssetPaths(
+            rewriteRelativeUrls(item.source, item.fileName, nextName, oldToNew),
+            oldToNew,
+          );
         }
       }
 

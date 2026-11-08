@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
+import { BeltRail } from '../components/BeltRail';
 import { InstructorToolMark, type InstructorToolMarkName } from '../components/InstructorToolMark';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { HomeMark } from '../components/HomeMark';
@@ -80,15 +81,16 @@ export function CoachUnlimitedPage() {
         <section className="suite instructor-hub">
           <BeltHeader kind="brown" worn title="Instructor Edition" />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
-            <div className="instructor-tools">
+            <div className="pro-hubs">
               {tools.map((tool) => (
                 <Link
                   key={tool.to}
-                  className="instructor-tool"
+                  className="pro-hub instructor-tool"
                   to={tool.to}
                   onClick={tool.clearBout ? () => unlinkBracketBout() : undefined}
                 >
-                  <span>{tool.title}</span>
+                  <BeltRail kind="brown" />
+                  <span className="instructor-tool__label">{tool.title}</span>
                   <InstructorToolMark mark={marks[tool.title] ?? 'plan'} />
                 </Link>
               ))}
