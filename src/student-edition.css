@@ -3198,10 +3198,15 @@ body:has(main.academy-modern) .parent-approvals ~ main.student.academy-modern {
 }
 
 .journal-videos__actions,
-.video-link {
+.video-link,
+.technique-practice {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+}
+
+.technique-practice {
+  display: grid;
 }
 
 .journal-videos__item,

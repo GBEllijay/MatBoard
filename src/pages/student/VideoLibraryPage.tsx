@@ -36,6 +36,7 @@ import { originCanStore } from '../../lib/storageQuota';
 import { associationAfterSave, readJournalFilmContext, setClipAnchor, setFilmAnchor, setFilmJournal, type LinkIntent } from '../../lib/videoAssociation';
 import { AcademyStaleBanner } from './AcademyConnect';
 import { SavedTechniqueLink, TechniqueLinkPicker } from './TechniqueLinkPicker';
+import { OriginalClass, TechniquePractice } from './TechniquePractice';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 
 export function VideoLibraryPage() {
@@ -196,6 +197,8 @@ export function VideoLibraryPage() {
                       }}
                       onUnlink={() => commit(setClipAnchor(report, clip.id, undefined))}
                     />
+                    {clip.techniqueAnchor ? <TechniquePractice report={report} anchor={clip.techniqueAnchor} /> : null}
+                    {clip.journalEntryId ? <OriginalClass report={report} entryId={clip.journalEntryId} /> : null}
                   </>
                 )}
                 <VideoNote clip={clip} onSave={(note) => commit(setClipNote(report, clip.id, note))} />
@@ -531,6 +534,8 @@ function FilmedList({ query, tick, onChange }: { query: string; tick: number; on
               }}
               onUnlink={() => refresh(setFilmAnchor(films, film.id, undefined))}
             />
+            {film.techniqueAnchor ? <TechniquePractice report={report} anchor={film.techniqueAnchor} /> : null}
+            {film.journalEntryId ? <OriginalClass report={report} entryId={film.journalEntryId} /> : null}
             <FilmedPlayer film={film} label={label} />
             <FilmNote
               film={film}
