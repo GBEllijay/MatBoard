@@ -81,11 +81,11 @@ export function CoachUnlimitedPage() {
         <section className="suite instructor-hub">
           <BeltHeader kind="brown" worn title="Instructor Edition" />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
-            <div className="instructor-tools">
+            <div className="pro-hubs">
               {tools.map((tool) => (
                 <Link
                   key={tool.to}
-                  className="instructor-tool"
+                  className="pro-hub instructor-tool"
                   to={tool.to}
                   onClick={tool.clearBout ? () => unlinkBracketBout() : undefined}
                 >

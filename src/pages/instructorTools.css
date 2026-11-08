@@ -1,56 +1,30 @@
-/* Instructor Edition tools. Cream buttons, brown belt on the left, drawing inside. */
+/*
+ * The Instructor rows are the pre-icon .pro-hub buttons from 371ef25
+ * (ivory var(--white) #efebe3, min-height 5.25rem, 18px corners,
+ * padding 1rem 1.15rem 1rem 1.5rem, 8px belt). A later rule paints every
+ * .pro-hub navy and widens the belt to 12px. This file is imported only
+ * by the paid Instructor page, so it puts the ivory and the 8px belt
+ * back on these rows. The drawing is only added inside.
+ */
 
-.instructor-tools {
-  display: grid;
-  gap: 0.75rem;
-  width: 100%;
-}
-
-.instructor-tool {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 5.25rem;
-  padding: 1rem 1.05rem 1rem 1.5rem;
-  overflow: hidden;
+.instructor-hub .pro-hubs .pro-hub.instructor-tool {
+  background: var(--white);
+  color: var(--white-ink);
   border: 0;
-  border-radius: 18px;
-  background: #efebe3;
-  color: #14161c;
-  font-weight: 800;
-  font-size: clamp(1.05rem, 2.7vw, 1.28rem);
-  letter-spacing: -0.03em;
-  line-height: 1.2;
-  text-align: left;
-  text-decoration: none;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
-.instructor-tool > span {
+.instructor-hub .pro-hubs .pro-hub.instructor-tool > span {
   position: relative;
   z-index: 1;
   flex: 1 1 auto;
   min-width: 0;
-  color: #14161c;
-  font-size: inherit;
-  font-weight: 800;
+  color: var(--white-ink);
 }
 
-.instructor-tool .belt-rail {
+.instructor-hub .pro-hubs .pro-hub.instructor-tool .belt-rail {
   --belt-rail-width: 8px;
   --belt-block: 0.55rem;
-}
-
-.instructor-tool:focus-visible {
-  outline: 3px solid #004eba;
-  outline-offset: 3px;
-}
-
-.instructor-tool:active {
-  background: #e4dfd4;
-  color: #14161c;
 }
 
 .instructor-tool__mark {
@@ -63,15 +37,4 @@
   max-height: 34px;
   flex: 0 0 44px;
   background: transparent;
-}
-
-@media (hover: hover) {
-  .instructor-tool:hover {
-    background: #e4dfd4;
-    color: #14161c;
-  }
-
-  .instructor-tool:hover > span {
-    color: #14161c;
-  }
 }

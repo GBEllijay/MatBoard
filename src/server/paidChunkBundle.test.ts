@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { planPaidBundle, rewriteRelativeUrls } from './paidChunkBundle.ts';
+import { planPaidBundle, remapImportedStyles, rewriteMovedAssetPaths, rewriteRelativeUrls } from './paidChunkBundle.ts';
 
 test('only chunks reachable from the paid screens move under /paid', () => {
   const plan = planPaidBundle([
@@ -49,6 +49,26 @@ test('only chunks reachable from the paid screens move under /paid', () => {
   assert.deepEqual(plan.manifestFiles['pro-only.js'], ['pro-console', 'media-console']);
   assert.ok(plan.filesForChunk['lesson-cloud'].includes('/paid/lesson-cloud.js'));
   assert.equal(plan.filesForChunk['coach-unlimited'].includes('/paid/react.js'), false);
+});
+
+test('a moved stylesheet keeps the Vite preload path under /paid', () => {
+  const map = new Map<string, string>([
+    ['assets/index.js', 'assets/index.js'],
+    ['assets/CoachUnlimited-abc.css', 'paid/CoachUnlimited-abc.css'],
+  ]);
+  const code = 'm.f=["paid/CoachUnlimited-abc.js","assets/CoachUnlimited-abc.css"]';
+  assert.equal(
+    rewriteMovedAssetPaths(code, map),
+    'm.f=["paid/CoachUnlimited-abc.js","paid/CoachUnlimited-abc.css"]',
+  );
+});
+
+test('Vite importedCss follows a stylesheet that moves under /paid', () => {
+  const map = new Map([['assets/CoachUnlimited-abc.css', 'paid/CoachUnlimited-abc.css']]);
+  assert.deepEqual(remapImportedStyles(['assets/CoachUnlimited-abc.css', 'assets/index.css'], map), [
+    'paid/CoachUnlimited-abc.css',
+    'assets/index.css',
+  ]);
 });
 
 test('relative imports follow a chunk when it moves to /paid', () => {

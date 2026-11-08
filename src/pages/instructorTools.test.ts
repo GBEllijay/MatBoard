@@ -8,13 +8,16 @@ const marks = readFileSync(new URL('../components/InstructorToolMark.tsx', impor
 const seats = readFileSync(new URL('../lib/instructorSeats.ts', import.meta.url), 'utf8');
 const pro = readFileSync(new URL('./Pro.tsx', import.meta.url), 'utf8');
 
-test('Instructor tools keep the live routes on cream buttons with a brown belt', () => {
+test('Instructor tools keep the live routes on the original ivory buttons', () => {
   assert.match(page, /coachToolVisible\(tool\.to, seat\)/);
+  assert.match(page, /className="pro-hubs"/);
+  assert.match(page, /className="pro-hub instructor-tool"/);
   assert.match(page, /to=\{tool\.to\}/);
   assert.match(page, /tool\.clearBout \? \(\) => unlinkBracketBout\(\)/);
   assert.match(page, /<BeltHeader kind="brown" worn title="Instructor Edition"/);
   assert.match(page, /<BeltRail kind="brown" \/>/);
-  assert.match(page, /className="instructor-tool"/);
+  assert.doesNotMatch(page, /data-accent/);
+  assert.doesNotMatch(page, /instructor-tool__choice/);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.to),
     [
@@ -45,9 +48,12 @@ test('Instructor tools keep the live routes on cream buttons with a brown belt',
   assert.match(marks, /Open index-card box/);
   assert.doesNotMatch(marks, /M20 54c2-10/);
   const css = readFileSync(new URL('./instructorTools.css', import.meta.url), 'utf8');
-  assert.match(css, /\.instructor-tool \{[^}]*background:\s*#efebe3/);
-  assert.match(css, /\.instructor-tool \{[^}]*color:\s*#14161c/);
+  assert.match(css, /background:\s*var\(--white\)/);
+  assert.match(css, /color:\s*var\(--white-ink\)/);
+  assert.match(css, /--belt-rail-width:\s*8px/);
+  assert.doesNotMatch(css, /#e4dfd4/);
   assert.match(css, /\.instructor-tool__mark \{[^}]*max-width:\s*44px/);
+  assert.match(readFileSync(new URL('../index.css', import.meta.url), 'utf8'), /\.pro-hub \{[^}]*min-height:\s*5\.25rem/);
   const white = readFileSync(new URL('../components/LiveBoutCard.tsx', import.meta.url), 'utf8');
   const rounds = readFileSync(new URL('../components/RoundsCard.tsx', import.meta.url), 'utf8');
   assert.match(white, /className="white-board"/);
