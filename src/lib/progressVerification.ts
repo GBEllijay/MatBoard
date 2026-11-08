@@ -10,6 +10,14 @@
 
 export type ProgressVerification = 'self-reported' | 'coach-verified';
 
+/** Facts an academy total may use. Pending and self-reported claims are not in this set. */
+export type AcademyStatBasis = 'verified' | 'issued' | 'accepted';
+
+export type AcademyStatCandidate = {
+  id: string;
+  basis: AcademyStatBasis | 'pending' | 'self-reported';
+};
+
 /** Personal entry, save, and progression do not wait on a coach. */
 export function personalProgressOpen(input?: { coachConnected?: boolean; coachApproved?: boolean }): boolean {
   void input?.coachConnected;
@@ -22,9 +30,27 @@ export function verificationAfterCoachReview(acceptedOfficialUpdate: boolean): P
   return acceptedOfficialUpdate ? 'coach-verified' : 'self-reported';
 }
 
-/** Academy totals count coach-verified records only. */
+/** Academy totals count coach-verified records only. A self-report is not certified. */
 export function countsAsAcademyCertified(verification: ProgressVerification): boolean {
   return verification === 'coach-verified';
+}
+
+/**
+ * Academy stats come from verified, issued, and accepted records.
+ * The same id is kept once inside a basis. Pending is not accepted.
+ * A self-reported claim is not certified.
+ */
+export function academyStatRows(rows: readonly AcademyStatCandidate[]): AcademyStatCandidate[] {
+  const seen = new Set<string>();
+  const kept: AcademyStatCandidate[] = [];
+  for (const row of rows) {
+    if (row.basis !== 'verified' && row.basis !== 'issued' && row.basis !== 'accepted') continue;
+    const key = `${row.basis}:${row.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    kept.push(row);
+  }
+  return kept;
 }
 
 export const SELF_REPORTED_NOTE = 'Your own record. Not coach-verified, and not an academy result.';

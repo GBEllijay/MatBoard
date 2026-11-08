@@ -4,6 +4,7 @@ import { acceptCoachCompetitionUpdate, buildCoachCompetitionUpdate } from './coa
 import { emptyUpdateLedger } from './coachRankUpdate.ts';
 import { competitionOf } from './progress/competition.ts';
 import {
+  academyStatRows,
   countsAsAcademyCertified,
   personalProgressOpen,
   verificationAfterCoachReview,
@@ -45,4 +46,13 @@ test('accepting an official coach update verifies without removing the student m
   assert.equal(verificationAfterCoachReview(true), 'coach-verified');
   assert.equal(countsAsAcademyCertified('coach-verified'), true);
   assert.equal(countsAsAcademyCertified('self-reported'), false);
+  const rows = academyStatRows([
+    { id: 'upd-1', basis: 'issued' },
+    { id: 'upd-1', basis: 'issued' },
+    { id: 'upd-1', basis: 'accepted' },
+    { id: 'upd-2', basis: 'verified' },
+    { id: 'upd-3', basis: 'pending' },
+    { id: 'upd-4', basis: 'self-reported' },
+  ]);
+  assert.deepEqual(rows.map((row) => `${row.basis}:${row.id}`), ['issued:upd-1', 'accepted:upd-1', 'verified:upd-2']);
 });
