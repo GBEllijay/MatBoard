@@ -46,6 +46,9 @@ import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { StudentEditionPage } from './pages/StudentEdition';
 import { Journal2036Page } from './preview/journal2036/Journal2036Page';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
+import { AncestryAcademyPreview, AncestryInstructorPreview, AncestryStudentPreview } from './preview/ancestryScope/AncestryScopePreview';
+import { AcademyFullPage, InstructorFullPage, ProfileHubPage, StudentFullPage } from './preview/ancestryScope/ProfilePages';
+import { Future2036Page } from './preview/ancestryScope/Future2036';
 import { StudentAncestryPreview } from './preview/studentRecord/StudentAncestryPreview';
 import { StudentHoursPreview } from './preview/studentRecord/StudentHoursPreview';
 import { CoachPage } from './pages/Coach';
@@ -763,6 +766,17 @@ export default function App() {
       <Route path="/preview/personal-graph" element={<PersonalGraphPreviewPage />} />
       {/* Isolated instructor-sheet concept. Not in edition menus, and it does not write a profile. */}
       <Route path="/preview/instructor-profile" element={<InstructorProfilePreviewPage />} />
+      {/* Example scopes only. Not in edition menus, and nothing here is saved. */}
+      <Route path="/preview/ancestry-student" element={<AncestryStudentPreview />} />
+      <Route path="/preview/ancestry-instructor" element={<AncestryInstructorPreview />} />
+      <Route path="/preview/ancestry-academy" element={<AncestryAcademyPreview />} />
+      <Route path="/preview/profiles" element={<ProfileHubPage />} />
+      <Route path="/preview/profile-student" element={<StudentFullPage />} />
+      <Route path="/preview/profile-instructor" element={<InstructorFullPage />} />
+      <Route path="/preview/profile-academy" element={<AcademyFullPage />} />
+      <Route path="/preview/2036-student" element={<Future2036Page place="student" />} />
+      <Route path="/preview/2036-instructor" element={<Future2036Page place="instructor" />} />
+      <Route path="/preview/2036-academy" element={<Future2036Page place="academy" />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
       <Route path="/card" element={<CardPage />} />
       <Route path="/half-off" element={<HalfOffPage />} />
