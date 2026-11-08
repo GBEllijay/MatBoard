@@ -60,10 +60,10 @@ function Shell({ children }: { children: ReactNode }) {
   );
 }
 
-function LineHead({ editing, onEdit }: { editing: boolean; onEdit: () => void }) {
+function LineHead({ title, editing, onEdit }: { title: string; editing: boolean; onEdit: () => void }) {
   return (
     <div className="owner-line__head">
-      <h2>Teaching lineage</h2>
+      <h2>{title}</h2>
       {editing ? null : (
         <button type="button" className="owner-line__edit" onClick={onEdit}>
           Edit
@@ -78,8 +78,8 @@ export function CompactLineageCard() {
   const [editing, setEditing] = useState(false);
   return (
     <Shell>
-      <section className="profile-card owner-line__card" aria-label="Teaching lineage" data-testid="lineage-compact">
-        <LineHead editing={editing} onEdit={() => setEditing(true)} />
+      <section className="profile-card owner-line__card" aria-label="Instructor lineage" data-testid="lineage-compact">
+        <LineHead title="Instructor lineage" editing={editing} onEdit={() => setEditing(true)} />
         {editing ? (
           <EditForm onClose={() => setEditing(false)} />
         ) : (
@@ -102,7 +102,7 @@ export function ExpandedLineageLine() {
   return (
     <Shell>
       <section className="profile-card owner-line__card" aria-label="Teaching lineage" data-testid="lineage-expanded">
-        <LineHead editing={editing} onEdit={() => setEditing(true)} />
+        <LineHead title="Teaching lineage" editing={editing} onEdit={() => setEditing(true)} />
         {editing ? (
           <EditForm onClose={() => setEditing(false)} />
         ) : (

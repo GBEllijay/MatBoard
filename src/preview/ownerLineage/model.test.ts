@@ -22,4 +22,6 @@ test('the proposed line names each relationship and keeps the award off the line
   assert.equal(views.includes('PROMOTION_NOTE'), true);
   assert.equal(views.includes('profile-details'), true);
   assert.equal(/Up|Remove/.test(views), false);
+  assert.match(views, /title="Instructor lineage"/);
+  assert.match(views, /title="Teaching lineage"/);
 });
