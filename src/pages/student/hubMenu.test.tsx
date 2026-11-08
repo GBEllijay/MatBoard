@@ -208,7 +208,7 @@ test('every former hub item is linked from a group menu', () => {
   for (const page of pages) unmount(page);
 });
 
-test('Training & Journal has no Log today bar, and the four journal links stay', () => {
+test('Training & Journal has no Log today bar, and the journal links stay', () => {
   const hub = mount(<StudentHub />, '/student?student=1');
   assert.equal(hub.host.textContent?.includes("Log today's class"), false);
   assert.equal(hub.host.querySelector('.s-pin'), null);
@@ -250,6 +250,12 @@ test('Training & Journal has no Log today bar, and the four journal links stay',
       label: 'Video Library',
       href: '/student/videos?student=1',
       note: 'Technique and drill links',
+      leather: true,
+    },
+    {
+      label: "Techniques I'm working on",
+      href: '/student/working?student=1',
+      note: 'Same techniques as the tree',
       leather: true,
     },
   ]);

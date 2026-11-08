@@ -12,6 +12,7 @@ import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
 import { highDatesForCount } from '../blackBeltDegrees.ts';
 import { dedupeRankHistory, expandLineage, stripeDateText } from '../studentRank.ts';
 import { asRecord } from '../plainValue.ts';
+import { readWorkingGraph } from '../workingTechniques.ts';
 import { readCoachAssessment, readCoachBeltProgress, readCoachNote } from './syncPackets.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
 import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
@@ -286,6 +287,10 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     const beltBook = readBeltBook(record.beltBook);
     errors.push(...beltBook.errors);
     if (beltBook.book) value.beltBook = beltBook.book;
+    if (record.working !== undefined) {
+      const working = readWorkingGraph(record.working);
+      if (working) value.working = working;
+    }
     if (value.journal.some((entry) => entry.quality !== undefined)) {
       const stage = qualityStage(value.profile.belt, beltModeOf(value) === 'kids');
       value.journal = value.journal.map((entry) => migrateQualityToNote(entry, stage));
@@ -1722,6 +1727,8 @@ function readTechniqueRef(value: unknown, label: string, errors: string[]): Tech
     id: readId(record.id, `${label} id`, errors),
     name: readString(record.name, `${label} name`, PROGRESS_NAME_MAX, errors),
   };
+  const workingId = readOptionalId(record.workingId, `${label} working id`, errors);
+  if (workingId) ref.workingId = workingId;
   const style = readChoice(record.style, `${label} style`, TRAINING_STYLES, errors);
   if (style) ref.style = style;
   const targetLevel = readTargetLevel(record.targetLevel, `${label} target`, errors);

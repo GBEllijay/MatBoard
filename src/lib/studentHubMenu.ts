@@ -49,6 +49,7 @@ export const TRAINING_LINKS: readonly MenuLink[] = [
   { label: 'Journal cards', note: 'Search your notes', to: '/student/cards' },
   { label: 'Calendar', note: 'Classes, open mats, and tournaments', to: '/student/calendar' },
   { label: 'Video Library', note: 'Technique and drill links', to: '/student/videos' },
+  { label: "Techniques I'm working on", note: 'Same techniques as the tree', to: '/student/working' },
 ];
 
 /** Kept empty. Film a move stays on Video Library. Roll results stay on Results. */
@@ -157,6 +158,7 @@ const PAGE_PARENT: Record<string, string> = {
   '/student/cards': '/student/training',
   '/student/calendar': '/student/training',
   '/student/videos': '/student/training',
+  '/student/working': '/student/training',
   '/student/profile': '/student/progress',
   '/student/rank': '/student/progress',
   '/student/rubric': '/student/progress',
@@ -257,6 +259,7 @@ export type StudentScreen =
   | 'weight'
   | 'results'
   | 'videos'
+  | 'working'
   | 'connections'
   | 'academy'
   | 'print-progress'
@@ -288,6 +291,7 @@ export function studentScreen(rest: string): StudentScreen {
     case 'weight':
     case 'results':
     case 'videos':
+    case 'working':
     case 'connections':
     case 'academy':
     case 'scouting':

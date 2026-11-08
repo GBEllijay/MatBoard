@@ -43,6 +43,7 @@ import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from '
 import { SharePage } from './student/SharePage';
 import { AcademyConnectPage, ConnectionsPage } from './student/ConnectionsPage';
 import { FundamentalsPage } from './student/FundamentalsPage';
+import { WorkingTechniquesPage } from './student/WorkingTechniques';
 import { PrintReportPage } from './student/PrintReportPage';
 import { ProfilePage } from './student/ProfilePage';
 import {
@@ -186,6 +187,8 @@ function studentScreenNode(rest: string) {
       return <JournalCardPage id={decodeURIComponent(rest.slice('cards/'.length))} />;
     case 'fundamentals':
       return <FundamentalsPage />;
+    case 'working':
+      return <WorkingTechniquesPage />;
     case 'calendar':
       return <CalendarPage />;
     case 'calendar-day':
@@ -451,7 +454,7 @@ function JournalToday() {
           </section>
           <section className="adv-card adv-card--drills journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
             <h2 className="ink__label journal-techniques__title">Techniques drilled · optional</h2>
-            <TechniqueLines idPrefix="" report={report} rows={techniques} onChange={setTechniques} />
+            <TechniqueLines idPrefix="" report={report} rows={techniques} onChange={setTechniques} onReport={commit} />
           </section>
           {error ? <p role="alert">{error}</p> : null}
           <EntrySavedToast open={savedToast} />
@@ -876,7 +879,7 @@ function JournalEditor({
     minutes: number;
   } & ReturnType<typeof extrasDraft>) => void;
 }) {
-  const { report } = useStudentFile();
+  const { report, commit } = useStudentFile();
   const [extras, setExtras] = useState<SessionExtrasValue>(() => extrasFromCard(card));
   const [date, setDate] = useState(card.date);
   const [className, setClassName] = useState(card.className);
@@ -956,7 +959,7 @@ function JournalEditor({
       </section>
       <section className="adv-card adv-card--drills journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
         <h2 className="ink__label journal-techniques__title">Techniques drilled · optional</h2>
-        <TechniqueLines idPrefix="Edit " report={report} rows={techniques} onChange={setTechniques} />
+        <TechniqueLines idPrefix="Edit " report={report} rows={techniques} onChange={setTechniques} onReport={commit} />
       </section>
       {error ? <p role="alert">{error}</p> : null}
       <div className="student-card__actions journal-actions">

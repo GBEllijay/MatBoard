@@ -12,6 +12,7 @@ import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { emptyRank } from './studentRank.ts';
 import { clampMinutes, sessionOf } from './matHours.ts';
 import { JOURNAL_SESSIONS, JOURNAL_SESSION_OTHER_MAX, type JournalSession } from './progress/types.ts';
+import { workingTitleKey } from './workingTechniques.ts';
 import {
   beginAppStudentSave,
   endAppStudentSave,
@@ -423,7 +424,12 @@ export function viewJournalEntry(entry: JournalEntry): JournalCardView {
     date: entry.date,
     className: decoded.className,
     gameTag: entry.gameTag,
-    techniques: entry.techniqueRefs.map((item, index) => ({ id: item.id, name: item.name, note: techniqueNoteOf(entry.body, index) })),
+    techniques: entry.techniqueRefs.map((item, index) => ({
+      id: item.id,
+      name: item.name,
+      note: techniqueNoteOf(entry.body, index),
+      ...(item.workingId ? { workingId: item.workingId } : {}),
+    })),
     partners: decoded.partners,
     drills: decoded.drills,
     rolls: decoded.rolls,
@@ -462,6 +468,7 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
       id: item.id.trim() || techniqueId(item.name, now, index),
       name: item.name.trim(),
       note: (item.note ?? '').trim(),
+      workingId: item.workingId?.trim() ?? '',
     }))
     .filter((item) => item.name)
     .slice(0, JOURNAL_TECHNIQUE_MAX);
@@ -470,7 +477,12 @@ export function createJournalEntry(draft: JournalDraft, now = Date.now()): Journ
     date: draft.date,
     gameTag: (GAME_TAGS as readonly string[]).includes(draft.gameTag) ? draft.gameTag : '',
     body: encodeJournalBody({ ...draft, techniques }),
-    techniqueRefs: techniques.map(({ id, name }) => ({ id, name })),
+    techniqueRefs: techniques.map(({ id, name, workingId }) => {
+      const ref: TechniqueRef = { id, name };
+      const linked = workingId?.trim() ?? '';
+      if (linked) ref.workingId = linked;
+      return ref;
+    }),
     amendments: [],
     createdAt: now,
     updatedAt: now,
@@ -711,6 +723,32 @@ export function fundamentalsBoard(report: StudentProgressReport): FundamentalsCa
       items,
     };
   });
+}
+
+/**
+ * Explicit fundamentals membership for a typed name.
+ * A catalog match is linked. A new name is a custom Movement line at level 0.
+ * This does not mark the technique learned.
+ */
+export function placeOnFundamentals(
+  report: StudentProgressReport,
+  name: string,
+  now = Date.now(),
+): { report: StudentProgressReport; id: string } {
+  const key = workingTitleKey(name);
+  if (!key) return { report, id: '' };
+  for (const category of fundamentalsBoard(report)) {
+    for (const item of category.items) {
+      if (workingTitleKey(item.label) !== key && workingTitleKey(item.name) !== key) continue;
+      const id = item.catalogItemId || item.entryId;
+      if (id) return { report, id };
+    }
+  }
+  const next = addCustomFundamental(report, 'movement', name.trim().replace(/\s+/g, ' '), now);
+  const entry = next.checklist.find(
+    (row) => row.categoryId === 'movement' && row.catalogItemId === '' && workingTitleKey(row.name) === key,
+  );
+  return { report: next, id: entry?.id ?? '' };
 }
 
 type ChecklistTarget = { entryId?: string; catalogItemId: string; categoryId: string; name: string };

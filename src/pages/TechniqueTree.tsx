@@ -8,6 +8,14 @@ import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { gamePlanMentionIndex, mentionText, mentionsForNode, type GamePlanMention } from '../lib/gamePlan';
 import { TECHNIQUE_TREE_CAP_NOTE, TECHNIQUE_TREE_LABEL, TECHNIQUE_TREE_LEAD } from '../lib/coachCopy';
 import { DEVICE_STORAGE_FULL_NOTE } from '../lib/storageQuota';
+import type { ShareChoice, SharePreview } from '../lib/techniqueShare';
+import {
+  applyCoachImport,
+  downloadTechniqueShare,
+  previewCoachImport,
+  readTechniqueShare,
+  shareFromCoachTree,
+} from '../lib/techniqueShare';
 import {
   MAX_TREE_NODES,
   MAX_TREES,
@@ -60,6 +68,8 @@ export function TechniqueTreePage() {
   const [draftTitle, setDraftTitle] = useState('');
   const [draftNotes, setDraftNotes] = useState('');
   const [name, setName] = useState(doc.name);
+  const [incoming, setIncoming] = useState<SharePreview | null>(null);
+  const [choices, setChoices] = useState<Record<string, ShareChoice>>({});
   const nameFocused = useRef(false);
 
   useEffect(() => {
@@ -202,6 +212,101 @@ export function TechniqueTreePage() {
         </div>
       </header>
       <p className="tree__lead">{TECHNIQUE_TREE_LEAD}</p>
+      <div className="tree__library-actions">
+        <button
+          type="button"
+          className="btn"
+          disabled={!doc.root}
+          onClick={() => downloadTechniqueShare(shareFromCoachTree(doc))}
+        >
+          Export this tree
+        </button>
+        <label className="btn">
+          Import share file
+          <input
+            className="tree__file"
+            type="file"
+            accept="application/json,.json"
+            aria-label="Import technique share file"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (!file) return;
+              void file.text().then((text) => {
+                const read = readTechniqueShare(text);
+                if (!read.ok) {
+                  setNote(read.error);
+                  setIncoming(null);
+                  return;
+                }
+                setChoices({});
+                setIncoming(previewCoachImport(doc, read.file));
+                setNote('');
+              });
+            }}
+          />
+        </label>
+      </div>
+      {incoming ? (
+        <section className="tree__confirm" aria-label="Review technique share">
+          <p>
+            Review {incoming.file.name}. Nothing changes until you accept. Notes on this phone stay. Imported steps are not marked learned.
+          </p>
+          <p>
+            {incoming.add.length} new, {incoming.unchanged.length} already here, {incoming.conflicts.length} need a choice.
+          </p>
+          <ul>
+            {incoming.add.map((node) => (
+              <li key={node.shareId}>Add {node.title}</li>
+            ))}
+            {incoming.conflicts.map((conflict) => {
+              const chosen = choices[conflict.shareId] ?? (conflict.kind === 'title' ? 'keep' : 'skip');
+              return (
+                <li key={conflict.shareId}>
+                  {conflict.kind === 'title'
+                    ? `You call this ${conflict.localTitle}. The file calls it ${conflict.title}.`
+                    : `${conflict.title} matches a technique already on this tree, with a different id.`}
+                  {conflict.kind === 'title' ? (
+                    <>
+                      <button type="button" className="btn btn--ghost" aria-pressed={chosen === 'keep'} onClick={() => setChoices((current) => ({ ...current, [conflict.shareId]: 'keep' }))}>
+                        Keep my title
+                      </button>
+                      <button type="button" className="btn btn--ghost" aria-pressed={chosen === 'take'} onClick={() => setChoices((current) => ({ ...current, [conflict.shareId]: 'take' }))}>
+                        Use the file title
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className="btn btn--ghost" aria-pressed={chosen === 'skip'} onClick={() => setChoices((current) => ({ ...current, [conflict.shareId]: 'skip' }))}>
+                        Leave them separate
+                      </button>
+                      <button type="button" className="btn btn--ghost" aria-pressed={chosen === 'use-local'} onClick={() => setChoices((current) => ({ ...current, [conflict.shareId]: 'use-local' }))}>
+                        Use the one already on this tree
+                      </button>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="tree__library-actions">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                commit(applyCoachImport(doc, incoming.file, new Map(Object.entries(choices))));
+                setIncoming(null);
+                setNote(`Imported ${incoming.file.name}.`);
+              }}
+            >
+              Accept import
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setIncoming(null)}>
+              Cancel
+            </button>
+          </div>
+        </section>
+      ) : null}
       {note ? (
         <p className="tree__status" role="status">
           {note}
@@ -286,6 +391,31 @@ export function TechniqueTreePage() {
           </section>
         ) : null}
 
+        {doc.links?.length ? (
+          <ul className="tree__links" aria-label="Steps that return to an existing technique">
+            {doc.links.map((link) => (
+              <li key={link.id}>
+                <span>
+                  {slotTitle(doc.root, link.fromSlotId)} {link.relation} {slotTitle(doc.root, link.toSlotId)}
+                  {link.label ? ` · ${link.label}` : ''}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => {
+                    const links = (doc.links ?? []).filter((item) => item.id !== link.id);
+                    const next: TechniqueTreeDoc = { ...doc };
+                    if (links.length) next.links = links;
+                    else delete next.links;
+                    commit(next);
+                  }}
+                >
+                  Unlink
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {doc.root ? (
           <div className="tree__toolbar">
             <p className="tree__count">
@@ -527,6 +657,20 @@ function GamePlanMentions({ mentions }: { mentions: GamePlanMention[] }) {
       </ul>
     </div>
   );
+}
+
+function slotTitle(node: TechniqueNode | null, slotId: string): string {
+  if (!node) return 'a removed step';
+  if (node.slotId === slotId) return node.title.trim() || 'Untitled';
+  for (const child of node.children) {
+    if (child.slotId === slotId || containsSlot(child, slotId)) return slotTitle(child, slotId);
+  }
+  return 'a removed step';
+}
+
+function containsSlot(node: TechniqueNode, slotId: string): boolean {
+  if (node.slotId === slotId) return true;
+  return node.children.some((child) => containsSlot(child, slotId));
 }
 
 function domId(prefix: string, id: string): string {
