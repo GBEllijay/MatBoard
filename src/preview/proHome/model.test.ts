@@ -56,6 +56,18 @@ test('the three preview White paths share the hub that lists both suite tools', 
   assert.deepEqual(productionWhitePaths().map((path) => path.to), ['/white', '/white', '/match']);
 });
 
+test('the instructor concept reuses the profile identity card and keeps the approved tool marks', () => {
+  const page = readFileSync('src/preview/proHome/InstructorCardsPreview.tsx', 'utf8');
+  const marks = readFileSync('src/preview/proHome/marks.tsx', 'utf8');
+  assert.match(page, /InstructorIdentityCard/);
+  assert.doesNotMatch(page, /Not a saved roster/);
+  assert.match(page, /<BeltHeader kind="brown"/);
+  assert.match(marks, /5:00/);
+  assert.match(marks, /Blue/);
+  assert.match(marks, /White/);
+  assert.match(marks, /fill="#f4f1ea" \/>\s*<path d="M30 24h32/);
+});
+
 test('instructor concept cards keep the seven live destinations and add no belt', () => {
   const cards = instructorConceptCards();
   assert.deepEqual(cards.map((card) => card.to), COACH_UNLIMITED_TOOLS.map((tool) => tool.to));

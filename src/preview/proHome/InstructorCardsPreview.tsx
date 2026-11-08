@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { BeltHeader } from '../../components/BeltHeader';
+import { InstructorIdentityCard } from '../instructorProfile/InstructorIdentityCard';
 import { CardMark } from './marks';
 import { INSTRUCTOR_CARDS_PREVIEW_PATH, PREVIEW_BANNER, PRO_PREVIEW_PATH, instructorConceptCards } from './model';
 import './proHome.css';
@@ -18,7 +19,8 @@ export function InstructorCardsPreviewPage() {
         <p className="php-note" data-testid="preview-path">
           {INSTRUCTOR_CARDS_PREVIEW_PATH}
         </p>
-        <BeltHeader kind="brown" title="Advantage Instructor Edition" blurb="Example only. Not a saved roster." />
+        <BeltHeader kind="brown" title="Advantage Instructor Edition" />
+        <InstructorIdentityCard />
         <nav className="php-cards" aria-label="Instructor tool concept">
           {cards.map((card) => (
             <Link key={card.title} className="php-card" to={card.to} data-mark={card.mark}>

@@ -41,20 +41,28 @@ export function CardMark({ mark }: { mark: InstructorCard['mark'] }) {
   if (mark === 'record') {
     return (
       <svg {...common}>
-        <rect x="18" y="20" width="40" height="28" rx="6" fill="#102033" stroke="#f4f1ea" strokeWidth="2" />
-        <circle cx="38" cy="34" r="7" fill="#ef4444" />
-        <rect x="58" y="28" width="14" height="10" rx="2" fill="#6ea8ff" />
+        <rect x="16" y="16" width="60" height="40" rx="6" fill="#102033" stroke="#6ea8ff" strokeWidth="2" />
+        <path d="M40 28v16l14-8z" fill="#f4f1ea" />
+        <circle cx="62" cy="28" r="6" fill="none" stroke="#ef4444" strokeWidth="2" />
+        <path d="M66 24l8-6" stroke="#ef4444" strokeWidth="2" />
       </svg>
     );
   }
   if (mark === 'board') {
     return (
       <svg {...common}>
-        <rect x="12" y="14" width="68" height="44" rx="6" fill="#102033" stroke="#6ea8ff" strokeWidth="2" />
-        <rect x="18" y="20" width="26" height="32" fill="#223bca" />
-        <rect x="48" y="20" width="26" height="32" fill="#f8f9fc" />
-        <text x="31" y="40" textAnchor="middle" fontSize="12" fontWeight="700" fill="#fff">0</text>
-        <text x="61" y="40" textAnchor="middle" fontSize="12" fontWeight="700" fill="#102048">0</text>
+        <rect x="8" y="8" width="76" height="56" rx="4" fill="#102033" stroke="#6ea8ff" strokeWidth="2" />
+        <rect x="12" y="12" width="68" height="16" fill="#2a5cf0" />
+        <rect x="12" y="44" width="68" height="16" fill="#f4f1ea" />
+        <text x="18" y="23" fontSize="7" fontWeight="700" fill="#f4f1ea">Blue</text>
+        <rect x="40" y="15" width="10" height="10" fill="#4aaf45" />
+        <rect x="52" y="15" width="10" height="10" fill="#fc9c36" />
+        <rect x="64" y="15" width="10" height="10" fill="#c8102e" />
+        <text x="46" y="39" textAnchor="middle" fontSize="8" fontWeight="700" fill="#6ea8ff">5:00</text>
+        <text x="18" y="55" fontSize="7" fontWeight="700" fill="#14161c">White</text>
+        <rect x="40" y="47" width="10" height="10" fill="#4aaf45" />
+        <rect x="52" y="47" width="10" height="10" fill="#fc9c36" />
+        <rect x="64" y="47" width="10" height="10" fill="#c8102e" />
       </svg>
     );
   }
