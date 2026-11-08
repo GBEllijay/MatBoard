@@ -99,6 +99,65 @@
   color: #b7d5dc;
 }
 
+.topo-stage {
+  position: relative;
+  height: 560px;
+  overflow: hidden;
+  border: 1px solid #32617c;
+  border-radius: 18px;
+  background: radial-gradient(ellipse, #0e2844, #070b14 70%);
+  touch-action: none;
+}
+
+.topo-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.topo-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.topo-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  white-space: nowrap;
+  background: #071324df;
+  border: 1px solid #68d8ff80;
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: #e3faff;
+}
+
+.topo-label-face {
+  font-size: 13px;
+  font-weight: 650;
+  border-color: #76eaff;
+}
+
+.topo-controls,
+.topo-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.topo-reset {
+  background: #eef2f8;
+  color: #0e1726;
+}
+
+@media (max-width: 720px) {
+  .topo-stage {
+    height: 440px;
+  }
+}
+
 .crystal-svg {
   display: block;
   width: 100%;
@@ -106,12 +165,40 @@
   max-height: 72vh;
   margin-top: 8px;
   background:
-    radial-gradient(circle at 50% 45%, rgba(80, 190, 210, 0.16), transparent 58%),
-    #06141d;
-  border-radius: 8px;
+    linear-gradient(rgba(80, 160, 190, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(80, 160, 190, 0.05) 1px, transparent 1px),
+    radial-gradient(circle at 50% 42%, rgba(40, 140, 180, 0.18), transparent 62%),
+    #071422;
+  background-size: 22px 22px, 22px 22px, auto, auto;
+  border: 1px solid #1a4d66;
+  border-radius: 18px;
   touch-action: none;
   overflow: hidden;
   outline: none;
+}
+
+.crystal-shell {
+  fill: rgba(18, 92, 128, 0.18);
+  stroke: #7fe7ff;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.crystal-shell-selected {
+  stroke: #f4feff;
+  stroke-width: 2.4;
+}
+
+.crystal-pill rect {
+  fill: #10222e;
+  stroke: #8ee7f6;
+  stroke-width: 1;
+}
+
+.crystal-pill text {
+  fill: #f7feff;
+  font-size: 12px;
+  font-family: "Segoe UI", system-ui, sans-serif;
 }
 
 .crystal-svg:focus-visible {

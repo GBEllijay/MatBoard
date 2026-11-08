@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { APPROVED_FUNDAMENTALS, AXES } from '../assessmentRadar/model.ts';
+import { APPROVED_FUNDAMENTALS, AXES, SHEET_AXIS_IDS } from '../assessmentRadar/model.ts';
 import { FUNDAMENTALS_CATALOG } from '../../lib/progress/catalog.ts';
 import {
   ASSESSMENT_STORAGE_KEY,
@@ -34,6 +34,7 @@ import {
   tileVertices,
 } from './geometry.ts';
 import { FIT_PAD, VIEW_SIZE, defaultCamera, labelTier, projectLayout } from './project.ts';
+import { TOPO_H, TOPO_LEVEL, buildTopo, demoLevel } from './topo.ts';
 
 function memory() {
   const store = new Map<string, string>();
@@ -253,6 +254,11 @@ test('saved scores stay on their own records and a missing Sweeps factor is not 
   assert.equal(store.snapshot(), before);
   assert.equal(asked.includes(IGNORED_PREVIEW_TREE_KEY), false);
   assert.equal(proof.catalogItemCount, 47);
+  assert.equal(proof.faces.length, 8);
+  assert.deepEqual(proof.faces.map((face) => face.id), [...SHEET_AXIS_IDS]);
+  assert.equal(proof.faces.find((face) => face.id === 'sweeps')?.index.length, 6);
+  assert.equal(proof.faces.find((face) => face.id === 'conditioning')?.index.length, 0);
+  assert.equal(proof.faces.every((face) => face.index.every((item) => item.name)), true);
   assert.equal(proof.sweepsMapped, 6);
   assert.equal(proof.about, AXES.find((axis) => axis.id === 'sweeps')?.meaning);
   assert.equal(proof.factor.value, null);
@@ -297,6 +303,38 @@ test('saved scores stay on their own records and a missing Sweeps factor is not 
   assert.equal(eight.moves.find((move) => move.id === 'sweep.scissor')?.scoreSource, 'checklist-level');
 });
 
+test('topography uses the live map and keeps demo heights off the factor score', () => {
+  const demo = buildTopo(demoLevel);
+  assert.equal(demo.matchesCitedLists, true);
+  assert.equal(demo.faces.length, 8);
+  assert.deepEqual(
+    demo.faces.map((face) => face.moves.length),
+    [11, 4, 6, 4, 6, 10, 0, 0],
+  );
+  assert.deepEqual(
+    demo.unmapped.map((item) => item.id),
+    ['pos.standing', 'move.breakfalls', 'move.shrimp', 'move.bridge', 'move.technical-standup', 'def.sprawl'],
+  );
+  assert.equal(demo.faces[2].id, 'sweeps');
+  const sweepTiles = demo.tiles.filter((tile) => tile.faceId === 'sweeps');
+  assert.ok(sweepTiles.length > 6);
+  assert.equal(sweepTiles.filter((tile) => tile.move).length, 6);
+  assert.ok(sweepTiles.some((tile) => tile.move == null && tile.apex == null));
+  const shared = sweepTiles[0].tri[1];
+  assert.ok(sweepTiles.some((tile, index) => index > 0 && tile.tri.includes(shared)));
+  assert.equal(TOPO_LEVEL[1], -TOPO_H);
+  assert.equal(TOPO_LEVEL[3], 0);
+  assert.equal(TOPO_LEVEL[5], TOPO_H);
+  assert.equal(demoLevel('sweep.scissor'), demoLevel('sweep.scissor'));
+  const saved = buildTopo((id) => (id === 'sweep.pendulum' ? 3 : null));
+  const pendulum = saved.tiles.find((tile) => tile.move?.id === 'sweep.pendulum');
+  const scissor = saved.tiles.find((tile) => tile.move?.id === 'sweep.scissor');
+  assert.equal(pendulum?.offset, 0);
+  assert.ok(pendulum?.apex);
+  assert.equal(scissor?.offset, null);
+  assert.equal(scissor?.apex, null);
+});
+
 test('student links keep student=1 and the coach tree link does not', () => {
   assert.equal(withStudent('/student/fundamentals', ''), '/student/fundamentals');
   assert.equal(withStudent('/student/working?view=tree&node=work-hip', '?student=1'), '/student/working?view=tree&node=work-hip&student=1');
@@ -304,7 +342,7 @@ test('student links keep student=1 and the coach tree link does not', () => {
 });
 
 test('the preview modules do not write records and the route stays outside the coach gate', () => {
-  for (const name of ['adapter.ts', 'geometry.ts', 'project.ts', 'CrystallineSweepsPreview.tsx']) {
+  for (const name of ['adapter.ts', 'geometry.ts', 'project.ts', 'topo.ts', 'TopoStage.tsx', 'CrystallineSweepsPreview.tsx']) {
     const text = readFileSync(new URL(`./${name}`, import.meta.url), 'utf8');
     assert.doesNotMatch(text, /saveStudentReport|writeAssessments|saveTechniqueArchive|loadTechniqueArchive|loadStudentReport|localStorage\.setItem/);
   }

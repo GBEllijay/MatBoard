@@ -5,7 +5,8 @@
  * Nothing in this file writes storage.
  */
 
-import { APPROVED_FUNDAMENTALS, AXES } from '../assessmentRadar/model.ts';
+import { APPROVED_FUNDAMENTALS, AXES, SHEET_AXIS_IDS, type AxisId } from '../assessmentRadar/model.ts';
+import { shapeAxesFromLegacy } from '../../lib/shapeAxes.ts';
 import { FUNDAMENTALS_CATALOG } from '../../lib/progress/catalog.ts';
 import { asRecord } from '../../lib/plainValue.ts';
 import { parseProgressPacket } from '../../lib/progress/format.ts';
@@ -97,6 +98,17 @@ export type FactorReading = {
   detail: string;
 };
 
+export type FactorFaceReading = {
+  id: AxisId;
+  label: string;
+  meaning: string;
+  manualOnly: boolean;
+  /** Saved check-in value. Null means this factor was not rated. */
+  saved: ReliefScore | null;
+  /** Catalog rows the factor map already assigns. Empty for Conditioning and Mindset. */
+  index: { id: string; name: string }[];
+};
+
 export type SweepsProof = {
   catalogItemCount: number;
   sweepsInCatalog: number;
@@ -104,6 +116,7 @@ export type SweepsProof = {
   layoutRevision: typeof LAYOUT_REVISION;
   about: string;
   factor: FactorReading;
+  faces: FactorFaceReading[];
   moves: MoveRecord[];
   /** Saved coach-tree nodes whose title is Sweeps. Not the preview seed. */
   categoryNodes: CoachHit[];
@@ -130,6 +143,19 @@ type RawTree = {
 };
 
 const SWEEP_AXIS = 'sweeps' as const;
+
+/** Checklist levels for catalog ids. Missing and not-started are both unrated. */
+export function readChecklistLevels(store: Store): Record<string, ReliefScore | null> {
+  const report = readReport(store);
+  const levels: Record<string, ReliefScore | null> = {};
+  if (!report) return levels;
+  for (const entry of report.checklist) {
+    if (!entry.catalogItemId) continue;
+    const level = fundamentalLevelOf(entry);
+    levels[entry.catalogItemId] = level >= 1 && level <= 5 ? (level as ReliefScore) : null;
+  }
+  return levels;
+}
 
 export function catalogItemCount(): number {
   return FUNDAMENTALS_CATALOG.categories.reduce((sum, category) => sum + category.items.length, 0);
@@ -176,6 +202,7 @@ export function readSweepsProof(store: Store, search = ''): SweepsProof {
     layoutRevision: LAYOUT_REVISION,
     about: AXES.find((axis) => axis.id === SWEEP_AXIS)?.meaning ?? '',
     factor: readFactor(store),
+    faces: readFaces(store),
     moves: moves.map((item) => {
       const checklist = report?.checklist.find(
         (entry) => entry.categoryId === 'sweeps' && entry.catalogItemId === item.id,
@@ -213,6 +240,36 @@ function scoreOf(entry: StudentChecklistEntry | undefined): { score: ReliefScore
   const level = fundamentalLevelOf(entry);
   if (level === 0) return { score: null, source: 'not-started' };
   return { score: level as Exclude<FundamentalLevel, 0>, source: 'checklist-level' };
+}
+
+function catalogName(id: string): string {
+  for (const category of FUNDAMENTALS_CATALOG.categories) {
+    const item = category.items.find((row) => row.id === id);
+    if (item) return item.name;
+  }
+  return '';
+}
+
+function readFaces(store: Store): FactorFaceReading[] {
+  const state = loadAssessments(store);
+  const latest = [...state.entries].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id)).at(-1);
+  const saved = new Map(shapeAxesFromLegacy(latest?.scores).map((axis) => [axis.id, axis.value]));
+  return SHEET_AXIS_IDS.map((id) => {
+    const axis = AXES.find((item) => item.id === id);
+    const value = saved.get(id);
+    return {
+      id,
+      label: axis?.label ?? id,
+      meaning: axis?.meaning ?? '',
+      manualOnly: axis?.manualOnly ?? false,
+      saved: isAssessmentScore(value) ? value : null,
+      index: axis?.manualOnly
+        ? []
+        : APPROVED_FUNDAMENTALS.filter((row) => row.axis === id)
+            .map((row) => ({ id: row.id, name: catalogName(row.id) }))
+            .filter((row) => row.name),
+    };
+  });
 }
 
 function readFactor(store: Store): FactorReading {

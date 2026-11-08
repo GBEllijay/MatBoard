@@ -68,8 +68,8 @@ export function fitMapper(raw: readonly { x: number; y: number }[], view: number
   });
 }
 
-export function projectLayout(layout: SweepLayout, camera: Camera, view = VIEW_SIZE) {
-  const envelope = fitEnvelope(layout).map((point) => toPlane(point, camera));
+export function projectPoints(points: readonly Vec3[], camera: Camera, view = VIEW_SIZE) {
+  const envelope = points.map((point) => toPlane(point, camera));
   const map = fitMapper(envelope, view, FIT_PAD, camera.zoom);
   const place = (point: Vec3) => {
     const plane = toPlane(point, camera);
@@ -77,6 +77,10 @@ export function projectLayout(layout: SweepLayout, camera: Camera, view = VIEW_S
     return { x: flat.x, y: flat.y, z: plane.z };
   };
   return { place };
+}
+
+export function projectLayout(layout: SweepLayout, camera: Camera, view = VIEW_SIZE) {
+  return projectPoints(fitEnvelope(layout), camera, view);
 }
 
 export function pointInTriangle(

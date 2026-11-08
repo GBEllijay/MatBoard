@@ -90,19 +90,20 @@ test('example relief, list selection, curved toggle, and back do not write stora
   assert.match(host.textContent ?? '', /Fundamentals catalog 47 names/);
   assert.equal(labeled(host, 'Sweeps factor').parentElement?.textContent?.includes('Not rated'), true);
   assert.match(host.textContent ?? '', /no Sweeps field/);
-  assert.equal(host.querySelector('[data-tile="sweep.scissor"]')?.getAttribute('data-score'), '1');
-  assert.equal(host.querySelector('[data-tile="sweep.pendulum"]')?.getAttribute('data-score'), '3');
-  assert.equal(host.querySelector('[data-tile="sweep.butterfly"]')?.getAttribute('data-score'), 'unrated');
-  assert.equal(host.querySelector('.crystal-label'), null);
+  assert.equal(host.querySelector('[data-layout]')?.getAttribute('data-layout'), 'd8-topography-r1');
+  assert.equal(host.querySelectorAll('[data-face-button]').length, 8);
+  assert.match(host.textContent ?? '', /Standing/);
+  assert.match(host.textContent ?? '', /Sprawl/);
+  assert.match(host.textContent ?? '', /illustrative/i);
   assert.equal(host.querySelector('[data-style]')?.getAttribute('data-style'), 'pyramid');
-  assert.equal(host.querySelectorAll('.crystal-face').length, 15);
   act(() => {
     labeled(host, 'Curved relief').click();
   });
   assert.equal(host.querySelector('[data-style]')?.getAttribute('data-style'), 'curved');
-  assert.equal(host.querySelector('[data-tile="sweep.scissor"]')?.getAttribute('data-score'), '1');
-  assert.equal(host.querySelector('[data-tile="sweep.butterfly"]')?.getAttribute('data-score'), 'unrated');
-  assert.equal(host.querySelectorAll('path.crystal-face').length, 15);
+  act(() => {
+    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+  });
+  assert.match(host.textContent ?? '', /Scissor sweep/, host.textContent?.slice(0, 500) ?? '');
   act(() => {
     labeled(host, 'Scissor sweep').click();
   });
@@ -116,12 +117,22 @@ test('example relief, list selection, curved toggle, and back do not write stora
   assert.ok(host.querySelector('[aria-label="About Sweeps"]'));
   assert.match(host.textContent ?? '', /No saved note/);
   act(() => {
-    labeled(host, 'Zoom in').click();
-    labeled(host, 'Fit face').click();
+    (host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click();
+    labeled(host, 'Reset view').click();
     labeled(host, 'Saved on this device').click();
   });
-  assert.equal(host.querySelector('[data-tile="sweep.scissor"]')?.getAttribute('data-score'), 'unrated');
-  assert.equal(host.querySelector('[data-tile="sweep.pendulum"]')?.getAttribute('data-score'), 'unrated');
+  assert.match(host.textContent ?? '', /Not rated/);
+  act(() => {
+    (host.querySelector('[data-face-button="passing"]') as HTMLButtonElement).click();
+  });
+  assert.match(host.textContent ?? '', /Saved check-in: 5 \/ 5/);
+  act(() => {
+    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+  });
+  act(() => {
+    labeled(host, 'Scissor sweep').click();
+  });
+  assert.match(host.textContent ?? '', /no row for this move/);
   assert.equal(snapshot(), before);
   act(() => {
     mounted.root.unmount();
@@ -170,6 +181,9 @@ test('a tree link opens the saved node and history back returns to the preview',
     </Routes>,
   );
   const host = mounted.host;
+  act(() => {
+    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+  });
   assert.match(host.textContent ?? '', /Only the note I saved/);
   const category = host.querySelector('a[href="/technique-tree?tree=tree-sweeps&node=node-sweeps"]');
   assert.ok(category);
@@ -198,6 +212,9 @@ test('keyboard can choose a move from the list and Escape clears it', () => {
   localStorage.clear();
   const mounted = mount(<CrystallineSweepsPreview />);
   const host = mounted.host;
+  act(() => {
+    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+  });
   const button = labeled(host, 'Flower sweep');
   act(() => {
     button.dispatchEvent(new view.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
@@ -205,7 +222,7 @@ test('keyboard can choose a move from the list and Escape clears it', () => {
   });
   assert.match(host.textContent ?? '', /Flower sweep/);
   assert.match(host.textContent ?? '', /Move detail/);
-  const stage = host.querySelector('.crystal-svg');
+  const stage = host.querySelector('.topo-stage');
   assert.ok(stage);
   act(() => {
     stage.dispatchEvent(new view.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
