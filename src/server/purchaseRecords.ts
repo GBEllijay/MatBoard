@@ -11,6 +11,11 @@ export type PurchaseWrite = {
   source: PurchaseSource;
   sourceRef: string;
   sessionId: string;
+  /**
+   * Attach a new grant to this license. An existing source and product row
+   * keeps the license it already has.
+   */
+  licenseId?: string;
   subscriptionId?: string;
   stripeCustomerId?: string;
   endsAt?: string | null;
@@ -58,6 +63,7 @@ export async function recordPurchase(db: D1Database, input: PurchaseWrite): Prom
     .bind(input.source, input.sourceRef, input.product)
     .first<{ licenseId: string }>();
   let licenseId = existing?.licenseId ?? '';
+  if (!licenseId && input.licenseId) licenseId = input.licenseId;
   if (!licenseId && hash) {
     const identity = await db
       .prepare(`SELECT license_id AS licenseId FROM identities WHERE email_hash = ? LIMIT 1`)
@@ -126,6 +132,38 @@ export async function recordPurchase(db: D1Database, input: PurchaseWrite): Prom
       .run();
   }
   return { licenseId };
+}
+
+const CODE_DOOR_SUFFIX = /:(white|student|coach|pro|media)$/;
+
+/**
+ * A multi-door code redeem used to store each door on its own license and
+ * put the last door on the token. The Pro grant is the license Cloud reads.
+ * This finds that existing Pro row from a sibling door. It does not move rows.
+ */
+export async function linkedCodeProLicense(db: D1Database, licenseId: string, now: Date): Promise<string | null> {
+  const siblings = await db
+    .prepare(
+      `SELECT source_ref AS sourceRef FROM grants
+       WHERE license_id = ? AND source = 'code' AND source_ref LIKE 'code:%' LIMIT 20`,
+    )
+    .bind(licenseId)
+    .all<{ sourceRef: string }>();
+  for (const sibling of siblings.results) {
+    const match = CODE_DOOR_SUFFIX.exec(sibling.sourceRef ?? '');
+    if (!match) continue;
+    const prefix = sibling.sourceRef.slice(0, -match[0].length);
+    const pro = await db
+      .prepare(
+        `SELECT license_id AS licenseId, product, source, source_ref AS sourceRef, status, ends_at AS endsAt, revoked_at AS revokedAt
+         FROM grants WHERE source = 'code' AND source_ref = ? AND product = 'advantage-pro' LIMIT 1`,
+      )
+      .bind(`${prefix}:pro`)
+      .first<StoredGrant>();
+    if (!pro || !grantOpen(pro, now)) continue;
+    return pro.licenseId;
+  }
+  return null;
 }
 
 export async function grantsForLicense(db: D1Database, licenseId: string, now: Date): Promise<StoredGrant[]> {

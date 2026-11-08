@@ -64,11 +64,12 @@ function permissionSummary(permissions: InstructorPermissions): string {
   return on.join(' · ');
 }
 
-function issueError(reason: IssueInviteFailure): string {
-  if (reason === 'duplicate') return 'That email already has an open seat.';
-  if (reason === 'storage') return 'This device could not save the seat.';
-  if (reason === 'cap') return proSeatCapBlockedCopy();
-  if (reason === 'owner') return 'Only the gym owner can issue invites.';
+function issueError(failure: { reason: IssueInviteFailure; detail?: string }): string {
+  if (failure.detail) return failure.detail;
+  if (failure.reason === 'duplicate') return 'That email already has an open seat.';
+  if (failure.reason === 'storage') return 'This device could not save the seat.';
+  if (failure.reason === 'cap') return proSeatCapBlockedCopy();
+  if (failure.reason === 'owner') return 'Only the gym owner can issue invites.';
   return "Enter the instructor's email.";
 }
 
@@ -178,7 +179,7 @@ export function InstructorInvitePanel() {
     });
     if (!result.ok) {
       setIssued(null);
-      setError(result.reason === 'cap' ? null : issueError(result.reason));
+      setError(result.reason === 'cap' ? null : issueError(result));
       return;
     }
     setError(null);
