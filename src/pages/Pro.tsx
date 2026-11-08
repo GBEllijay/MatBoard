@@ -65,6 +65,7 @@ export function ProPage() {
 
         <AcademyPathwayPanel />
 
+        <EditionLadder page="pro" />
         <div className="home__hints">
           <InstructionsButton controlsId="pro-instructions">
             <p className="home__hint">Install Advantage as an app from your browser menu.</p>
@@ -124,7 +125,6 @@ export function ProPage() {
             </p>
           )}
         </div>
-        <EditionLadder page="pro" />
         <SiteFooter />
       </div>
     </main>

@@ -21,9 +21,12 @@ import { Sheet } from '../components/Sheet';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { DriveMediaPicker } from '../components/DriveMediaPicker';
 import { GooglePhotosPicker } from '../components/GooglePhotosPicker';
+import { AdvantageCloudHome } from '../components/AdvantageCloudHome';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { MediaSourceSheet } from '../components/VideoSourceSheet';
 import { CameraWindow } from '../components/CameraWindow';
+import { useEntitlementSettled } from '../hooks/useEntitlementSettled';
+import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useScheduleState } from '../hooks/useStores';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -32,11 +35,12 @@ import {
   EVENTS_CAST_MODE_OPTIONS,
   type EventsCastMode,
 } from '../lib/eventSlides';
+import { mediaConsoleDriveActions, mediaConsoleGalleryLead } from '../lib/gymHome';
 import { readGymLogo, subscribeGymLogo } from '../lib/gymLogo';
 import { isProgramDirectorSeat, seatPermissionAllows } from '../lib/instructorSeats';
 import { APPROVAL_WAITING, readGalleryApproval } from '../lib/galleryApproval';
 import { addClassPhotoPromotionFiles } from '../lib/classPhotoPromotions';
-import { gymActorForCloud } from '../lib/advantageCloudMedia';
+import { gymActorForCloud, loadAdvantageCloudHome } from '../lib/advantageCloudMedia';
 import { CAMERA_PARAM, cameraDailyVideosAllowed, cameraModeRequested, cameraPhotoAllowed } from '../lib/pdCamera';
 import { readOneDriveBinding, readOneDriveSession } from '../lib/oneDrive';
 import {
@@ -171,6 +175,29 @@ export function ScreensaverPage() {
   const [photosPickOpen, setPhotosPickOpen] = useState(false);
   const [photosPickKind, setPhotosPickKind] = useState<PhotosPickKind>('photo');
   const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
+  const passSettled = useEntitlementSettled();
+  const ownerCloud = useProPlusCloudUnlocked();
+  const [licenseCloudReady, setLicenseCloudReady] = useState(false);
+  useEffect(() => {
+    if (!passSettled || ownerCloud) {
+      setLicenseCloudReady(false);
+      return;
+    }
+    let cancel = false;
+    void loadAdvantageCloudHome().then((view) => {
+      if (!cancel) setLicenseCloudReady(view.phase === 'ready');
+    });
+    return () => {
+      cancel = true;
+    };
+  }, [passSettled, ownerCloud]);
+  const cloudEntitled = ownerCloud || licenseCloudReady;
+  const driveActions = mediaConsoleDriveActions({
+    settled: passSettled,
+    cloudEntitled,
+    driveConnected: Boolean(driveBinding),
+  });
+  const cloudCustomer = passSettled && cloudEntitled;
   const photosBinding = useSyncExternalStore(subscribePhotosBinding, getPhotosBindingSnapshot, () => null);
   useEffect(() => {
     if (photosBinding) setPhotosConnectOpen(false);
@@ -807,7 +834,7 @@ export function ScreensaverPage() {
   const emptyCopy =
     photos.length === 0
       ? focusFolder === 'gallery'
-        ? 'Add photos opens Take photo or Pick from gallery on this phone. Pick from Google Photos uses the connected library, including albums. Pick from Google Drive is an extra source. Photos and clips stay on this phone or computer. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.'
+        ? mediaConsoleGalleryLead({ cloudEntitled: cloudCustomer, driveConnected: Boolean(driveBinding) })
         : `${focusConfig.emptyCopy} Press F for fullscreen on a computer plugged into the TV.`
       : focusFolder === 'shop'
         ? 'Nothing is set to play. Turn on Pro Shop in options, then tap a left preview so at least one card is On.'
@@ -826,7 +853,11 @@ export function ScreensaverPage() {
         stacked={options && !cameraMode}
         stay={sendingDaily ? DAILY_VIDEO_STAY : undefined}
         onPickPhotos={sendingDaily ? undefined : () => openPhotosPick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
-        onPickDrive={sendingDaily ? undefined : () => openDrivePick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')}
+        onPickDrive={
+          sendingDaily || (!driveActions.connect && !driveActions.importExisting)
+            ? undefined
+            : () => openDrivePick(addFolderRef.current, addKind === 'video' ? 'video' : 'photo')
+        }
         onClose={() => setAddOpen(false)}
       >
         {dailyChoiceShown && dailyHome ? (
@@ -1014,6 +1045,7 @@ export function ScreensaverPage() {
           <h1>{hubTitle}</h1>
           <PlayingFromLine />
           <p>{emptyCopy}</p>
+          {cloudCustomer ? <AdvantageCloudHome /> : null}
           {focusConfig.ready && focusEmpty && focusCanUpload ? (
             <>
               <button type="button" className="btn" onClick={() => openAdd(focusFolder, 'photo')}>
@@ -1024,6 +1056,7 @@ export function ScreensaverPage() {
                   {focusConfig.videoAddLabel}
                 </button>
               ) : null}
+              <p className="saver-sound-hint">Optional import. Copies files onto this phone. Does not replace Advantage Cloud or disconnect a folder.</p>
               <button
                 type="button"
                 className="btn"
@@ -1031,14 +1064,16 @@ export function ScreensaverPage() {
               >
                 {PHOTOS_PICK_LABEL}
               </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => openDrivePick(focusFolder, focusFolder === 'gallery' ? 'any' : 'photo')}
-              >
-                {PICK_FROM_DRIVE_LABEL}
-              </button>
-              <OpenMyDrive />
+              {driveActions.connect || driveActions.importExisting ? (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => openDrivePick(focusFolder, focusFolder === 'gallery' ? 'any' : 'photo')}
+                >
+                  {cloudCustomer ? 'Import from Google Drive' : PICK_FROM_DRIVE_LABEL}
+                </button>
+              ) : null}
+              {driveActions.connect || driveActions.importExisting ? <OpenMyDrive /> : null}
             </>
           ) : null}
           <button type="button" className="btn btn--ghost" onClick={() => setOptions(true)}>
@@ -1120,7 +1155,7 @@ export function ScreensaverPage() {
                   : undefined
               }
               onPickDrive={
-                folder.ready && galleryUpload
+                folder.ready && galleryUpload && (driveActions.connect || driveActions.importExisting)
                   ? () => openDrivePick(folder.id, folder.id === 'gallery' ? 'any' : 'photo')
                   : undefined
               }

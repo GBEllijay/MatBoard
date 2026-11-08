@@ -19,6 +19,32 @@ export function chooseGymHome(input: {
   return 'phone';
 }
 
+/**
+ * Drive connect is hidden for a Cloud customer who has no Drive folder yet,
+ * and while a saved pass is still being checked.
+ * A folder that is already connected stays connected. This does not read or write it.
+ */
+export function mediaConsoleDriveActions(input: {
+  settled: boolean;
+  cloudEntitled: boolean;
+  driveConnected: boolean;
+}): { connect: boolean; importExisting: boolean } {
+  if (!input.settled) return { connect: false, importExisting: false };
+  if (input.driveConnected) return { connect: false, importExisting: true };
+  if (input.cloudEntitled) return { connect: false, importExisting: false };
+  return { connect: true, importExisting: false };
+}
+
+export function mediaConsoleGalleryLead(input: { cloudEntitled: boolean; driveConnected: boolean }): string {
+  if (!input.cloudEntitled) {
+    return 'Add photos opens Take photo or Pick from gallery on this phone. Pick from Google Photos uses the connected library, including albums. Pick from Google Drive is an extra source. Photos and clips stay on this phone or computer. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.';
+  }
+  const drive = input.driveConnected
+    ? ' Import from Google Drive copies files onto this phone. The folder that is already connected stays connected.'
+    : '';
+  return `Add photos and Add videos stay on this phone. Advantage Cloud is this gym's storage when the status below says it is ready.${drive} Optional import copies files from Google Photos onto this phone. It does not replace Advantage Cloud. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.`;
+}
+
 export function playingFromCopy(home: GymHomeId): string {
   if (home === 'advantage-cloud') return 'Playing from Advantage Cloud.';
   if (home === 'google-drive') return 'Playing from Google Drive.';

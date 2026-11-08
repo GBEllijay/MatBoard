@@ -48,6 +48,7 @@ export function CoachPage() {
           ))}
         </nav>
 
+        <EditionLadder page="instructor" />
         <div className="home__hints">
           <InstructionsButton controlsId="coach-instructions">
             <p className="home__hint">Install Advantage as an app from your browser menu.</p>
@@ -90,7 +91,6 @@ export function CoachPage() {
             </p>
           ) : null}
         </div>
-        <EditionLadder page="instructor" />
         <SiteFooter />
       </div>
     </main>

@@ -53,6 +53,7 @@ export function ProPlusCloudPage() {
           <InstructorInvitePanel />
         </nav>
 
+        <EditionLadder page="pro-cloud" />
         <div className="home__hints">
           <InstructionsButton controlsId="pro-plus-cloud-instructions">
             <p className="home__hint">Install Advantage as an app from your browser menu.</p>
@@ -68,7 +69,6 @@ export function ProPlusCloudPage() {
           </InstructionsButton>
           <FaqLink />
         </div>
-        <EditionLadder page="pro-cloud" />
         <SiteFooter />
       </div>
     </main>

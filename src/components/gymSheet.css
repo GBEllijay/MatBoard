@@ -201,6 +201,32 @@
 }
 .gym-sheet .sheet-stat__num small { font-size: 13px; margin-left: 2px; opacity: 0.8; }
 .gym-sheet .sheet-stat span:last-child { font-size: 13px; color: var(--muted, #9aa3b5); }
+.gym-sheet a.sheet-stat {
+  color: inherit;
+  text-decoration: none;
+  min-height: 44px;
+}
+.gym-edit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #6ea8ff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+}
+.gym-zone-link {
+  display: grid;
+  gap: 6px;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+}
 .gym-bars, .gym-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .gym-bars li { display: grid; grid-template-columns: 72px 1fr auto; gap: 8px; align-items: center; min-height: 28px; font-size: 14px; }
 .gym-bars i { display: block; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #004eba, #6ea8ff); }
