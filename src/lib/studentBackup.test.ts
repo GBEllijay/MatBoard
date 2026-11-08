@@ -37,7 +37,8 @@ import { pdfToText, textToPdf } from './simplePdf.ts';
 import { setBeltMode } from './beltBook.ts';
 import { dismissGoalPrompt } from './studentTools.ts';
 import { pdfImageFromRgb } from './pdfRaster.ts';
-import { readProfilePortrait } from './profilePortrait.ts';
+import { readProfilePortrait, writeProfilePortraitSync } from './profilePortrait.ts';
+import { StorageQuotaError } from './storageQuota.ts';
 import { readStudentGymLogo } from './studentGymMark.ts';
 import type { StudentFilm } from './studentFilm.ts';
 
@@ -509,6 +510,80 @@ test('selfie and gym logo are in the backup and progress PDF only when their swi
   clearStudentMemory(storage);
   assert.equal(readProfilePortrait(storage), null);
   assert.equal(readStudentGymLogo(storage), null);
+});
+
+test('a profile photo rides in a backup only with the switch, and merge does not replace one already here', async () => {
+  const selfie = 'data:image/jpeg;base64,AAAA';
+  const other = 'data:image/jpeg;base64,BBBB';
+  const report = setStudentProfile(blankStudentReport(3), { displayName: 'Ada', gymName: 'GB Ellijay' }, 4);
+  const base = {
+    report,
+    assessment: { entries: [] as [] },
+    scouting: [],
+    rankPhotos: emptyRankPhotoStore(),
+    bracketPhotos: {},
+    shelf: { plan: null, feedback: null },
+    films: [],
+    includeVideos: false,
+    recordStamp: false,
+  };
+  const hidden = await buildStudentBackup({ ...base, marks: { includeSelfie: false, includeLogo: false, selfie } });
+  assert.equal(JSON.parse(hidden.json).portrait, undefined);
+  const emptyPhone = memory();
+  applyBackupToMemory(emptyPhone, hidden.file, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.equal(readProfilePortrait(emptyPhone), null);
+
+  const kept = memory();
+  writeProfilePortraitSync(other, kept);
+  applyBackupToMemory(kept, hidden.file, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.equal(readProfilePortrait(kept), other);
+
+  const shown = await buildStudentBackup({ ...base, marks: { includeSelfie: true, includeLogo: false, selfie } });
+  const parsed = parseStudentBackup(shown.json);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.equal(parsed.file.portrait, selfie);
+  const restored = memory();
+  const merged = applyBackupToMemory(restored, parsed.file, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.equal(readProfilePortrait(restored), selfie);
+  assert.match(merged.note, /Saved on this phone/);
+  assert.doesNotMatch(merged.note, /Cloud/);
+
+  applyBackupToMemory(restored, { ...parsed.file, portrait: other }, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.equal(readProfilePortrait(restored), selfie);
+  applyBackupToMemory(restored, { ...parsed.file, portrait: other }, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.equal(readProfilePortrait(restored), other);
+
+  const legacy = parseStudentBackup(JSON.stringify({ ...JSON.parse(shown.json), portrait: undefined }));
+  assert.equal(legacy.ok, true);
+  if (!legacy.ok) return;
+  const still = memory();
+  writeProfilePortraitSync(selfie, still);
+  applyBackupToMemory(still, legacy.file, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.equal(readProfilePortrait(still), selfie);
+
+  const broken = JSON.parse(shown.json) as { portrait?: string };
+  broken.portrait = 'data:image/gif;base64,AAAA';
+  const dropped = parseStudentBackup(JSON.stringify(broken));
+  assert.equal(dropped.ok, true);
+  if (!dropped.ok) return;
+  assert.equal(dropped.file.portrait, undefined);
+
+  const full = memory();
+  const throwing = {
+    getItem: full.getItem,
+    setItem: (key: string, value: string) => {
+      if (key === 'matboard.studentPortrait.v1') throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+      full.setItem(key, value);
+    },
+    removeItem: full.removeItem,
+  };
+  assert.throws(
+    () => applyBackupToMemory(throwing, parsed.file, 'merge', { rank: emptyRankPhotoStore(), bracket: {} }),
+    (error) => error instanceof StorageQuotaError,
+  );
+  assert.equal(readProfilePortrait(full), null);
+  assert.equal(loadStudentReport(full).profile.displayName, 'Ada');
 });
 
 test('an older journal backup still loads its self-assessment', async () => {

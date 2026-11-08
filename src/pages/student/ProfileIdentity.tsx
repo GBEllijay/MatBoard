@@ -19,6 +19,7 @@ import {
 } from '../../lib/studentGymMark';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { useStudentPath } from './chrome';
+import { SaveConfirm } from './SaveConfirm';
 
 const PORTRAIT_CAPTURE = 'profile-portrait-capture';
 const PORTRAIT_LIBRARY = 'profile-portrait-library';
@@ -38,13 +39,16 @@ export function useProfileMedia() {
   const [portrait, setPortrait] = useState<string | null>(() => readProfilePortrait());
   const [logo, setLogo] = useState<string | null>(() => readStudentGymLogo());
   const [portraitNote, setPortraitNote] = useState('');
+  const [portraitSaved, setPortraitSaved] = useState(0);
   const [portraitError, setPortraitError] = useState('');
   const [logoNote, setLogoNote] = useState('');
+  const [logoSaved, setLogoSaved] = useState(0);
   const [logoError, setLogoError] = useState('');
 
   const onPortrait = async (files: readonly File[]) => {
     const file = files[0];
     setPortraitNote('');
+    setPortraitSaved(0);
     if (!file) {
       setPortraitError('No photo was selected. Choose a photo and try again.');
       return;
@@ -55,7 +59,9 @@ export function useProfileMedia() {
       setPortrait(saved);
       setPortraitError('');
       setPortraitNote('Saved on this phone. Shows on your profile.');
+      setPortraitSaved((pulse) => pulse + 1);
     } catch (err) {
+      setPortraitSaved(0);
       setPortraitError(localPhotoError(err, 'photo'));
     }
   };
@@ -63,6 +69,7 @@ export function useProfileMedia() {
   const onLogo = async (files: readonly File[]) => {
     const file = files[0];
     setLogoNote('');
+    setLogoSaved(0);
     if (!file) {
       setLogoError('No logo photo was selected. Choose a logo and try again.');
       return;
@@ -72,7 +79,9 @@ export function useProfileMedia() {
       setLogo(saved);
       setLogoError('');
       setLogoNote('Gym logo saved on this phone.');
+      setLogoSaved((pulse) => pulse + 1);
     } catch (err) {
+      setLogoSaved(0);
       setLogoError(localPhotoError(err, 'logo'));
     }
   };
@@ -86,6 +95,7 @@ export function useProfileMedia() {
       void clearProfilePortrait();
       setPortrait(null);
       setPortraitError('');
+      setPortraitSaved(0);
       setPortraitNote('Photo removed from this phone.');
     },
     removeLogo: () => {
@@ -93,6 +103,7 @@ export function useProfileMedia() {
       chooseStudentLogo('default');
       setLogo(null);
       setLogoError('');
+      setLogoSaved(0);
       setLogoNote('Gym logo removed from this phone.');
     },
     /** Shown when the gym has sent a logo. Reverts to it at any time. */
@@ -111,8 +122,10 @@ export function useProfileMedia() {
       setLogoNote('Showing the Advantage logo.');
     },
     portraitNote,
+    portraitSaved,
     portraitError,
     logoNote,
+    logoSaved,
     logoError,
     portraitCapture,
     portraitLibrary,
@@ -190,7 +203,9 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
           ) : null}
         </div>
         {media.portraitError ? <FieldAlert id="profile-portrait-error" message={media.portraitError} /> : null}
-        {media.portraitNote ? (
+        {media.portraitSaved && media.portraitNote ? (
+          <SaveConfirm message={media.portraitNote} token={media.portraitSaved} />
+        ) : media.portraitNote ? (
           <p className="student-quiet" role="status">
             {media.portraitNote}
           </p>
@@ -237,7 +252,9 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
           ) : null}
         </div>
         {media.logoError ? <FieldAlert id="profile-logo-error" message={media.logoError} /> : null}
-        {media.logoNote ? (
+        {media.logoSaved && media.logoNote ? (
+          <SaveConfirm message={media.logoNote} token={media.logoSaved} />
+        ) : media.logoNote ? (
           <p className="student-quiet" role="status">
             {media.logoNote}
           </p>

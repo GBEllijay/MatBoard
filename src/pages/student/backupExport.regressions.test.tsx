@@ -217,7 +217,14 @@ test('backup page controls each download one file, then merge and replace still 
   await settle();
   assert.match(page.host.textContent ?? '', /Merge with this phone/);
   await click(button(page.host, 'Merge with this phone'));
-  assert.match(page.host.textContent ?? '', /merged/);
+  const confirm = page.host.querySelector('.save-confirm');
+  assert.match(confirm?.textContent ?? '', /merged/);
+  assert.match(confirm?.textContent ?? '', /Saved on this phone/);
+  assert.equal(confirm?.querySelector('.save-confirm__mark')?.textContent?.trim(), '✓');
+  assert.equal(confirm?.getAttribute('role'), 'status');
+  assert.doesNotMatch(confirm?.textContent ?? '', /Cloud/);
+  const restoreHeading = [...page.host.querySelectorAll('h2')].find((heading) => heading.textContent?.includes('Restore from backup'));
+  assert.equal(restoreHeading?.nextElementSibling, confirm);
   assert.equal(loadStudentReport(localStorage).journal.length, 2);
 
   await act(async () => {
@@ -226,6 +233,7 @@ test('backup page controls each download one file, then merge and replace still 
   await settle();
   await click(button(page.host, 'Cancel restore'));
   assert.equal(page.host.textContent?.includes('Replace this phone'), false);
+  assert.equal(page.host.querySelector('.save-confirm'), null);
 
   await act(async () => {
     reactProps(input)?.onChange?.({ target: { files: [{ text: async () => built.json }], value: '' } });
