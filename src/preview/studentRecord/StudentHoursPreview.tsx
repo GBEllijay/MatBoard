@@ -11,7 +11,6 @@ import {
   combinedHours,
   estimatedHours,
   formatHours,
-  type BeltInterval,
 } from './model';
 import './studentRecord.css';
 

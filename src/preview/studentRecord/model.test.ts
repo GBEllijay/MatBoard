@@ -2,42 +2,57 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
-  EXAMPLE_DIRECT_TEACHERS,
   EXAMPLE_ESTIMATES,
   EXAMPLE_LOGGED_HOURS,
-  EXAMPLE_TEACHERS,
-  EXAMPLE_TRAINED_WITH,
-  ancestryTreeLines,
+  EXAMPLE_STUDENT,
+  EXAMPLE_TREES,
+  addHeadTree,
+  addUpwardTeacher,
+  chainLine,
   combinedHours,
-  datesAreBlank,
   estimatedHours,
+  exampleAncestry,
   formatHours,
   parseEstimate,
-  trainedWithLine,
+  setLineageVisible,
+  timelineLine,
+  timelinesOverlap,
 } from './model.ts';
 
-test('the ancestry tree is who taught whom and never prints dates', () => {
-  const lines = ancestryTreeLines(EXAMPLE_TEACHERS, EXAMPLE_DIRECT_TEACHERS);
-  assert.deepEqual(lines, [
-    'Coach Lane (example) → Teacher North (example) → Teacher West (example)',
-    'Coach Ellis (example) → Teacher East (example)',
-  ]);
-  const dated = EXAMPLE_TRAINED_WITH.map((row) => ({ ...row, startedOn: '1999-01-01', endedOn: '2001-01-01' }));
-  assert.equal(ancestryTreeLines(EXAMPLE_TEACHERS, EXAMPLE_DIRECT_TEACHERS).join(' '), lines.join(' '));
-  assert.equal(lines.join(' ').includes('1999'), false);
-  assert.equal(dated.some((row) => row.startedOn), true);
-  assert.equal(lines.join(' ').includes('Coach Quinn'), false);
+test('each lineage tree starts with you and goes upward only as far as known', () => {
+  const [lane, ellis] = EXAMPLE_TREES;
+  assert.ok(lane && ellis);
+  assert.equal(chainLine(EXAMPLE_STUDENT, lane), 'You (example student) → Coach Lane (example) → Teacher North (example) → Teacher West (example)');
+  assert.equal(chainLine(EXAMPLE_STUDENT, ellis), 'You (example student) → Coach Ellis (example) → Teacher East (example)');
+  assert.equal(chainLine(EXAMPLE_STUDENT, { ...ellis, upward: [] }), 'You (example student) → Coach Ellis (example)');
+  assert.equal(chainLine(EXAMPLE_STUDENT, lane).includes(lane.startedOn), false);
+  assert.equal(/Gracie|Carlos/i.test(JSON.stringify(EXAMPLE_TREES)), false);
 });
 
-test('blank dates leave the trained-with line as a name, and a still-training row skips the end date', () => {
-  const blank = EXAMPLE_TRAINED_WITH[2];
-  assert.equal(blank && trainedWithLine(blank), 'Coach Quinn (example)');
-  const still = EXAMPLE_TRAINED_WITH[0];
-  assert.equal(still && trainedWithLine({ ...still, startedOn: '2024-01-02', endedOn: '2025-01-02' }), 'Coach Lane (example) · started 2024-01-02 · still training');
-  const ended = EXAMPLE_TRAINED_WITH[1];
-  assert.equal(ended && trainedWithLine(ended), 'Coach Ellis (example) · started 2018-03-01 · ended 2020-11-01');
-  assert.equal(datesAreBlank(EXAMPLE_TRAINED_WITH.map((row) => ({ ...row, startedOn: '', endedOn: '' }))), true);
-  assert.equal(datesAreBlank(EXAMPLE_TRAINED_WITH), false);
+test('two head instructors can overlap, and hiding lineage keeps the trees', () => {
+  const [lane, ellis] = EXAMPLE_TREES;
+  assert.ok(lane && ellis);
+  assert.equal(timelinesOverlap(lane, ellis), true);
+  assert.match(timelineLine(lane), /started 2022-02-01/);
+  assert.match(timelineLine(lane), /still training/);
+  assert.equal(timelineLine({ ...lane, startedOn: '', endedOn: '', stillTraining: false }), '');
+  const hidden = setLineageVisible(exampleAncestry(), false);
+  assert.equal(hidden.visible, false);
+  assert.deepEqual(hidden.trees.map((tree) => tree.headName), ['Coach Lane (example)', 'Coach Ellis (example)']);
+  assert.deepEqual(hidden.trees[0]?.upward, ['Teacher North (example)', 'Teacher West (example)']);
+  const shown = setLineageVisible(hidden, true);
+  assert.equal(shown.visible, true);
+  assert.equal(shown.trees[1]?.headName, 'Coach Ellis (example)');
+});
+
+test('a new head instructor is another tree, and a teacher can be added above any level', () => {
+  const added = addHeadTree(EXAMPLE_TREES);
+  assert.equal(added.length, 3);
+  assert.equal(added[2]?.headName, '');
+  assert.deepEqual(added[2]?.upward, []);
+  const taller = addUpwardTeacher(EXAMPLE_TREES[0]!);
+  assert.equal(taller.upward.length, 3);
+  assert.equal(chainLine(EXAMPLE_STUDENT, { ...taller, upward: [...taller.upward.slice(0, 2), 'Teacher Far (example)'] }).endsWith('Teacher Far (example)'), true);
 });
 
 test('the preview routes are direct links and do not write a student record', () => {

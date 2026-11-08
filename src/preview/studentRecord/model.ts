@@ -7,72 +7,91 @@ export const PREVIEW_HOURS_PATH = '/preview/student-hours';
 export const PREVIEW_NOTE =
   'Example only. Not a saved student record. Changes stay on this screen and are not written to the phone.';
 
-export type Teacher = {
-  id: string;
-  name: string;
-  /** Who taught this person. Blank when the example has no further teacher. */
-  taughtBy: string | null;
-};
+export const EXAMPLE_STUDENT = 'You (example student)';
 
-export type TrainedWith = {
+/** One head instructor, then that person's teachers upward. Depth is whatever is known. */
+export type LineageTree = {
   id: string;
-  name: string;
+  headName: string;
   startedOn: string;
   endedOn: string;
   stillTraining: boolean;
+  /** Teachers above the head instructor. The first is their teacher. Empty means unknown. */
+  upward: string[];
 };
 
-/** Who-taught-whom. Not the list of instructors the example student trained with. */
-export const EXAMPLE_TEACHERS: readonly Teacher[] = [
-  { id: 'west', name: 'Teacher West (example)', taughtBy: null },
-  { id: 'north', name: 'Teacher North (example)', taughtBy: 'west' },
-  { id: 'east', name: 'Teacher East (example)', taughtBy: null },
-  { id: 'lane', name: 'Coach Lane (example)', taughtBy: 'north' },
-  { id: 'ellis', name: 'Coach Ellis (example)', taughtBy: 'east' },
+export type AncestryPreview = {
+  visible: boolean;
+  trees: LineageTree[];
+};
+
+/** Two head instructors at once. Their dates overlap. Neither chain is required to go further. */
+export const EXAMPLE_TREES: readonly LineageTree[] = [
+  {
+    id: 'lane',
+    headName: 'Coach Lane (example)',
+    startedOn: '2022-02-01',
+    endedOn: '',
+    stillTraining: true,
+    upward: ['Teacher North (example)', 'Teacher West (example)'],
+  },
+  {
+    id: 'ellis',
+    headName: 'Coach Ellis (example)',
+    startedOn: '2023-06-01',
+    endedOn: '',
+    stillTraining: true,
+    upward: ['Teacher East (example)'],
+  },
 ];
 
-/** Direct teachers of the example student. The student is not a teacher node. */
-export const EXAMPLE_DIRECT_TEACHERS = ['lane', 'ellis'] as const;
-
-export const EXAMPLE_TRAINED_WITH: readonly TrainedWith[] = [
-  { id: 'lane', name: 'Coach Lane (example)', startedOn: '', endedOn: '', stillTraining: true },
-  { id: 'ellis', name: 'Coach Ellis (example)', startedOn: '2018-03-01', endedOn: '2020-11-01', stillTraining: false },
-  { id: 'quinn', name: 'Coach Quinn (example)', startedOn: '', endedOn: '', stillTraining: false },
-];
-
-export function teacherById(teachers: readonly Teacher[], id: string): Teacher | undefined {
-  return teachers.find((teacher) => teacher.id === id);
+export function exampleAncestry(): AncestryPreview {
+  return { visible: true, trees: EXAMPLE_TREES.map((tree) => ({ ...tree, upward: [...tree.upward] })) };
 }
 
-/** One branch from a direct teacher up to the earliest named teacher. Names only. */
-export function ancestryBranch(teachers: readonly Teacher[], startId: string): string[] {
-  const names: string[] = [];
-  const seen = new Set<string>();
-  let current = teacherById(teachers, startId);
-  while (current && !seen.has(current.id)) {
-    seen.add(current.id);
-    names.push(current.name);
-    current = current.taughtBy ? teacherById(teachers, current.taughtBy) : undefined;
+/** You, then the head instructor, then each known teacher above them. */
+export function chainLine(studentLabel: string, tree: LineageTree): string {
+  const names = [studentLabel, tree.headName.trim() || 'Head instructor'];
+  for (const teacher of tree.upward) {
+    const name = teacher.trim();
+    if (name) names.push(name);
   }
-  return names;
+  return names.join(' → ');
 }
 
-/** Tree lines. Dates never appear here, including when the trained-with list has dates. */
-export function ancestryTreeLines(teachers: readonly Teacher[], directIds: readonly string[]): string[] {
-  return directIds.map((id) => ancestryBranch(teachers, id).join(' → '));
-}
-
-export function trainedWithLine(row: TrainedWith): string {
+/** Dates sit beside the head instructor. A blank timeline adds nothing to the chain. */
+export function timelineLine(tree: LineageTree): string {
   const parts: string[] = [];
-  if (row.startedOn.trim()) parts.push(`started ${row.startedOn.trim()}`);
-  if (row.stillTraining) parts.push('still training');
-  else if (row.endedOn.trim()) parts.push(`ended ${row.endedOn.trim()}`);
-  if (!parts.length) return row.name;
-  return `${row.name} · ${parts.join(' · ')}`;
+  if (tree.startedOn.trim()) parts.push(`started ${tree.startedOn.trim()}`);
+  if (tree.stillTraining) parts.push('still training');
+  else if (tree.endedOn.trim()) parts.push(`ended ${tree.endedOn.trim()}`);
+  return parts.join(' · ');
 }
 
-export function datesAreBlank(rows: readonly TrainedWith[]): boolean {
-  return rows.every((row) => !row.startedOn.trim() && !row.endedOn.trim());
+export function timelinesOverlap(left: LineageTree, right: LineageTree): boolean {
+  if (left.stillTraining && right.stillTraining) return true;
+  const start = (tree: LineageTree) => tree.startedOn.trim() || '0000-01-01';
+  const end = (tree: LineageTree) => (tree.stillTraining || !tree.endedOn.trim() ? '9999-12-31' : tree.endedOn.trim());
+  return start(left) <= end(right) && start(right) <= end(left);
+}
+
+export function addHeadTree(trees: readonly LineageTree[]): LineageTree[] {
+  return [
+    ...trees.map((tree) => ({ ...tree, upward: [...tree.upward] })),
+    { id: `tree-${trees.length + 1}`, headName: '', startedOn: '', endedOn: '', stillTraining: true, upward: [] },
+  ];
+}
+
+export function addUpwardTeacher(tree: LineageTree): LineageTree {
+  return { ...tree, upward: [...tree.upward, ''] };
+}
+
+/** Hiding lineage keeps every name and date. */
+export function setLineageVisible(state: AncestryPreview, visible: boolean): AncestryPreview {
+  return {
+    visible,
+    trees: state.trees.map((tree) => ({ ...tree, upward: [...tree.upward] })),
+  };
 }
 
 export const BELT_INTERVALS = ['white', 'blue', 'purple', 'brown', 'black'] as const;
