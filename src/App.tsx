@@ -51,6 +51,7 @@ import { AcademyFullPage, InstructorFullPage, ProfileHubPage, StudentFullPage } 
 import { Future2036Page } from './preview/ancestryScope/Future2036';
 import { StudentAncestryPreview } from './preview/studentRecord/StudentAncestryPreview';
 import { StudentHoursPreview } from './preview/studentRecord/StudentHoursPreview';
+import { MedalHarnessPage } from './preview/medalHarness/MedalHarnessPage';
 import { CoachPage } from './pages/Coach';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
@@ -759,6 +760,8 @@ export default function App() {
       {/* Owner previews. Direct links only. They do not write a student record. */}
       <Route path="/preview/student-ancestry" element={<StudentAncestryPreview />} />
       <Route path="/preview/student-hours" element={<StudentHoursPreview />} />
+      {/* Disposable medal harness. Not a live sync. */}
+      <Route path="/preview/medal-harness" element={<MedalHarnessPage />} />
       <Route path="/student/*" element={<StudentEditionPage />} />
       {/* Public owner preview. The live Technique Tree stays at /technique-tree. */}
       <Route path="/preview/technique-tree" element={<TechniqueTreePreviewPage />} />
