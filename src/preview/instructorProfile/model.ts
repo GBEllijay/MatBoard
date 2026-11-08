@@ -24,6 +24,11 @@ export const EXAMPLE_CLASS_MINUTES = 60;
 export const DEFAULT_CLASSES_PER_WEEK = 3;
 export const DEFAULT_ACTIVE_WEEKS = 52;
 export const SAMPLE_WEEK_START = '2026-11-02';
+/** Eleven earlier sample weeks, 3 classes at 1 hour, already in the logged block. */
+export const PRIOR_LOGGED_CLASSES = 33;
+export const PRIOR_LOGGED_MINUTES = PRIOR_LOGGED_CLASSES * EXAMPLE_CLASS_MINUTES;
+export const INSTRUCTOR_BACKUP_KIND = 'instructor-teaching-backup';
+export const STUDENT_JOURNAL_BACKUP_KIND = 'student-journal-backup';
 
 export const PREVIEW_STORAGE_KEYS = [
   'matboard.studentEdition.v1',
@@ -60,6 +65,10 @@ export type FictionUpdate = {
   parentGateOn: boolean;
   resolution: UpdateResolution;
   attempt: number;
+  /** False when the row is only in the fictional total, not the sample table. */
+  listed?: boolean;
+  /** Short change line for the sample table. */
+  change?: string;
 };
 
 export type TeachingClass = {
@@ -134,12 +143,12 @@ export function teachingTallies(rows: readonly FictionUpdate[]): { stripes: numb
 }
 
 export function statusLabel(row: FictionUpdate): string {
-  if (row.status === 'pending' && row.resolution === 'waiting-parent') return 'Pending · parent, then student';
+  if (row.status === 'pending' && row.resolution === 'waiting-parent') return 'Pending · awaiting parent';
   if (row.status === 'pending') return 'Pending · student accept';
   if (row.status === 'declined' && row.resolution === 'parent-declined') return 'Declined · parent';
   if (row.status === 'declined') return 'Declined · student dismissed';
-  if (row.parentGateOn) return 'Approved and applied';
-  return 'Applied · no parent step';
+  if (row.parentGateOn) return 'Completed · parent approved';
+  return 'Completed · parent not required';
 }
 
 export function clampInt(value: number, min: number, max: number, fallback: number): number {
@@ -197,6 +206,29 @@ export function loggedMinutes(classes: readonly TeachingClass[]): number {
   return classes.reduce((sum, row) => sum + (row.minutes > 0 ? row.minutes : 0), 0);
 }
 
+/** Logged block: earlier sample weeks plus the visible week. The estimate is not included. */
+export function loggedMinutesTotal(classes: readonly TeachingClass[]): number {
+  return PRIOR_LOGGED_MINUTES + loggedMinutes(classes);
+}
+
+export function loggedClassCount(classes: readonly TeachingClass[]): number {
+  return PRIOR_LOGGED_CLASSES + classes.filter((row) => row.minutes > 0).length;
+}
+
+/** Example sum of two separate periods. Not a third stored bank. */
+export function combinedHours(estimateHours: number, loggedTotalMinutes: number): number {
+  return estimateHours + loggedTotalMinutes / 60;
+}
+
+export function formatHourCount(hours: number): string {
+  const rounded = Math.round(hours * 100) / 100;
+  const negative = rounded < 0;
+  const abs = Math.abs(rounded);
+  const [whole, frac] = abs.toString().split('.');
+  const text = `${Number(whole).toLocaleString('en-US')}${frac ? `.${frac}` : ''}`;
+  return negative ? `-${text}` : text;
+}
+
 export function weekMinutes(classes: readonly TeachingClass[], monday: string): number {
   const days = new Set(weekDays(monday));
   return loggedMinutes(classes.filter((row) => days.has(row.date)));
@@ -249,114 +281,135 @@ export function setClassMinutes(classes: readonly TeachingClass[], id: string, m
   return classes.map((row) => (row.id === id ? { ...row, minutes: snapped } : row));
 }
 
+function hiddenCompleted(kind: UpdateKind, count: number): FictionUpdate[] {
+  return Array.from({ length: count }, (_, index) => {
+    const day = String((index % 27) + 1).padStart(2, '0');
+    const month = String((index % 12) + 1).padStart(2, '0');
+    return {
+      id: `done-${kind}-${index}`,
+      studentId: `stu-done-${kind}-${index}`,
+      studentName: 'Other completed (fictional)',
+      kind,
+      belt: 'Blue',
+      stripeFrom: 0,
+      stripeTo: kind === 'stripe' ? 1 : 0,
+      date: `2025-${month}-${day}`,
+      status: 'applied' as const,
+      parentGateOn: false,
+      resolution: 'student-accepted' as const,
+      attempt: index === 0 ? 2 : 1,
+      listed: false,
+    };
+  });
+}
+
 export function sampleUpdates(): FictionUpdate[] {
-  return [
+  const listed: FictionUpdate[] = [
     {
-      id: 'sam-stripe-2',
-      studentId: 'stu-sam',
-      studentName: 'Sam Okonkwo (fictional)',
+      id: 'student-a',
+      studentId: 'stu-a',
+      studentName: 'Student A (fictional minor)',
       kind: 'stripe',
-      belt: 'Blue',
+      belt: 'Grey-white',
       stripeFrom: 1,
       stripeTo: 2,
-      date: '2026-08-14',
-      status: 'applied',
-      parentGateOn: false,
-      resolution: 'student-accepted',
-      attempt: 1,
-    },
-    {
-      id: 'noah-stripe-1-declined',
-      studentId: 'stu-noah',
-      studentName: 'Noah Patel (fictional)',
-      kind: 'stripe',
-      belt: 'Blue',
-      stripeFrom: 0,
-      stripeTo: 1,
-      date: '2026-06-01',
-      status: 'declined',
-      parentGateOn: true,
-      resolution: 'parent-declined',
-      attempt: 1,
-    },
-    {
-      id: 'noah-stripe-1-applied',
-      studentId: 'stu-noah',
-      studentName: 'Noah Patel (fictional)',
-      kind: 'stripe',
-      belt: 'Blue',
-      stripeFrom: 0,
-      stripeTo: 1,
-      date: '2026-06-01',
+      date: '2026-10-01',
       status: 'applied',
       parentGateOn: true,
       resolution: 'student-accepted',
-      attempt: 2,
-    },
-    {
-      id: 'sam-stripe-3-pending',
-      studentId: 'stu-sam',
-      studentName: 'Sam Okonkwo (fictional)',
-      kind: 'stripe',
-      belt: 'Blue',
-      stripeFrom: 2,
-      stripeTo: 3,
-      date: '2026-10-02',
-      status: 'pending',
-      parentGateOn: false,
-      resolution: 'waiting-student',
       attempt: 1,
+      listed: true,
+      change: 'Grey-white · 1 to 2 stripes',
     },
     {
-      id: 'riley-purple',
-      studentId: 'stu-riley',
-      studentName: 'Riley Chen (fictional)',
+      id: 'student-b',
+      studentId: 'stu-b',
+      studentName: 'Student B (fictional adult)',
       kind: 'belt',
-      belt: 'Purple',
-      stripeFrom: 4,
+      belt: 'Blue',
+      stripeFrom: 0,
       stripeTo: 0,
-      date: '2026-05-20',
+      date: '2026-09-02',
       status: 'applied',
       parentGateOn: false,
       resolution: 'student-accepted',
       attempt: 1,
+      listed: true,
+      change: 'White to Blue',
     },
     {
-      id: 'avery-purple-dismissed',
-      studentId: 'stu-avery',
-      studentName: 'Avery Brooks (fictional)',
+      id: 'student-c',
+      studentId: 'stu-c',
+      studentName: 'Student C (fictional minor)',
       kind: 'belt',
-      belt: 'Purple',
-      stripeFrom: 4,
+      belt: 'Yellow',
+      stripeFrom: 0,
       stripeTo: 0,
-      date: '2026-09-01',
-      status: 'declined',
-      parentGateOn: false,
-      resolution: 'student-dismissed',
-      attempt: 1,
-    },
-    {
-      id: 'noah-stripe-2-pending',
-      studentId: 'stu-noah',
-      studentName: 'Noah Patel (fictional)',
-      kind: 'stripe',
-      belt: 'Blue',
-      stripeFrom: 1,
-      stripeTo: 2,
-      date: '2026-10-18',
+      date: '2026-09-20',
       status: 'pending',
       parentGateOn: true,
       resolution: 'waiting-parent',
       attempt: 1,
+      listed: true,
+      change: 'Grey to Yellow',
+    },
+    {
+      id: 'student-d',
+      studentId: 'stu-d',
+      studentName: 'Student D (fictional minor)',
+      kind: 'stripe',
+      belt: 'Yellow',
+      stripeFrom: 0,
+      stripeTo: 1,
+      date: '2026-08-04',
+      status: 'declined',
+      parentGateOn: true,
+      resolution: 'parent-declined',
+      attempt: 1,
+      listed: true,
+      change: 'Yellow · 0 to 1 stripe',
+    },
+    {
+      id: 'student-e',
+      studentId: 'stu-e',
+      studentName: 'Student E (fictional adult)',
+      kind: 'stripe',
+      belt: 'Blue',
+      stripeFrom: 1,
+      stripeTo: 2,
+      date: '2026-08-18',
+      status: 'applied',
+      parentGateOn: false,
+      resolution: 'student-accepted',
+      attempt: 1,
+      listed: true,
+      change: 'Blue · 1 to 2 stripes',
     },
   ];
+  const hiddenStripes = hiddenCompleted('stripe', 22);
+  const hiddenBelts = hiddenCompleted('belt', 6);
+  const retry = hiddenStripes[0];
+  const declinedRetry: FictionUpdate = {
+    ...retry,
+    id: `${retry.id}-declined`,
+    status: 'declined',
+    resolution: 'parent-declined',
+    parentGateOn: true,
+    attempt: 1,
+    listed: false,
+  };
+  return [...listed, declinedRetry, ...hiddenStripes, ...hiddenBelts];
+}
+
+export function listedUpdates(rows: readonly FictionUpdate[] = sampleUpdates()): FictionUpdate[] {
+  return rows.filter((row) => row.listed !== false);
 }
 
 export function sampleClasses(): TeachingClass[] {
   return [
-    { id: 'class-mon', date: '2026-11-02', name: 'Fundamentals gi', minutes: 60, source: 'journal' },
-    { id: 'class-wed', date: '2026-11-04', name: 'No-gi', minutes: 75, source: 'journal' },
-    { id: 'class-fri', date: '2026-11-06', name: 'Kids class', minutes: 60, source: 'journal' },
+    { id: 'class-mon', date: '2026-11-02', name: 'Adult fundamentals', minutes: 60, source: 'journal' },
+    { id: 'class-wed', date: '2026-11-04', name: 'Kids class', minutes: 60, source: 'journal' },
+    { id: 'class-sat', date: '2026-11-07', name: 'Advanced / open mat', minutes: 60, source: 'journal' },
   ];
 }
 
@@ -379,8 +432,8 @@ export function sampleEstimate(): EstimateInput {
 }
 
 export const INSTRUCTOR = {
-  name: 'Mara Ellison (fictional)',
-  gym: 'Northshore Jiu-Jitsu (fictional)',
+  name: 'Example Instructor (fictional)',
+  gym: 'Example Academy (fictional)',
   startedOn: '2014-03-01',
   birthYear: 1992,
   ageBand: 'Adult',
@@ -391,6 +444,7 @@ export const INSTRUCTOR = {
   trains: 'Gi and No-Gi',
   competitor: 'Off',
   noPhotos: 'Off',
+  programs: 'Adult fundamentals · Kids · Open mat',
   teachingAroundYear: TEACHING_AROUND_YEAR,
   officialStartYear: OFFICIAL_START_YEAR,
   seatNote: 'Sample path: an instructor seat issued by the academy owner. A purchased Instructor Edition would open the same sheet. This preview checks neither.',
@@ -400,7 +454,12 @@ export const INSTRUCTOR = {
     { belt: 'Purple', detail: '2019-06-08' },
     { belt: 'Brown', detail: '2023-02-18 · 2 stripes' },
   ],
-  lineage: ['Professor Lena Cho (fictional)', 'Coach Andre Voss (fictional)', 'Professor Ivo Marin (fictional)'],
+  lineage: [
+    'Mestre Aurelio Vance (fictional) · Black belt, 6th degree',
+    'Prof. Dana Okafor (fictional) · Black belt, 3rd degree',
+    'Coach Lena Mirov (fictional) · Head instructor, Example Academy',
+    'Example Instructor (fictional) · Brown belt',
+  ],
 } as const;
 
 export function profilePolicyLines(): { label: string; on: boolean; note: string }[] {
@@ -417,18 +476,131 @@ export function profilePolicyLines(): { label: string; on: boolean; note: string
   ];
 }
 
-/** Names a later printable sheet can share. This preview does not make the PDF. */
+/** Names shared with the locked printable sheet. This preview does not make the PDF. */
 export const DOCUMENT_FIELDS = [
   { name: 'title', value: SHEET_TITLE },
-  { name: 'coachingHours.loggedMinutes', value: 'Sum of teaching-journal minutes. Untimed rows add 0.' },
-  { name: 'coachingHours.estimatedClasses', value: 'teachingYears × activeWeeksPerYear × classesPerWeek.' },
-  { name: 'coachingHours.estimatedHours', value: 'estimatedClasses × example minutes / 60. Equals classes only at 60 minutes.' },
-  { name: 'coachingHours.teachingAroundYear', value: 'About when teaching started. Sample 2013. Not the official start.' },
-  { name: 'coachingHours.officialStartYear', value: 'Official start. Sample 2023. Kept, and left out of the estimate.' },
-  { name: 'coachingHours.activeWeeksPerYear', value: 'Default 52. A year-length approximation, editable.' },
-  { name: 'coachingHours.minutesPerClass', value: 'Example assumption on the 15-minute wheel. Default 60. Not a measured class.' },
-  { name: 'stripesGiven', value: 'Applied stripe updates only, one count per promotion key.' },
-  { name: 'promotionsGiven', value: 'Applied belt updates only, one count per promotion key.' },
-  { name: 'promotionUpdates.status', value: 'pending, applied, or declined.' },
-  { name: 'promotionUpdates.parentGateOn', value: 'Per student device. Off means that row has no parent step.' },
+  { name: 'teachingSince', value: 'Started instructing. Sample c. 2013. Not the training start.' },
+  { name: 'officialStartYear', value: 'Official start. Sample 2023. Shown beside teaching since, left out of the estimate.' },
+  { name: 'studentProfile.startedOn', value: 'Training start on the student file. Sample 2014-03-01. Not overwritten by instruction data.' },
+  { name: 'coachingHours.estimatedHours', value: 'Pre-app estimate. Ends when logging begins. 2,028 h only at 1 hour, 52 weeks, 3 classes, 13 years.' },
+  { name: 'coachingHours.loggedHours', value: 'Hours logged after that. Sample 36 h over 12 weeks. Not added into the estimate.' },
+  { name: 'coachingHours.combinedExample', value: 'Estimate plus logged, labeled example. Not a third stored bank.' },
+  { name: 'stripesGiven', value: 'Completed stripe updates only, one count per promotion key. Sample 24.' },
+  { name: 'promotionsGiven', value: 'Completed belt updates only, one count per promotion key. Sample 7.' },
+  { name: 'promotionUpdates.status', value: 'pending, applied (shown as Completed), or declined.' },
+  { name: 'promotionUpdates.parentGateOn', value: 'Per record. Off means that row has no parent step. Not a universal adult rule.' },
+  { name: 'notes', value: 'Write-in. The locked sheet labels this Notes.' },
+  { name: 'backup.kind', value: 'instructor-teaching-backup. JSON concept. The stat-sheet PDF is not this file.' },
 ] as const;
+
+export type InstructionBackup = {
+  advantage: typeof INSTRUCTOR_BACKUP_KIND;
+  version: 1;
+  fictional: true;
+  studentId: 'example-instructor';
+  teachingAroundYear: number;
+  officialStartYear: number;
+  estimate: EstimateInput;
+  loggedMinutes: number;
+  classes: TeachingClass[];
+  stripesGiven: number;
+  promotionsGiven: number;
+  notes: string;
+};
+
+export type StudentIdentity = {
+  name: string;
+  gym: string;
+  trainingStart: string;
+  belt: string;
+  stripes: number;
+};
+
+export function studentIdentity(): StudentIdentity {
+  return {
+    name: INSTRUCTOR.name,
+    gym: INSTRUCTOR.gym,
+    trainingStart: INSTRUCTOR.startedOn,
+    belt: INSTRUCTOR.belt,
+    stripes: INSTRUCTOR.stripes,
+  };
+}
+
+/** In-memory shape only. Nothing is downloaded or written. */
+export function instructionBackupPreview(input: {
+  estimate: EstimateInput;
+  classes: readonly TeachingClass[];
+  notes: string;
+  stripesGiven: number;
+  promotionsGiven: number;
+}): InstructionBackup {
+  return {
+    advantage: INSTRUCTOR_BACKUP_KIND,
+    version: 1,
+    fictional: true,
+    studentId: 'example-instructor',
+    teachingAroundYear: input.estimate.teachingAroundYear,
+    officialStartYear: INSTRUCTOR.officialStartYear,
+    estimate: { ...input.estimate },
+    loggedMinutes: loggedMinutesTotal(input.classes),
+    classes: input.classes.map((row) => ({ ...row })),
+    stripesGiven: input.stripesGiven,
+    promotionsGiven: input.promotionsGiven,
+    notes: input.notes,
+  };
+}
+
+export type RestorePreview = {
+  ok: boolean;
+  title: string;
+  detail: string;
+  kept: StudentIdentity;
+};
+
+/**
+ * Says what a restore would do. It does not write.
+ * A stat-sheet PDF and a student journal backup are refused.
+ * An instruction file may describe teaching fields only. A different name in that file is ignored.
+ */
+export function previewInstructionRestore(raw: string, identity: StudentIdentity = studentIdentity()): RestorePreview {
+  const kept = { ...identity };
+  const text = raw.trim();
+  if (!text) return { ok: false, title: 'No file', detail: 'Nothing to read.', kept };
+  if (text.startsWith('%PDF') || /INSTRUCTOR PROFILE AND STAT SHEET/i.test(text)) {
+    return {
+      ok: false,
+      title: 'Printable sheet',
+      detail: 'This is a printable Instructor Profile and Stat Sheet. A PDF does not restore data.',
+      kept,
+    };
+  }
+  let record: Record<string, unknown>;
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { ok: false, title: 'Not a backup', detail: 'That text is not an instruction backup.', kept };
+    }
+    record = parsed as Record<string, unknown>;
+  } catch {
+    return { ok: false, title: 'Not a backup', detail: 'That text is not an instruction backup.', kept };
+  }
+  if (record.advantage === STUDENT_JOURNAL_BACKUP_KIND || record.kind === 'student-progress-report') {
+    return {
+      ok: false,
+      title: 'Student backup',
+      detail: 'That is a Student Edition journal backup. It stays closed here, and the student record is not replaced.',
+      kept,
+    };
+  }
+  if (record.advantage !== INSTRUCTOR_BACKUP_KIND) {
+    return { ok: false, title: 'Not an instruction backup', detail: 'This preview only describes an instruction backup. Nothing was written.', kept };
+  }
+  const otherName = typeof record.displayName === 'string' ? record.displayName.trim() : '';
+  const ignored = otherName && otherName !== identity.name ? ` Ignored a different name in the file (${otherName}).` : '';
+  return {
+    ok: true,
+    title: 'Instruction fields only',
+    detail: `Would restore teaching since, the estimate, logged hours, the teaching journal, promotion totals, and notes.${ignored} Would keep ${identity.name}, training start ${identity.trainingStart}, and the ${identity.belt} belt. Nothing was written.`,
+    kept,
+  };
+}

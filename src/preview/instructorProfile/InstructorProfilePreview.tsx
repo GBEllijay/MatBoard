@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
+import { BeltHeader } from '../../components/BeltHeader';
 import { WheelPicker } from '../../components/WheelPicker';
-import { formatHours } from '../../lib/matHours';
 import {
   DOCUMENT_FIELDS,
   INSTRUCTOR,
@@ -9,11 +9,19 @@ import {
   PREVIEW_YEAR,
   SAMPLE_WEEK_START,
   SHEET_TITLE,
+  combinedHours,
   dayLabel,
   durationLabel,
   estimatedClasses,
   estimatedHours,
+  formatHourCount,
+  instructionBackupPreview,
+  listedUpdates,
   logLessonHours,
+  loggedClassCount,
+  loggedMinutesTotal,
+  planLog,
+  previewInstructionRestore,
   profilePolicyLines,
   sampleClasses,
   sampleEstimate,
@@ -21,13 +29,12 @@ import {
   sampleUpdates,
   setClassMinutes,
   statusLabel,
+  studentIdentity,
   teachingDurationOptions,
   teachingTallies,
   teachingYears,
   weekDays,
   weekMinutes,
-  loggedMinutes,
-  planLog,
   type EstimateInput,
   type TeachingClass,
 } from './model';
@@ -35,25 +42,37 @@ import './instructorProfile.css';
 
 const DURATION_OPTIONS = teachingDurationOptions();
 const POLICY = profilePolicyLines();
+const PLAN_BLOCKS = [
+  ['Warm-up', '10 min'],
+  ['Technique', '20 min'],
+  ['Drilling', '15 min'],
+  ['Live rounds', '15 min'],
+] as const;
 
 export function InstructorProfilePreviewPage() {
   const updates = useMemo(() => sampleUpdates(), []);
+  const listed = useMemo(() => listedUpdates(updates), [updates]);
   const tallies = useMemo(() => teachingTallies(updates), [updates]);
   const plan = useMemo(() => samplePlan(), []);
+  const identity = useMemo(() => studentIdentity(), []);
   const [lineageOn, setLineageOn] = useState(true);
   const [classes, setClasses] = useState<TeachingClass[]>(() => sampleClasses());
   const [planMinutes, setPlanMinutes] = useState(60);
   const [estimate, setEstimate] = useState<EstimateInput>(() => sampleEstimate());
   const [officialStart, setOfficialStart] = useState<number>(INSTRUCTOR.officialStartYear);
+  const [notes, setNotes] = useState('');
   const [logNote, setLogNote] = useState('Not logged yet.');
+  const [backupNote, setBackupNote] = useState('No instruction backup has been built. Nothing is downloaded.');
+  const [restoreNote, setRestoreNote] = useState('');
 
   const logged = planLog(classes, plan.planId, plan.date);
   const week = weekMinutes(classes, SAMPLE_WEEK_START);
-  const loggedTotal = loggedMinutes(classes);
+  const loggedTotal = loggedMinutesTotal(classes);
   const years = teachingYears(estimate.teachingAroundYear);
-  const classesEstimate = estimatedClasses(estimate);
-  const hoursEstimate = estimatedHours(classesEstimate, estimate.minutesPerClass);
-  const hourAssumption = estimate.minutesPerClass === 60;
+  const classEstimate = estimatedClasses(estimate);
+  const hourEstimate = estimatedHours(classEstimate, estimate.minutesPerClass);
+  const combined = combinedHours(hourEstimate, loggedTotal);
+  const hourAssumption = estimate.minutesPerClass === 60 && classEstimate === 2028;
 
   const applyPlanMinutes = (minutes: number, fromButton: boolean) => {
     setPlanMinutes(minutes);
@@ -62,9 +81,26 @@ export function InstructorProfilePreviewPage() {
     const result = logLessonHours(classes, { ...plan, minutes });
     setClasses(result.classes);
     if (result.outcome === 'added') setLogNote('Logged once for this plan and day.');
-    else if (result.outcome === 'replaced') setLogNote('Duration replaced. The week total uses the new length.');
+    else if (result.outcome === 'replaced') setLogNote('Duration replaced. The logged total uses the new length.');
     else if (result.outcome === 'removed') setLogNote('Untimed. This class is off the teaching total.');
     else if (fromButton) setLogNote('Already logged at this length. Not counted twice.');
+  };
+
+  const showBackup = () => {
+    const file = instructionBackupPreview({
+      estimate,
+      classes,
+      notes,
+      stripesGiven: tallies.stripes,
+      promotionsGiven: tallies.belts,
+    });
+    setBackupNote(`Preview only. Kind ${file.advantage}. Not downloaded and not saved. Logged minutes in that preview: ${file.loggedMinutes}.`);
+    setRestoreNote('');
+  };
+
+  const showRestore = (raw: string) => {
+    const result = previewInstructionRestore(raw, identity);
+    setRestoreNote(`${result.title}. ${result.detail}`);
   };
 
   return (
@@ -72,162 +108,110 @@ export function InstructorProfilePreviewPage() {
       <p className="ip-banner" role="note" data-testid="preview-banner">
         {PREVIEW_BANNER}
       </p>
-      <p className="ip-kicker">Advantage · Instructor Edition concept</p>
-      <h1 data-testid="sheet-title">{SHEET_TITLE}</h1>
+      <BeltHeader kind="brown" title="Instructor Edition" />
       <p className="ip-path" data-testid="preview-path">
         {PREVIEW_PATH}
       </p>
-      <p className="ip-quiet">
-        Student identity and training history stay on the student file. This sheet adds teaching stats. The academy profile stays the gym and owner record. Brown belt is the instructor in this demo. Blue is the student. A black belt is not a requirement.
-      </p>
 
-      <div className="ip-grid">
-        <section className="ip-card" aria-label="Identity" data-testid="identity">
-          <h2>Identity</h2>
-          <p className="ip-quiet">Continues from the student profile. Not copied into the academy profile.</p>
-          <dl className="ip-facts">
-            <div>
-              <dt>Name</dt>
-              <dd>{INSTRUCTOR.name}</dd>
-            </div>
-            <div>
-              <dt>Gym</dt>
-              <dd>{INSTRUCTOR.gym}</dd>
-            </div>
-            <div>
-              <dt>Training start</dt>
-              <dd>{INSTRUCTOR.startedOn}</dd>
-            </div>
-            <div>
-              <dt>Birth year</dt>
-              <dd>{INSTRUCTOR.birthYear}</dd>
-            </div>
-            <div>
-              <dt>Kid or Adult</dt>
-              <dd>{INSTRUCTOR.ageBand}</dd>
-            </div>
-            <div>
-              <dt>Belt</dt>
-              <dd>
-                {INSTRUCTOR.belt} · {INSTRUCTOR.stripes} stripes
-              </dd>
-            </div>
-            <div>
-              <dt>Belt date</dt>
-              <dd>{INSTRUCTOR.beltAwardedOn}</dd>
-            </div>
-            <div>
-              <dt>Trains</dt>
-              <dd>{INSTRUCTOR.trains}</dd>
-            </div>
-            <div>
-              <dt>Competitor</dt>
-              <dd>{INSTRUCTOR.competitor}</dd>
-            </div>
-            <div>
-              <dt>No photos</dt>
-              <dd>{INSTRUCTOR.noPhotos}</dd>
-            </div>
-            <div>
-              <dt>Teaching around</dt>
-              <dd>{INSTRUCTOR.teachingAroundYear}</dd>
-            </div>
-            <div>
-              <dt>Official start</dt>
-              <dd>{INSTRUCTOR.officialStartYear}</dd>
-            </div>
-          </dl>
-          <p className="ip-quiet">{INSTRUCTOR.seatNote}</p>
-          <h3>Own rank history</h3>
-          <p className="ip-quiet">Belts this person received. These are not stripes or promotions given.</p>
-          <ul className="ip-list">
-            {INSTRUCTOR.history.map((row) => (
-              <li key={row.belt}>
-                {row.belt} · {row.detail}
-              </li>
-            ))}
-          </ul>
-          <h3>Profile switches</h3>
-          <p className="ip-quiet">Adult brown defaults when the student file has no saved override. This page does not read a file.</p>
-          <ul className="ip-list">
-            {POLICY.map((row) => (
-              <li key={row.label}>
-                <strong>{row.label}</strong> · {row.on ? 'On' : 'Off'}. {row.note}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="ip-card" aria-label="Teaching tallies">
-          <h2>Teaching tallies</h2>
-          <div className="ip-stats">
-            <p data-testid="stripes-given">
-              <strong>{tallies.stripes}</strong>
-              <span>Stripes given</span>
-            </p>
-            <p data-testid="belts-given">
-              <strong>{tallies.belts}</strong>
-              <span>Promotions given</span>
-            </p>
-          </div>
-          <p className="ip-quiet">
-            A stripe tally is more stripes on the same belt. A promotion is a belt change, including one that resets stripes. Pending and declined rows are not in these numbers. A retry of the same student, kind, belt, stripe target, and date counts once.
+      <section className="ip-sheet" aria-label="Instructor stat card" data-testid="stat-card">
+        <header className="ip-sheet__head">
+          <p className="ip-kicker">Advantage · Instructor Edition</p>
+          <h1 data-testid="sheet-title">{SHEET_TITLE}</h1>
+          <p className="ip-quiet">Teaching profile · fictional example. Same person as the student profile.</p>
+        </header>
+        <div className="ip-id">
+          <p>
+            <span>Instructor name</span>
+            <strong>{INSTRUCTOR.name}</strong>
           </p>
-        </section>
-      </div>
-
-      <section className="ip-card" aria-label="Lineage">
-        <h2>Lineage</h2>
+          <p>
+            <span>Academy</span>
+            <strong>{INSTRUCTOR.gym}</strong>
+          </p>
+          <p>
+            <span>Belt</span>
+            <strong>{INSTRUCTOR.belt}</strong>
+          </p>
+          <p className="ip-since" data-testid="teaching-since">
+            <span>Started instructing</span>
+            <strong>c. {INSTRUCTOR.teachingAroundYear}</strong>
+            <em>Official: {officialStart}</em>
+          </p>
+        </div>
         <p className="ip-quiet">
-          Your instructor first, then their instructor. Teaching ancestry, not students taught and not the academy founding line. Hide keeps the names.
+          Training start {INSTRUCTOR.startedOn} stays on the student profile. It is not when instructing started. A black belt is not a requirement.
         </p>
-        <button
-          type="button"
-          className="ip-switch"
-          role="switch"
-          aria-checked={lineageOn}
-          data-testid="lineage-switch"
-          onClick={() => setLineageOn((on) => !on)}
-        >
-          <span>Show lineage</span>
-          <span>{lineageOn ? 'On' : 'Off'}</span>
-        </button>
-        {lineageOn ? (
-          <ol className="ip-list" data-testid="lineage-text">
-            {INSTRUCTOR.lineage.map((name) => (
-              <li key={name}>{name}</li>
-            ))}
-          </ol>
-        ) : (
-          <p data-testid="lineage-hidden">Hidden on this sheet.</p>
-        )}
+        <div className="ip-hours" data-testid="teaching-hours">
+          <div>
+            <span>Combined teaching hours (example)</span>
+            <strong data-testid="combined-hours">{formatHourCount(combined)} h</strong>
+            <small>
+              = {formatHourCount(hourEstimate)} h pre-app estimate + {formatHourCount(loggedTotal / 60)} h logged
+            </small>
+          </div>
+          <div>
+            <span>Pre-app estimate</span>
+            <strong data-testid="estimated-classes">{formatHourCount(classEstimate)}</strong>
+            <small>classes · {formatHourCount(hourEstimate)} h at this example length</small>
+          </div>
+          <div>
+            <span>Logged in Advantage</span>
+            <strong data-testid="logged-hours">{loggedClassCount(classes)}</strong>
+            <small>classes · {formatHourCount(loggedTotal / 60)} h logged</small>
+          </div>
+        </div>
+        <p className="ip-quiet" data-testid="estimate-formula">
+          {years} years ({PREVIEW_YEAR} − {estimate.teachingAroundYear}) × {estimate.activeWeeksPerYear} weeks × {estimate.classesPerWeek} classes = {classEstimate} estimated classes.
+          {hourAssumption ? ' 2,028 hours only under the 1 hour assumption.' : ' Hours follow the example class length.'} Official start {officialStart} is not in that formula. The estimate ends when logging begins, so those weeks are not in both numbers.
+        </p>
+        <div className="ip-side">
+          <div>
+            <span>Classes / week</span>
+            <strong>3+</strong>
+            <small>Sample minimum. This week {classes.filter((row) => weekDays(SAMPLE_WEEK_START).includes(row.date) && row.minutes > 0).length} logged.</small>
+          </div>
+          <p data-testid="stripes-given">
+            <span>Stripes given</span>
+            <strong>{tallies.stripes}</strong>
+          </p>
+          <p data-testid="belts-given">
+            <span>Promotions given</span>
+            <strong>{tallies.belts}</strong>
+          </p>
+        </div>
+        <p className="ip-quiet">Completed only. Pending and declined are not counted. A retry of the same promotion counts once. Fictional totals.</p>
       </section>
 
-      <section className="ip-card" aria-label="Promotion updates">
-        <h2>Promotion updates</h2>
+      <section className="ip-card" aria-label="Sample daily lesson plan" data-testid="lesson-plan">
+        <h2>Daily lesson plan</h2>
         <p className="ip-quiet">
-          Fiction only. Today a coach rank update is one packet. The student accepts or dismisses it. Accept writes that student&apos;s rank. A parent gate can hold the packet when it is already on. The gate defaults off, and its switch is not on Student Edition pages. Adult students are not automatically in that gate. Nothing below was sent.
+          {plan.name} · {plan.designation} · {plan.date}. Next after the stat card, the way the student home opens on the belt and then the sheet. The live plan at /notes has Save, Submit for review, and Upload for instructor distribution. It has I taught this. It does not have Log hours.
         </p>
-        <ul className="ip-updates">
-          {updates.map((row) => (
-            <li key={row.id} data-testid="update-row" data-status={row.status} data-parent={row.parentGateOn ? 'on' : 'off'}>
-              <span className={`ip-status ip-status--${row.status}`}>{statusLabel(row)}</span>
-              <span>
-                {row.studentName} · {row.kind === 'belt' ? `Blue to ${row.belt}` : `${row.belt} stripe ${row.stripeFrom} to ${row.stripeTo}`} · {row.date}
-                {row.attempt > 1 ? ` · retry ${row.attempt}` : ''}
-              </span>
+        <ul className="ip-blocks">
+          {PLAN_BLOCKS.map(([name, length]) => (
+            <li key={name}>
+              <span>{name}</span>
+              <span>{length}</span>
             </li>
           ))}
         </ul>
+        <p className="ip-quiet">Those four lengths are the sheet’s example and add to 60 minutes. They are not the live Expected Duration wheel. Log hours uses the student 15-minute wheel.</p>
+        <div className="ip-log">
+          <WheelPicker label="Class length" value={planMinutes} options={DURATION_OPTIONS} onChange={(minutes) => applyPlanMinutes(minutes, false)} />
+          <button type="button" className="ip-log-btn" data-testid="log-hours" onClick={() => applyPlanMinutes(planMinutes, true)}>
+            Log hours
+          </button>
+          <p role="status" data-testid="log-note">
+            {logNote} Current length {durationLabel(planMinutes)}.
+            {logged ? ` Recorded ${durationLabel(logged.minutes)}.` : ''}
+          </p>
+        </div>
       </section>
 
       <section className="ip-card" aria-label="Teaching journal">
-        <h2>Teaching journal</h2>
-        <p className="ip-quiet">
-          Instructor-side mirror of the student journal for this sample week. Logged minutes stay separate from the estimate below. The live student journal stores minutes on the student file. This list does not.
-        </p>
+        <h2>Weekly teaching journal</h2>
         <p className="ip-week" data-testid="week-total">
-          Week of {SAMPLE_WEEK_START}: <strong>{formatHours(week)} h</strong> logged · {week} min
+          Week of {SAMPLE_WEEK_START}: <strong>{week} min</strong>
         </p>
         <ul className="ip-days">
           {weekDays(SAMPLE_WEEK_START).map((date) => {
@@ -263,41 +247,6 @@ export function InstructorProfilePreviewPage() {
             );
           })}
         </ul>
-        <p data-testid="logged-hours">
-          Logged teaching hours, all sample classes: <strong>{formatHours(loggedTotal)}</strong> ({loggedTotal} min). Not the estimate.
-        </p>
-      </section>
-
-      <section className="ip-card" aria-label="Sample daily lesson plan">
-        <h2>Sample daily lesson plan</h2>
-        <p className="ip-quiet">
-          {plan.name} · {plan.designation} · {plan.date}. The live plan at /notes has Save, Submit for review, and Upload for instructor distribution. It has I taught this. It does not have Log hours. Expected Duration there is a 30-second wheel stored on the plan. This control is the student 15-minute wheel, and it stays in preview memory.
-        </p>
-        <div className="ip-log">
-          <WheelPicker
-            label="Class length"
-            value={planMinutes}
-            options={DURATION_OPTIONS}
-            onChange={(minutes) => applyPlanMinutes(minutes, false)}
-          />
-          <button type="button" className="ip-log-btn" data-testid="log-hours" onClick={() => applyPlanMinutes(planMinutes, true)}>
-            Log hours
-          </button>
-          <p role="status" data-testid="log-note">
-            {logNote} Current length {durationLabel(planMinutes)}.
-            {logged ? ` Recorded ${durationLabel(logged.minutes)}.` : ''}
-          </p>
-        </div>
-        <p className="ip-quiet">
-          The 1:00 starting length is an example assumption. No class length was supplied. A second tap at the same length does not add another class. Changing the length replaces the minutes.
-        </p>
-      </section>
-
-      <section className="ip-card" aria-label="Teaching estimate">
-        <h2>On-your-honor estimate</h2>
-        <p className="ip-quiet">
-          Same idea as the student report planning model: a calendar estimate, not journal hours, not a saved history, and not added to the log. 52 weeks is a year-length approximation. 2028 hours appears only while each class is assumed to be 1 hour.
-        </p>
         <div className="ip-estimate">
           <label>
             Teaching around
@@ -316,8 +265,8 @@ export function InstructorProfilePreviewPage() {
             <input
               aria-label="Official start"
               inputMode="numeric"
-              value={officialStart}
               data-testid="official-start"
+              value={officialStart}
               onChange={(event) => {
                 const next = Number(event.target.value);
                 if (Number.isFinite(next)) setOfficialStart(next);
@@ -341,8 +290,8 @@ export function InstructorProfilePreviewPage() {
             <input
               aria-label="Active weeks a year"
               inputMode="numeric"
-              value={estimate.activeWeeksPerYear}
               data-testid="active-weeks"
+              value={estimate.activeWeeksPerYear}
               onChange={(event) => {
                 const activeWeeksPerYear = Number(event.target.value);
                 if (Number.isFinite(activeWeeksPerYear)) setEstimate((current) => ({ ...current, activeWeeksPerYear }));
@@ -359,24 +308,146 @@ export function InstructorProfilePreviewPage() {
             />
           </div>
         </div>
-        <p data-testid="estimate-formula">
-          {years} years ({PREVIEW_YEAR} − {estimate.teachingAroundYear}) × {estimate.activeWeeksPerYear} weeks × {estimate.classesPerWeek} classes ={' '}
-          <strong data-testid="estimated-classes">{classesEstimate}</strong> estimated classes. Official start {officialStart} is not in that formula.
+      </section>
+
+      <section className="ip-card" aria-label="Lineage">
+        <h2>Lineage</h2>
+        <p className="ip-quiet">Teaching ancestry, including this instructor. Not a list of students. Not the academy founding line. Hiding it does not delete it. No black-belt prerequisite.</p>
+        <button type="button" className="ip-switch" role="switch" aria-checked={lineageOn} data-testid="lineage-switch" onClick={() => setLineageOn((on) => !on)}>
+          <span>Show lineage</span>
+          <span>{lineageOn ? 'On' : 'Off'}</span>
+        </button>
+        {lineageOn ? (
+          <ol className="ip-list" data-testid="lineage-text">
+            {INSTRUCTOR.lineage.map((name) => (
+              <li key={name}>{name}</li>
+            ))}
+          </ol>
+        ) : (
+          <p data-testid="lineage-hidden">Hidden on this sheet.</p>
+        )}
+      </section>
+
+      <section className="ip-card" aria-label="Promotion updates">
+        <h2>Promotion updates</h2>
+        <p className="ip-quiet">
+          Sample rows from the stat sheet, plus other completed fiction so the card can read 24 and 7. Today a coach rank update is one packet. The student accepts or dismisses it. A parent gate can hold a packet only when that gate is already on. It defaults off, and its switch is not on Student Edition pages. It is not automatically on for minors or off for adults. Nothing here was sent.
         </p>
-        <p data-testid="estimated-hours">
-          Estimated hours: <strong>{hoursEstimate}</strong>
-          {hourAssumption && classesEstimate === 2028
-            ? ' · 2028 hours only under the 1 hour assumption, 52 weeks, 3 classes a week, and 13 years.'
-            : hourAssumption
-              ? ' · Hours match classes because the example length is still 1 hour.'
-              : ' · 2028 hours needs the 1 hour example. This length is different.'}
+        <ul className="ip-updates">
+          {listed.map((row) => (
+            <li key={row.id} data-testid="update-row" data-status={row.status} data-parent={row.parentGateOn ? 'on' : 'off'}>
+              <span className={`ip-status ip-status--${row.status}`}>{statusLabel(row)}</span>
+              <span>
+                {row.studentName} · {row.change} · {row.date.slice(0, 7)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="ip-card" aria-label="Student profile">
+        <h2>Student profile, same person</h2>
+        <p className="ip-quiet">These stay the student record. Instruction details above do not replace them.</p>
+        <dl className="ip-facts">
+          <div>
+            <dt>Training start</dt>
+            <dd>{INSTRUCTOR.startedOn}</dd>
+          </div>
+          <div>
+            <dt>Birth year</dt>
+            <dd>{INSTRUCTOR.birthYear}</dd>
+          </div>
+          <div>
+            <dt>Kid or Adult</dt>
+            <dd>{INSTRUCTOR.ageBand}</dd>
+          </div>
+          <div>
+            <dt>Own belt</dt>
+            <dd>
+              {INSTRUCTOR.belt} · {INSTRUCTOR.stripes} stripes · {INSTRUCTOR.beltAwardedOn}
+            </dd>
+          </div>
+          <div>
+            <dt>Trains</dt>
+            <dd>{INSTRUCTOR.trains}</dd>
+          </div>
+          <div>
+            <dt>Programs taught</dt>
+            <dd>{INSTRUCTOR.programs}</dd>
+          </div>
+        </dl>
+        <ul className="ip-list">
+          {INSTRUCTOR.history.map((row) => (
+            <li key={row.belt}>
+              {row.belt} · {row.detail}
+            </li>
+          ))}
+          {POLICY.map((row) => (
+            <li key={row.label}>
+              {row.label} · {row.on ? 'On' : 'Off'}. {row.note}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="ip-card" aria-label="Notes">
+        <h2>Notes</h2>
+        <label>
+          Notes
+          <textarea aria-label="Notes" value={notes} onChange={(event) => setNotes(event.target.value)} />
+        </label>
+        <p className="ip-quiet">Write-in for this preview only. The locked sheet labels this Notes.</p>
+      </section>
+
+      <section className="ip-card" aria-label="Instruction backup" data-testid="instruction-backup">
+        <h2>Instruction backup concept</h2>
+        <p className="ip-quiet">
+          Student Edition restores from Back up my journal, a JSON file named student-journal-backup. A progress PDF cannot restore that phone. This would be a separate instruction file. It would cover teaching since, the estimate, logged hours, the teaching journal, promotion totals, and notes. It would not replace the student name, training start, belt, or student journal.
         </p>
-        <p className="ip-quiet">Logged {formatHours(loggedTotal)} h and estimated {hoursEstimate} h are not added together.</p>
+        <div className="ip-log">
+          <button type="button" className="ip-log-btn" data-testid="preview-backup" onClick={showBackup}>
+            Preview instruction backup
+          </button>
+          <button type="button" className="ip-switch" data-testid="try-pdf" onClick={() => showRestore('%PDF-1.4 INSTRUCTOR PROFILE AND STAT SHEET')}>
+            Try the stat-sheet PDF
+          </button>
+          <button
+            type="button"
+            className="ip-switch"
+            data-testid="try-student-backup"
+            onClick={() => showRestore('{"advantage":"student-journal-backup","version":1}')}
+          >
+            Try a student journal backup
+          </button>
+          <button
+            type="button"
+            className="ip-switch"
+            data-testid="try-instruction-backup"
+            onClick={() =>
+              showRestore(
+                JSON.stringify({
+                  advantage: 'instructor-teaching-backup',
+                  version: 1,
+                  displayName: 'Someone Else',
+                  notes: 'sample',
+                }),
+              )
+            }
+          >
+            Try an instruction backup
+          </button>
+        </div>
+        <p role="status" data-testid="backup-note">
+          {backupNote}
+        </p>
+        <p role="status" data-testid="restore-note">
+          {restoreNote}
+        </p>
       </section>
 
       <section className="ip-card" aria-label="Document fields">
-        <h2>Fields for a later printable sheet</h2>
-        <p className="ip-quiet">A separate document preview can use these names. This page does not generate a PDF.</p>
+        <h2>Fields for the printable sheet</h2>
+        <p className="ip-quiet">The dark and light PDFs are the locked Notes design. This page does not generate or restore them.</p>
         <dl className="ip-facts">
           {DOCUMENT_FIELDS.map((field) => (
             <div key={field.name}>

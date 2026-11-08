@@ -41,8 +41,106 @@
 
 .ip-preview h1 {
   margin: 4px 0 0;
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
   line-height: 1.1;
+}
+
+.ip-preview .belt-header {
+  margin: 0 0 12px;
+}
+
+.ip-sheet {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1.5px solid #004eba;
+  border-radius: 6px;
+  background: rgba(8, 18, 36, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(110, 168, 255, 0.18);
+}
+
+.ip-sheet__head {
+  margin-bottom: 8px;
+}
+
+.ip-id,
+.ip-hours,
+.ip-side {
+  display: grid;
+  gap: 8px;
+}
+
+.ip-id p,
+.ip-hours div,
+.ip-side p,
+.ip-side div {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--ip-line);
+  border-radius: 6px;
+}
+
+.ip-id span,
+.ip-hours span,
+.ip-side span {
+  display: block;
+  color: var(--ip-blue);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ip-id strong,
+.ip-side strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 1.05rem;
+}
+
+.ip-since {
+  border-color: #c9a227 !important;
+  background: rgba(201, 162, 39, 0.14);
+}
+
+.ip-since strong {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.ip-since em {
+  display: block;
+  margin-top: 4px;
+  color: #f6e7b2;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.ip-hours strong {
+  display: block;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.ip-hours small,
+.ip-side small {
+  display: block;
+  margin-top: 4px;
+  color: rgba(245, 241, 232, 0.78);
+}
+
+.ip-blocks {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ip-blocks li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--ip-line);
 }
 
 .ip-path,
@@ -224,9 +322,19 @@
 }
 
 .ip-preview input,
-.ip-preview select {
+.ip-preview select,
+.ip-preview textarea {
   width: 100%;
   padding: 8px 10px;
+}
+
+.ip-preview textarea {
+  min-height: 88px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(6, 16, 31, 0.65);
+  color: inherit;
+  font: inherit;
 }
 
 .ip-log-btn {
@@ -245,18 +353,16 @@
 
 @media (min-width: 720px) {
   .ip-preview {
-    padding: 28px 28px 64px;
+    padding: 20px 28px 64px;
   }
 
-  .ip-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.3fr) minmax(240px, 0.8fr);
-    gap: 16px;
-    align-items: start;
+  .ip-id {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .ip-grid .ip-card {
-    margin-top: 16px;
+  .ip-hours,
+  .ip-side {
+    grid-template-columns: 1.4fr 1fr 1fr;
   }
 
   .ip-facts {
