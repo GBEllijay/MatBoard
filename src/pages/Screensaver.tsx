@@ -5,6 +5,7 @@ import { FolderChevron } from '../components/FolderChevron';
 import { MediaConsoleMark } from '../components/MediaConsoleArt';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
+import { FaqLink } from '../components/FaqLink';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { ScheduleMonthBoard } from '../components/ScheduleMonthBoard';
@@ -1053,6 +1054,7 @@ export function ScreensaverPage() {
           setOptions(false);
         }}
         footer={
+          <>
           <InstructionsButton controlsId="media-console-instructions" align="stretch">
             <ul>
               {MEDIA_CONSOLE_INSTRUCTIONS.map((line) => (
@@ -1060,6 +1062,8 @@ export function ScreensaverPage() {
               ))}
             </ul>
           </InstructionsButton>
+          <FaqLink />
+          </>
         }
       >
         {beltInSheet ? beltHeader : null}

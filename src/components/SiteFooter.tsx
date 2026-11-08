@@ -16,7 +16,8 @@ export function SiteFooter() {
         {SITE_FEEDBACK_LEAD}{' '}
         <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>
       </p>
-      <nav className="site-footer__legal" aria-label="Legal">
+      <nav className="site-footer__legal" aria-label="Help and legal">
+        <Link to="/faq">FAQ</Link>
         <Link to="/privacy">Privacy Policy</Link>
         <Link to="/terms">Terms of Service</Link>
       </nav>

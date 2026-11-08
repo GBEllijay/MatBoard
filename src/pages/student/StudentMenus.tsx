@@ -170,6 +170,11 @@ export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
               {`Last backup: ${stamp}`}
             </span>
           </Link>
+          <Link className="s-ghost" to={to('/student/faq')} aria-label="FAQ">
+            <RowIcon label="FAQ" />
+            <span className="s-ghost__label">FAQ</span>
+            <span className="s-ghost__status">Journal, rank, backups, and access</span>
+          </Link>
           <EditionLadder page="student" />
         </nav>
         <div className="home__hints">

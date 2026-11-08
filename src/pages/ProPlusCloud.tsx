@@ -4,6 +4,7 @@ import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
 import { PlusCloudConduct } from '../components/PlusCloudConduct';
 import { HomeMark } from '../components/HomeMark';
+import { FaqLink } from '../components/FaqLink';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { InstructorInvitePanel } from '../components/InstructorInvitePanel';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -63,6 +64,7 @@ export function ProPlusCloudPage() {
               screen or computer.
             </p>
           </InstructionsButton>
+          <FaqLink />
         </div>
         <EditionLadder page="pro-cloud" />
         <SiteFooter />

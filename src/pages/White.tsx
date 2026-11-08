@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
 import { HomeMark } from '../components/HomeMark';
+import { FaqLink } from '../components/FaqLink';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
@@ -46,6 +47,7 @@ export function WhitePage() {
               Match names stay on this phone. Pick a saved name and belt from the scoreboard.
             </p>
           </InstructionsButton>
+          <FaqLink />
           <p className="home__soon">
             <Link className="home__text-btn" to="/buy">
               Buy Advantage White — $9.99

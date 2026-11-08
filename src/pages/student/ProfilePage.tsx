@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { beltModeOf, setBeltMode, setBirthYear } from '../../lib/beltBook';
 import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import { StudentNoPhotosSwitch } from '../../components/rosterCard/StudentNoPhotos';
@@ -30,7 +31,9 @@ export function ProfilePage() {
         <header className={marked ? 'arena-hero profile-hero profile-hero--marks' : 'arena-hero profile-hero'}>
           <div className="profile-hero__copy">
             <h1>My profile</h1>
-            <p>Tap any part of your card to fill it in. It all stays on this phone.</p>
+            <p>
+              Tap any part of your card to fill it in. It all stays on this phone. <Link to={to('/student/faq')}>FAQ</Link>
+            </p>
           </div>
           <ProfileCornerMarks
             portrait={showPhoto ? media.portrait : null}

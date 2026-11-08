@@ -18,6 +18,7 @@ const ICONS: Record<string, string> = {
   save: '<path d="M12 4v10M8 10l4 4 4-4"/><path d="M4 17h16v3H4z"/>',
   print: '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.2 2.4c-.8.3-1.2.9-1.2 1.6V14"/><circle cx="12" cy="17.5" r="0.8"/>',
 };
 
 const ICON_FOR_LABEL: Record<string, keyof typeof ICONS> = {
@@ -40,6 +41,7 @@ const ICON_FOR_LABEL: Record<string, keyof typeof ICONS> = {
   'Print self-assessment': 'print',
   Connections: 'link',
   'Backup & Print': 'save',
+  FAQ: 'help',
 };
 
 export function RowIcon({ label }: { label: string }) {

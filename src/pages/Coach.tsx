@@ -7,6 +7,7 @@ import { EditionLadder } from '../components/EditionLadder';
 import { BeltRail } from '../components/BeltRail';
 import { InviteAccept, useCurrentSeat } from '../components/SeatSessionBar';
 import { HomeMark } from '../components/HomeMark';
+import { FaqLink } from '../components/FaqLink';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
@@ -61,6 +62,7 @@ export function CoachPage() {
               screen or computer.
             </p>
           </InstructionsButton>
+          <FaqLink />
           {purchasePromptsHidden(seat) ? null : (
             <p className="home__soon">
               <Link className="home__text-btn" to={TIER_BUY_PATHS.instructor}>
