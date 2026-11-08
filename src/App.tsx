@@ -46,6 +46,7 @@ import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { StudentEditionPage } from './pages/StudentEdition';
 import { Journal2036Page } from './preview/journal2036/Journal2036Page';
 import { AssessmentRadarPreviewPage } from './preview/assessmentRadar/AssessmentRadarPreview';
+import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
 import { CoachPage } from './pages/Coach';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
@@ -758,6 +759,8 @@ export default function App() {
       <Route path="/preview/technique-tree" element={<TechniqueTreePreviewPage />} />
       {/* Public owner preview. The live working tree stays at /student/working. */}
       <Route path="/preview/personal-graph" element={<PersonalGraphPreviewPage />} />
+      {/* Isolated instructor-sheet concept. Not in edition menus, and it does not write a profile. */}
+      <Route path="/preview/instructor-profile" element={<InstructorProfilePreviewPage />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
       <Route path="/card" element={<CardPage />} />
       <Route path="/half-off" element={<HalfOffPage />} />

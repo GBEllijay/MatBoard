@@ -2776,6 +2776,84 @@ span.role-plan__mark {
   font-weight: 800;
 }
 
+/*
+ * Menu paint for the plain white hub buttons (Coach, Coaching Tools,
+ * Competition, suite, Pro hubs, Competitor Management, and the Coming soon
+ * menu). Matte navy and a logo-blue edge, same family as the student-hours
+ * preview cards. No gradient. The tatami page background stays.
+ * Existing belt rails stay on the rows that already have them.
+ * This does not restyle .btn at large, product-card CTAs, timer skins,
+ * cast, print, or the polished Student hub.
+ */
+.pro-hub,
+.competitor-hub__header,
+.competitor-hub__link,
+.home__soon-actions a.btn:not(.btn--ghost),
+.home__soon-actions button.btn:not(.btn--ghost):not(:disabled) {
+  background: #0c2344;
+  color: #f5f1e8;
+  border: 1.5px solid #004eba;
+  box-shadow: none;
+}
+
+.mode-card .pro-hub > span,
+.competitor-hub__link,
+.competitor-hub__link strong,
+.suite .competitor-hub__header,
+.suite .competitor-hub__header h2,
+.home__soon-actions a.btn:not(.btn--ghost),
+.home__soon-actions button.btn:not(.btn--ghost):not(:disabled) {
+  color: #f5f1e8;
+}
+
+.pro-hub__sub,
+.competitor-hub__link span {
+  color: #d7e6ff;
+}
+
+.pro-hub:focus-visible,
+.competitor-hub__link:focus-visible,
+.home__soon-actions .btn:focus-visible {
+  outline: 3px solid #6ea8ff;
+  outline-offset: 3px;
+}
+
+/* Same belt rails, a little wider so the cloth still reads on the navy fill. */
+.pro-hub .belt-rail,
+.competitor-hub__link .belt-rail,
+.competitor-hub__header .belt-rail,
+.home__soon-actions .btn .belt-rail {
+  --belt-rail-width: 12px;
+}
+
+.pro-hub:active,
+.competitor-hub__link:active,
+.home__soon-actions a.btn:not(.btn--ghost):active,
+.home__soon-actions button.btn:not(.btn--ghost):not(:disabled):active {
+  background: #08182f;
+}
+
+@media (hover: hover) {
+  .pro-hub:hover,
+  .competitor-hub__link:hover,
+  .home__soon-actions a.btn:not(.btn--ghost):hover,
+  .home__soon-actions button.btn:not(.btn--ghost):not(:disabled):hover {
+    background: #123056;
+    border-color: #6ea8ff;
+    color: #f5f1e8;
+  }
+
+  .mode-card .pro-hub:hover > span,
+  .competitor-hub__link:hover strong {
+    color: #f5f1e8;
+  }
+
+  .competitor-hub__link:hover span,
+  .pro-hub:hover .pro-hub__sub {
+    color: #d7e6ff;
+  }
+}
+
 .rankings__rows {
   margin: 0;
   padding-left: 1.2rem;

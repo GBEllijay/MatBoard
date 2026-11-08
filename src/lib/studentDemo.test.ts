@@ -19,7 +19,7 @@ import {
 import { ASSESSMENT_STORAGE_KEY, emptyAssessments, loadAssessments, saveAssessment, writeAssessments } from './studentAssessment.ts';
 import { STUDENT_BACKUP_STAMP_KEY, noteStudentBackupBuilt, readStudentBackupStamp } from './studentBackupStamp.ts';
 import { clearStudentMemory } from './studentBackup.ts';
-import { blankStudentReport, loadStudentReport, saveStudentReport, setStudentProfile, STUDENT_EDITION_STORAGE_KEY } from './studentEdition.ts';
+import { blankStudentReport, demoStudentPacket, loadStudentReport, saveStudentReport, setStudentProfile, STUDENT_EDITION_STORAGE_KEY } from './studentEdition.ts';
 import { setRankBelt, setRankTapeCount } from './studentRank.ts';
 
 const handoff = readFileSync(new URL('./fixtures/send-to-coach-handoff.json', import.meta.url), 'utf8');
@@ -137,7 +137,7 @@ test('a stress-test file already stored is removed unless the demo was requested
   installStudentMockGuard(existing, () => '?student=1');
   reconcileStudentStorage(existing, '?student=1');
   assert.equal(loadStudentReport(existing).profile.displayName, 'Demo Student');
-  assert.equal(loadStudentReport(existing).profile.belt, 'white');
+  assert.equal(loadStudentReport(existing).profile.belt, 'blue');
 
   resetStudentMockGuardForTests();
   const demo = memory();
@@ -154,13 +154,13 @@ test('a late stress-test write is removed, including one from another tab, and a
   storage.poke(STUDENT_FILE_STORAGE_KEY, handoff);
   reconcileStudentStorage(storage, '?student=1');
   assert.equal(loadStudentReport(storage).profile.displayName, 'Demo Student');
-  assert.equal(loadStudentReport(storage).profile.belt, 'white');
+  assert.equal(loadStudentReport(storage).profile.belt, 'blue');
 
   storage.poke(STUDENT_FILE_STORAGE_KEY, handoff);
   noteStudentStorageEvent(STUDENT_FILE_STORAGE_KEY);
   reconcileStudentStorage(storage, '?student=1');
   assert.equal(loadStudentReport(storage).profile.displayName, 'Demo Student');
-  assert.equal(loadStudentReport(storage).profile.belt, 'white');
+  assert.equal(loadStudentReport(storage).profile.belt, 'blue');
 
   resetStudentMockGuardForTests();
   const other = memory();
@@ -271,7 +271,7 @@ test('a fresh session drops the sim athlete journal, self-assessment history, an
   assert.equal(storage.getItem(ASSESSMENT_STORAGE_KEY), null);
   assert.equal(storage.getItem(STUDENT_BACKUP_STAMP_KEY), null);
   const fresh = loadStudentReport(storage);
-  assert.equal(fresh.profile.belt, 'white');
+  assert.equal(fresh.profile.belt, 'blue');
   assert.equal(fresh.profile.displayName, 'Demo Student');
   assert.equal(fresh.rank?.tapeCount, 0);
   assert.equal(fresh.competition?.tournaments.length, 0);
@@ -284,7 +284,7 @@ test('a fresh session drops the sim athlete journal, self-assessment history, an
   assert.equal(storage.getItem(STUDENT_FILE_STORAGE_KEY)?.includes('Sim Athlete') ?? false, false);
   assert.equal(storage.getItem(ASSESSMENT_STORAGE_KEY), null);
   assert.equal(readStudentBackupStamp(storage), null);
-  assert.equal(loadStudentReport(storage).profile.belt, 'white');
+  assert.equal(loadStudentReport(storage).profile.belt, 'blue');
 });
 
 test('clear forgets sim self-assessment history, including a later 10-26 entry, and the backup date', () => {
@@ -367,6 +367,16 @@ test('demo=1 still keeps the sim athlete seed', () => {
   assert.equal(loadStudentReport(storage).profile.belt, 'blue');
   assert.equal(loadStudentReport(storage).rank?.tapeCount, 3);
   assert.equal(loadAssessments(storage).entries.length, 3);
+});
+
+test('the public student demo is a fictional blue belt, not an instructor', () => {
+  const parsed = parseProgressPacket(demoStudentPacket());
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.equal(parsed.value.profile.displayName, 'Demo Student');
+  assert.equal(parsed.value.profile.gymName, 'Sample Academy');
+  assert.equal(parsed.value.profile.belt, 'blue');
+  assert.doesNotMatch(parsed.value.profile.displayName, /coach/i);
 });
 
 test('a late bypass write does not replace a journal this phone already saved', () => {

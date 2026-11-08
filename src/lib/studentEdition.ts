@@ -218,7 +218,9 @@ export function studentEditionOpen(
 }
 
 export function demoStudentPacket(): string {
-  const report = setStudentProfile(blankStudentReport(1), { displayName: 'Demo Student', gymName: 'Sample Academy' }, 1);
+  const named = setStudentProfile(blankStudentReport(1), { displayName: 'Demo Student', gymName: 'Sample Academy' }, 1);
+  // Fictional Student Edition example. Blue belt is this demo, not an instructor.
+  const report = { ...named, profile: { ...named.profile, belt: 'blue' as const } };
   const withCard = addJournalEntry(
     report,
     {
