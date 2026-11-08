@@ -1153,3 +1153,30 @@ test('mini card, open card, and edit belt share the promotion stripe count', () 
   assert.match(css, /grid-column:\s*1\s*\/\s*-1/);
   assert.match(css, /button\.clipboard__belt[\s\S]*z-index:\s*2/);
 });
+
+test('a new assessment keeps its scores and note, and Save assessment stays a submit button', () => {
+  localStorage.clear();
+  resetRoster();
+  const card = studentCard('Rio Assessment');
+  const m = mount(sheet(card));
+  click(buttons(/^Assessments/)[0]);
+  click(buttons('+ New assessment')[0]);
+  const form = document.querySelector('form.clipboard--form') as HTMLFormElement;
+  assert.ok(form);
+  const save = [...form.querySelectorAll('button')].find((node) => node.textContent?.trim() === 'Save assessment') as HTMLButtonElement;
+  assert.equal(save.type, 'submit');
+  assert.equal(save.classList.contains('btn'), true);
+  const note = form.querySelector('textarea') as HTMLTextAreaElement;
+  const selects = [...form.querySelectorAll('select')] as HTMLSelectElement[];
+  assert.equal(note.value, '');
+  assert.equal(selects.length, ASSESSMENT_AREAS.length);
+  assert.ok(selects.every((item) => item.value === '3'));
+  click(save);
+  const saved = readRosterCard(card.id).coachAssessments.at(-1);
+  assert.equal(saved?.note, '');
+  assert.equal(saved?.scores.mindset, 3);
+  assert.equal(fresh(card.id).name, 'Rio Assessment');
+  assert.equal(fresh(card.id).belt, 'Blue');
+  assert.equal(document.querySelector('form.clipboard--form'), null);
+  unmount(m);
+});

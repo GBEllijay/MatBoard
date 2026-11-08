@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AdvantageCloudHome } from '../components/AdvantageCloudHome';
 import { GymCharacterSheet } from '../components/GymCharacterSheet';
+import { InstructorSheet } from '../components/InstructorSheet';
 import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
 import { PlusCloudConduct } from '../components/PlusCloudConduct';
@@ -20,6 +21,7 @@ import {
   PRO_PLUS_CLOUD_PATH,
   consoleHubs,
 } from '../lib/productNames';
+import { ownerIdentitySheetVisible } from '../lib/ownerIdentitySheet';
 
 /**
  * Advantage Pro Plus Cloud menu. Same four hubs as Advantage Pro.
@@ -44,6 +46,9 @@ export function ProPlusCloudPage() {
         <PlayExitMark to={PRODUCTS_PATH} />
         <HomeMark to={PRODUCTS_PATH} />
         <GymCharacterSheet />
+        {ownerIdentitySheetVisible({ page: 'pro-cloud', proUnlocked: door.proUnlocked, seated: door.seated }) ? (
+          <InstructorSheet />
+        ) : null}
 
         <nav className="home__modes" aria-label={PRO_PLUS_CLOUD_NAME}>
           <BeltHeader kind="black" worn title={PRO_PLUS_CLOUD_NAME} blurb={PRO_PLUS_CLOUD_BELT_BLURB} />
