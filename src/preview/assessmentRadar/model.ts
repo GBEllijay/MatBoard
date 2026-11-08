@@ -6,6 +6,14 @@
 
 export const ASSESSMENT_RADAR_PREVIEW_PATH = '/preview/assessment-radar';
 
+/** Pressed Advantage mark. Same silhouette as the app icon, already used as a mat impression. */
+export const CENTER_MARK_ASSET = '/student/advantage-deboss-mask.png';
+
+export const CENTER_VARIANT_PATH = `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=center`;
+
+export const CENTER_VARIANT_NOTE =
+  'Comparison only. Spokes and the inner ring are removed. The outer octagon, the corner labels, and the blue scores stay. The pressed mark is the existing Advantage logo. It is not a score.';
+
 export const PREVIEW_BANNER =
   'Preview only. Not the live self-assessment. Nothing on this page is saved to a student record.';
 

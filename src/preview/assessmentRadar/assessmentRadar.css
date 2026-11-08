@@ -166,8 +166,34 @@
 
 .oct-chart {
   grid-area: chart;
+  position: relative;
   width: min(100%, 320px);
   justify-self: center;
+}
+
+.oct-variants {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.oct-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18%;
+  height: 18%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.5);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.55));
 }
 
 .oct-svg {

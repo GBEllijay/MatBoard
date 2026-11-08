@@ -233,7 +233,9 @@ test('the preview stays off the live assessment save path and reuses the chart c
   assert.match(live, /1 is early\. 5 is ready to rely on\./);
   assert.doesNotMatch(live, /assessmentRadar|oct-preview|Eight-area shape/);
   assert.match(radar, /ASSESSMENT_AREAS\.length/);
-  assert.doesNotMatch(`${page}\n${model}\n${css}`, /ASSESSMENT_STORAGE_KEY|writeAssessments|saveAssessment|localStorage/);
+  assert.doesNotMatch(`${page}\n${model}\n${css}`, /ASSESSMENT_STORAGE_KEY|writeAssessments|saveAssessment|localStorage|reportPdf/);
+  assert.match(model, /advantage-deboss-mask\.png/);
+  assert.match(css, /pointer-events:\s*none/);
   assert.doesNotMatch(`${page}\n${model}\n${css}`, /UFC|Ultimate Fighting/);
   assert.match(arena, /#2c2c2e/);
   assert.match(arena, /#0a84ff/);

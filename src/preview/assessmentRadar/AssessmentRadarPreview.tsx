@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PlayExitMark } from '../../components/PlayExitMark';
 import {
   AXES,
   CAGE_NOTE,
   CALCULATION_PROPOSAL,
+  CENTER_MARK_ASSET,
+  CENTER_VARIANT_NOTE,
   OCTAGON_CENTER,
   OPEN_DECISIONS,
   PREVIEW_BANNER,
@@ -39,10 +42,20 @@ import './assessmentRadar.css';
 const RATINGS: readonly Rating[] = [1, 2, 3, 4, 5];
 const SKILL_AXES = AXES.filter((axis) => !axis.manualOnly);
 
+export type ChartVariant = 'current' | 'center';
+
 export function AssessmentRadarPreviewPage() {
+  const [params, setParams] = useSearchParams();
+  const variant: ChartVariant = params.get('variant') === 'center' ? 'center' : 'current';
   const [model, setModel] = useState(seedPreview);
   const [mode, setMode] = useState<PreviewMode>('manual');
   const [selected, setSelected] = useState<AxisId>('guard');
+  const chooseVariant = (next: ChartVariant) => {
+    const query = new URLSearchParams(params);
+    if (next === 'center') query.set('variant', 'center');
+    else query.delete('variant');
+    setParams(query, { replace: true });
+  };
   const values = useMemo(() => shapeValues(model, mode), [model, mode]);
   const detail = useMemo(() => detailCopy(model, selected, mode), [model, selected, mode]);
   const selectedAxis = AXES.find((axis) => axis.id === selected) ?? AXES[0];
@@ -59,6 +72,28 @@ export function AssessmentRadarPreviewPage() {
             <p className="oct-kicker">Advantage</p>
             <h1>Eight-area shape</h1>
             <p className="oct-lead">Draft preview. The live check-in stays seven areas.</p>
+            <div className="oct-variants" role="group" aria-label="Chart comparison">
+              <button
+                type="button"
+                className="oct-mode"
+                aria-pressed={variant === 'current'}
+                aria-label="Current chart"
+                onClick={() => chooseVariant('current')}
+              >
+                Current chart
+                {variant === 'current' ? <span className="oct-mode__state">Showing</span> : null}
+              </button>
+              <button
+                type="button"
+                className="oct-mode"
+                aria-pressed={variant === 'center'}
+                aria-label="Center mark"
+                onClick={() => chooseVariant('center')}
+              >
+                Center mark
+                {variant === 'center' ? <span className="oct-mode__state">Showing</span> : null}
+              </button>
+            </div>
             <div className="oct-modes" role="group" aria-label="Chart mode">
               <ModeButton
                 pressed={mode === 'manual'}
@@ -98,13 +133,24 @@ export function AssessmentRadarPreviewPage() {
                 );
               })}
               <div className="oct-chart">
-                <Chart values={values} selected={selected} label={chartLabel(model, mode)} />
+                <Chart values={values} selected={selected} label={chartLabel(model, mode)} variant={variant} />
+                {variant === 'center' ? (
+                  <div
+                    className="oct-mark"
+                    aria-hidden="true"
+                    style={{
+                      maskImage: `url("${CENTER_MARK_ASSET}")`,
+                      WebkitMaskImage: `url("${CENTER_MARK_ASSET}")`,
+                    }}
+                  />
+                ) : null}
               </div>
             </div>
           </section>
           <div className="oct-copy">
             <p className="oct-note">{SHAPE_NOTE}</p>
             <p className="oct-note">{CAGE_NOTE}</p>
+            {variant === 'center' ? <p className="oct-note">{CENTER_VARIANT_NOTE}</p> : null}
             <ul className="oct-legend" aria-label="Area scores">
               {AXES.map((axis) => {
                 const text = scoreText(model, mode, axis.id);
@@ -203,7 +249,17 @@ function ModeButton({ pressed, label, onClick }: { pressed: boolean; label: stri
   );
 }
 
-function Chart({ values, selected, label }: { values: (number | null)[]; selected: AxisId; label: string }) {
+function Chart({
+  values,
+  selected,
+  label,
+  variant,
+}: {
+  values: (number | null)[];
+  selected: AxisId;
+  label: string;
+  variant: ChartVariant;
+}) {
   const closed = closedRatingPoints(values);
   const segments = ratingSegments(values);
   const dots = ratingDots(values);
@@ -211,20 +267,24 @@ function Chart({ values, selected, label }: { values: (number | null)[]; selecte
   return (
     <svg className="oct-svg" viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`} role="img" aria-label={label}>
       <polygon className="oct-grid oct-grid--outer" points={ringPoints(5)} />
-      <polygon className="oct-grid" points={ringPoints(3)} />
-      {AXES.map((axis, index) => {
-        const end = pointOnAxis(index, 5);
-        return (
-          <line
-            key={axis.id}
-            className="oct-grid"
-            x1={OCTAGON_CENTER}
-            y1={OCTAGON_CENTER}
-            x2={end.x}
-            y2={end.y}
-          />
-        );
-      })}
+      {variant === 'current' ? (
+        <>
+          <polygon className="oct-grid" points={ringPoints(3)} />
+          {AXES.map((axis, index) => {
+            const end = pointOnAxis(index, 5);
+            return (
+              <line
+                key={axis.id}
+                className="oct-grid"
+                x1={OCTAGON_CENTER}
+                y1={OCTAGON_CENTER}
+                x2={end.x}
+                y2={end.y}
+              />
+            );
+          })}
+        </>
+      ) : null}
       {closed ? <polygon className="oct-shape--closed" points={closed.map((point) => formatPoint(point)).join(' ')} /> : null}
       {segments.map((segment, index) => (
         <g key={index}>

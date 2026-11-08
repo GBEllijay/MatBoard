@@ -9,7 +9,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { AssessmentRadarPreviewPage } from './AssessmentRadarPreview.tsx';
-import { ASSESSMENT_RADAR_PREVIEW_PATH } from './model.ts';
+import { ASSESSMENT_RADAR_PREVIEW_PATH, CENTER_MARK_ASSET, CENTER_VARIANT_PATH } from './model.ts';
 
 const dom = new Window({ url: 'http://localhost/preview/assessment-radar' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -36,12 +36,12 @@ installGlobal('requestAnimationFrame', view.requestAnimationFrame.bind(view));
 installGlobal('cancelAnimationFrame', view.cancelAnimationFrame.bind(view));
 installGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
-function mount(node: ReactNode): { root: Root; host: HTMLElement } {
+function mount(node: ReactNode, entry = ASSESSMENT_RADAR_PREVIEW_PATH): { root: Root; host: HTMLElement } {
   const host = document.createElement('div');
   document.body.appendChild(host);
   const root = createRoot(host);
   act(() => {
-    root.render(<MemoryRouter initialEntries={[ASSESSMENT_RADAR_PREVIEW_PATH]}>{node}</MemoryRouter>);
+    root.render(<MemoryRouter initialEntries={[entry]}>{node}</MemoryRouter>);
   });
   return { root, host };
 }
@@ -68,6 +68,8 @@ test('axis labels stay visible, Control is not zero, and Deep half guard is a Gu
   const mounted = mount(<AssessmentRadarPreviewPage />);
   const { host } = mounted;
   assert.equal(host.querySelectorAll('.oct-label').length, 8);
+  assert.equal(host.querySelectorAll('line.oct-grid').length, 8);
+  assert.equal(host.querySelector('.oct-mark'), null);
   assert.equal(labeled(host, 'Guard axis, 5, selected').textContent?.includes('Guard'), true);
   assert.equal(labeled(host, 'Passing axis, 3').textContent?.includes('Passing'), true);
   assert.equal(labeled(host, 'Control axis, Not rated').textContent?.includes('Not rated'), true);
@@ -107,5 +109,26 @@ test('axis labels stay visible, Control is not zero, and Deep half guard is a Gu
   click(labeled(host, 'Manual Control no score'));
   assert.equal(host.querySelector('.oct-shape--closed'), null);
   assert.equal(localStorage.length, before);
+  unmount(mounted);
+});
+
+test('the center-mark comparison drops spokes and rings and keeps the outer octagon', () => {
+  const mounted = mount(<AssessmentRadarPreviewPage />, CENTER_VARIANT_PATH);
+  const { host } = mounted;
+  assert.equal(labeled(host, 'Center mark').getAttribute('aria-pressed'), 'true');
+  assert.equal(host.querySelectorAll('line.oct-grid').length, 0);
+  assert.equal(host.querySelectorAll('polygon.oct-grid:not(.oct-grid--outer)').length, 0);
+  assert.equal(host.querySelectorAll('polygon.oct-grid--outer').length, 1);
+  assert.equal(host.querySelectorAll('.oct-label').length, 8);
+  assert.ok(host.querySelector('[aria-label="Control axis, Not rated"]'));
+  const mark = host.querySelector('.oct-mark');
+  assert.ok(mark);
+  assert.equal(mark?.getAttribute('aria-hidden'), 'true');
+  assert.match(mark?.getAttribute('style') ?? '', new RegExp(CENTER_MARK_ASSET.replaceAll('/', '\\/')));
+  assert.match(host.textContent ?? '', /Spokes and the inner ring are removed/);
+  assert.match(host.textContent ?? '', /not a score/);
+  click(labeled(host, 'Current chart'));
+  assert.equal(host.querySelector('.oct-mark'), null);
+  assert.equal(host.querySelectorAll('line.oct-grid').length, 8);
   unmount(mounted);
 });
