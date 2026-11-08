@@ -124,6 +124,30 @@ test('gym awards are unique places and are not student medals', () => {
   assert.notEqual(awards.total, academySummary(fixture).competition.medals.gold + academySummary(fixture).competition.medals.silver);
 });
 
+test('full pages and 2036 menus are separate routes and do not write records', () => {
+  const app = readFileSync(new URL('../../App.tsx', import.meta.url), 'utf8');
+  for (const path of [
+    '/preview/ancestry-student',
+    '/preview/ancestry-instructor',
+    '/preview/ancestry-academy',
+    '/preview/profiles',
+    '/preview/profile-student',
+    '/preview/profile-instructor',
+    '/preview/profile-academy',
+    '/preview/2036-student',
+    '/preview/2036-instructor',
+    '/preview/2036-academy',
+  ]) {
+    assert.match(app, new RegExp(path.replace(/\//g, '\\/')));
+  }
+  const pages = readFileSync(new URL('./ProfilePages.tsx', import.meta.url), 'utf8');
+  const future = readFileSync(new URL('./Future2036.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(`${pages}\n${future}`, /localStorage|fetch\(|stripe|billing/i);
+  assert.match(future, /Not a product announcement/);
+  assert.match(pages, /OWNER_LINE/);
+  assert.match(pages, /Gym\/team awards/);
+});
+
 test('the three preview tabs use the profile names and wrap', () => {
   assert.deepEqual(
     PREVIEW_SURFACES.filter((surface) => surface.id !== 'my-profile').map((surface) => surface.title),
