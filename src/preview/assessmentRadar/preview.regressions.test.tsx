@@ -70,8 +70,9 @@ test('axis labels stay visible, Control is not zero, and Deep half guard is a Gu
   assert.equal(host.querySelectorAll('.oct-label').length, 8);
   assert.equal(host.querySelectorAll('line.oct-grid').length, 8);
   assert.equal(host.querySelector('.oct-mark'), null);
-  assert.equal(labeled(host, 'Guard axis, 5, selected').textContent?.includes('Guard'), true);
-  assert.equal(labeled(host, 'Passing axis, 3').textContent?.includes('Passing'), true);
+  assert.equal(host.querySelector('#area-first-example strong')?.textContent, 'Deep half guard');
+  assert.equal(labeled(host, 'Guard axis, 5 / 5, selected').textContent?.includes('Guard'), true);
+  assert.equal(labeled(host, 'Passing axis, 3 / 5').textContent?.includes('Passing'), true);
   assert.equal(labeled(host, 'Control axis, Not rated').textContent?.includes('Not rated'), true);
   assert.equal(host.querySelector('.oct-shape--closed'), null);
   const detail = labeled(host, 'Guard explanation');
@@ -90,22 +91,22 @@ test('axis labels stay visible, Control is not zero, and Deep half guard is a Gu
 
   click(labeled(host, 'From techniques'));
   assert.equal(labeled(host, 'From techniques').getAttribute('aria-pressed'), 'true');
-  assert.ok(host.querySelector('[aria-label="Control axis, 4.3, selected"]'));
+  assert.ok(host.querySelector('[aria-label="Control axis, 4.3 / 5, selected"]'));
   assert.ok(host.querySelector('[aria-label="Conditioning axis, Manual only"]'));
   assert.equal(host.querySelector('.oct-shape--closed'), null);
-  click(labeled(host, 'Guard axis, 3.5'));
+  click(labeled(host, 'Guard axis, 3.5 / 5'));
   assert.match(labeled(host, 'Guard explanation').textContent ?? '', /3\.5/);
   assert.match(labeled(host, 'Guard explanation').textContent ?? '', /Deep half guard/);
 
   click(labeled(host, 'Deep half guard rating 1'));
-  assert.ok(host.querySelector('[aria-label="Guard axis, 2.0, selected"]'));
+  assert.ok(host.querySelector('[aria-label="Guard axis, 2.0 / 5, selected"]'));
   click(labeled(host, 'Manual check-in'));
-  assert.ok(host.querySelector('[aria-label="Guard axis, 5, selected"]'));
+  assert.ok(host.querySelector('[aria-label="Guard axis, 5 / 5, selected"]'));
   assert.equal(labeled(host, 'Manual check-in').getAttribute('aria-pressed'), 'true');
 
   click(labeled(host, 'Manual Control rating 4'));
   assert.ok(host.querySelector('.oct-shape--closed'));
-  assert.ok(host.querySelector('[aria-label="Control axis, 4"]'));
+  assert.ok(host.querySelector('[aria-label="Control axis, 4 / 5"]'));
   click(labeled(host, 'Manual Control no score'));
   assert.equal(host.querySelector('.oct-shape--closed'), null);
   assert.equal(localStorage.length, before);
@@ -120,13 +121,15 @@ test('the sheet comparison uses the character-sheet radar and does not score a g
   assert.equal(host.querySelectorAll('line.oct-grid').length, 8);
   assert.equal(host.querySelectorAll('.oct-scale').length, 5);
   assert.equal(host.querySelectorAll('.oct-label').length, 8);
-  assert.ok(host.querySelector('[aria-label="Guard axis, 5/5, selected"]'));
+  assert.ok(host.querySelector('[aria-label="Guard axis, 5 / 5, selected"]'));
   assert.ok(host.querySelector('[aria-label="Control axis, Not rated"]'));
   assert.equal(host.querySelector('[aria-label="Control axis, 0/5"]'), null);
   assert.equal(host.querySelectorAll('.oct-dot').length, 7);
   assert.match(host.textContent ?? '', /Attribute radar/);
   assert.match(host.textContent ?? '', /1 = Developing/);
-  assert.match(host.textContent ?? '', /Eight-area shape/);
+  assert.match(host.textContent ?? '', /Assessment radar/);
+  assert.equal(host.querySelector('#area-first-example strong')?.textContent, 'Deep half guard');
+  click(labeled(host, 'Back to assessment radar'));
   click(labeled(host, 'Current chart'));
   assert.equal(host.querySelector('.oct-stage--sheet'), null);
   assert.equal(host.querySelectorAll('polygon.oct-grid').length, 2);

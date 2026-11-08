@@ -253,6 +253,10 @@
 
 .oct-figure--sheet {
   grid-template-columns: minmax(4.5rem, 0.82fr) minmax(0, 1.9fr) minmax(4.5rem, 0.82fr);
+  grid-template-areas:
+    'mindset guard passing'
+    'conditioning chart takedowns'
+    'control submissions escapes';
 }
 
 .oct-figure--sheet .oct-label {
@@ -484,8 +488,18 @@
   padding: 14px 12px 16px;
 }
 
-.oct-detail {
+.oct-detail,
+#area-panel {
   border-left: 4px solid var(--oct-blue);
+}
+
+#area-panel {
+  grid-column: 1 / -1;
+  scroll-margin-top: 12px;
+}
+
+#area-first-example {
+  scroll-margin-top: 16px;
 }
 
 .oct-detail h2,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PlayExitMark } from '../../components/PlayExitMark';
 import {
@@ -6,11 +6,14 @@ import {
   CAGE_NOTE,
   CALCULATION_PROPOSAL,
   OCTAGON_CENTER,
-  OPEN_DECISIONS,
+  PAGE_LEAD,
+  PAGE_TITLE,
   PREVIEW_BANNER,
   SAMPLE_GUARD_NAME,
   SELF_ASSESSMENT_SCALE,
   SHAPE_NOTE,
+  SHEET_AXIS_IDS,
+  categoryDestination,
   SVG_SIZE,
   TECHNIQUE_RATING_WORDS,
   cardsFor,
@@ -45,19 +48,43 @@ export type ChartVariant = 'current' | 'sheet';
 export function AssessmentRadarPreviewPage() {
   const [params, setParams] = useSearchParams();
   const variantParam = params.get('variant');
-  const variant: ChartVariant = variantParam === 'sheet' || variantParam === 'center' ? 'sheet' : 'current';
+  const variant: ChartVariant = variantParam === 'current' ? 'current' : 'sheet';
+  const areaParam = params.get('area');
+  const initialArea = AXES.some((axis) => axis.id === areaParam) ? (areaParam as AxisId) : 'guard';
   const [model, setModel] = useState(seedPreview);
   const [mode, setMode] = useState<PreviewMode>('manual');
-  const [selected, setSelected] = useState<AxisId>('guard');
+  const [selected, setSelected] = useState<AxisId>(initialArea);
   const chooseVariant = (next: ChartVariant) => {
     const query = new URLSearchParams(params);
-    if (next === 'sheet') query.set('variant', 'sheet');
+    if (next === 'current') query.set('variant', 'current');
     else query.delete('variant');
     setParams(query, { replace: true });
   };
-  const values = useMemo(() => shapeValues(model, mode), [model, mode]);
+  const chooseArea = (id: AxisId) => {
+    setSelected(id);
+    const query = new URLSearchParams(params);
+    query.set('area', id);
+    setParams(query, { replace: true });
+  };
+  const backToRadar = () => {
+    const query = new URLSearchParams(params);
+    query.delete('area');
+    setParams(query, { replace: true });
+    document.getElementById('assessment-radar')?.scrollIntoView({ block: 'start' });
+    document.getElementById('assessment-radar')?.focus();
+  };
+  const displayIds = variant === 'sheet' ? SHEET_AXIS_IDS : AXES.map((axis) => axis.id);
+  const values = useMemo(() => {
+    const scored = shapeValues(model, mode);
+    return displayIds.map((id) => scored[AXES.findIndex((axis) => axis.id === id)] ?? null);
+  }, [model, mode, variant]);
   const detail = useMemo(() => detailCopy(model, selected, mode), [model, selected, mode]);
+  const destination = useMemo(() => categoryDestination(model, selected), [model, selected]);
   const selectedAxis = AXES.find((axis) => axis.id === selected) ?? AXES[0];
+  useEffect(() => {
+    if (!areaParam) return;
+    document.getElementById('area-first-example')?.scrollIntoView({ block: 'start' });
+  }, [areaParam, model, mode]);
 
   return (
     <main className="oct-preview">
@@ -69,8 +96,8 @@ export function AssessmentRadarPreviewPage() {
         <div className="oct-layout">
           <div className="oct-read">
             <p className="oct-kicker">Advantage</p>
-            <h1>Eight-area shape</h1>
-            <p className="oct-lead">Draft preview. The live check-in stays seven areas.</p>
+            <h1>{PAGE_TITLE}</h1>
+            <p className="oct-lead">{PAGE_LEAD}</p>
             <div className="oct-variants" role="group" aria-label="Chart comparison">
               <button
                 type="button"
@@ -108,7 +135,7 @@ export function AssessmentRadarPreviewPage() {
             <p className="oct-note">{mode === 'manual' ? 'Showing the manual check-in.' : 'Showing the technique summary.'}</p>
           </div>
 
-          <section className={variant === 'sheet' ? 'oct-stage oct-stage--sheet' : 'oct-stage'} aria-label="Shape">
+          <section id="assessment-radar" className={variant === 'sheet' ? 'oct-stage oct-stage--sheet' : 'oct-stage'} aria-label="Assessment radar" tabIndex={-1}>
             {variant === 'sheet' ? (
               <div className="oct-sheet-bar">
                 <h2>Attribute radar</h2>
@@ -130,7 +157,7 @@ export function AssessmentRadarPreviewPage() {
                     aria-pressed={on}
                     aria-controls="oct-detail"
                     aria-label={`${axis.label} axis, ${text}${on ? ', selected' : ''}`}
-                    onClick={() => setSelected(axis.id)}
+                    onClick={() => chooseArea(axis.id)}
                   >
                     <span className="oct-label__name">{axis.label}</span>
                     <span className={/^\d/.test(text) ? 'oct-label__score' : 'oct-label__words'}>{text}</span>
@@ -166,7 +193,7 @@ export function AssessmentRadarPreviewPage() {
                       aria-pressed={on}
                       aria-controls="oct-detail"
                       aria-label={`${axis.label} in the score list, ${text}${on ? ', selected' : ''}`}
-                      onClick={() => setSelected(axis.id)}
+                      onClick={() => chooseArea(axis.id)}
                     >
                       <span className="oct-legend__name">
                         {axis.label}
@@ -199,6 +226,25 @@ export function AssessmentRadarPreviewPage() {
               </ul>
             ) : null}
           </section>
+          <section className="oct-detail" id="area-panel" aria-label={`${selectedAxis.label} fundamentals`} tabIndex={-1}>
+            <h2>{selectedAxis.label}</h2>
+            <button type="button" className="oct-text-btn" aria-label="Back to assessment radar" onClick={backToRadar}>
+              Back to assessment radar
+            </button>
+            <p className="oct-how">{destination.note}</p>
+            {destination.items.length ? (
+              <ol className="oct-tech-list">
+                {destination.items.map((item, index) => (
+                  <li key={item.id} id={index === 0 ? 'area-first-example' : undefined}>
+                    <strong className={item.name === SAMPLE_GUARD_NAME ? 'oct-sample' : undefined}>{item.name}</strong>
+                    <p>{item.detail}</p>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p id="area-first-example">Nothing is tagged to {selectedAxis.label}.</p>
+            )}
+          </section>
         </div>
 
         <div className="oct-editors">
@@ -209,7 +255,7 @@ export function AssessmentRadarPreviewPage() {
             onCategories={(id, categories) => setModel((current) => setTechniqueCategories(current, id, categories))}
           />
           <section className="oct-block" aria-label="Calculation proposal">
-            <h2>How a category score is proposed</h2>
+            <h2>How the summary is figured</h2>
             <p className="oct-note">{SELF_ASSESSMENT_SCALE}</p>
             <ul className="oct-proposal">
               {CALCULATION_PROPOSAL.map((line) => (
@@ -217,27 +263,22 @@ export function AssessmentRadarPreviewPage() {
               ))}
             </ul>
           </section>
-          <section className="oct-block" aria-label="Still to decide">
-            <h2>Still to decide before this is live</h2>
-            <ul className="oct-proposal">
-              {OPEN_DECISIONS.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-            <div className="oct-actions">
-              <button
-                type="button"
-                className="oct-text-btn"
-                onClick={() => {
-                  setModel(seedPreview());
-                  setMode('manual');
-                  setSelected('guard');
-                }}
-              >
-                Reset sample
-              </button>
-            </div>
-          </section>
+          <div className="oct-actions">
+            <button
+              type="button"
+              className="oct-text-btn"
+              onClick={() => {
+                setModel(seedPreview());
+                setMode('manual');
+                setSelected('guard');
+                const query = new URLSearchParams(params);
+                query.delete('area');
+                setParams(query, { replace: true });
+              }}
+            >
+              Reset sample
+            </button>
+          </div>
         </div>
       </div>
     </main>
@@ -254,7 +295,7 @@ function ModeButton({ pressed, label, onClick }: { pressed: boolean; label: stri
 }
 
 function shownScore(text: string, variant: ChartVariant): string {
-  return variant === 'sheet' && /^\d/.test(text) ? `${text}/5` : text;
+  return variant === 'sheet' && /^\d/.test(text) ? `${text} / 5` : text;
 }
 
 function Chart({

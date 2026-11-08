@@ -26,6 +26,7 @@ import {
   ratedTechniqueIds,
   ratingDots,
   ratingSegments,
+  categoryDestination,
   seedPreview,
   setLatestRating,
   setManualScore,
@@ -246,4 +247,24 @@ test('the preview stays off the live assessment save path and reuses the chart c
   for (const axis of AXES) assert.match(css, new RegExp(`data-area='${axis.id}'`));
   assert.match(css, /min-height:\s*44px/);
   assert.match(css, /orientation:\s*landscape/);
+  assert.match(page, /Assessment radar/);
+  assert.doesNotMatch(page, /Eight-area shape|Still to decide/);
+});
+
+test('a category opens only records already tagged to it, with the sample first', () => {
+  const seed = seedPreview();
+  const guard = categoryDestination(seed, 'guard');
+  assert.equal(guard.items[0]?.name, 'Deep half guard');
+  assert.equal(guard.items[0]?.source, 'sample');
+  assert.equal(guard.items.some((item) => item.id === 'pos.closed-guard'), false);
+  assert.match(guard.note, /no category named Guard/);
+  const passing = categoryDestination(seed, 'passing');
+  assert.equal(passing.items[0]?.name, 'Knee slice');
+  assert.equal(passing.items.some((item) => item.name === 'Knee slice pass'), true);
+  assert.match(passing.items.find((item) => item.name === 'Knee slice pass')?.detail ?? '', /Not a score and not a mastery mark/);
+  const conditioning = categoryDestination(seed, 'conditioning');
+  assert.equal(conditioning.items.length, 0);
+  assert.match(conditioning.note, /does not file anything under Conditioning/);
+  const escapes = categoryDestination(seed, 'escapes');
+  assert.equal(escapes.items.some((item) => item.name === 'Mount escape' && item.source === 'fundamentals'), true);
 });

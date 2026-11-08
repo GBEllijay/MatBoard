@@ -4,6 +4,8 @@
  * The live seven-area chart stays on its own module.
  */
 
+import { FUNDAMENTALS_CATALOG } from '../../lib/progress/catalog.ts';
+
 export const ASSESSMENT_RADAR_PREVIEW_PATH = '/preview/assessment-radar';
 
 /** Character-sheet comparison. `center` still opens it so the earlier comparison link stays. */
@@ -11,7 +13,7 @@ export const SHEET_VARIANT_PATH = `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=shee
 export const CENTER_VARIANT_PATH = SHEET_VARIANT_PATH;
 
 export const PREVIEW_BANNER =
-  'Preview only. Not the live self-assessment. Nothing on this page is saved to a student record.';
+  'Preview with example scores. Nothing on this page is saved to your record.';
 
 /** Self-assessment wording already on the live check-in. 1 is early. 5 is ready to rely on. */
 export const SELF_ASSESSMENT_SCALE = '1 is early. 5 is ready to rely on.';
@@ -190,22 +192,97 @@ const SEED: PreviewModel = {
 
 export const SAMPLE_GUARD_NAME = 'Deep half guard';
 
+/** Same compass order as the Student Profile and Stat Sheet attribute radar. */
+export const SHEET_AXIS_IDS = [
+  'guard',
+  'passing',
+  'takedowns',
+  'escapes',
+  'submissions',
+  'control',
+  'conditioning',
+  'mindset',
+] as const satisfies readonly AxisId[];
+
+/**
+ * Fundamentals categories that already are one assessment area.
+ * Positions, sweeps, movement, and defense are not refiled.
+ */
+const CATALOG_CATEGORY_AREA = {
+  passes: 'passing',
+  escapes: 'escapes',
+  submissions: 'submissions',
+  takedowns: 'takedowns',
+} as const satisfies Record<string, AxisId>;
+
+export type DestinationItem = {
+  id: string;
+  name: string;
+  source: 'sample' | 'fundamentals';
+  detail: string;
+};
+
+export function categoryDestination(model: PreviewModel, axisId: AxisId): {
+  items: DestinationItem[];
+  note: string;
+} {
+  const axis = axisById(axisId);
+  const samples: DestinationItem[] = model.techniques
+    .filter((row) => !axis.manualOnly && row.categories.includes(axisId as SkillAxisId))
+    .map((row) => {
+      const latest = latestCard(cardsFor(model, row.id));
+      const rating = latest ? `Latest ${latest.rating} (${TECHNIQUE_RATING_WORDS[latest.rating]}).` : 'No rating.';
+      return {
+        id: row.id,
+        name: row.name,
+        source: 'sample' as const,
+        detail: `Sample for this preview, not a saved student record. Tagged ${axis.label}. ${rating}`,
+      };
+    });
+  const fundamentals: DestinationItem[] = FUNDAMENTALS_CATALOG.categories
+    .filter((category) => CATALOG_CATEGORY_AREA[category.id as keyof typeof CATALOG_CATEGORY_AREA] === axisId)
+    .flatMap((category) =>
+      category.items.map((row) => ({
+        id: row.id,
+        name: row.name,
+        source: 'fundamentals' as const,
+        detail: `From the fundamentals list, category ${category.name}. Not a score and not a mastery mark.`,
+      })),
+    );
+  return { items: [...samples, ...fundamentals], note: destinationNote(axis, samples.length, fundamentals.length) };
+}
+
+function destinationNote(axis: AxisDefinition, samples: number, fundamentals: number): string {
+  if (axis.manualOnly) {
+    return `${axis.label} stays on your manual check-in. The fundamentals list does not file anything under ${axis.label}.`;
+  }
+  if (fundamentals === 0) {
+    return `The fundamentals list has no category named ${axis.label}. ${samples === 0 ? 'Nothing is tagged here.' : 'The rows below are samples tagged for this preview. Positions, sweeps, movement, and defense are not refiled.'}`;
+  }
+  return `The fundamentals rows are from the list category that is already ${axis.label === 'Passing' ? 'Passes' : axis.label}. A sample row is example data for this preview. Nothing here is a mastery mark.`;
+}
+
+export const PAGE_TITLE = 'Assessment radar';
+
+export const PAGE_LEAD =
+  'Eight parts of your game, from 1 to 5. 1 is early. 5 is ready to rely on. The scores here are examples.';
+
 export const SHAPE_NOTE =
-  'The outer line is a regular octagon. Each area has the same room. A 5 reaches that outer line. A lower rating sits closer to the middle, so the blue shape is uneven. A corner with no rating is left open. The line does not run to the middle, and the open corner is not a zero.';
+  'Each part has the same room on the chart. A 5 reaches the outside. A lower score sits closer to the middle. If a part has no score, that corner stays open. An open corner is not a zero.';
 
 export const CAGE_NOTE =
-  'Eight equal sides, the same kind of outline as an octagon cage. This chart has no league name and no league marks.';
+  'The outside line has eight equal sides. There is no league name and no league marks.';
 
 export const CALCULATION_PROPOSAL = [
-  'A category score is the average of the latest 1–5 rating on each technique tagged to that category.',
-  `${SELF_ASSESSMENT_SCALE} A technique journal rating uses those same numbers: ${TECHNIQUE_RATING_WORDS[1]} through ${TECHNIQUE_RATING_WORDS[5]}.`,
-  'Several journal cards for one technique count once. The latest card is the vote. Earlier cards stay as history.',
-  'A technique can be tagged to more than one category when each tag is real. Its rating is added once in each tagged category. The technique still counts once in the technique total.',
-  'A tagged technique with no rating is left out of the average. It is not a zero.',
-  'A category with no rated techniques stays not rated. The corner is left open. It is not drawn as zero.',
-  'Conditioning and Mindset stay manual. Technique ratings are not a measure of either one.',
-  'A saved 7-area check-in has no Control score. That corner stays open until a person rates Control. The preview does not invent one.',
-  'The manual check-in and the technique summary are separate. Technique edits never replace the manual scores.',
+  'A category summary is the average of the latest 1–5 rating on each example technique tagged to that category.',
+  `${SELF_ASSESSMENT_SCALE} A technique rating uses those same numbers: ${TECHNIQUE_RATING_WORDS[1]} through ${TECHNIQUE_RATING_WORDS[5]}.`,
+  'Several notes for one technique count once. The latest note is the one that counts.',
+  'A technique can belong to two categories when both are real. It still counts as one technique.',
+  'A tagged technique with no rating is left out. It is not a zero.',
+  'A category with no rated techniques stays not rated. That corner stays open.',
+  'Conditioning and Mindset stay on the manual check-in. Technique ratings are not used for them.',
+  'This example check-in has no Control score. That corner stays open.',
+  'The manual check-in and the technique summary stay separate. Editing one does not replace the other.',
 ] as const;
 
 export const OPEN_DECISIONS = [
