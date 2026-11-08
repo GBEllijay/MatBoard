@@ -166,7 +166,7 @@ export function RankPage() {
   };
 
   return (
-    <main className="student student-frame student--arena student--rank">
+    <main className="student student-frame student--arena student--rank s-group">
       <StudentMarks />
       {coachCheer ? (
         <GrandmasterCheer lines={['Congratulations, Coach!', 'The blue belt is yours.']} onDismiss={() => setCoachCheer(false)} />

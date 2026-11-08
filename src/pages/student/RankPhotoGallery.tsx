@@ -135,20 +135,6 @@ export function BeltPhotoSection({
           {alert}
         </p>
       ) : null}
-      {photos.length ? (
-        <div className="rank-photos">
-          {photos.map((image, photoIndex) => (
-            <figure key={`${image.slice(-24)}-${photoIndex}`}>
-              <button type="button" className="rank-photos__open" aria-label={`Open ${label} photo ${photoIndex + 1}`} onClick={() => show(photoIndex)}>
-                <img src={image} alt={`${label} photo ${photoIndex + 1}`} />
-              </button>
-              <button type="button" className="ink-btn ink-btn--small" aria-label={`Remove ${label} photo ${photoIndex + 1}`} onClick={() => onRemove(photoIndex)}>
-                Remove
-              </button>
-            </figure>
-          ))}
-        </div>
-      ) : null}
       {open ? (
         <GalleryDialog
           id={galleryId}

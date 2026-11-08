@@ -1,11 +1,10 @@
 /**
  * My rank and Belt progress only.
- * Same surface as Fundamentals and Self-assessment: Inter, black, grouped
- * cards, 56px targets. The stripe marks (.rank-tape) and the stripe detail
- * sheet stay on their existing rules.
+ * My rank uses the shared mat (s-group). Belt progress stays the black surface.
+ * Cards stay the dark grouped tiles. The stripe marks (.rank-tape) and the
+ * stripe detail sheet stay on their existing rules.
  */
 
-.student.student--arena.student--rank,
 .student.student--arena.student--belt {
   background: #000000;
 }
@@ -13,8 +12,15 @@
 .student.student--arena.student--rank .rank-hero,
 .student.student--arena.student--belt .belt-hero {
   padding: 18px 16px 10px;
-  background: #000000;
   box-shadow: none;
+}
+
+.student.student--arena.student--rank .rank-hero {
+  background: transparent;
+}
+
+.student.student--arena.student--belt .belt-hero {
+  background: #000000;
 }
 
 .student.student--arena.student--rank .rank-hero::after,
