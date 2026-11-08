@@ -1,7 +1,8 @@
 /**
  * Isolated preview of an eight-area assessment shape.
  * Nothing here reads or writes a student self-assessment, journal, or index.
- * The live seven-area chart stays on its own module.
+ * The live seven-area self-assessment chart stays on its own module.
+ * The profile Shape card reuses the octagon drawing and does not write a check-in.
  */
 
 import { DEFAULT_EVALUATION_OMITTED_IDS, FUNDAMENTALS_CATALOG } from '../../lib/progress/catalog.ts';
