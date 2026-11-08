@@ -1,0 +1,269 @@
+/* Isolated preview. Does not restyle live .pro-hub tiles. */
+
+.php {
+  min-height: 100dvh;
+  color: #f5f1e8;
+}
+
+.php-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(1rem + var(--safe-t, 0px)) 1.25rem calc(2rem + var(--safe-b, 0px));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+/* Pro preview only. The live Pro page keeps its logo clearance. */
+.php-pro {
+  padding-top: calc(0.5rem + var(--safe-t, 0px));
+}
+
+.php-pro .play-exit {
+  margin: 0 0 0 calc(0.15rem + var(--safe-l, 0px));
+}
+
+.php-banner {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  background: rgba(12, 35, 68, 0.72);
+  color: #d7e6ff;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.php h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 6vw, 2.2rem);
+  letter-spacing: -0.04em;
+}
+
+.php h1::after { display: none; }
+
+/* HomeMark's landscape rule places the logo in a named "brand" column. Keep this preview stacked. */
+.php .home__mark {
+  grid-area: auto;
+  text-align: center;
+  justify-self: center;
+  width: 100%;
+  margin: 0;
+}
+
+/* The Advantage word under the logo keeps its yellow line. Other preview titles do not. */
+.php .home__mark h1::after {
+  content: '';
+  display: block;
+  width: 2.75rem;
+  height: 3px;
+  margin: 0.42rem auto 0;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-2));
+}
+
+.php-kicker {
+  margin: 0;
+  color: #6ea8ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.php-note { margin: 0; color: #9aa3b5; font-size: 14px; line-height: 1.45; }
+
+.php-hubs, .php-cards { display: grid; gap: 0.75rem; }
+
+/* Cream tile, black text. Same size as the live hub button before any navy override. */
+.php-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 5.25rem;
+  padding: 1rem 1.15rem 1rem 1.5rem;
+  border-radius: 18px;
+  border: 0;
+  background: #efebe3;
+  color: #14161c;
+  font-weight: 800;
+  font-size: clamp(1.05rem, 2.7vw, 1.28rem);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  text-align: left;
+  text-decoration: none;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.php-tile .belt-rail {
+  --belt-rail-width: 8px;
+  --belt-block: 0.55rem;
+}
+
+.php-tile__copy { display: grid; gap: 4px; min-width: 0; }
+.php-tile small {
+  color: #3e4654;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+
+.php-tile:focus-visible {
+  outline: 3px solid #004eba;
+  outline-offset: 3px;
+}
+
+.php-gap {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(245, 241, 232, 0.35);
+}
+
+.php-gap h2 { margin: 0; font-size: 1rem; }
+.php-gap ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 6px; }
+.php-gap a { color: #d7e6ff; text-decoration: underline; text-underline-offset: 0.15em; }
+
+.php-jump { color: #d7e6ff; font-weight: 700; }
+
+.php-gym {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 1.5px solid #004eba;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(12, 35, 68, 0.92), rgba(6, 16, 31, 0.94));
+  color: #f5f1e8;
+}
+
+.php-gym__cap {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6ea8ff;
+}
+
+.php-gym__row { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.php-gym__row img { width: 56px; height: 56px; border-radius: 8px; background: rgba(0, 0, 0, 0.25); }
+.php-gym h2 { margin: 0; font-size: 1.25rem; letter-spacing: -0.03em; }
+.php-gym p { margin: 0; color: #d7e6ff; font-size: 14px; }
+.php-gym button {
+  justify-self: start;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #6ea8ff;
+  background: transparent;
+  color: #f5f1e8;
+  font: inherit;
+  font-weight: 800;
+}
+
+.php-cloud {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1.5px solid #004eba;
+  border-radius: 12px;
+  background: rgba(12, 35, 68, 0.72);
+}
+
+.php-cloud h2 { margin: 0; font-size: 1.05rem; }
+.php-cloud p { margin: 0; color: #d7e6ff; }
+
+.php-upload {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  border-radius: 18px;
+  background: #efebe3;
+  color: #14161c;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.php-upload h2 { margin: 0; color: #14161c; letter-spacing: -0.03em; }
+.php-upload p { margin: 0; color: #3e4654; font-weight: 650; }
+.php-upload__actions { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.php-upload button {
+  min-height: 48px;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  border: 1.5px solid #004eba;
+  background: #0c2344;
+  color: #f5f1e8;
+  font: inherit;
+  font-weight: 800;
+}
+
+.php-gym button:focus-visible,
+.php-upload button:focus-visible {
+  outline: 3px solid #6ea8ff;
+  outline-offset: 3px;
+}
+
+.php-split {
+  display: grid;
+  gap: 14px;
+}
+
+.php-connect { display: grid; gap: 10px; align-content: start; }
+.php-connect .ip-id { grid-template-columns: 1fr; }
+.php-connect h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.03em; }
+.php-example {
+  justify-self: start;
+  max-width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #004eba;
+  background: #0c2344;
+  color: #f5f1e8;
+  font: inherit;
+  font-weight: 750;
+  text-align: left;
+}
+.php-example:focus-visible { outline: 3px solid #6ea8ff; outline-offset: 3px; }
+
+.php-scope { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; color: #f5f1e8; }
+
+@media (min-width: 740px) {
+  .php-split { grid-template-columns: 1fr 1fr; align-items: start; }
+}
+
+/* Instructor concept only. Not used on the cream Pro preview. */
+.php-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 10px;
+  align-items: center;
+  min-height: 96px;
+  padding: 14px 14px 14px 16px;
+  border-radius: 16px;
+  border: 1.5px solid #004eba;
+  background: #0c2344;
+  color: #f5f1e8;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.php-card strong { display: block; font-size: 1.05rem; letter-spacing: -0.02em; }
+.php-card small { display: block; margin-top: 4px; color: #d7e6ff; font-size: 0.85rem; font-weight: 650; line-height: 1.35; }
+.php-card:focus-visible { outline: 3px solid #6ea8ff; outline-offset: 3px; }
+
+.php-mark {
+  width: 92px;
+  height: 72px;
+  border-radius: 12px;
+  background: rgba(110, 168, 255, 0.12);
+  color: #d7e6ff;
+}
+
+@media (orientation: landscape) and (min-width: 740px) {
+  .php-cards { grid-template-columns: 1fr 1fr; }
+}

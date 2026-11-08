@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
-import { BeltRail } from '../components/BeltRail';
+import { InstructorToolMark, type InstructorToolMarkName } from '../components/InstructorToolMark';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { HomeMark } from '../components/HomeMark';
 import { LicenseShareButton } from '../components/LicenseShareButton';
@@ -24,6 +24,8 @@ import {
   type LessonRevision,
 } from '../lib/lessonDrive';
 import { COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY, PRODUCTS_PATH, proConsoleEntryOpen } from '../lib/productNames';
+import { STUDENT_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
+import './instructorTools.css';
 import { previewEntryPath } from '../lib/techniqueTreePreview';
 
 export { InstructorSharePage, StudentSharePage } from '../components/LicenseSharePage';
@@ -60,6 +62,15 @@ export function CoachUnlimitedPage() {
   }, []);
 
   const tools = COACH_UNLIMITED_TOOLS.filter((tool) => coachToolVisible(tool.to, seat));
+  const marks: Record<string, InstructorToolMarkName> = {
+    [TRAINING_NOTES_LABEL]: 'plan',
+    'Daily Training Videos': 'video',
+    [TECHNIQUE_TREE_LABEL]: 'tree',
+    [STUDENT_ROSTER_LABEL]: 'roster',
+    'Record for Review': 'record',
+    Scoreboard: 'board',
+    'Round Timer': 'timer',
+  };
 
   return (
     <main className="home home--pro home--suite">
@@ -69,16 +80,16 @@ export function CoachUnlimitedPage() {
         <section className="suite instructor-hub">
           <BeltHeader kind="brown" worn title="Instructor Edition" />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
-            <div className="pro-hubs">
+            <div className="instructor-tools">
               {tools.map((tool) => (
                 <Link
                   key={tool.to}
-                  className="pro-hub"
+                  className="instructor-tool"
                   to={tool.to}
                   onClick={tool.clearBout ? () => unlinkBracketBout() : undefined}
                 >
-                  <BeltRail kind={tool.belt} stripes={'stripes' in tool ? tool.stripes : undefined} />
                   <span>{tool.title}</span>
+                  <InstructorToolMark mark={marks[tool.title] ?? 'plan'} />
                 </Link>
               ))}
             </div>

@@ -1,7 +1,15 @@
 import { appVersionHeaders } from './appCapability.ts';
 import { signRefreshProof } from './deviceProof.ts';
 import { ensureDeviceKey, devicePublicJwk } from './deviceKey.ts';
-import { acceptServerToken, bootTimeoutSignal, clearEntitlementToken, ENTITLEMENT_TOKEN_KEY, markEntitlementOffline, readDeviceId } from './entitlement.ts';
+import {
+  acceptServerToken,
+  bootTimeoutSignal,
+  clearEntitlementToken,
+  currentAccessEpoch,
+  ENTITLEMENT_TOKEN_KEY,
+  markEntitlementOffline,
+  readDeviceId,
+} from './entitlement.ts';
 
 function readStoredToken(): string {
   try {
@@ -19,6 +27,7 @@ function readStoredToken(): string {
  */
 export async function refreshEntitlement(): Promise<boolean> {
   const sent = readStoredToken();
+  const epoch = currentAccessEpoch();
   if (!sent) return false;
   const body: Record<string, unknown> = { token: sent, deviceId: readDeviceId() };
   try {
@@ -37,7 +46,7 @@ export async function refreshEntitlement(): Promise<boolean> {
       signal: bootTimeoutSignal(),
     });
     const parsed = (await response.json()) as { ok?: boolean; token?: string; revoked?: boolean };
-    if (readStoredToken() !== sent) return false;
+    if (currentAccessEpoch() !== epoch || readStoredToken() !== sent) return false;
     if (parsed.revoked) {
       clearEntitlementToken();
       return false;
@@ -46,7 +55,7 @@ export async function refreshEntitlement(): Promise<boolean> {
       markEntitlementOffline(true);
       return false;
     }
-    if (readStoredToken() !== sent) return false;
+    if (currentAccessEpoch() !== epoch || readStoredToken() !== sent) return false;
     markEntitlementOffline(false);
     return acceptServerToken(parsed.token);
   } catch {

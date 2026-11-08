@@ -145,22 +145,35 @@ export async function handleCodeRedeem(
   if (services.signingKey && doors.length) {
     const src = record.kind === 'free-white' ? 'free' : record.kind === 'owner' ? 'owner' : 'code';
     const refSalt = email ? await keyedHash(normalizeEmail(email), pepper, 'email') : deviceId;
+    const source = src === 'free' ? 'free' : src === 'owner' ? 'owner' : 'code';
     let licenseId: string = crypto.randomUUID();
     if (services.db) {
-      for (const door of doors) {
-        const recorded = await recordPurchase(services.db, {
+      const writeDoor = async (door: Door, attachTo?: string) =>
+        recordPurchase(services.db!, {
           email,
           product: PRODUCT_FOR_DOOR[door],
-          source: src === 'free' ? 'free' : src === 'owner' ? 'owner' : 'code',
+          source,
           sourceRef: `code:${record.id}:${refSalt}:${door}`,
           sessionId: `code:${record.id}:${refSalt}`,
           pepper,
           now: now(),
           endsAt: expiresAt,
           status: 'active',
+          ...(attachTo ? { licenseId: attachTo } : {}),
         });
-        licenseId = recorded.licenseId;
+      // Pro is written first so every new door can share that license.
+      // An existing door row keeps its own license. The token uses the Pro
+      // license when this code includes Pro, so Cloud sees that grant.
+      let shared = '';
+      if (doors.includes('pro')) {
+        shared = (await writeDoor('pro')).licenseId;
       }
+      for (const door of doors) {
+        if (door === 'pro') continue;
+        const recorded = await writeDoor(door, shared || undefined);
+        if (!shared) shared = recorded.licenseId;
+      }
+      if (shared) licenseId = shared;
     }
     token = await issueToken(
       services.signingKey,

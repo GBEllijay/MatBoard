@@ -14,6 +14,7 @@ import {
 import { bracketPhotoFromFile, deleteBracketPhoto, loadBracketPhoto, writeBracketPhoto } from '../../lib/bracketPhoto';
 import { forgetPodiumPhotos } from '../../lib/podiumPhotos';
 import { PodiumPhotoRow } from './PodiumPhotos';
+import { SELF_REPORTED_NOTE } from '../../lib/progressVerification';
 import { todayIso } from '../../lib/studentEdition';
 import { isIsoDate } from '../../lib/studentTools';
 import { LeatherHeader, StudentMarks, useStudentFile } from './chrome';
@@ -54,7 +55,7 @@ export function ResultsPage() {
       <div className="student-paper">
         <div className="student-sheet">
           <p className="student-quiet">
-            Record matches and a personal bracket. This is not a live scoreboard. A bracket photo stays on this phone and is not in the file you send. Podium photos stay on this phone too. They are not sent to your coach.
+            Record matches and a personal bracket. This is not a live scoreboard. A bracket photo stays on this phone and is not in the file you send. Podium photos stay on this phone too. They are not sent to your coach. {SELF_REPORTED_NOTE} A coach update you accept is the verified copy. Saving does not need a coach.
           </p>
           <form
             className="ink comp-form"

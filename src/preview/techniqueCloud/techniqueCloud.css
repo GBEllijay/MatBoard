@@ -1,0 +1,22 @@
+.tcloud { min-height: 100dvh; background: #07111f; color: #f5f1e8; }
+.tcloud-shell { max-width: 420px; margin: 0 auto; padding: 1rem; display: grid; gap: 12px; }
+.tcloud-banner, .tcloud-note, .tcloud-quiet { margin: 0; color: #9aa3b5; font-size: 14px; line-height: 1.4; }
+.tcloud-banner { padding: 10px 12px; border: 1px solid rgba(110, 168, 255, 0.45); border-radius: 12px; background: #13284a; color: #d7e6ff; }
+.tcloud-kicker { margin: 0; color: #6ea8ff; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+.tcloud h1, .tcloud h2, .tcloud h3 { margin: 0; }
+.tcloud h1 { font-size: 1.8rem; }
+.tcloud-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tcloud-btn { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(110, 168, 255, 0.7); background: transparent; color: inherit; font: inherit; font-weight: 700; }
+.tcloud-btn[aria-pressed='true'] { background: #004eba; }
+.tcloud-file { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.tcloud-board { position: relative; min-height: 1420px; overflow: auto; border: 1.5px solid #004eba; border-radius: 12px; background: #0c1a30; touch-action: none; }
+.tcloud-links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.tcloud-links line { stroke: #6ea8ff; stroke-width: 2; }
+.tcloud-node { position: absolute; z-index: 1; width: 148px; min-height: 44px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(110, 168, 255, 0.7); background: #12203c; color: inherit; font: inherit; text-align: left; }
+.tcloud-node[aria-pressed='true'] { outline: 2px solid #6ea8ff; }
+.tcloud-detail, .tcloud-lane, .tcloud-frame { display: grid; gap: 6px; padding: 12px; border: 1.5px solid #004eba; border-radius: 12px; background: #0c1a30; }
+.tcloud-ruler { position: relative; height: 28px; border-radius: 8px; background: #0e1726; }
+.tcloud-ruler i { position: absolute; top: 0; width: 2px; height: 100%; background: #6ea8ff; }
+.tcloud-frame { position: relative; min-height: 180px; touch-action: none; }
+.tcloud-frame svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tcloud-frame line { stroke: #6ea8ff; stroke-width: 0.015; }

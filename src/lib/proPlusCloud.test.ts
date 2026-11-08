@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import type { Door, EntitlementClaims } from './entitlementToken.ts';
 import { applyOwnerTestGrant, clearOwnerTestGrant } from './ownerTestGrant.ts';
+import { inviteBlockedAsSeat, ownerPassOutranksSeat } from './ownerPassRank.ts';
 import { proPlusCloudDoorOpen, proPlusCloudStripePro, proPlusCloudUnlocked, type ProPlusCloudPass } from './proPlusCloud.ts';
 
 if (typeof globalThis.sessionStorage === 'undefined') {
@@ -94,6 +95,12 @@ test('Pro Plus Cloud opens for the owner test pass and an alpha-pro code only', 
   assert.equal(proPlusCloudDoorOpen(pass({ src: 'code', tier: 'alpha', grants: ['white', 'student', 'media'] })), false);
   assert.equal(proPlusCloudDoorOpen(pass({ src: 'free', tier: 'white', grants: ['white'] })), false);
   assert.equal(proPlusCloudDoorOpen(null), false);
+  const owner = pass({ src: 'code', tier: 'alpha', grants: proGrants }) as EntitlementClaims;
+  const seatPass = pass({ src: 'seat', tier: 'seat', grants: [] }) as EntitlementClaims;
+  assert.equal(ownerPassOutranksSeat(owner), true);
+  assert.equal(inviteBlockedAsSeat({ id: 'seat-1' }, owner), false);
+  assert.equal(inviteBlockedAsSeat({ id: 'seat-1' }, seatPass), true);
+  assert.equal(inviteBlockedAsSeat(null, owner), false);
   clearOwnerTestGrant();
 });
 
@@ -114,7 +121,7 @@ test('the cloud gate does not read a Pro unlock as the whole check', () => {
 });
 
 test('Pro Plus Cloud page is the head instructor home', () => {
-  assert.match(page, /<main className="home home--pro"/);
+  assert.match(page, /<main className="home home--pro home--pro-menu"/);
   assert.match(page, /<PlayExitMark to=\{PRODUCTS_PATH\} \/>/);
   assert.match(page, /<HomeMark to=\{PRODUCTS_PATH\} \/>/);
   assert.match(page, /<PlusCloudConduct \/>/);
@@ -161,17 +168,26 @@ test('the products page keeps Pro and Pro + Cloud as separate open links', () =>
   assert.doesNotMatch(home, /Continue to checkout/);
 });
 
-test('Pro and Pro + Cloud both show the academy profile under the logo and above the belt', () => {
+test('Pro and Pro + Cloud show the academy profile under the belt', () => {
   const sheetAt = page.indexOf('<GymCharacterSheet />');
   const beltAt = page.indexOf('<BeltHeader');
-  assert.ok(sheetAt > -1 && beltAt > sheetAt);
+  assert.ok(beltAt > -1 && sheetAt > beltAt);
+  assert.match(page, /home--pro-menu/);
   assert.match(page, /<HomeMark to=\{PRODUCTS_PATH\} \/>/);
   assert.match(page, /<PlayExitMark to=\{PRODUCTS_PATH\} \/>/);
   assert.doesNotMatch(page, /Academy profile/);
   assert.match(pro, /<GymCharacterSheet \/>/);
   const proSheet = pro.indexOf('<GymCharacterSheet />');
   const proBelt = pro.indexOf('<BeltHeader');
-  assert.ok(proSheet > -1 && proBelt > proSheet);
+  const proWhite = pro.indexOf('data-pro-entry="white"');
+  const proStudent = pro.indexOf('data-pro-entry="student"');
+  const proHubs = pro.indexOf('<ProToolboxCard');
+  assert.ok(proBelt > -1 && proSheet > proBelt);
+  assert.ok(proWhite > proSheet && proStudent > proWhite && proHubs > proStudent);
+  assert.match(pro, /to="\/white"/);
+  assert.match(pro, /to="\/student"/);
+  assert.match(pro, /home--pro-menu/);
+  assert.doesNotMatch(pro, /preview\/white-hub|preview\/pro-home/);
   assert.match(pro, /cloudConsole \? <PlayExitMark to=\{PRO_PLUS_CLOUD_PATH\} \/> : null/);
   assert.match(pro, /<HomeMark to=\{PRODUCTS_PATH\} \/>/);
   assert.match(pro, /cloudConsole && !seat \? <AdvantageCloudHome \/> : null/);

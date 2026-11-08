@@ -4,6 +4,7 @@
  * Google Drive, OneDrive, and this phone stay the default until a coach picks Cloud.
  */
 
+import { cloudPathScope } from './cloudDataOwnership.ts';
 import { lessonMediaPath, lessonWeekId, routeUpload, isCalendarDateKey, type GymActor } from './gymTree.ts';
 
 /** Same storage key as src/lib/entitlement.ts. Kept here so the server handler does not import the browser entitlement module. */
@@ -112,6 +113,14 @@ export function claimsOpenPlusCloud(claims: {
  */
 export function grantRowOpensPlusCloud(row: { product: string; source: string }): boolean {
   return (row.source === 'code' || row.source === 'owner') && row.product === 'advantage-pro';
+}
+
+/**
+ * Cloud recorded for an owner unlock. Same product names as the paid add-on.
+ * There is no Stripe subscription on this row.
+ */
+export function ownerCloudGrantOpen(row: { product: string; source: string }): boolean {
+  return row.source === 'owner' && (row.product === 'advantage-cloud-pro' || row.product === 'advantage-cloud-media' || row.product === 'advantage-cloud-coach');
 }
 
 /**
@@ -252,6 +261,8 @@ export function cloudObjectKey(licenseId: string, relativePath: string): string 
   ) {
     return null;
   }
+  // Gym media upload is academy material only. A shared copy uses the inbox.
+  if (cloudPathScope(relativePath) !== 'academy') return null;
   return `groups/${licenseId}/${relativePath}`;
 }
 

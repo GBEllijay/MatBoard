@@ -45,7 +45,13 @@ import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { StudentEditionPage } from './pages/StudentEdition';
 import { Journal2036Page } from './preview/journal2036/Journal2036Page';
+import { AssessmentRadarPreviewPage } from './preview/assessmentRadar/AssessmentRadarPreview';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
+import { ConnectCoachPreviewPage } from './preview/proHome/ConnectCoachPreview';
+import { InstructorCardsPreviewPage } from './preview/proHome/InstructorCardsPreview';
+import { ProHomePreviewPage } from './preview/proHome/ProHomePreview';
+import { MediaMenuPreviewPage } from './preview/proHome/MediaMenuPreview';
+import { WhiteHubPreviewPage } from './preview/proHome/WhiteHubPreview';
 import { AncestryAcademyPreview, AncestryInstructorPreview, AncestryStudentPreview } from './preview/ancestryScope/AncestryScopePreview';
 import { AcademyFullPage, InstructorFullPage, ProfileHubPage, StudentFullPage } from './preview/ancestryScope/ProfilePages';
 import { Future2036Page } from './preview/ancestryScope/Future2036';
@@ -65,6 +71,7 @@ import { HomePage } from './pages/Home';
 import { ProPlusCloudPage } from './pages/ProPlusCloud';
 import { StorefrontPage } from './pages/Storefront';
 import { FaqPage } from './pages/Faq';
+import { CompactLineageCard, ExpandedLineageLine } from './preview/ownerLineage/OwnerLineageViews';
 import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
@@ -84,6 +91,8 @@ import {
 import { TechniqueTreePage } from './pages/TechniqueTree';
 import { PersonalGraphPreviewPage } from './pages/PersonalGraphPreview';
 import { TechniqueTreePreviewPage } from './pages/TechniqueTreePreview';
+import { TechniqueCloudPreview } from './preview/techniqueCloud/TechniqueCloudPreview';
+import { VideoLibraryPreview } from './preview/techniqueCloud/VideoLibraryPreview';
 import { TechniquesPage } from './pages/Techniques';
 import { TermsPage } from './pages/Terms';
 import { RankingsPage } from './pages/Rankings';
@@ -757,15 +766,30 @@ export default function App() {
       />
       <Route path="/preview/journal-2036" element={<Journal2036Page />} />
       {/* Owner previews. Direct links only. They do not write a student record. */}
+      <Route path="/preview/assessment-radar" element={<AssessmentRadarPreviewPage />} />
       <Route path="/preview/student-ancestry" element={<StudentAncestryPreview />} />
       <Route path="/preview/student-hours" element={<StudentHoursPreview />} />
       <Route path="/student/*" element={<StudentEditionPage />} />
       {/* Public owner preview. The live Technique Tree stays at /technique-tree. */}
       <Route path="/preview/technique-tree" element={<TechniqueTreePreviewPage />} />
+      <Route path="/preview/technique-cloud" element={<TechniqueCloudPreview />} />
+      <Route path="/preview/video-library" element={<VideoLibraryPreview />} />
       {/* Public owner preview. The live working tree stays at /student/working. */}
       <Route path="/preview/personal-graph" element={<PersonalGraphPreviewPage />} />
+      <Route path="/preview/lineage-card" element={<CompactLineageCard />} />
+      <Route path="/preview/lineage-line" element={<ExpandedLineageLine />} />
       {/* Isolated instructor-sheet concept. Not in edition menus, and it does not write a profile. */}
       <Route path="/preview/instructor-profile" element={<InstructorProfilePreviewPage />} />
+      {/* Isolated Pro hub preview. Live /pro is unchanged. */}
+      <Route path="/preview/pro-home" element={<ProHomePreviewPage />} />
+      {/* Isolated White hub. Live /white and /match stay on their current paths. */}
+      <Route path="/preview/white-hub" element={<WhiteHubPreviewPage />} />
+      {/* Isolated Media menu concept. Live /media keeps its purple rails. */}
+      <Route path="/preview/media-edition" element={<MediaMenuPreviewPage />} />
+      {/* Isolated Instructor card concept. Live /coach and /coach-unlimited are unchanged. */}
+      <Route path="/preview/instructor-cards" element={<InstructorCardsPreviewPage />} />
+      {/* Isolated coach-student pair. Not Connect to a gym, and it writes nothing. */}
+      <Route path="/preview/connect-coach" element={<ConnectCoachPreviewPage />} />
       {/* Example scopes only. Not in edition menus, and nothing here is saved. */}
       <Route path="/preview/ancestry-student" element={<AncestryStudentPreview />} />
       <Route path="/preview/ancestry-instructor" element={<AncestryInstructorPreview />} />

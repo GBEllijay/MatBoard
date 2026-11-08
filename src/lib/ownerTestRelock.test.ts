@@ -69,7 +69,7 @@ async function ownerTestResponse(secret: string | null, tier: 'all' | 'pro', gra
   return {
     ok: true,
     grants,
-    expiresAt: new Date(NOW.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: '2099-01-01T00:00:00.000Z',
     source: 'owner-test',
     tier,
     ...(token ? { token, deviceId: 'dev' } : { degraded: true }),
