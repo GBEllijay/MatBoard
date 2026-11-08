@@ -1,8 +1,14 @@
 export type InstructorToolMarkName = 'plan' | 'video' | 'tree' | 'roster' | 'record' | 'board' | 'timer';
 
-/** Approved Instructor tool drawings. No belt rail. */
-export function InstructorToolMark({ mark }: { mark: InstructorToolMarkName }) {
-  const common = { className: 'instructor-tool__mark', viewBox: '0 0 92 72', 'aria-hidden': true as const };
+/** Approved Instructor tool drawings. No belt rail. The drawing stays inside the button. */
+export function InstructorToolMark({ mark, slot = 'tool' }: { mark: InstructorToolMarkName; slot?: 'tool' | 'pill' }) {
+  const common = {
+    className: slot === 'pill' ? 'instructor-tool__mark instructor-tool__mark--pill' : 'instructor-tool__mark',
+    viewBox: '0 0 92 72',
+    width: slot === 'pill' ? 40 : 64,
+    height: slot === 'pill' ? 32 : 50,
+    'aria-hidden': true as const,
+  };
   if (mark === 'plan') {
     return (
       <svg {...common}>
@@ -32,10 +38,13 @@ export function InstructorToolMark({ mark }: { mark: InstructorToolMarkName }) {
   if (mark === 'roster') {
     return (
       <svg {...common}>
-        <circle cx="36" cy="26" r="8" fill="#f4f1ea" />
-        <path d="M20 54c2-10 10-14 16-14s14 4 16 14" fill="#f4f1ea" />
-        <circle cx="58" cy="28" r="6" fill="#6ea8ff" />
-        <path d="M48 54c1-8 6-11 10-11s9 3 10 11" fill="#6ea8ff" />
+        {/* Open index-card box with cards coming out. Not people, a clipboard, or a closed box. */}
+        <path d="M18 46 L26 30 H66 L74 46 Z" fill="#1a3d66" stroke="#6ea8ff" strokeWidth="2" />
+        <rect x="38" y="10" width="24" height="26" rx="2" fill="#9ec0ff" />
+        <rect x="32" y="14" width="28" height="28" rx="2" fill="#f4f1ea" stroke="#14161c" strokeWidth="1.5" />
+        <rect x="26" y="20" width="34" height="30" rx="2" fill="#f4f1ea" stroke="#14161c" strokeWidth="1.5" />
+        <path d="M32 30h22M32 36h16M32 42h20" stroke="#14161c" strokeWidth="1.6" />
+        <path d="M16 46 H76 L70 66 H22 Z" fill="#102033" stroke="#6ea8ff" strokeWidth="2" />
       </svg>
     );
   }

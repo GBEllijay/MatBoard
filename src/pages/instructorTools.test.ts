@@ -40,6 +40,19 @@ test('Instructor tools keep the live routes and drop the left belt', () => {
   assert.match(marks, />White</);
   assert.match(marks, /fill="#f4f1ea" \/>\s*<path d="M30 24h32/);
   assert.doesNotMatch(marks, /M46 24v13l8 5/);
+  assert.match(marks, /width: slot === 'pill' \? 40 : 64/);
+  assert.match(marks, /Open index-card box/);
+  assert.doesNotMatch(marks, /M20 54c2-10/);
+  const bout = readFileSync(new URL('../components/LiveBoutCard.tsx', import.meta.url), 'utf8');
+  const rounds = readFileSync(new URL('../components/RoundsCard.tsx', import.meta.url), 'utf8');
+  assert.match(bout, /to="\/match"/);
+  assert.match(bout, /to="\/match\/control"/);
+  assert.match(bout, /mark="board" slot="pill"/);
+  assert.doesNotMatch(bout, /white-board/);
+  assert.match(rounds, /to="\/training"/);
+  assert.match(rounds, /to="\/training\/control"/);
+  assert.match(rounds, /mark="timer" slot="pill"/);
+  assert.doesNotMatch(rounds, /white-timer/);
 });
 
 test('sign-out and the Pro menu labels stay in place', () => {

@@ -6,13 +6,14 @@
 }
 
 .instructor-tool {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px;
-  gap: 10px;
+  display: flex;
   align-items: center;
-  min-height: 96px;
-  padding: 14px 14px 14px 16px;
-  border-radius: 16px;
+  gap: 12px;
+  width: 100%;
+  min-height: 5.25rem;
+  padding: 0.85rem 1.05rem;
+  overflow: hidden;
+  border-radius: 18px;
   border: 1.5px solid #004eba;
   background: #0c2344;
   color: #f5f1e8;
@@ -25,16 +26,37 @@
   box-shadow: none;
 }
 
+.instructor-tool > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #f5f1e8;
+  font-size: inherit;
+  font-weight: 800;
+}
+
 .instructor-tool:focus-visible {
   outline: 3px solid #6ea8ff;
   outline-offset: 3px;
 }
 
 .instructor-tool__mark {
-  width: 92px;
-  height: 72px;
-  border-radius: 12px;
+  display: block;
+  width: 64px;
+  height: 50px;
+  max-width: 64px;
+  max-height: 50px;
+  flex: 0 0 64px;
+  border-radius: 8px;
   background: rgba(110, 168, 255, 0.12);
+}
+
+.instructor-tool__mark--pill {
+  width: 40px;
+  height: 32px;
+  max-width: 40px;
+  max-height: 32px;
+  flex: 0 0 40px;
+  background: transparent;
 }
 
 @media (orientation: landscape) and (min-width: 740px) {
