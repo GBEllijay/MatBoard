@@ -135,6 +135,21 @@ test('example relief, list selection, curved toggle, and back do not write stora
   assert.match(host.textContent ?? '', /no row for this move/);
   assert.equal(snapshot(), before);
   act(() => {
+    labeled(host, 'Example comparison').click();
+  });
+  assert.equal(host.querySelector('[data-comparison]')?.getAttribute('data-comparison'), 'on');
+  assert.match(host.textContent ?? '', /not a prediction/i);
+  assert.match(host.textContent ?? '', /Example self is higher/);
+  act(() => {
+    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+  });
+  assert.match(host.textContent ?? '', /sweep\.scissor/);
+  act(() => {
+    labeled(host, 'Scissor sweep').click();
+  });
+  assert.match(host.textContent ?? '', /does not connect one Sweeps move to another/);
+  assert.equal(snapshot(), before);
+  act(() => {
     mounted.root.unmount();
   });
 });

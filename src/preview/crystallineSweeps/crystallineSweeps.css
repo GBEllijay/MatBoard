@@ -147,7 +147,43 @@
   margin-top: 12px;
 }
 
-.topo-reset {
+.overlay-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.overlay-self,
+.overlay-opponent {
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.overlay-self {
+  border: 2px solid #76eaff;
+  color: #b7f4ff;
+}
+
+.overlay-opponent {
+  border: 2px dashed #ffb05a;
+  color: #ffd7a8;
+}
+
+.overlay-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 8px 0 14px;
+}
+
+.overlay-table th,
+.overlay-table td {
+  border-bottom: 1px solid #1d4d60;
+  text-align: left;
+  padding: 6px 4px;
+}
   background: #eef2f8;
   color: #0e1726;
 }

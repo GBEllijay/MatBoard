@@ -4,7 +4,13 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ReliefScore } from './geometry.ts';
-import { TOPO_REVISION, topoWords, type TopoModel, type Vec } from './topo.ts';
+import { TOPO_LEVEL, TOPO_REVISION, topoWords, type TopoModel, type Vec } from './topo.ts';
+import {
+  EXAMPLE_OPPONENT_FACTORS,
+  EXAMPLE_OPPONENT_SWEEPS,
+  EXAMPLE_SELF_FACTORS,
+  EXAMPLE_SELF_SWEEPS,
+} from './overlay.ts';
 
 export type TopoStyle = 'pyramid' | 'curved';
 
@@ -13,6 +19,8 @@ type Props = {
   style: TopoStyle;
   focus: number;
   selected: number;
+  comparison: boolean;
+  links: readonly string[];
   onFocus: (index: number) => void;
   onSelect: (index: number) => void;
 };
@@ -26,7 +34,7 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, onFocus, onSelect }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, links, onFocus, onSelect }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
@@ -48,11 +56,16 @@ export function TopoStage({ model, style, focus, selected, onFocus, onSelect }: 
     pinch: null as null | { d: number; z: number },
     pointers: new Map<number, [number, number]>(),
     projected: [] as Proj[],
+    faceHits: [] as { faceIndex: number; front: boolean; z: number; screen: [number, number][] }[],
+    comparison: false,
+    links: [] as string[],
   });
   view.current.paused = paused;
   view.current.focus = focus;
   view.current.selected = selected;
   view.current.style = style;
+  view.current.comparison = comparison;
+  view.current.links = [...links];
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -134,8 +147,95 @@ export function TopoStage({ model, style, focus, selected, onFocus, onSelect }: 
       const lightLength = Math.hypot(...light) || 1;
       const lit = light.map((value) => value / lightLength) as Vec;
       const projected: Proj[] = [];
-      const polys: { index: number; points: [number, number][]; z: number; light: number; front: boolean; shade: number }[] = [];
-      model.tiles.forEach((tile, index) => {
+      const polys: { index: number; points: [number, number][]; z: number; light: number; front: boolean; shade: number; layer: 'base' | 'self' | 'opponent' }[] = [];
+      const comparing = state.comparison;
+      const sweepsOpen = comparing && state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps';
+      state.faceHits = [];
+      const outward = (a: Vec, b: Vec, c: Vec): Vec => {
+        const mid: Vec = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
+        const length = Math.hypot(...mid) || 1;
+        return mid.map((value) => value / length) as Vec;
+      };
+      const raised = (mid: Vec, axis: Vec, score: number): Vec => {
+        const offset = TOPO_LEVEL[score as 1 | 2 | 3 | 4 | 5];
+        return mid.map((value, index) => value + axis[index] * offset) as Vec;
+      };
+      const pushLayer = (index: number, corners: [Vec, Vec, Vec], apex: Vec, layer: 'self' | 'opponent') => {
+        const [a, b, c] = corners.map(rot);
+        const tip = rot(apex);
+        const center: Vec = [0, 1, 2].map((axis) => (a[axis] + b[axis] + c[axis]) / 3) as Vec;
+        const faceNormal = normal(a, b, c);
+        const toward: Vec = [-center[0], -center[1], 5.5 - center[2]];
+        const shade =
+          (faceNormal[0] * toward[0] + faceNormal[1] * toward[1] + faceNormal[2] * toward[2]) /
+          ((Math.hypot(...faceNormal) || 1) * (Math.hypot(...toward) || 1));
+        (
+          [
+            [a, b],
+            [b, c],
+            [c, a],
+          ] as [Vec, Vec][]
+        ).forEach(([p, q]) => {
+          const n = normal(p, q, tip);
+          const length = Math.hypot(...n) || 1;
+          polys.push({
+            index,
+            points: [p, q, tip].map(screen),
+            z: (p[2] + q[2] + tip[2]) / 3,
+            light: Math.abs(n[0] * lit[0] + n[1] * lit[1] + n[2] * lit[2]) / length,
+            front: shade > 0.02,
+            shade,
+            layer,
+          });
+        });
+      };
+      if (comparing) {
+        model.faceCorners.forEach((corners, faceIndex) => {
+          const face = model.faces[faceIndex];
+          if (sweepsOpen && face.id === 'sweeps') return;
+          const [a, b, c] = corners.map((index) => model.vertices[index]);
+          const axis = outward(a, b, c);
+          const mid: Vec = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
+          pushLayer(-1, [a, b, c], raised(mid, axis, EXAMPLE_SELF_FACTORS[face.id]), 'self');
+          pushLayer(-1, [a, b, c], raised(mid, axis, EXAMPLE_OPPONENT_FACTORS[face.id]), 'opponent');
+          const rotated = [a, b, c].map(rot);
+          const center: Vec = [0, 1, 2].map((part) => (rotated[0][part] + rotated[1][part] + rotated[2][part]) / 3) as Vec;
+          const nrm = normal(rotated[0], rotated[1], rotated[2]);
+          const toward: Vec = [-center[0], -center[1], 5.5 - center[2]];
+          const shade =
+            (nrm[0] * toward[0] + nrm[1] * toward[1] + nrm[2] * toward[2]) /
+            ((Math.hypot(...nrm) || 1) * (Math.hypot(...toward) || 1));
+          state.faceHits.push({ faceIndex, front: shade > 0.02, z: center[2], screen: rotated.map(screen) });
+        });
+        if (sweepsOpen) {
+          for (const tile of model.tiles) {
+            if (tile.faceId !== 'sweeps' || !tile.move) continue;
+            const corners = tile.tri.map((corner) => corner.p) as [Vec, Vec, Vec];
+            const [a, b, c] = model.faceCorners[tile.faceIndex].map((index) => model.vertices[index]);
+            const axis = outward(a, b, c);
+            const mid: Vec = [
+              (corners[0][0] + corners[1][0] + corners[2][0]) / 3,
+              (corners[0][1] + corners[1][1] + corners[2][1]) / 3,
+              (corners[0][2] + corners[1][2] + corners[2][2]) / 3,
+            ];
+            const self = EXAMPLE_SELF_SWEEPS[tile.move.id as keyof typeof EXAMPLE_SELF_SWEEPS];
+            const opponent = EXAMPLE_OPPONENT_SWEEPS[tile.move.id as keyof typeof EXAMPLE_OPPONENT_SWEEPS];
+            if (self) pushLayer(tile.index, corners, raised(mid, axis, self), 'self');
+            if (opponent) pushLayer(tile.index, corners, raised(mid, axis, opponent), 'opponent');
+            const rotated = corners.map(rot);
+            const center: Vec = [0, 1, 2].map((axis) => (rotated[0][axis] + rotated[1][axis] + rotated[2][axis]) / 3) as Vec;
+            projected.push({
+              index: tile.index,
+              front: true,
+              shade: 1,
+              z: center[2],
+              screen: rotated.map(screen),
+              center: screen(center),
+            });
+          }
+        }
+      }
+      if (!comparing) model.tiles.forEach((tile, index) => {
         const [a, b, c] = tile.tri.map((corner) => rot(corner.d));
         const center: Vec = [0, 1, 2].map((axis) => (a[axis] + b[axis] + c[axis]) / 3) as Vec;
         const faceNormal = normal(a, b, c);
@@ -171,21 +271,25 @@ export function TopoStage({ model, style, focus, selected, onFocus, onSelect }: 
               light: amount,
               front: item.front,
               shade,
+              layer: 'base',
             });
           });
         } else {
-          polys.push({ index, points: item.screen, z: item.z, light: 0.5 + 0.5 * Math.max(0, shade), front: item.front, shade });
+          polys.push({ index, points: item.screen, z: item.z, light: 0.5 + 0.5 * Math.max(0, shade), front: item.front, shade, layer: 'base' });
         }
       });
       state.projected = projected;
       context.clearRect(0, 0, state.width, state.height);
       polys.sort((a, b) => a.z - b.z);
       for (const poly of polys) {
-        const tile = model.tiles[poly.index];
-        const curved = state.style === 'curved' && tile.apex && tile.offset !== 0 && poly.points.length === 3;
+        const tile = poly.index >= 0 ? model.tiles[poly.index] : undefined;
+        const bow =
+          state.style === 'curved' &&
+          poly.points.length === 3 &&
+          (poly.layer === 'self' || poly.layer === 'opponent' || (poly.layer === 'base' && Boolean(tile?.apex) && tile?.offset !== 0));
         context.beginPath();
         context.moveTo(poly.points[0][0], poly.points[0][1]);
-        if (curved) {
+        if (bow) {
           const [p, q, apex] = poly.points;
           const face = [(p[0] + q[0] + apex[0]) / 3, (p[1] + q[1] + apex[1]) / 3];
           const pull = (from: [number, number], to: [number, number]): [number, number] => {
@@ -202,31 +306,44 @@ export function TopoStage({ model, style, focus, selected, onFocus, onSelect }: 
           context.lineTo(poly.points[2][0], poly.points[2][1]);
         }
         context.closePath();
-        const chosen = poly.index === state.selected;
-        const focused = tile.faceIndex === state.focus;
+        const chosen = tile != null && poly.index === state.selected;
+        const focused = tile != null && tile.faceIndex === state.focus;
+        const k = 0.2 + 0.8 * poly.light;
         let fill: string;
-        if (!poly.front) fill = 'rgba(24,114,160,.05)';
-        else if (!model.faces[tile.faceIndex]?.moves.length) fill = `rgba(70,80,100,${0.25 + 0.3 * poly.shade})`;
+        if (poly.layer === 'opponent') {
+          fill = poly.front
+            ? `rgba(${Math.round(150 + 70 * k)},${Math.round(78 + 30 * k)},${Math.round(24 + 12 * k)},${0.38 + 0.22 * k})`
+            : 'rgba(120,70,20,.06)';
+        } else if (poly.layer === 'self') {
+          fill = poly.front
+            ? `rgba(${Math.round(16 + 50 * k)},${Math.round(110 + 90 * k)},${Math.round(150 + 80 * k)},${0.42 + 0.28 * k})`
+            : 'rgba(24,114,160,.06)';
+        } else if (!poly.front) fill = 'rgba(24,114,160,.05)';
+        else if (!tile || !model.faces[tile.faceIndex]?.moves.length) fill = `rgba(70,80,100,${0.25 + 0.3 * poly.shade})`;
         else if (!tile.move || tile.offset == null) fill = `rgba(24,60,90,${0.16 + 0.16 * Math.max(0, poly.shade)})`;
         else {
-          const k = 0.2 + 0.8 * poly.light;
           fill = chosen
             ? `rgba(${Math.round(37 + 120 * k)},${Math.round(150 + 80 * k)},255,.85)`
             : `rgba(${Math.round((focused ? 30 : 15) + 90 * k)},${Math.round((focused ? 110 : 80) + 120 * k)},${Math.round(130 + 110 * k)},${0.55 + 0.3 * k})`;
         }
         context.fillStyle = fill;
         context.fill();
-        const unrated = Boolean(tile.move) && tile.offset == null;
-        context.setLineDash(unrated ? [4, 3] : []);
-        context.strokeStyle = poly.front ? `rgba(118,234,255,${tile.move ? 0.5 : 0.25})` : 'rgba(118,234,255,.12)';
-        context.lineWidth = chosen ? 2.2 : 0.7;
+        const unrated = poly.layer === 'base' && Boolean(tile?.move) && tile?.offset == null;
+        context.setLineDash(poly.layer === 'opponent' || unrated ? [5, 3] : []);
+        context.strokeStyle =
+          poly.layer === 'opponent'
+            ? 'rgba(255,176,90,.9)'
+            : poly.front
+              ? `rgba(118,234,255,${tile?.move || poly.layer === 'self' ? 0.7 : 0.25})`
+              : 'rgba(118,234,255,.12)';
+        context.lineWidth = chosen ? 2.2 : poly.layer === 'opponent' ? 1.3 : 0.7;
         context.stroke();
         context.setLineDash([]);
       }
       projected.forEach((item) => {
         const tile = model.tiles[item.index];
         const node = tileNodes[item.index];
-        const focused = state.focus < 0 || tile.faceIndex === state.focus;
+        const focused = (state.focus < 0 || tile.faceIndex === state.focus) && (!state.comparison || (state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps'));
         node.hidden = !(showLabels && tile.move && item.front && item.shade > 0.2 && focused);
         if (!node.hidden) {
           node.style.left = `${item.center[0]}px`;
@@ -258,6 +375,27 @@ export function TopoStage({ model, style, focus, selected, onFocus, onSelect }: 
         node.style.left = `${placed[0]}px`;
         node.style.top = `${placed[1]}px`;
       });
+      if (comparing && sweepsOpen && state.selected >= 0 && state.links.length) {
+        const anchor = projected.find((item) => item.index === state.selected);
+        if (anchor) {
+          context.font = '10px sans-serif';
+          context.textAlign = 'center';
+          context.lineWidth = 1;
+          state.links.slice(0, 3).forEach((title, index) => {
+            const x = anchor.center[0] + (index - 1) * 36;
+            const y = anchor.center[1] + 22;
+            context.strokeStyle = 'rgba(231,246,255,.85)';
+            context.beginPath();
+            context.moveTo(anchor.center[0], anchor.center[1]);
+            context.lineTo(x, y);
+            context.stroke();
+            context.fillStyle = '#071324';
+            context.fillRect(x - 42, y - 8, 84, 16);
+            context.fillStyle = '#e7f6ff';
+            context.fillText(title.slice(0, 16), x, y + 4);
+          });
+        }
+      }
       frame = requestAnimationFrame(draw);
     };
     frame = requestAnimationFrame(draw);
@@ -300,6 +438,7 @@ export function TopoStage({ model, style, focus, selected, onFocus, onSelect }: 
         className="topo-stage"
         data-layout={TOPO_REVISION}
         data-style={style}
+        data-comparison={comparison ? 'on' : 'off'}
         aria-label="Topographic octahedron of assessment factors"
         tabIndex={0}
         onKeyDown={(event) => {
@@ -361,6 +500,15 @@ export function TopoStage({ model, style, focus, selected, onFocus, onSelect }: 
           if (!tap) return;
           const rect = event.currentTarget.getBoundingClientRect();
           const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
+          const sweepsOpen = state.comparison && state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps';
+          if (state.comparison && !sweepsOpen) {
+            const faceHit = [...state.faceHits]
+              .filter((item) => item.front)
+              .sort((a, b) => b.z - a.z)
+              .find((item) => inTri(point, item.screen[0], item.screen[1], item.screen[2]));
+            if (faceHit) focusFace(faceHit.faceIndex);
+            return;
+          }
           const hit = [...state.projected]
             .filter((item) => item.front)
             .sort((a, b) => b.z - a.z)

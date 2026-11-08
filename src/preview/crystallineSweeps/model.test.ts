@@ -35,6 +35,7 @@ import {
 } from './geometry.ts';
 import { FIT_PAD, VIEW_SIZE, defaultCamera, labelTier, projectLayout } from './project.ts';
 import { TOPO_H, TOPO_LEVEL, buildTopo, demoLevel } from './topo.ts';
+import { EXAMPLE_OPPONENT_FACTORS, EXAMPLE_OPPONENT_SWEEPS, EXAMPLE_SELF_FACTORS, EXAMPLE_SELF_SWEEPS, exampleCompare, factorComparisons } from './overlay.ts';
 
 function memory() {
   const store = new Map<string, string>();
@@ -335,6 +336,40 @@ test('topography uses the live map and keeps demo heights off the factor score',
   assert.equal(scissor?.apex, null);
 });
 
+test('example overlay scores differ on every factor and on the six Sweeps moves', () => {
+  const rows = factorComparisons();
+  assert.equal(rows.length, 8);
+  assert.deepEqual(rows.map((row) => row.id), [
+    'guard-control',
+    'passing',
+    'sweeps',
+    'takedowns',
+    'escapes-defense',
+    'submissions',
+    'conditioning',
+    'mindset',
+  ]);
+  for (const row of rows) {
+    assert.notEqual(row.self, row.opponent);
+    assert.equal(row.note, exampleCompare(row.self, row.opponent));
+    assert.equal(row.note.includes('prediction'), false);
+  }
+  assert.equal(EXAMPLE_SELF_FACTORS.sweeps, 4);
+  assert.equal(EXAMPLE_OPPONENT_FACTORS.sweeps, 1);
+  const ids = Object.keys(EXAMPLE_SELF_SWEEPS);
+  assert.deepEqual(ids, [...SWEEP_IDS]);
+  assert.equal(ids.length, 6);
+  for (const id of ids) {
+    const self = EXAMPLE_SELF_SWEEPS[id as keyof typeof EXAMPLE_SELF_SWEEPS];
+    const opponent = EXAMPLE_OPPONENT_SWEEPS[id as keyof typeof EXAMPLE_OPPONENT_SWEEPS];
+    assert.notEqual(self, opponent);
+    assert.ok(self >= 1 && self <= 5 && opponent >= 1 && opponent <= 5);
+  }
+  assert.equal(exampleCompare(3, 3), 'Same example score');
+  assert.equal(exampleCompare(5, 1), 'Example self is higher');
+  assert.equal(exampleCompare(1, 4), 'Example opponent is higher');
+});
+
 test('student links keep student=1 and the coach tree link does not', () => {
   assert.equal(withStudent('/student/fundamentals', ''), '/student/fundamentals');
   assert.equal(withStudent('/student/working?view=tree&node=work-hip', '?student=1'), '/student/working?view=tree&node=work-hip&student=1');
@@ -342,7 +377,7 @@ test('student links keep student=1 and the coach tree link does not', () => {
 });
 
 test('the preview modules do not write records and the route stays outside the coach gate', () => {
-  for (const name of ['adapter.ts', 'geometry.ts', 'project.ts', 'topo.ts', 'TopoStage.tsx', 'CrystallineSweepsPreview.tsx']) {
+  for (const name of ['adapter.ts', 'geometry.ts', 'project.ts', 'topo.ts', 'overlay.ts', 'TopoStage.tsx', 'CrystallineSweepsPreview.tsx']) {
     const text = readFileSync(new URL(`./${name}`, import.meta.url), 'utf8');
     assert.doesNotMatch(text, /saveStudentReport|writeAssessments|saveTechniqueArchive|loadTechniqueArchive|loadStudentReport|localStorage\.setItem/);
   }
