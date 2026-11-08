@@ -1420,3 +1420,34 @@
   padding-left: 1.2rem;
   color: #f2f4f7;
 }
+
+/* Student group menus only. Same matte navy panels as the hub buttons.
+   Belt rails and row icons stay. The hub tiles and My rank page do not use this. */
+.student.student--arena.s-group .s-row {
+  background-color: #0c2344;
+  background-image: none;
+  color: #f5f1e8;
+  border: 1.5px solid #004eba;
+  box-shadow: none;
+}
+
+.student.student--arena.s-group .s-row .s-row__title,
+.student.student--arena.s-group .s-row--belt .s-row__title,
+.student.student--arena.s-group .s-row--belt .s-ico {
+  color: #f5f1e8;
+}
+
+.student.student--arena.s-group .s-row small,
+.student.student--arena.s-group .s-row--belt small {
+  color: #d7e6ff;
+}
+
+.student.student--arena.s-group .s-row--belt .s-chev {
+  border-right-color: #d7e6ff;
+  border-top-color: #d7e6ff;
+}
+
+.student.student--arena.s-group .s-row:focus-visible {
+  outline: 3px solid #6ea8ff;
+  outline-offset: 3px;
+}
