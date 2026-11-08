@@ -1,0 +1,614 @@
+/**
+ * Isolated preview of an eight-area assessment shape.
+ * Nothing here reads or writes a student self-assessment, journal, or index.
+ * The live seven-area chart stays on its own module.
+ */
+
+export const ASSESSMENT_RADAR_PREVIEW_PATH = '/preview/assessment-radar';
+
+export const PREVIEW_BANNER =
+  'Preview only. Not the live self-assessment. Nothing on this page is saved to a student record.';
+
+/** Self-assessment wording already on the live check-in. 1 is early. 5 is ready to rely on. */
+export const SELF_ASSESSMENT_SCALE = '1 is early. 5 is ready to rely on.';
+
+/**
+ * Same 1–5 words as a technique journal rating.
+ * A test keeps this equal to the journal scale.
+ */
+export const TECHNIQUE_RATING_WORDS = {
+  1: 'Poorly',
+  2: 'A little',
+  3: 'Okay',
+  4: 'Well',
+  5: 'Really well',
+} as const;
+
+export const SCORE_MAX = 5;
+export const SVG_SIZE = 200;
+export const OCTAGON_CENTER = 100;
+export const OCTAGON_RADIUS = 96;
+
+export const AXES = [
+  {
+    id: 'guard',
+    label: 'Guard',
+    manualOnly: false,
+    meaning:
+      'Keeping your own guard and getting it back, such as closed guard, half guard, and deep half. This is not escaping a pin, and it is not passing.',
+  },
+  {
+    id: 'passing',
+    label: 'Passing',
+    manualOnly: false,
+    meaning: 'Getting past their guard into a top position. This is not the same as keeping your own guard.',
+  },
+  {
+    id: 'control',
+    label: 'Control',
+    manualOnly: false,
+    meaning:
+      'Staying in a position you already have: side control, mount, and back holds. This is not a guard, a pass, or an escape.',
+  },
+  {
+    id: 'takedowns',
+    label: 'Takedowns',
+    manualOnly: false,
+    meaning: 'Taking the fight from standing to the mat.',
+  },
+  {
+    id: 'escapes',
+    label: 'Escapes',
+    manualOnly: false,
+    meaning: 'Getting out when they have side control, mount, or your back. This is not the same as keeping your guard.',
+  },
+  {
+    id: 'submissions',
+    label: 'Submissions',
+    manualOnly: false,
+    meaning: 'Finishing a submission.',
+  },
+  {
+    id: 'conditioning',
+    label: 'Conditioning',
+    manualOnly: true,
+    meaning: 'Your engine for the round. A technique rating is not a measure of conditioning, so this stays a manual score.',
+  },
+  {
+    id: 'mindset',
+    label: 'Mindset',
+    manualOnly: true,
+    meaning: 'Focus and composure in the round. A technique rating is not a measure of mindset, so this stays a manual score.',
+  },
+] as const;
+
+export type AxisId = (typeof AXES)[number]['id'];
+export type SkillAxisId = Exclude<AxisId, 'conditioning' | 'mindset'>;
+export type Rating = 1 | 2 | 3 | 4 | 5;
+export type PreviewMode = 'manual' | 'techniques';
+export type IndexKind = 'position' | 'movement';
+
+export type AxisDefinition = (typeof AXES)[number];
+
+export type TechniqueRecord = {
+  id: string;
+  name: string;
+  kind: IndexKind;
+  /** Real category tags. Conditioning and Mindset are never tags. */
+  categories: SkillAxisId[];
+  /** Preview sample, not a saved student or owner record. */
+  sample: true;
+};
+
+export type JournalCard = {
+  id: string;
+  techniqueId: string;
+  rating: Rating;
+  loggedAt: string;
+};
+
+export type ManualScores = Partial<Record<AxisId, Rating>>;
+
+export type PreviewModel = {
+  techniques: TechniqueRecord[];
+  cards: JournalCard[];
+  /** Overall self-assessment. Separate from technique ratings. */
+  manual: ManualScores;
+  /** Axes a saved 7-area check-in did not have. Control starts here. */
+  legacyOmitted: AxisId[];
+};
+
+export type Contributor = {
+  techniqueId: string;
+  name: string;
+  kind: IndexKind;
+  rating: Rating;
+  earlier: { rating: Rating; loggedAt: string }[];
+};
+
+export type CategorySummary = {
+  axisId: AxisId;
+  status: 'scored' | 'not-rated' | 'manual-only';
+  /** Technique average. Null when the category is manual-only or has no rated technique. */
+  score: number | null;
+  taggedCount: number;
+  ratedCount: number;
+  contributors: Contributor[];
+  unrated: { techniqueId: string; name: string }[];
+  formula: string;
+  manualScore: Rating | null;
+};
+
+const SKILL_IDS: readonly SkillAxisId[] = ['guard', 'passing', 'control', 'takedowns', 'escapes', 'submissions'];
+
+const SEED: PreviewModel = {
+  legacyOmitted: ['control'],
+  manual: {
+    guard: 5,
+    passing: 3,
+    takedowns: 4,
+    escapes: 2,
+    submissions: 4,
+    conditioning: 2,
+    mindset: 3,
+  },
+  techniques: [
+    technique('tech-deep-half', 'Deep half guard', 'position', ['guard']),
+    technique('tech-closed', 'Closed guard', 'position', ['guard']),
+    technique('tech-knee', 'Knee slice', 'movement', ['passing']),
+    technique('tech-pressure', 'Pressure pass', 'movement', ['passing']),
+    technique('tech-double', 'Double leg', 'movement', ['takedowns']),
+    technique('tech-arm-drag', 'Arm drag to the back', 'movement', ['takedowns', 'control']),
+    technique('tech-side', 'Side control', 'position', ['control']),
+    technique('tech-mount', 'Mount', 'position', ['control']),
+    technique('tech-back', 'Back control', 'position', ['control']),
+    technique('tech-elbow', 'Elbow-knee escape', 'movement', ['escapes']),
+    technique('tech-mount-escape', 'Mount escape', 'movement', ['escapes']),
+    technique('tech-armbar', 'Armbar', 'movement', ['submissions']),
+    technique('tech-triangle', 'Triangle', 'movement', ['submissions']),
+  ],
+  cards: [
+    card('card-deep-old', 'tech-deep-half', 2, '2026-09-01T18:00:00.000Z'),
+    card('card-deep-new', 'tech-deep-half', 4, '2026-10-20T18:00:00.000Z'),
+    card('card-closed', 'tech-closed', 3, '2026-10-18T18:00:00.000Z'),
+    card('card-knee', 'tech-knee', 5, '2026-10-12T18:00:00.000Z'),
+    card('card-pressure', 'tech-pressure', 3, '2026-10-12T18:05:00.000Z'),
+    card('card-double', 'tech-double', 3, '2026-10-04T18:00:00.000Z'),
+    card('card-drag', 'tech-arm-drag', 4, '2026-10-28T18:00:00.000Z'),
+    card('card-side', 'tech-side', 4, '2026-10-22T18:00:00.000Z'),
+    card('card-mount', 'tech-mount', 5, '2026-10-22T18:06:00.000Z'),
+    card('card-elbow', 'tech-elbow', 4, '2026-10-08T18:00:00.000Z'),
+    card('card-mount-escape', 'tech-mount-escape', 2, '2026-10-08T18:06:00.000Z'),
+    card('card-armbar', 'tech-armbar', 5, '2026-09-30T18:00:00.000Z'),
+    card('card-triangle', 'tech-triangle', 2, '2026-09-30T18:08:00.000Z'),
+  ],
+};
+
+export const SAMPLE_GUARD_NAME = 'Deep half guard';
+
+export const SHAPE_NOTE =
+  'The outer line is a regular octagon. Each area has the same room. A 5 reaches that outer line. A lower rating sits closer to the middle, so the blue shape is uneven. A corner with no rating is left open. The line does not run to the middle, and the open corner is not a zero.';
+
+export const CAGE_NOTE =
+  'Eight equal sides, the same kind of outline as an octagon cage. This chart has no league name and no league marks.';
+
+export const CALCULATION_PROPOSAL = [
+  'A category score is the average of the latest 1–5 rating on each technique tagged to that category.',
+  `${SELF_ASSESSMENT_SCALE} A technique journal rating uses those same numbers: ${TECHNIQUE_RATING_WORDS[1]} through ${TECHNIQUE_RATING_WORDS[5]}.`,
+  'Several journal cards for one technique count once. The latest card is the vote. Earlier cards stay as history.',
+  'A technique can be tagged to more than one category when each tag is real. Its rating is added once in each tagged category. The technique still counts once in the technique total.',
+  'A tagged technique with no rating is left out of the average. It is not a zero.',
+  'A category with no rated techniques stays not rated. The corner is left open. It is not drawn as zero.',
+  'Conditioning and Mindset stay manual. Technique ratings are not a measure of either one.',
+  'A saved 7-area check-in has no Control score. That corner stays open until a person rates Control. The preview does not invent one.',
+  'The manual check-in and the technique summary are separate. Technique edits never replace the manual scores.',
+] as const;
+
+export const OPEN_DECISIONS = [
+  'Where a category tag lives on the shared index record.',
+  'Which existing journal ratings are allowed to feed a category.',
+  'Whether a typed nickname may suggest a canonical name. This preview only uses the explicit sample name Deep half guard.',
+  'How a saved 7-area check-in can gain an optional Control score without rewriting the old day or storing a zero.',
+  'Whether the live check-in shows the technique summary beside the manual scores.',
+] as const;
+
+export function seedPreview(): PreviewModel {
+  return structuredClone(SEED);
+}
+
+export function axisById(id: AxisId): AxisDefinition {
+  const found = AXES.find((axis) => axis.id === id);
+  if (!found) throw new Error(`Unknown area ${id}`);
+  return found;
+}
+
+export function isRating(value: unknown): value is Rating {
+  return value === 1 || value === 2 || value === 3 || value === 4 || value === 5;
+}
+
+export function isSkillAxis(value: string): value is SkillAxisId {
+  return (SKILL_IDS as readonly string[]).includes(value);
+}
+
+export function axisAngle(index: number, count = AXES.length): number {
+  return -Math.PI / 2 + (index * 2 * Math.PI) / count;
+}
+
+export function pointOnAxis(index: number, value: number, radius = OCTAGON_RADIUS): { x: number; y: number } {
+  const span = (value / SCORE_MAX) * radius;
+  const theta = axisAngle(index);
+  return {
+    x: OCTAGON_CENTER + Math.cos(theta) * span,
+    y: OCTAGON_CENTER + Math.sin(theta) * span,
+  };
+}
+
+export function outerOctagon(): { x: number; y: number }[] {
+  return AXES.map((_, index) => pointOnAxis(index, SCORE_MAX));
+}
+
+export function ringPoints(value: number): string {
+  return outerOctagon()
+    .map((_, index) => formatPoint(pointOnAxis(index, value)))
+    .join(' ');
+}
+
+export function formatPoint(point: { x: number; y: number }): string {
+  return `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
+}
+
+/** Contiguous rated indexes, walking clockwise. A gap is not filled with zero. */
+export function contiguousRuns(values: readonly (number | null)[]): number[][] {
+  const count = values.length;
+  if (count === 0) return [];
+  const rated = values.map((value) => value != null);
+  if (!rated.some(Boolean)) return [];
+  if (rated.every(Boolean)) return [values.map((_, index) => index)];
+
+  const firstGap = rated.findIndex((value) => !value);
+  const runs: number[][] = [];
+  let index = (firstGap + 1) % count;
+  let seen = 0;
+  while (seen < count) {
+    if (!rated[index]) {
+      index = (index + 1) % count;
+      seen += 1;
+      continue;
+    }
+    const run: number[] = [];
+    while (rated[index] && run.length < count) {
+      run.push(index);
+      index = (index + 1) % count;
+      seen += 1;
+    }
+    runs.push(run);
+  }
+  return runs;
+}
+
+export function isComplete(values: readonly (number | null)[]): boolean {
+  return values.length > 0 && values.every((value) => value != null);
+}
+
+export function closedRatingPoints(values: readonly (number | null)[]): { x: number; y: number }[] | null {
+  if (!isComplete(values)) return null;
+  return values.map((value, index) => pointOnAxis(index, value ?? 0));
+}
+
+export function ratingSegments(values: readonly (number | null)[]): { x: number; y: number }[][] {
+  if (isComplete(values)) return [];
+  return contiguousRuns(values)
+    .filter((run) => run.length >= 2)
+    .map((run) => run.map((index) => pointOnAxis(index, values[index] ?? 0)));
+}
+
+export function ratingDots(values: readonly (number | null)[]): { x: number; y: number; index: number }[] {
+  return values.flatMap((value, index) => (value == null ? [] : [{ ...pointOnAxis(index, value), index }]));
+}
+
+export function shapeValues(model: PreviewModel, mode: PreviewMode): (number | null)[] {
+  return AXES.map((axis) => {
+    if (mode === 'manual') return model.manual[axis.id] ?? null;
+    return categorySummary(model, axis.id).score;
+  });
+}
+
+export function averageRatings(ratings: readonly number[]): number | null {
+  if (ratings.length === 0) return null;
+  const total = ratings.reduce((sum, value) => sum + value, 0);
+  return Math.round((total / ratings.length) * 10) / 10;
+}
+
+export function formatDerived(score: number): string {
+  return score.toFixed(1);
+}
+
+export function cardsFor(model: PreviewModel, techniqueId: string): JournalCard[] {
+  return model.cards.filter((row) => row.techniqueId === techniqueId);
+}
+
+/** Latest card for one canonical technique. Earlier cards are not extra votes. */
+export function latestCard(cards: readonly JournalCard[]): JournalCard | null {
+  let best: JournalCard | null = null;
+  let bestAt = -1;
+  cards.forEach((row, index) => {
+    if (!best || row.loggedAt > best.loggedAt || (row.loggedAt === best.loggedAt && index > bestAt)) {
+      best = row;
+      bestAt = index;
+    }
+  });
+  return best;
+}
+
+export function categorySummary(model: PreviewModel, axisId: AxisId): CategorySummary {
+  const axis = axisById(axisId);
+  const manualScore = model.manual[axisId] ?? null;
+  if (axis.manualOnly) {
+    return {
+      axisId,
+      status: 'manual-only',
+      score: null,
+      taggedCount: 0,
+      ratedCount: 0,
+      contributors: [],
+      unrated: [],
+      formula: '',
+      manualScore,
+    };
+  }
+  const tagged = model.techniques.filter((row) => row.categories.includes(axisId as SkillAxisId));
+  const contributors: Contributor[] = [];
+  const unrated: { techniqueId: string; name: string }[] = [];
+  for (const row of tagged) {
+    const cards = cardsFor(model, row.id);
+    const latest = latestCard(cards);
+    if (!latest) {
+      unrated.push({ techniqueId: row.id, name: row.name });
+      continue;
+    }
+    contributors.push({
+      techniqueId: row.id,
+      name: row.name,
+      kind: row.kind,
+      rating: latest.rating,
+      earlier: cards
+        .filter((cardRow) => cardRow.id !== latest.id)
+        .map((cardRow) => ({ rating: cardRow.rating, loggedAt: cardRow.loggedAt })),
+    });
+  }
+  const score = averageRatings(contributors.map((row) => row.rating));
+  return {
+    axisId,
+    status: score == null ? 'not-rated' : 'scored',
+    score,
+    taggedCount: tagged.length,
+    ratedCount: contributors.length,
+    contributors,
+    unrated,
+    formula: formulaFor(contributors.map((row) => row.rating), score),
+    manualScore,
+  };
+}
+
+export function formulaFor(ratings: readonly number[], score: number | null): string {
+  if (score == null || ratings.length === 0) return '';
+  if (ratings.length === 1) return `${ratings[0]} is the only latest rating.`;
+  return `(${ratings.join(' + ')}) / ${ratings.length} = ${formatDerived(score)}`;
+}
+
+export function journalCardCount(model: PreviewModel): number {
+  return model.cards.length;
+}
+
+export function techniqueCount(model: PreviewModel): number {
+  return model.techniques.length;
+}
+
+/** Each rated technique once, even when it is tagged to two categories. */
+export function ratedTechniqueIds(model: PreviewModel): string[] {
+  const ids = new Set<string>();
+  for (const axis of AXES) {
+    if (axis.manualOnly) continue;
+    for (const row of categorySummary(model, axis.id).contributors) ids.add(row.techniqueId);
+  }
+  return [...ids];
+}
+
+export function contributionSlotCount(model: PreviewModel): number {
+  return AXES.reduce((sum, axis) => {
+    if (axis.manualOnly) return sum;
+    return sum + categorySummary(model, axis.id).contributors.length;
+  }, 0);
+}
+
+export function scoreText(model: PreviewModel, mode: PreviewMode, axisId: AxisId): string {
+  if (mode === 'manual') {
+    const score = model.manual[axisId];
+    return score == null ? 'Not rated' : String(score);
+  }
+  const summary = categorySummary(model, axisId);
+  if (summary.status === 'manual-only') return 'Manual only';
+  if (summary.score == null) return 'Not rated';
+  return formatDerived(summary.score);
+}
+
+export function chartLabel(model: PreviewModel, mode: PreviewMode): string {
+  const bits = AXES.map((axis) => `${axis.label} ${scoreText(model, mode, axis.id)}`).join(', ');
+  const modeName = mode === 'manual' ? 'Manual check-in' : 'Technique summary';
+  return `Regular octagon. Eight areas. The blue line is the ratings and stops where an area has no rating. ${modeName}. ${bits}.`;
+}
+
+export type DetailCopy = {
+  meaning: string;
+  scoreLine: string;
+  how: string;
+  techniques: { id: string; name: string; line: string }[];
+};
+
+export function detailCopy(model: PreviewModel, axisId: AxisId, mode: PreviewMode): DetailCopy {
+  const axis = axisById(axisId);
+  const summary = categorySummary(model, axisId);
+  const meaning = axis.meaning;
+  if (mode === 'manual') return manualDetail(model, axis, summary, meaning);
+  return techniqueDetail(axis, summary, meaning);
+}
+
+export function setLatestRating(model: PreviewModel, techniqueId: string, rating: Rating | null): PreviewModel {
+  const technique = model.techniques.find((row) => row.id === techniqueId);
+  if (!technique) return model;
+  if (rating == null) {
+    return { ...model, cards: model.cards.filter((row) => row.techniqueId !== techniqueId) };
+  }
+  const existing = cardsFor(model, techniqueId);
+  const latest = latestCard(existing);
+  if (!latest) {
+    return {
+      ...model,
+      cards: [...model.cards, card(`card-${techniqueId}-draft`, techniqueId, rating, '2026-11-08T18:00:00.000Z')],
+    };
+  }
+  return {
+    ...model,
+    cards: model.cards.map((row) => (row.id === latest.id ? { ...row, rating } : row)),
+  };
+}
+
+export function setTechniqueCategories(model: PreviewModel, techniqueId: string, categories: readonly string[]): PreviewModel {
+  const technique = model.techniques.find((row) => row.id === techniqueId);
+  if (!technique) return model;
+  const unique = SKILL_IDS.filter((id) => categories.includes(id));
+  return {
+    ...model,
+    techniques: model.techniques.map((row) => (row.id === techniqueId ? { ...row, categories: [...unique] } : row)),
+  };
+}
+
+export function setManualScore(model: PreviewModel, axisId: AxisId, rating: Rating | null): PreviewModel {
+  const manual: ManualScores = { ...model.manual };
+  if (rating == null) delete manual[axisId];
+  else manual[axisId] = rating;
+  return { ...model, manual };
+}
+
+export function legacyControlMissing(model: PreviewModel): boolean {
+  return model.legacyOmitted.includes('control') && model.manual.control == null;
+}
+
+function manualDetail(
+  model: PreviewModel,
+  axis: AxisDefinition,
+  summary: CategorySummary,
+  meaning: string,
+): DetailCopy {
+  const score = model.manual[axis.id] ?? null;
+  const techniques = relatedLines(summary, false);
+  if (axis.id === 'control' && legacyControlMissing(model)) {
+    return {
+      meaning,
+      scoreLine: 'Manual check-in: not rated.',
+      how: 'This sample is a 7-area check-in. Control was not on it. The open corner is not a score of 0. Technique ratings are not copied into this check-in.',
+      techniques,
+    };
+  }
+  if (axis.id === 'control' && model.legacyOmitted.includes('control') && score != null) {
+    return {
+      meaning,
+      scoreLine: `Manual check-in draft: ${score}.`,
+      how: `The sample 7-area check-in had no Control score. ${score} is only a preview draft. It is not written back onto that check-in.`,
+      techniques,
+    };
+  }
+  if (score == null) {
+    return {
+      meaning,
+      scoreLine: 'Manual check-in: not rated.',
+      how: 'No manual score is set. The open corner is not a zero.',
+      techniques,
+    };
+  }
+  const guardNote =
+    axis.id === 'guard'
+      ? ' Deep half guard is a sample position tagged to Guard. A typed phrase like “D-path guard” is not guessed on this page. The technique ratings do not change this manual score.'
+      : ' Technique ratings do not change this manual score.';
+  return {
+    meaning,
+    scoreLine: `Manual check-in: ${score}.`,
+    how: `${axis.label} is an overall self-assessment score.${guardNote}`,
+    techniques,
+  };
+}
+
+function techniqueDetail(axis: AxisDefinition, summary: CategorySummary, meaning: string): DetailCopy {
+  if (axis.manualOnly) {
+    const manual = summary.manualScore == null ? 'not rated' : String(summary.manualScore);
+    return {
+      meaning,
+      scoreLine: 'From techniques: manual only.',
+      how: `${axis.label} stays on the manual check-in (${manual}). Technique ratings are not a measure of it, so this preview does not invent a number. The corner stays open on the technique shape.`,
+      techniques: [],
+    };
+  }
+  if (summary.score == null) {
+    const tagged = summary.taggedCount === 0 ? 'Nothing is tagged here.' : `${summary.taggedCount} tagged, none rated.`;
+    return {
+      meaning,
+      scoreLine: 'From techniques: not rated.',
+      how: `${tagged} Unrated techniques are left out. This corner is not a zero.`,
+      techniques: relatedLines(summary, true),
+    };
+  }
+  const names = summary.contributors.map((row) => `${row.name} ${row.rating}`).join(', ');
+  const earlier = summary.contributors.flatMap((row) =>
+    row.earlier.map((cardRow) => `An earlier ${row.name} card rated ${cardRow.rating} is the same technique, so it is not a second vote.`),
+  );
+  const leftOut = summary.unrated.map((row) => `${row.name} is tagged and has no rating, so it is left out, not scored as 0.`);
+  const multi = summary.contributors
+    .filter((row) => row.techniqueId === 'tech-arm-drag')
+    .map(
+      () =>
+        'Arm drag to the back is also tagged to the other category on its row. It counts once in each tagged category and still counts as one technique.',
+    );
+  const coverage = `${summary.ratedCount} rated of ${summary.taggedCount} tagged.`;
+  return {
+    meaning,
+    scoreLine: `From techniques: ${formatDerived(summary.score)}.`,
+    how: ['Latest ratings: ' + names + '.', summary.formula + '.', coverage, ...earlier, ...leftOut, ...multi]
+      .filter(Boolean)
+      .join(' '),
+    techniques: relatedLines(summary, true),
+  };
+}
+
+function relatedLines(summary: CategorySummary, counted: boolean): { id: string; name: string; line: string }[] {
+  const rated = summary.contributors.map((row) => ({
+    id: row.techniqueId,
+    name: row.name,
+    line: counted
+      ? `${kindLabel(row.kind)}. Latest ${row.rating} (${TECHNIQUE_RATING_WORDS[row.rating]}). ${earlierNote(row)}`
+      : `${kindLabel(row.kind)}. Latest ${row.rating} (${TECHNIQUE_RATING_WORDS[row.rating]}). Not added into the manual check-in. ${earlierNote(row)}`,
+  }));
+  const open = summary.unrated.map((row) => ({
+    id: row.techniqueId,
+    name: row.name,
+    line: counted ? 'Tagged. No rating, so it is left out of the average. Not a zero.' : 'Tagged. No rating. Not added into the manual check-in.',
+  }));
+  return [...rated, ...open];
+}
+
+function earlierNote(row: Contributor): string {
+  if (row.earlier.length === 0) return '';
+  const bits = row.earlier.map((cardRow) => String(cardRow.rating)).join(', ');
+  return `Earlier card ${bits} is not counted.`;
+}
+
+function kindLabel(kind: IndexKind): string {
+  return kind === 'position' ? 'Position' : 'Movement';
+}
+
+function technique(id: string, name: string, kind: IndexKind, categories: SkillAxisId[]): TechniqueRecord {
+  return { id, name, kind, categories, sample: true };
+}
+
+function card(id: string, techniqueId: string, rating: Rating, loggedAt: string): JournalCard {
+  return { id, techniqueId, rating, loggedAt };
+}
