@@ -4,8 +4,9 @@ import type { D1Database } from './d1.ts';
 import { expandGrants, tierForGrants } from './grantMatrix.ts';
 import { claimForAccess } from './subscriptionAccess.ts';
 import { accessForLicense } from './subscriptionSync.ts';
+import { grantRowOpensPlusCloud, ownerCloudGrantOpen } from '../lib/advantageCloudMedia.ts';
 import { cloudAccessForLicense } from './cloudSubscription.ts';
-import { doorsFromStored, grantsForLicense, type StoredGrant } from './purchaseRecords.ts';
+import { doorsFromStored, grantsForLicense, linkedCodeProLicense, type StoredGrant } from './purchaseRecords.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
 import { refreshSeat } from './seats.ts';
 import { freeStudentGrantClosed } from './studentLicenses.ts';
@@ -97,10 +98,35 @@ export async function handleTokenRefresh(
     if (device?.revokedAt) return json(401, { ok: false, revoked: true, error: 'This device was signed out.' });
   }
   let doors = claims.grants;
+  let issuedLicense = claims.sub;
   let kind: 'pro' | 'onetime' | 'code' | 'owner-test' | 'seat' = claims.src === 'owner' ? 'owner-test' : claims.src === 'seat' ? 'seat' : doors.includes('pro') ? 'pro' : 'onetime';
   let absoluteExp: number | undefined;
   let subs: SubscriptionClaim | undefined = claims.subs;
-  if (claims.src === 'owner') {
+  if (claims.src === 'owner' && claims.sub === 'owner-test') {
+    // The shared test id has no license row. Leave that pass alone until it ends.
+    if (nowSeconds >= claims.exp) return json(401, { ok: false, revoked: true, error: 'That test unlock has ended.' });
+    absoluteExp = claims.exp;
+    kind = 'owner-test';
+  } else if (claims.src === 'owner' && db) {
+    const rows = await grantsForLicense(db, claims.sub, stamp);
+    const proOpen = rows.some((row) => grantRowOpensPlusCloud(row));
+    const cloudOpen = proOpen || rows.some((row) => ownerCloudGrantOpen(row));
+    const stripeCloud = await cloudAccessForLicense(db, claims.sub, stamp, { env, fetchImpl });
+    if (!cloudOpen && !(stripeCloud.tracked && stripeCloud.entitled)) {
+      return json(401, { ok: false, revoked: true, error: 'This access is no longer active.' });
+    }
+    doors = doorsForRefresh(rows, proOpen ? true : null);
+    subs = undefined;
+    kind = 'owner-test';
+    const ends = rows.reduce((latest, row) => {
+      const at = row.endsAt ? Date.parse(row.endsAt) : Number.NaN;
+      return Number.isFinite(at) && at > latest ? at : latest;
+    }, 0);
+    absoluteExp = ends > stamp.getTime() ? Math.floor(ends / 1000) : claims.exp;
+    if (absoluteExp <= nowSeconds) {
+      return json(401, { ok: false, revoked: true, error: 'This access is no longer active.' });
+    }
+  } else if (claims.src === 'owner') {
     if (nowSeconds >= claims.exp) return json(401, { ok: false, revoked: true, error: 'That test unlock has ended.' });
     absoluteExp = claims.exp;
     kind = 'owner-test';
@@ -124,7 +150,11 @@ export async function handleTokenRefresh(
     kind = 'onetime';
     subs = undefined;
   } else if (db) {
-    const rows = await grantsForLicense(db, claims.sub, stamp);
+    if (claims.src === 'code') {
+      const linked = await linkedCodeProLicense(db, claims.sub, stamp);
+      if (linked) issuedLicense = linked;
+    }
+    const rows = await grantsForLicense(db, issuedLicense, stamp);
     const view = await accessForLicense(db, claims.sub, stamp, { env, fetchImpl, pepper: env.CODE_HASH_PEPPER });
     doors = doorsForRefresh(rows, view ? view.access.entitled : null);
     if (view) subs = claimForAccess(view.access);
@@ -154,7 +184,7 @@ export async function handleTokenRefresh(
   const token = await issueToken(
     env.ENTITLEMENT_SIGNING_KEY,
     {
-      licenseId: claims.sub,
+      licenseId: issuedLicense,
       grants: doors,
       tier:
         claims.preset === STUDENT_LICENSE_PRESET

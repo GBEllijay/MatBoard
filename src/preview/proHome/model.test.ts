@@ -198,7 +198,8 @@ test('live Pro, Instructor, and hub paint are not edited for this preview', () =
   assert.match(app, new RegExp(`path="${WHITE_HUB_PREVIEW_PATH}"`));
   assert.match(app, new RegExp(`path="${MEDIA_MENU_PREVIEW_PATH}"`));
   assert.match(readFileSync('src/pages/MediaEditionHub.tsx', 'utf8'), /SuiteMenuLinks links=\{MEDIA_EDITION_MENU\}/);
-  assert.doesNotMatch(pro, /preview\/proHome|Advantage Media Edition|php-tile/);
+  assert.doesNotMatch(pro, /preview\/proHome|php-tile/);
+  assert.match(pro, /Advantage Media Edition/);
   assert.doesNotMatch(coach, /preview\/proHome|php-card/);
   assert.match(css, /\.pro-hub,[\s\S]*background:\s*#0c2344/);
   assert.match(readFileSync('src/preview/proHome/proHome.css', 'utf8'), /\.php-tile\s*\{[^}]*background:\s*#efebe3/);

@@ -17,6 +17,7 @@
  * - Private notes: each author writes only their own file. The owner reads every author's file.
  *   A seat reads only its own. They are never in master.json, pending files, or any student route.
  *
+ * The roster is the academy's record. It is not the student's journal or backup.
  * Nothing here deletes from R2. Approve and reject rewrite the pending file with its new status.
  * Merging into master only adds students or fills blanks (rosterBackup.mergeRosterBackup).
  */

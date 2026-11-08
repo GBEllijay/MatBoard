@@ -16,6 +16,8 @@
 import { readGymName } from './gymName.ts';
 import { FREE_INSTRUCTOR_SEATS, instructorSeatAllowance } from './proBundleMath.ts';
 import { legacySeatBlocked } from './seatSunset.ts';
+import { entitlementSnapshot } from './entitlement.ts';
+import { ownerPassOutranksSeat } from './ownerPassRank.ts';
 import { dropOwnerTestDoors, ownerTestActive, subscribeOwnerTest } from './ownerTestGrant.ts';
 import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 
@@ -200,11 +202,11 @@ type SeatArchive = {
   seats: InstructorSeat[];
 };
 
-export type IssueInviteFailure = 'email' | 'duplicate' | 'storage' | 'cap' | 'owner';
+export type IssueInviteFailure = 'email' | 'duplicate' | 'storage' | 'cap' | 'owner' | 'unavailable';
 
 export type IssueInviteResult =
   | { ok: true; seat: InstructorSeat; inviteLink: string }
-  | { ok: false; reason: IssueInviteFailure };
+  | { ok: false; reason: IssueInviteFailure; detail?: string };
 
 export type SeatWriteResult =
   | { ok: true; seat: InstructorSeat }
@@ -621,7 +623,7 @@ export function issueInstructorInvite(input: {
 }): IssueInviteResult {
   const email = normalizeInviteEmail(input.email);
   if (!isInviteEmail(email)) return { ok: false, reason: 'email' };
-  if (readCurrentSeat()) return { ok: false, reason: 'owner' };
+  if (readCurrentSeat() && !ownerPassOutranksSeat(entitlementSnapshot().claims)) return { ok: false, reason: 'owner' };
   const archive = readArchive();
   if (openEmailTaken(archive.seats, email)) return { ok: false, reason: 'duplicate' };
   if (countOpenInstructorSeats(archive.seats) >= instructorSeatAllowance(input.allowanceUses ?? 0)) {

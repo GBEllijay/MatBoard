@@ -3,7 +3,9 @@ import { useGymName } from '../hooks/useGymBrand';
 import { DRIVE_HANDOFF_SAVED, publishSeatToGym } from '../lib/driveHandoff';
 import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
 import { DriveHandoffGuide, useDriveConnected } from './DriveHandoffGuide';
-import { useCurrentSeat } from './SeatSessionBar';
+import { useSeatDoor } from '../hooks/useSeatDoor';
+import { entitlementSnapshot } from '../lib/entitlement';
+import { inviteBlockedAsSeat } from '../lib/ownerPassRank';
 import {
   INSTRUCTOR_PERMISSION_FIELDS,
   INSTRUCTOR_PRESETS,
@@ -64,11 +66,13 @@ function permissionSummary(permissions: InstructorPermissions): string {
   return on.join(' · ');
 }
 
-function issueError(reason: IssueInviteFailure): string {
-  if (reason === 'duplicate') return 'That email already has an open seat.';
-  if (reason === 'storage') return 'This device could not save the seat.';
-  if (reason === 'cap') return proSeatCapBlockedCopy();
-  if (reason === 'owner') return 'Only the gym owner can issue invites.';
+function issueError(failure: { reason: IssueInviteFailure; detail?: string }): string {
+  if (failure.detail) return failure.detail;
+  if (failure.reason === 'duplicate') return 'That email already has an open seat.';
+  if (failure.reason === 'storage') return 'This device could not save the seat.';
+  if (failure.reason === 'cap') return proSeatCapBlockedCopy();
+  if (failure.reason === 'owner') return 'Only the gym owner can issue invites.';
+  if (failure.reason === 'unavailable') return 'This device could not issue an invite. Nothing was sent.';
   return "Enter the instructor's email.";
 }
 
@@ -108,7 +112,7 @@ function useInstructorSeats(): InstructorSeat[] {
 export function InstructorInvitePanel() {
   const formId = useId();
   const gymName = useGymName();
-  const currentSeat = useCurrentSeat();
+  const door = useSeatDoor();
   const seats = useInstructorSeats();
   const [email, setEmail] = useState('');
   const [permissions, setPermissions] = useState<InstructorPermissions>(() => defaultInstructorPermissions());
@@ -140,10 +144,10 @@ export function InstructorInvitePanel() {
     void syncLegacySeats();
   }, []);
 
-  if (currentSeat) {
+  if (door.seat && inviteBlockedAsSeat(door.seat, entitlementSnapshot().claims)) {
     return (
       <section className="invite-owner-only" aria-label="Instructor invites">
-        <GalleryApprovalSwitch viewer={{ role: 'seat', presetId: currentSeat.presetId }} />
+        <GalleryApprovalSwitch viewer={{ role: 'seat', presetId: door.seat.presetId }} />
         <p>Only the gym owner can issue invites. This seat cannot create or send them.</p>
       </section>
     );
@@ -178,7 +182,7 @@ export function InstructorInvitePanel() {
     });
     if (!result.ok) {
       setIssued(null);
-      setError(result.reason === 'cap' ? null : issueError(result.reason));
+      setError(result.reason === 'cap' ? null : issueError(result));
       return;
     }
     setError(null);

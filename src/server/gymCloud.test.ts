@@ -186,6 +186,28 @@ test('cloud files require a bound bucket and a signed-in Plus Cloud license', as
   });
   const coachStatus = await call(env, '/api/gym/cloud?op=status', {}, coachOnly);
   assert.equal(((await coachStatus.json()) as { cloud: boolean }).cloud, false);
+
+  const unreadDb = {
+    prepare() {
+      throw new Error('db down');
+    },
+    async exec() {
+      return undefined;
+    },
+  } as D1Database;
+  const unreadEnv: GymCloudEnv = { ...env, ENTITLEMENTS_DB: unreadDb };
+  const codePro = await token(secret, {
+    licenseId: 'lic-code-pro',
+    grants: ['white', 'student', 'coach', 'pro'],
+    tier: 'pro',
+    src: 'code',
+    deviceId: 'device-code',
+    now,
+    kind: 'code',
+  });
+  const unread = await call(unreadEnv, '/api/gym/cloud?op=status', {}, codePro);
+  assert.equal(unread.status, 503);
+  assert.doesNotMatch(await unread.text(), /not on this license/);
 });
 
 test('an owner uploads, lists, and plays a daily video through the signed-in function', async () => {

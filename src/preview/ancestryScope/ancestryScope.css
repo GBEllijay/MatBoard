@@ -1,0 +1,472 @@
+.ancestry-preview {
+  min-height: 100dvh;
+}
+
+.ancestry-preview .ancestry-banner,
+.ancestry-preview .ancestry-note,
+.ancestry-preview .ancestry-scope {
+  width: min(640px, calc(100% - 32px));
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+.ancestry-preview .ancestry-banner {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  border-radius: 12px;
+  background: #13284a;
+  color: #d7e6ff;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.ancestry-preview .ancestry-scope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ancestry-preview .ancestry-scope a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #1c1c1e;
+  color: #d7e6ff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ancestry-preview .ancestry-scope a[aria-current='page'] {
+  background: #f5f5f7;
+  color: #0e1726;
+}
+
+.ancestry-preview .ancestry-sheet {
+  display: grid;
+  gap: 14px;
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding: 16px 16px 40px;
+  box-sizing: border-box;
+}
+
+.ancestry-preview .profile-card {
+  overflow: visible;
+  padding: 14px 16px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.ancestry-preview .ancestry-kicker {
+  margin: 0;
+  color: #6ea8ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ancestry-preview h1,
+.ancestry-preview h2 {
+  margin: 0;
+}
+
+.ancestry-preview .ancestry-quiet {
+  margin: 0;
+  color: #c7c7cc;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.ancestry-preview .ancestry-face {
+  display: grid;
+  gap: 8px;
+}
+
+.ancestry-preview .ancestry-face strong {
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+
+.ancestry-preview .ancestry-belt {
+  height: 14px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ancestry-preview .ancestry-belt[data-belt='white'] { background: #f2f0ea; }
+.ancestry-preview .ancestry-belt[data-belt='blue'] { background: #2f6fd6; }
+.ancestry-preview .ancestry-belt[data-belt='purple'] { background: #7b3fb0; }
+.ancestry-preview .ancestry-belt[data-belt='brown'] { background: #8a5a2b; }
+.ancestry-preview .ancestry-belt[data-belt='black'] { background: #111; }
+
+.ancestry-preview .ancestry-picks,
+.ancestry-preview .ancestry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ancestry-preview .ancestry-picks button,
+.ancestry-preview .ancestry-actions button,
+.ancestry-preview .ancestry-drill button,
+.ancestry-preview .profile-card > button {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 0;
+  background: #2c2c2e;
+  color: #f5f5f7;
+  font: inherit;
+  font-weight: 700;
+}
+
+.ancestry-preview .ancestry-picks button[aria-pressed='true'],
+.ancestry-preview .ancestry-drill button[aria-pressed='true'] {
+  background: #f5f5f7;
+  color: #0e1726;
+}
+
+.ancestry-preview .ancestry-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ancestry-preview .ancestry-stats div,
+.ancestry-preview .ancestry-medals li {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #12203c;
+}
+
+.ancestry-preview .ancestry-stats span,
+.ancestry-preview .ancestry-medals span {
+  display: block;
+  color: #c7c7cc;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ancestry-preview .ancestry-stats strong,
+.ancestry-preview .ancestry-medals strong {
+  font-size: 1.45rem;
+}
+
+.ancestry-preview .ancestry-names,
+.ancestry-preview .ancestry-spine,
+.ancestry-preview .ancestry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ancestry-preview .ancestry-names {
+  display: grid;
+  gap: 6px;
+}
+
+.ancestry-preview .ancestry-names li,
+.ancestry-preview .ancestry-list li {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ancestry-preview .ancestry-spine {
+  display: grid;
+}
+
+.ancestry-preview .ancestry-spine li {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0 0 14px 14px;
+  border-left: 3px solid #004eba;
+}
+
+.ancestry-preview .ancestry-spine li:last-child {
+  padding-bottom: 0;
+}
+
+.ancestry-preview .ancestry-spine span {
+  color: #6ea8ff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ancestry-preview .ancestry-you {
+  font-size: 1.25rem;
+}
+
+.ancestry-preview .ancestry-branch,
+.ancestry-preview .ancestry-branch ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ancestry-preview .ancestry-branch ul {
+  margin: 8px 0 0 12px;
+  padding-left: 12px;
+  border-left: 3px solid #004eba;
+  display: grid;
+  gap: 10px;
+}
+
+.ancestry-preview .ancestry-branch > li + li {
+  margin-top: 16px;
+}
+
+.ancestry-preview .ancestry-branch li[data-shared='true'] > strong {
+  color: #f2c14e;
+}
+
+.ancestry-preview .ancestry-branch .ancestry-tag {
+  display: block;
+  margin-top: 8px;
+}
+
+.ancestry-preview .ancestry-medals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ancestry-preview .ancestry-medals li[data-medal='gold'] strong { color: #f2c14e; }
+.ancestry-preview .ancestry-medals li[data-medal='silver'] strong { color: #d5d8e0; }
+.ancestry-preview .ancestry-medals li[data-medal='bronze'] strong { color: #d08a55; }
+
+.ancestry-preview .ancestry-result {
+  display: grid;
+  gap: 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ancestry-preview .ancestry-result:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.ancestry-preview .ancestry-tag {
+  color: #8fb6ff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ancestry-preview .ancestry-identity,
+.ancestry-preview .ancestry-id__body,
+.ancestry-preview .ancestry-academy {
+  display: grid;
+  gap: 14px;
+}
+
+.ancestry-preview .ancestry-identity__top {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.ancestry-preview .ancestry-academy,
+.ancestry-preview .ancestry-id__body {
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+.ancestry-preview .ancestry-photo {
+  margin: 0;
+}
+
+.ancestry-preview .ancestry-photo img {
+  display: block;
+  width: 112px;
+  height: 112px;
+  border-radius: 24px;
+  object-fit: cover;
+  background: #12203c;
+}
+
+.ancestry-preview .ancestry-photo figcaption {
+  margin-top: 6px;
+  color: #c7c7cc;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ancestry-preview .ancestry-photo--wide img {
+  width: 100%;
+  height: 132px;
+  border-radius: 16px;
+}
+
+.ancestry-preview .ancestry-id {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ancestry-preview .ancestry-id__belt {
+  height: 18px;
+  background: #111;
+  box-shadow: inset -28px 0 0 #f5f5f7, inset -40px 0 0 #c5282c;
+}
+
+.ancestry-preview .ancestry-id__body {
+  padding: 16px;
+}
+
+.ancestry-preview .ancestry-id__name {
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+}
+
+.ancestry-preview .ancestry-line {
+  margin: 0;
+  font-weight: 700;
+}
+
+.ancestry-preview .ancestry-hour {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 18px;
+}
+
+.ancestry-preview .ancestry-hour--mat {
+  background: linear-gradient(180deg, #17315f, #12203c);
+  border: 1px solid rgba(110, 168, 255, 0.45);
+}
+
+.ancestry-preview .ancestry-hour--mat strong {
+  font-size: 2.8rem;
+  line-height: 1;
+}
+
+.ancestry-preview .ancestry-hour--teach {
+  background: #1c1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 4px solid #8a5a2b;
+}
+
+.ancestry-preview .ancestry-hour--teach strong {
+  font-size: 2rem;
+}
+
+.ancestry-preview .ancestry-hour span,
+.ancestry-preview .ancestry-impact__issued span {
+  color: #c7c7cc;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ancestry-preview .ancestry-hour p,
+.ancestry-preview .ancestry-impact__total span {
+  margin: 0;
+  color: #c7c7cc;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.ancestry-preview .ancestry-impact__total {
+  display: grid;
+  gap: 4px;
+}
+
+.ancestry-preview .ancestry-impact__total strong {
+  font-size: 2rem;
+}
+
+.ancestry-preview .ancestry-impact__issued {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ancestry-preview .ancestry-impact__issued p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #12203c;
+}
+
+.ancestry-preview .ancestry-impact__issued strong {
+  font-size: 1.4rem;
+}
+
+.ancestry-preview .ancestry-roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.ancestry-preview .ancestry-roster li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.ancestry-preview .ancestry-roster i {
+  border-radius: 5px;
+}
+
+.ancestry-preview .ancestry-roster i[data-belt='white'] { background: #f2f0ea; }
+.ancestry-preview .ancestry-roster i[data-belt='blue'] { background: #2f6fd6; }
+.ancestry-preview .ancestry-roster i[data-belt='purple'] { background: #7b3fb0; }
+.ancestry-preview .ancestry-roster i[data-belt='brown'] { background: #8a5a2b; }
+.ancestry-preview .ancestry-roster i[data-belt='black'] { background: #111; }
+
+.ancestry-preview .ancestry-roster div {
+  display: grid;
+  gap: 2px;
+}
+
+.ancestry-preview .ancestry-roster span {
+  color: #c7c7cc;
+  font-size: 14px;
+}
+
+.ancestry-preview .ancestry-stats em {
+  display: block;
+  margin-top: 4px;
+  color: #c7c7cc;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ancestry-preview .ancestry-scope a {
+  white-space: nowrap;
+}
+
+@media (min-width: 800px) {
+  .ancestry-preview .ancestry-sheet {
+    width: min(880px, 100%);
+  }
+
+  .ancestry-preview .ancestry-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
