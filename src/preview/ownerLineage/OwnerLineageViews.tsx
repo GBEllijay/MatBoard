@@ -6,12 +6,21 @@ import '../../pages/student/profile.css';
 import '../../components/rosterCard/coachClipboard.css';
 import './ownerLineage.css';
 
-function ProfileDetails() {
+function ProfileDetails({ name, onName }: { name?: string; onName?: (value: string) => void }) {
   return (
     <section className="profile-card" aria-label="Profile details" data-testid="profile-details">
       <div className="profile-row">
         <span className="ink__label">Name</span>
-        <strong>You</strong>
+        {onName ? (
+          <input
+            className="owner-line__name"
+            aria-label="Name"
+            value={name ?? ''}
+            onChange={(event) => onName(event.target.value)}
+          />
+        ) : (
+          <strong>You</strong>
+        )}
       </div>
       <div className="profile-row">
         <span className="ink__label">Belt</span>
@@ -41,7 +50,7 @@ function EditForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-function Shell({ children }: { children: ReactNode }) {
+function Shell({ name, onName, children }: { name?: string; onName?: (value: string) => void; children: ReactNode }) {
   return (
     <main className="student student-frame student--arena student--profile owner-line">
       <p className="owner-line__banner" role="note">
@@ -53,7 +62,7 @@ function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <div className="owner-line__sheet">
-        <ProfileDetails />
+        <ProfileDetails name={name} onName={onName} />
         {children}
       </div>
     </main>
@@ -74,10 +83,16 @@ function LineHead({ title, editing, onEdit }: { title: string; editing: boolean;
 }
 
 /** Read view under the profile details. Names only. Edit opens the form. */
+function youLine(profileName: string): string {
+  const name = profileName.trim();
+  return name ? `${name} · You` : 'You';
+}
+
 export function CompactLineageCard() {
   const [editing, setEditing] = useState(false);
+  const [profileName, setProfileName] = useState('');
   return (
-    <Shell>
+    <Shell name={profileName} onName={setProfileName}>
       <section className="profile-card owner-line__card" aria-label="Instructor lineage" data-testid="lineage-compact">
         <LineHead title="Instructor lineage" editing={editing} onEdit={() => setEditing(true)} />
         {editing ? (
@@ -86,7 +101,7 @@ export function CompactLineageCard() {
           <ol className="owner-line__names">
             {PROPOSED_LINE.map((step) => (
               <li key={step.name} data-you={step.name === 'You' ? 'true' : undefined}>
-                {step.name}
+                {step.name === 'You' ? youLine(profileName) : step.name}
               </li>
             ))}
           </ol>

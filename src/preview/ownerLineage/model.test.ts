@@ -24,4 +24,5 @@ test('the proposed line names each relationship and keeps the award off the line
   assert.equal(/Up|Remove/.test(views), false);
   assert.match(views, /title="Instructor lineage"/);
   assert.match(views, /title="Teaching lineage"/);
+  assert.match(views, /name \? `\$\{name\} · You` : 'You'/);
 });
