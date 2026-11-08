@@ -23,10 +23,15 @@ test('faq entries are easy to address and do not invent prices or rules', () => 
   assert.match(text, /does not look through your photo library/i);
   assert.match(text, /not your lifetime/i);
   assert.match(text, /There is no bank/i);
-  assert.match(text, /shared index from belt to belt is not available/i);
-  assert.match(text, /purchase does not keep that sample/i);
+  assert.match(text, /shared index of every belt is not available/i);
+  assert.match(text, /Techniques I.m working on/);
+  assert.match(text, /sample seed on the demo screen is not kept/i);
+  assert.match(text, /does not replace the file unless you choose/i);
+  assert.match(text, /Video files and photos from the demo are not copied/i);
   assert.match(text, /does not sync the journal/i);
-  assert.match(text, /no paid Cloud seat/i);
+  assert.match(text, /accepted instructor seat/i);
+  assert.match(text, /not your personal journal/i);
+  assert.equal(/no paid Cloud seat/i.test(text), false);
   for (const entry of FAQ_ENTRIES) {
     assert.ok(entry.question.length > 8);
     assert.ok(entry.paragraphs.length > 0);
