@@ -75,6 +75,7 @@ import {
   type LadderRung,
 } from '../../lib/studentRank';
 import { GrandmasterCheer } from '../../components/GrandmasterCheer';
+import { PromotionHistoryList } from './PromotionHistoryList';
 import { AchievedDateField, formatAchieved } from './AchievedDateField';
 import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
 import { BeltPhotoSection } from './RankPhotoGallery';
@@ -442,64 +443,17 @@ function PromotionHistory({
   const entries = promotionHistoryEntries(report);
   const repeats = repeatedHistoryBelts(rankOf(report).history);
   return (
-    <section className="ink" aria-label="Promotion history">
-      <h2>Promotion history</h2>
-      {entries.length === 0 ? <p>No earlier belts yet. A belt moves here when you change it and it already has a date or a stripe.</p> : null}
-      {repeats.map((name) => (
-        <p key={name}>
-          {name} is saved more than once. Remove drops only the entry you choose. The date is the promotion date, not when it was saved.
-        </p>
-      ))}
-      <ul className="comp-list">
-        {entries.map((row) => {
-          const stripes = row.belt === 'black'
-            ? row.tapeCount === 1
-              ? '1 degree'
-              : `${row.tapeCount} degrees`
-            : row.tapeCount === 1
-              ? '1 stripe'
-              : `${row.tapeCount} stripes`;
-          return (
-            <li key={row.id} className="rank-history">
-              <span className="rank-history__label">{row.label}</span>
-              <span className="rank-history__date">{row.awardedOn || 'No date'}</span>
-              <span className="rank-history__stripes">{stripes}</span>
-              {row.historyId ? (
-                dropId === row.historyId ? (
-                  <div className="student-actions">
-                    <button
-                      type="button"
-                      className="ink-btn"
-                      aria-label={`Confirm remove ${row.label} history`}
-                      onClick={() => {
-                        run(removeRankHistory(report, row.historyId));
-                        setDropId('');
-                      }}
-                    >
-                      Confirm remove
-                    </button>
-                    <button type="button" className="ink-btn" onClick={() => setDropId('')}>
-                      Keep history
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="ink-btn ink-btn--small"
-                    aria-label={`Remove ${row.label} history`}
-                    onClick={() => setDropId(row.historyId)}
-                  >
-                    Remove
-                  </button>
-                )
-              ) : (
-                <span className="rank-history__current">Current belt</span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <PromotionHistoryList
+      entries={entries}
+      repeats={repeats}
+      dropId={dropId}
+      onAskRemove={setDropId}
+      onConfirmRemove={(historyId) => {
+        run(removeRankHistory(report, historyId));
+        setDropId('');
+      }}
+      onKeep={() => setDropId('')}
+    />
   );
 }
 

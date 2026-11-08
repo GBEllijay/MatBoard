@@ -1,0 +1,148 @@
+/* Card chrome only. The left fan is .skin-stack from skinPicker.css. */
+
+.pcard-page {
+  min-height: 100dvh;
+  background: #07111f;
+  color: #f5f1e8;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.pcard-shell {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: calc(1rem + var(--safe-t, 0px)) 1rem calc(1.5rem + var(--safe-b, 0px));
+  display: grid;
+  gap: 14px;
+}
+.pcard-banner {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  border-radius: 12px;
+  background: rgba(12, 35, 68, 0.72);
+  color: #d7e6ff;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.pcard-page h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 6vw, 2.2rem);
+  letter-spacing: -0.04em;
+}
+.pcard-kicker {
+  margin: 0;
+  color: #6ea8ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.pcard-note {
+  margin: 0;
+  color: #9aa3b5;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.pcard-list {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.pcard {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-width: 0;
+  border: 1.5px solid #004eba;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(12, 35, 68, 0.92), rgba(6, 16, 31, 0.94));
+  color: #f5f1e8;
+}
+.pcard__bg {
+  position: absolute;
+  inset: -16px;
+  width: calc(100% + 32px);
+  height: calc(100% + 32px);
+  object-fit: cover;
+  filter: blur(8px);
+  z-index: 0;
+}
+.pcard__shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(90deg, rgba(7, 17, 31, 0.78), rgba(7, 17, 31, 0.58));
+}
+.pcard--empty .pcard__shade {
+  background: transparent;
+}
+.pcard__row {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  min-width: 0;
+}
+.pcard .skin-stack {
+  color: #f5f1e8;
+}
+.pcard-stack__empty {
+  box-shadow: inset 0 0 0 1px rgba(110, 168, 255, 0.7);
+  background: transparent;
+}
+.pcard-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.pcard-copy strong {
+  font-size: 1.05rem;
+}
+.pcard-copy span,
+.pcard-copy small {
+  color: #f5f1e8;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.pcard-pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.pcard-pip {
+  width: 10px;
+  height: 18px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(245, 241, 232, 0.55);
+}
+.pcard-pip.is-on {
+  background: #f5f1e8;
+  box-shadow: none;
+}
+.pcard button.pcard-remove {
+  justify-self: start;
+  width: auto;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(110, 168, 255, 0.7);
+  background: rgba(7, 17, 31, 0.55);
+  color: #f5f1e8;
+  font: inherit;
+  font-weight: 700;
+}
+.pcard-belt {
+  width: 14px;
+  height: 36px;
+  border-radius: 3px;
+  justify-self: start;
+}
+.pcard-belt--white { background: #f4f1ea; }
+.pcard-belt--blue { background: #2a5cf0; }
+.pcard-belt--purple { background: #6b2d91; }
+.pcard-belt--black { background: #0a0b0e; box-shadow: inset 0 -8px 0 #ef4444; }
+@media (orientation: landscape) and (min-width: 740px) {
+  .pcard-list { grid-template-columns: 1fr 1fr; align-items: start; }
+}

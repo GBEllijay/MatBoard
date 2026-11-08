@@ -21,6 +21,8 @@ import { setInstructorBars, setInstructorBarsOn, setRankAwardedOn, setRankBelt, 
 import { TermsPage } from '../Terms.tsx';
 import { BeltPage } from './BeltPage.tsx';
 import { RankPage } from './RankPage.tsx';
+import { PromotionHistoryPreview } from '../../preview/promotionHistory/PromotionHistoryPreview.tsx';
+import { PromotionCardPreview } from '../../preview/promotionCard/PromotionCardPreview.tsx';
 
 const dom = new Window({ url: 'http://localhost/student/rank?student=1' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -1552,6 +1554,15 @@ test('promotion history lists belt order, keeps both white dates, and shows blac
       { label: 'Black', date: 'No date', stripes: '0 degrees', current: 'Current belt', remove: false },
     ]);
     assert.match(document.querySelector('[aria-label="Promotion history"]')?.textContent ?? '', /White is saved more than once/);
+    const colored = [...document.querySelectorAll('.rank-history')].filter((row) => row.querySelector('.rank-history__stripes')?.textContent === '4 stripes');
+    assert.equal(colored.length, 5);
+    for (const row of colored) {
+      assert.equal(row.querySelectorAll('.phist-pip').length, 4);
+      assert.equal(row.querySelectorAll('.phist-pip.is-on').length, 4);
+    }
+    const blackRow = [...document.querySelectorAll('.rank-history')].find((row) => row.querySelector('.rank-history__label')?.textContent === 'Black');
+    assert.equal(blackRow?.querySelectorAll('.phist-pip').length, 0);
+    assert.ok(blackRow?.querySelector('.phist-belt--black'));
     assert.equal(stored().profile?.belt, 'black');
     assert.equal(stored().rank?.awardedOn, '');
     assert.equal(stored().rank?.history?.some((row) => row.belt === 'black'), false);
@@ -1586,5 +1597,60 @@ test('promotion history lists belt order, keeps both white dates, and shows blac
     assert.deepEqual(photos.belts?.blue, [BLUE_PHOTO_A]);
   } finally {
     unmount(again);
+  }
+});
+
+test('the promotion history example keeps February 3 only and does not write a journal', async () => {
+  const mounted = mount(<PromotionHistoryPreview />, '/preview/promotion-history');
+  try {
+    const banner = document.querySelector('.phist-banner')?.textContent ?? '';
+    assert.match(banner, /Synthetic example/);
+    assert.match(banner, /No saved file was read or changed/);
+    const history = document.querySelector('[aria-label="Promotion history"]');
+    assert.match(history?.textContent ?? '', /2014-02-03/);
+    assert.doesNotMatch(history?.textContent ?? '', /2014-02-15/);
+    const white = [...document.querySelectorAll('.rank-history')].find((row) => row.querySelector('.rank-history__label')?.textContent === 'White');
+    assert.equal(white?.querySelector('.rank-history__date')?.textContent, '2014-02-03');
+    assert.equal(white?.querySelector('.rank-history__stripes')?.textContent, '4 stripes');
+    assert.equal(white?.querySelectorAll('.phist-pip.is-on').length, 4);
+    const black = [...document.querySelectorAll('.rank-history')].find((row) => row.querySelector('.rank-history__label')?.textContent === 'Black');
+    assert.equal(black?.querySelector('.rank-history__date')?.textContent, 'No date');
+    assert.equal(black?.querySelector('.rank-history__stripes')?.textContent, '0 degrees');
+    assert.equal(black?.querySelector('.rank-history__current')?.textContent, 'Current belt');
+    assert.equal(black?.querySelectorAll('.phist-pip').length, 0);
+    assert.equal(localStorage.getItem('matboard.studentEdition.v1'), null);
+    await click(labeled('Remove White history'));
+    await click(labeled('Confirm remove White history'));
+    assert.equal(document.querySelectorAll('.rank-history').length, 4);
+    assert.equal(localStorage.getItem('matboard.studentEdition.v1'), null);
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('the promotion card preview stacks photos on the left and does not change a journal', async () => {
+  const mounted = mount(<PromotionCardPreview />, '/preview/promotion-card');
+  try {
+    assert.match(document.querySelector('.pcard-banner')?.textContent ?? '', /Synthetic example/);
+    assert.match(document.querySelector('.pcard-banner')?.textContent ?? '', /My rank is unchanged/);
+    const white = document.querySelector('[data-photo="yes"]');
+    assert.ok(white?.querySelector('.pcard__bg'));
+    assert.equal(white?.querySelectorAll('.skin-stack__card--front').length, 1);
+    assert.equal(white?.querySelectorAll('.skin-stack__card--back').length, 1);
+    assert.equal(white?.querySelectorAll('.rank-photos').length, 0);
+    assert.equal(document.querySelector('.rank-photo-stack'), null);
+    const empty = [...document.querySelectorAll('[data-photo="no"]')];
+    assert.equal(empty.length, 2);
+    for (const card of empty) assert.equal(card.querySelector('.pcard__bg'), null);
+    assert.match(document.body.textContent ?? '', /2014-02-03/);
+    assert.match(document.body.textContent ?? '', /No date/);
+    assert.match(document.body.textContent ?? '', /0 degrees/);
+    assert.equal(localStorage.getItem('matboard.studentEdition.v1'), null);
+    await click(labeled('Remove White history'));
+    assert.equal(document.querySelector('[aria-label="Example White photos, 3 photos"]'), null);
+    assert.ok(document.querySelector('[aria-label="Example Blue photos, 1 photo"]'));
+    assert.equal(localStorage.getItem('matboard.studentEdition.v1'), null);
+  } finally {
+    unmount(mounted);
   }
 });

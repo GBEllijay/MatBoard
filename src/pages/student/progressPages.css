@@ -511,3 +511,82 @@
   background: transparent;
   box-shadow: none;
 }
+
+/* Hours-preview paint for the My rank profile block, its Adult/Kids menu, and lineage.
+   Same navy card, blue edge, and pill as /preview/student-hours. Labels and behavior stay. */
+.student.student--arena.student--rank .rank-stack > section[aria-label='Profile'] {
+  padding: 14px;
+  border: 1.5px solid #004eba;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(12, 35, 68, 0.92), rgba(6, 16, 31, 0.94));
+  color: #f5f1e8;
+}
+.student.student--arena.student--rank section[aria-label='Profile'] .ink {
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  border-radius: 10px;
+  background: #0c1a30;
+  color: #f5f1e8;
+}
+.student.student--arena.student--rank section[aria-label='Profile'] .ink__label,
+.student.student--arena.student--rank section[aria-label='Profile'] p {
+  color: #9aa3b5;
+}
+.student.student--arena.student--rank section[aria-label='Profile'] input {
+  min-height: 44px;
+  color: #f5f1e8;
+  background: transparent;
+  color-scheme: dark;
+}
+.student.student--arena.student--rank .belt-system {
+  border: 1.5px solid #004eba;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(12, 35, 68, 0.92), rgba(6, 16, 31, 0.94));
+  color: #f5f1e8;
+}
+.student.student--arena.student--rank .belt-system__switch button {
+  border-radius: 999px;
+  border: 1px solid rgba(110, 168, 255, 0.7);
+  background: transparent;
+  color: #f5f1e8;
+}
+.student.student--arena.student--rank .belt-system__switch button[aria-pressed='true'] {
+  background: #004eba;
+  border-color: #004eba;
+  color: #fff;
+}
+.student.student--arena.student--rank .rank-lineage-editor {
+  border: 1.5px solid #004eba;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(12, 35, 68, 0.92), rgba(6, 16, 31, 0.94));
+  color: #f5f1e8;
+}
+.student.student--arena.student--rank .rank-lineage-editor h2,
+.student.student--arena.student--rank .rank-lineage-editor p,
+.student.student--arena.student--rank .rank-lineage-editor .ink__label {
+  color: #f5f1e8;
+}
+.student.student--arena.student--rank .rank-lineage-editor .ink__label,
+.student.student--arena.student--rank .rank-lineage-editor p {
+  color: #9aa3b5;
+}
+.student.student--arena.student--rank .rank-lineage-editor input[type='text'] {
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  background: #0c1a30;
+  color: #f5f1e8;
+  box-shadow: none;
+}
+.student.student--arena.student--rank .rank-lineage-editor .ink-btn {
+  border-radius: 999px;
+  border: 1px solid rgba(110, 168, 255, 0.7);
+  background: transparent;
+  color: #f5f1e8;
+  box-shadow: none;
+}
+.student.student--arena.student--rank .rank-lineage-editor .ink-btn--save {
+  background: #004eba;
+  border-color: #004eba;
+  color: #fff;
+}

@@ -45,6 +45,8 @@ import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { StudentEditionPage } from './pages/StudentEdition';
 import { Journal2036Page } from './preview/journal2036/Journal2036Page';
+import { PromotionHistoryPreview } from './preview/promotionHistory/PromotionHistoryPreview';
+import { PromotionCardPreview } from './preview/promotionCard/PromotionCardPreview';
 import { CoachPage } from './pages/Coach';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
@@ -750,6 +752,8 @@ export default function App() {
         }
       />
       <Route path="/preview/journal-2036" element={<Journal2036Page />} />
+      <Route path="/preview/promotion-history" element={<PromotionHistoryPreview />} />
+      <Route path="/preview/promotion-card" element={<PromotionCardPreview />} />
       <Route path="/student/*" element={<StudentEditionPage />} />
       {/* Public owner preview. The live Technique Tree stays at /technique-tree. */}
       <Route path="/preview/technique-tree" element={<TechniqueTreePreviewPage />} />
