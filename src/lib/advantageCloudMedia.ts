@@ -4,6 +4,7 @@
  * Google Drive, OneDrive, and this phone stay the default until a coach picks Cloud.
  */
 
+import { cloudPathScope } from './cloudDataOwnership.ts';
 import { lessonMediaPath, lessonWeekId, routeUpload, isCalendarDateKey, type GymActor } from './gymTree.ts';
 
 /** Same storage key as src/lib/entitlement.ts. Kept here so the server handler does not import the browser entitlement module. */
@@ -260,6 +261,8 @@ export function cloudObjectKey(licenseId: string, relativePath: string): string 
   ) {
     return null;
   }
+  // Gym media upload is academy material only. A shared copy uses the inbox.
+  if (cloudPathScope(relativePath) !== 'academy') return null;
   return `groups/${licenseId}/${relativePath}`;
 }
 

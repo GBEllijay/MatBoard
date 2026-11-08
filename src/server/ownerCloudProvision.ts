@@ -3,6 +3,7 @@
  * without calling Stripe and without charging anyone.
  * One owner academy is reused, so later unlocks keep the same folder prefix.
  * The shared owner-test license id is not used here.
+ * This does not read or write a student's journal, photos, or backup.
  */
 
 import type { D1Database } from './d1.ts';

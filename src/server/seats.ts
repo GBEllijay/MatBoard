@@ -286,6 +286,7 @@ export async function handleSeatAccept(
   });
 }
 
+/** Ends this seat's academy access. Does not delete academy files or a student's personal history. */
 export async function handleSeatRevoke(request: Request, env: SeatEnv, db: D1Database | null, now: () => Date = () => new Date()): Promise<Response> {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed.' });
   if (!db) return json(503, { ok: false, error: 'Entitlement storage is not set up yet. Bind ENTITLEMENTS_DB.' });
