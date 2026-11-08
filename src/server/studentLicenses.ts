@@ -5,6 +5,7 @@
  * No new table and no new column. The claim code is the primary key. The student's
  * email is stored only as the existing identities hash so Restore can find it.
  * Revoke sets status to revoked and, once claimed, inactivates that grant.
+ * That ends academy access for the code. The student's own journal, photos, and backup stay theirs.
  * A revoked code stays revoked. The seat returns to the pool of 5 either way.
  */
 
