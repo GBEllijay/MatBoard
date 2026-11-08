@@ -90,7 +90,7 @@ export function CoachUnlimitedPage() {
                   onClick={tool.clearBout ? () => unlinkBracketBout() : undefined}
                 >
                   <BeltRail kind="brown" />
-                  <span>{tool.title}</span>
+                  <span className="instructor-tool__label">{tool.title}</span>
                   <InstructorToolMark mark={marks[tool.title] ?? 'plan'} />
                 </Link>
               ))}

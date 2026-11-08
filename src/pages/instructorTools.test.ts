@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import test from 'node:test';
 import { COACH_UNLIMITED_TOOLS } from '../lib/productNames.ts';
+import { PAID_PAGE_MODULES } from '../server/paidChunkBundle.ts';
 
 const page = readFileSync(new URL('./CoachUnlimited.tsx', import.meta.url), 'utf8');
 const marks = readFileSync(new URL('../components/InstructorToolMark.tsx', import.meta.url), 'utf8');
@@ -16,6 +18,7 @@ test('Instructor tools keep the live routes on the original ivory buttons', () =
   assert.match(page, /tool\.clearBout \? \(\) => unlinkBracketBout\(\)/);
   assert.match(page, /<BeltHeader kind="brown" worn title="Instructor Edition"/);
   assert.match(page, /<BeltRail kind="brown" \/>/);
+  assert.match(page, /className="instructor-tool__label"/);
   assert.doesNotMatch(page, /data-accent/);
   assert.doesNotMatch(page, /instructor-tool__choice/);
   assert.deepEqual(
@@ -48,11 +51,38 @@ test('Instructor tools keep the live routes on the original ivory buttons', () =
   assert.match(marks, /Open index-card box/);
   assert.doesNotMatch(marks, /M20 54c2-10/);
   const css = readFileSync(new URL('./instructorTools.css', import.meta.url), 'utf8');
+  assert.match(page, /import '\.\/instructorTools\.css'/);
   assert.match(css, /background:\s*var\(--white\)/);
-  assert.match(css, /color:\s*var\(--white-ink\)/);
-  assert.match(css, /--belt-rail-width:\s*8px/);
+  assert.match(css, /\.instructor-tool__label \{[^}]*color:\s*#14161c/);
+  assert.match(css, /> \.belt-rail \{[^}]*position:\s*absolute/);
+  assert.match(css, /> \.belt-rail \{[^}]*--belt-rail-width:\s*8px/);
+  assert.doesNotMatch(css, /> span \{/);
   assert.doesNotMatch(css, /#e4dfd4/);
   assert.match(css, /\.instructor-tool__mark \{[^}]*max-width:\s*44px/);
+  const shared = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  assert.match(shared, /\.belt-rail--brown \{[^}]*--belt-fill:\s*#6b3a1f/);
+  assert.match(shared, /\.belt-rail \{[^}]*--belt-weave:/);
+  const src = new URL('..', import.meta.url);
+  const importers: string[] = [];
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name);
+      if (name === 'node_modules' || name === 'dist') continue;
+      if (statSync(path).isDirectory()) {
+        walk(path);
+        continue;
+      }
+      if (!/\.(tsx|ts|css)$/.test(name)) continue;
+      const text = readFileSync(path, 'utf8');
+      if (text.includes('instructorTools.css')) importers.push(path);
+    }
+  };
+  walk(src.pathname);
+  assert.deepEqual(
+    importers.map((path) => path.slice(src.pathname.length)).sort(),
+    ['pages/CoachUnlimited.tsx', 'pages/instructorTools.test.ts'],
+  );
+  assert.equal(PAID_PAGE_MODULES['/src/pages/CoachUnlimited.tsx'], 'coach-unlimited');
   assert.match(readFileSync(new URL('../index.css', import.meta.url), 'utf8'), /\.pro-hub \{[^}]*min-height:\s*5\.25rem/);
   const white = readFileSync(new URL('../components/LiveBoutCard.tsx', import.meta.url), 'utf8');
   const rounds = readFileSync(new URL('../components/RoundsCard.tsx', import.meta.url), 'utf8');

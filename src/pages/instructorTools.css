@@ -1,28 +1,35 @@
 /*
- * The Instructor rows are the pre-icon .pro-hub buttons from 371ef25
- * (ivory var(--white) #efebe3, min-height 5.25rem, 18px corners,
- * padding 1rem 1.15rem 1rem 1.5rem, 8px belt). A later rule paints every
- * .pro-hub navy and widens the belt to 12px. This file is imported only
- * by the paid Instructor page, so it puts the ivory and the 8px belt
- * back on these rows. The drawing is only added inside.
+ * The Instructor rows are the pre-icon .pro-hub buttons from 371ef25.
+ * A later rule paints every .pro-hub navy and widens the belt to 12px.
+ * This file is imported only by the paid Instructor page.
+ * The label is the only span this file positions. The belt rail stays
+ * the shared absolute .belt-rail (weave, edge, and tip), brown, 8px.
  */
 
 .instructor-hub .pro-hubs .pro-hub.instructor-tool {
   background: var(--white);
-  color: var(--white-ink);
+  color: #14161c;
   border: 0;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
-.instructor-hub .pro-hubs .pro-hub.instructor-tool > span {
+.instructor-hub .pro-hubs .pro-hub.instructor-tool > .instructor-tool__label {
   position: relative;
   z-index: 1;
   flex: 1 1 auto;
   min-width: 0;
-  color: var(--white-ink);
+  color: #14161c;
+  -webkit-text-fill-color: #14161c;
 }
 
-.instructor-hub .pro-hubs .pro-hub.instructor-tool .belt-rail {
+.instructor-hub .pro-hubs .pro-hub.instructor-tool > .belt-rail {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  flex: none;
+  width: auto;
+  height: auto;
+  min-height: 0;
   --belt-rail-width: 8px;
   --belt-block: 0.55rem;
 }
