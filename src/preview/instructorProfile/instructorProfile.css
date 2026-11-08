@@ -50,13 +50,25 @@
 }
 
 .ip-sheet {
+  --ip-ink: #f5f1e8;
+  --ip-blue: #6ea8ff;
+  --ip-line: rgba(110, 168, 255, 0.35);
   margin-top: 8px;
   padding: 10px;
   border: 1.5px solid #004eba;
   border-radius: 6px;
   background: rgba(8, 18, 36, 0.88);
   box-shadow: inset 0 0 0 1px rgba(110, 168, 255, 0.18);
+  color: var(--ip-ink);
 }
+
+.ip-sheet h1 {
+  margin: 4px 0 0;
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+  line-height: 1.1;
+}
+
+.ip-sheet h1::after { display: none; }
 
 .ip-sheet__head {
   margin-bottom: 8px;

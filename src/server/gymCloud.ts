@@ -129,17 +129,18 @@ function bearer(request: Request): string {
  * cancel-at-period-end stays on until that end, and paused, unpaid, canceled,
  * and incomplete are off. This does not call Stripe and does not create a license.
  */
-async function licenseHasPlusCloud(env: GymCloudEnv, licenseId: string, now: Date): Promise<boolean> {
-  if (licenseId === 'owner-test') return true;
+/** `unread` is a database failure. It is not a decision that Cloud is absent. */
+async function lookupPlusCloud(env: GymCloudEnv, licenseId: string, now: Date): Promise<'on' | 'off' | 'unread'> {
+  if (licenseId === 'owner-test') return 'on';
   const db = env.ENTITLEMENTS_DB;
-  if (!db) return false;
+  if (!db) return 'off';
   try {
     const grants = await grantsForLicense(db, licenseId, now);
-    if (grants.some((row) => grantRowOpensPlusCloud(row) || ownerCloudGrantOpen(row))) return true;
+    if (grants.some((row) => grantRowOpensPlusCloud(row) || ownerCloudGrantOpen(row))) return 'on';
     const cloud = await cloudAccessForLicense(db, licenseId, now);
-    return cloud.entitled;
+    return cloud.entitled ? 'on' : 'off';
   } catch {
-    return false;
+    return 'unread';
   }
 }
 
@@ -192,9 +193,11 @@ async function actorForClaims(env: GymCloudEnv, claims: EntitlementClaims, now: 
   // The license row wins when entitlement storage is bound. A stale `subs.cloud`
   // flag cannot keep a lapsed add-on open, and a missing flag cannot hide an
   // active one. With no database, the signed pass is the only record.
-  const plusCloud =
-    (await licenseHasPlusCloud(env, licenseId, now)) ||
-    (!seat && !env.ENTITLEMENTS_DB && claimsOpenPlusCloud(claims));
+  const lookup = await lookupPlusCloud(env, licenseId, now);
+  if (lookup === 'unread') {
+    return json(503, { ok: false, error: 'Advantage Cloud could not be checked. Nothing on this device was changed.' });
+  }
+  const plusCloud = lookup === 'on' || (!seat && !env.ENTITLEMENTS_DB && claimsOpenPlusCloud(claims));
   if (seat) {
     const seatId = claims.sid ?? '';
     if (!seatId || !(await seatIsActive(env, licenseId, seatId))) {

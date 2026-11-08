@@ -26,6 +26,16 @@ export function ownerPassOutranksSeat(claims: EntitlementClaims | null): boolean
   return false;
 }
 
+/**
+ * The invite form is the owner's. A seat session on the same phone does not
+ * hide it while an owner or alpha-pro pass outranks that seat. A seat token
+ * still cannot issue invites.
+ */
+export function inviteBlockedAsSeat(seat: unknown, claims: EntitlementClaims | null): boolean {
+  if (!seat) return false;
+  return !ownerPassOutranksSeat(claims);
+}
+
 /** Drop the seat from a door while an owner or alpha-pro pass is on this device. */
 export function rankSeatDoor<T extends RankableDoor>(door: T, claims: EntitlementClaims | null): T {
   if (!ownerPassOutranksSeat(claims)) return door;

@@ -69,7 +69,7 @@ function PaidChunkMessage({
                   Restore access
                 </Link>
                 {' · '}
-                <Link className="home__text-btn" to="/products">
+                <Link className="home__text-btn" to="/editions/pro-cloud">
                   Enter a code
                 </Link>
               </p>

@@ -248,6 +248,14 @@ test('the head instructor home says when Cloud is unbound, connected, or how ful
   });
   assert.deepEqual(refused, { phase: 'unavailable' });
   assert.equal(cloudHomeStatusLine(refused), CLOUD_UNAVAILABLE_MESSAGE);
+  const unchecked = await loadAdvantageCloudHome(async (input) => {
+    const url = String(input);
+    if (url.includes('probe=1')) return new Response(JSON.stringify({ ok: true, bound: true }), { status: 200 });
+    return new Response(JSON.stringify({ ok: false }), { status: 503 });
+  });
+  assert.equal(unchecked.phase, 'error');
+  assert.equal(cloudHomeStatusLine(unchecked), CLOUD_HOME_ERROR);
+  assert.notEqual(cloudHomeStatusLine(unchecked), CLOUD_UNAVAILABLE_MESSAGE);
 
   const broken = await loadAdvantageCloudHome(async () => {
     throw new Error('offline');
