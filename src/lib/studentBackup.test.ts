@@ -32,7 +32,7 @@ import {
   selfAssessmentLines,
 } from './studentBackup.ts';
 import { backupStampLabel, readStudentBackupStamp } from './studentBackupStamp.ts';
-import { emptyRankPhotoStore } from './rankPhotos.ts';
+import { RANK_PHOTO_KEY, emptyRankPhotoStore } from './rankPhotos.ts';
 import { pdfToText, textToPdf } from './simplePdf.ts';
 import { setBeltMode } from './beltBook.ts';
 import { dismissGoalPrompt } from './studentTools.ts';
@@ -800,4 +800,92 @@ test('a newer empty phone keeps a backup name, gym, start date, explicit toggles
   if (!oldParsed.ok) return;
   assert.equal(oldParsed.file.report.profile.techniquePolicy, undefined);
   assert.equal(oldParsed.file.report.profile.displayName, 'Old');
+});
+
+test('backup merge keeps an unknown black-belt date, both white rows, and belt photos', async () => {
+  const tapes = ['', '', '', ''] as [string, string, string, string];
+  const photoA = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const photoB = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  let local = setStudentProfile(blankStudentReport(200), { displayName: 'Fixture Student', gymName: 'Synthetic Academy' }, 201);
+  local = {
+    ...local,
+    profile: { ...local.profile, belt: 'black' },
+    rank: {
+      tapeCount: 0,
+      awardedOn: '',
+      tapeDates: tapes,
+      lineage: [],
+      history: [
+        { id: 'fix-white-feb15', belt: 'white', awardedOn: '2014-02-15', tapeCount: 4, tapeDates: tapes },
+        { id: 'fix-white-feb3', belt: 'white', awardedOn: '2014-02-03', tapeCount: 4, tapeDates: tapes },
+      ],
+    },
+  };
+  let incoming = setStudentProfile(blankStudentReport(50), { displayName: 'Fixture Student', gymName: 'Synthetic Academy' }, 51);
+  incoming = {
+    ...incoming,
+    profile: { ...incoming.profile, belt: 'blue' },
+    rank: {
+      tapeCount: 4,
+      awardedOn: '2015-03-26',
+      tapeDates: tapes,
+      lineage: [],
+      history: [
+        { id: 'fix-white-feb15', belt: 'white', awardedOn: '2014-02-15', tapeCount: 4, tapeDates: tapes },
+        { id: 'fix-blue', belt: 'blue', awardedOn: '2015-03-26', tapeCount: 4, tapeDates: tapes },
+      ],
+    },
+  };
+  const bare = {
+    ...setStudentProfile(blankStudentReport(300), { displayName: 'Fixture Student', gymName: 'Synthetic Academy' }, 301),
+  };
+  bare.profile = { ...bare.profile, belt: 'black' };
+  const keptBare = mergeStudentReports(bare, incoming);
+  assert.equal(keptBare.profile.belt, 'black');
+  assert.equal(keptBare.rank?.awardedOn, '');
+  assert.equal(keptBare.rank?.tapeCount, 0);
+  assert.equal(keptBare.rank?.history.some((row) => row.belt === 'black'), false);
+
+  const merged = mergeStudentReports(local, incoming);
+  assert.equal(merged.profile.belt, 'black');
+  assert.equal(merged.rank?.awardedOn, '');
+  assert.deepEqual(
+    merged.rank?.history.map((row) => row.id).sort(),
+    ['fix-blue', 'fix-white-feb15', 'fix-white-feb3'],
+  );
+  assert.equal(merged.rank?.history.find((row) => row.id === 'fix-white-feb3')?.awardedOn, '2014-02-03');
+  assert.equal(merged.rank?.history.find((row) => row.id === 'fix-white-feb15')?.awardedOn, '2014-02-15');
+
+  const localPhotos = emptyRankPhotoStore();
+  localPhotos.belts.white = [photoA];
+  const incomingPhotos = emptyRankPhotoStore();
+  incomingPhotos.belts.white = [photoB];
+  incomingPhotos.belts.blue = [photoA];
+  const built = await buildStudentBackup({
+    report: incoming,
+    assessment: { entries: [] },
+    scouting: [],
+    rankPhotos: incomingPhotos,
+    bracketPhotos: {},
+    shelf: { plan: null, feedback: null },
+    films: [],
+    blobs: [],
+    includeVideos: false,
+    now: new Date('2026-11-01T00:00:00Z'),
+    recordStamp: false,
+  });
+  const parsed = parseStudentBackup(built.json);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  const phone = memory();
+  saveStudentReport(phone, local);
+  applyBackupToMemory(phone, parsed.file, 'merge', { rank: localPhotos, bracket: {} });
+  const after = loadStudentReport(phone);
+  assert.equal(after.profile.belt, 'black');
+  assert.equal(after.rank?.awardedOn, '');
+  assert.equal(after.rank?.history.filter((row) => row.belt === 'white').length, 2);
+  assert.equal(after.rank?.history.some((row) => row.belt === 'black'), false);
+  const photos = JSON.parse(phone.getItem(RANK_PHOTO_KEY) ?? '{}') as { belts?: { white?: string[]; blue?: string[] } };
+  assert.deepEqual(photos.belts?.white, [photoA, photoB]);
+  assert.deepEqual(photos.belts?.blue, [photoA]);
 });

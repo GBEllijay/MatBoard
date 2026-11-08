@@ -703,8 +703,9 @@ export type CompetitionResult = {
 /**
  * One earlier belt. Written when the student changes the belt they wear
  * and that belt already had a date, a stripe, or instructor bars.
- * The same promotion is one row: belt, stripe or degree count, and awarded date.
- * Selecting that belt again restores the row instead of logging another.
+ * A date edit of that row keeps its id. The awarded date is the promotion
+ * date, not the time the row was saved. Two saved rows are not collapsed
+ * because one date is later. Selecting that belt again restores the row.
  */
 export type RankHistory = {
   id: string;
@@ -774,6 +775,12 @@ export type StudentRank = {
   pictureNote?: string;
   /** How many promotion photos the export kept. */
   pictureCount?: number;
+  /**
+   * History id of the belt being worn, when that belt was restored from history.
+   * The next time that belt is archived, the same id is written again.
+   * Omitted when this belt has no history id yet. Not a second copy of the row.
+   */
+  wornHistoryId?: string;
 };
 
 /** Competition section of a student progress report. Absent on version 1 files until import fills it. */

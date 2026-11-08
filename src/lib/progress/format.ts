@@ -915,20 +915,29 @@ function mergeRank(report: StudentProgressReport, incoming: StudentProgressRepor
   local.lineage = mergeLineage(local.lineage, next.lineage, conflicts);
   if (!local.pictureNote && next.pictureNote) local.pictureNote = next.pictureNote;
   delete local.pictures;
-  local.awardedOn = preferText(local.awardedOn, next.awardedOn, 'Rank date was kept.', conflicts);
-  if (local.tapeCount !== next.tapeCount) {
-    if (local.tapeCount === 0 && next.tapeCount > 0) local.tapeCount = next.tapeCount;
-    else conflicts.push('Rank tape count was kept.');
+  const sameBelt = report.profile.belt === incoming.profile.belt;
+  if (sameBelt || local.awardedOn.trim()) {
+    local.awardedOn = preferText(local.awardedOn, next.awardedOn, 'Rank date was kept.', conflicts);
+  } else if (next.awardedOn.trim()) {
+    conflicts.push('Rank date was kept.');
   }
-  for (let index = 0; index < local.tapeCount; index += 1) {
-    local.tapeDates[index] = preferText(
-      local.tapeDates[index] ?? '',
-      next.tapeDates[index] ?? '',
-      `Rank tape ${index + 1} date was kept.`,
-      conflicts,
-    );
+  if (sameBelt) {
+    if (local.tapeCount !== next.tapeCount) {
+      if (local.tapeCount === 0 && next.tapeCount > 0) local.tapeCount = next.tapeCount;
+      else conflicts.push('Rank tape count was kept.');
+    }
+    for (let index = 0; index < local.tapeCount; index += 1) {
+      local.tapeDates[index] = preferText(
+        local.tapeDates[index] ?? '',
+        next.tapeDates[index] ?? '',
+        `Rank tape ${index + 1} date was kept.`,
+        conflicts,
+      );
+    }
+    for (let index = local.tapeCount; index < RANK_TAPE_MAX; index += 1) local.tapeDates[index] = '';
+  } else if (local.tapeCount !== next.tapeCount) {
+    conflicts.push('Rank tape count was kept.');
   }
-  for (let index = local.tapeCount; index < RANK_TAPE_MAX; index += 1) local.tapeDates[index] = '';
   const byId = new Map(local.history.map((row) => [row.id, row]));
   for (const row of next.history) {
     const current = byId.get(row.id);
@@ -1386,6 +1395,8 @@ function readRank(value: unknown, belt: ProgressBelt, errors: string[]): Student
   const focus = readDegreeFocus(record.degreeFocus, errors);
   if (focus) rank.degreeFocus = focus;
   if (Object.prototype.hasOwnProperty.call(record, 'lineage')) rank.lineage = readLineage(record.lineage, errors);
+  const wornHistoryId = readLooseId(record.wornHistoryId);
+  if (wornHistoryId) rank.wornHistoryId = wornHistoryId;
   if (typeof record.pictureNote === 'string') {
     rank.pictureNote = readString(record.pictureNote, 'Rank photo note', PROGRESS_NOTE_MAX, errors);
   }

@@ -13,14 +13,17 @@ import {
   emptyRank,
   ladderRungs,
   normalizeStoredRank,
+  promotionHistoryEntries,
   rankFaceLabel,
   rankMarks,
   rankOf,
   removeRankHistory,
+  repeatedHistoryBelts,
   setInstructorBars,
   setInstructorBarsOn,
   setRankAwardedOn,
   setRankBelt,
+  setRankHistoryAwardedOn,
   setRankLineage,
   setRankTapeCount,
   setRankTapeDate,
@@ -470,6 +473,136 @@ test('coral and red are separate ranks after black', () => {
   assert.ok(adultRankIndex('redWhite') < adultRankIndex('red'));
   assert.notEqual(adultRankIndex('coral'), adultRankIndex('red'));
   assert.equal(adultRankIndex('grey'), -1);
+});
+
+const WHITE_PHOTO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+function screenshotHistory(): StudentProgressReport {
+  const tapes = ['', '', '', ''] as [string, string, string, string];
+  const report = blankStudentReport(80);
+  return {
+    ...report,
+    profile: { ...report.profile, belt: 'black', displayName: 'Fixture Student', gymName: 'Synthetic Academy' },
+    rank: {
+      tapeCount: 0,
+      awardedOn: '',
+      tapeDates: tapes,
+      lineage: ['Fixture Instructor'],
+      pictures: [{ belt: 'white', image: WHITE_PHOTO }],
+      history: [
+        { id: 'fix-purple', belt: 'purple', awardedOn: '2016-07-09', tapeCount: 4, tapeDates: tapes },
+        { id: 'fix-brown', belt: 'brown', awardedOn: '2018-11-10', tapeCount: 4, tapeDates: tapes },
+        { id: 'fix-white-feb15', belt: 'white', awardedOn: '2014-02-15', tapeCount: 4, tapeDates: tapes },
+        { id: 'fix-blue', belt: 'blue', awardedOn: '2015-03-26', tapeCount: 4, tapeDates: tapes },
+        { id: 'fix-white-feb3', belt: 'white', awardedOn: '2014-02-03', tapeCount: 4, tapeDates: tapes },
+      ],
+    },
+  };
+}
+
+test('a date edit keeps one history id, and a second edit still does after refresh', () => {
+  let report = setRankTapeCount(setRankAwardedOn(blankStudentReport(600), '2014-02-03', 601), 4, 602);
+  report = setRankBelt(report, 'blue', 603);
+  const id = report.rank?.history[0]?.id ?? '';
+  assert.equal(report.rank?.history[0]?.belt, 'white');
+  report = setRankBelt(report, 'white', 604);
+  report = setRankAwardedOn(report, '2014-02-15', 605);
+  report = setRankAwardedOn(report, '2014-02-03', 606);
+  report = setRankBelt(report, 'black', 607);
+  assert.equal(report.profile.belt, 'black');
+  assert.equal(report.rank?.awardedOn, '');
+  assert.equal(report.rank?.history.filter((row) => row.belt === 'white').length, 1);
+  assert.equal(report.rank?.history.find((row) => row.belt === 'white')?.id, id);
+  assert.equal(report.rank?.history.find((row) => row.belt === 'white')?.awardedOn, '2014-02-03');
+  const parsed = parseProgressPacket(exportProgressPacket(report));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  assert.equal(parsed.value.rank?.history.filter((row) => row.belt === 'white').length, 1);
+  assert.equal(parsed.value.rank?.history.find((row) => row.belt === 'white')?.id, id);
+  assert.equal(parsed.value.rank?.history.find((row) => row.belt === 'white')?.awardedOn, '2014-02-03');
+  assert.equal(parsed.value.rank?.wornHistoryId, undefined);
+  assert.equal(parsed.value.rank?.history.some((row) => row.belt === 'black'), false);
+});
+
+test('editing one stored white date does not drop the other white or invent a black date', () => {
+  let report = screenshotHistory();
+  report = setRankHistoryAwardedOn(report, 'fix-white-feb3', '2014-06-01', 81);
+  report = setRankHistoryAwardedOn(report, 'fix-white-feb3', '2014-08-08', 82);
+  const parsed = parseProgressPacket(exportProgressPacket(report));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  const history = parsed.value.rank?.history ?? [];
+  assert.equal(history.length, 5);
+  assert.equal(history.find((row) => row.id === 'fix-white-feb15')?.awardedOn, '2014-02-15');
+  assert.equal(history.find((row) => row.id === 'fix-white-feb3')?.awardedOn, '2014-08-08');
+  assert.equal(parsed.value.profile.belt, 'black');
+  assert.equal(parsed.value.rank?.awardedOn, '');
+  assert.equal(history.some((row) => row.belt === 'black'), false);
+  assert.equal(parsed.value.rank?.pictures?.[0]?.image, WHITE_PHOTO);
+  assert.deepEqual(
+    promotionHistoryEntries(parsed.value).map((row) => `${row.label} ${row.awardedOn || 'No date'}`),
+    [
+      'White 2014-02-15',
+      'White 2014-08-08',
+      'Blue 2015-03-26',
+      'Purple 2016-07-09',
+      'Brown 2018-11-10',
+      'Black No date',
+    ],
+  );
+  assert.deepEqual(repeatedHistoryBelts(history), ['White']);
+  const lines = progressReportLines(parsed.value, { entries: [] });
+  assert.equal(lines.filter((line) => line.startsWith('White awarded')).length, 2);
+  assert.equal(lines.includes('Current belt awarded: No date'), true);
+  assert.equal(lines.some((line) => /Black awarded \d{4}/.test(line)), false);
+  const incoming = structuredClone(parsed.value);
+  incoming.updatedAt = 70;
+  incoming.profile = { ...incoming.profile, belt: 'blue' };
+  incoming.rank = {
+    ...incoming.rank!,
+    awardedOn: '1999-01-01',
+    history: [{ id: 'fix-white-other', belt: 'white', awardedOn: '2014-01-01', tapeCount: 4, tapeDates: ['', '', '', ''] }],
+  };
+  const merged = mergeStudentProgress(parsed.value, incoming);
+  const mergedWhites = merged.report.rank?.history.filter((row) => row.belt === 'white') ?? [];
+  assert.equal(mergedWhites.length, 3);
+  assert.equal(merged.report.profile.belt, 'black');
+  assert.equal(merged.report.rank?.awardedOn, '');
+  assert.equal(merged.report.rank?.tapeCount, 0);
+  assert.equal(merged.report.rank?.history.some((row) => row.belt === 'black'), false);
+});
+
+test('two whites with different stripe counts stay distinct when one date changes', () => {
+  const tapes = ['', '', '', ''] as [string, string, string, string];
+  let report = setRankBelt(blankStudentReport(700), 'blue', 701);
+  report = {
+    ...report,
+    rank: {
+      tapeCount: 0,
+      awardedOn: '',
+      tapeDates: tapes,
+      lineage: [],
+      history: [
+        { id: 'white-two', belt: 'white', awardedOn: '2014-02-03', tapeCount: 2, tapeDates: tapes },
+        { id: 'white-four', belt: 'white', awardedOn: '2014-02-15', tapeCount: 4, tapeDates: tapes },
+      ],
+    },
+  };
+  report = setRankHistoryAwardedOn(report, 'white-two', '2014-05-05', 702);
+  assert.equal(report.rank?.history.length, 2);
+  assert.equal(report.rank?.history.find((row) => row.id === 'white-two')?.awardedOn, '2014-05-05');
+  assert.equal(report.rank?.history.find((row) => row.id === 'white-two')?.tapeCount, 2);
+  assert.equal(report.rank?.history.find((row) => row.id === 'white-four')?.awardedOn, '2014-02-15');
+  assert.equal(report.rank?.history.find((row) => row.id === 'white-four')?.tapeCount, 4);
+});
+
+test('a blue belt with no black record does not gain a black row', () => {
+  const report = setRankAwardedOn(setRankBelt(blankStudentReport(800), 'blue', 801), '2015-03-26', 802);
+  const entries = promotionHistoryEntries(report);
+  assert.deepEqual(entries.map((row) => row.belt), ['blue']);
+  assert.equal(entries[0]?.current, true);
+  assert.equal(report.rank?.history.some((row) => row.belt === 'black'), false);
+  assert.equal(entries.some((row) => row.belt === 'black'), false);
 });
 
 test('a blank rank is empty and an older report without rank still reads', () => {

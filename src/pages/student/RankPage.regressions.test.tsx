@@ -814,7 +814,7 @@ test('Black to Brown to Black and Coral to Black keep the black belt record', as
     assert.equal((labeled('Instructor bars date') as HTMLInputElement).value, '2012-02-02');
     assert.match(labeled('Stripe 1').textContent ?? '', /2013-03-04/);
     assert.match(labeled('Stripe 2').textContent ?? '', /2016-05-06/);
-    assert.deepEqual(historyLabels(), []);
+    assert.deepEqual(historyLabels(), ['Black']);
     assert.equal(storedRank().rank?.tapeCount, 2);
     assert.equal(storedRank().rank?.instructorBars, true);
     assert.equal(storedRank().rank?.history?.length, 0);
@@ -832,7 +832,7 @@ test('Black to Brown to Black and Coral to Black keep the black belt record', as
     assert.equal(labeled('2nd degree').getAttribute('aria-pressed'), 'true');
     assert.equal((labeled('Date of this belt') as HTMLInputElement).value, '2010-01-02');
     assert.equal(labeled(INSTRUCTOR_BARS_LABEL).getAttribute('aria-checked'), 'true');
-    assert.deepEqual(historyLabels(), ['Coral']);
+    assert.deepEqual(historyLabels(), ['Black', 'Coral']);
     await click(labeled('Coral, red and black'));
     assert.equal((labeled('Date of this belt') as HTMLInputElement).value, '2024-08-09');
     await click(buttonNamed('Black'));
@@ -1504,5 +1504,87 @@ test('a kids belt gallery does not show adult or other kids belt photos', async 
     assert.equal(document.querySelector('[role="dialog"]'), null);
   } finally {
     unmount(mounted);
+  }
+});
+
+test('promotion history lists belt order, keeps both white dates, and shows black with no date', async () => {
+  const tapes = ['', '', '', ''] as [string, string, string, string];
+  const report = blankStudentReport(50);
+  saveStudentReport(localStorage, {
+    ...report,
+    profile: { ...report.profile, belt: 'black', displayName: 'Fixture Student', gymName: 'Synthetic Academy' },
+    rank: {
+      tapeCount: 0,
+      awardedOn: '',
+      tapeDates: tapes,
+      lineage: [],
+      history: [
+        { id: 'fix-purple', belt: 'purple', awardedOn: '2016-07-09', tapeCount: 4, tapeDates: tapes },
+        { id: 'fix-brown', belt: 'brown', awardedOn: '2018-11-10', tapeCount: 4, tapeDates: tapes },
+        { id: 'fix-white-feb15', belt: 'white', awardedOn: '2014-02-15', tapeCount: 4, tapeDates: tapes },
+        { id: 'fix-blue', belt: 'blue', awardedOn: '2015-03-26', tapeCount: 4, tapeDates: tapes },
+        { id: 'fix-white-feb3', belt: 'white', awardedOn: '2014-02-03', tapeCount: 4, tapeDates: tapes },
+      ],
+    },
+  });
+  localStorage.setItem(RANK_PHOTO_KEY, JSON.stringify({ belts: { white: [STRIPE_PHOTO], blue: [BLUE_PHOTO_A] } }));
+  const historyRows = () =>
+    [...document.querySelectorAll('[aria-label="Promotion history"] .rank-history')].map((row) => ({
+      label: row.querySelector('.rank-history__label')?.textContent,
+      date: row.querySelector('.rank-history__date')?.textContent,
+      stripes: row.querySelector('.rank-history__stripes')?.textContent,
+      current: row.querySelector('.rank-history__current')?.textContent ?? '',
+      remove: Boolean(row.querySelector('[aria-label^="Remove "]')),
+    }));
+  const stored = () =>
+    JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}') as {
+      profile?: { belt?: string };
+      rank?: { awardedOn?: string; history?: { id?: string; belt?: string; awardedOn?: string }[] };
+    };
+  const mounted = mount(<RankPage />);
+  try {
+    assert.deepEqual(historyRows(), [
+      { label: 'White', date: '2014-02-15', stripes: '4 stripes', current: '', remove: true },
+      { label: 'White', date: '2014-02-03', stripes: '4 stripes', current: '', remove: true },
+      { label: 'Blue', date: '2015-03-26', stripes: '4 stripes', current: '', remove: true },
+      { label: 'Purple', date: '2016-07-09', stripes: '4 stripes', current: '', remove: true },
+      { label: 'Brown', date: '2018-11-10', stripes: '4 stripes', current: '', remove: true },
+      { label: 'Black', date: 'No date', stripes: '0 degrees', current: 'Current belt', remove: false },
+    ]);
+    assert.match(document.querySelector('[aria-label="Promotion history"]')?.textContent ?? '', /White is saved more than once/);
+    assert.equal(stored().profile?.belt, 'black');
+    assert.equal(stored().rank?.awardedOn, '');
+    assert.equal(stored().rank?.history?.some((row) => row.belt === 'black'), false);
+
+    const white = labeled('Date of White belt') as HTMLInputElement;
+    assert.equal(white.value, '2014-02-03');
+    await dateEvent(white, 'onFocus');
+    await dateEvent(white, 'onChange', '2014-06-01');
+    await dateEvent(white, 'onChange', '2014-08-08');
+    assert.equal(historyRows().filter((row) => row.label === 'White').length, 2);
+    assert.equal(historyRows().find((row) => row.date === '2014-02-15')?.label, 'White');
+    assert.equal(historyRows().some((row) => row.date === '2014-08-08'), true);
+  } finally {
+    unmount(mounted);
+  }
+
+  const again = mount(<RankPage />);
+  try {
+    assert.equal(historyRows().filter((row) => row.label === 'White').length, 2);
+    assert.equal(historyRows().find((row) => row.date === '2014-02-15')?.label, 'White');
+    assert.equal(historyRows().some((row) => row.date === '2014-08-08'), true);
+    assert.equal(historyRows().at(-1)?.label, 'Black');
+    assert.equal(historyRows().at(-1)?.date, 'No date');
+    const saved = stored();
+    assert.equal(saved.rank?.history?.length, 5);
+    assert.equal(saved.rank?.history?.find((row) => row.id === 'fix-white-feb15')?.awardedOn, '2014-02-15');
+    assert.equal(saved.rank?.history?.find((row) => row.id === 'fix-white-feb3')?.awardedOn, '2014-08-08');
+    assert.equal(saved.rank?.awardedOn, '');
+    assert.equal(saved.rank?.history?.some((row) => row.belt === 'black'), false);
+    const photos = JSON.parse(localStorage.getItem(RANK_PHOTO_KEY) ?? '{}') as { belts?: { white?: string[]; blue?: string[] } };
+    assert.deepEqual(photos.belts?.white, [STRIPE_PHOTO]);
+    assert.deepEqual(photos.belts?.blue, [BLUE_PHOTO_A]);
+  } finally {
+    unmount(again);
   }
 });

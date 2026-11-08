@@ -497,7 +497,8 @@ export function mergeStudentReports(local: StudentProgressReport, incoming: Stud
   const incomingNewer = incoming.updatedAt >= local.updatedAt;
   const localComp = competitionOf(local);
   const incomingComp = competitionOf(incoming);
-  const preferIncomingRank = incomingNewer || (rankUnset(local.rank) && !rankUnset(incoming.rank));
+  const preferIncomingRank =
+    incomingNewer || (local.profile.belt === 'white' && rankUnset(local.rank) && !rankUnset(incoming.rank));
   const rank = preferIncomingRank ? incoming.rank ?? local.rank ?? emptyRank() : local.rank ?? incoming.rank ?? emptyRank();
   const history = mergeById(local.rank?.history ?? [], incoming.rank?.history ?? [], (_left, right) => right);
   const sameStudent = local.studentId === incoming.studentId;

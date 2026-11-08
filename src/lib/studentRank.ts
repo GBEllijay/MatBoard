@@ -32,6 +32,7 @@ import {
 } from './progress/types.ts';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const HISTORY_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
 
 const BELT_NAMES: Record<ProgressBelt, string> = {
   white: 'White',
@@ -112,6 +113,7 @@ export function normalizeStoredRank(rank: Partial<StudentRank> | null | undefine
   if (source.pictureNote) next.pictureNote = source.pictureNote;
   if (source.pictureCount) next.pictureCount = source.pictureCount;
   if (source.pictures) next.pictures = source.pictures.map((picture) => ({ ...picture }));
+  if (typeof source.wornHistoryId === 'string' && HISTORY_ID_RE.test(source.wornHistoryId)) next.wornHistoryId = source.wornHistoryId;
   return next;
 }
 
@@ -227,6 +229,83 @@ export function rankBeltLabel(belt: ProgressBelt): string {
   return BELT_NAMES[belt];
 }
 
+export type PromotionHistoryEntry = {
+  id: string;
+  belt: RankBelt;
+  label: string;
+  awardedOn: string;
+  tapeCount: number;
+  /** Empty when the row is the belt being worn. That row is not stored in history. */
+  historyId: string;
+  current: boolean;
+};
+
+/**
+ * Promotion history in belt order: white, blue, purple, brown, black, then coral,
+ * red and white, and red. The same belt keeps the order the rows were saved.
+ * Every stored row stays. The belt being worn is included when it has a date, a
+ * stripe, instructor bars, or it is black. A missing date stays empty.
+ */
+export function promotionHistoryEntries(report: StudentProgressReport): PromotionHistoryEntry[] {
+  const rank = rankOf(report);
+  const worn = report.profile.belt;
+  const rows: { entry: PromotionHistoryEntry; index: number }[] = rank.history.map((row, index) => ({
+    index,
+    entry: {
+      id: row.id,
+      belt: row.belt,
+      label: rankBeltLabel(row.belt),
+      awardedOn: row.awardedOn,
+      tapeCount: row.tapeCount,
+      historyId: row.id,
+      current: false,
+    },
+  }));
+  if (isRankBelt(worn) && wornBeltListed(rank, worn) && !wornRowAlreadyListed(rank, worn)) {
+    rows.push({
+      index: rank.history.length,
+      entry: {
+        id: `current.${worn}`,
+        belt: worn,
+        label: rankBeltLabel(worn),
+        awardedOn: rank.awardedOn,
+        tapeCount: rank.tapeCount,
+        historyId: '',
+        current: true,
+      },
+    });
+  }
+  rows.sort((left, right) => comparePromotionHistory(left.entry.belt, left.index, right.entry.belt, right.index));
+  return rows.map((row) => row.entry);
+}
+
+/** Belt names that already have more than one stored history row, in belt order. */
+export function repeatedHistoryBelts(history: readonly RankHistory[]): string[] {
+  const counts = new Map<string, number>();
+  for (const row of history) counts.set(row.belt, (counts.get(row.belt) ?? 0) + 1);
+  return [...counts.entries()]
+    .filter((entry): entry is [RankBelt, number] => isRankBelt(entry[0]) && entry[1] > 1)
+    .sort((left, right) => adultRankIndex(left[0]) - adultRankIndex(right[0]))
+    .map(([belt]) => rankBeltLabel(belt));
+}
+
+function wornBeltListed(rank: StudentRank, belt: RankBelt): boolean {
+  if (beltHasSavedState(rank, belt)) return true;
+  return belt === 'black';
+}
+
+function wornRowAlreadyListed(rank: StudentRank, belt: RankBelt): boolean {
+  const id = rank.wornHistoryId;
+  if (!id) return false;
+  return rank.history.some((row) => row.id === id && row.belt === belt);
+}
+
+function comparePromotionHistory(leftBelt: string, leftIndex: number, rightBelt: string, rightIndex: number): number {
+  const byBelt = adultRankIndex(leftBelt) - adultRankIndex(rightBelt);
+  if (byBelt) return byBelt;
+  return leftIndex - rightIndex;
+}
+
 export type RankMark = { date: string; label: string };
 
 /** Dates the calendar reads. These are not copied into calendar events. */
@@ -248,7 +327,8 @@ export function rankMarksOnDate(report: StudentProgressReport, iso: string): Ran
  * Set the belt the student wears. profile.belt is the only current belt.
  * A previous adult belt is kept on the history list when it had a date, a stripe, or instructor bars.
  * Selecting that belt again puts the saved degrees, stripes, bars, and dates back on it.
- * The same promotion (belt, degree or stripe count, and awarded date) is not logged twice.
+ * A date edit keeps the history id of the belt that was restored.
+ * The same saved promotion is not logged twice. A different stored row is left as it is.
  * Moving off a kids belt keeps the stripes already tapped.
  */
 export function setRankBelt(report: StudentProgressReport, belt: ProgressBelt, now = Date.now()): StudentProgressReport {
@@ -259,7 +339,7 @@ export function setRankBelt(report: StudentProgressReport, belt: ProgressBelt, n
   }
   let history = current.history;
   if (beltHasSavedState(current, report.profile.belt)) {
-    history = rememberPromotion(history, archiveCurrent(current, report.profile.belt, now));
+    history = rememberPromotion(history, archiveCurrent(current, report.profile.belt, history, now));
   }
   if (!isRankBelt(belt)) return touch(report, blankWornRank(current, history), belt, now);
   const saved = takeLatestBelt(history, belt);
@@ -480,6 +560,8 @@ function promotionKey(row: Pick<RankHistory, 'belt' | 'tapeCount' | 'awardedOn'>
 }
 
 function rememberPromotion(history: readonly RankHistory[], row: RankHistory): RankHistory[] {
+  const byId = history.findIndex((item) => item.id && item.id === row.id);
+  if (byId >= 0) return history.map((item, index) => (index === byId ? { ...row, id: item.id } : item));
   const key = promotionKey(row);
   const index = history.findIndex((item) => promotionKey(item) === key);
   if (index >= 0) {
@@ -511,6 +593,7 @@ function blankWornRank(current: StudentRank, history: RankHistory[]): StudentRan
   delete next.highDegreeDates;
   delete next.instructorBars;
   delete next.instructorBarsOn;
+  delete next.wornHistoryId;
   return next;
 }
 
@@ -525,10 +608,12 @@ function applyHistoryRow(current: StudentRank, row: RankHistory, history: RankHi
   delete next.highDegreeDates;
   delete next.instructorBars;
   delete next.instructorBarsOn;
+  delete next.wornHistoryId;
   const high = highDatesForCount(row.highDegreeDates, row.tapeCount);
   if (high) next.highDegreeDates = high;
   if (row.instructorBars) next.instructorBars = true;
   if (row.instructorBarsOn) next.instructorBarsOn = row.instructorBarsOn;
+  if (row.id && HISTORY_ID_RE.test(row.id)) next.wornHistoryId = row.id;
   return next;
 }
 
@@ -555,9 +640,17 @@ function writeSlotDate<T extends { tapeDates: RankTapeDates; highDegreeDates?: H
   return { ...source, highDegreeDates: high };
 }
 
-function archiveCurrent(rank: StudentRank, belt: RankBelt, now: number): RankHistory {
+function stableArchiveId(rank: StudentRank, belt: RankBelt, history: readonly RankHistory[], now: number): string {
+  const id = rank.wornHistoryId ?? '';
+  if (!HISTORY_ID_RE.test(id)) return newId('rank', now);
+  const existing = history.find((row) => row.id === id);
+  if (existing && existing.belt !== belt) return newId('rank', now);
+  return id;
+}
+
+function archiveCurrent(rank: StudentRank, belt: RankBelt, history: readonly RankHistory[], now: number): RankHistory {
   const row: RankHistory = {
-    id: newId('rank', now),
+    id: stableArchiveId(rank, belt, history, now),
     belt,
     awardedOn: rank.awardedOn,
     tapeCount: rank.tapeCount,
@@ -646,6 +739,7 @@ function rankFields(rank: StudentRank): StudentRank {
   if (rank.pictureNote) next.pictureNote = rank.pictureNote;
   if (rank.pictureCount) next.pictureCount = rank.pictureCount;
   if (rank.pictures) next.pictures = rank.pictures.map((picture) => ({ ...picture }));
+  if (rank.wornHistoryId && HISTORY_ID_RE.test(rank.wornHistoryId)) next.wornHistoryId = rank.wornHistoryId;
   const focus = cleanDegreeFocus(rank.degreeFocus);
   if (focus) next.degreeFocus = focus;
   return next;
@@ -868,7 +962,7 @@ function startFreshAdult(report: StudentProgressReport, belt: ProgressBelt, awar
   const current = rankOf(report);
   let history = current.history;
   if (isRankBelt(report.profile.belt) && beltHasSavedState(current, report.profile.belt)) {
-    history = rememberPromotion(history, archiveCurrent(current, report.profile.belt, now));
+    history = rememberPromotion(history, archiveCurrent(current, report.profile.belt, history, now));
   }
   const rank = blankWornRank(current, history);
   rank.awardedOn = awardedOn;
