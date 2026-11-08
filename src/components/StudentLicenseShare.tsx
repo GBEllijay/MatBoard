@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useGymLogo } from '../hooks/useGymBrand';
+import { useGymLogo, useGymName } from '../hooks/useGymBrand';
 import {
   issueStudentLicense,
   listStudentLicenses,
@@ -7,7 +7,6 @@ import {
   type HalfOffPointer,
   type StudentLicenseRow,
 } from '../lib/studentLicenseClient';
-import { readGymName } from '../lib/gymName';
 import { resolveShareLogo } from '../lib/licenseShare';
 import {
   FREE_STUDENT_LICENSES,
@@ -84,7 +83,7 @@ function IssuedCode({
   canRevoke: boolean;
   onRevoke: (code: string) => void;
 }) {
-  const gym = readGymName();
+  const gym = useGymName();
   const link = row.code ? studentLicenseClaimUrl(origin(), row.code, gym) : '';
   const [confirm, setConfirm] = useState(false);
   return (

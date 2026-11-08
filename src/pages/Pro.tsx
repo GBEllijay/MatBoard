@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
 import { EditionLadder } from '../components/EditionLadder';
 import { HomeMark } from '../components/HomeMark';
+import { PlayExitMark } from '../components/PlayExitMark';
 import { FaqLink } from '../components/FaqLink';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { LicenseShareButton } from '../components/LicenseShareButton';
@@ -9,15 +10,17 @@ import { ProToolboxCard } from '../components/ProToolboxCard';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import { useSeatDoor } from '../hooks/useSeatDoor';
+import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
 import { CHECKOUT_BUY_PATH } from '../lib/checkoutProducts';
 import { PRO_LIST_PRICE_CENTS, PRO_MONTHLY_PRICE_CENTS } from '../lib/productPrices';
 import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
-import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL, PRODUCTS_PATH, consoleHubs, grantedConsoleHubs, mediaConsoleDoorOpen } from '../lib/productNames';
+import { MEDIA_CONSOLE_NAME, PRO_LADDER_DETAIL, PRODUCTS_PATH, PRO_PLUS_CLOUD_PATH, consoleHubs, grantedConsoleHubs, mediaConsoleDoorOpen } from '../lib/productNames';
 import { cameraHubs } from '../lib/pdCamera';
 import { formatUsdFromCents } from '../lib/whitePurchase';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { lockMedia } from '../lib/mediaUnlock';
 import { lockPro } from '../lib/proUnlock';
+import { AdvantageCloudHome } from '../components/AdvantageCloudHome';
 import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 import { CloudLapseNotice } from '../components/CloudLapseNotice';
 import { GymCharacterSheet } from '../components/GymCharacterSheet';
@@ -37,11 +40,13 @@ export function ProPage() {
     access.amnesty,
   );
   const seat = useCurrentSeat();
+  const cloudConsole = useProPlusCloudUnlocked();
   const mediaSeat = hubs.length > 0 && hubs.every((hub) => hub.belt === 'purple');
 
   return (
     <main className="home home--pro">
       <div className="home__inner">
+        {cloudConsole ? <PlayExitMark to={PRO_PLUS_CLOUD_PATH} /> : null}
         <HomeMark to={PRODUCTS_PATH} />
         <CloudLapseNotice />
         <GymCharacterSheet />
@@ -53,12 +58,14 @@ export function ProPage() {
             title={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro'}
             blurb={mediaSeat ? hubs.map((hub) => hub.title).join(', ') : PRO_LADDER_DETAIL}
           />
+          {cloudConsole && !seat ? <AdvantageCloudHome /> : null}
           <ProToolboxCard hubs={hubs} label={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro hubs'} />
           <LicenseShareButton />
         </nav>
 
         <AcademyPathwayPanel />
 
+        <EditionLadder page="pro" />
         <div className="home__hints">
           <InstructionsButton controlsId="pro-instructions">
             <p className="home__hint">Install Advantage as an app from your browser menu.</p>
@@ -118,7 +125,6 @@ export function ProPage() {
             </p>
           )}
         </div>
-        <EditionLadder page="pro" />
         <SiteFooter />
       </div>
     </main>

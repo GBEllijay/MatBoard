@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { academyProfileHome } from '../lib/academySheetNav';
 import { BeltHeader } from '../components/BeltHeader';
 import { HomeMark } from '../components/HomeMark';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -13,11 +14,13 @@ import { PRODUCTS_PATH } from '../lib/productNames';
  */
 export function InstructorCollaborationPage() {
   const seat = useCurrentSeat();
+  const [params] = useSearchParams();
+  const back = params.get('from') === 'academy' ? academyProfileHome(params.get('home')) : '/pro';
 
   return (
     <main className="home home--pro home--suite">
       <div className="home__inner">
-        <PlayExitMark to="/pro" />
+        <PlayExitMark to={back} />
         <HomeMark to={PRODUCTS_PATH} />
         <section className="suite instructor-hub">
           <BeltHeader kind="black" title="Instructor Invitations and Access Management" />

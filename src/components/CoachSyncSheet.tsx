@@ -15,7 +15,7 @@ import {
 import { sendCardSync, setCardComms } from '../lib/cardSync';
 import { gymDriveFolder } from '../lib/driveHandoff';
 import { readGymLogo } from '../lib/gymLogo';
-import { readGymName } from '../lib/gymName';
+import { useGymName } from '../hooks/useGymBrand';
 import { COACH_BENCHMARK_STATUSES, type CoachBenchmarkStatus } from '../lib/progress/types';
 import {
   chooseCardPhoto,
@@ -85,7 +85,7 @@ export function CoachSyncSheet({
   const approver: PhotoApprover = actor;
   const gate = student ? syncSendGate(student, actor, roster) : 'unlinked';
   const studentId = student?.linkedStudentId ?? '';
-  const gymName = readGymName().trim();
+  const gymName = useGymName().trim();
   const gym = gymName ? { name: gymName } : undefined;
 
   const send = async (built: { ok: true; packet: SyncPacket } | { ok: false; error: string }) => {

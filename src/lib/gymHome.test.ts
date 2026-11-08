@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { PHOTOS_PICK_MAX } from './googlePhotos.ts';
-import { chooseGymHome, playingFromCopy, probeAdvantageCloud } from './gymHome.ts';
+import { chooseGymHome, mediaConsoleDriveActions, mediaConsoleGalleryLead, playingFromCopy, probeAdvantageCloud } from './gymHome.ts';
 
 test('slideshow home is Cloud, then Drive or OneDrive, then the phone', () => {
   assert.equal(
@@ -28,6 +28,35 @@ test('slideshow home is Cloud, then Drive or OneDrive, then the phone', () => {
   assert.match(playingFromCopy('phone'), /Playing from this phone/);
   assert.match(playingFromCopy('google-drive'), /Playing from Google Drive/);
   assert.match(playingFromCopy('advantage-cloud'), /Playing from Advantage Cloud/);
+});
+
+test('a Cloud customer does not get a Drive setup prompt, and an existing Drive folder stays available to import', () => {
+  assert.deepEqual(
+    mediaConsoleDriveActions({ settled: true, cloudEntitled: true, driveConnected: false }),
+    { connect: false, importExisting: false },
+  );
+  assert.deepEqual(
+    mediaConsoleDriveActions({ settled: true, cloudEntitled: true, driveConnected: true }),
+    { connect: false, importExisting: true },
+  );
+  assert.deepEqual(
+    mediaConsoleDriveActions({ settled: true, cloudEntitled: false, driveConnected: false }),
+    { connect: true, importExisting: false },
+  );
+  assert.deepEqual(
+    mediaConsoleDriveActions({ settled: false, cloudEntitled: true, driveConnected: true }),
+    { connect: false, importExisting: false },
+  );
+  assert.deepEqual(
+    mediaConsoleDriveActions({ settled: false, cloudEntitled: false, driveConnected: false }),
+    { connect: false, importExisting: false },
+  );
+  const cloud = mediaConsoleGalleryLead({ cloudEntitled: true, driveConnected: true });
+  assert.match(cloud, /Advantage Cloud/);
+  assert.match(cloud, /already connected stays connected/);
+  assert.doesNotMatch(cloud, /Pick from Google Drive is an extra source/);
+  const plain = mediaConsoleGalleryLead({ cloudEntitled: false, driveConnected: false });
+  assert.match(plain, /Pick from Google Drive is an extra source/);
 });
 
 test('a missing Cloud binding falls back instead of pretending Cloud is on', async () => {

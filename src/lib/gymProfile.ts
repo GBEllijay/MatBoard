@@ -12,7 +12,14 @@ export type GymProfile = {
   v: 1;
   foundedOn: string;
   founders: string;
+  /** Free text. Teaching ancestry, not a list of who has taught here. */
   lineage: string;
+  /**
+   * Whether lineage is shown on this academy profile.
+   * Absent on older files. Those stay visible.
+   * Off hides the text. It does not delete it.
+   */
+  lineageVisible?: boolean;
   optIn: GymProfileOptIn[];
 };
 
@@ -43,13 +50,26 @@ export function sanitizeGymProfile(raw: unknown): GymProfile {
   const founded = typeof row.foundedOn === 'string' ? row.foundedOn.trim().slice(0, 10) : '';
   const rawOptIn = Array.isArray(row.optIn) ? row.optIn : [];
   const optIn = GYM_PROFILE_OPT_IN.filter((id) => rawOptIn.includes(id));
-  return {
+  const profile: GymProfile = {
     v: 1,
     foundedOn: DATE_RE.test(founded) ? founded : '',
     founders: clipText(row.founders, 120),
     lineage: clipText(row.lineage, 240),
     optIn,
   };
+  if (typeof row.lineageVisible === 'boolean') profile.lineageVisible = row.lineageVisible;
+  return profile;
+}
+
+/** Older profiles omit the flag and stay visible, including a blank field. */
+export function gymLineageVisible(profile: GymProfile): boolean {
+  return profile.lineageVisible !== false;
+}
+
+/** Text to show. Hidden lineage and a blank field both return nothing. */
+export function gymLineageText(profile: GymProfile): string {
+  if (!gymLineageVisible(profile)) return '';
+  return profile.lineage.trim();
 }
 
 function storage(): MemoryStore | null {

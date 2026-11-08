@@ -50,3 +50,14 @@ test('gym name clips to 80 characters', () => {
   writeGymName('A'.repeat(120));
   assert.equal(readGymName().length, 80);
 });
+
+test('a saved academy name leaves a student academy, a student logo, and a board title alone', () => {
+  localStorage.setItem('matboard.studentEdition.v1', '{"profile":{"gymName":"Student Gym"}}');
+  localStorage.setItem('matboard.studentGymLogo.v1', 'student-mark');
+  localStorage.setItem('matboard.schedule.v1', '{"title":"Open Mat"}');
+  writeGymName('Academy');
+  assert.equal(readGymName(), 'Academy');
+  assert.equal(localStorage.getItem('matboard.studentEdition.v1'), '{"profile":{"gymName":"Student Gym"}}');
+  assert.equal(localStorage.getItem('matboard.studentGymLogo.v1'), 'student-mark');
+  assert.equal(localStorage.getItem('matboard.schedule.v1'), '{"title":"Open Mat"}');
+});
