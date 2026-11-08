@@ -9,7 +9,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { AssessmentRadarPreviewPage } from './AssessmentRadarPreview.tsx';
-import { ASSESSMENT_RADAR_PREVIEW_PATH, CENTER_MARK_ASSET, CENTER_VARIANT_PATH } from './model.ts';
+import { ASSESSMENT_RADAR_PREVIEW_PATH, CENTER_VARIANT_PATH } from './model.ts';
 
 const dom = new Window({ url: 'http://localhost/preview/assessment-radar' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -112,23 +112,31 @@ test('axis labels stay visible, Control is not zero, and Deep half guard is a Gu
   unmount(mounted);
 });
 
-test('the center-mark comparison drops spokes and rings and keeps the outer octagon', () => {
+test('the sheet comparison uses the character-sheet radar and does not score a gap as zero', () => {
   const mounted = mount(<AssessmentRadarPreviewPage />, CENTER_VARIANT_PATH);
   const { host } = mounted;
-  assert.equal(labeled(host, 'Center mark').getAttribute('aria-pressed'), 'true');
-  assert.equal(host.querySelectorAll('line.oct-grid').length, 0);
-  assert.equal(host.querySelectorAll('polygon.oct-grid:not(.oct-grid--outer)').length, 0);
-  assert.equal(host.querySelectorAll('polygon.oct-grid--outer').length, 1);
-  assert.equal(host.querySelectorAll('.oct-label').length, 8);
-  assert.ok(host.querySelector('[aria-label="Control axis, Not rated"]'));
-  const mark = host.querySelector('.oct-mark');
-  assert.ok(mark);
-  assert.equal(mark?.getAttribute('aria-hidden'), 'true');
-  assert.match(mark?.getAttribute('style') ?? '', new RegExp(CENTER_MARK_ASSET.replaceAll('/', '\\/')));
-  assert.match(host.textContent ?? '', /Spokes and the inner ring are removed/);
-  assert.match(host.textContent ?? '', /not a score/);
-  click(labeled(host, 'Current chart'));
-  assert.equal(host.querySelector('.oct-mark'), null);
+  assert.equal(labeled(host, 'Sheet radar').getAttribute('aria-pressed'), 'true');
+  assert.equal(host.querySelectorAll('polygon.oct-grid').length, 5);
   assert.equal(host.querySelectorAll('line.oct-grid').length, 8);
+  assert.equal(host.querySelectorAll('.oct-scale').length, 5);
+  assert.equal(host.querySelectorAll('.oct-label').length, 8);
+  assert.ok(host.querySelector('[aria-label="Guard axis, 5/5, selected"]'));
+  assert.ok(host.querySelector('[aria-label="Control axis, Not rated"]'));
+  assert.equal(host.querySelector('[aria-label="Control axis, 0/5"]'), null);
+  assert.equal(host.querySelectorAll('.oct-dot').length, 7);
+  assert.match(host.textContent ?? '', /Attribute radar/);
+  assert.match(host.textContent ?? '', /1 = Developing/);
+  assert.match(host.textContent ?? '', /Eight-area shape/);
+  click(labeled(host, 'Current chart'));
+  assert.equal(host.querySelector('.oct-stage--sheet'), null);
+  assert.equal(host.querySelectorAll('polygon.oct-grid').length, 2);
+  assert.equal(host.querySelectorAll('line.oct-grid').length, 8);
+  unmount(mounted);
+});
+
+test('the earlier center comparison link opens the sheet radar', () => {
+  const mounted = mount(<AssessmentRadarPreviewPage />, `${ASSESSMENT_RADAR_PREVIEW_PATH}?variant=center`);
+  assert.equal(labeled(mounted.host, 'Sheet radar').getAttribute('aria-pressed'), 'true');
+  assert.equal(mounted.host.querySelectorAll('polygon.oct-grid').length, 5);
   unmount(mounted);
 });
