@@ -9,11 +9,15 @@ import {
   addHeadTree,
   addUpwardTeacher,
   chainLine,
+  HOURS_PER_WEEK,
+  PLANNING_SPANS,
   combinedHours,
   estimatedHours,
   exampleAncestry,
   formatHours,
   parseEstimate,
+  planningHours,
+  planningWeeks,
   setLineageVisible,
   timelineLine,
   timelinesOverlap,
@@ -66,24 +70,48 @@ test('the preview routes are direct links and do not write a student record', ()
     assert.equal(source.includes('setRankLineage'), false);
     assert.equal(source.includes('writeGymProfile'), false);
     assert.match(source, /PREVIEW_NOTE/);
-    assert.equal(/IBJJF|minimum hours|should be promoted/i.test(source), false);
+    assert.equal(/minimum hours|should be promoted/i.test(source), false);
   }
+  assert.equal(/IBJJF/i.test(ancestry), false);
+  assert.match(hours, /not a guaranteed promotion/);
 });
 
 test('estimated hours stay separate from logged hours, and a blank belt adds nothing', () => {
-  const hours = readFileSync(new URL('./StudentHoursPreview.tsx', import.meta.url), 'utf8');
-  assert.match(hours, /fictional examples for this screen/);
-  assert.match(hours, /not a recommended amount of training/);
-  assert.match(hours, /not a promotion benchmark/);
-  assert.equal(EXAMPLE_ESTIMATES.white, '40');
-  assert.equal(EXAMPLE_ESTIMATES.blue, '25');
   assert.equal(parseEstimate(''), null);
   assert.equal(parseEstimate('nope'), null);
-  assert.equal(estimatedHours(EXAMPLE_ESTIMATES), 65);
-  assert.equal(combinedHours(EXAMPLE_LOGGED_HOURS, EXAMPLE_ESTIMATES), 83.5);
-  assert.equal(formatHours(83.5), '83.5');
+  assert.deepEqual(Object.values(EXAMPLE_ESTIMATES), ['', '', '', '', '']);
+  assert.equal(estimatedHours(EXAMPLE_ESTIMATES), 0);
+  assert.equal(combinedHours(EXAMPLE_LOGGED_HOURS, EXAMPLE_ESTIMATES), EXAMPLE_LOGGED_HOURS);
+  assert.equal(EXAMPLE_LOGGED_HOURS, 18.5);
+  assert.equal(formatHours(18.5), '18.5');
   assert.equal(formatHours(18), '18');
-  const cleared = { ...EXAMPLE_ESTIMATES, white: '', blue: '' };
-  assert.equal(estimatedHours(cleared), 0);
-  assert.equal(combinedHours(EXAMPLE_LOGGED_HOURS, cleared), EXAMPLE_LOGGED_HOURS);
+  const typed = { ...EXAMPLE_ESTIMATES, white: '10' };
+  assert.equal(estimatedHours(typed), 10);
+  assert.equal(combinedHours(EXAMPLE_LOGGED_HOURS, typed), 28.5);
+});
+
+test('the planning model is 2, 3, and 4 hours a week across the four belt spans', () => {
+  assert.deepEqual(PLANNING_SPANS.map((span) => planningWeeks(span.years)), [104, 104, 78, 52]);
+  assert.deepEqual(
+    HOURS_PER_WEEK.map((rate) => PLANNING_SPANS.map((span) => planningHours(span.years, rate))),
+    [
+      [208, 208, 156, 104],
+      [312, 312, 234, 156],
+      [416, 416, 312, 208],
+    ],
+  );
+  const at2 = PLANNING_SPANS.map((span) => planningHours(span.years, 2));
+  assert.deepEqual(
+    PLANNING_SPANS.map((span) => planningHours(span.years, 3)),
+    at2.map((hours) => hours * 1.5),
+  );
+  assert.deepEqual(
+    PLANNING_SPANS.map((span) => planningHours(span.years, 4)),
+    at2.map((hours) => hours * 2),
+  );
+  assert.equal(PLANNING_SPANS[0]?.basis, 'assumption');
+  assert.deepEqual(
+    PLANNING_SPANS.slice(1).map((span) => span.basis),
+    ['ibjjf', 'ibjjf', 'ibjjf'],
+  );
 });

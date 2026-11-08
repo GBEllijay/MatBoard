@@ -112,6 +112,28 @@
   align-items: baseline;
   margin: 0;
 }
+.srec-rates { display: flex; flex-wrap: wrap; gap: 8px; }
+.srec-rate {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(110, 168, 255, 0.7);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+}
+.srec-rate[aria-pressed='true'] { background: #004eba; color: #fff; }
+.srec-model { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.srec-model-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: center;
+}
+.srec-model-row b { display: block; }
+.srec-model-row small { display: block; color: #9aa3b5; font-size: 12px; line-height: 1.35; }
+.srec-model-row strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
 .srec-logged strong, .srec-total strong { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
 .srec-logged { border: 1px solid rgba(110, 168, 255, 0.35); border-radius: 12px; padding: 10px 12px; }
 .srec-estimate { border-style: dashed; }

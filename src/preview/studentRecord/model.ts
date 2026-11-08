@@ -108,14 +108,45 @@ export const BELT_INTERVAL_LABEL: Record<BeltInterval, string> = {
 /** Example journal total. Not editable. Not a lifetime claim. */
 export const EXAMPLE_LOGGED_HOURS = 18.5;
 
-/** Fictional screen samples. Not a training target and not a promotion benchmark. */
+/** Optional earlier history the person types. Starts blank so the planning model is not their history. */
 export const EXAMPLE_ESTIMATES: Record<BeltInterval, string> = {
-  white: '40',
-  blue: '25',
+  white: '',
+  blue: '',
   purple: '',
   brown: '',
   black: '',
 };
+
+/** Owner planning model. 52 weeks in a year. 18 months is 1.5 years. */
+export const WEEKS_PER_YEAR = 52;
+export const HOURS_PER_WEEK = [2, 3, 4] as const;
+export type HoursPerWeek = (typeof HOURS_PER_WEEK)[number];
+
+export const IBJJF_GRADUATION_URL = 'https://ibjjf.com/graduation-system/';
+
+export type PlanningSpan = {
+  id: 'white' | 'blue' | 'purple' | 'brown';
+  label: string;
+  years: number;
+  /** White is an owner assumption. Later belts follow the adult IBJJF calendar minimum. */
+  basis: 'assumption' | 'ibjjf';
+};
+
+export const PLANNING_SPANS: readonly PlanningSpan[] = [
+  { id: 'white', label: 'White to blue', years: 2, basis: 'assumption' },
+  { id: 'blue', label: 'Blue to purple', years: 2, basis: 'ibjjf' },
+  { id: 'purple', label: 'Purple to brown', years: 1.5, basis: 'ibjjf' },
+  { id: 'brown', label: 'Brown to black', years: 1, basis: 'ibjjf' },
+];
+
+export function planningWeeks(years: number): number {
+  return years * WEEKS_PER_YEAR;
+}
+
+/** years × 52 × hours per week. */
+export function planningHours(years: number, hoursPerWeek: number): number {
+  return years * WEEKS_PER_YEAR * hoursPerWeek;
+}
 
 /** Blank is unset. Anything other than a plain number is ignored. */
 export function parseEstimate(value: string): number | null {

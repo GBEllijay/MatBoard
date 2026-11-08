@@ -5,18 +5,25 @@ import {
   BELT_INTERVAL_LABEL,
   EXAMPLE_ESTIMATES,
   EXAMPLE_LOGGED_HOURS,
+  HOURS_PER_WEEK,
+  IBJJF_GRADUATION_URL,
+  PLANNING_SPANS,
   PREVIEW_ANCESTRY_PATH,
   PREVIEW_HOURS_PATH,
   PREVIEW_NOTE,
   combinedHours,
   estimatedHours,
   formatHours,
+  planningHours,
+  planningWeeks,
+  type HoursPerWeek,
 } from './model';
 import './studentRecord.css';
 
 export function StudentHoursPreview() {
   const [estimates, setEstimates] = useState({ ...EXAMPLE_ESTIMATES });
   const [showCombined, setShowCombined] = useState(true);
+  const [rate, setRate] = useState<HoursPerWeek>(2);
   const estimated = estimatedHours(estimates);
   const combined = combinedHours(EXAMPLE_LOGGED_HOURS, estimates);
 
@@ -32,7 +39,7 @@ export function StudentHoursPreview() {
           {PREVIEW_HOURS_PATH}
         </p>
         <p className="srec-note">
-          Logged hours are a fictional example of time already in Advantage. Earlier hours are optional, and the numbers already filled in are fictional examples for this screen. They are not a recommended amount of training, and they are not a promotion benchmark. Nothing is added together unless the combined total is on.
+          Logged hours stay the example journal total. Earlier hours are what you type for your own history. The planning model is a separate calendar estimate. It does not fill those boxes, and it is not a guaranteed promotion.
         </p>
         <section className="srec-card" aria-label="Advantage logged hours">
           <h2>Advantage logged hours</h2>
@@ -41,10 +48,50 @@ export function StudentHoursPreview() {
             <strong data-testid="logged-hours">{formatHours(EXAMPLE_LOGGED_HOURS)}</strong>
           </p>
         </section>
+        <section className="srec-card" aria-label="Planning model" data-testid="planning-model">
+          <h2>Planning model</h2>
+          <p className="srec-note">
+            Hours = years × 52 × hours a week. 18 months is 1.5 years. At 3 hours a week the totals are 1.5× the 2-hour totals. At 4 hours a week they are 2×.
+          </p>
+          <div className="srec-rates" role="group" aria-label="Hours per week">
+            {HOURS_PER_WEEK.map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                className="srec-rate"
+                aria-pressed={rate === choice}
+                onClick={() => setRate(choice)}
+              >
+                {choice} hours
+              </button>
+            ))}
+          </div>
+          <ul className="srec-model">
+            {PLANNING_SPANS.map((span) => (
+              <li className="srec-model-row" key={span.id}>
+                <span className={`srec-belt srec-belt--${span.id}`} aria-hidden="true" />
+                <span>
+                  <b>{span.label}</b>
+                  <small>
+                    {planningWeeks(span.years)} weeks
+                    {span.basis === 'assumption'
+                      ? ' · 2 years is a planning assumption. IBJJF lists no time minimum at white.'
+                      : ' · Adult IBJJF calendar minimum for this belt.'}
+                  </small>
+                </span>
+                <strong data-testid={`planning-${span.id}`}>{planningHours(span.years, rate)}</strong>
+              </li>
+            ))}
+          </ul>
+          <p className="srec-note">
+            Blue is 2 years, purple is 18 months, and brown is 1 year. Those are standard adult IBJJF calendar minimums for the current belt, counted from belt registration. Exceptions apply. They are not training-hour requirements and not a guaranteed promotion.{' '}
+            <a href={IBJJF_GRADUATION_URL}>IBJJF graduation system</a>, June 2026 PDF, articles 2 and 3.
+          </p>
+        </section>
         <section className="srec-card srec-estimate" aria-label="Earlier hours">
           <h2>Earlier hours</h2>
           <p className="srec-note" data-testid="hours-example-label">
-            Type your own history, or leave a belt blank. A blank belt adds nothing. The sample numbers are not a training target.
+            Optional. Type your own history, or leave a belt blank. A blank belt adds nothing. These boxes do not take the planning model.
           </p>
           <div className="srec-hours">
             {BELT_INTERVALS.map((belt) => (
@@ -74,7 +121,7 @@ export function StudentHoursPreview() {
           </label>
           {showCombined ? (
             <p className="srec-total" data-testid="combined-hours">
-              <span>Fictional logged hours plus the earlier hours on this screen</span>
+              <span>Example logged hours plus the earlier hours you typed</span>
               <strong>{formatHours(combined)}</strong>
             </p>
           ) : (
