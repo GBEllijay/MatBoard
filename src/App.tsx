@@ -47,6 +47,11 @@ import { StudentEditionPage } from './pages/StudentEdition';
 import { Journal2036Page } from './preview/journal2036/Journal2036Page';
 import { AssessmentRadarPreviewPage } from './preview/assessmentRadar/AssessmentRadarPreview';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
+import { ConnectCoachPreviewPage } from './preview/proHome/ConnectCoachPreview';
+import { InstructorCardsPreviewPage } from './preview/proHome/InstructorCardsPreview';
+import { ProHomePreviewPage } from './preview/proHome/ProHomePreview';
+import { MediaMenuPreviewPage } from './preview/proHome/MediaMenuPreview';
+import { WhiteHubPreviewPage } from './preview/proHome/WhiteHubPreview';
 import { AncestryAcademyPreview, AncestryInstructorPreview, AncestryStudentPreview } from './preview/ancestryScope/AncestryScopePreview';
 import { AcademyFullPage, InstructorFullPage, ProfileHubPage, StudentFullPage } from './preview/ancestryScope/ProfilePages';
 import { Future2036Page } from './preview/ancestryScope/Future2036';
@@ -775,6 +780,16 @@ export default function App() {
       <Route path="/preview/lineage-line" element={<ExpandedLineageLine />} />
       {/* Isolated instructor-sheet concept. Not in edition menus, and it does not write a profile. */}
       <Route path="/preview/instructor-profile" element={<InstructorProfilePreviewPage />} />
+      {/* Isolated Pro hub preview. Live /pro is unchanged. */}
+      <Route path="/preview/pro-home" element={<ProHomePreviewPage />} />
+      {/* Isolated White hub. Live /white and /match stay on their current paths. */}
+      <Route path="/preview/white-hub" element={<WhiteHubPreviewPage />} />
+      {/* Isolated Media menu concept. Live /media keeps its purple rails. */}
+      <Route path="/preview/media-edition" element={<MediaMenuPreviewPage />} />
+      {/* Isolated Instructor card concept. Live /coach and /coach-unlimited are unchanged. */}
+      <Route path="/preview/instructor-cards" element={<InstructorCardsPreviewPage />} />
+      {/* Isolated coach-student pair. Not Connect to a gym, and it writes nothing. */}
+      <Route path="/preview/connect-coach" element={<ConnectCoachPreviewPage />} />
       {/* Example scopes only. Not in edition menus, and nothing here is saved. */}
       <Route path="/preview/ancestry-student" element={<AncestryStudentPreview />} />
       <Route path="/preview/ancestry-instructor" element={<AncestryInstructorPreview />} />
