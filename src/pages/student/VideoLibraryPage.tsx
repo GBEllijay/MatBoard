@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { DeviceMediaInput } from '../../components/DeviceMediaInput';
 import { loadAcademyLink, loadPersonalDrive, providerLabel, type StudentDriveLink } from '../../lib/academyPathway';
 import { formatVideoSize } from '../../lib/driveVideoNames';
@@ -33,12 +33,20 @@ import {
   type StudentFilm,
 } from '../../lib/studentFilm';
 import { originCanStore } from '../../lib/storageQuota';
+import { associationAfterSave, readJournalFilmContext, setClipAnchor, setFilmAnchor, setFilmJournal, type LinkIntent } from '../../lib/videoAssociation';
 import { AcademyStaleBanner } from './AcademyConnect';
+import { SavedTechniqueLink, TechniqueLinkPicker } from './TechniqueLinkPicker';
+import { OriginalClass, TechniquePractice } from './TechniquePractice';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 
 export function VideoLibraryPage() {
   const { report, commit } = useStudentFile();
   const to = useStudentPath();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const journalContext = readJournalFilmContext(params);
+  const reportRef = useRef(report);
+  reportRef.current = report;
   const [query, setQuery] = useState('');
   const [url, setUrl] = useState('');
   const [description, setDescription] = useState('');
@@ -48,16 +56,40 @@ export function VideoLibraryPage() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [filmTick, setFilmTick] = useState(0);
+  const [linkIntent, setLinkIntent] = useState<LinkIntent>({ kind: 'none' });
   const clips = report.clips ?? [];
   const matched = new Set(searchStudentClips(report, query).map((clip) => clip.id));
   const shown = clips.filter((clip) => !query.trim() || matched.has(clip.id) || clip.id === editing);
 
   const saveNew = () => {
     try {
-      commit(addJournalClip(report, url, description));
+      const plan = associationAfterSave(report, { saved: true, title: description, intent: linkIntent });
+      if (linkIntent.kind !== 'none' && (plan.error || !plan.anchor)) {
+        setError(plan.error || 'Could not link that title.');
+        return;
+      }
+      let next = addJournalClip(plan.report, url, description);
+      const clip = next.clips?.[next.clips.length - 1];
+      if (clip && (plan.anchor || journalContext.entryId)) {
+        next = {
+          ...next,
+          clips: next.clips?.map((item) =>
+            item.id === clip.id
+              ? {
+                  ...item,
+                  ...(plan.anchor ? { techniqueAnchor: plan.anchor } : {}),
+                  ...(journalContext.entryId ? { journalEntryId: journalContext.entryId } : {}),
+                }
+              : item,
+          ),
+        };
+      }
+      commit(next);
       setUrl('');
       setDescription('');
+      setLinkIntent({ kind: 'none' });
       setError('');
+      if (journalContext.back) navigate(journalContext.back);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save that video.');
     }
@@ -86,7 +118,25 @@ export function VideoLibraryPage() {
             <p className="student-quiet">
               Each link opens in a new tab. Any http or https address is fine, including YouTube, Instagram, and Facebook.
             </p>
-            <FilmAMove onSaved={() => setFilmTick((value) => value + 1)} />
+            {journalContext.entryId ? (
+              <p className="student-quiet" role="status">
+                This is for your journal card{journalContext.date ? ` on ${journalContext.date}` : ''}. The camera stays closed until you tap Film a move.
+              </p>
+            ) : null}
+            <FilmAMove
+              context={journalContext}
+              onSaved={() => setFilmTick((value) => value + 1)}
+              onCommitted={(film, intent) => {
+                const current = reportRef.current;
+                const plan = associationAfterSave(current, { saved: true, title: film.technique, intent });
+                if (plan.report !== current) commit(plan.report);
+                let next = film;
+                if (journalContext.entryId) next = setFilmJournal([next], next.id, journalContext.entryId)[0] ?? next;
+                if (plan.anchor) next = setFilmAnchor([next], next.id, plan.anchor)[0] ?? next;
+                if (journalContext.back && !plan.error) navigate(journalContext.back);
+                return { film: next, note: plan.error };
+              }}
+            />
             <label className="ink student-search">
               <span className="ink__label">Search</span>
               <input
@@ -130,9 +180,26 @@ export function VideoLibraryPage() {
                     </div>
                   </>
                 ) : (
-                  <a href={clip.url} target="_blank" rel="noopener noreferrer">
-                    {clip.description}
-                  </a>
+                  <>
+                    <a href={clip.url} target="_blank" rel="noopener noreferrer">
+                      {clip.description}
+                    </a>
+                    <p className="student-quiet">Link. Opens in a new tab. Not saved as a video file on this phone.</p>
+                    <SavedTechniqueLink
+                      report={report}
+                      title={clip.description}
+                      anchor={clip.techniqueAnchor}
+                      onSave={(intent) => {
+                        const plan = associationAfterSave(report, { saved: true, title: clip.description, intent });
+                        if (intent.kind !== 'none' && (plan.error || !plan.anchor)) return plan.error || 'Could not link that title.';
+                        commit(setClipAnchor(plan.report, clip.id, plan.anchor));
+                        return '';
+                      }}
+                      onUnlink={() => commit(setClipAnchor(report, clip.id, undefined))}
+                    />
+                    {clip.techniqueAnchor ? <TechniquePractice report={report} anchor={clip.techniqueAnchor} /> : null}
+                    {clip.journalEntryId ? <OriginalClass report={report} entryId={clip.journalEntryId} /> : null}
+                  </>
                 )}
                 <VideoNote clip={clip} onSave={(note) => commit(setClipNote(report, clip.id, note))} />
                 {editing === clip.id ? null : (
@@ -195,6 +262,7 @@ export function VideoLibraryPage() {
                 onChange={(event) => setDescription(event.target.value)}
               />
             </label>
+            <TechniqueLinkPicker report={report} title={description} intent={linkIntent} onChange={setLinkIntent} />
             {error ? <p role="alert">{error}</p> : null}
             <div className="student-clip__actions">
               <button type="button" className="ink-btn ink-btn--save" onClick={saveNew}>
@@ -211,13 +279,23 @@ export function VideoLibraryPage() {
   );
 }
 
-function FilmAMove({ onSaved }: { onSaved: () => void }) {
+function FilmAMove({
+  onSaved,
+  onCommitted,
+  context,
+}: {
+  onSaved: () => void;
+  onCommitted?: (film: StudentFilm, intent: LinkIntent) => { film: StudentFilm; note?: string };
+  context?: { entryId: string; date: string; technique: string; back: string };
+}) {
   const recordRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
-  const [technique, setTechnique] = useState('');
-  const [date, setDate] = useState(todayIso);
+  const [technique, setTechnique] = useState(context?.technique ?? '');
+  const [date, setDate] = useState(context?.date || todayIso());
+  const [intent, setIntent] = useState<LinkIntent>({ kind: 'none' });
+  const { report } = useStudentFile();
   const [where, setWhere] = useState<FilmWhere>('phone');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
@@ -247,14 +325,15 @@ function FilmAMove({ onSaved }: { onSaved: () => void }) {
     setPreview(URL.createObjectURL(next));
     setError('');
     setNote(filmIsLarge(next.size) ? FILM_LARGE_NOTE : '');
-    setDate(todayIso());
+    setDate(context?.date || todayIso());
   };
 
   const cancel = () => {
     if (preview) URL.revokeObjectURL(preview);
     setFile(null);
     setPreview('');
-    setTechnique('');
+    setTechnique(context?.technique ?? '');
+    setIntent({ kind: 'none' });
     setError('');
     setNote('');
     setWhere('phone');
@@ -285,8 +364,10 @@ function FilmAMove({ onSaved }: { onSaved: () => void }) {
       setError(result.error);
       return;
     }
-    writeFilms(localStorage, [...loadFilms(localStorage), result.film]);
-    setNote(result.largeNote);
+    const committed = onCommitted?.(result.film, intent);
+    const film = committed?.film ?? result.film;
+    writeFilms(localStorage, [...loadFilms(localStorage), film]);
+    setNote(committed?.note || result.largeNote);
     cancel();
     onSaved();
     setAcademy(loadAcademyLink(localStorage));
@@ -317,6 +398,11 @@ function FilmAMove({ onSaved }: { onSaved: () => void }) {
           onFiles={take}
         />
       </div>
+      {context?.back ? (
+        <p className="student-quiet">
+          <Link to={context.back}>Back to journal card</Link>
+        </p>
+      ) : null}
       <div className="student-film__actions">
         <label className="ink-btn" htmlFor="student-film-record">
           Film a move
@@ -337,6 +423,7 @@ function FilmAMove({ onSaved }: { onSaved: () => void }) {
             <span className="ink__label">Date</span>
             <input aria-label="Filmed move date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
+          <TechniqueLinkPicker report={report} title={technique} intent={intent} onChange={setIntent} />
           <fieldset className="student-film__where">
             <legend>Where to save</legend>
             <label>
@@ -381,6 +468,7 @@ function FilmAMove({ onSaved }: { onSaved: () => void }) {
 }
 
 function FilmedList({ query, tick, onChange }: { query: string; tick: number; onChange: () => void }) {
+  const { report, commit } = useStudentFile();
   const [films, setFilms] = useState(() => loadFilms(localStorage));
   useEffect(() => {
     setFilms(loadFilms(localStorage));
@@ -431,7 +519,23 @@ function FilmedList({ query, tick, onChange }: { query: string; tick: number; on
               {film.where === 'phone' ? ' · On this phone' : ''}
               {film.where === 'academy' ? ' · Academy folder' : ''}
               {film.where === 'personal' ? ' · My drive' : ''}
+              {' '}The video file stays in this library.
             </p>
+            <SavedTechniqueLink
+              report={report}
+              title={film.technique}
+              anchor={film.techniqueAnchor}
+              onSave={(intent) => {
+                const plan = associationAfterSave(report, { saved: true, title: film.technique, intent });
+                if (intent.kind !== 'none' && (plan.error || !plan.anchor)) return plan.error || 'Could not link that title.';
+                if (plan.report !== report) commit(plan.report);
+                refresh(setFilmAnchor(films, film.id, plan.anchor));
+                return '';
+              }}
+              onUnlink={() => refresh(setFilmAnchor(films, film.id, undefined))}
+            />
+            {film.techniqueAnchor ? <TechniquePractice report={report} anchor={film.techniqueAnchor} /> : null}
+            {film.journalEntryId ? <OriginalClass report={report} entryId={film.journalEntryId} /> : null}
             <FilmedPlayer film={film} label={label} />
             <FilmNote
               film={film}
