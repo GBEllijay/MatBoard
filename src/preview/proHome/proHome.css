@@ -10,6 +10,7 @@
   margin: 0 auto;
   padding: calc(1rem + var(--safe-t, 0px)) 1.25rem calc(2rem + var(--safe-b, 0px));
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -31,6 +32,26 @@
 }
 
 .php h1::after { display: none; }
+
+/* HomeMark's landscape rule places the logo in a named "brand" column. Keep this preview stacked. */
+.php .home__mark {
+  grid-area: auto;
+  text-align: center;
+  justify-self: center;
+  width: 100%;
+  margin: 0;
+}
+
+/* The Advantage word under the logo keeps its yellow line. Other preview titles do not. */
+.php .home__mark h1::after {
+  content: '';
+  display: block;
+  width: 2.75rem;
+  height: 3px;
+  margin: 0.42rem auto 0;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-2));
+}
 
 .php-kicker {
   margin: 0;

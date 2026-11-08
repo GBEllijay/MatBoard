@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { COACH_UNLIMITED_TOOLS, MEDIA_CONSOLE_NAME, PRO_HUBS } from '../../lib/productNames.ts';
+import { COACH_UNLIMITED_TOOLS, MEDIA_CONSOLE_NAME, MEDIA_EDITION_MENU, PRO_HUBS } from '../../lib/productNames.ts';
 import {
   INSTRUCTOR_CARDS_PREVIEW_PATH,
   JOURNAL_DESTINATION,
@@ -9,8 +9,10 @@ import {
   PRO_PREVIEW_PATH,
   SKINS_SCOREBOARD,
   SKINS_TIMER,
+  MEDIA_MENU_PREVIEW_PATH,
   WHITE_HUB_PREVIEW_PATH,
   instructorConceptCards,
+  mediaPreviewCards,
   previewProHubs,
   previewWhitePaths,
   productionWhitePaths,
@@ -75,10 +77,30 @@ test('instructor concept cards keep the seven live destinations and add no belt'
   assert.equal(new Set(cards.map((card) => card.mark)).size, 7);
 });
 
+test('the Media preview keeps the three live subtitles and drops the belt rails', () => {
+  const cards = mediaPreviewCards();
+  assert.deepEqual(
+    cards.map((card) => [card.title, card.to, card.note]),
+    MEDIA_EDITION_MENU.map((link) => [link.title, link.to, link.sub]),
+  );
+  assert.deepEqual(cards.map((card) => card.mark), ['board', 'timer', 'console']);
+  const page = readFileSync('src/preview/proHome/MediaMenuPreview.tsx', 'utf8');
+  assert.match(page, /BeltHeader kind="purple" title="Advantage Media Edition"/);
+  assert.match(page, /EditionLadder page="media"/);
+  assert.match(page, /HomeMark/);
+  assert.doesNotMatch(page, /BeltRail|unlinkBracketBout|localStorage/);
+  assert.match(page, /MEDIA_EXAMPLE/);
+  const css = readFileSync('src/preview/proHome/proHome.css', 'utf8');
+  assert.match(css, /\.php \.home__mark \{[^}]*grid-area:\s*auto/);
+  assert.match(css, /\.php-card \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 92px/);
+});
+
 test('live Pro, Instructor, and hub paint are not edited for this preview', () => {
   assert.match(app, new RegExp(`path="${PRO_PREVIEW_PATH}"`));
   assert.match(app, new RegExp(`path="${INSTRUCTOR_CARDS_PREVIEW_PATH}"`));
   assert.match(app, new RegExp(`path="${WHITE_HUB_PREVIEW_PATH}"`));
+  assert.match(app, new RegExp(`path="${MEDIA_MENU_PREVIEW_PATH}"`));
+  assert.match(readFileSync('src/pages/MediaEditionHub.tsx', 'utf8'), /SuiteMenuLinks links=\{MEDIA_EDITION_MENU\}/);
   assert.doesNotMatch(pro, /preview\/proHome|Advantage Media Edition|php-tile/);
   assert.doesNotMatch(coach, /preview\/proHome|php-card/);
   assert.match(css, /\.pro-hub,[\s\S]*background:\s*#0c2344/);

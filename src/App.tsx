@@ -48,6 +48,7 @@ import { Journal2036Page } from './preview/journal2036/Journal2036Page';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
 import { InstructorCardsPreviewPage } from './preview/proHome/InstructorCardsPreview';
 import { ProHomePreviewPage } from './preview/proHome/ProHomePreview';
+import { MediaMenuPreviewPage } from './preview/proHome/MediaMenuPreview';
 import { WhiteHubPreviewPage } from './preview/proHome/WhiteHubPreview';
 import { CoachPage } from './pages/Coach';
 import { CoachingToolsPage } from './pages/CoachingTools';
@@ -765,6 +766,8 @@ export default function App() {
       <Route path="/preview/pro-home" element={<ProHomePreviewPage />} />
       {/* Isolated White hub. Live /white and /match stay on their current paths. */}
       <Route path="/preview/white-hub" element={<WhiteHubPreviewPage />} />
+      {/* Isolated Media menu concept. Live /media keeps its purple rails. */}
+      <Route path="/preview/media-edition" element={<MediaMenuPreviewPage />} />
       {/* Isolated Instructor card concept. Live /coach and /coach-unlimited are unchanged. */}
       <Route path="/preview/instructor-cards" element={<InstructorCardsPreviewPage />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />

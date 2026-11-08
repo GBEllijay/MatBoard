@@ -10,6 +10,7 @@ import {
   INSTRUCTOR_COLLAB_HUB_LABEL,
   MATCH_CONTROLLER_PATH,
   MEDIA_CONSOLE_NAME,
+  MEDIA_EDITION_MENU,
   PRO_HUBS,
   PRO_INSTRUCTOR_HUB_LABEL,
   ROUND_CONTROLLER_PATH,
@@ -22,9 +23,17 @@ export const PRO_PREVIEW_PATH = '/preview/pro-home';
 export const INSTRUCTOR_CARDS_PREVIEW_PATH = '/preview/instructor-cards';
 /** Both suite tools. The match controller does not link to the round timer. */
 export const WHITE_HUB_PREVIEW_PATH = '/preview/white-hub';
+export const MEDIA_MENU_PREVIEW_PATH = '/preview/media-edition';
 
 export const PREVIEW_BANNER =
-  'Preview only. Fictional labels. Nothing here is saved, and the live Pro and Instructor pages are unchanged.';
+  'Preview only. Fictional labels. Nothing here is saved, and the live Pro, Instructor, and Media pages are unchanged.';
+
+/** Fictional Media card. Not the instructor sheet and not read from this phone. */
+export const MEDIA_EXAMPLE = {
+  name: 'Example Media operator (fictional)',
+  gym: 'Example Academy (fictional)',
+  role: 'Media Edition',
+} as const;
 
 /** Student rung on the edition ladder. The blue belt on the shortcut is an accent, not a rank. */
 export const JOURNAL_DESTINATION = OPEN_PATH_STUDENT;
@@ -141,6 +150,24 @@ const INSTRUCTOR_NOTES: Record<string, { note: string; mark: InstructorCard['mar
 };
 
 /** Same seven tools and destinations as Coach Unlimited. No belt rail in this concept. */
+export type MediaPreviewCard = {
+  title: string;
+  to: string;
+  note: string;
+  mark: 'board' | 'timer' | 'console';
+};
+
+/** Same three Media Edition destinations and subtitles. No belt rail in this concept. */
+export function mediaPreviewCards(): MediaPreviewCard[] {
+  const marks = ['board', 'timer', 'console'] as const;
+  return MEDIA_EDITION_MENU.map((link, index) => ({
+    title: link.title,
+    to: link.to,
+    note: link.sub ?? '',
+    mark: marks[index] ?? 'console',
+  }));
+}
+
 export function instructorConceptCards(): InstructorCard[] {
   return COACH_UNLIMITED_TOOLS.map((tool) => {
     const extra = INSTRUCTOR_NOTES[tool.title];
