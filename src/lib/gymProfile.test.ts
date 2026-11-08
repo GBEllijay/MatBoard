@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { academySheetOpen, promotionsByYear, sanitizeGymEvent, type GymEvent } from './gymEvents.ts';
-import { profileOptIn, readGymProfile, sanitizeGymProfile, writeGymProfile, type GymProfile } from './gymProfile.ts';
+import { gymLineageText, gymLineageVisible, profileOptIn, readGymProfile, sanitizeGymProfile, writeGymProfile, type GymProfile } from './gymProfile.ts';
 
 function memory() {
   const bag = new Map<string, string>();
@@ -41,6 +41,31 @@ test('founders and lineage keep a trailing space and spaces in the middle while 
   assert.equal(clipped.founders, 'A '.repeat(60));
   const dated = sanitizeGymProfile({ foundedOn: ' 1998-04-02 ' });
   assert.equal(dated.foundedOn, '1998-04-02');
+});
+
+test('lineage stays when it is hidden, and an older profile stays visible', () => {
+  const store = memory();
+  const text = 'Founded under Teacher A.\nThat teacher under Teacher B.';
+  writeGymProfile({ lineage: text }, store);
+  const legacy = readGymProfile(store);
+  assert.equal(legacy.lineageVisible, undefined);
+  assert.equal(gymLineageVisible(legacy), true);
+  assert.equal(gymLineageText(legacy), text);
+
+  const hidden = writeGymProfile({ lineageVisible: false }, store);
+  assert.equal(hidden.lineage, text);
+  assert.equal(gymLineageVisible(hidden), false);
+  assert.equal(gymLineageText(hidden), '');
+  const again = writeGymProfile({ lineageVisible: true }, store);
+  assert.equal(again.lineage, text);
+  assert.equal(gymLineageText(again), text);
+
+  const blank = writeGymProfile({ lineage: '', lineageVisible: false }, store);
+  assert.equal(blank.lineage, '');
+  assert.equal(gymLineageText(blank), '');
+  const shownBlank = writeGymProfile({ lineageVisible: true }, store);
+  assert.equal(shownBlank.lineage, '');
+  assert.equal(gymLineageText(shownBlank), '');
 });
 
 test('academy sheet stays open for the owner and roster seats, and opt-in opens the others', () => {

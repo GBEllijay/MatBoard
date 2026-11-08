@@ -26,7 +26,15 @@ import {
 import { getGymEventsSnapshot, readGymMeta, subscribeGymEvents } from '../lib/gymEventLog.ts';
 import { ADVANTAGE_MARK_SRC, readGymLogo, saveGymLogoFile, subscribeGymLogo } from '../lib/gymLogo.ts';
 import { readGymName } from '../lib/gymName.ts';
-import { getGymProfileSnapshot, profileOptIn, subscribeGymProfile, writeGymProfile, type GymProfile } from '../lib/gymProfile.ts';
+import {
+  getGymProfileSnapshot,
+  gymLineageText,
+  gymLineageVisible,
+  profileOptIn,
+  subscribeGymProfile,
+  writeGymProfile,
+  type GymProfile,
+} from '../lib/gymProfile.ts';
 import type { GymEvent } from '../lib/gymEvents.ts';
 import './gymSheet.css';
 
@@ -120,7 +128,7 @@ export function GymCharacterSheet() {
             <p>{cloud ? 'Advantage Cloud' : 'This device'}</p>
             {profile.foundedOn ? <p>Founded {profile.foundedOn}</p> : null}
             {profile.founders.trim() ? <p>Founders {profile.founders}</p> : null}
-            {profile.lineage.trim() ? <p>{profile.lineage}</p> : null}
+            {gymLineageText(profile) ? <p className="gym-lineage-read">{gymLineageText(profile)}</p> : null}
           </div>
         </div>
         {owner ? (
@@ -133,10 +141,33 @@ export function GymCharacterSheet() {
               Founders
               <input value={profile.founders} maxLength={120} onChange={(event) => writeGymProfile({ founders: event.target.value })} />
             </label>
-            <label>
-              Lineage
-              <textarea value={profile.lineage} maxLength={240} onChange={(event) => writeGymProfile({ lineage: event.target.value })} />
-            </label>
+            <div className="gym-lineage">
+              <button
+                type="button"
+                role="switch"
+                className="gym-lineage-switch"
+                aria-checked={gymLineageVisible(profile)}
+                aria-describedby="gym-lineage-help"
+                onClick={() => writeGymProfile({ lineageVisible: !gymLineageVisible(profile) })}
+              >
+                <span>Show lineage</span>
+                <span aria-hidden="true">{gymLineageVisible(profile) ? 'On' : 'Off'}</span>
+              </button>
+              <p id="gym-lineage-help" className="gym-sheet__note">
+                Teaching ancestry of this academy: who it was founded under, and who that teacher was under. Not instructors who have taught or visited.
+              </p>
+              {gymLineageVisible(profile) ? (
+                <label>
+                  Lineage
+                  <textarea
+                    aria-label="Lineage"
+                    value={profile.lineage}
+                    maxLength={240}
+                    onChange={(event) => writeGymProfile({ lineage: event.target.value })}
+                  />
+                </label>
+              ) : null}
+            </div>
             <fieldset>
               <legend className="sheet-cap">Share academy totals</legend>
               {(

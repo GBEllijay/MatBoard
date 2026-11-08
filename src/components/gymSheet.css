@@ -216,6 +216,23 @@
   font: inherit;
 }
 .gym-fields textarea { min-height: 72px; resize: vertical; }
+.gym-lineage { display: grid; gap: 8px; }
+.gym-lineage-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  background: rgba(6, 16, 31, 0.65);
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+}
+.gym-lineage-read { white-space: pre-wrap; margin: 0; }
 @media (max-width: 420px) {
   .gym-sheet .sheet-stat__num { font-size: 26px; }
 }

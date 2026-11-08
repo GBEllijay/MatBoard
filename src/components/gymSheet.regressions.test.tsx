@@ -9,7 +9,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GymCharacterSheet } from './GymCharacterSheet.tsx';
 import { clearGymLogo, writeGymLogo } from '../lib/gymLogo.ts';
-import { writeGymProfile } from '../lib/gymProfile.ts';
+import { readGymProfile, writeGymProfile } from '../lib/gymProfile.ts';
 
 const dom = new Window({ url: 'http://localhost/pro' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -94,6 +94,48 @@ test('founders and lineage keep a trailing space and a second space', async () =
   setValue(lineage, 'Carlson  Gracie');
   assert.equal(lineage.value, 'Carlson  Gracie');
   await sheet.unmount();
+});
+
+test('lineage can be hidden without losing the words, and a blank field has no placeholder', async () => {
+  blankProfile();
+  const story = 'Founded under Teacher A.\nThat teacher under Teacher B.';
+  writeGymProfile({ lineage: story });
+  const sheet = await renderSheet();
+  const box = () => field(sheet.host, 'Lineage') as HTMLTextAreaElement;
+  assert.equal(box().value, story);
+  assert.equal(box().getAttribute('placeholder'), null);
+  assert.match(sheet.host.textContent ?? '', /Teaching ancestry of this academy/);
+  assert.match(sheet.host.textContent ?? '', /Not instructors who have taught or visited/);
+  const toggle = () => sheet.host.querySelector('[role="switch"]') as HTMLButtonElement;
+  assert.equal(toggle().getAttribute('aria-checked'), 'true');
+  await act(async () => {
+    toggle().click();
+  });
+  assert.equal(sheet.host.querySelector('textarea[aria-label="Lineage"]'), null);
+  assert.equal(sheet.host.textContent?.includes(story), false);
+  assert.equal(readGymProfile().lineage, story);
+  assert.equal(readGymProfile().lineageVisible, false);
+  await sheet.unmount();
+
+  const again = await renderSheet();
+  assert.equal(again.host.querySelector('textarea[aria-label="Lineage"]'), null);
+  assert.equal(readGymProfile().lineage, story);
+  const back = again.host.querySelector('[role="switch"]') as HTMLButtonElement;
+  await act(async () => {
+    back.click();
+  });
+  const restored = field(again.host, 'Lineage') as HTMLTextAreaElement;
+  assert.equal(restored.value, story);
+  assert.equal(readGymProfile().lineageVisible, true);
+  await again.unmount();
+
+  writeGymProfile({ lineage: '', lineageVisible: true });
+  const empty = await renderSheet();
+  const emptyBox = field(empty.host, 'Lineage') as HTMLTextAreaElement;
+  assert.equal(emptyBox.value, '');
+  assert.equal(emptyBox.getAttribute('placeholder'), null);
+  assert.equal(empty.host.querySelector('.gym-lineage-read'), null);
+  await empty.unmount();
 });
 
 test('a gym logo replaces the upload prompt and stays tappable', async () => {
