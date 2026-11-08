@@ -1,66 +1,77 @@
-/* Instructor tool cards on the live Coach Unlimited page. No left belt rail. */
+/* Instructor Edition tools. Cream buttons, brown belt on the left, drawing inside. */
 
 .instructor-tools {
   display: grid;
   gap: 0.75rem;
+  width: 100%;
 }
 
 .instructor-tool {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
   min-height: 5.25rem;
-  padding: 0.85rem 1.05rem;
+  padding: 1rem 1.05rem 1rem 1.5rem;
   overflow: hidden;
+  border: 0;
   border-radius: 18px;
-  border: 1.5px solid #004eba;
-  background: #0c2344;
-  color: #f5f1e8;
+  background: #efebe3;
+  color: #14161c;
   font-weight: 800;
   font-size: clamp(1.05rem, 2.7vw, 1.28rem);
   letter-spacing: -0.03em;
   line-height: 1.2;
   text-align: left;
   text-decoration: none;
-  box-shadow: none;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
 .instructor-tool > span {
+  position: relative;
+  z-index: 1;
   flex: 1 1 auto;
   min-width: 0;
-  color: #f5f1e8;
+  color: #14161c;
   font-size: inherit;
   font-weight: 800;
 }
 
+.instructor-tool .belt-rail {
+  --belt-rail-width: 8px;
+  --belt-block: 0.55rem;
+}
+
 .instructor-tool:focus-visible {
-  outline: 3px solid #6ea8ff;
+  outline: 3px solid #004eba;
   outline-offset: 3px;
 }
 
-.instructor-tool__mark {
-  display: block;
-  width: 64px;
-  height: 50px;
-  max-width: 64px;
-  max-height: 50px;
-  flex: 0 0 64px;
-  border-radius: 8px;
-  background: rgba(110, 168, 255, 0.12);
+.instructor-tool:active {
+  background: #e4dfd4;
+  color: #14161c;
 }
 
-.instructor-tool__mark--pill {
-  width: 40px;
-  height: 32px;
-  max-width: 40px;
-  max-height: 32px;
-  flex: 0 0 40px;
+.instructor-tool__mark {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 44px;
+  height: 34px;
+  max-width: 44px;
+  max-height: 34px;
+  flex: 0 0 44px;
   background: transparent;
 }
 
-@media (orientation: landscape) and (min-width: 740px) {
-  .instructor-tools {
-    grid-template-columns: 1fr 1fr;
+@media (hover: hover) {
+  .instructor-tool:hover {
+    background: #e4dfd4;
+    color: #14161c;
+  }
+
+  .instructor-tool:hover > span {
+    color: #14161c;
   }
 }

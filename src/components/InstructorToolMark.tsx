@@ -1,12 +1,12 @@
 export type InstructorToolMarkName = 'plan' | 'video' | 'tree' | 'roster' | 'record' | 'board' | 'timer';
 
-/** Approved Instructor tool drawings. No belt rail. The drawing stays inside the button. */
-export function InstructorToolMark({ mark, slot = 'tool' }: { mark: InstructorToolMarkName; slot?: 'tool' | 'pill' }) {
+/** Approved Instructor tool drawings. Sized to sit inside the cream button, not to replace it. */
+export function InstructorToolMark({ mark }: { mark: InstructorToolMarkName }) {
   const common = {
-    className: slot === 'pill' ? 'instructor-tool__mark instructor-tool__mark--pill' : 'instructor-tool__mark',
+    className: 'instructor-tool__mark',
     viewBox: '0 0 92 72',
-    width: slot === 'pill' ? 40 : 64,
-    height: slot === 'pill' ? 32 : 50,
+    width: 44,
+    height: 34,
     'aria-hidden': true as const,
   };
   if (mark === 'plan') {

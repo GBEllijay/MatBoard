@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
+import { BeltRail } from '../components/BeltRail';
 import { InstructorToolMark, type InstructorToolMarkName } from '../components/InstructorToolMark';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { HomeMark } from '../components/HomeMark';
@@ -88,6 +89,7 @@ export function CoachUnlimitedPage() {
                   to={tool.to}
                   onClick={tool.clearBout ? () => unlinkBracketBout() : undefined}
                 >
+                  <BeltRail kind="brown" />
                   <span>{tool.title}</span>
                   <InstructorToolMark mark={marks[tool.title] ?? 'plan'} />
                 </Link>

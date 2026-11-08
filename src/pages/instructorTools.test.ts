@@ -8,12 +8,12 @@ const marks = readFileSync(new URL('../components/InstructorToolMark.tsx', impor
 const seats = readFileSync(new URL('../lib/instructorSeats.ts', import.meta.url), 'utf8');
 const pro = readFileSync(new URL('./Pro.tsx', import.meta.url), 'utf8');
 
-test('Instructor tools keep the live routes and drop the left belt', () => {
+test('Instructor tools keep the live routes on cream buttons with a brown belt', () => {
   assert.match(page, /coachToolVisible\(tool\.to, seat\)/);
   assert.match(page, /to=\{tool\.to\}/);
   assert.match(page, /tool\.clearBout \? \(\) => unlinkBracketBout\(\)/);
   assert.match(page, /<BeltHeader kind="brown" worn title="Instructor Edition"/);
-  assert.doesNotMatch(page, /BeltRail/);
+  assert.match(page, /<BeltRail kind="brown" \/>/);
   assert.match(page, /className="instructor-tool"/);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.to),
@@ -40,19 +40,20 @@ test('Instructor tools keep the live routes and drop the left belt', () => {
   assert.match(marks, />White</);
   assert.match(marks, /fill="#f4f1ea" \/>\s*<path d="M30 24h32/);
   assert.doesNotMatch(marks, /M46 24v13l8 5/);
-  assert.match(marks, /width: slot === 'pill' \? 40 : 64/);
+  assert.match(marks, /width: 44/);
+  assert.match(marks, /height: 34/);
   assert.match(marks, /Open index-card box/);
   assert.doesNotMatch(marks, /M20 54c2-10/);
-  const bout = readFileSync(new URL('../components/LiveBoutCard.tsx', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('./instructorTools.css', import.meta.url), 'utf8');
+  assert.match(css, /\.instructor-tool \{[^}]*background:\s*#efebe3/);
+  assert.match(css, /\.instructor-tool \{[^}]*color:\s*#14161c/);
+  assert.match(css, /\.instructor-tool__mark \{[^}]*max-width:\s*44px/);
+  const white = readFileSync(new URL('../components/LiveBoutCard.tsx', import.meta.url), 'utf8');
   const rounds = readFileSync(new URL('../components/RoundsCard.tsx', import.meta.url), 'utf8');
-  assert.match(bout, /to="\/match"/);
-  assert.match(bout, /to="\/match\/control"/);
-  assert.match(bout, /mark="board" slot="pill"/);
-  assert.doesNotMatch(bout, /white-board/);
-  assert.match(rounds, /to="\/training"/);
-  assert.match(rounds, /to="\/training\/control"/);
-  assert.match(rounds, /mark="timer" slot="pill"/);
-  assert.doesNotMatch(rounds, /white-timer/);
+  assert.match(white, /className="white-board"/);
+  assert.doesNotMatch(white, /InstructorToolMark/);
+  assert.match(rounds, /className="white-timer"/);
+  assert.doesNotMatch(rounds, /InstructorToolMark/);
 });
 
 test('sign-out and the Pro menu labels stay in place', () => {
