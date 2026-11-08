@@ -31,6 +31,17 @@ import { doorsThatOpen, impliedDoors } from './tierImplications.ts';
 /** License id the server signs into an owner-test token (`sub`). */
 export const OWNER_TEST_LICENSE_ID = 'owner-test';
 
+/** Bumped when this browser signs out or clears an owner-test pass. A refresh already in flight cannot write a pass after that. */
+let accessEpoch = 0;
+
+export function currentAccessEpoch(): number {
+  return accessEpoch;
+}
+
+export function bumpAccessEpoch(): void {
+  accessEpoch += 1;
+}
+
 export const ENTITLEMENT_TOKEN_KEY = 'advantage.entitlement.token';
 export const ENTITLEMENT_CLOCK_KEY = 'advantage.entitlement.clock';
 export const ENTITLEMENT_CONFIG_KEY = 'advantage.entitlement.config';
@@ -356,9 +367,11 @@ export function readDeviceId(): string {
 }
 
 export async function acceptServerToken(token: string): Promise<boolean> {
+  const epoch = accessEpoch;
   if (!config.keys.length) await loadPublicConfig();
+  if (epoch !== accessEpoch) return false;
   const claims = await verifyToken(token, config.keys);
-  if (!claims) return false;
+  if (!claims || epoch !== accessEpoch) return false;
   verified = claims;
   writeItem(ENTITLEMENT_TOKEN_KEY, token);
   noteClock(nowMs());
@@ -379,25 +392,36 @@ export function clearEntitlementToken(): void {
     .catch(() => undefined);
 }
 
-function storedTokenSubject(): string | null {
+function storedOwnerTestPass(): boolean {
   const token = readItem(ENTITLEMENT_TOKEN_KEY);
   const part = token?.split('.')[1];
-  if (!part) return null;
+  if (!part) return false;
   try {
-    const claims = JSON.parse(new TextDecoder().decode(base64UrlToBytes(part))) as { sub?: unknown };
-    return typeof claims.sub === 'string' ? claims.sub : null;
+    const claims = JSON.parse(new TextDecoder().decode(base64UrlToBytes(part))) as {
+      sub?: unknown;
+      src?: unknown;
+      tier?: unknown;
+    };
+    const sub = typeof claims.sub === 'string' ? claims.sub : '';
+    const src = typeof claims.src === 'string' ? claims.src : '';
+    const tier = typeof claims.tier === 'string' ? claims.tier : '';
+    return sub === OWNER_TEST_LICENSE_ID || src === 'owner' || tier === 'owner';
   } catch {
-    return null;
+    return false;
   }
 }
 
 /**
- * Clear test unlock. Removes the stored token only when the owner test issued
- * it. A paid, code, or seat token on this browser stays.
+ * Clear test unlock. Removes the stored pass when the owner test issued it,
+ * including a database license id. The literal owner-test id is not the only shape.
+ * A paid pass, an alpha code, and a seat pass stay on this browser.
  */
 export function clearOwnerTestToken(): boolean {
-  const fromOwnerTest = verified ? verified.sub === OWNER_TEST_LICENSE_ID : storedTokenSubject() === OWNER_TEST_LICENSE_ID;
+  const fromOwnerTest = verified
+    ? verified.sub === OWNER_TEST_LICENSE_ID || verified.src === 'owner' || verified.tier === 'owner'
+    : storedOwnerTestPass();
   if (!fromOwnerTest) return false;
+  bumpAccessEpoch();
   clearEntitlementToken();
   return true;
 }

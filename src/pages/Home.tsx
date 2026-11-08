@@ -8,6 +8,7 @@ import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { LearnMoreLink } from '../components/LearnMoreLink';
 import { OwnerTestSheet } from '../components/OwnerTestSheet';
+import { SignOutButton } from '../components/SignOutButton';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
@@ -225,6 +226,8 @@ export function HomePage() {
             <button type="button" className="btn btn--ghost" onClick={() => setOwnerTestOpen(true)}>
               Owner test unlock
             </button>
+            {' '}
+            <SignOutButton />
           </p>
         </div>
         <SiteFooter />
