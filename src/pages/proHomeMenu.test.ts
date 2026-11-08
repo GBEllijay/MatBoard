@@ -39,9 +39,9 @@ test('the Pro home header clearance is page-local and the hub tiles stay cream',
   assert.match(css, /\.home--pro-menu \.pro-hub > span \{[^}]*font-size:\s*clamp\(1\.05rem, 2\.7vw, 1\.28rem\)/);
   assert.doesNotMatch(css, /pro-hub__sub/);
   assert.match(paint, /\.pro-hub,[\s\S]*background:\s*#0c2344/);
-  assert.doesNotMatch(cloud, /home--pro-menu/);
+  assert.match(cloud, /home--pro-menu/);
   assert.match(cloud, /<GymCharacterSheet \/>/);
   const cloudSheet = cloud.indexOf('<GymCharacterSheet />');
   const cloudBelt = cloud.indexOf('<BeltHeader');
-  assert.ok(cloudSheet > -1 && cloudBelt > cloudSheet);
+  assert.ok(cloudBelt > -1 && cloudSheet > cloudBelt);
 });

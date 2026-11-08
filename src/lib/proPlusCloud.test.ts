@@ -114,7 +114,7 @@ test('the cloud gate does not read a Pro unlock as the whole check', () => {
 });
 
 test('Pro Plus Cloud page is the head instructor home', () => {
-  assert.match(page, /<main className="home home--pro"/);
+  assert.match(page, /<main className="home home--pro home--pro-menu"/);
   assert.match(page, /<PlayExitMark to=\{PRODUCTS_PATH\} \/>/);
   assert.match(page, /<HomeMark to=\{PRODUCTS_PATH\} \/>/);
   assert.match(page, /<PlusCloudConduct \/>/);
@@ -161,10 +161,11 @@ test('the products page keeps Pro and Pro + Cloud as separate open links', () =>
   assert.doesNotMatch(home, /Continue to checkout/);
 });
 
-test('Pro shows the academy profile under the belt; Pro + Cloud stays above its belt', () => {
+test('Pro and Pro + Cloud show the academy profile under the belt', () => {
   const sheetAt = page.indexOf('<GymCharacterSheet />');
   const beltAt = page.indexOf('<BeltHeader');
-  assert.ok(sheetAt > -1 && beltAt > sheetAt);
+  assert.ok(beltAt > -1 && sheetAt > beltAt);
+  assert.match(page, /home--pro-menu/);
   assert.match(page, /<HomeMark to=\{PRODUCTS_PATH\} \/>/);
   assert.match(page, /<PlayExitMark to=\{PRODUCTS_PATH\} \/>/);
   assert.doesNotMatch(page, /Academy profile/);
