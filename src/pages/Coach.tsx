@@ -1,7 +1,5 @@
-import { useSyncExternalStore } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GymCoachPulse } from '../components/GymCoachPulse';
-import { InstructorSheet } from '../components/InstructorSheet';
 import { BeltHeader } from '../components/BeltHeader';
 import { EditionLadder } from '../components/EditionLadder';
 import { BeltRail } from '../components/BeltRail';
@@ -11,7 +9,6 @@ import { FaqLink } from '../components/FaqLink';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
-import { doorOpen, subscribeEntitlement } from '../lib/entitlement';
 import { BASIC_COACH_BELT_LINES } from '../lib/coachCopy';
 import { lockCoach } from '../lib/coachUnlock';
 import { coachToolVisible, purchasePromptsHidden } from '../lib/instructorSeats';
@@ -24,7 +21,6 @@ export function CoachPage() {
   const seat = useCurrentSeat();
   // Coach door alone: a Pro token still counts there, and the Lock Coach mark closes it.
   const ownerOpen = useCoachUnlocked();
-  const proOpen = useSyncExternalStore(subscribeEntitlement, () => doorOpen('pro'), () => false);
   const tools = COACH_HUBS.filter((tool) => coachToolVisible(tool.to, seat));
 
   return (
@@ -33,10 +29,10 @@ export function CoachPage() {
         <HomeMark to={PRODUCTS_PATH} />
 
         <InviteAccept />
-        {proOpen ? <InstructorSheet /> : <GymCoachPulse />}
+        <GymCoachPulse />
         <nav className="home__modes" aria-label="Advantage Coach">
           <BeltHeader
-            kind="blue"
+            kind="brown"
             title="Advantage - Coach"
             blurb={BASIC_COACH_BELT_LINES.join('\n')}
           />
