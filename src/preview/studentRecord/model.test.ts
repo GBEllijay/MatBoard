@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
-  EARLIER_HOURS_PLAIN,
   EARLIER_HOURS_PLAYFUL,
   EXAMPLE_ESTIMATES,
   EXAMPLE_LOGGED_HOURS,
@@ -93,16 +92,15 @@ test('estimated hours stay separate from logged hours, and a blank belt adds not
   assert.equal(EARLIER_HOURS_PLAYFUL, 'On your honor—count the mat time, not the drive there. If you’re unsure, round down.');
   assert.equal(EARLIER_HOURS_PLAYFUL.includes('\u2014'), true);
   assert.equal(EARLIER_HOURS_PLAYFUL.includes('\u2019'), true);
-  assert.equal(EARLIER_HOURS_PLAIN, 'These hours are estimated.');
   const hours = readFileSync(new URL('./StudentHoursPreview.tsx', import.meta.url), 'utf8');
   const earlierAt = hours.indexOf('aria-label="Earlier hours"');
   const combinedAt = hours.indexOf('aria-label="Combined total"');
   const beforeEarlier = hours.slice(0, earlierAt);
   const earlier = hours.slice(earlierAt, combinedAt);
   assert.equal(beforeEarlier.includes('{EARLIER_HOURS_PLAYFUL}'), false);
-  assert.equal(beforeEarlier.includes('{EARLIER_HOURS_PLAIN}'), false);
+  assert.equal(beforeEarlier.includes('These hours are estimated.'), false);
   assert.equal(earlier.includes('{EARLIER_HOURS_PLAYFUL}'), true);
-  assert.equal(earlier.includes('{EARLIER_HOURS_PLAIN}'), true);
+  assert.equal(earlier.includes('These hours are estimated.'), false);
   assert.match(beforeEarlier, /From the example journal/);
 });
 
