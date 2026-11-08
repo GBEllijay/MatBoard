@@ -1,16 +1,17 @@
 /**
- * Display map from a saved 7-area check-in onto the approved 8-area octagon.
- * Nothing here reads or writes storage. A saved day stays as it was saved.
- * Sweeps has no stored value, so it stays unrated. Passing is not copied in.
+ * Display map from a saved check-in onto the approved 8-area octagon.
+ * Nothing here reads or writes storage.
+ * Guard and Escapes keep their old stored ids.
+ * Sweeps is read only from its own field. A day saved before that field exists stays unrated.
  */
 import { AXES, SHEET_AXIS_IDS, type AxisId } from '../preview/assessmentRadar/model.ts';
 import { isAssessmentScore, type AssessmentScores } from './studentAssessment.ts';
 
-/** Old check-in field for each approved area. Sweeps has none. */
-const LEGACY_SOURCE: Record<AxisId, keyof AssessmentScores | null> = {
+/** Stored field for each approved area. Sweeps has no older name to borrow. */
+const LEGACY_SOURCE: Record<AxisId, keyof AssessmentScores> = {
   'guard-control': 'guard',
   passing: 'passing',
-  sweeps: null,
+  sweeps: 'sweeps',
   takedowns: 'takedowns',
   'escapes-defense': 'escapes',
   submissions: 'submissions',
@@ -31,9 +32,8 @@ export function shapeAxesFromLegacy(scores: Partial<AssessmentScores> | null | u
   return SHEET_AXIS_IDS.map((id) => {
     const axis = AXES.find((item) => item.id === id);
     const label = axis?.label ?? id;
-    const source = LEGACY_SOURCE[id];
-    if (!scores || source == null) return { id, label, value: null };
-    const raw = scores[source];
+    if (!scores) return { id, label, value: null };
+    const raw = scores[LEGACY_SOURCE[id]];
     return { id, label, value: isAssessmentScore(raw) ? raw : null };
   });
 }

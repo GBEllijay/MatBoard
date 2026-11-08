@@ -23,10 +23,12 @@ test('fundamentals levels show on the self-assessment chart without retyping', a
     'aria-label',
     'Self-assessment shape, Guard 4, Passing 2, Takedowns 5, Escapes 3, Submissions 1, Conditioning 4, Mindset not rated',
   );
-  await expect(page.getByRole('button', { name: 'Guard 4', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Guard/Control 4', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Passing 2', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Sweeps 4', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: 'Sweeps 2', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('button', { name: 'Takedowns 5', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Escapes 3', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Escapes/Defense 3', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Submissions 1', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Conditioning 4', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Mindset 4', exact: true })).toHaveAttribute('aria-pressed', 'false');
@@ -44,11 +46,13 @@ test('fundamentals levels show on the self-assessment chart without retyping', a
   await page.getByLabel('Self-assessment note').fill('carried over');
   await page.getByRole('button', { name: 'Save self-assessment', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Update self-assessment', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Guard 4', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Guard/Control 4', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Sweeps 4', exact: true })).toHaveAttribute('aria-pressed', 'false');
   const saved = await page.evaluate(() => localStorage.getItem('matboard.studentEdition.assessment.v1') ?? '');
   expect(saved).toContain('carried over');
   expect(saved).toContain('"guard":4');
   expect(saved).toContain('"mindset":2');
+  expect(saved).not.toContain('"sweeps"');
   const progressAfter = await page.evaluate(() => localStorage.getItem('matboard.studentEdition.v1') ?? '');
   expect(progressAfter).toContain('sweep.scissor');
 });

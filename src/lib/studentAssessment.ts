@@ -21,9 +21,27 @@ export const ASSESSMENT_AREAS = [
   { id: 'mindset', label: 'Mindset' },
 ] as const;
 
+/**
+ * Check-in form order. Labels on this list are the approved names.
+ * Stored ids stay guard and escapes so an older file still loads.
+ * Sweeps is optional: a day without that field is unrated, not a copy of Passing.
+ */
+export const ASSESSMENT_FORM_AREAS = [
+  { id: 'guard', label: 'Guard/Control' },
+  { id: 'passing', label: 'Passing' },
+  { id: 'sweeps', label: 'Sweeps' },
+  { id: 'takedowns', label: 'Takedowns' },
+  { id: 'escapes', label: 'Escapes/Defense' },
+  { id: 'submissions', label: 'Submissions' },
+  { id: 'conditioning', label: 'Conditioning' },
+  { id: 'mindset', label: 'Mindset' },
+] as const;
+
 export type AssessmentAreaId = (typeof ASSESSMENT_AREAS)[number]['id'];
 export type AssessmentScore = 1 | 2 | 3 | 4 | 5;
-export type AssessmentScores = Record<AssessmentAreaId, AssessmentScore>;
+export type AssessmentScores = Record<AssessmentAreaId, AssessmentScore> & {
+  sweeps?: AssessmentScore;
+};
 
 export type AssessmentEntry = {
   id: string;
@@ -39,7 +57,7 @@ export type AssessmentState = {
 export type AssessmentDraft = {
   date: string;
   note: string;
-  scores: Partial<Record<AssessmentAreaId, number>>;
+  scores: Partial<AssessmentScores>;
 };
 
 export type AssessmentCheckpointLink = {
@@ -69,8 +87,13 @@ export function emptyAssessments(): AssessmentState {
 }
 
 export function assessmentAverage(scores: AssessmentScores): number {
-  const total = AREA_IDS.reduce((sum, id) => sum + scores[id], 0);
-  return Math.round((total / AREA_IDS.length) * 10) / 10;
+  let total = AREA_IDS.reduce((sum, id) => sum + scores[id], 0);
+  let count = AREA_IDS.length;
+  if (isAssessmentScore(scores.sweeps)) {
+    total += scores.sweeps;
+    count += 1;
+  }
+  return Math.round((total / count) * 10) / 10;
 }
 
 /** Oldest first, for the trend line. */
@@ -179,18 +202,35 @@ function nameHits(name: string, words: readonly string[]): boolean {
   return words.some((word) => tokens.includes(word));
 }
 
-function requireScores(scores: Partial<Record<AssessmentAreaId, number>>): AssessmentScores {
+function requireScores(scores: Partial<AssessmentScores>): AssessmentScores {
   const next = {} as AssessmentScores;
   for (const id of AREA_IDS) {
     const value = scores[id];
     if (!isScore(value)) throw new Error(`Rate ${labelFor(id)} from 1 to 5.`);
     next[id] = value;
   }
+  if (Object.prototype.hasOwnProperty.call(scores, 'sweeps')) {
+    if (!isScore(scores.sweeps)) throw new Error('Rate Sweeps from 1 to 5.');
+    next.sweeps = scores.sweeps;
+  }
   return next;
 }
 
-function labelFor(id: AssessmentAreaId): string {
-  return ASSESSMENT_AREAS.find((area) => area.id === id)?.label ?? id;
+function labelFor(id: AssessmentAreaId | 'sweeps'): string {
+  return ASSESSMENT_FORM_AREAS.find((area) => area.id === id)?.label ?? id;
+}
+
+/** Seven required ratings, plus Sweeps only when that day actually stored one. */
+function storedScores(raw: unknown): AssessmentScores | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  const next = {} as AssessmentScores;
+  for (const id of AREA_IDS) {
+    if (!isScore(row[id])) return null;
+    next[id] = row[id];
+  }
+  if (Object.prototype.hasOwnProperty.call(row, 'sweeps') && isScore(row.sweeps)) next.sweeps = row.sweeps;
+  return next;
 }
 
 export function isAssessmentScore(value: unknown): value is AssessmentScore {
@@ -246,12 +286,9 @@ function normalizeEntry(raw: unknown): AssessmentEntry | null {
   if (typeof row.id !== 'string' || !row.id.trim()) return null;
   if (typeof row.date !== 'string' || !DATE_RE.test(row.date)) return null;
   if (typeof row.note !== 'string') return null;
-  try {
-    const scores = requireScores((row.scores ?? {}) as Partial<Record<AssessmentAreaId, number>>);
-    return { id: row.id.trim().slice(0, 80), date: row.date, note: row.note.trim().slice(0, PROGRESS_NOTE_MAX), scores };
-  } catch {
-    return null;
-  }
+  const scores = storedScores(row.scores);
+  if (!scores) return null;
+  return { id: row.id.trim().slice(0, 80), date: row.date, note: row.note.trim().slice(0, PROGRESS_NOTE_MAX), scores };
 }
 
 function newId(now: number): string {

@@ -8,6 +8,7 @@ import { fundamentalsBoard, todayIso } from '../../lib/studentEdition';
 import { useScrollToHash } from './chrome';
 import {
   ASSESSMENT_AREAS,
+  ASSESSMENT_FORM_AREAS,
   assessmentAverage,
   assessmentChartScores,
   assessmentDraftScores,
@@ -119,8 +120,8 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
           <span className="ink__label">Date</span>
           <input type="date" aria-label="Self-assessment date" value={date} onChange={(event) => applyDate(event.target.value)} required />
         </label>
-        {ASSESSMENT_AREAS.map((area) => {
-          const link = links.find((item) => item.areaId === area.id);
+        {ASSESSMENT_FORM_AREAS.map((area) => {
+          const link = area.id === 'sweeps' ? undefined : links.find((item) => item.areaId === area.id);
           return (
             <fieldset key={area.id} id={`assess-${area.id}`} className="assess-area">
               <legend>{area.label}</legend>
@@ -205,7 +206,13 @@ function HistoryRow({
   onKeep: () => void;
   onRemove: () => void;
 }) {
-  const line = ASSESSMENT_AREAS.map((area) => `${area.label} ${entry.scores[area.id]}`).join(' · ');
+  const line = ASSESSMENT_FORM_AREAS.map((area) => {
+    if (area.id === 'sweeps') {
+      const value = entry.scores.sweeps;
+      return isAssessmentScore(value) ? `${area.label} ${value}` : `${area.label} not rated`;
+    }
+    return `${area.label} ${entry.scores[area.id]}`;
+  }).join(' · ');
   return (
     <li className="assess-row">
       <p className="assess-row__top">

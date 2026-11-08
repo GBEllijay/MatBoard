@@ -64,6 +64,19 @@ test('a saved 7-value check-in maps guard and escapes and leaves Sweeps empty', 
   );
 });
 
+test('an entered sweeps rating stays independent of passing', () => {
+  const rated = { ...legacy, passing: 5, sweeps: 1 as const };
+  const axes = shapeAxesFromLegacy(rated);
+  assert.equal(axes.find((axis) => axis.id === 'passing')?.value, 5);
+  assert.equal(axes.find((axis) => axis.id === 'sweeps')?.value, 1);
+  assert.notEqual(axes.find((axis) => axis.id === 'sweeps')?.value, rated.passing);
+  assert.deepEqual(shapeAxisValues(rated), [5, 5, 1, 4, 2, 4, 2, 3]);
+  assert.match(shapeAxisLabel(rated), /Passing 5, Sweeps 1, Takedowns 4/);
+  const untouched = shapeAxesFromLegacy({ ...legacy, passing: 5 });
+  assert.equal(untouched.find((axis) => axis.id === 'sweeps')?.value, null);
+  assert.equal(untouched.find((axis) => axis.id === 'passing')?.value, 5);
+});
+
 test('an empty check-in does not invent scores', () => {
   const axes = shapeAxesFromLegacy(null);
   assert.equal(axes.length, 8);
