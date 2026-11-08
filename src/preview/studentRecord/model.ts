@@ -108,6 +108,7 @@ export const BELT_INTERVAL_LABEL: Record<BeltInterval, string> = {
 /** Example journal total. Not editable. Not a lifetime claim. */
 export const EXAMPLE_LOGGED_HOURS = 18.5;
 
+/** Fictional screen samples. Not a training target and not a promotion benchmark. */
 export const EXAMPLE_ESTIMATES: Record<BeltInterval, string> = {
   white: '40',
   blue: '25',

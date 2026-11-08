@@ -71,6 +71,12 @@ test('the preview routes are direct links and do not write a student record', ()
 });
 
 test('estimated hours stay separate from logged hours, and a blank belt adds nothing', () => {
+  const hours = readFileSync(new URL('./StudentHoursPreview.tsx', import.meta.url), 'utf8');
+  assert.match(hours, /fictional examples for this screen/);
+  assert.match(hours, /not a recommended amount of training/);
+  assert.match(hours, /not a promotion benchmark/);
+  assert.equal(EXAMPLE_ESTIMATES.white, '40');
+  assert.equal(EXAMPLE_ESTIMATES.blue, '25');
   assert.equal(parseEstimate(''), null);
   assert.equal(parseEstimate('nope'), null);
   assert.equal(estimatedHours(EXAMPLE_ESTIMATES), 65);

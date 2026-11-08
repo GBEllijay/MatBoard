@@ -32,7 +32,7 @@ export function StudentHoursPreview() {
           {PREVIEW_HOURS_PATH}
         </p>
         <p className="srec-note">
-          Logged hours are an example of time already in Advantage. Estimated hours are an example of time from before the app. They are not added together unless the combined total is on. This is not a promotion rule.
+          Logged hours are a fictional example of time already in Advantage. Earlier hours are optional, and the numbers already filled in are fictional examples for this screen. They are not a recommended amount of training, and they are not a promotion benchmark. Nothing is added together unless the combined total is on.
         </p>
         <section className="srec-card" aria-label="Advantage logged hours">
           <h2>Advantage logged hours</h2>
@@ -41,9 +41,11 @@ export function StudentHoursPreview() {
             <strong data-testid="logged-hours">{formatHours(EXAMPLE_LOGGED_HOURS)}</strong>
           </p>
         </section>
-        <section className="srec-card srec-estimate" aria-label="Estimated hours before this app">
-          <h2>Estimated hours before this app</h2>
-          <p className="srec-note">Type an estimate for a belt, or leave it blank. A blank belt adds nothing.</p>
+        <section className="srec-card srec-estimate" aria-label="Earlier hours">
+          <h2>Earlier hours</h2>
+          <p className="srec-note" data-testid="hours-example-label">
+            Type your own history, or leave a belt blank. A blank belt adds nothing. The sample numbers are not a training target.
+          </p>
           <div className="srec-hours">
             {BELT_INTERVALS.map((belt) => (
               <label className="srec-hour" key={belt}>
@@ -52,7 +54,7 @@ export function StudentHoursPreview() {
                 <input
                   type="text"
                   inputMode="decimal"
-                  aria-label={`${BELT_INTERVAL_LABEL[belt]} estimated hours`}
+                  aria-label={`${BELT_INTERVAL_LABEL[belt]} earlier hours`}
                   value={estimates[belt]}
                   onChange={(event) => setEstimates((current) => ({ ...current, [belt]: event.target.value }))}
                 />
@@ -60,7 +62,7 @@ export function StudentHoursPreview() {
             ))}
           </div>
           <p className="srec-logged">
-            <span>Estimated total</span>
+            <span>Earlier hours on this screen</span>
             <strong data-testid="estimated-hours">{formatHours(estimated)}</strong>
           </p>
         </section>
@@ -72,12 +74,12 @@ export function StudentHoursPreview() {
           </label>
           {showCombined ? (
             <p className="srec-total" data-testid="combined-hours">
-              <span>Example logged plus example estimated</span>
+              <span>Fictional logged hours plus the earlier hours on this screen</span>
               <strong>{formatHours(combined)}</strong>
             </p>
           ) : (
             <p className="srec-note" data-testid="combined-hidden">
-              Combined total is hidden. Logged hours and estimated hours stay separate.
+              Combined total is hidden. Logged hours and earlier hours stay separate.
             </p>
           )}
         </section>
