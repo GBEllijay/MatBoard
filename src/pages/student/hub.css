@@ -704,8 +704,7 @@
   margin: 0 auto;
   display: grid;
   gap: 10px;
-  /* Shared with the pinned Home logo. The title starts below that 112px mark. */
-  padding: calc(var(--mark-home-clear) + var(--safe-t)) 16px calc(56px + var(--safe-b));
+  padding: 0.75rem 16px calc(56px + var(--safe-b));
 }
 
 .s-group__head h1 {

@@ -136,7 +136,7 @@ async function readMarks(page: Page) {
   });
 }
 
-test('pinned Home and back marks stay put after scroll and hover', async ({ page }) => {
+test('Home and back marks scroll away and return at the top', async ({ page }) => {
   await unlock(page);
   for (const viewport of PIN_VIEWPORTS) {
     await page.setViewportSize(viewport);
@@ -172,15 +172,18 @@ test('pinned Home and back marks stay put after scroll and hover', async ({ page
         return moved;
       });
       const after = await readMarks(page);
-      expect(after.home && after.home.top >= -1 && after.home.bottom <= viewport.height + 1, `${route} home in view`).toBe(true);
-      expect(after.back && after.back.top >= -1 && after.back.bottom <= viewport.height + 1, `${route} back in view`).toBe(true);
-      expect(Math.abs((after.home?.top ?? 0) - (before.home?.top ?? 0)), `${route} home scrolled`).toBeLessThan(1);
-      expect(Math.abs((after.home?.left ?? 0) - (before.home?.left ?? 0)), `${route} home scrolled`).toBeLessThan(1);
-      expect(Math.abs((after.back?.top ?? 0) - (before.back?.top ?? 0)), `${route} back scrolled`).toBeLessThan(1);
-      expect(Math.abs((after.back?.left ?? 0) - (before.back?.left ?? 0)), `${route} back scrolled`).toBeLessThan(1);
+      expect((after.home?.top ?? 0) < (before.home?.top ?? 0) - 30, `${route} home scrolls up`).toBe(true);
+      expect((after.back?.top ?? 0) < (before.back?.top ?? 0) - 30, `${route} back scrolls up`).toBe(true);
       expect(after.homeOverBoard, `${route} logo covers the scoreboard`).toBe(false);
-      expect(after.homeOnTop, `${route} logo stays on top`).toBe(true);
-      expect(after.backOnTop, `${route} back stays on top`).toBe(true);
+      await page.evaluate(() => {
+        const root = document.scrollingElement;
+        if (root) root.scrollTop = 0;
+      });
+      const restored = await readMarks(page);
+      expect(Math.abs((restored.home?.top ?? 0) - (before.home?.top ?? 0)), `${route} home returns`).toBeLessThan(2);
+      expect(Math.abs((restored.back?.top ?? 0) - (before.back?.top ?? 0)), `${route} back returns`).toBeLessThan(2);
+      expect(restored.homeOnTop, `${route} home is tappable at the top`).toBe(true);
+      expect(restored.backOnTop, `${route} back is tappable at the top`).toBe(true);
       const mustScroll = route.startsWith('/student/journal') || (route === '/coaching-tools' && viewport.width === 390);
       if (mustScroll) expect(scrolled, `${route} at ${viewport.width}px scrolls`).toBeGreaterThan(40);
     }

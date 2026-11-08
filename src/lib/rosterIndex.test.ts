@@ -180,7 +180,7 @@ test('A and B clear a measured Upgrade header at 390 and 400 wide', () => {
   const css = readFileSync('src/components/rosterCard/rolodex.css', 'utf8');
   assert.match(indexSource, /measureStickyHeaderBottom\(view\.document\)/);
   assert.match(indexSource, /querySelector\('\.seat-session'\)|measureStickyHeaderBottom/);
-  assert.match(css, /--roster-index-top,\s*calc\(var\(--mark-home-clear/);
+  assert.match(css, /--roster-index-top,\s*calc\(0\.35rem \+ var\(--safe-t/);
   assert.doesNotMatch(indexSource, /top:\s*['"]?\d+px/);
   assert.match(readFileSync('src/lib/rosterIndex.ts', 'utf8'), /\.seat-session/);
 });

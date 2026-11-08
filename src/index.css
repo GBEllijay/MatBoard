@@ -310,15 +310,12 @@ label.btn {
   text-align: center;
 }
 
-/* Pinned size is --mark-home (112px), not the old in-flow clamp (~164px on a phone).
-   112 / 44 = 2.55, still clearly above the 1.6 floor, and the reserved band stays
-   about 127px so the title and scoreboard keep the rest of the screen.
-   max-width holds later clamps to this pinned size. No hover offset. */
+/* In the page, above the title. It scrolls away with the document and is
+   back when the page is at the top. Not sticky, and not a floating overlay.
+   --mark-home (112px) stays larger than the 44px back image. */
 .home__logo {
-  position: fixed;
-  top: calc(0.2rem + var(--safe-t));
-  left: 50%;
-  z-index: 24;
+  position: static;
+  z-index: auto;
   width: var(--mark-home);
   height: var(--mark-home);
   min-width: var(--mark-home);
@@ -328,9 +325,9 @@ label.btn {
   aspect-ratio: 1;
   flex-shrink: 0;
   display: block;
-  margin: 0;
-  transform: translateX(-50%);
-  filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.42));
+  margin: 0 auto 0.35rem;
+  transform: none;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
 }
 
 .home h1 {
@@ -1755,12 +1752,11 @@ button.mode-card__hit {
   }
 }
 
-/* In the page, under the pinned center logo and the top-left back mark.
-   Not sticky and not above those marks, so it cannot cover them. */
+/* In the page, ahead of the scrolling Home mark. Not sticky. */
 .seat-session-dock {
   position: relative;
-  z-index: 20;
-  padding-top: calc(var(--mark-home-clear) + var(--safe-t));
+  z-index: 1;
+  padding-top: var(--safe-t);
   background: transparent;
   pointer-events: none;
 }
@@ -3598,17 +3594,18 @@ span.role-plan__mark {
   z-index: 46;
 }
 
-/* Play watermark: quiet top-left, fat-thumb hit. Slideshow keeps the bottom free for name labels; Training keeps the clock clear.
-   Pinned to the viewport. Size, corner, and hold-for-home behavior stay the same. */
+/* Page back mark. It leads the page and scrolls away with it.
+   Timer, cast, and fullscreen boards pin their own copy below. */
 .play-exit {
-  position: fixed;
-  top: calc(0.2rem + var(--safe-t));
-  left: calc(0.15rem + var(--safe-l));
-  z-index: 6;
+  position: relative;
+  top: auto;
+  left: auto;
+  z-index: 1;
+  align-self: flex-start;
   width: 64px;
   height: 64px;
   padding: 0;
-  margin: 0;
+  margin: calc(0.35rem + var(--safe-t)) 0 0.2rem calc(0.35rem + var(--safe-l));
   border: 0;
   border-radius: 18px;
   background: radial-gradient(circle at 50% 48%, rgba(8, 10, 16, 0.28) 0%, rgba(8, 10, 16, 0.1) 46%, transparent 70%);
@@ -3653,18 +3650,19 @@ span.role-plan__mark {
   opacity: 0.55;
 }
 
-/* Center Advantage mark. Home is the tier picker. Larger than the corner back.
-   Pinned with the corner mark. --mark-home (112px) is 2.55× the 44px back image. */
+/* Center Advantage mark on a sub-page. It sits under the back mark and
+   scrolls away with the page. --mark-home (112px) is 2.55× the 44px back image. */
 .tier-home {
-  position: fixed;
-  top: calc(0.2rem + var(--safe-t));
-  left: 50%;
-  z-index: 22;
+  position: relative;
+  top: auto;
+  left: auto;
+  z-index: 1;
+  align-self: center;
   width: var(--mark-home);
   height: var(--mark-home);
   min-width: var(--mark-home);
   min-height: var(--mark-home);
-  margin: 0;
+  margin: 0.15rem auto 0.35rem;
   padding: 0;
   border: 0;
   border-radius: 22px;
@@ -3672,7 +3670,7 @@ span.role-plan__mark {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  transform: translateX(-50%);
+  transform: none;
   color: inherit;
   cursor: pointer;
   touch-action: manipulation;
@@ -3702,10 +3700,8 @@ main.schedule:has(> .tier-home) > .schedule__bar {
   padding-top: calc(var(--mark-home-clear) + var(--safe-t));
 }
 
-/* Document pages scroll with the window. The Home and back marks stay
-   position:fixed on the viewport, not inside this box, so a phone does not
-   clip them to a nested scroller. The top padding is only the first screen's
-   gap: it scrolls away, and it is not a panel behind the marks. */
+/* Document pages scroll with the window. Home and back are in that flow,
+   so this box must not be a nested scroller and must not reserve a fixed band. */
 main.home:has(.home__logo),
 main.roster:has(> .tier-home),
 main.white-roster:has(> .tier-home) {
@@ -3714,7 +3710,7 @@ main.white-roster:has(> .tier-home) {
   height: auto;
   max-height: none;
   overflow: visible;
-  padding-top: calc(var(--mark-home-clear) + var(--safe-t));
+  padding-top: 0;
   border-top: 0;
 }
 
@@ -3729,7 +3725,32 @@ main.home:has(.home__logo) > .home__inner {
 
 main.notes:has(> .tier-home) > .notes__bar,
 main.tree:has(> .tier-home) > .tree__bar {
-  margin-top: var(--mark-home-clear);
+  margin-top: 0;
+}
+
+/* Round timer, scoreboard remote, slideshow, bracket, and fullscreen boards
+   keep a pinned corner control. Page navigation does not. */
+.training > .play-exit,
+.controller > .play-exit,
+.saver > .play-exit,
+.tournament > .play-exit,
+.schedule > .play-exit,
+.schedule.schedule--calendar-fs > .play-exit,
+.play--fs > .play-exit,
+.techniques--play > .play-exit,
+.techniques--fill > .play-exit {
+  position: fixed;
+  top: calc(0.2rem + var(--safe-t));
+  left: calc(0.15rem + var(--safe-l));
+  margin: 0;
+}
+
+.schedule > .tier-home {
+  position: fixed;
+  top: calc(0.2rem + var(--safe-t));
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%);
 }
 
 /* Phone Class Schedule keeps the corner back only. Wide screens still show the center mark. */
@@ -11230,14 +11251,10 @@ input.roster-pick__name:focus,
   flex-wrap: wrap;
   align-items: center;
   gap: 0.65rem 0.85rem;
-  padding: calc(0.7rem + var(--safe-t)) calc(1rem + var(--safe-r)) 0.75rem calc(4.4rem + var(--safe-l));
+  padding: calc(0.7rem + var(--safe-t)) calc(1rem + var(--safe-r)) 0.75rem calc(1rem + var(--safe-l));
   background: transparent;
   border-bottom: 0;
   backdrop-filter: none;
-}
-
-.techniques > .play-exit {
-  position: fixed;
 }
 
 .techniques__brand h1 {

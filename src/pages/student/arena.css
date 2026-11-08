@@ -43,15 +43,15 @@
   margin: 0 auto;
 }
 
-/* First screen starts under the fixed marks. This padding scrolls with the page. */
+/* Marks lead the page in normal flow. Do not reserve a band above them. */
 .student.student--arena:has(> .arena-scroll) {
-  padding-top: calc(var(--mark-home-clear) + var(--safe-t));
+  padding-top: 0;
 }
 
 .arena-hero {
   position: relative;
   z-index: 1;
-  padding: 18px 16px 22px 60px;
+  padding: 18px 16px 22px;
   background: #000000;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
 }
