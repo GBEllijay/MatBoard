@@ -60,6 +60,13 @@
   font: inherit;
   color: inherit;
 }
+/* .btn is the white Advantage CTA (background --cta-bg, ink --cta-ink).
+   The inherit above is more specific than .btn, so Save assessment was
+   #eef2f8 on #fff. Restore that ink only. Other clipboard buttons stay inherited. */
+.clipboard button.btn:not(.btn--ghost):not(.btn--blue):not(.btn--danger):not(:disabled) {
+  color: var(--cta-ink);
+  -webkit-text-fill-color: var(--cta-ink);
+}
 .clipboard__board {
   max-width: 1004px;
   margin: 4px auto;
