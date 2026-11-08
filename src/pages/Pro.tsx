@@ -8,6 +8,7 @@ import { InstructionsButton } from '../components/InstructionsButton';
 import { LicenseShareButton } from '../components/LicenseShareButton';
 import { ProToolboxCard } from '../components/ProToolboxCard';
 import { useCurrentSeat } from '../components/SeatSessionBar';
+import { SignOutButton } from '../components/SignOutButton';
 import { SiteFooter } from '../components/SiteFooter';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
@@ -125,6 +126,8 @@ export function ProPage() {
               >
                 Lock Pro
               </button>
+              {' · '}
+              <SignOutButton />
               {door.mediaUnlocked ? (
                 <>
                   {' · '}
@@ -142,6 +145,8 @@ export function ProPage() {
               <Link className="home__text-btn" to={PRODUCTS_PATH}>
                 All products
               </Link>
+              {' · '}
+              <SignOutButton />
             </p>
           )}
         </div>
