@@ -83,7 +83,7 @@ export function previewProHubs(): PreviewHub[] {
       title: 'Student Edition',
       to: JOURNAL_DESTINATION,
       belt: 'blue',
-      note: 'Personal journal. Same destination as the Student rung on the edition ladder. The blue belt is an accent, not a rank change.',
+      note: 'Personal journal for the academy owner. Opens /student. Not the roster and not the academy profile.',
     },
     { ...media, title: MEDIA_PREVIEW_LABEL },
     ...rest,

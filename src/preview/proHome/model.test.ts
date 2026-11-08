@@ -53,6 +53,23 @@ test('preview hubs put White, then Student Edition, above the renamed purple hub
   assert.equal(hubs[0]?.to, WHITE_HUB_PREVIEW_PATH);
   assert.equal(hubs[1]?.to, JOURNAL_DESTINATION);
   assert.equal(hubs[2]?.to, PRO_HUBS[0].to);
+  assert.match(hubs[1]?.note ?? '', /Personal journal for the academy owner/);
+  assert.match(hubs[1]?.note ?? '', /Not the roster/);
+  const home = readFileSync('src/preview/proHome/ProHomePreview.tsx', 'utf8');
+  const logoAt = home.indexOf('<HomeMark />');
+  const beltAt = home.indexOf('<BeltHeader kind="black"');
+  const gymAt = home.indexOf('data-testid="pro-gym-identity"');
+  const cloudAt = home.indexOf('data-testid="pro-cloud-status"');
+  const uploadAt = home.indexOf('className="php-upload"');
+  const hubsAt = home.indexOf('className="php-hubs"');
+  assert.ok(logoAt > 0 && beltAt > logoAt && gymAt > beltAt && cloudAt > gymAt && uploadAt > cloudAt && hubsAt > uploadAt);
+  assert.doesNotMatch(home, /GymCharacterSheet|AdvantageCloudHome|writeGymName|type="file"|localStorage/);
+  assert.match(home, /className=\{before \? 'php-shell' : 'php-shell php-pro'\}/);
+  assert.match(readFileSync('src/preview/proHome/proHome.css', 'utf8'), /\.php-pro \{[^}]*padding-top:\s*calc\(0\.5rem \+ var\(--safe-t/);
+  assert.match(
+    readFileSync('src/components/gymSheet.css', 'utf8'),
+    /\.home--pro \.home__inner \{[^}]*padding-top:\s*calc\(var\(--mark-home\)/,
+  );
   assert.deepEqual(hubs.slice(3).map((hub) => hub.title), PRO_HUBS.slice(1).map((hub) => hub.title));
   assert.equal(referenceProHubs()[0]?.title, MEDIA_CONSOLE_NAME);
 });

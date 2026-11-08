@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BeltHeader } from '../../components/BeltHeader';
 import { BeltRail } from '../../components/BeltRail';
+import { HomeMark } from '../../components/HomeMark';
+import { PRODUCTS_PATH } from '../../lib/productNames';
 import {
   INSTRUCTOR_CARDS_PREVIEW_PATH,
   JOURNAL_DESTINATION,
+  MEDIA_EXAMPLE,
   MEDIA_PREVIEW_LABEL,
   PREVIEW_BANNER,
   PRODUCTION_WHITE_GAP,
@@ -16,7 +20,7 @@ import {
 import './proHome.css';
 
 /**
- * Cream Pro hub, plus the two shortcuts. Live Pro is not this page.
+ * Cream Pro hub. Live Pro is not this page.
  * `?reference=before` is the four original tiles, including the Media Console label.
  */
 export function ProHomePreviewPage() {
@@ -24,19 +28,71 @@ export function ProHomePreviewPage() {
   const before = params.get('reference') === 'before';
   const hubs = before ? referenceProHubs() : previewProHubs();
   const whitePaths = previewWhitePaths();
+  const [profileNote, setProfileNote] = useState('');
+  const [uploadNote, setUploadNote] = useState('');
 
   return (
     <main className="php">
-      <div className="php-shell">
-        <p className="php-banner" role="note">
-          {PREVIEW_BANNER}
-        </p>
-        <p className="php-kicker">{before ? 'Reference' : 'Pro preview'}</p>
-        <h1>{before ? 'Pro hubs before the two shortcuts' : 'Pro home'}</h1>
+      <div className={before ? 'php-shell' : 'php-shell php-pro'}>
+        {before ? (
+          <p className="php-banner" role="note">
+            {PREVIEW_BANNER}
+          </p>
+        ) : null}
+        {before ? (
+          <>
+            <p className="php-kicker">Reference</p>
+            <h1>Pro hubs before the two shortcuts</h1>
+          </>
+        ) : (
+          <Link className="play-exit" to={PRODUCTS_PATH} aria-label="Back">
+            <img src="/advantage-icon.png" alt="" width={44} height={44} />
+          </Link>
+        )}
+        {before ? null : <HomeMark />}
         <p className="php-note" data-testid="preview-path">
           {before ? `${PRO_PREVIEW_PATH}?reference=before` : PRO_PREVIEW_PATH}
         </p>
         <BeltHeader kind="black" worn title="Advantage Pro" blurb="Example only. Not a saved gym." />
+        {before ? null : (
+          <>
+            <section className="php-gym" aria-label="Gym identity" data-testid="pro-gym-identity">
+              <p className="php-gym__cap">Identity</p>
+              <div className="php-gym__row">
+                <img src="/advantage-icon.png" alt="" width={56} height={56} />
+                <div>
+                  <h2>{MEDIA_EXAMPLE.gym}</h2>
+                  <p>Founded 2014</p>
+                  <p>Founders Example Founders (fictional)</p>
+                  <p>Lineage Example lineage (fictional)</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setProfileNote('Example only. This does not edit a saved academy.')}>
+                {profileNote || 'Edit academy profile'}
+              </button>
+            </section>
+            <section className="php-cloud" aria-label="Cloud status" data-testid="pro-cloud-status">
+              <h2>Advantage Cloud</h2>
+              <p>Example only. Not connected. This is not a live Advantage Cloud check.</p>
+            </section>
+            <section className="php-upload" aria-label="Upload daily videos">
+              <h2>Upload daily videos</h2>
+              <p>Example only. Nothing is uploaded.</p>
+              <div className="php-upload__actions">
+                <button type="button" onClick={() => setUploadNote('videos')}>
+                  Upload daily videos
+                </button>
+                <button type="button" onClick={() => setUploadNote('lesson')}>
+                  Upload lesson-plan media
+                </button>
+              </div>
+              {uploadNote ? <p>Example only. Nothing was uploaded.</p> : null}
+            </section>
+            <p className="php-banner" role="note">
+              {PREVIEW_BANNER}
+            </p>
+          </>
+        )}
         <nav className="php-hubs" aria-label={before ? 'Reference Pro hubs' : 'Preview Pro hubs'}>
           {hubs.map((hub) => (
             <Link
@@ -83,9 +139,7 @@ export function ProHomePreviewPage() {
                 ))}
               </ul>
             </section>
-            <p className="php-note">
-              Journal shortcut opens {JOURNAL_DESTINATION}. It does not write a belt or a journal.
-            </p>
+            <p className="php-note">Journal shortcut opens {JOURNAL_DESTINATION}. It does not write a belt or a journal.</p>
             <Link className="php-jump" to={INSTRUCTOR_CARDS_PREVIEW_PATH}>
               Instructor card concept, separate preview
             </Link>

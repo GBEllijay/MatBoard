@@ -14,6 +14,15 @@
   gap: 14px;
 }
 
+/* Pro preview only. The live Pro page keeps its logo clearance. */
+.php-pro {
+  padding-top: calc(0.5rem + var(--safe-t, 0px));
+}
+
+.php-pro .play-exit {
+  margin: 0 0 0 calc(0.15rem + var(--safe-l, 0px));
+}
+
 .php-banner {
   margin: 0;
   padding: 10px 12px;
@@ -120,6 +129,83 @@
 .php-gap a { color: #d7e6ff; text-decoration: underline; text-underline-offset: 0.15em; }
 
 .php-jump { color: #d7e6ff; font-weight: 700; }
+
+.php-gym {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 1.5px solid #004eba;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(12, 35, 68, 0.92), rgba(6, 16, 31, 0.94));
+  color: #f5f1e8;
+}
+
+.php-gym__cap {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6ea8ff;
+}
+
+.php-gym__row { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.php-gym__row img { width: 56px; height: 56px; border-radius: 8px; background: rgba(0, 0, 0, 0.25); }
+.php-gym h2 { margin: 0; font-size: 1.25rem; letter-spacing: -0.03em; }
+.php-gym p { margin: 0; color: #d7e6ff; font-size: 14px; }
+.php-gym button {
+  justify-self: start;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #6ea8ff;
+  background: transparent;
+  color: #f5f1e8;
+  font: inherit;
+  font-weight: 800;
+}
+
+.php-cloud {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1.5px solid #004eba;
+  border-radius: 12px;
+  background: rgba(12, 35, 68, 0.72);
+}
+
+.php-cloud h2 { margin: 0; font-size: 1.05rem; }
+.php-cloud p { margin: 0; color: #d7e6ff; }
+
+.php-upload {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  border-radius: 18px;
+  background: #efebe3;
+  color: #14161c;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.php-upload h2 { margin: 0; color: #14161c; letter-spacing: -0.03em; }
+.php-upload p { margin: 0; color: #3e4654; font-weight: 650; }
+.php-upload__actions { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.php-upload button {
+  min-height: 48px;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  border: 1.5px solid #004eba;
+  background: #0c2344;
+  color: #f5f1e8;
+  font: inherit;
+  font-weight: 800;
+}
+
+.php-gym button:focus-visible,
+.php-upload button:focus-visible {
+  outline: 3px solid #6ea8ff;
+  outline-offset: 3px;
+}
 
 .php-split {
   display: grid;
