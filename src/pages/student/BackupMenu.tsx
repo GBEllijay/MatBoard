@@ -102,6 +102,7 @@ export function BackupMenu() {
           </p>
         ) : null}
         <h2 className="s-kicker">Restore from backup</h2>
+        <p className="student-quiet">Use the Student Edition backup from Back up my journal. A PDF or a spreadsheet is not a backup.</p>
         <input
           type="file"
           accept="application/json,.json"

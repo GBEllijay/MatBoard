@@ -35,6 +35,30 @@
   box-shadow: none;
 }
 
+.student.student--profile .profile-restore {
+  margin: 4px 16px 12px;
+}
+
+.student.student--profile .profile-restore a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid rgba(34, 211, 238, 0.7);
+  border-radius: 14px;
+  background: #12304f;
+  color: #f4f8ff;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+
+.student.student--profile .profile-restore a:focus-visible {
+  outline: 3px solid #22d3ee;
+  outline-offset: 2px;
+}
+
 /* Title stays in the left column. The marks take the top-right cell.
    The page already starts below the pinned Home logo, so these circles
    sit under that band and to the right of the back mark. */
@@ -176,11 +200,17 @@
   gap: 16px;
 }
 
-.profile-identity [role='alert'] {
+.profile-identity [role='alert'],
+.profile-photo__error {
   margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 69, 58, 0.16);
   color: #ffb4ab;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .profile-photo,
