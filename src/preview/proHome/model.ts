@@ -24,6 +24,7 @@ export const INSTRUCTOR_CARDS_PREVIEW_PATH = '/preview/instructor-cards';
 /** Both suite tools. The match controller does not link to the round timer. */
 export const WHITE_HUB_PREVIEW_PATH = '/preview/white-hub';
 export const MEDIA_MENU_PREVIEW_PATH = '/preview/media-edition';
+export const COACH_CONNECT_PREVIEW_PATH = '/preview/connect-coach';
 
 export const PREVIEW_BANNER =
   'Preview only. Fictional labels. Nothing here is saved, and the live Pro, Instructor, and Media pages are unchanged.';
@@ -194,6 +195,23 @@ export const PREVIEW_MEDIA_PLUS_SCOPE = [
 
 export const PREVIEW_DRIVE_NOTE =
   'Google Drive stays an optional alternative. MediaPlus does not pay a Google bill. Hosted storage means this person does not need to pay for or configure Google Drive.';
+
+/**
+ * Preview proposal only. Not enforced.
+ * R2 Standard, https://developers.cloudflare.com/r2/pricing/ (page updated 30 Oct 2026):
+ * storage $0.015/GB-month, Class A $4.50/million, Class B $0.36/million, egress $0.
+ * 5 GB-month of storage is $0.075 at that rate, before Cloudflare's rounding.
+ * Reads, writes, and any image or video processing are separate costs.
+ */
+export const PREVIEW_MEDIA_PLUS_STORED_GB = 5;
+export const PREVIEW_QUOTA_LINE = 'Preview proposal: 5 GB stored on our cloud. Not enforced.';
+export const PREVIEW_QUOTA_WHY =
+  'The 5 GB figure is for images and short TV clips, not class-length video. At Cloudflare R2 Standard, published 30 Oct 2026, storage is $0.015 per GB-month, so 5 GB-month is $0.075 before rounding. Class A writes are $4.50 per million and Class B reads are $0.36 per million. Egress is $0. Those request costs are not included in the stored-GB figure. Image transforms and video processing are not included either. This is not a promise of profit or of unlimited streaming.';
+
+export const PREVIEW_OWN_DRIVE_NOTE =
+  'An instructor can use their own Google Drive, or a similar drive, to pass files with students on their roster. MediaPlus is not required. The provider account and its permission costs belong to that person. This preview does not open a drive. The live app can hand a coach file for a student to import. That is not a live two-way folder.';
+
+export const PREVIEW_COACH_STUDENT_NAME = 'Example Student (fictional)';
 
 export const PREVIEW_SKINS_NOTE =
   'Student Edition keeps basic skins. A Media upgrade adds the additional and advanced skins. This preview does not change live skin access.';

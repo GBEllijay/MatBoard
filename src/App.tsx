@@ -46,6 +46,7 @@ import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { StudentEditionPage } from './pages/StudentEdition';
 import { Journal2036Page } from './preview/journal2036/Journal2036Page';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
+import { ConnectCoachPreviewPage } from './preview/proHome/ConnectCoachPreview';
 import { InstructorCardsPreviewPage } from './preview/proHome/InstructorCardsPreview';
 import { ProHomePreviewPage } from './preview/proHome/ProHomePreview';
 import { MediaMenuPreviewPage } from './preview/proHome/MediaMenuPreview';
@@ -770,6 +771,8 @@ export default function App() {
       <Route path="/preview/media-edition" element={<MediaMenuPreviewPage />} />
       {/* Isolated Instructor card concept. Live /coach and /coach-unlimited are unchanged. */}
       <Route path="/preview/instructor-cards" element={<InstructorCardsPreviewPage />} />
+      {/* Isolated coach-student pair. Not Connect to a gym, and it writes nothing. */}
+      <Route path="/preview/connect-coach" element={<ConnectCoachPreviewPage />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
       <Route path="/card" element={<CardPage />} />
       <Route path="/half-off" element={<HalfOffPage />} />

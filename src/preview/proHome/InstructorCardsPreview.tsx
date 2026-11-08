@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 import { BeltHeader } from '../../components/BeltHeader';
 import { InstructorIdentityCard } from '../instructorProfile/InstructorIdentityCard';
 import { CardMark } from './marks';
-import { PreviewPriceDecisions, StorageChoicePreview } from './PreviewChoices';
-import { INSTRUCTOR_CARDS_PREVIEW_PATH, PREVIEW_BANNER, PRO_PREVIEW_PATH, instructorConceptCards } from './model';
+import { OwnDrivePreview, PreviewPriceDecisions, StorageChoicePreview } from './PreviewChoices';
+import { COACH_CONNECT_PREVIEW_PATH, INSTRUCTOR_CARDS_PREVIEW_PATH, PREVIEW_BANNER, PRO_PREVIEW_PATH, instructorConceptCards } from './model';
 import './proHome.css';
 
 /** Concept only. The live Instructor page and the cream Pro tiles are not this view. */
@@ -35,6 +35,10 @@ export function InstructorCardsPreviewPage() {
         </nav>
         <p className="php-note">No belt rail on these cards. The brown belt stays on the header.</p>
         <StorageChoicePreview place="instructor" />
+        <OwnDrivePreview />
+        <Link className="php-jump" to={COACH_CONNECT_PREVIEW_PATH}>
+          Connect to your coach
+        </Link>
         <PreviewPriceDecisions place="instructor" />
         <Link className="php-jump" to={PRO_PREVIEW_PATH}>
           Back to the Pro preview

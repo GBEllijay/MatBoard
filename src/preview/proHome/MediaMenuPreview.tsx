@@ -4,7 +4,7 @@ import { EditionLadder } from '../../components/EditionLadder';
 import { HomeMark } from '../../components/HomeMark';
 import { CardMark } from './marks';
 import { AcademyLinkPreview, PreviewPriceDecisions, StorageChoicePreview } from './PreviewChoices';
-import { JOURNAL_DESTINATION, MEDIA_EXAMPLE, MEDIA_MENU_PREVIEW_PATH, PREVIEW_BANNER, PREVIEW_SKINS_NOTE, PRO_PREVIEW_PATH, mediaPreviewCards, mediaStudentCard } from './model';
+import { COACH_CONNECT_PREVIEW_PATH, JOURNAL_DESTINATION, MEDIA_EXAMPLE, MEDIA_MENU_PREVIEW_PATH, PREVIEW_BANNER, PREVIEW_SKINS_NOTE, PRO_PREVIEW_PATH, mediaPreviewCards, mediaStudentCard } from './model';
 import '../instructorProfile/instructorProfile.css';
 import './proHome.css';
 
@@ -97,6 +97,10 @@ export function MediaMenuPreviewPage() {
           </Link>
         </nav>
         <p className="php-note">No belt rail on these cards. The purple belt stays on the header. My Journal opens {JOURNAL_DESTINATION}.</p>
+        <Link className="php-jump" to={COACH_CONNECT_PREVIEW_PATH}>
+          Connect to your coach
+        </Link>
+        <p className="php-note">One instructor and one student. The gym connection above stays separate.</p>
         <PreviewPriceDecisions place="media" />
         <EditionLadder page="media" />
         <Link className="php-jump" to={PRO_PREVIEW_PATH}>

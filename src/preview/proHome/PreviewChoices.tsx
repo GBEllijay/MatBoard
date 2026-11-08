@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import {
   MEDIA_EXAMPLE,
+  PREVIEW_OWN_DRIVE_NOTE,
   PREVIEW_DRIVE_NOTE,
   PREVIEW_INSTRUCTOR_PRICE,
   PREVIEW_INSTRUCTOR_PRICE_NOTE,
   PREVIEW_MEDIA_PLUS_PRICE,
   PREVIEW_MEDIA_PLUS_SCOPE,
   PREVIEW_PRICE_NOTE,
+  PREVIEW_QUOTA_LINE,
+  PREVIEW_QUOTA_WHY,
   PREVIEW_STUDENT_PRICE,
 } from './model';
 
@@ -66,6 +69,9 @@ export function StorageChoicePreview({ place }: { place: 'media' | 'instructor' 
           <li key={item}>{item}</li>
         ))}
       </ul>
+      <p className="ip-quiet" data-testid="media-plus-quota">
+        {PREVIEW_QUOTA_LINE} {PREVIEW_QUOTA_WHY}
+      </p>
       <p className="ip-quiet">{PREVIEW_DRIVE_NOTE}</p>
       <ExampleButton
         idle="Preview the hosted storage example"
@@ -74,6 +80,23 @@ export function StorageChoicePreview({ place }: { place: 'media' | 'instructor' 
       <ExampleButton
         idle="Preview the Google Drive alternative"
         done="Example only. Not connected. No Google Drive account was opened."
+      />
+    </section>
+  );
+}
+
+/** Instructor's own drive. Independent of MediaPlus. Nothing is connected. */
+export function OwnDrivePreview() {
+  return (
+    <section className="ip-sheet php-connect" aria-label="Your own drive" data-testid="instructor-own-drive">
+      <header className="ip-sheet__head">
+        <p className="ip-kicker">Preview · not Plus</p>
+        <h2>Your own drive</h2>
+        <p className="ip-quiet">{PREVIEW_OWN_DRIVE_NOTE}</p>
+      </header>
+      <ExampleButton
+        idle="Preview the own-drive example"
+        done="Example only. Not connected. No drive account was opened, and nothing was saved."
       />
     </section>
   );

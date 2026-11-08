@@ -12,8 +12,13 @@ import {
   MEDIA_MENU_PREVIEW_PATH,
   WHITE_HUB_PREVIEW_PATH,
   instructorConceptCards,
+  COACH_CONNECT_PREVIEW_PATH,
   PREVIEW_INSTRUCTOR_PRICE,
   PREVIEW_MEDIA_PLUS_PRICE,
+  PREVIEW_MEDIA_PLUS_STORED_GB,
+  PREVIEW_OWN_DRIVE_NOTE,
+  PREVIEW_QUOTA_LINE,
+  PREVIEW_QUOTA_WHY,
   PREVIEW_SKINS_NOTE,
   PREVIEW_STUDENT_PRICE,
   mediaPreviewCards,
@@ -146,6 +151,28 @@ test('preview prices are the stated monthly figures and live price lines stay pu
   assert.match(live, /MEDIA_PRICE_LINE = '\$29\.99 one-time'/);
   assert.match(live, /INSTRUCTOR_DISPLAY_PRICE_LINE = '\$49\.99 one-time'/);
   assert.match(live, /CLOUD_ADDON_LINE = '\+ optional Advantage Cloud \$5\.99\/month'/);
+});
+
+test('the coach pair is its own preview and the storage cap is only a proposal', () => {
+  assert.equal(PREVIEW_MEDIA_PLUS_STORED_GB, 5);
+  assert.match(PREVIEW_QUOTA_LINE, /Preview proposal: 5 GB stored/);
+  assert.match(PREVIEW_QUOTA_WHY, /\$0\.015 per GB-month/);
+  assert.match(PREVIEW_QUOTA_WHY, /\$0\.075/);
+  assert.match(PREVIEW_QUOTA_WHY, /not a promise of profit/);
+  assert.match(PREVIEW_OWN_DRIVE_NOTE, /MediaPlus is not required/);
+  assert.match(PREVIEW_OWN_DRIVE_NOTE, /not a live two-way folder/);
+  assert.match(app, new RegExp(`path="${COACH_CONNECT_PREVIEW_PATH}"`));
+  const coach = readFileSync('src/preview/proHome/ConnectCoachPreview.tsx', 'utf8');
+  assert.match(coach, /Connect to your coach/);
+  assert.match(coach, /This is not Connect to a gym/);
+  assert.doesNotMatch(coach, /localStorage|joinAcademy|fetch\(|license/);
+  const media = readFileSync('src/preview/proHome/MediaMenuPreview.tsx', 'utf8');
+  const instructor = readFileSync('src/preview/proHome/InstructorCardsPreview.tsx', 'utf8');
+  assert.match(media, /AcademyLinkPreview/);
+  assert.match(media, /COACH_CONNECT_PREVIEW_PATH/);
+  assert.match(instructor, /OwnDrivePreview/);
+  assert.match(instructor, /COACH_CONNECT_PREVIEW_PATH/);
+  assert.doesNotMatch(readFileSync('src/lib/productPrices.ts', 'utf8'), /5 GB stored/);
 });
 
 test('live Pro, Instructor, and hub paint are not edited for this preview', () => {
