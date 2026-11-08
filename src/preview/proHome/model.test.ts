@@ -13,6 +13,7 @@ import {
   WHITE_HUB_PREVIEW_PATH,
   instructorConceptCards,
   mediaPreviewCards,
+  mediaStudentCard,
   previewProHubs,
   previewWhitePaths,
   productionWhitePaths,
@@ -64,10 +65,13 @@ test('the instructor concept reuses the profile identity card and keeps the appr
   assert.match(page, /InstructorIdentityCard/);
   assert.doesNotMatch(page, /Not a saved roster/);
   assert.match(page, /<BeltHeader kind="brown"/);
-  assert.match(marks, /5:00/);
+  assert.match(marks, /fill="#6ea8ff">5:00/);
+  assert.match(marks, /fill="#14161c" fontFamily="ui-monospace, monospace">5:00/);
+  assert.doesNotMatch(marks, /M46 24v13l8 5/);
   assert.match(marks, /Blue/);
   assert.match(marks, /White/);
   assert.match(marks, /fill="#f4f1ea" \/>\s*<path d="M30 24h32/);
+  assert.match(page, /<CardMark mark=\{card\.mark\} \/>/);
 });
 
 test('instructor concept cards keep the seven live destinations and add no belt', () => {
@@ -90,6 +94,15 @@ test('the Media preview keeps the three live subtitles and drops the belt rails'
   assert.match(page, /HomeMark/);
   assert.doesNotMatch(page, /BeltRail|unlinkBracketBout|localStorage/);
   assert.match(page, /MEDIA_EXAMPLE/);
+  assert.match(page, /<CardMark mark=\{card\.mark\} \/>/);
+  assert.equal(mediaStudentCard().to, JOURNAL_DESTINATION);
+  assert.equal(mediaStudentCard().title, 'Student Edition');
+  assert.match(page, /to=\{student\.to\}/);
+  const studentAt = page.indexOf('aria-label="Personal Student Edition"');
+  const ladderAt = page.indexOf('EditionLadder page="media"');
+  const toolsAt = page.indexOf('aria-label="Advantage Media Edition menu"');
+  assert.ok(toolsAt > 0 && studentAt > toolsAt && ladderAt > studentAt);
+  assert.doesNotMatch(page, /student-roster|white-hub|\/white"/);
   const css = readFileSync('src/preview/proHome/proHome.css', 'utf8');
   assert.match(css, /\.php \.home__mark \{[^}]*grid-area:\s*auto/);
   assert.match(css, /\.php-card \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 92px/);

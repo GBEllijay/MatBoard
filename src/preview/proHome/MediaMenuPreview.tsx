@@ -3,9 +3,19 @@ import { BeltHeader } from '../../components/BeltHeader';
 import { EditionLadder } from '../../components/EditionLadder';
 import { HomeMark } from '../../components/HomeMark';
 import { CardMark } from './marks';
-import { MEDIA_EXAMPLE, MEDIA_MENU_PREVIEW_PATH, PREVIEW_BANNER, PRO_PREVIEW_PATH, mediaPreviewCards } from './model';
+import { JOURNAL_DESTINATION, MEDIA_EXAMPLE, MEDIA_MENU_PREVIEW_PATH, PREVIEW_BANNER, PRO_PREVIEW_PATH, mediaPreviewCards, mediaStudentCard } from './model';
 import '../instructorProfile/instructorProfile.css';
 import './proHome.css';
+
+function JournalMark() {
+  return (
+    <svg className="php-mark" viewBox="0 0 92 72" aria-hidden="true">
+      <rect x="22" y="10" width="48" height="52" rx="6" fill="#004eba" />
+      <rect x="30" y="16" width="32" height="40" rx="2" fill="#f4f1ea" />
+      <path d="M36 28h20M36 36h20M36 44h12" stroke="#14161c" strokeWidth="2" />
+    </svg>
+  );
+}
 
 function ConsoleMark() {
   return (
@@ -26,6 +36,7 @@ function ConsoleMark() {
  */
 export function MediaMenuPreviewPage() {
   const cards = mediaPreviewCards();
+  const student = mediaStudentCard();
   return (
     <main className="php">
       <div className="php-shell">
@@ -70,7 +81,16 @@ export function MediaMenuPreviewPage() {
             </Link>
           ))}
         </nav>
-        <p className="php-note">No belt rail on these cards. The purple belt stays on the header.</p>
+        <nav className="php-cards" aria-label="Personal Student Edition">
+          <Link className="php-card" to={student.to} data-mark="journal">
+            <span>
+              <strong>{student.title}</strong>
+              <small>{student.note}</small>
+            </span>
+            <JournalMark />
+          </Link>
+        </nav>
+        <p className="php-note">No belt rail on these cards. The purple belt stays on the header. Student Edition opens {JOURNAL_DESTINATION}.</p>
         <EditionLadder page="media" />
         <Link className="php-jump" to={PRO_PREVIEW_PATH}>
           Back to the Pro preview

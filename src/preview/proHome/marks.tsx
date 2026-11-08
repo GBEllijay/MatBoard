@@ -68,8 +68,9 @@ export function CardMark({ mark }: { mark: InstructorCard['mark'] }) {
   }
   return (
     <svg {...common}>
-      <circle cx="46" cy="36" r="20" fill="none" stroke="#6ea8ff" strokeWidth="3" />
-      <path d="M46 24v13l8 5" fill="none" stroke="#f4f1ea" strokeWidth="3" strokeLinecap="round" />
+      <rect x="8" y="8" width="76" height="56" rx="4" fill="#102033" stroke="#6ea8ff" strokeWidth="2" />
+      <rect x="14" y="18" width="64" height="36" rx="3" fill="#f4f1ea" />
+      <text x="46" y="43" textAnchor="middle" fontSize="22" fontWeight="800" fill="#14161c" fontFamily="ui-monospace, monospace">5:00</text>
     </svg>
   );
 }

@@ -168,6 +168,15 @@ export function mediaPreviewCards(): MediaPreviewCard[] {
   }));
 }
 
+/** Personal Student Edition. Same /student page as the Pro shortcut. Not a roster. */
+export function mediaStudentCard(): { title: string; to: string; note: string } {
+  return {
+    title: 'Student Edition',
+    to: JOURNAL_DESTINATION,
+    note: 'Personal journal. Same page as the Pro Student Edition button.',
+  };
+}
+
 export function instructorConceptCards(): InstructorCard[] {
   return COACH_UNLIMITED_TOOLS.map((tool) => {
     const extra = INSTRUCTOR_NOTES[tool.title];
