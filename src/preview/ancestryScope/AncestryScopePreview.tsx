@@ -116,8 +116,8 @@ function TreeList({ fixture, studentId }: { fixture: Fixture; studentId: string 
   const partners = trainedWith(fixture, studentId);
   const [open, setOpen] = useState<string | null>(null);
   return (
-    <section className="profile-card" aria-label="Teaching ancestry" data-testid="teaching-ancestry">
-      <h2>Teaching ancestry</h2>
+    <section className="profile-card" aria-label="Instructor ancestry" data-testid="teaching-ancestry">
+      <h2>Instructor ancestry</h2>
       <p className="ancestry-quiet">One line for each head instructor. A second head instructor is another line, not a longer version of the first.</p>
       <ul className="ancestry-names">
         {trees.map((tree) => (
@@ -141,7 +141,7 @@ function TreeList({ fixture, studentId }: { fixture: Fixture; studentId: string 
             return (
               <li key={id}>
                 <strong className={id === studentId ? 'ancestry-you' : undefined}>{person(fixture, id).name}</strong>
-                {below ? <span>Primary teacher</span> : <span>This student</span>}
+                {below ? <span>Instructor</span> : <span>This student</span>}
               </li>
             );
           })}
@@ -261,17 +261,22 @@ export function AncestryInstructorPreview() {
             <h1 className="ancestry-id__name">{who.name}</h1>
             <p className="ancestry-quiet">{beltLabel(who.belt)}</p>
             <p className="ancestry-line" data-testid="instructor-line">{OWNER_LINE}</p>
+            <p className="ancestry-quiet">Professor Fabio Acosta founded his gym under Master Carlos Gracie Junior. That step is not a black belt promotion. Helio Gracie awarded Junior his black belt. Carlos Gracie Senior’s link is teaching, not a promotion. Junior and Senior are two people.</p>
             <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
               {open ? 'Close the full line' : 'Open the full line'}
             </button>
             {open ? (
               <ol className="ancestry-spine" data-testid="lineage-tree">
-                {[...chain].reverse().map((id) => (
-                  <li key={id}>
-                    <strong className={id === professorId ? 'ancestry-you' : undefined}>{person(FIXTURE, id).name}</strong>
-                    <span>{id === professorId ? 'This instructor' : 'Primary teacher'}</span>
-                  </li>
-                ))}
+                {[...chain].reverse().map((id, index, all) => {
+                  const below = all[index + 1];
+                  const edge = below ? FIXTURE.ancestry.find((row) => row.teacherId === id && row.learnerId === below) : undefined;
+                  return (
+                    <li key={id}>
+                      <strong className={id === professorId ? 'ancestry-you' : undefined}>{person(FIXTURE, id).name}</strong>
+                      <span>{edge?.relation ?? (id === professorId ? 'You' : 'Link not confirmed')}</span>
+                    </li>
+                  );
+                })}
               </ol>
             ) : null}
           </div>
@@ -436,8 +441,8 @@ export function AncestryAcademyPreview() {
           </ul>
         </section>
         <section className="profile-card" aria-label="Shared ancestors">
-          <h2>Shared ancestors</h2>
-          <p className="ancestry-quiet">Who taught these professors. Branches that share a teacher meet on one name. A separate teacher stays a separate branch. This is not the employment list above.</p>
+          <h2>Instructor ancestry</h2>
+          <p className="ancestry-quiet">Known lines only. A shared instructor is drawn once, so branches can meet. A separate line stays separate. This is not the employment list above.</p>
           <button type="button" aria-expanded={graphOpen} onClick={() => setGraphOpen((value) => !value)}>
             {graphOpen ? 'Close the drawing' : 'Open the drawing'}
           </button>

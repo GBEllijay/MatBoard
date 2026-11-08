@@ -91,10 +91,16 @@ test('academy people and promotions are unique, and past is not active', () => {
 
 test('the owner line stops at Master Carlos and personal hours are not the example roster', () => {
   const line = ancestorsOf(fixture, 'you');
-  assert.deepEqual(line.ids, ['you', 'fabio', 'carlos']);
+  assert.deepEqual(line.ids, ['you', 'fabio', 'carlos', 'helio', 'carlos-sr']);
   assert.equal(line.cycle, false);
-  assert.equal(OWNER_LINE, 'You → Professor Fabio Acosta → Master Carlos Gracie Junior');
-  assert.equal(fixture.people.some((row) => /Helio|Carlos Sr|Carlos Gracie Sr/i.test(row.name)), false);
+  assert.equal(OWNER_LINE, 'You → Professor Fabio Acosta → Master Carlos Gracie Junior → Helio Gracie → Carlos Gracie Senior');
+  const fabio = fixture.ancestry.find((row) => row.id === 'edge-carlos-fabio');
+  const helio = fixture.ancestry.find((row) => row.id === 'edge-helio-carlos');
+  const senior = fixture.ancestry.find((row) => row.id === 'edge-sr-helio');
+  assert.match(fabio?.relation ?? '', /Not a black belt promotion/);
+  assert.match(helio?.relation ?? '', /Awarded Carlos Gracie Junior his black belt/);
+  assert.match(senior?.relation ?? '', /Not a black belt promotion/);
+  assert.equal(fixture.people.some((row) => /Rolls|Fabio Costa/i.test(row.name)), false);
   const hours = personalMatHours(fixture, 'you');
   assert.equal(hours.linked && hours.hours, 240);
   assert.notEqual(hours.linked && hours.hours, 4180);

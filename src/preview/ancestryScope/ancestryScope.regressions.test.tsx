@@ -61,7 +61,11 @@ test('student, instructor, and academy screens stay on their own facts', () => {
   act(() => student.root.unmount());
 
   const instructor = mount(<AncestryInstructorPreview />, '/preview/ancestry-instructor');
-  assert.equal(instructor.host.querySelector('[data-testid="instructor-line"]')?.textContent, 'You → Professor Fabio Acosta → Master Carlos Gracie Junior');
+  assert.equal(
+    instructor.host.querySelector('[data-testid="instructor-line"]')?.textContent,
+    'You → Professor Fabio Acosta → Master Carlos Gracie Junior → Helio Gracie → Carlos Gracie Senior',
+  );
+  assert.match(instructor.host.textContent ?? '', /not a black belt promotion/i);
   assert.match(instructor.host.textContent ?? '', /Example portrait\. Not a photo of you\./);
   assert.match(instructor.host.textContent ?? '', /240/);
   assert.doesNotMatch(instructor.host.textContent ?? '', /4180|4,180|Adele Voss|Jonah Peck|Lila Quinn/);

@@ -1,6 +1,6 @@
 /**
  * Fictional example for the ancestry-scope preview.
- * Teaching ancestry is who taught whom. It is not an employment chart
+ * Instructor ancestry is who taught whom. It is not an employment chart
  * and it is not a claim about any real person.
  * Nothing here is written to a profile, roster, or license.
  */
@@ -41,13 +41,15 @@ export type TeachingRecord = {
   teachingHours: number;
 };
 
-/** Primary-teacher step. The learner is below the teacher. */
+/** One instructor-to-instructor step. The learner is below the teacher. */
 export type AncestryEdge = {
   id: string;
   teacherId: string;
   learnerId: string;
   from: string;
   to: string | null;
+  /** How the teacher connects to the learner, when that type is known. */
+  relation?: string;
 };
 
 /** A student's head instructor. Separate trees when there is more than one. */
@@ -151,6 +153,8 @@ const PEOPLE: readonly Person[] = [
   { id: 'you', name: 'You', belt: 'black' },
   { id: 'fabio', name: 'Professor Fabio Acosta', belt: 'black' },
   { id: 'carlos', name: 'Master Carlos Gracie Junior', belt: 'black' },
+  { id: 'helio', name: 'Helio Gracie', belt: 'black' },
+  { id: 'carlos-sr', name: 'Carlos Gracie Senior', belt: 'black' },
 ];
 
 const STUDENT_PROFILES: readonly StudentProfile[] = [
@@ -177,8 +181,38 @@ const ANCESTRY: readonly AncestryEdge[] = [
   { id: 'edge-nia-ellis', teacherId: 'nia', learnerId: 'ellis', from: '2008-01-01', to: '2014-05-20' },
   { id: 'edge-nia-jonah', teacherId: 'nia', learnerId: 'jonah', from: '2006-01-01', to: '2011-08-12' },
   { id: 'edge-soren-lila', teacherId: 'soren', learnerId: 'lila', from: '1996-01-01', to: '2002-04-01' },
-  { id: 'edge-carlos-fabio', teacherId: 'carlos', learnerId: 'fabio', from: '', to: null },
-  { id: 'edge-fabio-you', teacherId: 'fabio', learnerId: 'you', from: '', to: null },
+  {
+    id: 'edge-sr-helio',
+    teacherId: 'carlos-sr',
+    learnerId: 'helio',
+    from: '',
+    to: null,
+    relation: 'Teaching. Helio learned from him. Not a black belt promotion.',
+  },
+  {
+    id: 'edge-helio-carlos',
+    teacherId: 'helio',
+    learnerId: 'carlos',
+    from: '',
+    to: null,
+    relation: 'Awarded Carlos Gracie Junior his black belt. A promotion, not a claim he was the only teacher.',
+  },
+  {
+    id: 'edge-carlos-fabio',
+    teacherId: 'carlos',
+    learnerId: 'fabio',
+    from: '',
+    to: null,
+    relation: 'Founded his gym under him. You confirmed this. Not a black belt promotion.',
+  },
+  {
+    id: 'edge-fabio-you',
+    teacherId: 'fabio',
+    learnerId: 'you',
+    from: '',
+    to: null,
+    relation: 'Your professor. You confirmed this.',
+  },
 ];
 
 const ATTACHMENTS: readonly Attachment[] = [
@@ -533,7 +567,8 @@ export function countKinds(rows: readonly Promotion[]): { belts: number; stripes
 
 export const FEATURED_INSTRUCTOR_ID = 'you';
 
-export const OWNER_LINE = 'You → Professor Fabio Acosta → Master Carlos Gracie Junior';
+export const OWNER_LINE =
+  'You → Professor Fabio Acosta → Master Carlos Gracie Junior → Helio Gracie → Carlos Gracie Senior';
 
 export type InstructorSummary = {
   professorId: string;
