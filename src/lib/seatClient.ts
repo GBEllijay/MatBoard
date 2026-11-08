@@ -26,7 +26,7 @@ function readToken(): string {
 export async function requestServerSeat(input: {
   email: string;
   presetId: InstructorPresetId | null;
-}): Promise<{ invite: string; seatId: string } | { reason: 'cap' | 'closed' | 'offline' }> {
+}): Promise<{ invite: string; seatId: string } | { reason: 'cap' | 'owner' | 'closed' | 'offline' }> {
   const token = readToken();
   if (!token) return { reason: 'offline' };
   try {
@@ -35,8 +35,9 @@ export async function requestServerSeat(input: {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ token, email: input.email, preset: input.presetId }),
     });
-    const body = (await response.json()) as { ok?: boolean; invite?: string; seatId?: string; reason?: string };
+    const body = (await response.json()) as { ok?: boolean; invite?: string; seatId?: string; reason?: string; error?: string };
     if (response.status === 409 || body.reason === 'cap') return { reason: 'cap' };
+    if (response.status === 403 && /only the gym owner/i.test(body.error ?? '')) return { reason: 'owner' };
     if (!response.ok || !body.invite || !body.seatId) return { reason: 'closed' };
     return { invite: body.invite, seatId: body.seatId };
   } catch {
@@ -52,7 +53,8 @@ export async function issueSeatWithServer(input: {
 }): Promise<IssueInviteResult> {
   const server = await requestServerSeat({ email: input.email, presetId: input.presetId ?? null });
   if ('reason' in server && server.reason === 'cap') return { ok: false, reason: 'cap' };
-  if ('reason' in server && server.reason === 'closed') return { ok: false, reason: 'owner' };
+  if ('reason' in server && server.reason === 'owner') return { ok: false, reason: 'owner' };
+  if ('reason' in server && server.reason === 'closed') return { ok: false, reason: 'unavailable' };
   return issueInstructorInvite({
     email: input.email,
     permissions: input.permissions,

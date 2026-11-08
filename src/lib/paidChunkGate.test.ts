@@ -227,7 +227,9 @@ test('the paid screen offers a way back to products and the routes use the share
   assert.match(screen, /Try again/);
   assert.match(screen, /Refresh access/);
   assert.match(screen, /Restore access/);
+  assert.match(screen, /to="\/editions\/pro-cloud"/);
   assert.match(screen, /Enter a code/);
+  assert.doesNotMatch(screen, /home__text-btn" to="\/products"/);
   assert.doesNotMatch(screen, /could not be loaded/);
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   assert.match(app, /paidDoorAgrees\('pro-console', visibleProHubs\(door\)\.length > 0\)/);
