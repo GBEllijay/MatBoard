@@ -489,7 +489,6 @@ function rankUnset(rank: StudentProgressReport['rank'] | undefined): boolean {
     !rank.awardedOn &&
     rank.history.length === 0 &&
     !(rank.lineage?.length) &&
-    !(rank.teaching?.trees.some((tree) => tree.headName.trim() || tree.upward.some((name) => name.trim()))) &&
     !rank.instructorBars
   );
 }

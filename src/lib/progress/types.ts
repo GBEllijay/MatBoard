@@ -760,12 +760,6 @@ export type StudentRank = {
    */
   lineage?: string[];
   /**
-   * Head instructors, each with one teacher above the last known person.
-   * Optional school and dates sit on the head instructor. Absent on older files.
-   * Hiding it keeps the names. The first line is also copied into lineage.
-   */
-  teaching?: TeachingLineage;
-  /**
    * One optional note per degree, index 0 through 9.
    * 0 is plain black. 1 to 6 are black-belt degrees. 7 is coral, 8 is red and white, 9 is red.
    * A note is not a checklist and does not change a degree. Absent on older files.
@@ -780,27 +774,6 @@ export type StudentRank = {
   pictureNote?: string;
   /** How many promotion photos the export kept. */
   pictureCount?: number;
-};
-
-/** One straight line above a head instructor. A suggestion is never stored until the student confirms it. */
-export type TeachingTree = {
-  id: string;
-  headName: string;
-  school: string;
-  startedOn: string;
-  endedOn: string;
-  stillTraining: boolean;
-  /** Teachers above the head instructor, one at each step. */
-  upward: string[];
-  /** Indexes in [head, ...upward] that the student confirmed from a suggestion. */
-  confirmed: number[];
-  /** Suggestion ids the student declined for this line. */
-  dismissed: string[];
-};
-
-export type TeachingLineage = {
-  visible: boolean;
-  trees: TeachingTree[];
 };
 
 /** Competition section of a student progress report. Absent on version 1 files until import fills it. */

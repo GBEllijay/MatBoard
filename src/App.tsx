@@ -59,7 +59,6 @@ import { HomePage } from './pages/Home';
 import { ProPlusCloudPage } from './pages/ProPlusCloud';
 import { StorefrontPage } from './pages/Storefront';
 import { FaqPage } from './pages/Faq';
-import { SourcesReferencesPage } from './pages/SourcesReferences';
 import { CompactLineageCard, ExpandedLineageLine } from './preview/ownerLineage/OwnerLineageViews';
 import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
@@ -763,7 +762,6 @@ export default function App() {
       <Route path="/card" element={<CardPage />} />
       <Route path="/half-off" element={<HalfOffPage />} />
       <Route path="/faq" element={<FaqPage />} />
-      <Route path="/sources" element={<SourcesReferencesPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

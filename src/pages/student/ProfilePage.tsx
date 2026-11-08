@@ -9,7 +9,6 @@ import { ProfileCornerMarks, ProfileMedia, ProfileSwitches, useProfileMedia } fr
 import { StudentProfileFields, TrainingSettings } from './ProfileFields';
 import { StudentCompetitorSwitch } from './StudentCompetitorSwitch';
 import { StudentCardLayout } from './StudentCardLayout';
-import { TeachingLineageCard } from './TeachingLineageCard';
 import { BodyScanSetting } from './BodyScan';
 import './profile.css';
 
@@ -65,7 +64,6 @@ export function ProfilePage() {
               face?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
             }}
           />
-          <TeachingLineageCard report={report} commit={commit} />
           <StudentCompetitorSwitch report={report} />
           <TrainingSettings report={report} commit={commit} />
           <ProfileSwitches report={report} />
