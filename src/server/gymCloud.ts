@@ -35,6 +35,7 @@ import {
   isDailyVideoCloudPath,
   claimsOpenPlusCloud,
   grantRowOpensPlusCloud,
+  ownerCloudGrantOpen,
   gymActorForCloud,
   safeCloudMime,
   type CloudFileRow,
@@ -135,7 +136,7 @@ async function lookupPlusCloud(env: GymCloudEnv, licenseId: string, now: Date): 
   if (!db) return 'off';
   try {
     const grants = await grantsForLicense(db, licenseId, now);
-    if (grants.some((row) => grantRowOpensPlusCloud(row))) return 'on';
+    if (grants.some((row) => grantRowOpensPlusCloud(row) || ownerCloudGrantOpen(row))) return 'on';
     const cloud = await cloudAccessForLicense(db, licenseId, now);
     return cloud.entitled ? 'on' : 'off';
   } catch {
