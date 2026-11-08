@@ -14,10 +14,15 @@ import {
   headTrees,
   instructorSummary,
   medalCounts,
+  OWNER_LINE,
+  personalMatHours,
   placeAncestry,
+  PREVIEW_SURFACES,
   resultInAcademyScope,
   sharedAncestorIds,
   sharedRosterCopies,
+  teachingHours,
+  teamAwardRollup,
   trainedWith,
 } from './model.ts';
 
@@ -60,8 +65,11 @@ test('academy people and promotions are unique, and past is not active', () => {
   assert.equal(summary.uniqueProfessors, 4);
   assert.equal(summary.uniqueStudents, 4);
   assert.equal(summary.naiveStudentSum, 5);
-  assert.equal(summary.studentMatHours, 640 + 210 + 36 + 880);
-  assert.notEqual(summary.studentMatHours, summary.professorOwnMatHours);
+  assert.equal(summary.studentMatHours.hours, 640 + 210 + 36 + 880);
+  assert.deepEqual(summary.studentMatHours.missingIds, []);
+  assert.equal(summary.professorMatHours.hours, 4180 + 5100);
+  assert.deepEqual([...summary.professorMatHours.missingIds].sort(), ['jonah', 'lila']);
+  assert.notEqual(summary.studentMatHours.hours, summary.professorMatHours.hours);
   assert.deepEqual(summary.promotionsHere, { belts: 5, stripes: 2 });
   assert.equal(summary.promotionsOutside, 1);
   assert.equal('averageBelt' in summary, false);
@@ -70,13 +78,55 @@ test('academy people and promotions are unique, and past is not active', () => {
   const jonah = instructorSummary(fixture, 'jonah');
   assert.equal(ellis.status, 'active');
   assert.equal(jonah.status, 'past');
-  assert.equal(ellis.ownMatHours, 4180);
-  assert.equal(ellis.attachedStudentMatHours, 640 + 36);
-  assert.notEqual(ellis.ownMatHours, ellis.attachedStudentMatHours);
+  assert.equal(ellis.personalMatHours.linked && ellis.personalMatHours.hours, 4180);
+  assert.equal(ellis.attachedStudentMatHours.hours, 640 + 36);
+  assert.notEqual(ellis.personalMatHours.linked && ellis.personalMatHours.hours, ellis.attachedStudentMatHours.hours);
   assert.deepEqual(ellis.issuedHere, { belts: 2, stripes: 1 });
   assert.deepEqual(jonah.issuedHere, { belts: 0, stripes: 1 });
   assert.deepEqual(jonah.issuedLifetime, { belts: 1, stripes: 1 });
+  assert.equal(jonah.personalMatHours.linked, false);
+  assert.equal('hours' in jonah.personalMatHours, false);
   assert.equal('medals' in ellis, false);
+});
+
+test('the owner line stops at Master Carlos and personal hours are not the example roster', () => {
+  const line = ancestorsOf(fixture, 'you');
+  assert.deepEqual(line.ids, ['you', 'fabio', 'carlos']);
+  assert.equal(line.cycle, false);
+  assert.equal(OWNER_LINE, 'You → Professor Fabio Acosta → Master Carlos Gracie Junior');
+  assert.equal(fixture.people.some((row) => /Helio|Carlos Sr|Carlos Gracie Sr/i.test(row.name)), false);
+  const hours = personalMatHours(fixture, 'you');
+  assert.equal(hours.linked && hours.hours, 240);
+  assert.notEqual(hours.linked && hours.hours, 4180);
+  assert.equal(teachingHours(fixture, 'you'), 180);
+  const shifted = {
+    ...fixture,
+    studentProfiles: fixture.studentProfiles.map((row) => (row.personId === 'you' ? { ...row, matHours: 12 } : row)),
+  };
+  const moved = personalMatHours(shifted, 'you');
+  assert.equal(moved.linked && moved.hours, 12);
+  assert.equal(teachingHours(shifted, 'you'), 180);
+  assert.equal(instructorSummary(fixture, 'you').attachedStudentMatHours.hours, 0);
+});
+
+test('gym awards are unique places and are not student medals', () => {
+  const awards = academySummary(fixture).teamAwards;
+  assert.deepEqual({ first: awards.first, second: awards.second, third: awards.third, total: awards.total }, { first: 1, second: 1, third: 0, total: 2 });
+  assert.equal(fixture.teamAwards.length, 3);
+  const again = teamAwardRollup([...fixture.teamAwards, fixture.teamAwards[1]]);
+  assert.equal(again.total, 2);
+  assert.notEqual(awards.total, academySummary(fixture).competition.medals.gold + academySummary(fixture).competition.medals.silver);
+});
+
+test('the three preview tabs use the profile names and wrap', () => {
+  assert.deepEqual(
+    PREVIEW_SURFACES.filter((surface) => surface.id !== 'my-profile').map((surface) => surface.title),
+    ['Student profile', 'Instructor profile', 'Academy profile'],
+  );
+  const css = readFileSync(new URL('./ancestryScope.css', import.meta.url), 'utf8');
+  const view = readFileSync(new URL('./AncestryScopePreview.tsx', import.meta.url), 'utf8');
+  assert.match(css, /\.ancestry-scope\s*\{[^}]*flex-wrap:\s*wrap/);
+  assert.doesNotMatch(view, /character sheet/i);
 });
 
 test('academy medals dedupe shared rosters and stay separate from wins', () => {
@@ -111,6 +161,6 @@ test('the preview files do not touch records, billing, or competition management
   const bundle = `${model}\n${view}`;
   assert.doesNotMatch(bundle, /localStorage|sessionStorage|STRIPE_|writeGymProfile|studentBackup|rosterStore|ENTITLEMENT/);
   assert.match(view, /data-testid="academy-medals"/);
-  assert.match(view, /Competition totals stay on the Pro academy page/);
+  assert.match(view, /Competition totals stay on the Academy profile/);
   assert.doesNotMatch(view, /Competition management|useProUnlocked|subscription/);
 });

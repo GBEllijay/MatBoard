@@ -13,11 +13,15 @@ import {
   academySummary,
   ancestorsOf,
   beltLabel,
+  FEATURED_INSTRUCTOR_ID,
+  OWNER_LINE,
   earnedPromotions,
   exampleFixture,
+  formatHours,
   headTrees,
   instructorSummary,
   person,
+  personalMatHours,
   sharedAncestorIds,
   spanLabel,
   trainedWith,
@@ -28,6 +32,18 @@ import {
 import './ancestryScope.css';
 
 const FIXTURE = exampleFixture();
+const STUDENT_PORTRAIT = '/preview/ancestry/student.svg';
+const INSTRUCTOR_PORTRAIT = '/preview/ancestry/instructor.svg';
+const ACADEMY_IMAGE = '/preview/ancestry/academy.svg';
+
+function Portrait({ src, label, wide = false }: { src: string; label: string; wide?: boolean }) {
+  return (
+    <figure className={wide ? 'ancestry-photo ancestry-photo--wide' : 'ancestry-photo'}>
+      <img src={src} alt={label} />
+      <figcaption>{label}</figcaption>
+    </figure>
+  );
+}
 
 function Shell({
   current,
@@ -55,6 +71,11 @@ function Shell({
       <div className="ancestry-sheet">{children}</div>
     </main>
   );
+}
+
+function matHoursLabel(personId: string): string {
+  const source = personalMatHours(FIXTURE, personId);
+  return source.linked ? formatHours(source.hours) : 'Not linked';
 }
 
 function Face({ who, detail }: { who: Person; detail: string }) {
@@ -161,15 +182,20 @@ export function AncestryStudentPreview() {
     <Shell current="student">
       <section aria-label="Student home identity" data-testid="student-home-surface">
         <p className="ancestry-kicker">Student Edition · home</p>
-        <h1>Character sheet</h1>
+        <h1>Identity card</h1>
         <p className="ancestry-quiet">The identity zone on the Student Edition home. Same Student Edition. Not a second product.</p>
         <Picks label="Example student" ids={['mira', 'theo', 'sam', 'noa']} selected={studentId} onSelect={setStudentId} />
-        <section className="profile-card" aria-label="Identity">
-          <Face who={who} detail={ACADEMY_NAME} />
+        <section className="profile-card ancestry-identity" aria-label="Identity">
+          <div className="ancestry-identity__top">
+            <Portrait src={STUDENT_PORTRAIT} label="Example student portrait" />
+            <Face who={who} detail={ACADEMY_NAME} />
+          </div>
+          <h2>Stats sheet</h2>
           <div className="ancestry-stats">
             <div data-testid="student-own-hours">
-              <span>Own mat hours</span>
-              <strong>{who.ownMatHours}</strong>
+              <span>Mat hours</span>
+              <strong>{matHoursLabel(studentId)}</strong>
+              <em>From this Student Edition profile</em>
             </div>
             <div>
               <span>Head instructors</span>
@@ -187,7 +213,11 @@ export function AncestryStudentPreview() {
           </div>
         </header>
         <p className="ancestry-quiet">The My profile page: name, belt, and gym, then the lineage card under those details.</p>
-        <section className="profile-card" aria-label="Profile details">
+        <h2>Identity card</h2>
+        <section className="profile-card ancestry-identity" aria-label="Profile details">
+          <div className="ancestry-identity__top">
+            <Portrait src={STUDENT_PORTRAIT} label="Example student portrait" />
+            <div>
           <div className="profile-row">
             <span className="ink__label">Name</span>
             <strong>{who.name}</strong>
@@ -200,6 +230,8 @@ export function AncestryStudentPreview() {
             <span className="ink__label">Gym</span>
             <strong>{ACADEMY_NAME}</strong>
           </div>
+            </div>
+          </div>
         </section>
         <TreeList fixture={FIXTURE} studentId={studentId} />
         <Earned fixture={FIXTURE} studentId={studentId} />
@@ -209,93 +241,84 @@ export function AncestryStudentPreview() {
 }
 
 export function AncestryInstructorPreview() {
-  const [professorId, setProfessorId] = useState('ellis');
+  const professorId = FEATURED_INSTRUCTOR_ID;
   const summary = instructorSummary(FIXTURE, professorId);
   const who = person(FIXTURE, professorId);
   const chain = ancestorsOf(FIXTURE, professorId).ids;
   const [open, setOpen] = useState(false);
+  const mat = summary.personalMatHours;
+  const example = instructorSummary(FIXTURE, 'ellis');
+  const exampleStudents = example.attachedStudentMatHours;
   return (
     <Shell current="instructor">
-      <BeltHeader kind="brown" title="Instructor Edition" />
+      <BeltHeader kind="black" title="Instructor Edition" worn />
       <section aria-label="Instructor identity" data-testid="instructor-surface">
-        <p className="ancestry-kicker">Instructor Edition</p>
-        <h1>Instructor profile</h1>
-        <p className="ancestry-quiet">Own line, students attached to this instructor, and promotions this instructor issued. Competition totals stay on the Pro academy page.</p>
-        <Picks label="Example instructor" ids={['ellis', 'adele', 'jonah', 'lila']} selected={professorId} onSelect={setProfessorId} />
-        <section className="profile-card" aria-label="Instructor card">
-          <Face who={who} detail={`${summary.status === 'active' ? 'Active' : 'Past'} at ${ACADEMY_NAME}`} />
-          <div className="ancestry-stats" data-testid="instructor-own-hours">
-            <div>
-              <span>Own mat hours</span>
-              <strong>{summary.ownMatHours}</strong>
-            </div>
-            <div>
-              <span>Own teaching hours</span>
-              <strong>{summary.ownTeachingHours}</strong>
-            </div>
-            <div data-testid="student-aggregate-hours">
-              <span>Students' own mat hours</span>
-              <strong>{summary.attachedStudentMatHours}</strong>
-            </div>
-            <div>
-              <span>Attached students</span>
-              <strong>{summary.attachedStudentIds.length}</strong>
-            </div>
+        <article className="profile-card ancestry-id" aria-label="Instructor card">
+          <div className="ancestry-id__belt" data-belt={who.belt} />
+          <div className="ancestry-id__body">
+            <Portrait src={INSTRUCTOR_PORTRAIT} label="Example portrait. Not a photo of you." />
+            <p className="ancestry-kicker">Identity card</p>
+            <h1 className="ancestry-id__name">{who.name}</h1>
+            <p className="ancestry-quiet">{beltLabel(who.belt)}</p>
+            <p className="ancestry-line" data-testid="instructor-line">{OWNER_LINE}</p>
+            <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+              {open ? 'Close the full line' : 'Open the full line'}
+            </button>
+            {open ? (
+              <ol className="ancestry-spine" data-testid="lineage-tree">
+                {[...chain].reverse().map((id) => (
+                  <li key={id}>
+                    <strong className={id === professorId ? 'ancestry-you' : undefined}>{person(FIXTURE, id).name}</strong>
+                    <span>{id === professorId ? 'This instructor' : 'Primary teacher'}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
           </div>
-          <p className="ancestry-quiet">Own hours are this instructor's. The student hours are the attached students' own mat time, added once per student on this card.</p>
-        </section>
-        <section className="profile-card" aria-label="Promotions issued" data-testid="instructor-issued">
-          <h2>Promotions personally issued</h2>
-          <div className="ancestry-stats">
-            <div>
-              <span>Belts at this academy</span>
-              <strong>{summary.issuedHere.belts}</strong>
-            </div>
-            <div>
-              <span>Stripes at this academy</span>
-              <strong>{summary.issuedHere.stripes}</strong>
-            </div>
-            <div>
-              <span>Belts in this instructor's life</span>
-              <strong>{summary.issuedLifetime.belts}</strong>
-            </div>
-            <div>
-              <span>Stripes in this instructor's life</span>
-              <strong>{summary.issuedLifetime.stripes}</strong>
-            </div>
+        </article>
+        <h2>Stats sheet</h2>
+        <article className="ancestry-hour ancestry-hour--mat" data-testid="instructor-own-hours">
+          <span>Mat hours</span>
+          <strong>{mat.linked ? formatHours(mat.hours) : 'Not linked'}</strong>
+          <p>Example only. From a linked Student Edition profile in this preview. Not a lookup of your saved record, and not a sum of students.</p>
+        </article>
+        <article className="ancestry-hour ancestry-hour--teach" data-testid="instructor-teaching-hours">
+          <span>Teaching hours</span>
+          <strong>{summary.teachingHours === null ? 'Not recorded' : formatHours(summary.teachingHours)}</strong>
+          <p>Example only. From the Instructor side in this preview. Not your saved total.</p>
+        </article>
+        <article className="profile-card ancestry-impact" aria-label="Example student impact" data-testid="student-aggregate-hours">
+          <p className="ancestry-kicker">Example roster</p>
+          <h2>{example.attachedStudentIds.length} sample students</h2>
+          <p className="ancestry-quiet">Not your students. Not promotions you issued. The names and counts are the preview fixture.</p>
+          <p className="ancestry-impact__total">
+            <strong>{formatHours(exampleStudents.hours)}</strong>
+            <span>Combined mat hours on their own Student profiles. Counted once each. Not your mat hours.</span>
+          </p>
+          <div className="ancestry-impact__issued" data-testid="instructor-issued">
+            <p><span>Example belts here</span><strong>{example.issuedHere.belts}</strong></p>
+            <p><span>Example stripes here</span><strong>{example.issuedHere.stripes}</strong></p>
+            <p><span>Example belts, lifetime</span><strong>{example.issuedLifetime.belts}</strong></p>
+            <p><span>Example stripes, lifetime</span><strong>{example.issuedLifetime.stripes}</strong></p>
           </div>
-          <p className="ancestry-quiet">Lifetime includes a promotion issued before this academy. It is not added into the academy pair.</p>
-        </section>
-        <section className="profile-card" aria-label="Own teaching line">
-          <h2>Teaching ancestry</h2>
-          <p className="ancestry-quiet">{chain.map((id) => person(FIXTURE, id).name).reverse().join(' → ')}</p>
-          <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-            {open ? 'Close the full line' : 'Open the full line'}
-          </button>
-          {open ? (
-            <ol className="ancestry-spine" data-testid="lineage-tree">
-              {[...chain].reverse().map((id) => (
-                <li key={id}>
-                  <strong className={id === professorId ? 'ancestry-you' : undefined}>{person(FIXTURE, id).name}</strong>
-                  <span>{id === professorId ? 'This instructor' : 'Primary teacher'}</span>
-                </li>
-              ))}
-            </ol>
-          ) : null}
-        </section>
-        <section className="profile-card" aria-label="Attached students">
-          <h2>Attached students</h2>
-          <ul className="ancestry-list">
-            {FIXTURE.attachments.filter((row) => row.professorId === professorId).map((row) => {
+          <p className="ancestry-quiet">The lifetime pair includes one promotion from before this example academy. It is not added into the academy pair.</p>
+          <ul className="ancestry-roster" aria-label="Example students">
+            {FIXTURE.attachments.filter((row) => row.professorId === 'ellis').map((row) => {
               const student = person(FIXTURE, row.studentId);
               return (
                 <li key={row.id}>
-                  <strong>{student.name}</strong> · {beltLabel(student.belt)} · {spanLabel(row.from, row.to)} · {student.ownMatHours} own mat hours
+                  <i data-belt={student.belt} aria-hidden="true" />
+                  <div>
+                    <strong>{student.name}</strong>
+                    <span>{beltLabel(student.belt)} · {spanLabel(row.from, row.to)}</span>
+                    <span>{matHoursLabel(row.studentId)} mat hours · their Student profile</span>
+                  </div>
                 </li>
               );
             })}
           </ul>
-        </section>
+        </article>
+        <p className="ancestry-quiet">Competition totals stay on the Academy profile.</p>
       </section>
     </Shell>
   );
@@ -344,10 +367,16 @@ export function AncestryAcademyPreview() {
     <Shell current="academy">
       <BeltHeader kind="black" title="Pro" worn />
       <section aria-label="Academy identity" data-testid="academy-surface">
-        <p className="ancestry-kicker">Pro · gym character sheet</p>
-        <h1>{ACADEMY_NAME}</h1>
-        <p className="ancestry-quiet">Example of the academy scope on the Pro gym sheet. The live sheet is not changed. Counts are this example as of {AS_OF}.</p>
-        <section className="profile-card" aria-label="Academy counts">
+        <article className="profile-card ancestry-academy" aria-label="Academy identity">
+          <Portrait src={ACADEMY_IMAGE} label="Example academy image. Not the Advantage logo." wide />
+          <div>
+            <p className="ancestry-kicker">Identity card</p>
+            <h1>{ACADEMY_NAME}</h1>
+            <p className="ancestry-quiet">Fictional academy. Example of the Pro gym sheet as of {AS_OF}. The live sheet is not changed.</p>
+          </div>
+        </article>
+        <section className="profile-card ancestry-sheet" aria-label="Academy counts">
+          <h2>Stats sheet</h2>
           <div className="ancestry-stats">
             <div data-testid="academy-active">
               <span>Active professors</span>
@@ -369,12 +398,12 @@ export function AncestryAcademyPreview() {
           <p className="ancestry-quiet">Adding each professor's student list would say {summary.naiveStudentSum}. Mira Chen is on two lists, so the academy counts {summary.uniqueStudents} students.</p>
           <div className="ancestry-stats">
             <div>
-              <span>Students' own mat hours</span>
-              <strong>{summary.studentMatHours}</strong>
+              <span>Students' mat hours</span>
+              <strong>{formatHours(summary.studentMatHours.hours)}</strong>
             </div>
-            <div>
-              <span>Professors' own mat hours</span>
-              <strong>{summary.professorOwnMatHours}</strong>
+            <div data-testid="professor-hours">
+              <span>Professors' mat hours</span>
+              <strong>{formatHours(summary.professorMatHours.hours)}</strong>
             </div>
             <div>
               <span>Belts issued here</span>
@@ -385,6 +414,7 @@ export function AncestryAcademyPreview() {
               <strong>{summary.promotionsHere.stripes}</strong>
             </div>
           </div>
+          <p className="ancestry-quiet">Students' hours are each linked Student profile, counted once. Professors' hours are linked Student profiles only. {summary.professorMatHours.missingIds.map((id) => person(FIXTURE, id).name).join(' and ')} {summary.professorMatHours.missingIds.length === 1 ? 'is' : 'are'} not linked, so {summary.professorMatHours.missingIds.length === 1 ? 'that profile is' : 'those profiles are'} not counted as zero.</p>
           <p className="ancestry-quiet">{summary.promotionsOutside} belt was issued by one of these professors before this academy. It is not in the pair above. Belts and stripes stay separate. There is no average rank.</p>
         </section>
         <section className="profile-card" aria-label="Professors">
@@ -398,6 +428,7 @@ export function AncestryAcademyPreview() {
                 <li key={row.professorId}>
                   <strong>{person(FIXTURE, row.professorId).name}</strong>
                   <div className="ancestry-quiet">{ongoing ? 'Present' : 'Past'} · affiliated {spanLabel(row.from, row.to)}</div>
+                  <div className="ancestry-quiet">{personalMatHours(FIXTURE, row.professorId).linked ? `${matHoursLabel(row.professorId)} mat hours from a linked Student profile` : 'Student profile not linked'}</div>
                   <div className="ancestry-quiet">{[...chain].reverse().map((id) => person(FIXTURE, id).name.replace('Professor ', '')).join(' → ')}</div>
                 </li>
               );
@@ -467,6 +498,21 @@ export function AncestryAcademyPreview() {
               <li key={result.id}>
                 {person(FIXTURE, result.studentId).name} · {result.tournament} · {result.medal} · {result.date}. After this attachment ended. Personal result, not an academy medal.
               </li>
+            ))}
+          </ul>
+        </section>
+        <section className="profile-card ancestry-awards" aria-label="Gym team awards" data-testid="gym-awards">
+          <h2>Gym/team awards</h2>
+          <p className="ancestry-quiet">Places for {ACADEMY_NAME} in a team division. Not a sum of student medals, and not guessed from those medals.</p>
+          <ul className="ancestry-medals">
+            <li><span>1st</span><strong>{summary.teamAwards.first}</strong></li>
+            <li><span>2nd</span><strong>{summary.teamAwards.second}</strong></li>
+            <li><span>3rd</span><strong>{summary.teamAwards.third}</strong></li>
+          </ul>
+          <p className="ancestry-quiet" data-testid="award-total">{summary.teamAwards.total} awards. A 2nd or a 3rd is a place, not a win.</p>
+          <ul className="ancestry-list">
+            {summary.teamAwards.events.map((award) => (
+              <li key={award.id}>{award.tournament} · {award.date} · {award.category} · {award.place === 1 ? '1st' : award.place === 2 ? '2nd' : '3rd'}</li>
             ))}
           </ul>
         </section>

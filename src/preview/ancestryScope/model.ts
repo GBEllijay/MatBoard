@@ -24,10 +24,21 @@ export type Person = {
   id: string;
   name: string;
   belt: Belt;
-  /** This person's own training hours. Not a total of anyone they teach. */
-  ownMatHours: number;
-  /** Hours this person spent teaching. Students stay at 0. */
-  ownTeachingHours: number;
+};
+
+/**
+ * Mat hours live only on a Student Edition profile.
+ * A person with no row here has no linked profile. That is not zero hours.
+ */
+export type StudentProfile = {
+  personId: string;
+  matHours: number;
+};
+
+/** Teaching hours are recorded on the Instructor side, not on the Student profile. */
+export type TeachingRecord = {
+  personId: string;
+  teachingHours: number;
 };
 
 /** Primary-teacher step. The learner is below the teacher. */
@@ -100,6 +111,18 @@ export type Fixture = {
   promotions: readonly Promotion[];
   trainedWith: readonly TrainedWith[];
   results: readonly CompetitionResult[];
+  studentProfiles: readonly StudentProfile[];
+  teaching: readonly TeachingRecord[];
+  teamAwards: readonly TeamAward[];
+};
+
+/** An award to the academy in a team division. Not a student's medal. */
+export type TeamAward = {
+  id: string;
+  tournament: string;
+  date: string;
+  category: string;
+  place: 1 | 2 | 3;
 };
 
 export type LineageTree = {
@@ -112,19 +135,40 @@ export type LineageTree = {
 };
 
 const PEOPLE: readonly Person[] = [
-  { id: 'ivo', name: 'Professor Ivo Serra', belt: 'black', ownMatHours: 9000, ownTeachingHours: 4000 },
-  { id: 'nia', name: 'Professor Nia Calder', belt: 'black', ownMatHours: 7200, ownTeachingHours: 3100 },
-  { id: 'soren', name: 'Professor Soren Hale', belt: 'black', ownMatHours: 6800, ownTeachingHours: 2500 },
-  { id: 'ellis', name: 'Professor Ellis Ward', belt: 'black', ownMatHours: 4180, ownTeachingHours: 860 },
-  { id: 'jonah', name: 'Professor Jonah Peck', belt: 'black', ownMatHours: 3900, ownTeachingHours: 700 },
-  { id: 'adele', name: 'Professor Adele Voss', belt: 'black', ownMatHours: 5100, ownTeachingHours: 1400 },
-  { id: 'lila', name: 'Professor Lila Quinn', belt: 'black', ownMatHours: 3600, ownTeachingHours: 500 },
-  { id: 'mira', name: 'Mira Chen', belt: 'purple', ownMatHours: 640, ownTeachingHours: 0 },
-  { id: 'theo', name: 'Theo Lang', belt: 'blue', ownMatHours: 210, ownTeachingHours: 0 },
-  { id: 'sam', name: 'Sam Ortiz', belt: 'white', ownMatHours: 36, ownTeachingHours: 0 },
-  { id: 'noa', name: 'Noa Kim', belt: 'brown', ownMatHours: 880, ownTeachingHours: 0 },
-  { id: 'ren', name: 'Coach Ren Park', belt: 'brown', ownMatHours: 1200, ownTeachingHours: 80 },
-  { id: 'rae', name: 'Rae Pell', belt: 'blue', ownMatHours: 400, ownTeachingHours: 0 },
+  { id: 'ivo', name: 'Professor Ivo Serra', belt: 'black' },
+  { id: 'nia', name: 'Professor Nia Calder', belt: 'black' },
+  { id: 'soren', name: 'Professor Soren Hale', belt: 'black' },
+  { id: 'ellis', name: 'Professor Ellis Ward', belt: 'black' },
+  { id: 'jonah', name: 'Professor Jonah Peck', belt: 'black' },
+  { id: 'adele', name: 'Professor Adele Voss', belt: 'black' },
+  { id: 'lila', name: 'Professor Lila Quinn', belt: 'black' },
+  { id: 'mira', name: 'Mira Chen', belt: 'purple' },
+  { id: 'theo', name: 'Theo Lang', belt: 'blue' },
+  { id: 'sam', name: 'Sam Ortiz', belt: 'white' },
+  { id: 'noa', name: 'Noa Kim', belt: 'brown' },
+  { id: 'ren', name: 'Coach Ren Park', belt: 'brown' },
+  { id: 'rae', name: 'Rae Pell', belt: 'blue' },
+  { id: 'you', name: 'You', belt: 'black' },
+  { id: 'fabio', name: 'Professor Fabio Acosta', belt: 'black' },
+  { id: 'carlos', name: 'Master Carlos Gracie Junior', belt: 'black' },
+];
+
+const STUDENT_PROFILES: readonly StudentProfile[] = [
+  { personId: 'ellis', matHours: 4180 },
+  { personId: 'adele', matHours: 5100 },
+  { personId: 'mira', matHours: 640 },
+  { personId: 'theo', matHours: 210 },
+  { personId: 'sam', matHours: 36 },
+  { personId: 'noa', matHours: 880 },
+  { personId: 'you', matHours: 240 },
+];
+
+const TEACHING: readonly TeachingRecord[] = [
+  { personId: 'ellis', teachingHours: 860 },
+  { personId: 'adele', teachingHours: 1400 },
+  { personId: 'jonah', teachingHours: 700 },
+  { personId: 'lila', teachingHours: 500 },
+  { personId: 'you', teachingHours: 180 },
 ];
 
 const ANCESTRY: readonly AncestryEdge[] = [
@@ -133,6 +177,8 @@ const ANCESTRY: readonly AncestryEdge[] = [
   { id: 'edge-nia-ellis', teacherId: 'nia', learnerId: 'ellis', from: '2008-01-01', to: '2014-05-20' },
   { id: 'edge-nia-jonah', teacherId: 'nia', learnerId: 'jonah', from: '2006-01-01', to: '2011-08-12' },
   { id: 'edge-soren-lila', teacherId: 'soren', learnerId: 'lila', from: '1996-01-01', to: '2002-04-01' },
+  { id: 'edge-carlos-fabio', teacherId: 'carlos', learnerId: 'fabio', from: '', to: null },
+  { id: 'edge-fabio-you', teacherId: 'fabio', learnerId: 'you', from: '', to: null },
 ];
 
 const ATTACHMENTS: readonly Attachment[] = [
@@ -256,7 +302,82 @@ export function exampleFixture(): Fixture {
     promotions: PROMOTIONS,
     trainedWith: TRAINED_WITH,
     results: RESULTS,
+    studentProfiles: STUDENT_PROFILES,
+    teaching: TEACHING,
+    teamAwards: TEAM_AWARDS,
   };
+}
+
+const TEAM_AWARDS: readonly TeamAward[] = [
+  { id: 'award-harbor-kids', tournament: 'Harbor Invitational 2025', date: '2025-04-20', category: 'Kids team', place: 1 },
+  { id: 'award-harbor-kids', tournament: 'Harbor Invitational 2025', date: '2025-04-20', category: 'Kids team', place: 1 },
+  { id: 'award-city-adults', tournament: 'City Open 2024', date: '2024-06-15', category: 'Adults team', place: 2 },
+];
+
+export type TeamAwardRollup = {
+  first: number;
+  second: number;
+  third: number;
+  total: number;
+  events: TeamAward[];
+};
+
+/** Unique award ids. A repeated import does not add another place. */
+export function teamAwardRollup(awards: readonly TeamAward[]): TeamAwardRollup {
+  const events: TeamAward[] = [];
+  const seen = new Set<string>();
+  for (const award of awards) {
+    if (seen.has(award.id)) continue;
+    seen.add(award.id);
+    events.push(award);
+  }
+  return {
+    first: events.filter((row) => row.place === 1).length,
+    second: events.filter((row) => row.place === 2).length,
+    third: events.filter((row) => row.place === 3).length,
+    total: events.length,
+    events,
+  };
+}
+
+export type PersonalMatHours = { linked: true; hours: number; source: 'student-edition' } | { linked: false };
+
+/** Mat hours from this person's own Student Edition profile. Missing is not zero. */
+export function personalMatHours(fixture: Fixture, personId: string): PersonalMatHours {
+  const profile = fixture.studentProfiles.find((row) => row.personId === personId);
+  if (!profile) return { linked: false };
+  return { linked: true, hours: profile.matHours, source: 'student-edition' };
+}
+
+/** Instructor-side teaching hours. This never reads a Student profile. */
+export function teachingHours(fixture: Fixture, personId: string): number | null {
+  const row = fixture.teaching.find((item) => item.personId === personId);
+  return row ? row.teachingHours : null;
+}
+
+export type HourRollup = {
+  hours: number;
+  linkedIds: string[];
+  missingIds: string[];
+};
+
+/** Unique people. Linked profiles are added. A missing profile is listed, not stored as 0. */
+export function linkedMatHourRollup(fixture: Fixture, ids: readonly string[]): HourRollup {
+  const linkedIds: string[] = [];
+  const missingIds: string[] = [];
+  let hours = 0;
+  for (const id of [...new Set(ids)]) {
+    const source = personalMatHours(fixture, id);
+    if (source.linked) {
+      linkedIds.push(id);
+      hours += source.hours;
+    } else missingIds.push(id);
+  }
+  return { hours, linkedIds, missingIds };
+}
+
+export function formatHours(hours: number): string {
+  return hours.toLocaleString('en-US');
 }
 
 export function person(fixture: Fixture, id: string): Person {
@@ -380,10 +501,6 @@ export function naiveAttachedStudentCount(fixture: Fixture): number {
   return professorIds(fixture).reduce((sum, id) => sum + attachedStudentIds(fixture, id).length, 0);
 }
 
-export function ownMatHours(fixture: Fixture, ids: readonly string[]): number {
-  return ids.reduce((sum, id) => sum + person(fixture, id).ownMatHours, 0);
-}
-
 export function issuedPromotions(fixture: Fixture, issuerId: string, scope: 'academy' | 'lifetime'): Promotion[] {
   return fixture.promotions.filter((row) => {
     if (row.issuerId !== issuerId) return false;
@@ -414,13 +531,17 @@ export function countKinds(rows: readonly Promotion[]): { belts: number; stripes
   };
 }
 
+export const FEATURED_INSTRUCTOR_ID = 'you';
+
+export const OWNER_LINE = 'You → Professor Fabio Acosta → Master Carlos Gracie Junior';
+
 export type InstructorSummary = {
   professorId: string;
   status: 'active' | 'past';
-  ownMatHours: number;
-  ownTeachingHours: number;
+  personalMatHours: PersonalMatHours;
+  teachingHours: number | null;
   attachedStudentIds: string[];
-  attachedStudentMatHours: number;
+  attachedStudentMatHours: HourRollup;
   issuedHere: { belts: number; stripes: number };
   issuedLifetime: { belts: number; stripes: number };
 };
@@ -428,14 +549,13 @@ export type InstructorSummary = {
 export function instructorSummary(fixture: Fixture, professorId: string, asOf = AS_OF): InstructorSummary {
   const split = splitProfessors(fixture, asOf);
   const students = attachedStudentIds(fixture, professorId);
-  const row = person(fixture, professorId);
   return {
     professorId,
     status: split.active.includes(professorId) ? 'active' : 'past',
-    ownMatHours: row.ownMatHours,
-    ownTeachingHours: row.ownTeachingHours,
+    personalMatHours: personalMatHours(fixture, professorId),
+    teachingHours: teachingHours(fixture, professorId),
     attachedStudentIds: students,
-    attachedStudentMatHours: ownMatHours(fixture, students),
+    attachedStudentMatHours: linkedMatHourRollup(fixture, students),
     issuedHere: countKinds(issuedPromotions(fixture, professorId, 'academy')),
     issuedLifetime: countKinds(issuedPromotions(fixture, professorId, 'lifetime')),
   };
@@ -639,11 +759,12 @@ export type AcademySummary = {
   uniqueProfessors: number;
   uniqueStudents: number;
   naiveStudentSum: number;
-  studentMatHours: number;
-  professorOwnMatHours: number;
+  studentMatHours: HourRollup;
+  professorMatHours: HourRollup;
   promotionsHere: { belts: number; stripes: number };
   promotionsOutside: number;
   competition: AcademyCompetition;
+  teamAwards: TeamAwardRollup;
 };
 
 export function academySummary(fixture: Fixture, asOf = AS_OF): AcademySummary {
@@ -657,11 +778,12 @@ export function academySummary(fixture: Fixture, asOf = AS_OF): AcademySummary {
     uniqueProfessors: split.unique.length,
     uniqueStudents: students.length,
     naiveStudentSum: naiveAttachedStudentCount(fixture),
-    studentMatHours: ownMatHours(fixture, students),
-    professorOwnMatHours: ownMatHours(fixture, split.unique),
+    studentMatHours: linkedMatHourRollup(fixture, students),
+    professorMatHours: linkedMatHourRollup(fixture, split.unique),
     promotionsHere: countKinds(here),
     promotionsOutside: outside.length,
     competition: academyCompetition(fixture),
+    teamAwards: teamAwardRollup(fixture.teamAwards),
   };
 }
 
@@ -669,8 +791,8 @@ export const PREVIEW_SURFACES = [
   {
     id: 'student-home',
     route: '/preview/ancestry-student',
-    title: 'Student home',
-    live: 'Student Edition home, identity zone on the character sheet',
+    title: 'Student profile',
+    live: 'Student Edition home, identity card',
   },
   {
     id: 'my-profile',
@@ -681,13 +803,13 @@ export const PREVIEW_SURFACES = [
   {
     id: 'instructor',
     route: '/preview/ancestry-instructor',
-    title: 'Instructor',
+    title: 'Instructor profile',
     live: 'Instructor Edition profile',
   },
   {
     id: 'academy',
     route: '/preview/ancestry-academy',
-    title: 'Academy',
-    live: 'Pro gym character sheet, academy scope',
+    title: 'Academy profile',
+    live: 'Pro academy profile',
   },
 ] as const;
