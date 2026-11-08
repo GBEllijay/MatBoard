@@ -17,16 +17,11 @@
 
 .home--pro-menu .pro-hub > span {
   color: #14161c;
-}
-
-.home--pro-menu .pro-hub__sub {
-  display: block;
-  margin-top: 4px;
-  color: #3e4654;
-  font-size: 0.82rem;
-  font-weight: 650;
-  letter-spacing: 0;
-  line-height: 1.35;
+  font: inherit;
+  font-weight: 800;
+  font-size: clamp(1.05rem, 2.7vw, 1.28rem);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
 }
 
 .home--pro-menu .pro-hub .belt-rail {
@@ -45,8 +40,7 @@
     border-color: transparent;
   }
 
-  .home--pro-menu .pro-hub:hover > span,
-  .home--pro-menu .pro-hub:hover .pro-hub__sub {
+  .home--pro-menu .pro-hub:hover > span {
     color: #14161c;
   }
 }
