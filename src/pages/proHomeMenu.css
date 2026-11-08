@@ -1,0 +1,52 @@
+/* Advantage Pro home only. Other hub menus keep the navy paint. */
+
+.home--pro-menu.home--pro .home__inner {
+  padding-top: calc(0.5rem + var(--safe-t));
+}
+
+.home--pro-menu .play-exit {
+  margin-top: 0.35rem;
+}
+
+.home--pro-menu .pro-hub {
+  background: #efebe3;
+  color: #14161c;
+  border: 0;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.home--pro-menu .pro-hub > span {
+  color: #14161c;
+}
+
+.home--pro-menu .pro-hub__sub {
+  display: block;
+  margin-top: 4px;
+  color: #3e4654;
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+
+.home--pro-menu .pro-hub .belt-rail {
+  --belt-rail-width: 8px;
+}
+
+.home--pro-menu .pro-hub:active {
+  background: #e4dfd4;
+  color: #14161c;
+}
+
+@media (hover: hover) {
+  .home--pro-menu .pro-hub:hover {
+    background: #e4dfd4;
+    color: #14161c;
+    border-color: transparent;
+  }
+
+  .home--pro-menu .pro-hub:hover > span,
+  .home--pro-menu .pro-hub:hover .pro-hub__sub {
+    color: #14161c;
+  }
+}
