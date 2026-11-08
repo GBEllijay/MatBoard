@@ -100,9 +100,13 @@
 .srec-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .srec button.btn { min-height: 44px; }
 .srec-hours { display: grid; gap: 8px; }
+.srec-unit { color: #c7c7cc; font-size: 14px; font-weight: 700; }
+.srec-review { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.srec-review li { color: #f5f1e8; font-size: 15px; }
+.srec-review li[data-status='ignored'] { color: #f0c36a; }
 .srec-hour {
   display: grid;
-  grid-template-columns: 16px minmax(4.5rem, 1fr) minmax(6.5rem, 8rem);
+  grid-template-columns: 16px minmax(4.5rem, 1fr) minmax(5rem, 7rem) auto;
   gap: 10px;
   align-items: center;
 }

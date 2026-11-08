@@ -152,6 +152,14 @@ export function planningHours(years: number, hoursPerWeek: number): number {
   return years * WEEKS_PER_YEAR * hoursPerWeek;
 }
 
+export type EstimateStatus = 'blank' | 'counted' | 'ignored';
+
+/** Blank is left out. A plain number is counted. Anything else is ignored. */
+export function estimateStatus(value: string): EstimateStatus {
+  if (!value.trim()) return 'blank';
+  return parseEstimate(value) === null ? 'ignored' : 'counted';
+}
+
 /** Blank is unset. Anything other than a plain number is ignored. */
 export function parseEstimate(value: string): number | null {
   const trimmed = value.trim();

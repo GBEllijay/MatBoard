@@ -13,6 +13,7 @@ import {
   HOURS_PER_WEEK,
   PLANNING_SPANS,
   combinedHours,
+  estimateStatus,
   estimatedHours,
   exampleAncestry,
   formatHours,
@@ -78,6 +79,9 @@ test('the preview routes are direct links and do not write a student record', ()
 });
 
 test('estimated hours stay separate from logged hours, and a blank belt adds nothing', () => {
+  assert.equal(estimateStatus(''), 'blank');
+  assert.equal(estimateStatus('10'), 'counted');
+  assert.equal(estimateStatus('nope'), 'ignored');
   assert.equal(parseEstimate(''), null);
   assert.equal(parseEstimate('nope'), null);
   assert.deepEqual(Object.values(EXAMPLE_ESTIMATES), ['', '', '', '', '']);

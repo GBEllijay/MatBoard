@@ -13,8 +13,10 @@ import {
   PREVIEW_HOURS_PATH,
   PREVIEW_NOTE,
   combinedHours,
+  estimateStatus,
   estimatedHours,
   formatHours,
+  parseEstimate,
   planningHours,
   planningWeeks,
   type HoursPerWeek,
@@ -110,9 +112,26 @@ export function StudentHoursPreview() {
                   value={estimates[belt]}
                   onChange={(event) => setEstimates((current) => ({ ...current, [belt]: event.target.value }))}
                 />
+                <span className="srec-unit">hours</span>
               </label>
             ))}
           </div>
+          <p className="srec-note">Change a number to replace it. Clear the box to leave that belt out.</p>
+          <ul className="srec-review" data-testid="estimate-review">
+            {BELT_INTERVALS.map((belt) => {
+              const status = estimateStatus(estimates[belt]);
+              const counted = parseEstimate(estimates[belt]);
+              const detail = status === 'blank' ? 'left blank' : status === 'counted' ? `${formatHours(counted ?? 0)} hours` : 'not included';
+              return (
+                <li key={belt} data-status={status}>
+                  {BELT_INTERVAL_LABEL[belt]} · {detail}
+                </li>
+              );
+            })}
+          </ul>
+          <p className="srec-note" data-testid="save-outcome">
+            Not saved. Earlier hours on this screen are not written to advantage hours logged, and there is no backup of them.
+          </p>
           <p className="srec-logged">
             <span>Earlier hours on this screen</span>
             <strong data-testid="estimated-hours">{formatHours(estimated)}</strong>
