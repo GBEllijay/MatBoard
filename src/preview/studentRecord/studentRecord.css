@@ -35,6 +35,18 @@
   text-transform: uppercase;
 }
 .srec-note, .srec-quiet { margin: 0; color: #9aa3b5; font-size: 14px; line-height: 1.45; }
+.srec-wording { display: grid; gap: 8px; }
+.srec-word {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(110, 168, 255, 0.35);
+  overflow-wrap: anywhere;
+}
+.srec-word b { color: #6ea8ff; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+.srec-word span { color: #f5f1e8; font-size: 15px; line-height: 1.4; }
 .srec-card {
   display: grid;
   gap: 10px;

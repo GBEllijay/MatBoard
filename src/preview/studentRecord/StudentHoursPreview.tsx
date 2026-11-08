@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   BELT_INTERVALS,
   BELT_INTERVAL_LABEL,
+  EARLIER_HOURS_PLAIN,
+  EARLIER_HOURS_PLAYFUL,
   EXAMPLE_ESTIMATES,
   EXAMPLE_LOGGED_HOURS,
   HOURS_PER_WEEK,
@@ -93,6 +95,17 @@ export function StudentHoursPreview() {
           <p className="srec-note" data-testid="hours-example-label">
             Optional. Type your own history, or leave a belt blank. A blank belt adds nothing. These boxes do not take the planning model.
           </p>
+          <div className="srec-wording" data-testid="earlier-wording">
+            <p className="srec-note">Two wording previews for these boxes. Neither one describes the journal total.</p>
+            <p className="srec-word" data-testid="wording-playful">
+              <b>Playful</b>
+              <span>{EARLIER_HOURS_PLAYFUL}</span>
+            </p>
+            <p className="srec-word" data-testid="wording-plain">
+              <b>Plain</b>
+              <span>{EARLIER_HOURS_PLAIN}</span>
+            </p>
+          </div>
           <div className="srec-hours">
             {BELT_INTERVALS.map((belt) => (
               <label className="srec-hour" key={belt}>

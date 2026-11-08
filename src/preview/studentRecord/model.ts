@@ -108,6 +108,11 @@ export const BELT_INTERVAL_LABEL: Record<BeltInterval, string> = {
 /** Example journal total. Not editable. Not a lifetime claim. */
 export const EXAMPLE_LOGGED_HOURS = 18.5;
 
+/** Wording choices for the earlier-hours boxes only. Not live copy. Not the journal total. */
+export const EARLIER_HOURS_PLAYFUL =
+  'On your honor—count the mat time, not the drive there. If you’re unsure, round down.';
+export const EARLIER_HOURS_PLAIN = 'These hours are estimated.';
+
 /** Optional earlier history the person types. Starts blank so the planning model is not their history. */
 export const EXAMPLE_ESTIMATES: Record<BeltInterval, string> = {
   white: '',
