@@ -29,7 +29,9 @@ import {
   type RankTapeDates,
   type StudentProgressReport,
   type StudentRank,
+  type TeachingLineage,
 } from './progress/types.ts';
+import { firstLineNames, sanitizeTeaching, teachingFromLineage } from './teachingLineage.ts';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -105,6 +107,8 @@ export function normalizeStoredRank(rank: Partial<StudentRank> | null | undefine
     history,
     lineage: [...(source.lineage ?? [])],
   };
+  const teaching = sanitizeTeaching(source.teaching);
+  if (teaching) next.teaching = teaching;
   const high = highDatesForCount(source.highDegreeDates, tapeCount);
   if (high) next.highDegreeDates = high;
   if (source.instructorBars) next.instructorBars = true;
@@ -351,8 +355,29 @@ export function setRankLineage(report: StudentProgressReport, lines: readonly st
   const lineage = expandLineage(lines);
   const rank = rankOf(report);
   const prior = rank.lineage ?? [];
-  if (prior.length === lineage.length && prior.every((line, index) => line === lineage[index])) return report;
-  return touch(report, { ...rank, lineage }, report.profile.belt, now);
+  const teaching = rank.teaching ? applyFlatLine(rank.teaching, lineage) : undefined;
+  const sameLine = prior.length === lineage.length && prior.every((line, index) => line === lineage[index]);
+  if (sameLine && !teaching) return report;
+  if (sameLine && teaching && JSON.stringify(teaching) === JSON.stringify(rank.teaching)) return report;
+  return touch(report, teaching ? { ...rank, lineage, teaching } : { ...rank, lineage }, report.profile.belt, now);
+}
+
+/** Saves the teaching lines and keeps the first line in the older lineage list. */
+export function setTeachingLineage(report: StudentProgressReport, teaching: TeachingLineage, now = Date.now()): StudentProgressReport {
+  const clean = sanitizeTeaching(teaching);
+  if (!clean) return report;
+  const rank = rankOf(report);
+  const lineage = firstLineNames(clean);
+  return touch(report, { ...rank, lineage, teaching: clean }, report.profile.belt, now);
+}
+
+/** A rank-page edit of the first line. Other head instructors, dates, and declined suggestions stay. */
+function applyFlatLine(teaching: TeachingLineage, lineage: readonly string[]): TeachingLineage {
+  const trees = teaching.trees.map((tree) => ({ ...tree, upward: [...tree.upward], confirmed: [...tree.confirmed], dismissed: [...tree.dismissed] }));
+  if (!trees.length) return teachingFromLineage(lineage);
+  const [head, ...upward] = lineage;
+  trees[0] = { ...trees[0]!, headName: head ?? '', upward, confirmed: [] };
+  return { ...teaching, trees };
 }
 
 export function setRankHistoryAwardedOn(
@@ -639,6 +664,7 @@ function rankFields(rank: StudentRank): StudentRank {
     history: rank.history.map((row) => cloneHistory(row)),
     lineage: [...(rank.lineage ?? [])],
   };
+  if (rank.teaching) next.teaching = sanitizeTeaching(rank.teaching) ?? rank.teaching;
   const high = highDatesForCount(rank.highDegreeDates, rank.tapeCount);
   if (high) next.highDegreeDates = high;
   if (rank.instructorBars) next.instructorBars = true;

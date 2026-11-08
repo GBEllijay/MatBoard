@@ -9,6 +9,7 @@ import { ProfileCornerMarks, ProfileMedia, ProfileSwitches, useProfileMedia } fr
 import { StudentProfileFields, TrainingSettings } from './ProfileFields';
 import { StudentCompetitorSwitch } from './StudentCompetitorSwitch';
 import { StudentCardLayout } from './StudentCardLayout';
+import { TeachingLineageCard } from './TeachingLineageCard';
 import { BodyScanSetting } from './BodyScan';
 import './profile.css';
 
@@ -48,6 +49,7 @@ export function ProfilePage() {
           </p>
         ) : null}
         <StudentCardLayout portrait={showPhoto ? media.portrait : null} logo={media.logo} to={to} />
+        <TeachingLineageCard report={report} commit={commit} />
         <div className="profile-stack">
           <ProfileMedia media={media} kids={kids} />
           <KidAdultFields report={report} commit={commit} />

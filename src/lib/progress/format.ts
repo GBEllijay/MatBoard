@@ -11,6 +11,7 @@ import { splitCombinedDivision } from '../divisionFields.ts';
 import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
 import { highDatesForCount } from '../blackBeltDegrees.ts';
 import { dedupeRankHistory, expandLineage, stripeDateText } from '../studentRank.ts';
+import { sanitizeTeaching } from '../teachingLineage.ts';
 import { asRecord } from '../plainValue.ts';
 import { readWorkingGraph } from '../workingTechniques.ts';
 import { readCoachAssessment, readCoachBeltProgress, readCoachNote } from './syncPackets.ts';
@@ -913,6 +914,7 @@ function mergeRank(report: StudentProgressReport, incoming: StudentProgressRepor
   const local = report.rank;
   const next = incoming.rank;
   local.lineage = mergeLineage(local.lineage, next.lineage, conflicts);
+  local.teaching = mergeTeaching(local.teaching, next.teaching, conflicts);
   if (!local.pictureNote && next.pictureNote) local.pictureNote = next.pictureNote;
   delete local.pictures;
   local.awardedOn = preferText(local.awardedOn, next.awardedOn, 'Rank date was kept.', conflicts);
@@ -967,6 +969,23 @@ function mergeDegreeFocus(local: string[] | undefined, incoming: string[] | unde
   }
   while (notes.length && !notes[notes.length - 1]?.trim()) notes.pop();
   return notes.some((line) => line.trim()) ? notes : undefined;
+}
+
+function mergeTeaching(
+  local: StudentRank['teaching'],
+  incoming: StudentRank['teaching'],
+  conflicts: string[],
+): StudentRank['teaching'] {
+  if (!incoming) return local;
+  if (!local) return structuredClone(incoming);
+  const localNames = JSON.stringify(local.trees);
+  const nextNames = JSON.stringify(incoming.trees);
+  if (local.trees.length && localNames !== nextNames) {
+    conflicts.push('Teaching lineage was kept.');
+    return local;
+  }
+  if (!local.trees.length && incoming.trees.length) return structuredClone(incoming);
+  return local;
 }
 
 function mergeLineage(local: string[] | undefined, incoming: string[] | undefined, conflicts: string[]): string[] | undefined {
@@ -1386,6 +1405,10 @@ function readRank(value: unknown, belt: ProgressBelt, errors: string[]): Student
   const focus = readDegreeFocus(record.degreeFocus, errors);
   if (focus) rank.degreeFocus = focus;
   if (Object.prototype.hasOwnProperty.call(record, 'lineage')) rank.lineage = readLineage(record.lineage, errors);
+  if (Object.prototype.hasOwnProperty.call(record, 'teaching')) {
+    const teaching = sanitizeTeaching(record.teaching);
+    if (teaching) rank.teaching = teaching;
+  }
   if (typeof record.pictureNote === 'string') {
     rank.pictureNote = readString(record.pictureNote, 'Rank photo note', PROGRESS_NOTE_MAX, errors);
   }

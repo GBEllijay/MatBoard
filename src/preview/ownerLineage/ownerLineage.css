@@ -1,0 +1,84 @@
+.owner-line { min-height: 100dvh; }
+.owner-line__banner {
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  border-radius: 12px;
+  background: #13284a;
+  color: #d7e6ff;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.owner-line__kicker {
+  margin: 0;
+  color: #6ea8ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.owner-line__sheet {
+  display: grid;
+  gap: 14px;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: 0 16px 32px;
+  box-sizing: border-box;
+}
+.owner-line__card { padding: 14px 16px 16px; display: grid; gap: 10px; }
+.owner-line__card h2 { margin: 0; font-size: 1.15rem; }
+.owner-line__label {
+  margin: 0;
+  color: #c7c7cc;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.owner-line__names, .owner-line__spine { list-style: none; margin: 0; padding: 0; }
+.owner-line__names { display: grid; gap: 6px; }
+.owner-line__names li {
+  margin: 0;
+  color: #f5f5f7;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.owner-line__names li[data-you='true'] {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 1.25rem;
+}
+.owner-line__award {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #12203c;
+  color: #d7e6ff;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.owner-line__spine { display: grid; gap: 0; }
+.owner-line__spine li {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0 0 14px 14px;
+  border-left: 3px solid #004eba;
+  overflow-wrap: anywhere;
+}
+.owner-line__spine li:last-child { padding-bottom: 0; }
+.owner-line__spine strong { font-size: 1.05rem; }
+.owner-line__spine span {
+  color: #6ea8ff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.owner-line__spine small { color: #c7c7cc; font-size: 13px; line-height: 1.4; }
+.owner-line__spine li[data-you='true'] strong { font-size: 1.35rem; }
+.owner-line__sources { margin: 0; padding-left: 18px; color: #8fb6ff; font-size: 13px; overflow-wrap: break-word; }
+.owner-line__sources a { color: #8fb6ff; }
+.owner-line .profile-face__name { margin: 0; font-size: 1.6rem; font-weight: 800; }
+.owner-line .profile-face__belt-text { margin: 4px 0 0; }

@@ -18,6 +18,7 @@ export function SiteFooter() {
       </p>
       <nav className="site-footer__legal" aria-label="Help and legal">
         <Link to="/faq">FAQ</Link>
+        <Link to="/sources">Sources & references</Link>
         <Link to="/privacy">Privacy Policy</Link>
         <Link to="/terms">Terms of Service</Link>
       </nav>

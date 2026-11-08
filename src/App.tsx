@@ -59,6 +59,8 @@ import { HomePage } from './pages/Home';
 import { ProPlusCloudPage } from './pages/ProPlusCloud';
 import { StorefrontPage } from './pages/Storefront';
 import { FaqPage } from './pages/Faq';
+import { SourcesReferencesPage } from './pages/SourcesReferences';
+import { CompactLineageCard, ExpandedLineageLine } from './preview/ownerLineage/OwnerLineageViews';
 import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
@@ -755,10 +757,13 @@ export default function App() {
       <Route path="/preview/technique-tree" element={<TechniqueTreePreviewPage />} />
       {/* Public owner preview. The live working tree stays at /student/working. */}
       <Route path="/preview/personal-graph" element={<PersonalGraphPreviewPage />} />
+      <Route path="/preview/lineage-card" element={<CompactLineageCard />} />
+      <Route path="/preview/lineage-line" element={<ExpandedLineageLine />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
       <Route path="/card" element={<CardPage />} />
       <Route path="/half-off" element={<HalfOffPage />} />
       <Route path="/faq" element={<FaqPage />} />
+      <Route path="/sources" element={<SourcesReferencesPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
