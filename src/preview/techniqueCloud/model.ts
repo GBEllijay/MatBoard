@@ -23,14 +23,17 @@ export type CloudTechnique = {
   journalCards: CloudCard[];
 };
 
+export type CloudEdge = { id: string; fromId: string; toId: string };
+
 export type CloudPreview = {
-  source: 'empty' | 'sample' | 'preview-copy';
+  source: 'empty' | 'sample' | 'preview-copy' | 'suggested';
   techniques: CloudTechnique[];
+  edges: CloudEdge[];
   note: string;
 };
 
 export function emptyCloud(): CloudPreview {
-  return { source: 'empty', techniques: [], note: 'No techniques in this preview.' };
+  return { source: 'empty', techniques: [], edges: [], note: 'No techniques in this preview.' };
 }
 
 export function sampleCloud(): CloudPreview {
@@ -43,6 +46,7 @@ export function sampleCloud(): CloudPreview {
   return {
     source: 'sample',
     note: 'Sample only. These are not your techniques.',
+    edges: [],
     techniques: [
       {
         id: 'sample-hip-bump',
@@ -93,15 +97,20 @@ export function copyFromReport(report: Pick<StudentProgressReport, 'working' | '
       journalCards: cards,
     };
   });
-  if (!techniques.length) return { source: 'empty', techniques: [], note: 'The working list on this phone is empty.' };
-  return { source: 'preview-copy', techniques, note: 'Preview copy. Nothing was written back to the phone.' };
+  if (!techniques.length) return { source: 'empty', techniques: [], edges: [], note: 'The working list on this phone is empty.' };
+  return {
+    source: 'preview-copy',
+    techniques,
+    edges: graph.edges.map((edge) => ({ id: edge.id, fromId: edge.fromId, toId: edge.toId })),
+    note: 'Preview copy. Nothing was written back to the phone.',
+  };
 }
 
 export function previewCopyFromText(raw: string | null): CloudPreview {
-  if (!raw) return { source: 'empty', techniques: [], note: 'No student file on this phone.' };
+  if (!raw) return { source: 'empty', techniques: [], edges: [], note: 'No student file on this phone.' };
   const parsed = parseProgressPacket(raw);
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') {
-    return { source: 'empty', techniques: [], note: 'This preview left the student file unread.' };
+    return { source: 'empty', techniques: [], edges: [], note: 'This preview left the student file unread.' };
   }
   return copyFromReport(parsed.value);
 }

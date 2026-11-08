@@ -13,6 +13,7 @@ import {
   type CloudPreview,
   type CloudTechnique,
 } from './model';
+import { SUGGESTED_HEADING, layoutSuggested, suggestedCloud } from './suggestedRequirements';
 import './techniqueCloud.css';
 
 type Point = { x: number; y: number };
@@ -22,9 +23,10 @@ function place(index: number): Point {
 }
 
 export function TechniqueCloudPreview() {
-  const [preview, setPreview] = useState<CloudPreview>(emptyCloud);
-  const [points, setPoints] = useState<Record<string, Point>>({});
-  const [selected, setSelected] = useState<string | null>(null);
+  const loaded = suggestedCloud();
+  const [preview, setPreview] = useState<CloudPreview>(loaded);
+  const [points, setPoints] = useState<Record<string, Point>>(() => layoutSuggested());
+  const [selected, setSelected] = useState<string | null>('req.kneebar');
   const drag = useRef<{ id: string; dx: number; dy: number } | null>(null);
   const board = useRef<HTMLDivElement>(null);
 
@@ -54,6 +56,7 @@ export function TechniqueCloudPreview() {
         </p>
         <p className="tcloud-kicker">Student preview</p>
         <h1>Technique cloud</h1>
+        <p className="tcloud-note">{SUGGESTED_HEADING}</p>
         <p className="tcloud-quiet">{CLOUD_PATH}</p>
         <p className="tcloud-note">{preview.note}</p>
         <div className="tcloud-actions">
@@ -82,6 +85,23 @@ export function TechniqueCloudPreview() {
           }}
         >
           {preview.techniques.length === 0 ? <p className="tcloud-note">Nothing here yet.</p> : null}
+          <svg className="tcloud-links" data-testid="technique-edges">
+            {preview.edges.map((edge) => {
+              const from = points[edge.fromId];
+              const to = points[edge.toId];
+              if (!from || !to) return null;
+              return (
+                <line
+                  key={edge.id}
+                  data-testid={`edge-${edge.fromId}-${edge.toId}`}
+                  x1={from.x + 74}
+                  y1={from.y + 26}
+                  x2={to.x + 74}
+                  y2={to.y + 26}
+                />
+              );
+            })}
+          </svg>
           {preview.techniques.map((item, index) => {
             const point = points[item.id] ?? place(index);
             return (
@@ -89,6 +109,7 @@ export function TechniqueCloudPreview() {
                 key={item.id}
                 type="button"
                 className="tcloud-node"
+                data-testid={`node-${item.id}`}
                 style={{ left: point.x, top: point.y }}
                 aria-pressed={selected === item.id}
                 onClick={() => setSelected(item.id)}
@@ -124,7 +145,7 @@ export function TechniqueCloudPreview() {
 
 function Detail({ technique, related }: { technique: CloudTechnique | null; related: CloudTechnique[] }) {
   if (!technique) return <p className="tcloud-note">Choose a technique.</p>;
-  const cards = cardsForTechnique({ source: 'sample', techniques: [technique], note: '' }, technique.id);
+  const cards = cardsForTechnique({ source: 'sample', techniques: [technique], edges: [], note: '' }, technique.id);
   return (
     <section className="tcloud-detail" aria-label={technique.title}>
       <h2>{technique.title}</h2>
