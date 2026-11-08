@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CLOUD_CHUNK_BYTES, uploadAdvantageCloudFile } from '../lib/advantageCloudMedia.ts';
-import type { PrivateJwk } from '../lib/entitlementToken.ts';
+import { verifyToken, type PrivateJwk } from '../lib/entitlementToken.ts';
 import type { D1Database } from './d1.ts';
 import {
   handleGymCloud,
@@ -10,7 +10,10 @@ import {
   type GymMediaBucket,
   type R2MultipartUpload,
 } from './gymCloud.ts';
-import { issueToken } from './tokenIssue.ts';
+import { handleSeatAccept, handleSeatIssue } from './seats.ts';
+import { sqliteD1 } from './sqliteD1.ts';
+import { handleTokenRefresh } from './tokenRefresh.ts';
+import { issueToken, signingMaterial } from './tokenIssue.ts';
 
 const now = new Date('2026-11-03T15:00:00.000Z');
 
@@ -1011,4 +1014,436 @@ test('program director Camera window: reads videos/daily only; lessons, skins, g
     assert.equal((await file('videos/daily/2026-11-03/drill.mp4', env, tok)).status, 200, preset);
     assert.equal((await file('lessons/current/2026-W45/2026-11-03.json', env, tok)).status, 200, preset);
   }
+});
+
+test('a paid Cloud add-on is the academy folder for an accepted instructor seat', async () => {
+  const secret = await signingSecret();
+  const material = signingMaterial(secret, 'k1');
+  assert.ok(material);
+  const db = sqliteD1();
+  const licenseId = 'lic-paid-cloud';
+  const stamp = now.toISOString();
+  await db.prepare(`INSERT INTO licenses (id, created_at) VALUES (?, ?)`).bind(licenseId, stamp).run();
+  await db
+    .prepare(
+      `INSERT INTO grants (id, license_id, product, source, source_ref, status, created_at)
+       VALUES ('g-pro', ?, 'advantage-pro', 'stripe_payment', 'cs_pro', 'active', ?)`,
+    )
+    .bind(licenseId, stamp)
+    .run();
+  await db
+    .prepare(
+      `INSERT INTO grants (id, license_id, product, source, source_ref, status, created_at)
+       VALUES ('g-cloud', ?, 'advantage-cloud-pro', 'stripe_subscription', 'sub_cloud', 'active', ?)`,
+    )
+    .bind(licenseId, stamp)
+    .run();
+  await db
+    .prepare(
+      `INSERT INTO subscriptions (
+         stripe_subscription_id, license_id, status, cancel_at_period_end, current_period_end, last_event_at, last_synced_at
+       ) VALUES ('sub_cloud', ?, 'active', 0, NULL, ?, ?)`,
+    )
+    .bind(licenseId, stamp, stamp)
+    .run();
+
+  const signing = { ENTITLEMENT_SIGNING_KEY: secret, ENTITLEMENT_KEY_ID: 'k1' };
+  const owner = await token(secret, {
+    licenseId,
+    grants: ['white', 'student', 'coach', 'pro', 'media'],
+    tier: 'pro',
+    src: 'stripe',
+    deviceId: 'owner-phone',
+    now,
+    kind: 'pro',
+    subs: { state: 'active' },
+  });
+  const ownerClaims = await verifyToken(owner, [{ kid: material.kid, jwk: material.publicJwk }]);
+  assert.equal(ownerClaims?.sub, licenseId);
+  assert.notEqual(ownerClaims?.subs?.cloud, true);
+
+  const bucket = new MemoryBucket();
+  const env: GymCloudEnv = { ...signing, GYM_MEDIA: bucket, ENTITLEMENTS_DB: db };
+  const issued = await handleSeatIssue(
+    new Request('https://advantagebjjtimer.com/api/seats/issue', {
+      method: 'POST',
+      body: JSON.stringify({ token: owner, email: 'coach@gym.test', preset: 'coach' }),
+    }),
+    signing,
+    db,
+    () => now,
+  );
+  assert.equal(issued.status, 200);
+  const issuedBody = (await issued.json()) as { invite: string; seatId: string };
+  assert.equal(issuedBody.invite.split('.').length, 3);
+
+  const accepted = await handleSeatAccept(
+    new Request('https://advantagebjjtimer.com/api/seats/accept', {
+      method: 'POST',
+      body: JSON.stringify({ invite: issuedBody.invite, deviceId: 'coach-phone' }),
+    }),
+    signing,
+    db,
+    async () => new Response('{}', { status: 200 }),
+    () => now,
+  );
+  assert.equal(accepted.status, 200);
+  const acceptedBody = (await accepted.json()) as { token: string; gymId: string; seatId: string };
+  assert.equal(acceptedBody.gymId, licenseId);
+  const seatClaims = await verifyToken(acceptedBody.token, [{ kid: material.kid, jwk: material.publicJwk }]);
+  assert.equal(seatClaims?.gym, licenseId);
+  assert.equal(seatClaims?.sub, licenseId);
+  assert.equal(seatClaims?.sid, issuedBody.seatId);
+  assert.equal(seatClaims?.preset, 'coach');
+
+  const fetcher: typeof fetch = async (input, init) => {
+    const raw = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    return handleGymCloud(new Request(raw, init), env, () => now);
+  };
+  const saved = await uploadAdvantageCloudFile({
+    purpose: 'daily-video',
+    dateKey: '2026-11-03',
+    file: new Blob([Uint8Array.from([7, 7, 7])], { type: 'video/mp4' }),
+    fileName: 'armbar.mp4',
+    mime: 'video/mp4',
+    token: owner,
+    fetcher,
+  });
+  assert.equal(saved.ok, true);
+  if (!saved.ok) return;
+  const storedKey = `groups/${licenseId}/videos/daily/2026-11-03/armbar.mp4`;
+  assert.equal(bucket.objects.has(storedKey), true);
+
+  const played = await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent(saved.path)}`, {}, acceptedBody.token);
+  assert.equal(played.status, 200);
+  assert.deepEqual([...new Uint8Array(await played.arrayBuffer())], [7, 7, 7]);
+  const listed = await call(env, '/api/gym/cloud?op=list&purpose=daily-video&date=2026-11-03', {}, acceptedBody.token);
+  const listedBody = (await listed.json()) as { files: { name: string }[] };
+  assert.deepEqual(listedBody.files.map((file) => file.name), ['armbar.mp4']);
+
+  const assistantIssued = await handleSeatIssue(
+    new Request('https://advantagebjjtimer.com/api/seats/issue', {
+      method: 'POST',
+      body: JSON.stringify({ token: owner, email: 'assistant@gym.test', preset: 'assistant-coach' }),
+    }),
+    signing,
+    db,
+    () => now,
+  );
+  assert.equal(assistantIssued.status, 200);
+  const assistantInvite = ((await assistantIssued.json()) as { invite: string }).invite;
+  const assistantAccepted = await handleSeatAccept(
+    new Request('https://advantagebjjtimer.com/api/seats/accept', {
+      method: 'POST',
+      body: JSON.stringify({ invite: assistantInvite, deviceId: 'assistant-phone' }),
+    }),
+    signing,
+    db,
+    async () => new Response('{}', { status: 200 }),
+    () => now,
+  );
+  const assistantToken = ((await assistantAccepted.json()) as { token: string }).token;
+  const assistantUpload = await call(
+    env,
+    '/api/gym/cloud',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'start',
+        purpose: 'daily-video',
+        dateKey: '2026-11-03',
+        fileName: 'nope.mp4',
+        size: 3,
+        mime: 'video/mp4',
+      }),
+    },
+    assistantToken,
+  );
+  assert.equal(assistantUpload.status, 403);
+
+  const directorIssued = await handleSeatIssue(
+    new Request('https://advantagebjjtimer.com/api/seats/issue', {
+      method: 'POST',
+      body: JSON.stringify({ token: owner, email: 'director@gym.test', preset: 'program-director' }),
+    }),
+    signing,
+    db,
+    () => now,
+  );
+  const directorInvite = ((await directorIssued.json()) as { invite: string }).invite;
+  const directorAccepted = await handleSeatAccept(
+    new Request('https://advantagebjjtimer.com/api/seats/accept', {
+      method: 'POST',
+      body: JSON.stringify({ invite: directorInvite, deviceId: 'director-phone' }),
+    }),
+    signing,
+    db,
+    async () => new Response('{}', { status: 200 }),
+    () => now,
+  );
+  const directorToken = ((await directorAccepted.json()) as { token: string }).token;
+  const directorStatus = (await (await call(env, '/api/gym/cloud?op=status', {}, directorToken)).json()) as {
+    cloud: boolean;
+    dailyVideoDrop?: boolean;
+  };
+  assert.equal(directorStatus.cloud, false);
+  assert.equal(directorStatus.dailyVideoDrop, true);
+  assert.equal((await call(env, '/api/gym/cloud?op=list&purpose=lesson&date=2026-11-03', {}, directorToken)).status, 403);
+
+  const otherId = 'lic-other-academy';
+  await db.prepare(`INSERT INTO licenses (id, created_at) VALUES (?, ?)`).bind(otherId, stamp).run();
+  await db
+    .prepare(
+      `INSERT INTO grants (id, license_id, product, source, source_ref, status, created_at)
+       VALUES ('g-other-cloud', ?, 'advantage-cloud-pro', 'stripe_subscription', 'sub_other', 'active', ?)`,
+    )
+    .bind(otherId, stamp)
+    .run();
+  await db
+    .prepare(
+      `INSERT INTO subscriptions (
+         stripe_subscription_id, license_id, status, cancel_at_period_end, last_event_at, last_synced_at
+       ) VALUES ('sub_other', ?, 'active', 0, ?, ?)`,
+    )
+    .bind(otherId, stamp, stamp)
+    .run();
+  await db
+    .prepare(
+      `INSERT INTO seats (id, gym_license_id, preset, status, created_at, email_label, legacy)
+       VALUES ('seat-other', ?, 'coach', 'claimed', ?, 'other@gym.test', 0)`,
+    )
+    .bind(otherId, stamp)
+    .run();
+  const otherSeat = await token(secret, {
+    licenseId: otherId,
+    grants: ['pro'],
+    tier: 'seat',
+    src: 'seat',
+    deviceId: 'other-phone',
+    now,
+    kind: 'seat',
+    gym: otherId,
+    sid: 'seat-other',
+    preset: 'coach',
+    subs: { state: 'active' },
+  });
+  const otherList = (await (await call(env, '/api/gym/cloud?op=list&purpose=daily-video&date=2026-11-03', {}, otherSeat)).json()) as {
+    files: { name: string }[];
+  };
+  assert.deepEqual(otherList.files, []);
+  const stolen = await call(
+    env,
+    `/api/gym/cloud?op=put&key=${encodeURIComponent(storedKey)}`,
+    { method: 'PUT', body: 'nope', headers: { 'content-type': 'video/mp4' } },
+    otherSeat,
+  );
+  assert.equal(stolen.status, 400);
+  assert.equal(bucket.objects.get(storedKey)?.bytes.length, 3);
+
+  const wrongGym = await token(secret, {
+    licenseId: otherId,
+    grants: ['pro'],
+    tier: 'seat',
+    src: 'seat',
+    deviceId: 'coach-phone',
+    now,
+    kind: 'seat',
+    gym: otherId,
+    sid: issuedBody.seatId,
+    preset: 'coach',
+    subs: { state: 'active' },
+  });
+  assert.equal((await call(env, '/api/gym/cloud?op=status', {}, wrongGym)).status, 403);
+
+  const refreshed = await handleTokenRefresh(
+    new Request('https://advantagebjjtimer.com/api/token/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ token: acceptedBody.token }),
+    }),
+    signing,
+    db,
+    () => now,
+  );
+  assert.equal(refreshed.status, 200);
+  const refreshedToken = ((await refreshed.json()) as { token: string }).token;
+  const refreshedClaims = await verifyToken(refreshedToken, [{ kid: material.kid, jwk: material.publicJwk }]);
+  assert.equal(refreshedClaims?.gym, licenseId);
+  assert.equal(refreshedClaims?.sub, licenseId);
+  assert.equal((await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent(saved.path)}`, {}, refreshedToken)).status, 200);
+
+  await db
+    .prepare(`UPDATE seats SET status = 'revoked', revoked_at = ? WHERE id = ?`)
+    .bind(stamp, issuedBody.seatId)
+    .run();
+  assert.equal((await call(env, '/api/gym/cloud?op=status', {}, refreshedToken)).status, 403);
+  const revokedRefresh = await handleTokenRefresh(
+    new Request('https://advantagebjjtimer.com/api/token/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ token: refreshedToken }),
+    }),
+    signing,
+    db,
+    () => now,
+  );
+  assert.equal(revokedRefresh.status, 401);
+
+  const ownerRefresh = await handleTokenRefresh(
+    new Request('https://advantagebjjtimer.com/api/token/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ token: owner }),
+    }),
+    signing,
+    db,
+    () => now,
+  );
+  assert.equal(ownerRefresh.status, 200);
+  const ownerNext = ((await ownerRefresh.json()) as { token: string }).token;
+  const ownerNextClaims = await verifyToken(ownerNext, [{ kid: material.kid, jwk: material.publicJwk }]);
+  assert.equal(ownerNextClaims?.sub, licenseId);
+  assert.equal(ownerNextClaims?.subs?.cloud, true);
+});
+
+test('paid Cloud follows the stored subscription and a code exemption still opens without it', async () => {
+  const secret = await signingSecret();
+  const material = signingMaterial(secret, 'k1');
+  assert.ok(material);
+  const db = sqliteD1();
+  const licenseId = 'lic-cloud-life';
+  const stamp = now.toISOString();
+  await db.prepare(`INSERT INTO licenses (id, created_at) VALUES (?, ?)`).bind(licenseId, stamp).run();
+  await db
+    .prepare(
+      `INSERT INTO grants (id, license_id, product, source, source_ref, status, created_at, ends_at, revoked_at)
+       VALUES ('g-pro', ?, 'advantage-pro', 'stripe_payment', 'cs_pro', 'active', ?, NULL, NULL)`,
+    )
+    .bind(licenseId, stamp)
+    .run();
+  await db
+    .prepare(
+      `INSERT INTO grants (id, license_id, product, source, source_ref, status, created_at, ends_at, revoked_at)
+       VALUES ('g-cloud', ?, 'advantage-cloud-pro', 'stripe_subscription', 'sub_cloud', 'active', ?, NULL, NULL)`,
+    )
+    .bind(licenseId, stamp)
+    .run();
+  await db
+    .prepare(
+      `INSERT INTO subscriptions (
+         stripe_subscription_id, license_id, status, cancel_at_period_end, current_period_end, past_due_since, last_event_at, last_synced_at
+       ) VALUES ('sub_cloud', ?, 'active', 0, NULL, NULL, ?, ?)`,
+    )
+    .bind(licenseId, stamp, stamp)
+    .run();
+  const signing = { ENTITLEMENT_SIGNING_KEY: secret, ENTITLEMENT_KEY_ID: 'k1' };
+  const bucket = new MemoryBucket();
+  const env: GymCloudEnv = { ...signing, GYM_MEDIA: bucket, ENTITLEMENTS_DB: db };
+  const owner = await token(secret, {
+    licenseId,
+    grants: ['pro', 'coach', 'student', 'white'],
+    tier: 'pro',
+    src: 'stripe',
+    deviceId: 'owner-phone',
+    now,
+    kind: 'pro',
+    subs: { state: 'active', cloud: true },
+  });
+  const statusOf = async () => ((await (await call(env, '/api/gym/cloud?op=status', {}, owner)).json()) as { cloud: boolean }).cloud;
+
+  await db
+    .prepare(`UPDATE subscriptions SET cancel_at_period_end = 1, current_period_end = ? WHERE stripe_subscription_id = 'sub_cloud'`)
+    .bind('2026-12-01T00:00:00.000Z')
+    .run();
+  assert.equal(await statusOf(), true);
+
+  await db
+    .prepare(`UPDATE subscriptions SET current_period_end = ? WHERE stripe_subscription_id = 'sub_cloud'`)
+    .bind('2026-11-01T00:00:00.000Z')
+    .run();
+  assert.equal(await statusOf(), false);
+  assert.equal(bucket.objects.size, 0);
+
+  await db
+    .prepare(
+      `UPDATE subscriptions SET status = 'past_due', cancel_at_period_end = 0, current_period_end = NULL, past_due_since = ? WHERE stripe_subscription_id = 'sub_cloud'`,
+    )
+    .bind('2026-11-02T15:00:00.000Z')
+    .run();
+  assert.equal(await statusOf(), true);
+
+  await db
+    .prepare(`UPDATE subscriptions SET past_due_since = ? WHERE stripe_subscription_id = 'sub_cloud'`)
+    .bind('2026-10-26T15:00:00.000Z')
+    .run();
+  assert.equal(await statusOf(), false);
+
+  await db
+    .prepare(`UPDATE subscriptions SET status = 'paused', past_due_since = NULL WHERE stripe_subscription_id = 'sub_cloud'`)
+    .bind()
+    .run();
+  assert.equal(await statusOf(), false);
+
+  await db
+    .prepare(`UPDATE grants SET status = 'inactive', revoked_at = ? WHERE id = 'g-cloud'`)
+    .bind(stamp)
+    .run();
+  await db.prepare(`UPDATE subscriptions SET status = 'active', past_due_since = NULL WHERE stripe_subscription_id = 'sub_cloud'`).run();
+  assert.equal(await statusOf(), false);
+
+  const bare = sqliteD1();
+  await bare.prepare(`INSERT INTO licenses (id, created_at) VALUES ('lic-stripe-only', ?)`).bind(stamp).run();
+  await bare
+    .prepare(
+      `INSERT INTO grants (id, license_id, product, source, source_ref, status, created_at)
+       VALUES ('g-stripe', 'lic-stripe-only', 'advantage-pro', 'stripe_payment', 'cs_only', 'active', ?)`,
+    )
+    .bind(stamp)
+    .run();
+  const stripeOwner = await token(secret, {
+    licenseId: 'lic-stripe-only',
+    grants: ['pro'],
+    tier: 'pro',
+    src: 'stripe',
+    deviceId: 'stripe-phone',
+    now,
+    kind: 'pro',
+    subs: { state: 'active' },
+  });
+  const stripeEnv: GymCloudEnv = { ...signing, GYM_MEDIA: bucket, ENTITLEMENTS_DB: bare };
+  assert.equal(((await (await call(stripeEnv, '/api/gym/cloud?op=status', {}, stripeOwner)).json()) as { cloud: boolean }).cloud, false);
+
+  const coded = sqliteD1();
+  await coded.prepare(`INSERT INTO licenses (id, created_at) VALUES ('lic-code-pro', ?)`).bind(stamp).run();
+  await coded
+    .prepare(
+      `INSERT INTO grants (id, license_id, product, source, source_ref, status, created_at)
+       VALUES ('g-code', 'lic-code-pro', 'advantage-pro', 'code', 'code:alpha', 'active', ?)`,
+    )
+    .bind(stamp)
+    .run();
+  const codeOwner = await token(secret, {
+    licenseId: 'lic-code-pro',
+    grants: ['white', 'student', 'coach', 'pro'],
+    tier: 'pro',
+    src: 'code',
+    deviceId: 'code-phone',
+    now,
+    kind: 'code',
+  });
+  const codeEnv: GymCloudEnv = { ...signing, GYM_MEDIA: bucket, ENTITLEMENTS_DB: coded };
+  assert.equal(((await (await call(codeEnv, '/api/gym/cloud?op=status', {}, codeOwner)).json()) as { cloud: boolean }).cloud, true);
+
+  const lapsedRefresh = await handleTokenRefresh(
+    new Request('https://advantagebjjtimer.com/api/token/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ token: owner }),
+    }),
+    signing,
+    db,
+    () => now,
+  );
+  assert.equal(lapsedRefresh.status, 200);
+  const lapsedClaims = await verifyToken(((await lapsedRefresh.json()) as { token: string }).token, [
+    { kid: material!.kid, jwk: material!.publicJwk },
+  ]);
+  assert.equal(lapsedClaims?.sub, licenseId);
+  assert.notEqual(lapsedClaims?.subs?.cloud, true);
 });

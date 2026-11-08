@@ -85,23 +85,30 @@ export function readCloudBearer(storage?: { getItem(key: string): string | null 
 }
 
 /**
- * Plus Cloud on a license token. Seats are not Plus Cloud by themselves.
- * This matches the product door without reading the owner-test flag on this phone.
+ * Plus Cloud on a signed pass when this request has no entitlement database.
+ * Seats are not Plus Cloud by themselves. A purchased add-on is `subs.cloud`
+ * on the owner pass. Owner and alpha-pro codes stay open without that flag.
+ * This does not read the owner-test flag on this phone.
  */
 export function claimsOpenPlusCloud(claims: {
   src: string;
   tier: string;
   grants: readonly string[];
-  subs?: { state?: string } | null;
+  subs?: { state?: string; cloud?: boolean } | null;
 } | null): boolean {
   if (!claims) return false;
   if (claims.src === 'seat' || claims.tier === 'seat') return false;
   if (claims.subs?.state === 'locked') return false;
   if (claims.src === 'owner' || claims.tier === 'owner') return true;
+  if (claims.subs?.cloud === true) return true;
   return claims.src === 'code' && claims.grants.includes('pro');
 }
 
-/** A stored grant that means this license has Plus Cloud. Stripe Pro does not. */
+/**
+ * A stored one-time grant that means this license has Plus Cloud.
+ * Stripe Pro does not. The paid add-on is `advantage-cloud-*` and is read
+ * with the subscription row, not this exemption.
+ */
 export function grantRowOpensPlusCloud(row: { product: string; source: string }): boolean {
   return (row.source === 'code' || row.source === 'owner') && row.product === 'advantage-pro';
 }
