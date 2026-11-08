@@ -73,14 +73,19 @@ export function preparePaidImport(chunk: PaidChunkId): PaidLoadBlock | null {
   return null;
 }
 
-export async function clearPaidChunkCache(): Promise<void> {
+/** Remove the paid-screen cookie and cache. A delete that does not stick is a failure. */
+export async function clearPaidScreens(): Promise<void> {
   clearPaidCookie();
   if (typeof caches === 'undefined') return;
-  try {
-    await caches.delete(PAID_CHUNK_CACHE);
-  } catch {
-    /* private mode */
+  await caches.delete(PAID_CHUNK_CACHE);
+  const names = await caches.keys();
+  if (names.includes(PAID_CHUNK_CACHE)) {
+    throw new Error('Paid screens stayed in the cache.');
   }
+}
+
+export async function clearPaidChunkCache(): Promise<void> {
+  await clearPaidScreens();
 }
 
 async function dropUnlisted(allowed: ReadonlySet<string>): Promise<void> {

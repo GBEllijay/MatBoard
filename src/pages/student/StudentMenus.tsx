@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltHeader } from '../../components/BeltHeader';
 import { EditionLadder } from '../../components/EditionLadder';
 import { HomeMark } from '../../components/HomeMark';
+import { SignOutButton } from '../../components/SignOutButton';
 import { SiteFooter } from '../../components/SiteFooter';
 import { loadAcademyLink } from '../../lib/academyPathway';
 import {
@@ -192,6 +193,8 @@ export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
             >
               Lock Student Edition
             </button>
+            {' · '}
+            <SignOutButton />
           </p>
         </div>
         <SiteFooter />

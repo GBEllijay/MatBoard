@@ -7,7 +7,7 @@ import { beltModeOf, withBeltTemplate } from './beltBook.ts';
 import { fundamentalLevelOf, FUNDAMENTAL_LIVE_LEVEL, isFundamentalLevel, type FundamentalLevel } from './fundamentals.ts';
 import { ageIllegalTechniques } from './studentBenchmarks.ts';
 import { joinJournalNotes, splitJournalNotes } from './journalNotes.ts';
-import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
+import { DEFAULT_EVALUATION_OMITTED_IDS, FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { emptyRank } from './studentRank.ts';
 import { clampMinutes, sessionOf } from './matHours.ts';
@@ -218,7 +218,9 @@ export function studentEditionOpen(
 }
 
 export function demoStudentPacket(): string {
-  const report = setStudentProfile(blankStudentReport(1), { displayName: 'Demo Student', gymName: 'Sample Academy' }, 1);
+  const named = setStudentProfile(blankStudentReport(1), { displayName: 'Demo Student', gymName: 'Sample Academy' }, 1);
+  // Fictional Student Edition example. Blue belt is this demo, not an instructor.
+  const report = { ...named, profile: { ...named.profile, belt: 'blue' as const } };
   const withCard = addJournalEntry(
     report,
     {
@@ -684,8 +686,10 @@ export function fundamentalsBoard(report: StudentProgressReport): FundamentalsCa
     const catalogIds = new Set(category.items.map((item) => item.id));
     const items: FundamentalRow[] = [];
     const illegal = new Set(ageIllegalTechniques(report).map((row) => row.catalogId).filter(Boolean));
+    const omittedFromDefault = new Set<string>(DEFAULT_EVALUATION_OMITTED_IDS);
     for (const item of category.items) {
       const saved = report.checklist.find((entry) => entry.categoryId === category.id && entry.catalogItemId === item.id);
+      if (!saved && omittedFromDefault.has(item.id)) continue;
       if (saved?.hidden || illegal.has(item.id)) continue;
       items.push({
         entryId: saved?.id ?? '',

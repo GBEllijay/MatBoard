@@ -1,6 +1,8 @@
 /**
  * Medals on the student card: the three most recent podium finishes from the
- * Results the student records (competition.results). The results model has no
+ * Results the student records (competition.results). These are the student's
+ * own record, usable with no coach, and they are not academy-certified.
+ * The results model has no
  * explicit place field, so the place is read from the recorded matches:
  * - every recorded match a win → gold (1st);
  * - one loss, and it is the last match recorded, after at least one win →

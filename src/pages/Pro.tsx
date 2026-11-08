@@ -8,6 +8,7 @@ import { InstructionsButton } from '../components/InstructionsButton';
 import { LicenseShareButton } from '../components/LicenseShareButton';
 import { ProToolboxCard } from '../components/ProToolboxCard';
 import { useCurrentSeat } from '../components/SeatSessionBar';
+import { SignOutButton } from '../components/SignOutButton';
 import { SiteFooter } from '../components/SiteFooter';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
@@ -19,11 +20,15 @@ import { cameraHubs } from '../lib/pdCamera';
 import { formatUsdFromCents } from '../lib/whitePurchase';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { lockMedia } from '../lib/mediaUnlock';
+import { ownerIdentitySheetVisible } from '../lib/ownerIdentitySheet';
 import { lockPro } from '../lib/proUnlock';
 import { AdvantageCloudHome } from '../components/AdvantageCloudHome';
 import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 import { CloudLapseNotice } from '../components/CloudLapseNotice';
 import { GymCharacterSheet } from '../components/GymCharacterSheet';
+import { InstructorSheet } from '../components/InstructorSheet';
+import { BeltRail } from '../components/BeltRail';
+import './proHomeMenu.css';
 
 export function ProPage() {
   const navigate = useNavigate();
@@ -42,14 +47,18 @@ export function ProPage() {
   const seat = useCurrentSeat();
   const cloudConsole = useProPlusCloudUnlocked();
   const mediaSeat = hubs.length > 0 && hubs.every((hub) => hub.belt === 'purple');
+  const proMenuHubs = hubs.map((hub) =>
+    hub.to === '/slideshow?folder=gallery' && hub.title === MEDIA_CONSOLE_NAME
+      ? { ...hub, title: 'Advantage Media Edition' }
+      : hub,
+  );
 
   return (
-    <main className="home home--pro">
+    <main className="home home--pro home--pro-menu">
       <div className="home__inner">
         {cloudConsole ? <PlayExitMark to={PRO_PLUS_CLOUD_PATH} /> : null}
         <HomeMark to={PRODUCTS_PATH} />
         <CloudLapseNotice />
-        <GymCharacterSheet />
 
         <nav className="home__modes" aria-label="Advantage Pro">
           <BeltHeader
@@ -58,8 +67,20 @@ export function ProPage() {
             title={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro'}
             blurb={mediaSeat ? hubs.map((hub) => hub.title).join(', ') : PRO_LADDER_DETAIL}
           />
+          <GymCharacterSheet />
+          {ownerIdentitySheetVisible({ page: 'pro', proUnlocked: door.proUnlocked, seated: door.seated }) ? (
+            <InstructorSheet />
+          ) : null}
           {cloudConsole && !seat ? <AdvantageCloudHome /> : null}
-          <ProToolboxCard hubs={hubs} label={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro hubs'} />
+          <Link className="pro-hub" to="/white" data-pro-entry="white">
+            <BeltRail kind="white" />
+            <span>Advantage White</span>
+          </Link>
+          <Link className="pro-hub" to="/student" data-pro-entry="student">
+            <BeltRail kind="blue" />
+            <span>Advantage Student Edition</span>
+          </Link>
+          <ProToolboxCard hubs={proMenuHubs} label={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro hubs'} />
           <LicenseShareButton />
         </nav>
 
@@ -105,6 +126,8 @@ export function ProPage() {
               >
                 Lock Pro
               </button>
+              {' · '}
+              <SignOutButton />
               {door.mediaUnlocked ? (
                 <>
                   {' · '}
@@ -122,6 +145,8 @@ export function ProPage() {
               <Link className="home__text-btn" to={PRODUCTS_PATH}>
                 All products
               </Link>
+              {' · '}
+              <SignOutButton />
             </p>
           )}
         </div>

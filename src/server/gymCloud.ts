@@ -35,6 +35,7 @@ import {
   isDailyVideoCloudPath,
   claimsOpenPlusCloud,
   grantRowOpensPlusCloud,
+  ownerCloudGrantOpen,
   gymActorForCloud,
   safeCloudMime,
   type CloudFileRow,
@@ -134,7 +135,7 @@ async function licenseHasPlusCloud(env: GymCloudEnv, licenseId: string, now: Dat
   if (!db) return false;
   try {
     const grants = await grantsForLicense(db, licenseId, now);
-    if (grants.some((row) => grantRowOpensPlusCloud(row))) return true;
+    if (grants.some((row) => grantRowOpensPlusCloud(row) || ownerCloudGrantOpen(row))) return true;
     const cloud = await cloudAccessForLicense(db, licenseId, now);
     return cloud.entitled;
   } catch {
