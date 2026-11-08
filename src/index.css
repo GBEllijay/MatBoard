@@ -3702,16 +3702,20 @@ main.schedule:has(> .tier-home) > .schedule__bar {
   padding-top: calc(var(--mark-home-clear) + var(--safe-t));
 }
 
-/* Document pages scroll inside the page, under a border the content cannot enter.
-   The border is the reserved band for the pinned Home logo. */
+/* Document pages scroll with the window. The Home and back marks stay
+   position:fixed on the viewport, not inside this box, so a phone does not
+   clip them to a nested scroller. The top padding is only the first screen's
+   gap: it scrolls away, and it is not a panel behind the marks. */
 main.home:has(.home__logo),
 main.roster:has(> .tier-home),
 main.white-roster:has(> .tier-home) {
   box-sizing: border-box;
-  height: 100dvh;
-  max-height: 100dvh;
-  overflow: auto;
-  border-top: calc(var(--mark-home-clear) + var(--safe-t)) solid transparent;
+  min-height: 100dvh;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  padding-top: calc(var(--mark-home-clear) + var(--safe-t));
+  border-top: 0;
 }
 
 main.roster:has(> .tier-home) > :not(.play-exit):not(.tier-home) {
@@ -11220,17 +11224,16 @@ input.roster-pick__name:focus,
 }
 
 .techniques__bar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.65rem 0.85rem;
   padding: calc(0.7rem + var(--safe-t)) calc(1rem + var(--safe-r)) 0.75rem calc(4.4rem + var(--safe-l));
-  background: rgba(18, 36, 58, 0.94);
-  border-bottom: 1px solid rgba(252, 192, 0, 0.16);
-  backdrop-filter: blur(14px);
+  background: transparent;
+  border-bottom: 0;
+  backdrop-filter: none;
 }
 
 .techniques > .play-exit {
