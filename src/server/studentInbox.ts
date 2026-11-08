@@ -7,6 +7,9 @@
  * student's own inbox. Assistant coach and program director seats cannot write.
  * Unlock codes, entitlements, Stripe, and Drive are not involved.
  *
+ * These objects are shared copies under the academy license, not a transfer
+ * of the student's journal, photos, or backup. Revoking the student license
+ * ends academy access. It does not delete the student's own history.
  * Clearing an item writes a marker under inbox-cleared/. No R2 object is
  * deleted (gyms keep a 60-day download window after a lapse).
  *
