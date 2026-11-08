@@ -6,13 +6,25 @@
  * A saved photo with no date is the normal record and must keep loading.
  */
 
-import { shrinkImageFile } from './imageShrink.ts';
+import { fitWithinEdge } from './imageShrink.ts';
+import { localPhotoError } from './localPhotoError.ts';
+import { canvasBlob, openStill, type StillSource } from './phoneStill.ts';
 import { BLACK_DEGREE_MAX, RANK_BELTS, RANK_PHOTO_MAX_CHARS, RANK_TAPE_MAX, type RankBelt, type RankPicture } from './progress/types.ts';
-import { assertOriginRoom } from './storageQuota.ts';
+import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 export const RANK_PHOTO_KEY = 'matboard.studentEdition.rankPhotos.v1';
 
 const MAX_EDGE = 960;
+/**
+ * First step is the stored size when it fits {@link RANK_PHOTO_MAX_CHARS}.
+ * Later steps are only used when that JPEG is still over the cap.
+ */
+export const RANK_ENCODE_STEPS = [
+  { edge: MAX_EDGE, quality: 0.62 },
+  { edge: MAX_EDGE, quality: 0.48 },
+  { edge: 720, quality: 0.48 },
+  { edge: 480, quality: 0.42 },
+] as const;
 const PER_BELT = 8;
 const PER_TAPE = 4;
 
@@ -49,24 +61,66 @@ export function emptyRankPhotoStore(): RankPhotoStore {
   return { belts: {}, tapes: {} };
 }
 
+function drawRank(still: StillSource, edge: number): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const fitted = fitWithinEdge(still.width, still.height, edge);
+  const canvas = document.createElement('canvas');
+  canvas.width = fitted.width;
+  canvas.height = fitted.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, fitted.width, fitted.height);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  still.draw(ctx, 0, 0, still.width, still.height, 0, 0, fitted.width, fitted.height);
+  return canvas;
+}
+
+/**
+ * Shrink a promotion photo for this phone.
+ * Throws `Choose a photo.`, `undecodable`, `unencoded`, or `too-large`.
+ * Does not write storage and does not call the network.
+ */
 export async function rankPhotoFromFile(file: File): Promise<string> {
   if (!isImage(file)) throw new Error('Choose a photo.');
-  const blob = await shrinkImageFile(file, {
-    maxEdge: MAX_EDGE,
-    quality: 0.62,
-    passthroughBytes: 0,
-    mimeFor: () => 'image/jpeg',
-    fallbackMimes: ['image/webp'],
-    opaqueBackground: '#ffffff',
-    orient: true,
-    smooth: true,
-  });
-  const image = await blobToDataUrl(blob);
-  if (!image.startsWith('data:image/') || image.length > RANK_PHOTO_MAX_CHARS) {
-    throw new Error('That photo is too large for this phone.');
+  const still = await openStill(file);
+  try {
+    let produced = false;
+    for (const step of RANK_ENCODE_STEPS) {
+      const canvas = drawRank(still, step.edge);
+      if (!canvas) throw new Error('unencoded');
+      for (const mime of ['image/jpeg', 'image/webp'] as const) {
+        const blob = await canvasBlob(canvas, mime, step.quality);
+        if (!blob) continue;
+        produced = true;
+        const image = await blobToDataUrl(blob);
+        if (image.startsWith('data:image/') && image.length <= RANK_PHOTO_MAX_CHARS) {
+          await assertOriginRoom(image.length);
+          return image;
+        }
+      }
+    }
+    throw new Error(produced ? 'too-large' : 'unencoded');
+  } finally {
+    still.close();
   }
-  await assertOriginRoom(image.length);
-  return image;
+}
+
+/** Words for a promotion-photo pick. Slot limits stay their own sentences. */
+export function promotionPhotoError(error: unknown): string {
+  if (error instanceof Error) {
+    const message = error.message;
+    if (
+      message === 'Choose a photo.' ||
+      message.startsWith('That belt') ||
+      message.startsWith('That stripe') ||
+      message.startsWith('Degrees are')
+    ) {
+      return message;
+    }
+  }
+  return localPhotoError(error, 'photo');
 }
 
 export function replaceRankPhotoStore(value: unknown): RankPhotoStore {
@@ -186,7 +240,12 @@ function tapeRow(store: RankPhotoStore, belt: RankBelt): string[][] {
 }
 
 function writeStore(store: RankPhotoStore): void {
-  localStorage.setItem(RANK_PHOTO_KEY, JSON.stringify(store));
+  try {
+    localStorage.setItem(RANK_PHOTO_KEY, JSON.stringify(store));
+  } catch (error) {
+    if (isStorageQuotaError(error)) throw new StorageQuotaError(0);
+    throw error;
+  }
 }
 
 function normalizeStore(value: unknown): RankPhotoStore {

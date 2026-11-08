@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SaveConfirm } from './SaveConfirm';
 import { Link } from 'react-router-dom';
 import { GoogleDriveFolderTools } from '../../components/GoogleDriveFolderTools';
 import { loadBracketPhotos } from '../../lib/bracketPhoto';
@@ -300,6 +301,8 @@ function ExportAndPrint({
   onExport: (kind: StudentExportKind) => Promise<{ ok: boolean; message: string }>;
 }) {
   const [status, setStatus] = useState('');
+  const [savedNote, setSavedNote] = useState('');
+  const [savedPulse, setSavedPulse] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<StudentBackupFile | null>(null);
@@ -308,6 +311,7 @@ function ExportAndPrint({
   const exportFile = async (kind: StudentExportKind) => {
     setError('');
     setStatus('');
+    setSavedNote('');
     const result = await onExport(kind);
     if (result.ok) setStatus(result.message);
     else setError(result.message);
@@ -324,9 +328,12 @@ function ExportAndPrint({
         bracket: loadBracketPhotos(),
       });
       for (const item of filmBlobsFromBackup(pending)) await putFilmBlob(item.id, item.blob);
-      setStatus(result.note);
+      setStatus('');
+      setSavedNote(result.note);
+      setSavedPulse((pulse) => pulse + 1);
       setPending(null);
     } catch (err) {
+      setSavedNote('');
       setError(err instanceof Error ? err.message : 'Could not restore that backup.');
     } finally {
       setBusy(false);
@@ -368,6 +375,7 @@ function ExportAndPrint({
         </Link>
       </div>
       <h3>Restore from backup</h3>
+      {savedNote ? <SaveConfirm message={savedNote} token={savedPulse} /> : null}
       <input
         type="file"
         accept="application/json,.json"
@@ -381,10 +389,12 @@ function ExportAndPrint({
             if (!parsed.ok) {
               setError(parsed.error);
               setPending(null);
+              setSavedNote('');
               return;
             }
             setPending(parsed.file);
             setError('');
+            setSavedNote('');
             setStatus('Choose merge or replace. Merge keeps records that are only on this phone.');
           });
         }}

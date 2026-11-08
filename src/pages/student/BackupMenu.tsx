@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SaveConfirm } from './SaveConfirm';
 import { Link } from 'react-router-dom';
 import { loadBracketPhotos } from '../../lib/bracketPhoto';
 import {
@@ -36,6 +37,8 @@ export function BackupMenu() {
     setIncludeVideosState(included);
   };
   const [status, setStatus] = useState('');
+  const [savedNote, setSavedNote] = useState('');
+  const [savedPulse, setSavedPulse] = useState(0);
   const [error, setError] = useState('');
   const [busyKind, setBusyKind] = useState<StudentExportKind | null>(null);
   const [restoreBusy, setRestoreBusy] = useState(false);
@@ -47,6 +50,7 @@ export function BackupMenu() {
     setBusyKind(kind);
     setError('');
     setStatus('');
+    setSavedNote('');
     const result = await runStudentEditionExport(kind, { includeVideos: videos });
     if (result.ok) {
       if (kind === 'json') setStamp(backupStampLabel(readStudentBackupStamp(localStorage)));
@@ -66,9 +70,12 @@ export function BackupMenu() {
         bracket: loadBracketPhotos(),
       });
       for (const item of filmBlobsFromBackup(pending)) await putFilmBlob(item.id, item.blob);
-      setStatus(result.note);
+      setStatus('');
+      setSavedNote(result.note);
+      setSavedPulse((pulse) => pulse + 1);
       setPending(null);
     } catch (err) {
+      setSavedNote('');
       setError(err instanceof Error ? err.message : 'Could not restore that backup.');
     } finally {
       setRestoreBusy(false);
@@ -102,6 +109,7 @@ export function BackupMenu() {
           </p>
         ) : null}
         <h2 className="s-kicker">Restore from backup</h2>
+        {savedNote ? <SaveConfirm message={savedNote} token={savedPulse} /> : null}
         <p className="student-quiet">Use the Student Edition backup from Back up my journal. A PDF or a spreadsheet is not a backup.</p>
         <input
           type="file"
@@ -116,11 +124,13 @@ export function BackupMenu() {
               if (!parsed.ok) {
                 setError(parsed.error);
                 setPending(null);
+                setSavedNote('');
                 return;
               }
               setPending(parsed.file);
               setError('');
-              setStatus('Choose merge or replace. Merge keeps records that are only on this device.');
+              setSavedNote('');
+              setStatus('Choose merge or replace. Merge keeps records that are only on this phone.');
             });
           }}
         />

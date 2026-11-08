@@ -48,11 +48,14 @@
 }
 .mat-time__stepper {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 .mat-time__value {
-  min-width: 84px;
+  flex: 0 0 auto;
+  min-width: 4.5rem;
   text-align: center;
   font-size: 20px;
   font-weight: 800;
@@ -60,7 +63,18 @@
   color: #1d263a;
 }
 .mat-time__clear {
-  font-size: 13px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 5.5rem;
+  padding: 0 16px;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1;
+  font-size: 15px;
 }
 .mat-time__note {
   font-size: 12px;
@@ -181,7 +195,13 @@
 /* Other session text + the shared time wheel. */
 .mat-time__other { display: grid; gap: 0.3rem; margin: 0.5rem 0; }
 .mat-time__other input { min-height: 44px; font-size: 16px; }
-.mat-time__stepper .wheel-value { min-height: 44px; min-width: 6rem; }
+.mat-time__stepper .wheel-value {
+  flex: 1 1 7.5rem;
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  min-width: min(100%, 6.5rem);
+}
 
 /* Mat hours stat on the #399 profile card face. */
 .profile-face__stats { margin: -4px 0 16px; }

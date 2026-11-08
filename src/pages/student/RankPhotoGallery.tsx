@@ -22,6 +22,7 @@ export function BeltPhotoSection({
   onAdd,
   onRemove,
   date,
+  alert = '',
 }: {
   label: string;
   photos: readonly string[];
@@ -30,6 +31,7 @@ export function BeltPhotoSection({
   onAdd: (file: File | undefined) => void;
   onRemove: (index: number) => void;
   date: ReactNode;
+  alert?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
@@ -128,6 +130,11 @@ export function BeltPhotoSection({
           </label>
         </div>
       </div>
+      {alert ? (
+        <p className="rank-photo-alert" role="alert">
+          {alert}
+        </p>
+      ) : null}
       {photos.length ? (
         <div className="rank-photos">
           {photos.map((image, photoIndex) => (
