@@ -35,22 +35,22 @@ export function StudentHoursPreview() {
           {PREVIEW_NOTE}
         </p>
         <p className="srec-kicker">Student preview</p>
-        <h1>Training hours</h1>
+        <h1 data-testid="training-hours">Training hours</h1>
         <p className="srec-quiet" data-testid="preview-path">
           {PREVIEW_HOURS_PATH}
         </p>
         <p className="srec-note">
           Logged hours stay the example journal total. Earlier hours are what you type for your own history. The planning model is a separate calendar estimate. It does not fill those boxes, and it is not a guaranteed promotion.
         </p>
-        <section className="srec-card" aria-label="Advantage logged hours">
-          <h2>Advantage logged hours</h2>
+        <section className="srec-card" aria-label="advantage hours logged">
+          <h2>advantage hours logged</h2>
           <p className="srec-logged">
-            <span>From the example journal. Not editable here.</span>
+            <span>advantage hours logged</span>
             <strong data-testid="logged-hours">{formatHours(EXAMPLE_LOGGED_HOURS)}</strong>
           </p>
         </section>
-        <section className="srec-card" aria-label="Planning model" data-testid="planning-model">
-          <h2>Planning model</h2>
+        <section className="srec-card" aria-label="Training hours based on general calendar minimums (for reference)" data-testid="general-model">
+          <h2>Training hours based on general calendar minimums (for reference)</h2>
           <p className="srec-note">
             Hours = years × 52 × hours a week. 18 months is 1.5 years. At 3 hours a week the totals are 1.5× the 2-hour totals. At 4 hours a week they are 2×.
           </p>
@@ -67,6 +67,7 @@ export function StudentHoursPreview() {
               </button>
             ))}
           </div>
+          <h3 data-testid="general-timelines">General timelines</h3>
           <ul className="srec-model">
             {PLANNING_SPANS.map((span) => (
               <li className="srec-model-row" key={span.id}>
@@ -89,10 +90,10 @@ export function StudentHoursPreview() {
             <a href={IBJJF_GRADUATION_URL}>IBJJF graduation system</a>, June 2026 PDF, articles 2 and 3.
           </p>
         </section>
-        <section className="srec-card srec-estimate" aria-label="Earlier hours">
-          <h2>Earlier hours</h2>
+        <section className="srec-card srec-estimate" aria-label="Pre-Advantage estimated hours">
+          <h2>Pre-Advantage estimated hours</h2>
           <p className="srec-note" data-testid="hours-example-label">
-            Optional. Type your own history, or leave a belt blank. A blank belt adds nothing. These boxes do not take the planning model.
+            Optional. Type your own history or leave the belt blank.
           </p>
           <p className="srec-word" data-testid="wording-playful">
             <span>{EARLIER_HOURS_PLAYFUL}</span>

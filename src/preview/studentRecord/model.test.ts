@@ -93,7 +93,7 @@ test('estimated hours stay separate from logged hours, and a blank belt adds not
   assert.equal(EARLIER_HOURS_PLAYFUL.includes('\u2014'), true);
   assert.equal(EARLIER_HOURS_PLAYFUL.includes('\u2019'), true);
   const hours = readFileSync(new URL('./StudentHoursPreview.tsx', import.meta.url), 'utf8');
-  const earlierAt = hours.indexOf('aria-label="Earlier hours"');
+  const earlierAt = hours.indexOf('aria-label="Pre-Advantage estimated hours"');
   const combinedAt = hours.indexOf('aria-label="Combined total"');
   const beforeEarlier = hours.slice(0, earlierAt);
   const earlier = hours.slice(earlierAt, combinedAt);
@@ -101,7 +101,29 @@ test('estimated hours stay separate from logged hours, and a blank belt adds not
   assert.equal(beforeEarlier.includes('These hours are estimated.'), false);
   assert.equal(earlier.includes('{EARLIER_HOURS_PLAYFUL}'), true);
   assert.equal(earlier.includes('These hours are estimated.'), false);
-  assert.match(beforeEarlier, /From the example journal/);
+  assert.equal(beforeEarlier.includes('Optional. Type your own history or leave the belt blank.'), false);
+  assert.match(earlier, /<h2>Pre-Advantage estimated hours<\/h2>/);
+  assert.match(earlier, /Optional\. Type your own history or leave the belt blank\./);
+  assert.equal(earlier.includes('A blank belt adds nothing'), false);
+  assert.equal(earlier.includes('do not take the planning model'), false);
+});
+
+test('the hours preview shows the four requested labels', () => {
+  const hours = readFileSync(new URL('./StudentHoursPreview.tsx', import.meta.url), 'utf8');
+  assert.match(hours, /<h1[^>]*>Training hours<\/h1>/);
+  assert.match(hours, /<h2>Training hours based on general calendar minimums \(for reference\)<\/h2>/);
+  assert.equal(hours.includes('>General model<'), false);
+  assert.match(hours, /<h3[^>]*>General timelines<\/h3>/);
+  assert.match(hours, /<h2>advantage hours logged<\/h2>/);
+  assert.match(hours, /<span>advantage hours logged<\/span>/);
+  assert.equal(hours.includes('>Planning model<'), false);
+  assert.equal(hours.includes('From the example journal. Not editable here.'), false);
+  assert.equal(hours.includes('>Advantage logged hours<'), false);
+  assert.match(hours, /PREVIEW_NOTE/);
+  assert.match(hours, /<h2>Pre-Advantage estimated hours<\/h2>/);
+  assert.match(hours, /Optional\. Type your own history or leave the belt blank\./);
+  assert.equal(hours.includes('pre-advantage hour log'), false);
+  assert.match(hours, /\{EARLIER_HOURS_PLAYFUL\}/);
 });
 
 test('the planning model is 2, 3, and 4 hours a week across the four belt spans', () => {
