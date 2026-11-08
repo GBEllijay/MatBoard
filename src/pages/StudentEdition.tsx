@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { bodyScanHref, isBodyZone, STATUS_LABEL, zoneFromText, zoneLabel } from '../lib/bodyScan';
 import './student/bodyScan.css';
 import { StudentHome } from './student/StudentHome';
@@ -43,6 +43,7 @@ import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from '
 import { SharePage } from './student/SharePage';
 import { AcademyConnectPage, ConnectionsPage } from './student/ConnectionsPage';
 import { FundamentalsPage } from './student/FundamentalsPage';
+import { WorkingTechniquesPage } from './student/WorkingTechniques';
 import { PrintReportPage } from './student/PrintReportPage';
 import { ProfilePage } from './student/ProfilePage';
 import {
@@ -60,7 +61,8 @@ import {
   viewJournalEntry,
   type JournalCardView,
 } from '../lib/studentEdition.ts';
-import { clearStudentDemoOverlay } from '../lib/studentDemo';
+import { demoBackupDownload, demoCarryActive, readStagedDemo } from '../lib/demoCarryover';
+import { clearStudentDemoOverlay, STUDENT_FILE_STORAGE_KEY } from '../lib/studentDemo';
 import '../student-edition.css';
 import './student/arena.css';
 import './student/hub.css';
@@ -143,6 +145,15 @@ export function StudentEditionPage() {
     student: useStudentEditionUnlocked(),
   };
   const rest = path.startsWith('/student') ? path.slice('/student'.length).replace(/^\//, '') : '';
+  const demo = studentDemoMode(params, owner);
+  useEffect(() => {
+    if (!demo || !demoCarryActive(localStorage)) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [demo]);
   if (rest === 'claim' || rest.startsWith('claim/')) {
     const raw = rest.startsWith('claim/') ? rest.slice('claim/'.length) : '';
     let code = raw;
@@ -154,7 +165,6 @@ export function StudentEditionPage() {
     return <StudentLicenseClaimPage code={code} gymName={params.get('gym') ?? ''} />;
   }
   const open = studentEditionOpen(params, owner);
-  const demo = studentDemoMode(params, owner);
   if (!open) return <StudentClosed />;
 
   const screen = studentScreenNode(rest);
@@ -178,6 +188,8 @@ function studentScreenNode(rest: string) {
       return <JournalCardPage id={decodeURIComponent(rest.slice('cards/'.length))} />;
     case 'fundamentals':
       return <FundamentalsPage />;
+    case 'working':
+      return <WorkingTechniquesPage />;
     case 'calendar':
       return <CalendarPage />;
     case 'calendar-day':
@@ -235,18 +247,59 @@ function studentScreenNode(rest: string) {
 }
 
 function StudentDemoBanner() {
+  const [ask, setAsk] = useState(false);
+  const [downloadNote, setDownloadNote] = useState('');
+  const leave = () => {
+    clearStudentDemoOverlay();
+    window.location.assign('/products');
+  };
+  const download = () => {
+    const text = readStagedDemo(localStorage)?.text ?? localStorage.getItem(STUDENT_FILE_STORAGE_KEY) ?? '';
+    const built = demoBackupDownload(text);
+    if (!built.ok) {
+      setDownloadNote(built.error);
+      return;
+    }
+    const blob = new Blob([built.json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'advantage-student-demo-backup.json';
+    link.click();
+    URL.revokeObjectURL(url);
+    setDownloadNote('The download has started. That does not by itself mean the file is stored on this phone.');
+  };
   return (
-    <div className="student-demo-banner" role="note">
-      <p>DEMO MODE. Sample journal on this screen. It is not saved to your real Student Edition.</p>
-      <a
-        href="/products"
-        onClick={() => {
-          clearStudentDemoOverlay();
-        }}
-      >
-        Exit demo
-      </a>
-    </div>
+    <>
+      <div className="student-demo-banner" role="note">
+        <p>DEMO MODE. Sample journal on this screen. It is not saved to your real Student Edition.</p>
+        <button
+          type="button"
+          onClick={() => {
+            if (demoCarryActive(localStorage)) setAsk(true);
+            else leave();
+          }}
+        >
+          Exit demo
+        </button>
+      </div>
+      {ask ? (
+        <div className="student-demo-exit" role="dialog" aria-label="Save the demo before leaving">
+          <p>Save a copy before you leave the demo? A purchase that includes Student Edition can use the copy saved on this phone. White does not open Student Edition.</p>
+          <button type="button" onClick={download}>
+            Download backup
+          </button>
+          <button type="button" onClick={() => setAsk(false)}>
+            Keep exploring
+          </button>
+          <button type="button" onClick={leave}>
+            Leave without saving
+          </button>
+          <p>Leave without saving keeps the copy on this phone for a later purchase. It does not copy it into a purchased edition. Moving between demo pages is not leaving.</p>
+          {downloadNote ? <p role="status">{downloadNote}</p> : null}
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -404,7 +457,7 @@ function JournalToday() {
           </section>
           <section className="adv-card adv-card--drills journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
             <h2 className="ink__label journal-techniques__title">Techniques drilled · optional</h2>
-            <TechniqueLines idPrefix="" report={report} rows={techniques} onChange={setTechniques} />
+            <TechniqueLines idPrefix="" report={report} rows={techniques} onChange={setTechniques} onReport={commit} />
           </section>
           {error ? <p role="alert">{error}</p> : null}
           <EntrySavedToast open={savedToast} />
@@ -829,7 +882,7 @@ function JournalEditor({
     minutes: number;
   } & ReturnType<typeof extrasDraft>) => void;
 }) {
-  const { report } = useStudentFile();
+  const { report, commit } = useStudentFile();
   const [extras, setExtras] = useState<SessionExtrasValue>(() => extrasFromCard(card));
   const [date, setDate] = useState(card.date);
   const [className, setClassName] = useState(card.className);
@@ -909,7 +962,7 @@ function JournalEditor({
       </section>
       <section className="adv-card adv-card--drills journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
         <h2 className="ink__label journal-techniques__title">Techniques drilled · optional</h2>
-        <TechniqueLines idPrefix="Edit " report={report} rows={techniques} onChange={setTechniques} />
+        <TechniqueLines idPrefix="Edit " report={report} rows={techniques} onChange={setTechniques} onReport={commit} />
       </section>
       {error ? <p role="alert">{error}</p> : null}
       <div className="student-card__actions journal-actions">

@@ -208,7 +208,7 @@ test('every former hub item is linked from a group menu', () => {
   for (const page of pages) unmount(page);
 });
 
-test('Training & Journal has no Log today bar, and the four journal links stay', () => {
+test('Training & Journal has no Log today bar, and the journal links stay', () => {
   const hub = mount(<StudentHub />, '/student?student=1');
   assert.equal(hub.host.textContent?.includes("Log today's class"), false);
   assert.equal(hub.host.querySelector('.s-pin'), null);
@@ -252,15 +252,28 @@ test('Training & Journal has no Log today bar, and the four journal links stay',
       note: 'Technique and drill links',
       leather: true,
     },
+    {
+      label: "Techniques I'm working on",
+      href: '/student/working?student=1',
+      note: 'Same techniques as the tree',
+      leather: true,
+    },
   ]);
-  assert.deepEqual(
-    [...page.host.querySelectorAll('a.s-extra__link')].map((node) => [node.textContent, node.getAttribute('href')]),
-    [
-      ['Film a move', '/student/videos?student=1#student-film-record'],
-      ['Log a roll result', '/student/results?student=1'],
-    ],
-  );
+  assert.equal(page.host.querySelector('a.s-extra__link'), null);
+  assert.equal(page.host.textContent?.includes('Film a move'), false);
+  assert.equal(page.host.textContent?.includes('Log a roll result'), false);
+  const trainingCalendar = page.host.querySelector('a[aria-label="Calendar"]')?.getAttribute('href');
   unmount(page);
+
+  const competeMenu = mount(<CompeteMenu />, '/student/compete?student=1');
+  const calendarRows = [...competeMenu.host.querySelectorAll('a.s-row')].filter((node) => node.getAttribute('aria-label') === 'Calendar');
+  assert.equal(calendarRows.length, 1);
+  assert.equal(calendarRows[0]?.getAttribute('href'), '/student/calendar?student=1');
+  assert.equal(calendarRows[0]?.classList.contains('s-row--bracket'), true);
+  assert.ok(calendarRows[0]?.querySelector('.s-chev'));
+  assert.equal(competeMenu.host.querySelector('a.s-extra__link'), null);
+  assert.equal(calendarRows[0]?.getAttribute('href'), trainingCalendar);
+  unmount(competeMenu);
 });
 
 test('competitor chips show a named event and a win-loss record when results exist', () => {

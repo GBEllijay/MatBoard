@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { exportProgressPacket } from './progress/format.ts';
 import { addTournament } from './studentCompetition.ts';
-import { addJournalClip, addJournalEntry, blankStudentReport, loadStudentReport, saveStudentReport, setStudentProfile } from './studentEdition.ts';
+import { addJournalClip, addJournalEntry, blankStudentReport, loadStudentReport, saveStudentReport, setStudentProfile, setTechniquePolicy } from './studentEdition.ts';
 import { setRankBelt, setRankLineage } from './studentRank.ts';
 import { loadAssessments, saveAssessment } from './studentAssessment.ts';
 import {
@@ -613,4 +613,116 @@ test('personal goal dismissals travel in a backup for this student only', () => 
   assert.equal(older.file.report.dismissedGoalPrompts, undefined);
   applyBackupToMemory(storage, older.file, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
   assert.deepEqual(loadStudentReport(storage).dismissedGoalPrompts, ['Lineage and history', 'Giving back to the gym']);
+});
+
+test('a newer empty phone keeps a backup name, gym, start date, explicit toggles, rank, and injury', async () => {
+  let saved = setStudentProfile(blankStudentReport(10), { displayName: 'Alex', gymName: 'GB Ellijay', startedOn: '2014-03-01' }, 11);
+  saved = setRankBelt(saved, 'purple', 12);
+  saved = setTechniquePolicy(saved, 'straightAnkleLock', true, 13);
+  saved = setTechniquePolicy(saved, 'wristLocks', false, 14);
+  saved = setTechniquePolicy(saved, 'legLocks', false, 15);
+  saved = setTechniquePolicy(saved, 'heelHooks', false, 16);
+  saved = setTechniquePolicy(saved, 'competition', false, 17);
+  assert.equal(saved.profile.techniquePolicy?.wristLocks, false);
+  assert.equal(saved.profile.techniquePolicy?.competition, false);
+  saved = addJournalEntry(
+    saved,
+    {
+      date: '2026-10-11',
+      className: 'Gi',
+      gameTag: '',
+      techniques: [],
+      partners: '',
+      drills: '',
+      rolls: '',
+      notes: 'ankle',
+      minutes: 300,
+      injury: { area: 'Left ankle', note: 'tweak' },
+    },
+    18,
+  );
+  const built = await buildStudentBackup({
+    report: saved,
+    assessment: { entries: [] },
+    scouting: [],
+    rankPhotos: emptyRankPhotoStore(),
+    bracketPhotos: {},
+    shelf: { plan: null, feedback: null },
+    films: [],
+    blobs: [],
+    includeVideos: false,
+    now: new Date('2026-10-12T00:00:00Z'),
+    recordStamp: false,
+  });
+  assert.match(built.json, /"displayName":"Alex"/);
+  assert.match(built.json, /"gymName":"GB Ellijay"/);
+  assert.match(built.json, /"startedOn":"2014-03-01"/);
+  assert.match(built.json, /"wristLocks":false/);
+  assert.match(built.json, /Left ankle/);
+  const parsed = parseStudentBackup(built.json);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.equal(parsed.file.report.profile.displayName, 'Alex');
+  assert.equal(parsed.file.report.profile.techniquePolicy?.wristLocks, false);
+  assert.equal(parsed.file.report.profile.techniquePolicy?.straightAnkleLock, true);
+  assert.equal(parsed.file.report.journal[0]?.injury?.area, 'Left ankle');
+  assert.equal(parsed.file.report.journal[0]?.minutes, 300);
+  assert.equal(parsed.file.report.profile.belt, 'purple');
+
+  const fresh = blankStudentReport(Date.parse('2026-11-08T00:00:00Z'));
+  assert.ok(fresh.updatedAt > parsed.file.report.updatedAt);
+  const merged = mergeStudentReports(fresh, parsed.file.report);
+  assert.equal(merged.profile.displayName, 'Alex');
+  assert.equal(merged.profile.gymName, 'GB Ellijay');
+  assert.equal(merged.profile.startedOn, '2014-03-01');
+  assert.equal(merged.profile.belt, 'purple');
+  assert.equal(merged.profile.techniquePolicy?.heelHooks, false);
+  assert.equal(merged.rank.tapeCount, saved.rank?.tapeCount ?? 0);
+  assert.equal(merged.journal.some((entry) => entry.injury?.area === 'Left ankle'), true);
+
+  const phone = memory();
+  const localOnly = addJournalEntry(
+    fresh,
+    { date: '2026-01-02', className: 'Open mat', gameTag: '', techniques: [], partners: '', drills: '', rolls: '', notes: 'stays', minutes: 40 },
+    fresh.updatedAt,
+  );
+  saveStudentReport(phone, localOnly);
+  applyBackupToMemory(phone, parsed.file, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
+  const afterMerge = loadStudentReport(phone);
+  assert.equal(afterMerge.profile.displayName, 'Alex');
+  assert.equal(afterMerge.journal.some((entry) => entry.notes === undefined && entry.body.includes('stays') || entry.body.includes('stays')), true);
+  assert.equal(afterMerge.journal.some((entry) => entry.injury?.area === 'Left ankle'), true);
+  const refreshed = loadStudentReport(phone);
+  assert.equal(refreshed.profile.gymName, 'GB Ellijay');
+  assert.equal(phone.getItem('advantage.studentUnlocked'), null);
+  assert.equal(phone.getItem('advantage.entitlement.token'), null);
+
+  const replacePhone = memory();
+  saveStudentReport(replacePhone, setStudentProfile(blankStudentReport(1), { displayName: 'Keep me', gymName: 'Other gym' }, 2));
+  applyBackupToMemory(replacePhone, parsed.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
+  const replaced = loadStudentReport(replacePhone);
+  assert.equal(replaced.profile.displayName, 'Alex');
+  assert.equal(replaced.profile.gymName, 'GB Ellijay');
+  assert.equal(replaced.journal.some((entry) => entry.body.includes('stays')), false);
+  assert.equal(replaced.profile.techniquePolicy?.competition, false);
+
+  const old = {
+    advantage: STUDENT_BACKUP_KIND,
+    version: STUDENT_BACKUP_VERSION,
+    exportedAt: '2024-01-01T00:00:00.000Z',
+    report: JSON.parse(exportProgressPacket(setStudentProfile(blankStudentReport(3), { displayName: 'Old', gymName: 'Old gym', startedOn: '2010-01-01' }, 4))),
+    assessment: { entries: [] },
+    scouting: [],
+    rankPhotos: emptyRankPhotoStore(),
+    bracketPhotos: {},
+    coachPlan: null,
+    coachFeedback: null,
+    films: [],
+  };
+  delete (old.report as { profile: { techniquePolicy?: unknown } }).profile.techniquePolicy;
+  const oldParsed = parseStudentBackup(JSON.stringify(old));
+  assert.equal(oldParsed.ok, true);
+  if (!oldParsed.ok) return;
+  assert.equal(oldParsed.file.report.profile.techniquePolicy, undefined);
+  assert.equal(oldParsed.file.report.profile.displayName, 'Old');
 });

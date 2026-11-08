@@ -76,6 +76,7 @@ import {
   PaidScreensaverPage,
 } from './components/PaidScreen';
 import { TechniqueTreePage } from './pages/TechniqueTree';
+import { PersonalGraphPreviewPage } from './pages/PersonalGraphPreview';
 import { TechniqueTreePreviewPage } from './pages/TechniqueTreePreview';
 import { TechniquesPage } from './pages/Techniques';
 import { TermsPage } from './pages/Terms';
@@ -752,6 +753,8 @@ export default function App() {
       <Route path="/student/*" element={<StudentEditionPage />} />
       {/* Public owner preview. The live Technique Tree stays at /technique-tree. */}
       <Route path="/preview/technique-tree" element={<TechniqueTreePreviewPage />} />
+      {/* Public owner preview. The live working tree stays at /student/working. */}
+      <Route path="/preview/personal-graph" element={<PersonalGraphPreviewPage />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
       <Route path="/card" element={<CardPage />} />
       <Route path="/half-off" element={<HalfOffPage />} />

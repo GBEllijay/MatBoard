@@ -4,13 +4,25 @@
  * a logo they received without changing the coach's saved mark.
  */
 
-import { shrinkImageFile } from './imageShrink.ts';
 import { coachGymLogoFits } from './coachGymFit.ts';
-import { isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
+import { fitWithinEdge } from './imageShrink.ts';
+import { canvasBlob, openStill, type StillSource } from './phoneStill.ts';
+import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 export const STUDENT_GYM_LOGO_KEY = 'matboard.studentGymLogo.v1';
 
-const MAX_EDGE = 512;
+/** Preferred longest edge. Smaller steps are used only when the logo still exceeds the stored cap. */
+export const STUDENT_LOGO_MAX_EDGE = 512;
+const LOGO_PASSTHROUGH_BYTES = 180_000;
+
+const LOGO_ENCODE_STEPS = [
+  { edge: STUDENT_LOGO_MAX_EDGE, quality: 0.86 },
+  { edge: STUDENT_LOGO_MAX_EDGE, quality: 0.7 },
+  { edge: 384, quality: 0.62 },
+  { edge: 256, quality: 0.55 },
+] as const;
+
+const LOGO_SAFE = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 type GymLogoRecord = { version: 1; dataUrl: string };
 
@@ -236,20 +248,71 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
   return `data:${mime};base64,${btoa(binary)}`;
 }
 
-async function shrinkLogo(file: File): Promise<Blob> {
-  return shrinkImageFile(file, {
-    maxEdge: MAX_EDGE,
-    quality: 0.86,
-    passthroughBytes: 180_000,
-    mimeFor: (source) => (source.type === 'image/png' || source.type === 'image/webp' ? source.type : 'image/jpeg'),
-  });
+function drawLogo(still: StillSource, edge: number, opaque: boolean): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const fitted = fitWithinEdge(still.width, still.height, edge);
+  const canvas = document.createElement('canvas');
+  canvas.width = fitted.width;
+  canvas.height = fitted.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  if (opaque) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, fitted.width, fitted.height);
+  }
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  still.draw(ctx, 0, 0, still.width, still.height, 0, 0, fitted.width, fitted.height);
+  return canvas;
+}
+
+/**
+ * Scale a picked logo so it fits on this phone.
+ * A small JPEG, PNG, or WebP that is already within the edge is kept.
+ * Throws `not-image`, `undecodable`, `unencoded`, or `too-large`.
+ */
+async function logoFromFile(file: File): Promise<string> {
+  if (!isImageFile(file)) throw new Error('not-image');
+  const still = await openStill(file);
+  try {
+    if (
+      LOGO_SAFE.has(file.type) &&
+      still.width <= STUDENT_LOGO_MAX_EDGE &&
+      still.height <= STUDENT_LOGO_MAX_EDGE &&
+      file.size <= LOGO_PASSTHROUGH_BYTES
+    ) {
+      const original = await blobToDataUrl(file);
+      if (coachGymLogoFits(original)) return original;
+    }
+    let produced = false;
+    const keepAlpha = file.type === 'image/png' || file.type === 'image/webp';
+    for (const step of LOGO_ENCODE_STEPS) {
+      const transparent = keepAlpha ? drawLogo(still, step.edge, false) : null;
+      const opaque = drawLogo(still, step.edge, true);
+      if (!transparent && !opaque) throw new Error('unencoded');
+      const encoded: Array<[HTMLCanvasElement, string]> = [];
+      if (transparent) {
+        encoded.push([transparent, 'image/png'], [transparent, 'image/webp']);
+      }
+      if (opaque) encoded.push([opaque, 'image/jpeg'], [opaque, 'image/webp']);
+      for (const [canvas, mime] of encoded) {
+        const blob = await canvasBlob(canvas, mime, step.quality);
+        if (!blob) continue;
+        produced = true;
+        const dataUrl = await blobToDataUrl(blob);
+        if (coachGymLogoFits(dataUrl)) return dataUrl;
+      }
+    }
+    throw new Error(produced ? 'too-large' : 'unencoded');
+  } finally {
+    still.close();
+  }
 }
 
 /** Save a picked photo as the student's gym logo. Returns the stored data URL. */
 export async function saveStudentGymLogoFile(file: File, storage: Store | null = defaultStorage()): Promise<string> {
-  if (!isImageFile(file)) throw new Error('not-image');
-  const dataUrl = await blobToDataUrl(await shrinkLogo(file));
-  if (!coachGymLogoFits(dataUrl)) throw new Error('too-large');
+  const dataUrl = await logoFromFile(file);
+  await assertOriginRoom(JSON.stringify({ version: 1, dataUrl }).length);
   writeStudentGymLogo(dataUrl, storage);
   chooseStudentLogo('own', storage);
   return dataUrl;

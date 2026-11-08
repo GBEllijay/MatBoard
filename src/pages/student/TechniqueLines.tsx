@@ -5,27 +5,37 @@
  * Pick opens the fundamentals list with a search box and a My techniques section.
  */
 import { useId, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { ageIllegalTechniques } from '../../lib/studentBenchmarks';
 import {
   JOURNAL_TECHNIQUE_MAX,
-  fundamentalsBoard,
   isFundamentalLink,
+  placeOnFundamentals,
   techniqueDrilledLabel,
   techniqueNoteLabel,
   type FundamentalRow,
   type JournalTechniqueLine,
 } from '../../lib/studentEdition';
-import { techniqueKey, techniquePicker, techniqueSuggestions } from '../../lib/techniqueIndex';
+import { techniquePicker, techniqueSuggestions } from '../../lib/techniqueIndex';
+import { useStudentPath } from './chrome';
+import {
+  adoptWorkingNode,
+  findWorkingByTitle,
+  findWorkingNode,
+  readWorkingGraph,
+  setWorkingFundamental,
+  workingTitleKey,
+} from '../../lib/workingTechniques';
 
-export type TechniqueLineRow = { id: string; name: string; note: string };
+export type TechniqueLineRow = { id: string; name: string; note: string; workingId?: string };
 
 export function blankTechniqueLines(count: number): TechniqueLineRow[] {
   return Array.from({ length: count }, () => ({ id: '', name: '', note: '' }));
 }
 
 export function techniqueLinesFrom(rows: readonly JournalTechniqueLine[], min: number): TechniqueLineRow[] {
-  const out = rows.map((row) => ({ id: row.id, name: row.name, note: row.note ?? '' }));
+  const out = rows.map((row) => ({ id: row.id, name: row.name, note: row.note ?? '', ...(row.workingId ? { workingId: row.workingId } : {}) }));
   while (out.length < min) out.push({ id: '', name: '', note: '' });
   return out;
 }
@@ -37,32 +47,54 @@ export function TechniqueLines({
   report,
   rows,
   onChange,
+  onReport,
 }: {
   idPrefix: string;
   report: StudentProgressReport;
   rows: TechniqueLineRow[];
   onChange: (next: TechniqueLineRow[]) => void;
+  /** Saves the shared technique list. The journal card still saves on its own button. */
+  onReport?: (next: StudentProgressReport) => void;
 }) {
+  const to = useStudentPath();
   const listId = `technique-suggestions-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const [picker, setPicker] = useState<number | null>(null);
+  const [workingFor, setWorkingFor] = useState<number | null>(null);
   const [search, setSearch] = useState('');
+  const [notice, setNotice] = useState('');
   const suggestions = useMemo(() => techniqueSuggestions(report), [report]);
-  const board = useMemo(() => fundamentalsBoard(report), [report]);
   const set = (index: number, patch: Partial<TechniqueLineRow>) =>
     onChange(rows.map((row, at) => (at === index ? { ...row, ...patch } : row)));
   const open = (index: number, query = '') => {
     setSearch(query);
     setPicker(index);
   };
+  const graph = readWorkingGraph(report.working) ?? { nodes: [], edges: [] };
+  const saveGraph = (nextReport: StudentProgressReport) => onReport?.(nextReport);
   const linkByName = (index: number) => {
-    const key = techniqueKey(rows[index]?.name ?? '');
-    for (const category of board)
-      for (const item of category.items)
-        if (key && (techniqueKey(item.label) === key || techniqueKey(item.name) === key)) {
-          set(index, { id: linkId(item), name: item.label });
-          return;
-        }
-    open(index, rows[index]?.name ?? '');
+    const name = rows[index]?.name ?? '';
+    const placed = placeOnFundamentals(report, name);
+    if (!placed.id) {
+      open(index, name);
+      return;
+    }
+    let next = placed.report;
+    const workingId = rows[index]?.workingId ?? '';
+    if (workingId && findWorkingNode(graph, workingId)) {
+      next = { ...next, working: setWorkingFundamental(readWorkingGraph(next.working) ?? graph, workingId, placed.id) };
+    }
+    if (next !== report) saveGraph(next);
+    set(index, { id: placed.id });
+    setNotice(placed.report === report ? '' : `${name.trim()} is on your fundamentals list. It is not marked as learned.`);
+  };
+  const linkWorking = (index: number, title: string) => {
+    const row = rows[index];
+    if (!row || !workingTitleKey(title)) return;
+    const adopted = adoptWorkingNode(graph, { title, fundamentalId: isFundamentalLink(row.id) ? row.id : '' });
+    saveGraph({ ...report, working: adopted.graph });
+    set(index, { workingId: adopted.node.id });
+    setWorkingFor(null);
+    setNotice(adopted.created ? `${adopted.node.title} is on Techniques I'm working on.` : `Linked to ${adopted.node.title}. Same technique, not a second copy.`);
   };
   const view = picker === null ? null : techniquePicker(report, search);
   return (
@@ -88,7 +120,8 @@ export function TechniqueLines({
                 value={row.name}
                 onChange={(event) => {
                   const name = event.target.value;
-                  set(index, { name, id: row.name === name ? row.id : '' });
+                  const same = row.name === name;
+                  set(index, { name, id: same ? row.id : '', workingId: same ? row.workingId : '' });
                 }}
               />
               <button type="button" className="student-pick" aria-label={`Pick ${idPrefix}${label} from fundamentals`} onClick={() => open(index)}>
@@ -108,6 +141,28 @@ export function TechniqueLines({
               />
               <span>On my fundamentals list?</span>
             </label>
+            {(() => {
+              const linked = row.workingId ? findWorkingNode(graph, row.workingId) : null;
+              return (
+                <div className="technique-line__work">
+                  <button type="button" className="student-pick" aria-label={`${idPrefix}Add technique #${index + 1} to techniques I'm working on`} onClick={() => setWorkingFor(index)}>
+                    Techniques I'm working on
+                  </button>
+                  {linked ? (
+                    <>
+                      <Link className="technique-line__open" to={to(`/student/working?node=${encodeURIComponent(linked.id)}`)}>
+                        {`On your working list · ${linked.title}`}
+                      </Link>
+                      <button type="button" className="student-pick" aria-label={`${idPrefix}Remove working link #${index + 1}`} onClick={() => set(index, { workingId: '' })}>
+                        Remove link
+                      </button>
+                    </>
+                  ) : row.workingId ? (
+                    <span className="student-quiet">That technique is no longer on your list.</span>
+                  ) : null}
+                </div>
+              );
+            })()}
           </div>
         );
       })}
@@ -116,6 +171,39 @@ export function TechniqueLines({
           Add another technique
         </button>
       ) : null}
+      {notice ? <p className="student-quiet" role="status">{notice}</p> : null}
+      {workingFor === null ? null : (
+        <div className="student-picker" role="dialog" aria-label={`Techniques I'm working on for ${idPrefix}${techniqueDrilledLabel(workingFor)}`}>
+          <button type="button" className="ink-btn" onClick={() => setWorkingFor(null)}>
+            Close
+          </button>
+          <p className="student-quiet">This adds or selects one technique. It does not mark it learned.</p>
+          {workingTitleKey(rows[workingFor]?.name ?? '') ? (
+            <button type="button" className="student-picker__item" onClick={() => linkWorking(workingFor, rows[workingFor]?.name ?? '')}>
+              {findWorkingByTitle(graph, rows[workingFor]?.name ?? '')
+                ? `Link “${rows[workingFor]?.name.trim()}” to the technique already on your list`
+                : `Add “${rows[workingFor]?.name.trim()}” to Techniques I'm working on`}
+            </button>
+          ) : (
+            <p className="student-quiet">Type the technique name first.</p>
+          )}
+          {graph.nodes.length ? <h2 className="student-picker__category">Already on your list</h2> : null}
+          {graph.nodes.map((node) => (
+            <button
+              key={node.id}
+              type="button"
+              className="student-picker__item"
+              onClick={() => {
+                set(workingFor, { workingId: node.id, name: rows[workingFor]?.name.trim() ? rows[workingFor].name : node.title });
+                setWorkingFor(null);
+                setNotice(`Linked to ${node.title}.`);
+              }}
+            >
+              {`${node.title}${node.kind === 'position' ? ' · Position' : ''}`}
+            </button>
+          ))}
+        </div>
+      )}
       {picker === null || !view ? null : (
         <div className="student-picker" role="dialog" aria-label={`Pick ${idPrefix}${techniqueDrilledLabel(picker)}`}>
           <button type="button" className="ink-btn" onClick={() => setPicker(null)}>

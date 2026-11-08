@@ -39,7 +39,7 @@
   background: transparent;
   background-image: none;
   box-shadow: none;
-  padding: calc(var(--mark-home-clear) + var(--safe-t)) 0 8px;
+  padding: 0 0 8px;
 }
 
 .student.adv-journal .student-leather::after {

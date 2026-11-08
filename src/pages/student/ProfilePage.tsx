@@ -21,6 +21,7 @@ export function ProfilePage() {
   const gymName = report.profile.gymName.trim();
   const marked = Boolean(showPhoto || media.logo || (kids && gymName));
   const to = useStudentPath();
+  const needsFirstProfile = !report.profile.displayName.trim();
   const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null);
   const [saved, setSaved] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -41,6 +42,11 @@ export function ProfilePage() {
             name={kids && !media.logo && !showPhoto ? gymName : ''}
           />
         </header>
+        {needsFirstProfile ? (
+          <p className="profile-restore">
+            <Link to={to('/student/backup')}>Already have a backup? Restore it here</Link>
+          </p>
+        ) : null}
         <StudentCardLayout portrait={showPhoto ? media.portrait : null} logo={media.logo} to={to} />
         <div className="profile-stack">
           <ProfileMedia media={media} kids={kids} />
