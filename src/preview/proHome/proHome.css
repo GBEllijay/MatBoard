@@ -121,7 +121,13 @@
 
 .php-jump { color: #d7e6ff; font-weight: 700; }
 
-.php-connect { display: grid; gap: 10px; }
+.php-split {
+  display: grid;
+  gap: 14px;
+}
+
+.php-connect { display: grid; gap: 10px; align-content: start; }
+.php-connect .ip-id { grid-template-columns: 1fr; }
 .php-connect h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.03em; }
 .php-example {
   justify-self: start;
@@ -137,6 +143,12 @@
   text-align: left;
 }
 .php-example:focus-visible { outline: 3px solid #6ea8ff; outline-offset: 3px; }
+
+.php-scope { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; color: #f5f1e8; }
+
+@media (min-width: 740px) {
+  .php-split { grid-template-columns: 1fr 1fr; align-items: start; }
+}
 
 /* Instructor concept only. Not used on the cream Pro preview. */
 .php-card {

@@ -12,6 +12,10 @@ import {
   MEDIA_MENU_PREVIEW_PATH,
   WHITE_HUB_PREVIEW_PATH,
   instructorConceptCards,
+  PREVIEW_INSTRUCTOR_PRICE,
+  PREVIEW_MEDIA_PLUS_PRICE,
+  PREVIEW_SKINS_NOTE,
+  PREVIEW_STUDENT_PRICE,
   mediaPreviewCards,
   mediaStudentCard,
   previewProHubs,
@@ -96,20 +100,52 @@ test('the Media preview keeps the three live subtitles and drops the belt rails'
   assert.match(page, /MEDIA_EXAMPLE/);
   assert.match(page, /<CardMark mark=\{card\.mark\} \/>/);
   assert.equal(mediaStudentCard().to, JOURNAL_DESTINATION);
-  assert.equal(mediaStudentCard().title, 'Student Edition');
+  assert.equal(mediaStudentCard().title, 'Student Edition / My Journal');
+  assert.match(mediaStudentCard().note, /Basic skins/);
+  assert.match(page, /PREVIEW_SKINS_NOTE/);
+  assert.equal(page.split('to={student.to}').length - 1, 1);
+  assert.match(page, /AcademyLinkPreview/);
+  assert.match(page, /StorageChoicePreview place="media"/);
+  assert.match(page, /PreviewPriceDecisions place="media"/);
+  assert.doesNotMatch(page, /\$[0-9]+\/year|Stripe|checkout/);
   assert.match(page, /to=\{student\.to\}/);
   const studentAt = page.indexOf('aria-label="Personal Student Edition"');
   const ladderAt = page.indexOf('EditionLadder page="media"');
   const toolsAt = page.indexOf('aria-label="Advantage Media Edition menu"');
   assert.ok(toolsAt > 0 && studentAt > toolsAt && ladderAt > studentAt);
   assert.doesNotMatch(page, /student-roster|white-hub|\/white"|joinAcademy|writeGymName|\/student\/academy|localStorage/);
-  assert.match(page, /data-testid="media-gym-connect"/);
-  assert.match(page, /Example only\. Not connected/);
-  assert.match(page, /type="button"/);
+  const choices = readFileSync('src/preview/proHome/PreviewChoices.tsx', 'utf8');
+  assert.match(choices, /data-testid="media-gym-connect"/);
+  assert.match(choices, /Example only\. Not connected/);
+  assert.match(choices, /type="button"/);
   assert.doesNotMatch(readFileSync('src/pages/MediaEditionHub.tsx', 'utf8'), /Connect to a gym|media-gym-connect/);
   const css = readFileSync('src/preview/proHome/proHome.css', 'utf8');
   assert.match(css, /\.php \.home__mark \{[^}]*grid-area:\s*auto/);
   assert.match(css, /\.php-card \{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 92px/);
+});
+
+test('preview prices are the stated monthly figures and live price lines stay put', () => {
+  assert.equal(PREVIEW_STUDENT_PRICE, '$2.99/month');
+  assert.equal(PREVIEW_MEDIA_PLUS_PRICE, '$2.99/month');
+  assert.equal(PREVIEW_INSTRUCTOR_PRICE, '$5.99/month');
+  assert.match(PREVIEW_SKINS_NOTE, /basic skins/);
+  assert.match(PREVIEW_SKINS_NOTE, /does not change live skin access/);
+  const choices = readFileSync('src/preview/proHome/PreviewChoices.tsx', 'utf8');
+  const previewModel = readFileSync('src/preview/proHome/model.ts', 'utf8');
+  assert.match(previewModel, /Google Drive stays an optional alternative/);
+  assert.match(previewModel, /does not pay a Google bill/);
+  assert.match(previewModel, /heavier video traffic/);
+  assert.match(choices, /PREVIEW_DRIVE_NOTE/);
+  assert.match(choices, /does not add a Media base monthly fee/);
+  assert.doesNotMatch(choices, /localStorage|joinAcademy|Stripe/);
+  const instructor = readFileSync('src/preview/proHome/InstructorCardsPreview.tsx', 'utf8');
+  assert.match(instructor, /StorageChoicePreview place="instructor"/);
+  assert.match(instructor, /PreviewPriceDecisions place="instructor"/);
+  const live = readFileSync('src/lib/productPrices.ts', 'utf8');
+  assert.match(live, /STUDENT_PRICE_LINE = '\$19\.99 one-time'/);
+  assert.match(live, /MEDIA_PRICE_LINE = '\$29\.99 one-time'/);
+  assert.match(live, /INSTRUCTOR_DISPLAY_PRICE_LINE = '\$49\.99 one-time'/);
+  assert.match(live, /CLOUD_ADDON_LINE = '\+ optional Advantage Cloud \$5\.99\/month'/);
 });
 
 test('live Pro, Instructor, and hub paint are not edited for this preview', () => {

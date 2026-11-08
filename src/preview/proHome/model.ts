@@ -168,14 +168,38 @@ export function mediaPreviewCards(): MediaPreviewCard[] {
   }));
 }
 
-/** Personal Student Edition. Same /student page as the Pro shortcut. Not a roster. */
+/** Personal journal. One card, the existing /student page. Not a roster. */
 export function mediaStudentCard(): { title: string; to: string; note: string } {
   return {
-    title: 'Student Edition',
+    title: 'Student Edition / My Journal',
     to: JOURNAL_DESTINATION,
-    note: 'Personal journal. Same page as the Pro Student Edition button.',
+    note: 'Personal journal. Basic skins. Same page as the Pro Student Edition button.',
   };
 }
+
+/** Preview decisions only. Live one-time prices and Stripe prices stay where they are. */
+export const PREVIEW_STUDENT_PRICE = '$2.99/month';
+export const PREVIEW_MEDIA_PLUS_PRICE = '$2.99/month';
+export const PREVIEW_INSTRUCTOR_PRICE = '$5.99/month';
+
+export const PREVIEW_PRICE_NOTE =
+  'Preview pricing decision. Not live billing. Nothing is charged. These figures do not replace the one-time prices on the edition ladder.';
+
+export const PREVIEW_MEDIA_PLUS_SCOPE = [
+  'Cloudflare-hosted Pro Shop images',
+  'promotions',
+  'belt promotions',
+  'media console access',
+] as const;
+
+export const PREVIEW_DRIVE_NOTE =
+  'Google Drive stays an optional alternative. MediaPlus does not pay a Google bill. Hosted storage means this person does not need to pay for or configure Google Drive.';
+
+export const PREVIEW_SKINS_NOTE =
+  'Student Edition keeps basic skins. A Media upgrade adds the additional and advanced skins. This preview does not change live skin access.';
+
+export const PREVIEW_INSTRUCTOR_PRICE_NOTE =
+  'Instructor Edition $5.99/month is for heavier video traffic. No annual price is set in this preview.';
 
 export function instructorConceptCards(): InstructorCard[] {
   return COACH_UNLIMITED_TOOLS.map((tool) => {
