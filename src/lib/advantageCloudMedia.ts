@@ -31,6 +31,7 @@ export const CLOUD_DAILY_DROP_ONLY =
   "A program director can send videos to today's daily videos. Lesson plans and other Cloud files stay with the coaches.";
 export const CLOUD_UNAVAILABLE_MESSAGE = 'Advantage Cloud is not on this license.';
 export const CLOUD_HOME_UNBOUND = 'Advantage Cloud is not connected on this site.';
+export const CLOUD_HOME_ERROR = 'Advantage Cloud could not be checked. Nothing on this device was changed.';
 export const CLOUD_HOME_CONNECTED =
   'Advantage Cloud is connected. Sign in on this device to see how much space this license is using.';
 export const CLOUD_ROLE_HOME =
@@ -309,7 +310,9 @@ export type CloudFileRow = {
 
 export type CloudHomeView =
   | { phase: 'unbound' }
+  | { phase: 'error' }
   | { phase: 'connected' }
+  | { phase: 'unavailable' }
   | {
       phase: 'ready';
       canUpload: boolean;
@@ -318,17 +321,30 @@ export type CloudHomeView =
       capBytes: number;
     };
 
-/** Probe the bucket, then read this license's space when the device is signed in. */
+/** Words for the owner Cloud status. A fixture result is not a live connection. */
+export function cloudHomeStatusLine(view: CloudHomeView | null): string {
+  if (!view) return 'Checking Advantage Cloud…';
+  if (view.phase === 'unbound') return CLOUD_HOME_UNBOUND;
+  if (view.phase === 'error') return CLOUD_HOME_ERROR;
+  if (view.phase === 'unavailable') return CLOUD_UNAVAILABLE_MESSAGE;
+  if (view.phase === 'connected') return CLOUD_HOME_CONNECTED;
+  return cloudUsageLine(view.licenseUsedBytes, view.bucketUsedBytes, view.capBytes);
+}
+
+/**
+ * Probe the site bucket, then read this license when the device is signed in.
+ * This does not provision storage and does not call Google Drive or OneDrive.
+ */
 export async function loadAdvantageCloudHome(fetcher: CloudFetcher = fetch): Promise<CloudHomeView> {
   let bound = false;
   try {
     const probe = await fetcher('/api/gym/media?probe=1');
-    if (probe.ok) {
-      const body = (await probe.json()) as { bound?: unknown };
-      bound = body.bound === true;
-    }
+    if (probe.status === 503) return { phase: 'unbound' };
+    if (!probe.ok) return { phase: 'error' };
+    const body = (await probe.json()) as { bound?: unknown };
+    bound = body.bound === true;
   } catch {
-    bound = false;
+    return { phase: 'error' };
   }
   if (!bound) return { phase: 'unbound' };
   const token = readCloudBearer();
@@ -337,9 +353,10 @@ export async function loadAdvantageCloudHome(fetcher: CloudFetcher = fetch): Pro
     const response = await fetcher('/api/gym/cloud?op=status', {
       headers: { authorization: `Bearer ${token}` },
     });
-    if (!response.ok) return { phase: 'connected' };
+    if (response.status === 401) return { phase: 'connected' };
+    if (!response.ok) return { phase: 'error' };
     const body = (await response.json()) as CloudStatusBody;
-    if (!body.cloud) return { phase: 'connected' };
+    if (!body.cloud) return { phase: 'unavailable' };
     return {
       phase: 'ready',
       canUpload: Boolean(body.canUpload),
@@ -348,7 +365,7 @@ export async function loadAdvantageCloudHome(fetcher: CloudFetcher = fetch): Pro
       capBytes: body.capBytes ?? DEFAULT_CLOUD_CAP_BYTES,
     };
   } catch {
-    return { phase: 'connected' };
+    return { phase: 'error' };
   }
 }
 

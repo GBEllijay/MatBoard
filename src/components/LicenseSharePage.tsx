@@ -6,8 +6,7 @@ import { useSeatDoor } from '../hooks/useSeatDoor';
 import { providerLabel } from '../lib/academyPathway';
 import { isCoachUnlimitedUnlocked, subscribeCoachUnlock } from '../lib/coachUnlock';
 import { readDriveBinding, subscribeDriveBinding } from '../lib/googleDrive';
-import { readGymName } from '../lib/gymName';
-import { useGymLogo } from '../hooks/useGymBrand';
+import { useGymLogo, useGymName } from '../hooks/useGymBrand';
 import { listInstructorSeats, subscribeInstructorSeats, type InstructorSeat } from '../lib/instructorSeats';
 import {
   INSTRUCTOR_SHARE_HEADER,
@@ -215,7 +214,7 @@ function StudentShareBody() {
   const links = studentShareLinks({
     google: readDriveBinding(),
     oneDrive: readOneDriveBinding(),
-    gymName: readGymName(),
+    gymName: useGymName(),
     license: licenseIdFromStoredToken() ?? undefined,
     origin: origin(),
   });

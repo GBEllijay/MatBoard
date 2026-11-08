@@ -1,6 +1,8 @@
 /**
- * Default gym / academy name for this device.
- * Paired with the Media Console logo in `matboard.gymLogo.v1`.
+ * Academy name for this device (`matboard.gymName.v1`).
+ * The academy profile on Pro is the master editor. Media Console writes this same key.
+ * Paired with the logo in `matboard.gymLogo.v1`.
+ * A class-board title and a student's own academy name are separate and are not written here.
  * New competitor cards can start from `readGymName()` when their own gym is empty.
  */
 

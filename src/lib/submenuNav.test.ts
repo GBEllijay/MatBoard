@@ -97,6 +97,24 @@ test('Student Edition pages go back one level, and a card returns to the card li
   );
 });
 
+test('academy profile counts return to the home that opened them', () => {
+  assert.equal(submenuBackTarget({ pathname: '/roster', search: 'from=academy&home=/pro', ...pro }), '/pro');
+  assert.equal(
+    submenuBackTarget({ pathname: '/roster', search: 'from=academy&home=/pro-plus-cloud', ...pro }),
+    '/pro-plus-cloud',
+  );
+  assert.equal(
+    submenuBackTarget({ pathname: '/notes', search: 'plan=unlimited&from=academy&home=/pro-plus-cloud', ...pro }),
+    '/pro-plus-cloud',
+  );
+  assert.equal(submenuBackTarget({ pathname: '/instructors', search: 'from=academy&home=/pro', ...pro }), '/pro');
+  assert.equal(
+    submenuBackTarget({ pathname: '/instructors', search: 'from=academy&home=/pro-plus-cloud' }),
+    '/pro-plus-cloud',
+  );
+  assert.equal(submenuBackTarget({ pathname: '/instructors', search: 'from=academy&home=https://evil', ...pro }), '/pro');
+});
+
 test('Pro submenus go back one level to Pro', () => {
   assert.equal(submenuBackTarget({ pathname: '/coach-unlimited', ...pro }), '/pro');
   assert.equal(submenuBackTarget({ pathname: '/instructors', ...pro }), '/pro');

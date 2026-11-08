@@ -38,6 +38,7 @@ export function MediaEditionHubPage() {
           <BeltHeader kind="purple" title={MEDIA_EDITION_HUB_TITLE} />
           <SuiteMenuLinks links={MEDIA_EDITION_MENU} label="Advantage Media Edition menu" />
         </section>
+        <EditionLadder page="media" />
         {!door.seated && door.mediaUnlocked ? (
           <div className="home__hints">
             <p className="home__soon">
@@ -59,7 +60,6 @@ export function MediaEditionHubPage() {
             </p>
           </div>
         ) : null}
-        <EditionLadder page="media" />
         <SiteFooter />
       </div>
     </main>

@@ -75,6 +75,7 @@ import { competitionSendOffer } from '../lib/coachCompetitionUpdate';
 import { rankSendOffer } from '../lib/coachRankUpdate';
 import { seatPermissionAllows } from '../lib/instructorSeats';
 import { readGymName } from '../lib/gymName';
+import { useGymName } from '../hooks/useGymBrand';
 import {
   ADULT_BELTS,
   KIDS_BELTS,
@@ -739,6 +740,7 @@ function CompetitionCardSheet({
   onToggleCheckIn: () => void;
   onChangeDetails: () => void;
 }) {
+  const deviceGymName = useGymName();
   // The Student roster card this competitor card was made from, if any, carries the coach's assessments.
   const source = rosterStudents.find(
     (row) => row.rosterList === 'student' && readRosterCard(row.id).competitorCardId === student.id,
@@ -752,7 +754,7 @@ function CompetitionCardSheet({
         student={student}
         plan={plan}
         look={look}
-        gymName={readGymName()}
+        gymName={deviceGymName}
         coachScores={latest ? latest.scores : null}
         coachScoredOn={latest?.date}
         checkIn={{ checkedIn: student.checkedIn, onToggle: onToggleCheckIn }}

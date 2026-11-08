@@ -128,7 +128,10 @@ test('Pro Plus Cloud page is the head instructor home', () => {
   assert.doesNotMatch(page, /fetch\(|stripe\.com|oauth|WHITE_CHECKOUT|Continue to checkout|lockPro|lockMedia/i);
   const home = readFileSync(new URL('../components/AdvantageCloudHome.tsx', import.meta.url), 'utf8');
   assert.match(home, /data-cloud-block="advantage-cloud"/);
-  assert.match(home, /CLOUD_HOME_UNBOUND/);
+  assert.match(home, /cloudHomeStatusLine/);
+  assert.match(home, /Check again/);
+  assert.match(home, /refreshEntitlement/);
+  assert.doesNotMatch(home, /Connect Google|OneDrive/);
   assert.match(home, /CLOUD_ROLE_HOME/);
   assert.match(home, /ADVANTAGE_CLOUD_DRIVE_NOTE/);
   assert.match(home, /Upload daily videos/);
@@ -146,13 +149,47 @@ test('Pro Plus Cloud page is the head instructor home', () => {
   assert.doesNotMatch(pro, /plain|red-bar|pro-cloud/);
 });
 
-test('the products page points an open Cloud holder at the existing console', () => {
+test('the products page keeps Pro and Pro + Cloud as separate open links', () => {
   assert.match(home, /useProPlusCloudUnlocked/);
   assert.match(home, /PRO_PLUS_CLOUD_OPEN_LABEL/);
-  assert.match(home, /to=\{cloudOpen \? PRO_PLUS_CLOUD_PATH : '\/pro'\}/);
+  assert.match(home, /ownerEditionTarget/);
+  assert.match(home, /to="\/pro"/);
+  assert.match(home, /to=\{PRO_PLUS_CLOUD_PATH\}/);
+  assert.doesNotMatch(home, /to=\{cloudOpen \? PRO_PLUS_CLOUD_PATH : '\/pro'\}/);
   assert.doesNotMatch(home, /function ProPlusCloudCard/);
   assert.doesNotMatch(home, /mode-card--cloud/);
   assert.doesNotMatch(home, /Continue to checkout/);
+});
+
+test('Pro and Pro + Cloud both show the academy profile under the logo and above the belt', () => {
+  const sheetAt = page.indexOf('<GymCharacterSheet />');
+  const beltAt = page.indexOf('<BeltHeader');
+  assert.ok(sheetAt > -1 && beltAt > sheetAt);
+  assert.match(page, /<HomeMark to=\{PRODUCTS_PATH\} \/>/);
+  assert.match(page, /<PlayExitMark to=\{PRODUCTS_PATH\} \/>/);
+  assert.doesNotMatch(page, /Academy profile/);
+  assert.match(pro, /<GymCharacterSheet \/>/);
+  const proSheet = pro.indexOf('<GymCharacterSheet />');
+  const proBelt = pro.indexOf('<BeltHeader');
+  assert.ok(proSheet > -1 && proBelt > proSheet);
+  assert.match(pro, /cloudConsole \? <PlayExitMark to=\{PRO_PLUS_CLOUD_PATH\} \/> : null/);
+  assert.match(pro, /<HomeMark to=\{PRODUCTS_PATH\} \/>/);
+  assert.match(pro, /cloudConsole && !seat \? <AdvantageCloudHome \/> : null/);
+  assert.doesNotMatch(pro, /Navigate to=\{PRO_PLUS_CLOUD_PATH\}/);
+  const css = readFileSync(new URL('../components/gymSheet.css', import.meta.url), 'utf8');
+  assert.match(css, /\.home--pro \.home__inner \{\s*padding-top: calc\(var\(--mark-home\) \+ 1rem \+ var\(--safe-t\)\);/);
+});
+
+test('the public Pro + Cloud belt is the alpha page, not the console', () => {
+  const info = readFileSync(new URL('../pages/ProPlusCloudInfo.tsx', import.meta.url), 'utf8');
+  const belts = readFileSync(new URL('./storefrontBelts.ts', import.meta.url), 'utf8');
+  assert.match(app, /path="\/editions\/pro-cloud" element=\{<ProPlusCloudInfoPage \/>\}/);
+  assert.match(app, /path="\/pro-plus-cloud" element=\{<ProPlusCloudRoute \/>\}/);
+  assert.match(info, /Not for sale on this page/);
+  assert.match(info, /AlphaCodeEntry tier="pro-cloud"/);
+  assert.doesNotMatch(info, /useProPlusCloudUnlocked|redeemAccessCode|localStorage/);
+  assert.match(belts, /to: PRO_PLUS_CLOUD_INFO_PATH/);
+  assert.doesNotMatch(belts, /proPlusCloudUnlocked|cloudOpen/);
 });
 
 test('the cloud route is its own guard, and /pro keeps the worn black belt', () => {

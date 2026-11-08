@@ -14,7 +14,7 @@ import {
 } from '../lib/academyPathway';
 import { cloudStorage } from '../lib/cloudStorage';
 import { licenseIdFromStoredToken } from '../lib/studentInboxClient';
-import { readGymName } from '../lib/gymName';
+import { readGymName, subscribeGymName } from '../lib/gymName';
 import { readDriveBinding, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import { readOneDriveBinding, readOneDriveSession } from '../lib/oneDrive';
 import { COACH_UNLIMITED_PATH } from '../lib/productNames';
@@ -96,6 +96,7 @@ export function AcademyPathwayPanel() {
   }, [reload, driveTick]);
 
   useEffect(() => subscribeDriveBinding(() => setDriveTick((value) => value + 1)), []);
+  useEffect(() => subscribeGymName(() => setDriveTick((value) => value + 1)), []);
 
   const copy = async (url: string) => {
     try {

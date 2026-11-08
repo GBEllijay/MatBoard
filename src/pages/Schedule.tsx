@@ -15,7 +15,7 @@ import {
 } from '../lib/fullscreen';
 import { LESSON_COVER_HOME_HINT } from '../lib/lessonScreenCover';
 import { Sheet } from '../components/Sheet';
-import { useGymLogo } from '../hooks/useGymBrand';
+import { useGymLogo, useGymName } from '../hooks/useGymBrand';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useScheduleAssets, useScheduleState } from '../hooks/useStores';
 import { ADVANTAGE_MARK_SRC, resolveScheduleLogo } from '../lib/gymLogo';
@@ -178,7 +178,8 @@ export function SchedulePage() {
   const today = todayWeekday();
   const stamp = formatBoardStamp();
   const gymLogo = useGymLogo();
-  const gymName = schedule.title.trim();
+  const deviceGymName = useGymName();
+  const gymName = schedule.title.trim() || deviceGymName.trim();
   const headerLogo = resolveScheduleLogo(gymLogo, logoUrl);
 
   useWakeLock(true);
@@ -560,7 +561,7 @@ function ScheduleBackup({
                 } from this file?`
               : `Replace the weekly classes on this device with ${pending.classCount} ${
                   pending.classCount === 1 ? 'class' : 'classes'
-                }? Gym name, QR link, and notices stay as they are.`}
+                }? Board title, QR link, and notices stay as they are.`}
           </p>
           <button type="button" className="btn" onClick={onConfirm}>
             Replace schedule
@@ -757,20 +758,22 @@ function ScheduleEditor({
       </fieldset>
 
       <label>
-        Gym name
+        Board title
         <input
           value={schedule.title}
           onChange={(event) => setBoardTitle(event.target.value)}
-          placeholder="Shows on the board header"
-          aria-label="Gym name"
+          placeholder="Academy name, when this is blank"
+          aria-label="Board title"
         />
       </label>
+      <p className="schedule-edit__hint">
+        Shown on this board. Leave it blank to use the academy name. A title here stays when the academy name changes.
+      </p>
 
       <fieldset>
         <legend>Logo</legend>
         <p className="schedule-edit__hint">
-          The board uses the Media Console custom gym logo when one is saved. Otherwise it uses the
-          picture you pick here, then the Advantage mark.
+          The board uses the academy logo when one is saved. Otherwise it uses the picture you pick here, then the Advantage mark. Removing the picture here does not remove the academy logo.
         </p>
         <div className="schedule-edit__preview-row">
           <div className={`schedule-edit__thumb${logoUrl ? ' is-filled' : ''}`}>

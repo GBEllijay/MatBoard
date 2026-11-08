@@ -128,6 +128,7 @@ const HEADER_ALIASES: Record<string, Field> = {
   body: 'body',
   'notice detail': 'body',
   'board title': 'boardTitle',
+  // Older files called the board title "gym name". It is not the academy name.
   'gym name': 'boardTitle',
   gym: 'boardTitle',
   'qr link': 'qr',
@@ -498,7 +499,7 @@ export function formatScheduleCsvSummary(result: ScheduleCsvImport): string {
   const classes = `${result.classCount} ${result.classCount === 1 ? 'class' : 'classes'}`;
   const skipped = result.skipped ? ` ${result.skipped} skipped.` : '';
   if (result.mode === 'replace-classes') {
-    return `Replaced weekly classes (${classes}). Gym name, QR, and notices stayed.${skipped}`;
+    return `Replaced weekly classes (${classes}). Board title, QR, and notices stayed.${skipped}`;
   }
   const specials = `${result.specialCount} special ${result.specialCount === 1 ? 'date' : 'dates'}`;
   return `Replaced the schedule (${classes}, ${specials}).${skipped}`;

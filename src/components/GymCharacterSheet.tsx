@@ -4,8 +4,15 @@
  * Sits above the Pro belt console. Hidden for seats the roster does not include,
  * unless the owner opts them in. No locked tiles.
  */
-import { useEffect, useState, useSyncExternalStore, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useCurrentSeat } from './SeatSessionBar';
+import {
+  academyInstructorsHref,
+  academyLessonHref,
+  academyProfileHome,
+  academyRosterHref,
+} from '../lib/academySheetNav.ts';
 import { ensureGymBackfill } from '../lib/gymBackfill.ts';
 import { installGymActor } from '../lib/gymActor.ts';
 import { syncGymEvents } from '../lib/gymEventSync.ts';
@@ -25,8 +32,16 @@ import {
 } from '../lib/gymEvents.ts';
 import { getGymEventsSnapshot, readGymMeta, subscribeGymEvents } from '../lib/gymEventLog.ts';
 import { ADVANTAGE_MARK_SRC, readGymLogo, saveGymLogoFile, subscribeGymLogo } from '../lib/gymLogo.ts';
-import { readGymName } from '../lib/gymName.ts';
-import { getGymProfileSnapshot, profileOptIn, subscribeGymProfile, writeGymProfile, type GymProfile } from '../lib/gymProfile.ts';
+import { GYM_NAME_MAX, readGymName, subscribeGymName, writeGymName } from '../lib/gymName.ts';
+import {
+  getGymProfileSnapshot,
+  gymLineageText,
+  gymLineageVisible,
+  profileOptIn,
+  subscribeGymProfile,
+  writeGymProfile,
+  type GymProfile,
+} from '../lib/gymProfile.ts';
 import type { GymEvent } from '../lib/gymEvents.ts';
 import './gymSheet.css';
 
@@ -42,17 +57,28 @@ function useLogo(): string | null {
   return useSyncExternalStore(subscribeGymLogo, readGymLogo, readGymLogo);
 }
 
+function useDeviceGymName(): string {
+  return useSyncExternalStore(subscribeGymName, readGymName, readGymName);
+}
+
 export function GymCharacterSheet() {
   installGymActor();
   const events = useEvents();
   const profile = useProfile();
   const logo = useLogo();
+  const deviceGymName = useDeviceGymName();
   const seat = useCurrentSeat();
+  const home = academyProfileHome(useLocation().pathname);
+  const [editing, setEditing] = useState(false);
   const [logoNote, setLogoNote] = useState('');
+  const nameRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     ensureGymBackfill();
     void syncGymEvents();
   }, []);
+  useEffect(() => {
+    if (editing) nameRef.current?.focus();
+  }, [editing]);
 
   const optedIn = profileOptIn(profile, seat?.presetId ?? null);
   const access = { seatId: seat?.id ?? null, preset: seat?.presetId ?? null, optedIn };
@@ -75,7 +101,7 @@ export function GymCharacterSheet() {
       ? instructorTallies(split.totals).map((row) => (row.seatId === view.seatId ? row : { ...row, name: 'Other instructors', seatId: 'other' }))
       : instructorTallies(events);
   const collapsed = collapseOthers(instructors, view.kind === 'own' ? view.seatId : null);
-  const gymName = readGymName() || 'Your academy';
+  const gymName = deviceGymName || 'Your academy';
   const owner = !seat;
 
   const onLogoFile = (event: ChangeEvent<HTMLInputElement>) => {
@@ -94,7 +120,7 @@ export function GymCharacterSheet() {
       <div className="sheet-zone sheet-zone--identity" data-zone="identity">
         <h3 className="sheet-cap">Identity</h3>
         <div className="gym-id">
-          {owner ? (
+          {owner && editing ? (
             <label className="gym-id__logo-hit" data-gym-logo={logo ? 'set' : 'empty'}>
               {logo ? (
                 <img className="gym-id__logo" src={logo} alt="Gym logo" />
@@ -120,11 +146,36 @@ export function GymCharacterSheet() {
             <p>{cloud ? 'Advantage Cloud' : 'This device'}</p>
             {profile.foundedOn ? <p>Founded {profile.foundedOn}</p> : null}
             {profile.founders.trim() ? <p>Founders {profile.founders}</p> : null}
-            {profile.lineage.trim() ? <p>{profile.lineage}</p> : null}
+            {gymLineageText(profile) ? <p className="gym-lineage-read">{gymLineageText(profile)}</p> : null}
+            {owner ? (
+              <button
+                type="button"
+                className="gym-edit"
+                aria-expanded={editing}
+                data-testid="academy-edit"
+                onClick={() => setEditing((open) => !open)}
+              >
+                {editing ? 'Done' : '✎ Edit academy profile'}
+              </button>
+            ) : null}
           </div>
         </div>
-        {owner ? (
+        {owner && editing ? (
           <form className="gym-fields" onSubmit={(event) => event.preventDefault()}>
+            <label>
+              Academy name
+              <input
+                ref={nameRef}
+                aria-label="Academy name"
+                value={deviceGymName}
+                maxLength={GYM_NAME_MAX}
+                autoComplete="organization"
+                onChange={(event) => writeGymName(event.target.value)}
+              />
+            </label>
+            <p className="gym-sheet__note">
+              Saved on this device. Media, the gallery, the timer, and the class board use this name and the logo above. A board title, when one is set, shows on that board instead. A student&apos;s own academy name is separate.
+            </p>
             <label>
               Founded
               <input type="date" value={profile.foundedOn} onChange={(event) => writeGymProfile({ foundedOn: event.target.value })} />
@@ -133,10 +184,33 @@ export function GymCharacterSheet() {
               Founders
               <input value={profile.founders} maxLength={120} onChange={(event) => writeGymProfile({ founders: event.target.value })} />
             </label>
-            <label>
-              Lineage
-              <textarea value={profile.lineage} maxLength={240} onChange={(event) => writeGymProfile({ lineage: event.target.value })} />
-            </label>
+            <div className="gym-lineage">
+              <button
+                type="button"
+                role="switch"
+                className="gym-lineage-switch"
+                aria-checked={gymLineageVisible(profile)}
+                aria-describedby="gym-lineage-help"
+                onClick={() => writeGymProfile({ lineageVisible: !gymLineageVisible(profile) })}
+              >
+                <span>Show lineage</span>
+                <span aria-hidden="true">{gymLineageVisible(profile) ? 'On' : 'Off'}</span>
+              </button>
+              <p id="gym-lineage-help" className="gym-sheet__note">
+                Teaching ancestry of this academy: who it was founded under, and who that teacher was under. Not instructors who have taught or visited.
+              </p>
+              {gymLineageVisible(profile) ? (
+                <label>
+                  Lineage
+                  <textarea
+                    aria-label="Lineage"
+                    value={profile.lineage}
+                    maxLength={240}
+                    onChange={(event) => writeGymProfile({ lineage: event.target.value })}
+                  />
+                </label>
+              ) : null}
+            </div>
             <fieldset>
               <legend className="sheet-cap">Share academy totals</legend>
               {(
@@ -165,22 +239,10 @@ export function GymCharacterSheet() {
       </div>
       <div className="sheet-zone sheet-zone--stats" data-zone="stats">
         <div className="sheet-stats">
-          <p className="sheet-stat">
-            <span className="sheet-stat__num">{promotions}</span>
-            <span>Promotions</span>
-          </p>
-          <p className="sheet-stat">
-            <span className="sheet-stat__num">{stripes}</span>
-            <span>Stripes given</span>
-          </p>
-          <p className="sheet-stat">
-            <span className="sheet-stat__num">{classes.count}</span>
-            <span>Classes taught</span>
-          </p>
-          <p className="sheet-stat">
-            <span className="sheet-stat__num">{active}</span>
-            <span>Active students</span>
-          </p>
+          <CountTile owner={owner} href={academyRosterHref(home)} label="Promotions" count={promotions} detail="Open the roster. Promotions are entered on a student card." />
+          <CountTile owner={owner} href={academyRosterHref(home)} label="Stripes given" count={stripes} detail="Open the roster. Stripes are entered on a student card." />
+          <CountTile owner={owner} href={academyLessonHref(home)} label="Classes taught" count={classes.count} detail="Open the lesson plan. I taught this is what this count records." />
+          <CountTile owner={owner} href={academyRosterHref(home)} label="Active students" count={active} detail="Open the roster. Students are added there." />
         </div>
       </div>
       <div className="sheet-zone sheet-zone--radar" data-zone="belts">
@@ -218,20 +280,16 @@ export function GymCharacterSheet() {
         )}
       </div>
       <div className="sheet-zone sheet-zone--wins" data-zone="instructors">
-        <h3 className="sheet-cap">Instructors</h3>
-        {collapsed.length ? (
-          <ul className="gym-log">
-            {collapsed.map((row) => (
-              <li key={row.seatId}>
-                <b>{row.name}</b>
-                <span>
-                  {row.classes} {row.classes === 1 ? 'class' : 'classes'} · {row.stripes} stripes · {row.promotions} promotions
-                </span>
-              </li>
-            ))}
-          </ul>
+        {owner ? (
+          <Link
+            className="gym-zone-link"
+            to={academyInstructorsHref(home)}
+            aria-label="Open instructor invitation and access. These lines are classes and promotions, not seat assignments."
+          >
+            <InstructorLines rows={collapsed} />
+          </Link>
         ) : (
-          <p className="gym-sheet__empty">No classes or promotions recorded yet.</p>
+          <InstructorLines rows={collapsed} />
         )}
       </div>
       <div className="sheet-zone sheet-zone--record" data-zone="tenure">
@@ -248,6 +306,55 @@ export function GymCharacterSheet() {
         </p>
       </div>
     </section>
+  );
+}
+
+function CountTile({
+  owner,
+  href,
+  label,
+  count,
+  detail,
+}: {
+  owner: boolean;
+  href: string;
+  label: string;
+  count: number;
+  detail: string;
+}) {
+  const body = (
+    <>
+      <span className="sheet-stat__num">{count}</span>
+      <span>{label}</span>
+    </>
+  );
+  if (!owner) return <p className="sheet-stat">{body}</p>;
+  return (
+    <Link className="sheet-stat sheet-stat--link" to={href} aria-label={`${label}. ${detail}`}>
+      {body}
+    </Link>
+  );
+}
+
+function InstructorLines({ rows }: { rows: readonly InstructorTally[] }) {
+  return (
+    <>
+      <h3 className="sheet-cap">Instructors</h3>
+      {rows.length ? (
+        <ul className="gym-log">
+          {rows.map((row) => (
+            <li key={row.seatId}>
+              <b>{row.name}</b>
+              <span>
+                {row.classes} {row.classes === 1 ? 'class' : 'classes'} · {row.stripes} stripes · {row.promotions} promotions
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="gym-sheet__empty">No classes or promotions recorded yet.</p>
+      )}
+    </>
   );
 }
 
