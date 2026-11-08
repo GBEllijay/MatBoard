@@ -26,7 +26,7 @@ function readToken(): string {
 export async function requestServerSeat(input: {
   email: string;
   presetId: InstructorPresetId | null;
-}): Promise<{ invite: string; seatId: string } | { reason: 'cap' | 'closed' | 'offline' }> {
+}): Promise<{ invite: string; seatId: string } | { reason: 'cap' | 'closed' | 'offline'; detail?: string }> {
   const token = readToken();
   if (!token) return { reason: 'offline' };
   try {
@@ -35,13 +35,25 @@ export async function requestServerSeat(input: {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ token, email: input.email, preset: input.presetId }),
     });
-    const body = (await response.json()) as { ok?: boolean; invite?: string; seatId?: string; reason?: string };
-    if (response.status === 409 || body.reason === 'cap') return { reason: 'cap' };
-    if (!response.ok || !body.invite || !body.seatId) return { reason: 'closed' };
+    const body = (await response.json()) as { ok?: boolean; invite?: string; seatId?: string; reason?: string; error?: string };
+    const failure = seatIssueClientFailure(response.status, body);
+    if (failure) return failure.reason === 'cap' ? { reason: 'cap' } : { reason: 'closed', detail: failure.detail };
+    if (!body.invite || !body.seatId) return { reason: 'closed' };
     return { invite: body.invite, seatId: body.seatId };
   } catch {
     return { reason: 'offline' };
   }
+}
+
+/** Map a seat-issue response. Cap stays cap. Any other failure keeps the server sentence. */
+export function seatIssueClientFailure(
+  status: number,
+  body: { error?: unknown; reason?: unknown; ok?: unknown; invite?: unknown; seatId?: unknown },
+): { reason: 'cap' } | { reason: 'closed'; detail?: string } | null {
+  if (status === 409 || body.reason === 'cap') return { reason: 'cap' };
+  if (status >= 200 && status < 300 && body.ok !== false) return null;
+  const detail = typeof body.error === 'string' && body.error.trim() ? body.error.trim() : undefined;
+  return { reason: 'closed', ...(detail ? { detail } : {}) };
 }
 
 export async function issueSeatWithServer(input: {
@@ -52,7 +64,9 @@ export async function issueSeatWithServer(input: {
 }): Promise<IssueInviteResult> {
   const server = await requestServerSeat({ email: input.email, presetId: input.presetId ?? null });
   if ('reason' in server && server.reason === 'cap') return { ok: false, reason: 'cap' };
-  if ('reason' in server && server.reason === 'closed') return { ok: false, reason: 'owner' };
+  if ('reason' in server && server.reason === 'closed') {
+    return { ok: false, reason: 'owner', ...(server.detail ? { detail: server.detail } : {}) };
+  }
   return issueInstructorInvite({
     email: input.email,
     permissions: input.permissions,

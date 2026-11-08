@@ -1,0 +1,44 @@
+/* Instructor tool cards on the live Coach Unlimited page. No left belt rail. */
+
+.instructor-tools {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.instructor-tool {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 10px;
+  align-items: center;
+  min-height: 96px;
+  padding: 14px 14px 14px 16px;
+  border-radius: 16px;
+  border: 1.5px solid #004eba;
+  background: #0c2344;
+  color: #f5f1e8;
+  font-weight: 800;
+  font-size: clamp(1.05rem, 2.7vw, 1.28rem);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  text-align: left;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.instructor-tool:focus-visible {
+  outline: 3px solid #6ea8ff;
+  outline-offset: 3px;
+}
+
+.instructor-tool__mark {
+  width: 92px;
+  height: 72px;
+  border-radius: 12px;
+  background: rgba(110, 168, 255, 0.12);
+}
+
+@media (orientation: landscape) and (min-width: 740px) {
+  .instructor-tools {
+    grid-template-columns: 1fr 1fr;
+  }
+}

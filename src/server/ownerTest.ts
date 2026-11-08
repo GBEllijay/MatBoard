@@ -1,7 +1,9 @@
 import type { Door } from '../lib/entitlementToken.ts';
 import type { GrantDoor } from './codeCatalog.ts';
 import { secretMatches } from './codeCrypto.ts';
+import type { D1Database } from './d1.ts';
 import { expandGrants } from './grantMatrix.ts';
+import { provisionOwnerAcademy } from './ownerCloudProvision.ts';
 import { GENERIC_CODE_FAILURE } from './paywallDecisions.ts';
 import { allowAttempt, clientIp, rateBucket, rateLimitedResponse, OWNER_TEST_LIMIT } from './rateLimit.ts';
 import { appVersionOf } from '../lib/appCapability.ts';
@@ -52,6 +54,8 @@ function clampDays(raw: unknown): number {
 export type OwnerTestServices = {
   signingKey?: string;
   keyId?: string;
+  /** When set, a Pro owner unlock is stored as a real academy license. */
+  db?: D1Database | null;
 };
 
 export async function handleOwnerTest(
@@ -98,7 +102,35 @@ export async function handleOwnerTest(
   const deviceId = typeof deviceField === 'string' && deviceField.trim() ? deviceField.trim().slice(0, 80) : 'owner-test-device';
   const signingKey = services.signingKey ?? env.ENTITLEMENT_SIGNING_KEY;
   let token: string | null = null;
-  if (signingKey && doors.length) {
+  let responseGrants: GrantDoor[] = listed;
+  if (signingKey && services.db && doors.includes('pro')) {
+    let licenseId = '';
+    try {
+      const provisioned = await provisionOwnerAcademy(services.db, { now: stamp, endsAt: expiresAt });
+      licenseId = provisioned.licenseId;
+    } catch {
+      return json(503, { ok: false, error: 'Entitlement storage is not set up yet. Bind ENTITLEMENTS_DB.' });
+    }
+    token = await issueToken(
+      signingKey,
+      {
+        licenseId,
+        grants: doors,
+        tier: 'owner',
+        src: 'owner',
+        deviceId,
+        now: stamp,
+        kind: 'owner-test',
+        ownerTestSeconds: days * 24 * 60 * 60,
+        grantEndsAt: expiresAt,
+        appVersion: appVersionOf(request),
+      },
+      services.keyId ?? env.ENTITLEMENT_KEY_ID,
+    );
+    if (!token) return json(503, { ok: false, error: 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY.' });
+    // The owner is not an instructor seat. A seat is issued from the invite panel.
+    responseGrants = listed.filter((door) => door !== 'seat');
+  } else if (signingKey && doors.length) {
     token = await issueToken(
       signingKey,
       {
@@ -136,7 +168,7 @@ export async function handleOwnerTest(
   }
   return json(200, {
     ok: true,
-    grants: listed,
+    grants: responseGrants,
     expiresAt,
     source: 'owner-test',
     tier,
