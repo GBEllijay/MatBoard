@@ -572,6 +572,13 @@ export type JournalClip = {
   note: string;
   createdAt: number;
   updatedAt: number;
+  /**
+   * Optional pointer at one fundamental or one working technique.
+   * Absent on older links. The url stays a link. This file does not hold the video.
+   */
+  techniqueAnchor?: { kind: 'fundamental' | 'working'; id: string; name: string };
+  /** Journal card this link was added from. Absent when the link is only in the library. */
+  journalEntryId?: string;
 };
 
 export type CalendarEvent = {

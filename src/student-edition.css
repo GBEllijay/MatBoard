@@ -3184,3 +3184,33 @@ body:has(main.academy-modern) .parent-approvals button {
 body:has(main.academy-modern) .parent-approvals ~ main.student.academy-modern {
   padding-top: 12px;
 }
+
+.journal-videos__actions,
+.video-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.journal-videos__item,
+.video-link__list {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.video-link {
+  display: grid;
+}
+
+.video-link__choice {
+  margin: 0;
+  font-weight: 700;
+}
+
+.journal-videos__actions .ink-btn,
+.video-link .ink-btn,
+.video-link__list .ink-btn {
+  flex: 1 1 12rem;
+  min-height: 44px;
+}

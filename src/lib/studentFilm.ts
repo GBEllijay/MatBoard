@@ -52,6 +52,10 @@ export type StudentFilm = {
   provider: AcademyProvider | '';
   driveFileId: string;
   dateFolder: string;
+  /** Fundamental or working technique. Absent on older films. The bytes stay out of the progress file. */
+  techniqueAnchor?: { kind: 'fundamental' | 'working'; id: string; name: string };
+  /** Journal card this film was saved for. Absent when it was filmed from the library alone. */
+  journalEntryId?: string;
 };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -111,7 +115,7 @@ export function searchStudentFilms(films: readonly StudentFilm[], query: string)
   const newest = [...films].sort((a, b) => b.createdAt - a.createdAt);
   if (!needle) return newest;
   return newest.filter((film) =>
-    `${film.technique}\n${film.note}\n${film.fileName}\n${film.date}\n${studentFilmLabel(film)}`.toLowerCase().includes(needle),
+    `${film.technique}\n${film.note}\n${film.fileName}\n${film.date}\n${studentFilmLabel(film)}\n${film.techniqueAnchor?.name ?? ''}`.toLowerCase().includes(needle),
   );
 }
 
@@ -142,6 +146,19 @@ function cleanFilm(value: unknown): StudentFilm | null {
     provider: where === 'phone' ? '' : provider,
     driveFileId: typeof row.driveFileId === 'string' ? row.driveFileId.slice(0, 200) : '',
     dateFolder: typeof row.dateFolder === 'string' ? row.dateFolder.slice(0, 40) : videoDateFolderName(date),
+    ...filmAnchor(row),
+  };
+}
+
+function filmAnchor(row: Partial<StudentFilm>): Pick<StudentFilm, 'techniqueAnchor' | 'journalEntryId'> | Record<string, never> {
+  const anchor = row.techniqueAnchor;
+  const kind = anchor?.kind === 'fundamental' || anchor?.kind === 'working' ? anchor.kind : '';
+  const id = typeof anchor?.id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(anchor.id) ? anchor.id : '';
+  const name = typeof anchor?.name === 'string' ? anchor.name.trim().replace(/\s+/g, ' ').slice(0, 80) : '';
+  const journalEntryId = typeof row.journalEntryId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(row.journalEntryId) ? row.journalEntryId : '';
+  return {
+    ...(kind && id && name ? { techniqueAnchor: { kind, id, name } } : {}),
+    ...(journalEntryId ? { journalEntryId } : {}),
   };
 }
 

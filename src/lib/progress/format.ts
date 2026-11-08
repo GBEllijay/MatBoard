@@ -632,7 +632,9 @@ export function searchJournal(journal: readonly JournalEntry[], query: string): 
 export function searchJournalClips(clips: readonly JournalClip[], query: string): JournalClip[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return [...clips];
-  return clips.filter((clip) => `${clip.description}\n${clip.note}\n${clip.url}`.toLowerCase().includes(needle));
+  return clips.filter((clip) =>
+    `${clip.description}\n${clip.note}\n${clip.url}\n${clip.techniqueAnchor?.name ?? ''}`.toLowerCase().includes(needle),
+  );
 }
 
 export function exportProgressCsv(packet: ProgressPacket): string {
@@ -1609,7 +1611,7 @@ function readClip(value: unknown, index: number, errors: string[]): JournalClip 
     errors.push(`${label} must be an object.`);
     return { id: '', url: '', description: '', note: '', createdAt: 0, updatedAt: 0 };
   }
-  return {
+  const clip: JournalClip = {
     id: readId(record.id, `${label} id`, errors),
     url: readHttpUrl(record.url, `${label} link`, errors),
     description: readString(record.description, `${label} note`, PROGRESS_NOTE_MAX, errors),
@@ -1617,6 +1619,22 @@ function readClip(value: unknown, index: number, errors: string[]): JournalClip 
     createdAt: readTime(record.createdAt, `${label} createdAt`, errors),
     updatedAt: readTime(record.updatedAt, `${label} updatedAt`, errors),
   };
+  const anchor = readClipAnchor(record.techniqueAnchor);
+  if (anchor) clip.techniqueAnchor = anchor;
+  const journalEntryId = readOptionalId(record.journalEntryId, `${label} journal card`, errors);
+  if (journalEntryId) clip.journalEntryId = journalEntryId;
+  return clip;
+}
+
+function readClipAnchor(value: unknown): JournalClip['techniqueAnchor'] | undefined {
+  if (value == null) return undefined;
+  const record = asRecord(value);
+  if (!record) return undefined;
+  const kind = record.kind === 'fundamental' || record.kind === 'working' ? record.kind : '';
+  const id = typeof record.id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(record.id) ? record.id : '';
+  const name = typeof record.name === 'string' ? record.name.trim().replace(/\s+/g, ' ').slice(0, PROGRESS_NAME_MAX) : '';
+  if (!kind || !id || !name) return undefined;
+  return { kind, id, name };
 }
 
 function readHttpUrl(value: unknown, label: string, errors: string[]): string {
