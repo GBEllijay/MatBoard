@@ -161,7 +161,7 @@ test('the products page keeps Pro and Pro + Cloud as separate open links', () =>
   assert.doesNotMatch(home, /Continue to checkout/);
 });
 
-test('Pro and Pro + Cloud both show the academy profile under the logo and above the belt', () => {
+test('Pro shows the academy profile under the belt; Pro + Cloud stays above its belt', () => {
   const sheetAt = page.indexOf('<GymCharacterSheet />');
   const beltAt = page.indexOf('<BeltHeader');
   assert.ok(sheetAt > -1 && beltAt > sheetAt);
@@ -171,7 +171,15 @@ test('Pro and Pro + Cloud both show the academy profile under the logo and above
   assert.match(pro, /<GymCharacterSheet \/>/);
   const proSheet = pro.indexOf('<GymCharacterSheet />');
   const proBelt = pro.indexOf('<BeltHeader');
-  assert.ok(proSheet > -1 && proBelt > proSheet);
+  const proWhite = pro.indexOf('data-pro-entry="white"');
+  const proStudent = pro.indexOf('data-pro-entry="student"');
+  const proHubs = pro.indexOf('<ProToolboxCard');
+  assert.ok(proBelt > -1 && proSheet > proBelt);
+  assert.ok(proWhite > proSheet && proStudent > proWhite && proHubs > proStudent);
+  assert.match(pro, /to="\/white"/);
+  assert.match(pro, /to="\/student"/);
+  assert.match(pro, /home--pro-menu/);
+  assert.doesNotMatch(pro, /preview\/white-hub|preview\/pro-home/);
   assert.match(pro, /cloudConsole \? <PlayExitMark to=\{PRO_PLUS_CLOUD_PATH\} \/> : null/);
   assert.match(pro, /<HomeMark to=\{PRODUCTS_PATH\} \/>/);
   assert.match(pro, /cloudConsole && !seat \? <AdvantageCloudHome \/> : null/);

@@ -26,6 +26,8 @@ import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 import { CloudLapseNotice } from '../components/CloudLapseNotice';
 import { GymCharacterSheet } from '../components/GymCharacterSheet';
 import { InstructorSheet } from '../components/InstructorSheet';
+import { BeltRail } from '../components/BeltRail';
+import './proHomeMenu.css';
 
 export function ProPage() {
   const navigate = useNavigate();
@@ -46,15 +48,11 @@ export function ProPage() {
   const mediaSeat = hubs.length > 0 && hubs.every((hub) => hub.belt === 'purple');
 
   return (
-    <main className="home home--pro">
+    <main className="home home--pro home--pro-menu">
       <div className="home__inner">
         {cloudConsole ? <PlayExitMark to={PRO_PLUS_CLOUD_PATH} /> : null}
         <HomeMark to={PRODUCTS_PATH} />
         <CloudLapseNotice />
-        <GymCharacterSheet />
-        {ownerIdentitySheetVisible({ page: 'pro', proUnlocked: door.proUnlocked, seated: door.seated }) ? (
-          <InstructorSheet />
-        ) : null}
 
         <nav className="home__modes" aria-label="Advantage Pro">
           <BeltHeader
@@ -63,7 +61,25 @@ export function ProPage() {
             title={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro'}
             blurb={mediaSeat ? hubs.map((hub) => hub.title).join(', ') : PRO_LADDER_DETAIL}
           />
+          <GymCharacterSheet />
+          {ownerIdentitySheetVisible({ page: 'pro', proUnlocked: door.proUnlocked, seated: door.seated }) ? (
+            <InstructorSheet />
+          ) : null}
           {cloudConsole && !seat ? <AdvantageCloudHome /> : null}
+          <Link className="pro-hub" to="/white" data-pro-entry="white">
+            <BeltRail kind="white" />
+            <span>
+              White
+              <small className="pro-hub__sub">Scoreboard and round timer.</small>
+            </span>
+          </Link>
+          <Link className="pro-hub" to="/student" data-pro-entry="student">
+            <BeltRail kind="blue" />
+            <span>
+              Student Edition
+              <small className="pro-hub__sub">Personal journal.</small>
+            </span>
+          </Link>
           <ProToolboxCard hubs={hubs} label={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro hubs'} />
           <LicenseShareButton />
         </nav>
