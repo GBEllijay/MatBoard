@@ -8,6 +8,7 @@
 
 import { ACADEMY_FREE_NOTE } from './academyPathway.ts';
 import { FREE_INSTRUCTOR_SEATS, FREE_STUDENT_LICENSES } from './proBundleMath.ts';
+import { PERSONAL_GRAPH_PREVIEW_BANNER } from './personalGraphPreview.ts';
 import { TECHNIQUE_TREE_PREVIEW_BANNER } from './techniqueTreePreview.ts';
 
 export const FAQ_PATH = '/faq';
@@ -159,11 +160,19 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     category: 'Fundamentals',
     question: 'Is there a technique graph that follows me from belt to belt?',
     paragraphs: [
-      'Not in the live journal. Techniques drilled on a class card are notes for that day. Fundamentals is the checklist. A shared index from belt to belt is not available.',
-      'The Instructor Technique Tree is a coach tool. Those trees stay on the coach’s phone.',
-      `A page that says “${TECHNIQUE_TREE_PREVIEW_BANNER}” is a draft. It keeps that draft apart from your journal and apart from the live coach Technique Tree.`,
+      'Open Training & Journal, then Techniques I’m working on. The list and the tree are the same techniques, saved in your Student Edition file on this device. A step points at a technique that is already on the list. It does not make a second copy.',
+      'On a journal card, Techniques drilled can add or link a name to that list. Fundamentals stay a smaller checklist. Adding a name does not mark it learned.',
+      'Export tree makes a file you send yourself. Import tree shows a preview first. Nothing is added until you press Accept import. If a parent approval is on, the import waits.',
+      'That list is yours. A shared index of every belt is not available. There is no place to enter a guessed total of time from before you used the app.',
+      'The Instructor Technique Tree remains the coach tool on the coach’s phone.',
+      `A page that says “${PERSONAL_GRAPH_PREVIEW_BANNER}” is an illustration. It is not your saved list.`,
+      `A page that says “${TECHNIQUE_TREE_PREVIEW_BANNER}” is a separate draft. It is not your working list and not the live coach Technique Tree.`,
     ],
-    links: [{ label: 'Technique Tree', to: '/technique-tree' }],
+    links: [
+      { label: "Techniques I'm working on", to: '/student/working' },
+      { label: 'Fundamentals', to: '/student/fundamentals' },
+      { label: 'Journal', to: '/student/journal' },
+    ],
     keywords: 'working techniques graph preview 3d index curriculum',
   },
   {
@@ -206,7 +215,8 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
       'A JSON backup is your journal, rank, and the related notes in that file.',
       'Restore a purchase uses the email from checkout. Advantage emails a one-time code. Confirm puts the purchase on this device. It does not bring journal entries back. The code expires and works once.',
       'A Google Drive or OneDrive folder is a place you connect. The academy folder is one your coach shared. You sign in with your own account. Advantage Cloud, when a gym has it, is hosted sharing for that gym’s cloud tools. It is not a hosted copy of your personal journal. If Cloud sharing pauses, the screen can show the days left to download the gym folder. The journal on the phone is separate.',
-      'Buying an edition does not upload the journal. The sample demo is sample data on the screen. It is not saved as your real Student Edition, and a purchase does not keep that sample.',
+      'Buying an edition does not upload the journal. Work you type in the Student Edition demo on this phone can be saved into Student Edition when the purchase opens that edition and the real file is empty. Student, Media, Instructor, and Pro include Student Edition. White does not, so that demo stays on this phone and is not opened.',
+      'If Student Edition already has a file, choose Keep the file on this phone or Use the demo copy. The purchase does not replace the file unless you choose the demo copy. The sample seed on the demo screen is not kept. Video files and photos from the demo are not copied. The example technique cloud is not part of this save.',
     ],
     links: [
       { label: 'Restore a purchase', to: '/restore' },
@@ -269,7 +279,8 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     paragraphs: [
       'On Pro, the owner can generate an instructor invite. The role picks which menus open. The app does not email that invite, and it does not copy a student’s journal onto the new phone.',
       'A student claims a free Student license with an email on this phone. That opens Student Edition here. If the gym uses Advantage Cloud, that license can open that student’s own academy inbox. It does not open coach lesson files, private coach notes, or other students.',
-      'An invite does not open the whole academy folder. For the shared folder, use the academy QR and the gym’s Google Drive or OneDrive. There is no paid Cloud seat that opens that folder for every invited person.',
+      'A paid Advantage Cloud add-on opens the gym’s Advantage Cloud files for an accepted instructor seat. What that seat can read or upload follows its role. A seat that was not accepted, or a gym without that add-on, does not get those files.',
+      'That Cloud folder is not your personal journal, and it is not the Google Drive or OneDrive folder from the academy QR. A free Student license can still open only that student’s own academy inbox when the gym has Cloud. These are the access rules in the app.',
     ],
     links: [
       { label: 'Advantage Pro', to: '/editions/pro' },
