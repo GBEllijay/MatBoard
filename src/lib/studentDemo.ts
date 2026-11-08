@@ -5,6 +5,7 @@
  * stress-test seeds. A saved journal is left alone when the demo is on.
  */
 
+import { stageStudentDemoFile } from './demoCarryover.ts';
 import { doorOpen } from './entitlement.ts';
 
 export const STUDENT_FILE_STORAGE_KEY = 'matboard.studentEdition.v1';
@@ -413,6 +414,9 @@ export function installStudentMockGuard(
     if (STUDENT_GUARD_KEYS.has(key) && studentDemoIsolated(readSearch())) {
       if (shouldDropUnsolicitedStudentWrite(key, value, readSearch())) return;
       demoOverlay.set(key, value);
+      if (key === STUDENT_FILE_STORAGE_KEY && !explicitStudentDemo(readSearch())) {
+        stageStudentDemoFile({ getItem: originalGet, setItem: originalSet, removeItem: originalRemove }, value, demoSeedProvider());
+      }
       return;
     }
     if (shouldDropUnsolicitedStudentWrite(key, value, readSearch())) return;

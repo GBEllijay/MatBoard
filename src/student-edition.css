@@ -2707,6 +2707,33 @@ input.sr-only.student-film-file {
   font-weight: 700;
 }
 
+.student-demo-banner button,
+.student-demo-exit button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 0.2rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+}
+
+.student-demo-exit {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.75rem 0.9rem 0.9rem;
+  background: #f4e4b2;
+  color: #1c1404;
+}
+
+.student-demo-exit p {
+  margin: 0;
+}
+
 /* ── Connect to my academy / Connections: dark card look (Design Critic mock, Nov 2026) ── */
 .academy-modern {
   --am-page: #070b14;
