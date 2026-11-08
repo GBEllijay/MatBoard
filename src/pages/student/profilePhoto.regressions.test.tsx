@@ -137,7 +137,10 @@ test('a camera photo that encodes is saved from the Choose photo control', async
   try {
     await choose('profile-portrait-library', new File([new Uint8Array(2_000_000)], 'IMG_4032.JPG', { type: 'image/jpeg' }));
     const photo = page.host.querySelector('[aria-label="Profile photo"]');
-    assert.match(photo?.textContent ?? '', /Saved on this phone/);
+    const savedNote = photo?.querySelector('.save-confirm');
+    assert.match(savedNote?.textContent ?? '', /Saved on this phone/);
+    assert.equal(savedNote?.querySelector('.save-confirm__mark')?.textContent?.trim(), '✓');
+    assert.doesNotMatch(savedNote?.textContent ?? '', /Cloud/);
     assert.equal(photo?.querySelector('#profile-portrait-error'), null);
     const src = photo?.querySelector('img')?.getAttribute('src') ?? '';
     assert.match(src, /^data:image\/jpeg;base64,/);

@@ -17,7 +17,7 @@ import { RANK_PHOTO_KEY, emptyRankPhotoStore, type RankPhotoStore } from './rank
 import { assessmentReportPdf, progressReportPdf } from './reportPdf.ts';
 import { pdfToText, type PdfImageAsset } from './simplePdf.ts';
 import { clearProfileMarks } from './profileMarks.ts';
-import { clearProfilePortrait, portraitFits, writeProfilePortraitSync } from './profilePortrait.ts';
+import { clearProfilePortrait, portraitFits, readProfilePortrait, writeProfilePortraitSync } from './profilePortrait.ts';
 import { clearStudentGymLogo, writeStudentGymLogo } from './studentGymMark.ts';
 import { coachGymLogoFits } from './coachGymFit.ts';
 import {
@@ -606,7 +606,11 @@ export function applyBackupToMemory(
   const shelf = backupShelf(file);
   saveCoachShelf(storage, mode === 'replace' ? shelf : mergedShelf(loadCoachShelf(storage), shelf));
   const films = mode === 'replace' ? writeFilms(storage, file.films) : writeFilms(storage, mergeById(loadFilms(storage), file.films, later));
-  if (file.portrait) writeProfilePortraitSync(file.portrait, storage);
+  // A photo already on this phone stays on merge. Replace uses the backup photo.
+  // A backup with no photo leaves whatever is already here.
+  if (file.portrait && (mode === 'replace' || !readProfilePortrait(storage))) {
+    writeProfilePortraitSync(file.portrait, storage);
+  }
   if (file.gymLogo) {
     try {
       writeStudentGymLogo(file.gymLogo, storage);
@@ -617,7 +621,10 @@ export function applyBackupToMemory(
   return {
     report: saved,
     films,
-    note: mode === 'replace' ? 'The backup replaced the journal on this phone.' : 'The backup was merged into the journal on this phone.',
+    note:
+      mode === 'replace'
+        ? 'The backup replaced the journal on this phone. Saved on this phone.'
+        : 'The backup was merged into the journal on this phone. Saved on this phone.',
   };
 }
 
