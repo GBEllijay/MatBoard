@@ -106,7 +106,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     question: 'What do mat hours mean?',
     paragraphs: [
       'Mat hours are minutes you logged in the journal. The profile label says “Mat hours · from your journal.” Untimed cards add nothing. The same day and the same session update one line, so logging twice does not double the time.',
-      'A low total is not your lifetime on the mat. It means the log is new. There is no bank, and no switch, for estimated hours from before you used the app.',
+      'A low total is not your lifetime on the mat. It means the log is new. There is no bank, and no switch, for estimated hours from before you used the app. My report card can show a separate planning estimate by belt. That estimate is not added to these hours.',
       'Mat time stays in your journal. Coaches don’t see it.',
     ],
     steps: [
@@ -115,6 +115,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     ],
     links: [
       { label: 'My profile', to: '/student/profile' },
+      { label: 'My report card', to: '/student/report' },
       { label: 'Calendar', to: '/student/calendar' },
     ],
     keywords: 'hours lifetime experience untimed pre-app bank toggle',

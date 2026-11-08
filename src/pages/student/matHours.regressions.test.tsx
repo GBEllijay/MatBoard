@@ -308,6 +308,18 @@ test('hub has no mat hours tile; profile shows stat, streak and report link; rep
   assert.equal(localStorage.getItem('matboard.student.streakTarget.v1'), '3');
   assert.match(page.host.querySelector('[data-testid="report-streak"]')?.textContent ?? '', /of 3 sessions/);
   assert.equal(page.host.querySelector('[data-testid="report-weight"]'), null);
+  const model = page.host.querySelector('[data-testid="belt-hours-model"]') as HTMLElement;
+  assert.ok(model);
+  assert.match(model.textContent ?? '', /208/);
+  assert.match(model.textContent ?? '', /not a guaranteed promotion/);
+  assert.equal(page.host.querySelector('.report__kicker')?.textContent?.includes('level 1'), true);
+  assert.equal(page.host.querySelector('[data-testid="mat-hours"]')?.textContent?.includes('208'), false);
+  const minutesBefore = loadStudentReport(localStorage).journal[0]?.minutes;
+  click(control(model, 'button', '4 hours'));
+  assert.match(model.textContent ?? '', /416/);
+  assert.equal(loadStudentReport(localStorage).journal[0]?.minutes, minutesBefore);
+  assert.equal(page.host.querySelector('[data-testid="mat-hours"]')?.textContent?.includes('416'), false);
+  assert.equal(page.host.querySelector('.report__kicker')?.textContent?.includes('level 1'), true);
   unmount(page);
 });
 

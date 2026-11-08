@@ -19,6 +19,7 @@ import { wornBeltPreview } from '../../lib/studentRank';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { coachEntriesFromOverlay, latestCoachNote } from '../../components/rosterCard/StudentCardPreview';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
+import { BeltHoursModel } from './BeltHoursModel';
 import { MatHoursStat } from './MatTime';
 import { WornBeltMark } from './wornBelt';
 import './profileReport.css';
@@ -96,6 +97,8 @@ export function ProfileReport({ report, storage, today }: { report: StudentProgr
           ) : null}
         </div>
       </section>
+
+      <BeltHoursModel />
 
       <section className="report__section" aria-label="Status">
         <h3 className="report__title">
