@@ -66,6 +66,7 @@ import { HomePage } from './pages/Home';
 import { ProPlusCloudPage } from './pages/ProPlusCloud';
 import { StorefrontPage } from './pages/Storefront';
 import { FaqPage } from './pages/Faq';
+import { CompactLineageCard, ExpandedLineageLine } from './preview/ownerLineage/OwnerLineageViews';
 import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
@@ -766,6 +767,8 @@ export default function App() {
       <Route path="/preview/technique-tree" element={<TechniqueTreePreviewPage />} />
       {/* Public owner preview. The live working tree stays at /student/working. */}
       <Route path="/preview/personal-graph" element={<PersonalGraphPreviewPage />} />
+      <Route path="/preview/lineage-card" element={<CompactLineageCard />} />
+      <Route path="/preview/lineage-line" element={<ExpandedLineageLine />} />
       {/* Isolated instructor-sheet concept. Not in edition menus, and it does not write a profile. */}
       <Route path="/preview/instructor-profile" element={<InstructorProfilePreviewPage />} />
       {/* Example scopes only. Not in edition menus, and nothing here is saved. */}
