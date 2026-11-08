@@ -8,7 +8,9 @@ export function SignOutButton() {
       className="home__text-btn"
       title={SIGN_OUT_NOTE}
       aria-label={`Sign out. ${SIGN_OUT_NOTE}`}
-      onClick={() => signOutAndLeave()}
+      onClick={() => {
+        void signOutAndLeave();
+      }}
     >
       Sign out
     </button>

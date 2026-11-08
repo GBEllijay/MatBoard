@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { clearOwnerTestUnlock } from './codeRedeemClient.ts';
 import {
@@ -18,7 +19,7 @@ import {
 } from './instructorSeats.ts';
 import { applyOwnerTestGrant, readOwnerTestGrant } from './ownerTestGrant.ts';
 import { isProUnlocked } from './proUnlock.ts';
-import { signOutThisDevice } from './signOut.ts';
+import { setPaidScreenCleanerForTests, signOutAndLeave, signOutThisDevice, SIGN_OUT_CLEANUP_KEY, SIGN_OUT_LANDING, takeSignOutCleanupNotice } from './signOut.ts';
 import { STUDENT_EDITION_STORAGE_KEY } from './studentEdition.ts';
 import { issueToken } from '../server/tokenIssue.ts';
 
@@ -67,6 +68,16 @@ async function ownerPass(secret: string, licenseId: string) {
   });
 }
 
+test('sign out waits on the paid-screen import before navigation', () => {
+  const source = readFileSync(new URL('./signOut.ts', import.meta.url), 'utf8');
+  assert.match(source, /await import\('\.\/paidChunkCache\.ts'\)/);
+  assert.match(source, /await mod\.clearPaidScreens\(\)/);
+  const leave = source.slice(source.indexOf('export async function signOutAndLeave'));
+  const awaitAt = leave.indexOf('await signOutThisDevice()');
+  const navigateAt = leave.indexOf('leave(SIGN_OUT_LANDING)');
+  assert.ok(awaitAt >= 0 && navigateAt > awaitAt);
+});
+
 test('Clear test unlock removes a database owner pass and leaves a paid pass', async () => {
   const pair = await keys();
   setEntitlementConfigForTests({ signing: true, keys: [{ kid: 'k1', jwk: pair.publicJwk }] });
@@ -103,6 +114,7 @@ test('Clear test unlock removes a database owner pass and leaves a paid pass', a
 });
 
 test('sign out closes this browser and keeps the journal, roster, profile, and Drive', async () => {
+  setPaidScreenCleanerForTests(async () => undefined);
   const pair = await keys();
   setEntitlementConfigForTests({ signing: true, keys: [{ kid: 'k1', jwk: pair.publicJwk }] });
   const pass = await ownerPass(pair.secret, crypto.randomUUID());
@@ -137,6 +149,7 @@ test('sign out closes this browser and keeps the journal, roster, profile, and D
 });
 
 test('a refresh already in flight cannot put the pass back after sign out', async () => {
+  setPaidScreenCleanerForTests(async () => undefined);
   const pair = await keys();
   setEntitlementConfigForTests({ signing: true, keys: [{ kid: 'k1', jwk: pair.publicJwk }] });
   const pass = await ownerPass(pair.secret, crypto.randomUUID());
@@ -157,4 +170,81 @@ test('a refresh already in flight cannot put the pass back after sign out', asyn
   assert.equal(local.getItem(ENTITLEMENT_TOKEN_KEY), null);
   assert.equal(doorOpen('pro'), false);
   globalThis.fetch = previous;
+});
+
+test('navigation waits until paid-screen cleanup finishes', async () => {
+  const pair = await keys();
+  setEntitlementConfigForTests({ signing: true, keys: [{ kid: 'k1', jwk: pair.publicJwk }] });
+  const pass = await ownerPass(pair.secret, crypto.randomUUID());
+  assert.ok(pass);
+  assert.equal(await acceptServerToken(pass), true);
+  local.setItem('advantage.proUnlocked', '1');
+  local.setItem(STUDENT_EDITION_STORAGE_KEY, '{"journal":"kept"}');
+  local.setItem(DRIVE_BINDING_KEY, '{"folderId":"kept"}');
+  const order: string[] = [];
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  setPaidScreenCleanerForTests(async () => {
+    order.push(local.getItem(ENTITLEMENT_TOKEN_KEY) === null ? 'credentials-gone' : 'credentials-present');
+    order.push('cleanup-start');
+    await gate;
+    order.push('cleanup-end');
+  });
+  let left = false;
+  const pending = signOutAndLeave(() => {
+    left = true;
+    order.push('navigate');
+  });
+  await Promise.resolve();
+  assert.equal(left, false);
+  assert.equal(local.getItem(ENTITLEMENT_TOKEN_KEY), null);
+  assert.equal(local.getItem(STUDENT_EDITION_STORAGE_KEY), '{"journal":"kept"}');
+  release();
+  const result = await pending;
+  assert.equal(left, true);
+  assert.deepEqual(order, ['credentials-gone', 'cleanup-start', 'cleanup-end', 'navigate']);
+  assert.equal(result.ok, true);
+  assert.equal(result.paidScreensCleared, true);
+  setPaidScreenCleanerForTests(null);
+});
+
+test('a failed cache delete is reported after credentials are gone and before navigation', async () => {
+  local.setItem(ENTITLEMENT_TOKEN_KEY, 'still-here');
+  local.setItem('advantage.proUnlocked', '1');
+  local.setItem(GYM_PROFILE_KEY, '{"v":1,"founders":"kept"}');
+  local.setItem(INSTRUCTOR_SEATS_STORAGE_KEY, '{"seats":[{"id":"seat-1"}]}');
+  const order: string[] = [];
+  let release: (error: Error) => void = () => undefined;
+  const gate = new Promise<void>((_resolve, reject) => {
+    release = reject;
+  });
+  setPaidScreenCleanerForTests(() => {
+    order.push(local.getItem(ENTITLEMENT_TOKEN_KEY) === null ? 'credentials-gone' : 'credentials-present');
+    return gate;
+  });
+  let left = false;
+  const pending = signOutAndLeave(() => {
+    left = true;
+    order.push('navigate');
+  });
+  await Promise.resolve();
+  assert.equal(left, false);
+  assert.equal(local.getItem(ENTITLEMENT_TOKEN_KEY), null);
+  release(new Error('cache delete failed'));
+  const result = await pending;
+  assert.equal(left, true);
+  assert.deepEqual(order, ['credentials-gone', 'navigate']);
+  assert.equal(result.ok, false);
+  assert.equal(result.paidScreensCleared, false);
+  assert.equal(result.error, 'cache delete failed');
+  assert.equal(result.noticeSaved, true);
+  assert.equal(session.getItem(SIGN_OUT_CLEANUP_KEY), 'cache delete failed');
+  assert.equal(takeSignOutCleanupNotice(), 'cache delete failed');
+  assert.equal(session.getItem(SIGN_OUT_CLEANUP_KEY), null);
+  assert.equal(local.getItem(GYM_PROFILE_KEY), '{"v":1,"founders":"kept"}');
+  assert.equal(local.getItem(INSTRUCTOR_SEATS_STORAGE_KEY), '{"seats":[{"id":"seat-1"}]}');
+  assert.equal(SIGN_OUT_LANDING, '/products');
+  setPaidScreenCleanerForTests(null);
 });

@@ -383,13 +383,20 @@ export async function acceptServerToken(token: string): Promise<boolean> {
   return true;
 }
 
-export function clearEntitlementToken(): void {
+/** Drop the pass in memory and storage. Does not touch the paid-screen cache. */
+export function discardEntitlementPass(): void {
   verified = null;
   removeItem(ENTITLEMENT_TOKEN_KEY);
   notifyEntitlement();
-  void import('./paidChunkCache.ts')
-    .then((mod) => mod.clearPaidChunkCache())
-    .catch(() => undefined);
+}
+
+export function clearEntitlementToken(): Promise<void> {
+  discardEntitlementPass();
+  const pending = import('./paidChunkCache.ts').then((mod) => mod.clearPaidChunkCache());
+  // Callers that do not await still must not surface an unhandled rejection.
+  // Sign out awaits its own cleanup and reports a failure there.
+  pending.catch(() => undefined);
+  return pending;
 }
 
 function storedOwnerTestPass(): boolean {
