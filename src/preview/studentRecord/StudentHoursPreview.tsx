@@ -45,9 +45,9 @@ export function StudentHoursPreview() {
           Logged hours stay the example journal total. Earlier hours are what you type for your own history. The planning model is a separate calendar estimate. It does not fill those boxes, and it is not a guaranteed promotion.
         </p>
         <section className="srec-card" aria-label="advantage hours logged">
-          <h2>advantage hours logged</h2>
+          <h2>Advantage hours logged</h2>
           <p className="srec-logged">
-            <span>advantage hours logged</span>
+            <span>Advantage hours logged</span>
             <strong data-testid="logged-hours">{formatHours(EXAMPLE_LOGGED_HOURS)}</strong>
           </p>
         </section>

@@ -118,8 +118,8 @@ test('the hours preview shows the four requested labels', () => {
   assert.match(hours, /<h2>Training hours based on general calendar minimums \(for reference\)<\/h2>/);
   assert.equal(hours.includes('>General model<'), false);
   assert.match(hours, /<h3[^>]*>General timelines<\/h3>/);
-  assert.match(hours, /<h2>advantage hours logged<\/h2>/);
-  assert.match(hours, /<span>advantage hours logged<\/span>/);
+  assert.match(hours, /<h2>Advantage hours logged<\/h2>/);
+  assert.match(hours, /<span>Advantage hours logged<\/span>/);
   assert.equal(hours.includes('>Planning model<'), false);
   assert.equal(hours.includes('From the example journal. Not editable here.'), false);
   assert.equal(hours.includes('>Advantage logged hours<'), false);
