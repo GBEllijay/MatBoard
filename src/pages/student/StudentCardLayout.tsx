@@ -5,8 +5,9 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RadarChart } from '../../components/RadarChart';
+import { ApprovedOctagonRadar } from '../../preview/assessmentRadar/OctagonChart';
 import { loadAssessments } from '../../lib/studentAssessment';
+import { shapeAxesFromLegacy, shapeAxisLabel, shapeAxisValues } from '../../lib/shapeAxes';
 import { matHoursSplit, matHoursTotal } from '../../lib/matHours';
 import { wornBeltPreview, type WornBeltPreview } from '../../lib/studentRank';
 import { readStreakTarget, streakLabel, streakWeekLine, trainingStreak } from '../../lib/trainingStreak';
@@ -103,14 +104,25 @@ export function MatTimerButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** Read-only Shape radar from the latest saved self-assessment. */
+/** Read-only Shape radar from the latest saved self-assessment. Display only. The stored day is not rewritten. */
 export function CardRadar({ to }: { to: (path: string) => string }) {
   const entries = typeof localStorage === 'undefined' ? [] : loadAssessments(localStorage).entries;
   const latest = entries[0];
+  const axes = latest ? shapeAxesFromLegacy(latest.scores) : [];
   return (
     <section className="card-radar" aria-label="Shape" data-testid="card-radar">
       {latest ? (
-        <RadarChart scores={latest.scores} />
+        <>
+          <ApprovedOctagonRadar values={shapeAxisValues(latest.scores)} label={shapeAxisLabel(latest.scores)} />
+          <ul className="assess-legend" aria-label="Area scores">
+            {axes.map((axis) => (
+              <li key={axis.id} data-area={axis.id}>
+                <span>{axis.label}</span>
+                <span>{axis.value == null ? 'Not rated' : axis.value}</span>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : (
         <div className="card-empty" data-testid="card-radar-empty">
           <h3>Shape</h3>

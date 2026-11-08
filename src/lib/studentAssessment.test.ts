@@ -197,10 +197,15 @@ test('an older assessment file still loads, and a saved day beats the tracker', 
   assert.equal(loaded.entries[0].note, 'kept from an older phone');
   assert.equal(loaded.entries[0].scores.guard, 1);
   assert.equal(loaded.entries[0].scores.mindset, 2);
+  assert.equal(loaded.entries[0].scores.sweeps, undefined);
+  assert.equal(assessmentAverage(loaded.entries[0].scores), 2.6);
   const written = writeAssessments(storage, loaded);
   assert.equal(written.entries[0].id, 'old.1');
   assert.equal(written.entries[0].scores.submissions, 5);
-  assert.match(storage.getItem(ASSESSMENT_STORAGE_KEY) ?? '', /kept from an older phone/);
+  assert.equal(Object.hasOwn(written.entries[0].scores, 'sweeps'), false);
+  const raw = storage.getItem(ASSESSMENT_STORAGE_KEY) ?? '';
+  assert.match(raw, /kept from an older phone/);
+  assert.equal(raw.includes('sweeps'), false);
 
   const tracker = { guard: 5 as const, passing: 5 as const, takedowns: 5 as const, escapes: 5 as const, submissions: 5 as const, conditioning: 5 as const };
   const savedDay = assessmentDraftScores(loaded.entries, '2024-05-01', '2026-11-01', tracker);
@@ -215,4 +220,51 @@ test('an older assessment file still loads, and a saved day beats the tracker', 
   assert.equal(assessmentChartScores({}, loaded.entries[0].scores, undefined)?.guard, 1);
   assert.equal(assessmentChartScores({}, undefined, loaded.entries[0].scores)?.mindset, 2);
   assert.equal(assessmentChartScores({}, undefined, undefined), null);
+});
+
+test('sweeps is stored only when that day was rated, and it is not passing', () => {
+  const seven = scores(3);
+  seven.passing = 5;
+  const legacy = saveAssessment(emptyAssessments(), { date: '2026-11-07', note: 'seven', scores: seven }, 30);
+  assert.equal(Object.hasOwn(legacy.entries[0].scores, 'sweeps'), false);
+  assert.equal(legacy.entries[0].scores.passing, 5);
+  assert.equal(assessmentAverage(legacy.entries[0].scores), Math.round(((3 * 6 + 5) / 7) * 10) / 10);
+
+  const withSweeps = saveAssessment(legacy, { date: '2026-11-07', note: 'seven', scores: { ...seven, sweeps: 1 } }, 31);
+  assert.equal(withSweeps.entries.length, 1);
+  assert.equal(withSweeps.entries[0].id, legacy.entries[0].id);
+  assert.equal(withSweeps.entries[0].scores.passing, 5);
+  assert.equal(withSweeps.entries[0].scores.sweeps, 1);
+  assert.notEqual(withSweeps.entries[0].scores.sweeps, withSweeps.entries[0].scores.passing);
+  assert.equal(withSweeps.entries[0].scores.guard, 3);
+  assert.equal(withSweeps.entries[0].scores.escapes, 3);
+
+  const storage = memory();
+  writeAssessments(storage, withSweeps);
+  const reloaded = loadAssessments(storage);
+  assert.equal(reloaded.entries[0].scores.sweeps, 1);
+  assert.equal(reloaded.entries[0].scores.passing, 5);
+  assert.equal(assessmentAverage(reloaded.entries[0].scores), Math.round(((3 * 6 + 5 + 1) / 8) * 10) / 10);
+
+  const otherDay = saveAssessment(reloaded, { date: '2026-11-01', note: 'older', scores: seven }, 32);
+  assert.equal(otherDay.entries.find((entry) => entry.date === '2026-11-01')?.scores.sweeps, undefined);
+  assert.equal(otherDay.entries.find((entry) => entry.date === '2026-11-07')?.scores.sweeps, 1);
+
+  assert.throws(() => saveAssessment(emptyAssessments(), { date: '2026-11-08', note: '', scores: { ...seven, sweeps: 0 } }), /Sweeps/);
+  const junk = JSON.stringify({
+    entries: [
+      {
+        id: 'old.2',
+        date: '2026-10-02',
+        note: 'kept',
+        scores: { ...seven, sweeps: 0 },
+      },
+    ],
+  });
+  const junkStore = memory();
+  junkStore.setItem(ASSESSMENT_STORAGE_KEY, junk);
+  const kept = loadAssessments(junkStore);
+  assert.equal(kept.entries.length, 1);
+  assert.equal(kept.entries[0].scores.passing, 5);
+  assert.equal(Object.hasOwn(kept.entries[0].scores, 'sweeps'), false);
 });

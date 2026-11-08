@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PlayExitMark } from '../../components/PlayExitMark';
+import { Chart, type ChartVariant } from './OctagonChart';
 import {
   AXES,
   CAGE_FICTION_NOTE,
   CAGE_NOTE,
   CALCULATION_PROPOSAL,
   COACH_EXAMPLE_SCORES,
-  OCTAGON_CENTER,
   OPPONENT_EXAMPLE_SCORES,
   PAGE_LEAD,
   PAGE_TITLE,
@@ -25,18 +25,11 @@ import {
   cageValueList,
   categoryDestination,
   isCageView,
-  SVG_SIZE,
   TECHNIQUE_RATING_WORDS,
   cardsFor,
   chartLabel,
-  closedRatingPoints,
   detailCopy,
-  formatPoint,
   latestCard,
-  pointOnAxis,
-  ratingDots,
-  ratingSegments,
-  ringPoints,
   scoreText,
   seedPreview,
   setLatestRating,
@@ -51,10 +44,10 @@ import {
 } from './model';
 import './assessmentRadar.css';
 
+export type { ChartVariant };
+
 const RATINGS: readonly Rating[] = [1, 2, 3, 4, 5];
 const SKILL_AXES = AXES.filter((axis) => !axis.manualOnly);
-
-export type ChartVariant = 'current' | 'sheet' | 'center' | 'coach' | 'opponent' | 'comparison';
 
 const CAGE_VARIANTS: readonly ChartVariant[] = ['center', 'coach', 'opponent', 'comparison'];
 
@@ -424,22 +417,6 @@ function cageChartLabel(variant: ChartVariant): string {
   return `Fictional closed cage for the approved eight areas. Guard/Control ${sheet['guard-control']}, Passing ${sheet.passing}, Sweeps ${sheet.sweeps}, Takedowns ${sheet.takedowns}, Escapes/Defense ${sheet['escapes-defense']}, Submissions ${sheet.submissions}, Conditioning ${sheet.conditioning}, Mindset ${sheet.mindset}. Nothing is saved.`;
 }
 
-function displayIndex(variant: ChartVariant, selected: AxisId): number {
-  const order = variant === 'current' ? AXES.map((axis) => axis.id) : [...SHEET_AXIS_IDS];
-  return order.indexOf(selected);
-}
-
-function cageLayers(variant: ChartVariant, values: readonly (number | null)[]): { id: string; values: number[] }[] {
-  if (variant === 'comparison') {
-    return [
-      { id: 'coach', values: cageValueList(COACH_EXAMPLE_SCORES) },
-      { id: 'opponent', values: cageValueList(OPPONENT_EXAMPLE_SCORES) },
-    ];
-  }
-  if (!isCageView(variant)) return [];
-  return [{ id: variant === 'center' ? 'sheet' : variant, values: values.map((value) => value ?? 0) }];
-}
-
 function axisBits(
   variant: ChartVariant,
   axisId: AxisId,
@@ -510,103 +487,6 @@ function CageLegend({ variant }: { variant: ChartVariant }) {
       </p>
       <p className="oct-cage-key__note">Student’s own illustrative rating — not an official grade, rank, or promotion assessment.</p>
     </div>
-  );
-}
-
-function Chart({
-  values,
-  selected,
-  label,
-  variant,
-}: {
-  values: (number | null)[];
-  selected: AxisId;
-  label: string;
-  variant: ChartVariant;
-}) {
-  const closed = closedRatingPoints(values);
-  const segments = ratingSegments(values);
-  const dots = ratingDots(values);
-  const selectedIndex = displayIndex(variant, selected);
-  const cage = isCageView(variant);
-  const layers = cageLayers(variant, values);
-  return (
-    <svg
-      className={variant === 'sheet' ? 'oct-svg oct-svg--sheet' : cage ? 'oct-svg oct-svg--cage' : 'oct-svg'}
-      viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
-      role="img"
-      aria-label={label}
-    >
-      {cage ? <polygon className="oct-cage" points={ringPoints(5)} /> : null}
-      {cage
-        ? null
-        : (variant === 'sheet' ? [1, 2, 3, 4, 5] : [5]).map((ring) => (
-            <polygon
-              key={ring}
-              className={ring === 5 ? 'oct-grid oct-grid--outer' : 'oct-grid'}
-              points={ringPoints(ring)}
-            />
-          ))}
-      {variant === 'current' ? <polygon className="oct-grid" points={ringPoints(3)} /> : null}
-      {cage
-        ? null
-        : values.map((_, index) => {
-            const end = pointOnAxis(index, 5);
-            return <line key={index} className="oct-grid" x1={OCTAGON_CENTER} y1={OCTAGON_CENTER} x2={end.x} y2={end.y} />;
-          })}
-      {layers.map((layer) => {
-        const pts = layer.values.map((value, index) => formatPoint(pointOnAxis(index, value)));
-        const line = [...pts, pts[0]].join(' ');
-        return (
-          <g key={layer.id}>
-            <polygon className={`oct-shape--filled oct-shape--${layer.id}`} points={pts.join(' ')} />
-            <polyline className={`oct-shape-line oct-shape-line--${layer.id}`} points={line} />
-            {layer.values.map((value, index) => {
-              const point = pointOnAxis(index, value);
-              return (
-                <circle
-                  key={index}
-                  className={`oct-dot oct-dot--${layer.id}${index === selectedIndex ? ' oct-dot--on' : ''}`}
-                  cx={point.x}
-                  cy={point.y}
-                  r="3.2"
-                />
-              );
-            })}
-          </g>
-        );
-      })}
-      {variant === 'sheet'
-        ? [1, 2, 3, 4, 5].map((step) => {
-            const spot = pointOnAxis(0, step);
-            return (
-              <text key={step} className="oct-scale" x={spot.x + 5} y={spot.y + 3}>
-                {step}
-              </text>
-            );
-          })
-        : null}
-      {cage || !closed ? null : <polygon className="oct-shape--closed" points={closed.map((point) => formatPoint(point)).join(' ')} />}
-      {cage
-        ? null
-        : segments.map((segment, index) => (
-            <g key={index}>
-              <polyline className="oct-shape" points={segment.map((point) => formatPoint(point)).join(' ')} />
-              <polyline className="oct-shape-line" points={segment.map((point) => formatPoint(point)).join(' ')} />
-            </g>
-          ))}
-      {cage
-        ? null
-        : dots.map((dot) => (
-            <circle
-              key={dot.index}
-              className={dot.index === selectedIndex ? 'oct-dot oct-dot--on' : 'oct-dot'}
-              cx={dot.x}
-              cy={dot.y}
-              r={dot.index === selectedIndex ? 5.5 : 4.2}
-            />
-          ))}
-    </svg>
   );
 }
 

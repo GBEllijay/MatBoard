@@ -75,10 +75,10 @@ test('scouting opponent tracker compares the latest self-assessment', async ({ p
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/student/self-assessment?from=scouting&student=1');
   const mine: Record<string, string> = {
-    Guard: '5',
+    'Guard/Control': '5',
     Passing: '4',
     Takedowns: '3',
-    Escapes: '2',
+    'Escapes/Defense': '2',
     Submissions: '4',
     Conditioning: '5',
     Mindset: '3',
