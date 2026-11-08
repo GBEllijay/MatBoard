@@ -26,7 +26,7 @@ function readToken(): string {
 export async function requestServerSeat(input: {
   email: string;
   presetId: InstructorPresetId | null;
-}): Promise<{ invite: string; seatId: string } | { reason: 'cap' | 'closed' | 'offline'; detail?: string }> {
+}): Promise<{ invite: string; seatId: string } | { reason: 'cap' | 'owner' | 'closed' | 'offline'; detail?: string }> {
   const token = readToken();
   if (!token) return { reason: 'offline' };
   try {
@@ -37,7 +37,14 @@ export async function requestServerSeat(input: {
     });
     const body = (await response.json()) as { ok?: boolean; invite?: string; seatId?: string; reason?: string; error?: string };
     const failure = seatIssueClientFailure(response.status, body);
-    if (failure) return failure.reason === 'cap' ? { reason: 'cap' } : { reason: 'closed', detail: failure.detail };
+    if (failure?.reason === 'cap') return { reason: 'cap' };
+    if (failure) {
+      const sentence = typeof body.error === 'string' ? body.error : '';
+      if (response.status === 403 && /only the gym owner/i.test(sentence)) {
+        return { reason: 'owner', ...(failure.detail ? { detail: failure.detail } : {}) };
+      }
+      return failure.detail ? { reason: 'closed', detail: failure.detail } : { reason: 'closed' };
+    }
     if (!body.invite || !body.seatId) return { reason: 'closed' };
     return { invite: body.invite, seatId: body.seatId };
   } catch {
@@ -64,8 +71,11 @@ export async function issueSeatWithServer(input: {
 }): Promise<IssueInviteResult> {
   const server = await requestServerSeat({ email: input.email, presetId: input.presetId ?? null });
   if ('reason' in server && server.reason === 'cap') return { ok: false, reason: 'cap' };
-  if ('reason' in server && server.reason === 'closed') {
+  if ('reason' in server && server.reason === 'owner') {
     return { ok: false, reason: 'owner', ...(server.detail ? { detail: server.detail } : {}) };
+  }
+  if ('reason' in server && server.reason === 'closed') {
+    return { ok: false, reason: 'unavailable', ...(server.detail ? { detail: server.detail } : {}) };
   }
   return issueInstructorInvite({
     email: input.email,

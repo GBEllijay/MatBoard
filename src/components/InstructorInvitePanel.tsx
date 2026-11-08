@@ -4,6 +4,8 @@ import { DRIVE_HANDOFF_SAVED, publishSeatToGym } from '../lib/driveHandoff';
 import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
 import { DriveHandoffGuide, useDriveConnected } from './DriveHandoffGuide';
 import { useSeatDoor } from '../hooks/useSeatDoor';
+import { entitlementSnapshot } from '../lib/entitlement';
+import { inviteBlockedAsSeat } from '../lib/ownerPassRank';
 import {
   INSTRUCTOR_PERMISSION_FIELDS,
   INSTRUCTOR_PRESETS,
@@ -70,6 +72,7 @@ function issueError(failure: { reason: IssueInviteFailure; detail?: string }): s
   if (failure.reason === 'storage') return 'This device could not save the seat.';
   if (failure.reason === 'cap') return proSeatCapBlockedCopy();
   if (failure.reason === 'owner') return 'Only the gym owner can issue invites.';
+  if (failure.reason === 'unavailable') return 'This device could not issue an invite. Nothing was sent.';
   return "Enter the instructor's email.";
 }
 
@@ -141,7 +144,7 @@ export function InstructorInvitePanel() {
     void syncLegacySeats();
   }, []);
 
-  if (door.seat) {
+  if (door.seat && inviteBlockedAsSeat(door.seat, entitlementSnapshot().claims)) {
     return (
       <section className="invite-owner-only" aria-label="Instructor invites">
         <GalleryApprovalSwitch viewer={{ role: 'seat', presetId: door.seat.presetId }} />
