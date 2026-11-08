@@ -148,8 +148,8 @@ test('log sheet: session chips, quick chips, stepper, clear, how it went and mar
   assert.equal(out.textContent, 'Untimed');
   assert.equal(host.querySelector('[aria-label="Quick time"]'), null, 'preset chips replaced by the wheel');
   assert.equal(host.querySelector('[aria-label="More time"]'), null, 'no − / + stepper');
-  pickTime(host, '', '1:31');
-  assert.equal(out.textContent, '1:31', 'any minute, not just 15s');
+  pickTime(host, '', '1:30');
+  assert.equal(out.textContent, '1:30', '15-minute steps');
   click(control(host, 'button', 'Clear'));
   assert.equal(out.textContent, 'Untimed');
   pickTime(host, '', '12:00');
@@ -184,6 +184,37 @@ test('log sheet: session chips, quick chips, stepper, clear, how it went and mar
   // Reset after save.
   assert.equal(labeled(host, 'Minutes on the mat').textContent, 'Untimed');
   assert.equal(host.querySelector('[aria-label="Injury area"]'), null);
+  unmount(mounted);
+});
+
+test('an off-step saved time stays on the card until the wheel is changed', () => {
+  const report = seed('white', { minutes: 148 });
+  const mounted = mount(<StudentEditionPage />, `/student/cards/${report.journal[0].id}?student=1`);
+  const { host } = mounted;
+  assert.equal(host.querySelector('[data-testid="card-mat-time"]')?.textContent, 'Class · 2h 28m on the mat');
+  const edit = [...host.querySelectorAll('a, button')].find((node) => /^Edit /.test(node.textContent?.trim() ?? ''));
+  assert.ok(edit, 'Edit button');
+  click(edit as HTMLElement);
+  const opener = host.querySelector('[aria-label^="Edit Time on the mat,"]') as HTMLElement;
+  assert.match(opener.getAttribute('aria-label') ?? '', /2:28/);
+  click(opener);
+  const lists = [...document.querySelectorAll('[role="listbox"][aria-label="Edit Time on the mat"]')];
+  const list = lists[lists.length - 1];
+  assert.ok(list, 'wheel list');
+  const labels = [...list.querySelectorAll('[role="option"]')].map((row) => row.textContent?.trim());
+  assert.ok(labels.includes('0:00'));
+  assert.ok(labels.includes('0:15'));
+  assert.ok(labels.includes('2:15'));
+  assert.ok(labels.includes('2:28'));
+  assert.ok(labels.includes('2:30'));
+  assert.equal(labels.includes('2:29'), false);
+  assert.equal(labels.includes('2:31'), false);
+  const sheet = list.closest('[role="dialog"]') ?? document.body;
+  const done = [...sheet.querySelectorAll('button')].filter((node) => node.textContent?.trim() === 'Done');
+  if (done.length) click(done[done.length - 1] as HTMLElement);
+  assert.equal(labeled(host, 'Edit Minutes on the mat').textContent, '2:28');
+  click(control(host, 'button', 'Save card'));
+  assert.equal(loadStudentReport(localStorage).journal[0].minutes, 148);
   unmount(mounted);
 });
 
@@ -375,15 +406,15 @@ test('session type Other shows an optional text field; it saves and shows on the
   assert.equal(host.querySelector('[aria-label="Other session type"]'), null, 'text field only for Other');
   click(control(kinds, 'button', 'Other'));
   typeInto(field(host, 'Other session type'), 'Wrestling');
-  pickTime(host, '', '1:31');
+  pickTime(host, '', '1:30');
   click(control(host, 'button', 'Save entry'));
   const stored = loadStudentReport(localStorage).journal[0];
   assert.equal(stored.session, 'other');
   assert.equal(stored.sessionOther, 'Wrestling');
-  assert.equal(stored.minutes, 91);
+  assert.equal(stored.minutes, 90);
   unmount(mounted);
   const card = mount(<StudentEditionPage />, `/student/cards/${stored.id}?student=1`);
-  assert.equal(card.host.querySelector('[data-testid="card-mat-time"]')?.textContent, 'Other · Wrestling · 1h 31m on the mat');
+  assert.equal(card.host.querySelector('[data-testid="card-mat-time"]')?.textContent, 'Other · Wrestling · 1h 30m on the mat');
   unmount(card);
 });
 

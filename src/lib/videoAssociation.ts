@@ -7,7 +7,7 @@
 
 import type { JournalClip, JournalEntry, StudentProgressReport, TechniqueRef } from './progress/types.ts';
 import { placeOnFundamentals } from './studentEdition.ts';
-import type { StudentFilm } from './studentFilm.ts';
+import { commitStudentFilm, type FilmCommitDeps, type StudentFilm } from './studentFilm.ts';
 import { adoptWorkingNode, findWorkingByTitle, findWorkingNode, readWorkingGraph, workingTitleKey } from './workingTechniques.ts';
 
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
@@ -163,6 +163,48 @@ export function setFilmAnchor(films: readonly StudentFilm[], filmId: string, anc
  * Write the journal association and the technique link only after the library save succeeded.
  * A failed or cancelled save leaves the progress file alone.
  */
+export const DAY_FILM_SAVED = 'Saved on this phone in the video library and on this card. This is not a cloud backup.';
+
+/**
+ * Save a day-card recording into the video library and remember this card as the original class.
+ * A failed save does not write the library list or the technique link.
+ */
+export async function saveDayCardFilm(input: {
+  report: StudentProgressReport;
+  films: readonly StudentFilm[];
+  file: { name: string; type: string; size: number; blob: Blob };
+  title: string;
+  date: string;
+  entryId: string;
+  intent: LinkIntent;
+  now?: number;
+  deps: FilmCommitDeps;
+}): Promise<
+  | { ok: true; report: StudentProgressReport; films: StudentFilm[]; film: StudentFilm; note: string; linkError: string }
+  | { ok: false; error: string; report: StudentProgressReport; films: readonly StudentFilm[] }
+> {
+  const now = input.now ?? Date.now();
+  const result = await commitStudentFilm(
+    {
+      file: input.file,
+      technique: input.title,
+      date: input.date,
+      where: 'phone',
+      provider: '',
+      films: input.films,
+      now,
+    },
+    input.deps,
+  );
+  if (!result.ok) return { ok: false, error: result.error, report: input.report, films: input.films };
+  const plan = associationAfterSave(input.report, { saved: true, title: result.film.technique, intent: input.intent, now });
+  let film = setFilmJournal([result.film], result.film.id, input.entryId, now)[0] ?? result.film;
+  if (plan.anchor) film = setFilmAnchor([film], film.id, plan.anchor, now)[0] ?? film;
+  const films = [...input.films.filter((item) => item.id !== film.id), film];
+  const note = plan.error ? plan.error : result.largeNote ? `${DAY_FILM_SAVED} ${result.largeNote}` : DAY_FILM_SAVED;
+  return { ok: true, report: plan.report, films, film, note, linkError: plan.error ?? '' };
+}
+
 export function associationAfterSave(
   report: StudentProgressReport,
   input: { saved: boolean; title: string; intent: LinkIntent; now?: number },

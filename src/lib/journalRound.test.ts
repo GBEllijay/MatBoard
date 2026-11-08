@@ -12,7 +12,7 @@ import { myTechniques, techniquePicker, techniqueSuggestions } from './technique
 import { FUNDAMENTALS_REQUIRED_FOR_BELT } from './fundamentalsConfig.ts';
 import { checkpointFilled, learnedCatalogIds } from './studentTools.ts';
 import type { RubricCheckpoint } from './progress/types.ts';
-import { JOURNAL_SESSION_LABELS, matHoursSplit, matHoursTotal, matMinuteOptions, sessionLabel, sessionOf, clockMatTime } from './matHours.ts';
+import { JOURNAL_SESSION_LABELS, matHoursSplit, matHoursTotal, journalMatWheelOptions, sessionLabel, sessionOf, clockMatTime } from './matHours.ts';
 import { logMatTime } from './matLog.ts';
 import { exportProgressPacket, parseProgressPacket } from './progress/format.ts';
 import { JOURNAL_SESSIONS, type StudentProgressReport } from './progress/types.ts';
@@ -108,13 +108,22 @@ test('session types: four options, Other text stored and shown, old entries stil
   assert.equal(q.journal[0].sessionOther, 'Seminar');
 });
 
-test('minute wheel: every minute 0–720, soft detents on 10s, 1:31 label, stored as minutes', () => {
-  const options = matMinuteOptions();
-  assert.equal(options.length, 721);
-  assert.equal(options[0].label, 'Untimed');
-  assert.equal(options[91].value, 91);
-  assert.equal(options[91].label, '1:31');
-  assert.equal(clockMatTime(91), '1:31');
-  assert.ok(options[30].detent && options[90].detent && options[10].detent);
-  assert.ok(!options[91].detent && !options[0].detent);
+test('journal wheel lists 15-minute steps and keeps an off-step saved time until it is changed', () => {
+  const options = journalMatWheelOptions(0);
+  assert.equal(options.length, 49);
+  assert.equal(options[0].label, '0:00');
+  assert.equal(options[1].value, 15);
+  assert.equal(options[1].label, '0:15');
+  assert.equal(options.find((option) => option.value === 30)?.label, '0:30');
+  assert.equal(options.find((option) => option.value === 45)?.label, '0:45');
+  assert.equal(options.find((option) => option.value === 60)?.label, '1:00');
+  assert.equal(options.find((option) => option.value === 91), undefined);
+  const saved = journalMatWheelOptions(148);
+  assert.equal(saved.length, 50);
+  assert.equal(saved.find((option) => option.value === 148)?.label, '2:28');
+  assert.equal(saved.find((option) => option.value === 150)?.label, '2:30');
+  assert.equal(saved.find((option) => option.value === 149), undefined);
+  assert.equal(saved.filter((option) => option.value === 148).length, 1);
+  assert.equal(clockMatTime(148), '2:28');
+  assert.equal(journalMatWheelOptions(90).filter((option) => option.value === 90).length, 1);
 });
