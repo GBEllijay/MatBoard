@@ -28,7 +28,7 @@
 .faq {
   width: min(40rem, calc(100% - 24px));
   margin: 0 auto;
-  padding: calc(var(--mark-home-clear, 4.5rem) + var(--safe-t, 0px) + 8px) 0 calc(32px + var(--safe-b, 0px));
+  padding: calc(0.5rem + var(--safe-t, 0px)) 0 calc(32px + var(--safe-b, 0px));
 }
 
 .faq__kicker {
@@ -72,22 +72,9 @@
   border: 0;
 }
 
-/* Mat under the fixed Home logo, so a scrolled bubble does not run through the circle. */
+/* The Home logo scrolls with the page, so there is no fixed mat strip above the answers. */
 .faq-page::before {
-  content: '';
-  position: fixed;
-  z-index: 20;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: calc(var(--mark-home-clear, 4.5rem) + var(--safe-t, 0px));
-  pointer-events: none;
-  background-color: var(--mat-fill);
-  background-image: var(--mat-image);
-  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
-  background-repeat: repeat;
-  background-position: center top;
-  background-attachment: fixed;
+  content: none;
 }
 
 .faq__tools {

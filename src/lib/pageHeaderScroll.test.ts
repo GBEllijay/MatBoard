@@ -21,7 +21,7 @@ test('home, roster, and student pages scroll with the document', () => {
   assert.match(pages, /overflow:\s*visible/);
   assert.match(pages, /height:\s*auto/);
   assert.match(pages, /max-height:\s*none/);
-  assert.match(pages, /padding-top:\s*calc\(var\(--mark-home-clear\)/);
+  assert.match(pages, /padding-top:\s*0/);
   assert.doesNotMatch(pages, /overflow:\s*auto/);
   assert.doesNotMatch(pages, /border-top:\s*calc\(var\(--mark-home-clear\)/);
 
@@ -40,7 +40,7 @@ test('home, roster, and student pages scroll with the document', () => {
 test('demo warning is in the page flow and does not paint behind the logos', () => {
   const banner = block(student, '.student-demo-banner {');
   assert.match(banner, /position:\s*static/);
-  assert.match(banner, /margin:\s*calc\(var\(--mark-home-clear\)/);
+  assert.doesNotMatch(banner, /margin:\s*calc\(var\(--mark-home-clear\)/);
   assert.doesNotMatch(banner, /position:\s*sticky/);
   assert.doesNotMatch(banner, /position:\s*fixed/);
   assert.match(edition, /Exit demo/);
@@ -48,11 +48,23 @@ test('demo warning is in the page flow and does not paint behind the logos', () 
   assert.match(clear, /padding-top:\s*0\.75rem/);
 });
 
-test('fixed marks stay logos, and the video bar is not a sticky panel', () => {
+test('page home and back marks scroll with the document', () => {
   const logo = block(home, '.home__logo {');
   const back = block(home, '.play-exit {');
-  assert.match(logo, /position:\s*fixed/);
-  assert.match(back, /position:\s*fixed/);
+  const center = block(home, '.tier-home {');
+  assert.match(logo, /position:\s*static/);
+  assert.match(back, /position:\s*relative/);
+  assert.match(center, /position:\s*relative/);
+  assert.match(center, /transform:\s*none/);
+  assert.doesNotMatch(logo, /position:\s*fixed/);
+  assert.doesNotMatch(logo, /position:\s*sticky/);
+  assert.doesNotMatch(back, /position:\s*sticky/);
+  const pinnedAt = home.indexOf('.training > .play-exit');
+  assert.notEqual(pinnedAt, -1);
+  const pinned = home.slice(pinnedAt, pinnedAt + 420);
+  assert.match(pinned, /position:\s*fixed/);
+  assert.match(pinned, /\.saver > \.play-exit/);
+  assert.match(pinned, /\.tournament > \.play-exit/);
   const videos = block(home, '.techniques__bar {');
   assert.match(videos, /position:\s*relative/);
   assert.match(videos, /background:\s*transparent/);

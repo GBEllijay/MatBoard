@@ -294,7 +294,7 @@
 .roster-index {
   position: fixed;
   z-index: 6;
-  top: var(--roster-index-top, calc(var(--mark-home-clear, 8rem) + var(--safe-t, 0px)));
+  top: var(--roster-index-top, calc(0.35rem + var(--safe-t, 0px)));
   bottom: calc(10px + var(--safe-b, 0px));
   right: max(2px, calc((100vw - min(42rem, 100vw)) / 2));
   display: flex;
