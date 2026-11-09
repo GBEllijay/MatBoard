@@ -47,7 +47,17 @@
 }
 
 .d8sf-kicker {
+  display: block;
   text-transform: uppercase;
+}
+
+.d8sf-trail ol > li > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  white-space: normal;
 }
 
 .d8sf .topo-stage {
