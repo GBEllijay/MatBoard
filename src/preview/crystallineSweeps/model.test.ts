@@ -34,7 +34,7 @@ import {
   tileVertices,
 } from './geometry.ts';
 import { FIT_PAD, VIEW_SIZE, defaultCamera, labelTier, projectLayout } from './project.ts';
-import { TOPO_H, TOPO_LEVEL, buildTopo, demoLevel } from './topo.ts';
+import { TOPO_H, TOPO_LEVEL, buildTopo, demoLevel, tileTone } from './topo.ts';
 import { EXAMPLE_OPPONENT_FACTORS, EXAMPLE_OPPONENT_SWEEPS, EXAMPLE_SELF_FACTORS, EXAMPLE_SELF_SWEEPS, exampleCompare, factorComparisons } from './overlay.ts';
 import { classifyTap, connectionLayout, demoCard, gridCells, growOffEdge, labelVisible, screenSides, sidesWithBack, subdivideTriangle, walkDemo, assignDrillCells } from './demoLinks.ts';
 
@@ -506,4 +506,11 @@ test('example sides stay local and the Mount walk is recursive', () => {
   assert.equal(classifyTap({ pinching: false, moved: false, edge: null, edgeHasLink: false, sameTile: true, elapsedMs: 200 }), 'double');
   assert.equal(classifyTap({ pinching: false, moved: false, edge: null, edgeHasLink: false, sameTile: false, elapsedMs: 10 }), 'single');
   assert.equal(classifyTap({ pinching: false, moved: false, edge: 1, edgeHasLink: false, sameTile: true, elapsedMs: 10 }), 'single');
+  assert.equal(tileTone('pos.mount'), 'position');
+  assert.equal(tileTone('escape.mount'), 'defense');
+  assert.equal(tileTone('def.guard-retention'), 'defense');
+  assert.equal(tileTone('sub.americana'), 'submission');
+  assert.equal(tileTone('pass.knee-slice'), 'pass');
+  assert.equal(tileTone('sweep.scissor'), 'pass');
+  assert.equal(tileTone('td.double-leg'), 'position');
 });

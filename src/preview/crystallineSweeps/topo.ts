@@ -90,6 +90,16 @@ export function demoLevel(id: string): ReliefScore {
   return (1 + (hash % 5)) as ReliefScore;
 }
 
+export type TileTone = 'position' | 'defense' | 'submission' | 'pass';
+
+/** Positions stay the original blue. Escapes and defense are orange, submissions red, passes and sweeps green. */
+export function tileTone(id: string): TileTone {
+  if (id.startsWith('sub.')) return 'submission';
+  if (id.startsWith('escape.') || id.startsWith('def.')) return 'defense';
+  if (id.startsWith('pass.') || id.startsWith('sweep.')) return 'pass';
+  return 'position';
+}
+
 function catalogName(id: string): string {
   for (const category of FUNDAMENTALS_CATALOG.categories) {
     const item = category.items.find((row) => row.id === id);

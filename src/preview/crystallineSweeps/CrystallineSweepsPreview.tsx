@@ -103,6 +103,12 @@ export function CrystallineSweepsPreview() {
               Side by side
             </button>
           </div>
+          <ul className="tone-legend" aria-label="Technique colors">
+            <li className="tone-position">Positions, blue</li>
+            <li className="tone-defense">Escapes and defense, orange</li>
+            <li className="tone-submission">Submissions, red</li>
+            <li className="tone-pass">Passes and sweeps, green</li>
+          </ul>
           <p className="crystal-style-note">
             {compare
               ? 'Example self is cyan and solid. Example opponent is amber and dashed. Same faces, same spin. A higher number is not a prediction.'

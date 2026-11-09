@@ -171,6 +171,40 @@
   color: #ffd7a8;
 }
 
+.tone-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tone-legend li {
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.tone-position {
+  border: 2px solid #76eaff;
+  color: #b7f4ff;
+}
+
+.tone-defense {
+  border: 2px solid #ffb020;
+  color: #ffd27a;
+}
+
+.tone-submission {
+  border: 2px solid #ff5a6a;
+  color: #ffb3ba;
+}
+
+.tone-pass {
+  border: 2px solid #3dce7a;
+  color: #b6f5cf;
+}
+
 .overlay-table {
   width: 100%;
   border-collapse: collapse;

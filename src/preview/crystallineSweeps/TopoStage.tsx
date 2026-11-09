@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ReliefScore } from './geometry.ts';
-import { TOPO_LEVEL, TOPO_REVISION, topoWords, type TopoModel, type Vec } from './topo.ts';
+import { TOPO_LEVEL, TOPO_REVISION, tileTone, topoWords, type TileTone, type TopoModel, type Vec } from './topo.ts';
 import {
   EXAMPLE_OPPONENT_FACTORS,
   EXAMPLE_OPPONENT_SWEEPS,
@@ -585,7 +585,6 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         }
         context.closePath();
         const chosen = tile != null && poly.index === state.selected;
-        const focused = tile != null && tile.faceIndex === state.focus;
         const k = 0.2 + 0.8 * poly.light;
         let fill: string;
         if (poly.layer === 'opponent') {
@@ -599,11 +598,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         } else if (!poly.front) fill = 'rgba(24,114,160,.05)';
         else if (!tile || !model.faces[tile.faceIndex]?.moves.length) fill = `rgba(70,80,100,${0.25 + 0.3 * poly.shade})`;
         else if (!tile.move || tile.offset == null) fill = `rgba(24,60,90,${0.16 + 0.16 * Math.max(0, poly.shade)})`;
-        else {
-          fill = chosen
-            ? `rgba(${Math.round(37 + 120 * k)},${Math.round(150 + 80 * k)},255,.85)`
-            : `rgba(${Math.round((focused ? 30 : 15) + 90 * k)},${Math.round((focused ? 110 : 80) + 120 * k)},${Math.round(130 + 110 * k)},${0.55 + 0.3 * k})`;
-        }
+        else fill = toneFill(tileTone(tile.move.id), k, chosen);
         context.fillStyle = fill;
         context.fill();
         const unrated = poly.layer === 'base' && Boolean(tile?.move) && tile?.offset == null;
@@ -1035,6 +1030,16 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
 
 function zoomBy(state: { zoom: number }, factor: number) {
   state.zoom = Math.min(18, Math.max(0.6, state.zoom * factor));
+}
+
+function toneFill(tone: TileTone, light: number, chosen: boolean): string {
+  const alpha = chosen ? 0.9 : 0.55 + 0.28 * light;
+  if (tone === 'defense') return `rgba(${Math.round(190 + 40 * light)},${Math.round(120 + 50 * light)},${Math.round(20 + 16 * light)},${alpha})`;
+  if (tone === 'submission') return `rgba(${Math.round(176 + 50 * light)},${Math.round(36 + 24 * light)},${Math.round(48 + 16 * light)},${alpha})`;
+  if (tone === 'pass') return `rgba(${Math.round(24 + 36 * light)},${Math.round(140 + 70 * light)},${Math.round(64 + 36 * light)},${alpha})`;
+  return chosen
+    ? `rgba(${Math.round(37 + 120 * light)},${Math.round(150 + 80 * light)},255,${alpha})`
+    : `rgba(${Math.round(15 + 90 * light)},${Math.round(80 + 120 * light)},${Math.round(130 + 110 * light)},${alpha})`;
 }
 
 function inTri(point: [number, number], a: [number, number], b: [number, number], c: [number, number]): boolean {
