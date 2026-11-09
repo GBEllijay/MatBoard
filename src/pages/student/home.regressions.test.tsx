@@ -678,3 +678,21 @@ test('privacy: injuries and body zones never reach the coach file or the card sh
   const json = JSON.stringify(share);
   for (const word of ['secret-note', 'kneeL', 'injury']) assert.equal(json.includes(word), false, word);
 });
+
+test('shape toggle defaults to the diamond and can switch to the radar', () => {
+  seedNamed([{ date: daysAgo(1) }]);
+  const m = mount(<StudentEditionPage />, '/student?student=1');
+  const shape = q(m.host, '[data-testid="card-radar"]')!;
+  assert.equal(shape.getAttribute('data-shape'), 'diamond');
+  assert.equal(control(shape, 'button', 'Diamond').getAttribute('aria-pressed'), 'true');
+  assert.ok(q(shape, '[data-testid="sheet-diamond"]'));
+  assert.equal(q(shape, 'polygon.oct-cage'), null);
+  click(control(shape, 'button', 'Radar'));
+  assert.equal(shape.getAttribute('data-shape'), 'radar');
+  assert.equal(control(shape, 'button', 'Radar').getAttribute('aria-pressed'), 'true');
+  assert.equal(q(shape, '[data-testid="sheet-diamond"]'), null);
+  click(control(shape, 'button', 'Diamond'));
+  assert.equal(shape.getAttribute('data-shape'), 'diamond');
+  assert.ok(q(shape, '[data-testid="sheet-diamond"]'));
+  unmount(m);
+});

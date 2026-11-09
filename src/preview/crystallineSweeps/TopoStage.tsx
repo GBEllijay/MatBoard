@@ -26,6 +26,9 @@ type Props = {
   drillPath: readonly string[];
   relief: number;
   hue: number;
+  /** bare hides the zoom, pause, reset, and factor buttons for the sheet thumbnail. */
+  chrome?: 'full' | 'bare';
+  onExpand?: () => void;
   onFocus: (index: number) => void;
   onSelect: (index: number) => void;
   onDrill: (path: string[], detail: boolean) => void;
@@ -40,7 +43,7 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, links, drillPath, relief, hue, onFocus, onSelect, onDrill }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, pair, links, drillPath, relief, hue, chrome = 'full', onExpand, onFocus, onSelect, onDrill }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
@@ -68,6 +71,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     links: [] as string[],
     relief: 1,
     hue: 1,
+    chrome: 'full' as 'full' | 'bare',
+    onExpand: () => {},
     grown: [] as { name: string; corners: [Vec, Vec, Vec] }[],
     pendingPath: null as string[] | null,
     onDrill: (_path: string[], _detail: boolean) => {},
@@ -95,6 +100,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
   view.current.onDrill = onDrill;
   view.current.relief = relief;
   view.current.hue = hue;
+  view.current.chrome = chrome;
+  view.current.onExpand = onExpand ?? (() => {});
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -336,7 +343,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         state.ry = state.anim.ry0 + (state.anim.ry1 - state.anim.ry0) * k;
         state.zoom = state.anim.z0 + (state.anim.z1 - state.anim.z0) * k;
         if (state.anim.t >= 1) state.anim = null;
-      } else if (!state.paused && !state.drag && state.selected < 0) state.ry += dt * 0.18;
+      } else if (!state.paused && !state.drag && state.selected < 0) state.ry += dt * (state.chrome === 'bare' ? 0.1 : 0.18);
       const showLabels = state.zoom >= 1.8 || state.focus >= 0;
       const light: Vec = [-0.4, 0.6, 0.7];
       const lightLength = Math.hypot(...light) || 1;
@@ -924,6 +931,10 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
           const tap = state.drag && !state.drag.moved;
           state.drag = null;
           if (!tap) return;
+          if (state.chrome === 'bare') {
+            state.onExpand();
+            return;
+          }
           const rect = event.currentTarget.getBoundingClientRect();
           const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
           const active = state.activeScreen;
@@ -1023,6 +1034,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         <canvas ref={canvasRef} />
         <div ref={labelsRef} className="topo-labels" />
       </div>
+      {chrome === 'full' ? (
+      <>
       <div className="topo-controls">
         <button type="button" aria-label="Zoom in" onClick={() => zoomBy(view.current, 1.3)}>
           +
@@ -1062,6 +1075,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
           </button>
         ))}
       </nav>
+      </>
+      ) : null}
     </div>
   );
 }

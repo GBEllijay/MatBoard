@@ -6,6 +6,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApprovedOctagonRadar } from '../../preview/assessmentRadar/OctagonChart';
+import { CrystallineSweepsPreview } from '../../preview/crystallineSweeps/CrystallineSweepsPreview';
+import { TopoStage } from '../../preview/crystallineSweeps/TopoStage';
+import { buildTopo, demoLevel } from '../../preview/crystallineSweeps/topo';
+import '../../preview/crystallineSweeps/crystallineSweeps.css';
 import { loadAssessments } from '../../lib/studentAssessment';
 import { shapeAxesFromLegacy, shapeAxisLabel, shapeAxisValues } from '../../lib/shapeAxes';
 import { matHoursSplit, matHoursTotal } from '../../lib/matHours';
@@ -105,13 +109,63 @@ export function MatTimerButton({ onClick }: { onClick: () => void }) {
 }
 
 /** Read-only Shape radar from the latest saved self-assessment. Display only. The stored day is not rewritten. */
+const SHEET_DIAMOND = buildTopo((id) => demoLevel(id), 'center');
+
+function SheetDiamond() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="sheet-diamond" data-testid="sheet-diamond">
+      <p className="sheet-diamond__note">Example diamond. Not a saved score.</p>
+      <TopoStage
+        chrome="bare"
+        model={SHEET_DIAMOND}
+        style="pyramid"
+        focus={-1}
+        selected={-1}
+        comparison={false}
+        pair={false}
+        links={[]}
+        drillPath={[]}
+        relief={1}
+        hue={1}
+        onExpand={() => setOpen(true)}
+        onFocus={() => undefined}
+        onSelect={() => undefined}
+        onDrill={() => undefined}
+      />
+      <button type="button" className="sheet-diamond__expand" onClick={() => setOpen(true)}>
+        Expand
+      </button>
+      {open ? (
+        <div className="sheet-diamond-full" role="dialog" aria-modal="true" aria-label="Assessment diamond">
+          <button type="button" className="sheet-diamond-full__close" onClick={() => setOpen(false)}>
+            Close
+          </button>
+          <CrystallineSweepsPreview />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function CardRadar({ to }: { to: (path: string) => string }) {
+  const [shape, setShape] = useState<'diamond' | 'radar'>('diamond');
   const entries = typeof localStorage === 'undefined' ? [] : loadAssessments(localStorage).entries;
   const latest = entries[0];
   const axes = latest ? shapeAxesFromLegacy(latest.scores) : [];
   return (
-    <section className="card-radar" aria-label="Shape" data-testid="card-radar">
-      {latest ? (
+    <section className="card-radar" aria-label="Shape" data-testid="card-radar" data-shape={shape}>
+      <div className="sheet-shape-toggle" role="group" aria-label="Shape drawing">
+        <button type="button" aria-pressed={shape === 'diamond'} onClick={() => setShape('diamond')}>
+          Diamond
+        </button>
+        <button type="button" aria-pressed={shape === 'radar'} onClick={() => setShape('radar')}>
+          Radar
+        </button>
+      </div>
+      {shape === 'diamond' ? (
+        <SheetDiamond />
+      ) : latest ? (
         <>
           <ApprovedOctagonRadar values={shapeAxisValues(latest.scores)} label={shapeAxisLabel(latest.scores)} />
           <ul className="assess-legend" aria-label="Area scores">
