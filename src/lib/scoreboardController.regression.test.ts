@@ -57,7 +57,8 @@ test('a bracket launch still links the bout and fills the round from that slot',
 
 test('scoreboard keeps the 3:00, 5:00, and 10:00 length presets', () => {
   assert.match(wheel, /snapsMs: \[3 \* 60_000, 5 \* 60_000, 10 \* 60_000\]/);
-  assert.match(wheel, /stepMs: WHEEL_STEP_MS/);
+  assert.match(wheel, /stepMs: DURATION_STEP_MS/);
+  assert.match(wheel, /export const DURATION_STEP_MS = 15_000/);
   assert.match(board, /MATCH_LENGTH_RANGE/);
   assert.doesNotMatch(board, /ROUND_LENGTH_RANGE|SECOND_STEP_MS|tensDetent/);
 });

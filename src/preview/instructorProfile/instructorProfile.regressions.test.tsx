@@ -111,7 +111,7 @@ function pickTime(label: string, option: string) {
   if (done) click(done as HTMLElement);
 }
 
-test('teaching duration options are the student 15-minute wheel, not 30-second or 1-second steps', () => {
+test('teaching duration options are the student 15-minute wheel, not the 15-second lesson timer', () => {
   const options = teachingDurationOptions();
   assert.deepEqual(options, matQuarterOptions());
   assert.equal(options[0]?.label, 'Untimed');

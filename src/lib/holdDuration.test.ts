@@ -53,12 +53,12 @@ function silence() {
 function configure() {
   store.resetTrainingSession();
   store.setWorkMs(7 * 60_000);
-  store.setBreakMs(20_000);
+  store.setBreakMs(15_000);
   store.setRounds(8, false);
   silence();
   const next = store.getTraining();
   assert.equal(next.workMs, 7 * 60_000);
-  assert.equal(next.breakMs, 20_000);
+  assert.equal(next.breakMs, 15_000);
   assert.equal(next.rounds, 8);
   assert.equal(next.currentRound, 1);
   assert.equal(next.phase, 'work');
@@ -91,7 +91,7 @@ test('timer hold restores the configured period, not zero, and keeps the round',
   assert.equal(reset.phase, 'work');
   assert.equal(reset.currentRound, 1);
   assert.equal(reset.workMs, 7 * 60_000);
-  assert.equal(reset.breakMs, 20_000);
+  assert.equal(reset.breakMs, 15_000);
   assert.equal(reset.rounds, 8);
   assert.equal(reset.endless, false);
   assert.equal(reset.startSound, false);
@@ -112,12 +112,12 @@ test('timer hold restores the configured period, not zero, and keeps the round',
   } finally {
     Date.now = real2;
   }
-  assert.equal(store.getTraining().remainingMs, 16_000);
+  assert.equal(store.getTraining().remainingMs, 11_000);
   store.resetTrainingPeriod();
   const rest = store.getTraining();
   assert.equal(rest.phase, 'break');
   assert.equal(rest.currentRound, 1);
-  assert.equal(rest.remainingMs, 20_000);
+  assert.equal(rest.remainingMs, 15_000);
   assert.notEqual(rest.remainingMs, 0);
   assert.equal(rest.running, false);
   assert.equal(rest.workMs, 7 * 60_000);
@@ -133,9 +133,9 @@ test('round hold resets the session and keeps length, rest, and rounds', () => {
     store.toggleTrainingClock();
     Date.now = () => t0 + 7 * 60_000;
     store.tickTraining();
-    Date.now = () => t0 + 7 * 60_000 + 20_000;
+    Date.now = () => t0 + 7 * 60_000 + 15_000;
     store.tickTraining();
-    Date.now = () => t0 + 7 * 60_000 + 20_000 + 9_000;
+    Date.now = () => t0 + 7 * 60_000 + 15_000 + 9_000;
     store.toggleTrainingClock();
   } finally {
     Date.now = real;
@@ -154,7 +154,7 @@ test('round hold resets the session and keeps length, rest, and rounds', () => {
   assert.equal(reset.running, false);
   assert.equal(reset.startedAt, null);
   assert.equal(reset.workMs, 7 * 60_000);
-  assert.equal(reset.breakMs, 20_000);
+  assert.equal(reset.breakMs, 15_000);
   assert.equal(reset.rounds, 8);
   assert.equal(reset.endless, false);
   assert.equal(reset.startSound, false);

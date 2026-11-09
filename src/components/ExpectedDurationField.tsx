@@ -3,8 +3,8 @@ import { EXPECTED_MINUTE_OPTIONS, expectedMinutes, formatExpectedDuration } from
 
 /**
  * Expected duration for one lesson or curriculum block.
- * Half minutes on the shared scroll wheel, ½ min through 60 min.
- * Blank shows 5 min, the default, and stays blank until the wheel moves.
+ * 15-second steps on the shared scroll wheel, 0:30 through 60:00, labeled m:ss.
+ * Blank shows 5:00, the default, and stays blank until the wheel moves.
  */
 export function ExpectedDurationField({
   id,

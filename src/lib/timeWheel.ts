@@ -1,15 +1,13 @@
 import { clamp, formatMss } from './format.ts';
 
 /**
- * Match length on the scoreboard stays on 10-second steps.
- * Round length and rest do not use this constant.
+ * Match length, round length, and rest. One row is 15 seconds, so a stored
+ * whole minute (and 0:30) still lands on a row. Finer steps made the next
+ * minute a long scroll.
  */
-export const WHEEL_STEP_MS = 10_000;
+export const DURATION_STEP_MS = 15_000;
 
-/** Round length and rest. One second per row. */
-export const SECOND_STEP_MS = 1_000;
-
-/** :00, :10, :20, :30, :40, and :50. */
+/** :00, :10, :20, :30, :40, and :50. Used when a wheel opts into tens detents. */
 export const TENS_MARK_MS = 10_000;
 
 /**
@@ -48,30 +46,32 @@ export type WheelOption = {
   detent?: boolean;
 };
 
-/** Round length. Default 5:00. 1:00 through 60:00, one second at a time. */
+/**
+ * Round length. Default 5:00. 1:00 through 60:00, 15 seconds at a time.
+ * No tens detent: with a 15-second row, every value is within two rows of
+ * :00 or :30, so a slow-scroll catch would skip :15 and :45.
+ */
 export const ROUND_LENGTH_RANGE: WheelRange = {
   minMs: 60_000,
   maxMs: 60 * 60_000,
-  stepMs: SECOND_STEP_MS,
-  tensDetent: true,
+  stepMs: DURATION_STEP_MS,
 };
 
-/** Break / rest. Default 0:30. 0:00 (no rest) through 10:00, one second at a time. */
+/** Break / rest. Default 0:30. 0:00 (no rest) through 10:00, 15 seconds at a time. */
 export const REST_RANGE: WheelRange = {
   minMs: 0,
   maxMs: 10 * 60_000,
-  stepMs: SECOND_STEP_MS,
-  tensDetent: true,
+  stepMs: DURATION_STEP_MS,
 };
 
 /**
- * Match length. 10-second steps from 0:10 through the existing 180:00 custom ceiling.
+ * Match length. 15-second steps from 0:15 through the existing 180:00 ceiling.
  * 3:00, 5:00, and 10:00 are snap points on that grid.
  */
 export const MATCH_LENGTH_RANGE: WheelRange = {
-  minMs: WHEEL_STEP_MS,
+  minMs: DURATION_STEP_MS,
   maxMs: 180 * 60_000,
-  stepMs: WHEEL_STEP_MS,
+  stepMs: DURATION_STEP_MS,
   snapsMs: [3 * 60_000, 5 * 60_000, 10 * 60_000],
 };
 
@@ -89,8 +89,8 @@ export const ROUND_COUNT_OPTIONS: readonly WheelOption[] = Array.from({ length: 
 });
 
 /**
- * Nearest wheel step, then clamped to the range.
- * A saved whole second stays that second. A value under the minimum lands on
+ * Nearest 15-second step, then clamped to the range.
+ * A saved whole minute stays that minute. A value under the minimum lands on
  * the minimum (a 0:30 round becomes 1:00). A value past the maximum lands on
  * the maximum.
  */

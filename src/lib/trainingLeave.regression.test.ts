@@ -62,7 +62,7 @@ function configure() {
   if (store.getTraining().running) store.pauseTrainingClock();
   store.resetTrainingSession();
   store.setWorkMs(WORK_MS);
-  store.setBreakMs(10_000);
+  store.setBreakMs(15_000);
   store.setRounds(4, false);
   store.setStartSound(true);
   store.setWarningSound(true);
@@ -124,7 +124,7 @@ test('a live tick at zero still ends the round and plays the end cue', () => {
   assert.equal(next.phase, 'break');
   assert.equal(next.currentRound, 1);
   assert.equal(next.running, true);
-  assert.equal(next.remainingMs, 10_000);
+  assert.equal(next.remainingMs, 15_000);
   assert.equal(vibeCount(END_VIBE), 1);
   store.pauseTrainingClock();
 });

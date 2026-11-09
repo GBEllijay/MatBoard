@@ -32,7 +32,7 @@ test('only looping-video cards are shown in the daily training window', () => {
   assert.equal(curriculumVideoCards([emptyCurriculum()]).length, 0);
 });
 
-test('expected minutes are the loop length, and old m:ss snaps to 30 seconds', () => {
+test('expected minutes are the loop length, and old m:ss snaps to 15 seconds', () => {
   const plan = withVideo(emptyCurriculum(), 2, '1:30');
   const cards = curriculumVideoCards([plan]);
   assert.equal(cards[0]?.title, 'Take Downs');
@@ -43,6 +43,8 @@ test('expected minutes are the loop length, and old m:ss snaps to 30 seconds', (
   assert.equal(curriculumVideoCards([half])[0]?.durationMs, 8 * 60_000 + 30_000);
   const kept = withVideo(emptyCurriculum(), 0, '8');
   assert.equal(curriculumVideoCards([kept])[0]?.durationMs, 8 * 60_000);
+  const quarter = withVideo(emptyCurriculum(), 0, '8:15');
+  assert.equal(curriculumVideoCards([quarter])[0]?.durationMs, 8 * 60_000 + 15_000);
   const short = withVideo(emptyCurriculum(), 0, '0:04');
   assert.equal(curriculumVideoCards([short])[0]?.durationMs, 30_000);
 });

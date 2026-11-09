@@ -60,12 +60,16 @@ test('scoreboard division, weight, and round feed the competition packet names',
   );
 });
 
-test('saved match length snaps to 10 seconds and 3:00, 5:00, 10:00 stay put', () => {
+test('saved match length snaps to 15 seconds and 3:00, 5:00, 10:00 stay put', () => {
   assert.equal(DEFAULT_MATCH_MS, 5 * 60_000);
+  assert.equal(MATCH_LENGTH_RANGE.stepMs, 15_000);
   assert.equal(snapDurationMs(5 * 60_000, MATCH_LENGTH_RANGE, DEFAULT_MATCH_MS), 5 * 60_000);
   assert.equal(snapDurationMs(3 * 60_000, MATCH_LENGTH_RANGE, DEFAULT_MATCH_MS), 3 * 60_000);
   assert.equal(snapDurationMs(10 * 60_000, MATCH_LENGTH_RANGE, DEFAULT_MATCH_MS), 10 * 60_000);
-  assert.equal(snapDurationMs(4 * 60_000 + 7_000, MATCH_LENGTH_RANGE, DEFAULT_MATCH_MS), 4 * 60_000 + 10_000);
+  assert.equal(snapDurationMs(60_000, MATCH_LENGTH_RANGE, DEFAULT_MATCH_MS), 60_000);
+  assert.equal(snapDurationMs(4 * 60_000 + 7_000, MATCH_LENGTH_RANGE, DEFAULT_MATCH_MS), 4 * 60_000);
+  assert.equal(snapDurationMs(4 * 60_000 + 8_000, MATCH_LENGTH_RANGE, DEFAULT_MATCH_MS), 4 * 60_000 + 15_000);
+  assert.equal(snapDurationMs(10_000, MATCH_LENGTH_RANGE, DEFAULT_MATCH_MS), 15_000);
   assert.ok(MATCH_LENGTH_RANGE.snapsMs?.includes(3 * 60_000));
   assert.ok(MATCH_LENGTH_RANGE.snapsMs?.includes(5 * 60_000));
   assert.ok(MATCH_LENGTH_RANGE.snapsMs?.includes(10 * 60_000));
