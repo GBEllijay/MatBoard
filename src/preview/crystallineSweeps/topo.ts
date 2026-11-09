@@ -14,15 +14,16 @@ export const TOPO_REVISION = 'd8-topography-r1';
 export const TOPO_CITED_COMMIT = '582d339';
 
 export const TOPO_R = 1.55;
+/** Base step. Score 4 uses this height, which is the old score-5 height. */
 export const TOPO_H = (0.25 * TOPO_R * Math.SQRT2) / 4;
-export const TOPO_HALF = TOPO_H / 2;
 
+/** Doubling steps. 3 stays flat. 5 and 1 are twice the old extreme. */
 export const TOPO_LEVEL: Record<ReliefScore, number> = {
-  1: -TOPO_H,
-  2: -TOPO_HALF,
+  1: -2 * TOPO_H,
+  2: -TOPO_H,
   3: 0,
-  4: TOPO_HALF,
-  5: TOPO_H,
+  4: TOPO_H,
+  5: 2 * TOPO_H,
 };
 
 const CITED_UNMAPPED = [

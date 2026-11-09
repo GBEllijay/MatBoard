@@ -92,12 +92,11 @@ export function heightCap(layout: SweepLayout): number {
 
 export function reliefOffset(score: ReliefScore | null, cap: number): number | null {
   if (score == null) return null;
-  const step = cap / 2;
-  if (score === 1) return -cap;
-  if (score === 2) return -step;
+  if (score === 1) return -2 * cap;
+  if (score === 2) return -cap;
   if (score === 3) return 0;
-  if (score === 4) return step;
-  return cap;
+  if (score === 4) return cap;
+  return 2 * cap;
 }
 
 export function buildTileMesh(layout: SweepLayout, id: string, score: ReliefScore | null): TileMesh | null {
@@ -160,7 +159,7 @@ export function fitEnvelope(layout: SweepLayout): Vec3[] {
   const points = layout.vertices.map((point) => ({ ...point }));
   for (const tile of layout.tiles) {
     const center = centroidOf(tileVertices(layout, tile.vertexIndices));
-    points.push({ x: center.x, y: center.y, z: cap }, { x: center.x, y: center.y, z: -cap });
+    points.push({ x: center.x, y: center.y, z: 2 * cap }, { x: center.x, y: center.y, z: -2 * cap });
   }
   return points;
 }

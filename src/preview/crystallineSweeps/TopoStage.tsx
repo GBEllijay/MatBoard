@@ -425,7 +425,7 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
       rx1: targetPitch,
       ry1: state.ry + dy,
       z0: state.zoom,
-      z1: Math.max(state.zoom, 2.6),
+      z1: Math.max(state.zoom, 1.55),
       t: 0,
     };
     onFocus(index);
