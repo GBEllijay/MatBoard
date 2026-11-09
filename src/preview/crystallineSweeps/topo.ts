@@ -8,22 +8,29 @@
 import { APPROVED_FUNDAMENTALS, AXES, SHEET_AXIS_IDS, type AxisId } from '../assessmentRadar/model.ts';
 import { FUNDAMENTALS_CATALOG } from '../../lib/progress/catalog.ts';
 import type { ReliefScore } from './geometry.ts';
+import { RELIEF_STEPS } from './geometry.ts';
 
 export const TOPO_REVISION = 'd8-topography-r1';
 /** Commit named in the original file. The live map is compared with it in tests. */
 export const TOPO_CITED_COMMIT = '582d339';
 
 export const TOPO_R = 1.55;
+/**
+ * Old extreme. On the linear scale, score 5 was +H and score 4 was +H/2.
+ * The doubled scale keeps this H and multiplies it by RELIEF_STEPS.
+ */
 export const TOPO_H = (0.25 * TOPO_R * Math.SQRT2) / 4;
-export const TOPO_HALF = TOPO_H / 2;
 
+/** 3 is flat. 4 is 1.5H. 5 is 3.5H. 2 and 1 mirror 4 and 5. */
 export const TOPO_LEVEL: Record<ReliefScore, number> = {
-  1: -TOPO_H,
-  2: -TOPO_HALF,
-  3: 0,
-  4: TOPO_HALF,
-  5: TOPO_H,
+  1: RELIEF_STEPS[1] * TOPO_H,
+  2: RELIEF_STEPS[2] * TOPO_H,
+  3: RELIEF_STEPS[3] * TOPO_H,
+  4: RELIEF_STEPS[4] * TOPO_H,
+  5: RELIEF_STEPS[5] * TOPO_H,
 };
+
+export type FillMode = 'center' | 'edges';
 
 const CITED_UNMAPPED = [
   'pos.standing',
@@ -83,6 +90,39 @@ export function demoLevel(id: string): ReliefScore {
   return (1 + (hash % 5)) as ReliefScore;
 }
 
+export type TileTone = 'position' | 'defense' | 'submission' | 'pass';
+
+/** Positions stay the original blue. Escapes and defense are orange, submissions red, passes and sweeps green. */
+export function tileTone(id: string): TileTone {
+  if (id.startsWith('sub.')) return 'submission';
+  if (id.startsWith('escape.') || id.startsWith('def.')) return 'defense';
+  if (id.startsWith('pass.') || id.startsWith('sweep.')) return 'pass';
+  return 'position';
+}
+
+const TONE_ALIASES: Record<string, string> = {
+  Armbar: 'Armbar from guard',
+  'Triangle choke': 'Triangle',
+};
+
+/** Example drill names use the same colors as the catalog row they refer to. */
+export function toneForName(name: string): TileTone {
+  const wanted = TONE_ALIASES[name] ?? name;
+  for (const category of FUNDAMENTALS_CATALOG.categories) {
+    if (!category.items.some((item) => item.name === name || item.name === wanted)) continue;
+    if (category.id === 'submissions') return 'submission';
+    if (category.id === 'escapes' || category.id === 'defense') return 'defense';
+    if (category.id === 'passes' || category.id === 'sweeps') return 'pass';
+    return 'position';
+  }
+  return 'position';
+}
+
+/** 0 flattens every pyramid. 1 keeps the current 3.5H extreme. */
+export function reliefScale(offset: number, scale: number): number {
+  return offset * Math.min(1, Math.max(0, scale));
+}
+
 function catalogName(id: string): string {
   for (const category of FUNDAMENTALS_CATALOG.categories) {
     const item = category.items.find((row) => row.id === id);
@@ -123,7 +163,7 @@ export function buildFaces(): { faces: TopoFace[]; unmapped: { id: string; name:
   return { faces, unmapped, matchesCitedLists };
 }
 
-export function buildTopo(scoreFor: (moveId: string) => ReliefScore | null): TopoModel {
+export function buildTopo(scoreFor: (moveId: string) => ReliefScore | null, fill: FillMode = 'center'): TopoModel {
   const { faces, unmapped, matchesCitedLists } = buildFaces();
   const vertices: Vec[] = [
     [TOPO_R, 0, 0],
@@ -172,8 +212,20 @@ export function buildTopo(scoreFor: (moveId: string) => ReliefScore | null): Top
     const center = [a, b, c].reduce((sum, q) => sum.map((value, index) => value + q[index]) as Vec, [0, 0, 0] as Vec);
     const length = Math.hypot(...center) || 1;
     const normal = center.map((value) => value / length) as Vec;
+    const centroid = center.map((value) => value / 3) as Vec;
+    const ranked = list.map((tri, index) => {
+      const mid = [0, 1, 2].map((axis) => (tri[0].p[axis] + tri[1].p[axis] + tri[2].p[axis]) / 3) as Vec;
+      const dx = mid[0] - centroid[0];
+      const dy = mid[1] - centroid[1];
+      const dz = mid[2] - centroid[2];
+      return { index, mid, distance: Math.hypot(dx, dy, dz), angle: Math.atan2(dy, dx) };
+    });
+    const byDistance = [...ranked].sort((left, right) => left.distance - right.distance || left.index - right.index);
+    const ring = fill === 'center' ? byDistance : [...byDistance].reverse();
+    const chosen = ring.slice(0, face?.moves.length ?? 0).sort((left, right) => left.angle - right.angle || left.index - right.index);
+    const moveAt = new Map(chosen.map((row, index) => [row.index, face?.moves[index]]));
     list.forEach((tri, triIndex) => {
-      const move = face?.moves[triIndex] ?? null;
+      const move = moveAt.get(triIndex) ?? null;
       const score = move ? scoreFor(move.id) : null;
       const offset = score == null ? null : TOPO_LEVEL[score];
       const mid = [0, 1, 2].map((axis) => (tri[0].p[axis] + tri[1].p[axis] + tri[2].p[axis]) / 3) as Vec;

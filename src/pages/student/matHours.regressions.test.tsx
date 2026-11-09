@@ -547,6 +547,8 @@ test('medals on the card open a match log; empty states for medals and radar', (
   seed('white', { minutes: 0 });
   let page = mount(<StudentEditionPage />, '/student/profile?student=1');
   assert.ok(page.host.querySelector('[data-testid="card-medals-empty"]'));
+  assert.ok(page.host.querySelector('[data-testid="sheet-diamond"]'));
+  click(control(page.host, 'button', 'Radar'));
   assert.ok(page.host.querySelector('[data-testid="card-radar-empty"]'));
   unmount(page);
   seedResults([result('x', 'Sample Open', ['win', 'win'], '2026-03-14', ['6-2', ''])]);
@@ -570,6 +572,7 @@ test('card radar reads the latest check-in; the self-assessment page is unchange
   writeAssessments(localStorage, saveAssessment({ entries: [] }, { date: '2026-11-07', note: '', scores: legacy }));
   const stored = localStorage.getItem(ASSESSMENT_STORAGE_KEY);
   const page = mount(<StudentEditionPage />, '/student/profile?student=1');
+  click(control(page.host, 'button', 'Radar'));
   const radar = page.host.querySelector('[data-testid="card-radar"]') as HTMLElement;
   const cage = radar.querySelector('polygon.oct-cage');
   assert.equal(cage?.getAttribute('points')?.trim().split(/\s+/).length, 8);

@@ -135,6 +135,21 @@ test('example relief, list selection, curved toggle, and back do not write stora
   assert.match(host.textContent ?? '', /no row for this move/);
   assert.equal(snapshot(), before);
   act(() => {
+    labeled(host, 'Example comparison').click();
+  });
+  assert.equal(host.querySelector('[data-comparison]')?.getAttribute('data-comparison'), 'on');
+  assert.match(host.textContent ?? '', /not a prediction/i);
+  assert.match(host.textContent ?? '', /Example self is higher/);
+  act(() => {
+    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+  });
+  assert.match(host.textContent ?? '', /sweep\.scissor/);
+  act(() => {
+    labeled(host, 'Scissor sweep').click();
+  });
+  assert.match(host.textContent ?? '', /does not connect one Sweeps move to another/);
+  assert.equal(snapshot(), before);
+  act(() => {
     mounted.root.unmount();
   });
 });
@@ -228,6 +243,120 @@ test('keyboard can choose a move from the list and Escape clears it', () => {
     stage.dispatchEvent(new view.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   });
   assert.ok(host.querySelector('[aria-label="About Sweeps"]'));
+  act(() => {
+    mounted.root.unmount();
+  });
+});
+
+test('double-tap walks Mount to Armbar to Wrist lock without writing storage', () => {
+  localStorage.clear();
+  const before = snapshot();
+  const mounted = mount(<CrystallineSweepsPreview />);
+  const host = mounted.host;
+  const moves = () => {
+    const section = [...host.querySelectorAll('section')].find((node) => node.getAttribute('aria-label')?.endsWith(' moves'));
+    if (!section) throw new Error('Missing moves');
+    return section;
+  };
+  const moveNamed = (name: string) => {
+    const found = [...moves().querySelectorAll('button')].find((node) => node.textContent?.includes(name));
+    if (!(found instanceof view.HTMLElement)) throw new Error(`Missing move ${name}`);
+    return found;
+  };
+  act(() => {
+    (host.querySelector('[data-face-button="guard-control"]') as HTMLButtonElement).click();
+  });
+  const mountButton = moveNamed('Mount');
+  act(() => {
+    mountButton.click();
+  });
+  assert.equal(host.querySelector('[aria-label="Mount connections"]'), null);
+  assert.match(host.textContent ?? '', /Double-tap it to open example connections/);
+  assert.equal(host.querySelector('[data-drill-depth]')?.getAttribute('data-drill-depth'), '1');
+  act(() => {
+    mountButton.dispatchEvent(new view.MouseEvent('dblclick', { bubbles: true }));
+  });
+  const card = host.querySelector('[aria-label="Mount connections"]');
+  assert.ok(card);
+  assert.match(card?.textContent ?? '', /Example connections/);
+  assert.match(card?.textContent ?? '', /Not a saved technique tree/);
+  assert.equal(card?.getAttribute('data-drill-mode'), 'grid');
+  assert.equal(card?.getAttribute('data-drill-n'), '9');
+  assert.match(card?.textContent ?? '', /9 tiles/);
+  assert.match(card?.textContent ?? '', /Left Armbar/);
+  assert.match(card?.textContent ?? '', /Base Cross collar choke/);
+  assert.match(card?.textContent ?? '', /Right Americana/);
+  assert.equal(card?.querySelector('[data-tile="Armbar"]')?.textContent, 'Armbar');
+  assert.equal(card?.querySelector('[data-tile="Scissor sweep"]')?.textContent, 'Scissor sweep');
+  act(() => {
+    (card?.querySelector('[data-tile="Armbar"]') as HTMLButtonElement).click();
+  });
+  const armbar = host.querySelector('[aria-label="Armbar connections"]');
+  assert.ok(armbar);
+  assert.equal(armbar?.getAttribute('data-drill-mode'), 'grid');
+  assert.equal(armbar?.getAttribute('data-drill-n'), '4');
+  assert.equal(armbar?.querySelector('[data-tile="Wrist lock"]')?.textContent, 'Wrist lock');
+  assert.equal(armbar?.querySelector('[data-tile="Triangle choke"]')?.textContent, 'Triangle choke');
+  assert.equal(armbar?.querySelector('[data-tile="Mount"]')?.textContent, 'Mount');
+  assert.match(host.querySelector('[aria-label="Drill path"]')?.textContent ?? '', /Mount/);
+  assert.match(host.querySelector('[aria-label="Drill path"]')?.textContent ?? '', /Armbar/);
+  act(() => {
+    (armbar?.querySelector('[data-tile="Wrist lock"]') as HTMLButtonElement).click();
+  });
+  const wrist = host.querySelector('[aria-label="Wrist lock connections"]');
+  assert.ok(wrist);
+  assert.equal(wrist?.getAttribute('data-drill-mode'), 'edges');
+  assert.equal(wrist?.querySelector('[data-side="base"]')?.textContent, 'Armbar');
+  assert.equal(wrist?.querySelector('[data-side="left"]')?.textContent, 'Empty');
+  assert.equal(wrist?.querySelector('[data-side="right"]')?.textContent, 'Empty');
+  assert.equal(host.querySelector('[data-drill-depth]')?.getAttribute('data-drill-depth'), '3');
+  act(() => {
+    labeled(host, 'Back').click();
+  });
+  assert.ok(host.querySelector('[aria-label="Armbar connections"]'));
+  assert.equal(host.querySelector('[aria-label="Wrist lock connections"]'), null);
+  act(() => {
+    labeled(host, 'Whole solid').click();
+  });
+  assert.equal(host.querySelector('[aria-label="Armbar connections"]'), null);
+  assert.equal(host.querySelector('[data-drill-depth]')?.getAttribute('data-drill-depth'), '0');
+  assert.equal(snapshot(), before);
+  act(() => {
+    mounted.root.unmount();
+  });
+});
+
+test('factor buttons still jump to that face and the bottom controls stay', () => {
+  localStorage.clear();
+  const mounted = mount(<CrystallineSweepsPreview />);
+  const host = mounted.host;
+  assert.equal(host.querySelectorAll('.topo-controls button').length, 4);
+  assert.ok(host.querySelector('[aria-label="Zoom in"]'));
+  assert.ok(host.querySelector('[aria-label="Zoom out"]'));
+  assert.ok(host.querySelector('.topo-reset'));
+  const faces: [string, string][] = [
+    ['guard-control', 'Guard/Control face'],
+    ['passing', 'Passing face'],
+    ['sweeps', 'About Sweeps'],
+    ['takedowns', 'Takedowns face'],
+    ['escapes-defense', 'Escapes/Defense face'],
+    ['submissions', 'Submissions face'],
+    ['conditioning', 'Conditioning face'],
+    ['mindset', 'Mindset face'],
+  ];
+  for (const [id, label] of faces) {
+    const button = host.querySelector(`[data-face-button="${id}"]`) as HTMLButtonElement;
+    act(() => {
+      button.click();
+    });
+    assert.equal(button.getAttribute('aria-pressed'), 'true');
+    assert.ok(host.querySelector(`[aria-label="${label}"]`), label);
+  }
+  act(() => {
+    labeled(host, 'Reset view').click();
+  });
+  assert.ok(host.querySelector('[aria-label="Eight faces"]'));
+  assert.equal(host.querySelectorAll('[data-face-button]').length, 8);
   act(() => {
     mounted.root.unmount();
   });

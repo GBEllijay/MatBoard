@@ -11,6 +11,19 @@ export const HEIGHT_RATIO = 0.5;
 
 export type ReliefScore = 1 | 2 | 3 | 4 | 5;
 
+/**
+ * One height table for pointed and curved relief.
+ * Steps are counted from the old linear scale, where one step was H/2 and score 5 was H.
+ * Score 4 is 3 steps (1.5H). Score 5 is 7 steps (3.5H). Score 3 stays flat.
+ */
+export const RELIEF_STEPS: Record<ReliefScore, number> = {
+  1: -3.5,
+  2: -1.5,
+  3: 0,
+  4: 1.5,
+  5: 3.5,
+};
+
 export type Vec3 = { x: number; y: number; z: number };
 
 export type SweepLayout = {
@@ -92,12 +105,7 @@ export function heightCap(layout: SweepLayout): number {
 
 export function reliefOffset(score: ReliefScore | null, cap: number): number | null {
   if (score == null) return null;
-  const step = cap / 2;
-  if (score === 1) return -cap;
-  if (score === 2) return -step;
-  if (score === 3) return 0;
-  if (score === 4) return step;
-  return cap;
+  return RELIEF_STEPS[score] * cap;
 }
 
 export function buildTileMesh(layout: SweepLayout, id: string, score: ReliefScore | null): TileMesh | null {
@@ -160,7 +168,10 @@ export function fitEnvelope(layout: SweepLayout): Vec3[] {
   const points = layout.vertices.map((point) => ({ ...point }));
   for (const tile of layout.tiles) {
     const center = centroidOf(tileVertices(layout, tile.vertexIndices));
-    points.push({ x: center.x, y: center.y, z: cap }, { x: center.x, y: center.y, z: -cap });
+    points.push(
+      { x: center.x, y: center.y, z: RELIEF_STEPS[5] * cap },
+      { x: center.x, y: center.y, z: RELIEF_STEPS[1] * cap },
+    );
   }
   return points;
 }
