@@ -39,7 +39,7 @@
 .journal-card__scan-link { margin-top: 4px; }
 .bs-help { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid #5fd8ff; background: transparent; color: #c9f8ff; font: inherit; font-size: 18px; font-weight: 800; cursor: pointer; }
 .bs-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(2, 8, 18, 0.6); display: flex; align-items: flex-end; justify-content: center; }
-.bs-sheet { width: min(560px, 100%); max-height: 80vh; overflow-y: auto; padding: 16px; border-radius: 18px 18px 0 0; background: #0a1a30; color: #c9f8ff; border-top: 3px solid #3d8bff; display: grid; gap: 10px; }
+.bs-sheet { width: min(560px, 100%); max-height: min(80vh, calc(100dvh - env(safe-area-inset-top, 0px) - 0.75rem)); overflow-y: auto; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); border-radius: 18px 18px 0 0; background: #0a1a30; color: #c9f8ff; border-top: 3px solid #3d8bff; display: grid; gap: 10px; }
 @media (min-width: 700px) { .bs-overlay { align-items: center; } .bs-sheet { border-radius: 18px; } }
 .bs-close { min-width: 44px; }
 .bs-meanings { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 14px; }

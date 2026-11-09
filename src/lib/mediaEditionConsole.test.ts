@@ -132,7 +132,7 @@ test('Media Console setup scrolls as one; only the Media Console bar stays pinne
   assert.match(panel, /overflow: visible;/);
   assert.match(rulesFor('.saver.saver--belt > .sheet.sheet--dock-footer .sheet__body').join(), /overflow: visible;/);
   // The one pinned piece: the sheet head with the Media Console title and Close.
-  assert.match(rulesFor('.saver.saver--belt > .sheet.sheet--dock-footer .sheet__head').join(), /position: sticky;\s*top: 0;/);
+  assert.match(rulesFor('.saver.saver--belt > .sheet.sheet--dock-footer .sheet__head').join(), /position: sticky;\s*top: var\(--safe-t\);/);
   // No other fixed or sticky rule is scoped to the setup screen.
   const scoped = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(
     (m) => m[1].includes('.saver.saver--belt') && /position: (fixed|sticky)/.test(m[2]),

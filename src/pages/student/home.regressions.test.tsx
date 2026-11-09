@@ -24,6 +24,7 @@ import {
 import { FORMER_HUB_ITEMS, formerHubItemReachable, studentPageBack } from '../../lib/studentHubMenu.ts';
 import { buildCoachUpdateFile } from '../../lib/coachProgressFile.ts';
 import { createStudentCardShare } from '../../lib/studentCardShare.ts';
+import { pageScrollIsLocked, resetPageScrollLockForTests } from '../../lib/pageScrollLock.ts';
 
 const dom = new Window({ url: 'http://localhost/student/journal?student=1' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -695,4 +696,37 @@ test('shape toggle defaults to the diamond and can switch to the radar', () => {
   assert.equal(shape.getAttribute('data-shape'), 'diamond');
   assert.ok(q(shape, '[data-testid="sheet-diamond"]'));
   unmount(m);
+});
+
+test('diamond Expand Close sits in the overlay bar and leaves on Close, Escape, and Back', () => {
+  resetPageScrollLockForTests(document);
+  seedNamed([{ date: daysAgo(1) }]);
+  const m = mount(<StudentEditionPage />, '/student?student=1');
+  const shape = q(m.host, '[data-testid="card-radar"]')!;
+  click(control(shape, 'button', 'Expand'));
+  const dialog = q(document.body, '[data-testid="sheet-diamond-full"]')!;
+  assert.equal(dialog.getAttribute('aria-modal'), 'true');
+  assert.ok(dialog.querySelector('.sheet-diamond-full__bar button'));
+  assert.match(dialog.textContent ?? '', /Preview only/);
+  assert.equal(pageScrollIsLocked(document), true);
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  });
+  assert.equal(q(document.body, '[data-testid="sheet-diamond-full"]'), null);
+  assert.equal(pageScrollIsLocked(document), false);
+
+  click(control(shape, 'button', 'Expand'));
+  assert.ok(q(document.body, '[data-testid="sheet-diamond-full"]'));
+  act(() => {
+    window.history.back();
+  });
+  assert.equal(q(document.body, '[data-testid="sheet-diamond-full"]'), null);
+  assert.equal(pageScrollIsLocked(document), false);
+
+  click(control(shape, 'button', 'Expand'));
+  click(control(q(document.body, '[data-testid="sheet-diamond-full"]')!, 'button', 'Close'));
+  assert.equal(q(document.body, '[data-testid="sheet-diamond-full"]'), null);
+  assert.equal(pageScrollIsLocked(document), false);
+  unmount(m);
+  resetPageScrollLockForTests(document);
 });

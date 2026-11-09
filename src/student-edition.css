@@ -828,7 +828,11 @@ button.student-book .student-mark__press {
   inset: 0;
   z-index: 40;
   overflow: auto;
-  padding: calc(0.8rem + var(--safe-t)) 0.8rem calc(1rem + var(--safe-b)) 1.8rem;
+  padding:
+    calc(0.8rem + var(--safe-t))
+    calc(0.8rem + var(--safe-r))
+    calc(1rem + var(--safe-b))
+    calc(1.8rem + var(--safe-l));
   background-color: var(--paper);
   background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 27px, var(--line) 28px);
 }
@@ -1643,7 +1647,7 @@ input.sr-only.student-film-file {
   position: relative;
   z-index: 1;
   width: min(100%, 28rem);
-  max-height: min(88dvh, 40rem);
+  max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top, 0px) - 0.5rem), 40rem);
   overflow: auto;
   padding: 0.9rem 1rem calc(1rem + env(safe-area-inset-bottom));
   background: var(--paper);

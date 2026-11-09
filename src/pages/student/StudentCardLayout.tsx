@@ -3,7 +3,7 @@
  * card face (name + belt) → small mat hours frame + timer → Shape radar (read-only)
  * → the three most recent medals → mat hours details (streak, split, report card).
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApprovedOctagonRadar } from '../../preview/assessmentRadar/OctagonChart';
 import { CrystallineSweepsPreview } from '../../preview/crystallineSweeps/CrystallineSweepsPreview';
@@ -20,6 +20,7 @@ import { PodiumPhotoRow } from './PodiumPhotos';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { WIN_METHOD_LONG, winsBreakdownLine, winsSummary } from '../../lib/winsSummary';
 import { MatQuickAddSheet } from './MatQuickAdd';
+import { armOverlayExit } from '../../lib/overlayExit';
 import { useStudentFile } from './chrome';
 import { ProfileCardFace } from './ProfileCardFace';
 import './studentCardLayout.css';
@@ -113,6 +114,10 @@ const SHEET_DIAMOND = buildTopo((id) => demoLevel(id), 'center');
 
 function SheetDiamond() {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    return armOverlayExit('assessment-diamond', () => setOpen(false), { lockScroll: true });
+  }, [open]);
   return (
     <div className="sheet-diamond" data-testid="sheet-diamond">
       <p className="sheet-diamond__note">Example diamond. Not a saved score.</p>
@@ -137,11 +142,15 @@ function SheetDiamond() {
         Expand
       </button>
       {open ? (
-        <div className="sheet-diamond-full" role="dialog" aria-modal="true" aria-label="Assessment diamond">
-          <button type="button" className="sheet-diamond-full__close" onClick={() => setOpen(false)}>
-            Close
-          </button>
-          <CrystallineSweepsPreview />
+        <div className="sheet-diamond-full" role="dialog" aria-modal="true" aria-label="Assessment diamond" data-testid="sheet-diamond-full">
+          <div className="sheet-diamond-full__bar">
+            <button type="button" className="sheet-diamond-full__close" onClick={() => setOpen(false)}>
+              Close
+            </button>
+          </div>
+          <div className="sheet-diamond-full__body">
+            <CrystallineSweepsPreview />
+          </div>
         </div>
       ) : null}
     </div>

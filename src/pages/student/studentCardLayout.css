@@ -60,11 +60,46 @@
   min-height: 44px; padding: 8px 12px; border-radius: 6px; font: inherit; cursor: pointer;
   color: inherit; background: transparent; border: 1px solid currentColor;
 }
+/* Full-screen expand. The bar stays under the status bar and notch
+   (home screen and Safari, viewport-fit=cover). The body scrolls. */
 .sheet-diamond-full {
-  position: fixed; inset: 0; z-index: 40; overflow: auto;
-  background: #071018; color: #d7eef2; padding: 12px;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #071018;
+  color: #d7eef2;
+  padding:
+    env(safe-area-inset-top, 0px)
+    env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
 }
-.sheet-diamond-full__close { color: #e7f8fb; border-color: #76eaff; margin-bottom: 8px; }
+.sheet-diamond-full__bar {
+  flex: none;
+  padding: 12px 12px 8px;
+}
+.sheet-diamond-full__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: 0 12px 12px;
+}
+.sheet-diamond-full__close {
+  color: #e7f8fb;
+  border-color: #76eaff;
+  margin-bottom: 0;
+  position: relative;
+  z-index: 2;
+  touch-action: manipulation;
+}
 
 .card-medals__strip { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .card-medals__strip > li { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
