@@ -247,11 +247,11 @@ export function minutesFromExpected(value: string): number {
   if (parsed != null) return Math.min(480, parsed);
   const mins = MINUTE_MIN.exec(textValue);
   if (mins) {
-    const n = Math.round(Number(mins[1]) * 2) / 2;
+    const n = Math.round(Number(mins[1]) * 4) / 4;
     return n > 0 ? Math.min(480, n) : 0;
   }
   if (/^\d+(?:\.\d+)?$/.test(textValue)) {
-    const n = Math.round(Number(textValue) * 2) / 2;
+    const n = Math.round(Number(textValue) * 4) / 4;
     return n > 0 && n <= 240 ? n : 0;
   }
   return 0;
@@ -266,7 +266,7 @@ export type MinutePlan = {
   games?: { expected?: string }[];
 };
 
-/** Sum of expected durations on a lesson plan, including halves. 60 when nothing on the plan parses. */
+/** Sum of expected durations on a lesson plan, including 15-second rows. 60 when nothing on the plan parses. */
 export function classMinutes(plan: MinutePlan): number {
   const parts = [
     plan.introExpected ?? '',

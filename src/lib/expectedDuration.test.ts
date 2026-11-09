@@ -60,24 +60,28 @@ Object.defineProperty(globalThis, 'localStorage', {
 
 const TODAY = '2026-11-04';
 
-test('expected duration is 30-second rows from 0:30 to 60:00, default 5', () => {
+test('expected duration is 15-second rows from 0:30 to 60:00, default 5, labeled m:ss', () => {
   assert.equal(EXPECTED_MIN_MINUTES, 0.5);
   assert.equal(EXPECTED_MAX_MINUTES, 60);
-  assert.equal(EXPECTED_STEP_MINUTES, 0.5);
+  assert.equal(EXPECTED_STEP_MINUTES, 0.25);
   assert.equal(DEFAULT_EXPECTED_MINUTES, 5);
-  assert.equal(EXPECTED_MINUTE_OPTIONS.length, 120);
+  assert.equal(EXPECTED_MINUTE_OPTIONS.length, ((60 - 0.5) / 0.25) + 1);
   assert.equal(EXPECTED_MINUTE_OPTIONS[0]?.value, 0.5);
-  assert.equal(EXPECTED_MINUTE_OPTIONS[0]?.label, '½ min');
-  assert.equal(EXPECTED_MINUTE_OPTIONS[1]?.label, '1 min');
-  assert.equal(EXPECTED_MINUTE_OPTIONS.find((option) => option.value === 8)?.label, '8 min');
-  assert.equal(EXPECTED_MINUTE_OPTIONS.find((option) => option.value === 8.5)?.label, '8½ min');
+  assert.equal(EXPECTED_MINUTE_OPTIONS[0]?.label, '0:30');
+  assert.equal(EXPECTED_MINUTE_OPTIONS[1]?.value, 0.75);
+  assert.equal(EXPECTED_MINUTE_OPTIONS[1]?.label, '0:45');
+  assert.equal(EXPECTED_MINUTE_OPTIONS.find((option) => option.value === 1)?.label, '1:00');
+  assert.equal(EXPECTED_MINUTE_OPTIONS.find((option) => option.value === 8)?.label, '8:00');
+  assert.equal(EXPECTED_MINUTE_OPTIONS.find((option) => option.value === 8.25)?.label, '8:15');
+  assert.equal(EXPECTED_MINUTE_OPTIONS.find((option) => option.value === 8.5)?.label, '8:30');
+  assert.equal(EXPECTED_MINUTE_OPTIONS.find((option) => option.value === 8.75)?.label, '8:45');
   assert.equal(EXPECTED_MINUTE_OPTIONS.at(-1)?.value, 60);
-  assert.equal(EXPECTED_MINUTE_OPTIONS.at(-1)?.label, '60 min');
-  assert.equal(EXPECTED_MINUTE_OPTIONS.some((option) => option.label.includes(':')), false);
+  assert.equal(EXPECTED_MINUTE_OPTIONS.at(-1)?.label, '60:00');
+  assert.equal(EXPECTED_MINUTE_OPTIONS.every((option) => /^\d+:\d{2}$/.test(option.label)), true);
   for (let index = 1; index < EXPECTED_MINUTE_OPTIONS.length; index += 1) {
     const previous = EXPECTED_MINUTE_OPTIONS[index - 1]?.value ?? 0;
     const value = EXPECTED_MINUTE_OPTIONS[index]?.value ?? 0;
-    assert.equal(Math.round((value - previous) * 2), 1);
+    assert.equal(Math.round((value - previous) * 4), 1);
   }
   assert.equal(expectedMinutes(''), 5);
   assert.equal(expectedMinutes('8'), 8);
@@ -88,27 +92,37 @@ test('expected duration is 30-second rows from 0:30 to 60:00, default 5', () => 
   assert.equal(expectedToWorkMs('8'), 8 * 60_000);
   assert.equal(expectedToWorkMs('8.5'), 8 * 60_000 + 30_000);
   assert.equal(formatExpectedDuration(8), '8');
+  assert.equal(formatExpectedDuration(8.25), '8.25');
   assert.equal(formatExpectedDuration(8.5), '8.5');
+  assert.equal(formatExpectedDuration(8.75), '8.75');
   assert.equal(formatExpectedDuration(0.5), '0.5');
-  assert.equal(expectedDurationLabel(8), '8 min');
-  assert.equal(expectedDurationLabel(8.5), '8½ min');
-  assert.equal(expectedDurationLabel(0.5), '½ min');
+  assert.equal(formatExpectedDuration(0.75), '0.75');
+  assert.equal(expectedDurationLabel(8), '8:00');
+  assert.equal(expectedDurationLabel(8.25), '8:15');
+  assert.equal(expectedDurationLabel(8.5), '8:30');
+  assert.equal(expectedDurationLabel(8.75), '8:45');
+  assert.equal(expectedDurationLabel(0.5), '0:30');
+  assert.equal(expectedDurationLabel(60), '60:00');
   const fresh = emptyCurriculum();
   assert.equal(fresh.blocks[0]?.expected, '');
   assert.equal(expectedMinutes(fresh.blocks[0]?.expected ?? ''), 5);
 });
 
-test('old m:ss and minute phrases migrate onto 30-second steps', () => {
+test('old m:ss and minute phrases migrate onto 15-second steps, and whole minutes stay whole', () => {
   assert.equal(migrateExpectedDuration('8:00'), '8');
   assert.equal(migrateExpectedDuration('08:00'), '8');
   assert.equal(migrateExpectedDuration('1:30'), '1.5');
   assert.equal(migrateExpectedDuration('0:30'), '0.5');
+  assert.equal(migrateExpectedDuration('0:45'), '0.75');
   assert.equal(migrateExpectedDuration('0:04'), '0.5');
   assert.equal(migrateExpectedDuration('0:14'), '0.5');
   assert.equal(migrateExpectedDuration('0:15'), '0.5');
-  assert.equal(migrateExpectedDuration('8:14'), '8');
-  assert.equal(migrateExpectedDuration('8:15'), '8.5');
+  assert.equal(migrateExpectedDuration('8:07'), '8');
+  assert.equal(migrateExpectedDuration('8:08'), '8.25');
+  assert.equal(migrateExpectedDuration('8:14'), '8.25');
+  assert.equal(migrateExpectedDuration('8:15'), '8.25');
   assert.equal(migrateExpectedDuration('8:29'), '8.5');
+  assert.equal(migrateExpectedDuration('8:45'), '8.75');
   assert.equal(migrateExpectedDuration('5'), '5');
   assert.equal(migrateExpectedDuration('5 min'), '5');
   assert.equal(migrateExpectedDuration('10 minutes'), '10');
@@ -117,8 +131,10 @@ test('old m:ss and minute phrases migrate onto 30-second steps', () => {
   assert.equal(migrateExpectedDuration('8.5 min'), '8.5');
   assert.equal(migrateExpectedDuration('8.50'), '8.5');
   assert.equal(migrateExpectedDuration('8.0'), '8');
-  assert.equal(migrateExpectedDuration('8.2'), '8');
+  assert.equal(migrateExpectedDuration('8.2'), '8.25');
+  assert.equal(migrateExpectedDuration('8.25'), '8.25');
   assert.equal(migrateExpectedDuration('8.4'), '8.5');
+  assert.equal(migrateExpectedDuration('8.75'), '8.75');
   assert.equal(migrateExpectedDuration('8½ min'), '8.5');
   assert.equal(migrateExpectedDuration('½ min'), '0.5');
   assert.equal(migrateExpectedDuration('0'), '0.5');
@@ -133,6 +149,8 @@ test('old m:ss and minute phrases migrate onto 30-second steps', () => {
   assert.equal(expectedMinutes('8:00'), 8);
   assert.equal(expectedMinutes('8'), 8);
   assert.equal(expectedMinutes('8.5'), 8.5);
+  assert.equal(expectedMinutes('8.25'), 8.25);
+  assert.equal(expectedMinutes('8:15'), 8.25);
   assert.equal(expectedMinutes('1:30'), 1.5);
   assert.equal(expectedMinutes('soon'), 5);
   assert.equal(normalizeExpectedDuration('1:30'), '1.5');
@@ -243,7 +261,7 @@ test('expected duration has no chips, and 5, 10, 15 catch a slow scroll', () => 
   );
   assert.deepEqual([...EXPECTED_SNAP_MINUTES], []);
   assert.deepEqual([...EXPECTED_DETENT_MINUTES], [5, 10, 15]);
-  for (const minute of [0.5, 1, 1.5, 8, 8.5, 9, 9.5, 12, 16, 18, 20, 25, 30, 40, 45, 60]) {
+  for (const minute of [0.5, 0.75, 1, 1.5, 8, 8.25, 8.5, 8.75, 9, 9.5, 12, 16, 18, 20, 25, 30, 40, 45, 60]) {
     const option = EXPECTED_MINUTE_OPTIONS.find((row) => row.value === minute);
     assert.equal(option?.snap, false, `${minute} chip`);
     assert.equal(option?.detent, false, `${minute} detent`);
@@ -251,33 +269,43 @@ test('expected duration has no chips, and 5, 10, 15 catch a slow scroll', () => 
   }
   const at = (minute: number) => EXPECTED_MINUTE_OPTIONS.findIndex((option) => option.value === minute);
   const top = (minute: number) => at(minute) * WHEEL_ITEM_PX;
-  // Two rows is one minute when each row is 30 seconds.
-  assert.equal(settleRowIndex(top(4), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(5));
+  // Two rows is 30 seconds when each row is 15 seconds.
   assert.equal(settleRowIndex(top(4.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(5));
-  assert.equal(settleRowIndex(top(6), EXPECTED_MINUTE_OPTIONS, 0.2, false), at(5));
+  assert.equal(settleRowIndex(top(4.75), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(5));
+  assert.equal(settleRowIndex(top(5.25), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(5));
+  assert.equal(settleRowIndex(top(5.5), EXPECTED_MINUTE_OPTIONS, 0.2, false), at(5));
+  assert.equal(settleRowIndex(top(4), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(4));
+  assert.equal(settleRowIndex(top(4.25), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(4.25));
   assert.equal(settleRowIndex(top(3.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(3.5));
   assert.equal(settleRowIndex(top(2), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(2));
+  assert.equal(settleRowIndex(top(6), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(6));
   assert.equal(settleRowIndex(top(8), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(8));
+  assert.equal(settleRowIndex(top(8.25), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(8.25));
   assert.equal(settleRowIndex(top(8.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(8.5));
-  assert.equal(settleRowIndex(top(9), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
-  assert.equal(settleRowIndex(top(9) + 10, EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(8.75), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(8.75));
+  assert.equal(settleRowIndex(top(9), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(9));
   assert.equal(settleRowIndex(top(9.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
-  assert.equal(settleRowIndex(top(11), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(9.75), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(10.25), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(10.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(10));
+  assert.equal(settleRowIndex(top(11), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(11));
   assert.equal(settleRowIndex(top(12), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(12));
-  assert.equal(settleRowIndex(top(14), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(15));
+  assert.equal(settleRowIndex(top(14.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(15));
+  assert.equal(settleRowIndex(top(14.75), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(15));
+  assert.equal(settleRowIndex(top(15.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(15));
+  assert.equal(settleRowIndex(top(14), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(14));
   assert.equal(settleRowIndex(top(13.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(13.5));
-  assert.equal(settleRowIndex(top(16), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(15));
+  assert.equal(settleRowIndex(top(16), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(16));
   assert.equal(settleRowIndex(top(16.5), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(16.5));
   assert.equal(settleRowIndex(top(18), EXPECTED_MINUTE_OPTIONS, 0.1, false), at(18));
-  assert.equal(settleRowIndex(top(9), EXPECTED_MINUTE_OPTIONS, WHEEL_FLICK_PX_PER_MS + 0.2, false), at(9));
-  assert.equal(settleRowIndex(top(9.5), EXPECTED_MINUTE_OPTIONS, 2, false), at(9.5));
-  assert.equal(settleRowIndex(top(14), EXPECTED_MINUTE_OPTIONS, 2, false), at(14));
+  assert.equal(settleRowIndex(top(9.5), EXPECTED_MINUTE_OPTIONS, WHEEL_FLICK_PX_PER_MS + 0.2, false), at(9.5));
+  assert.equal(settleRowIndex(top(14.5), EXPECTED_MINUTE_OPTIONS, 2, false), at(14.5));
   assert.equal(settleRowIndex(top(30), EXPECTED_MINUTE_OPTIONS, 3, false), at(30));
   assert.equal(settleRowIndex(top(8) + 23, EXPECTED_MINUTE_OPTIONS, 2, false), at(8));
-  assert.equal(settleRowIndex(top(8) + 24, EXPECTED_MINUTE_OPTIONS, 2, false), at(8.5));
+  assert.equal(settleRowIndex(top(8) + 24, EXPECTED_MINUTE_OPTIONS, 2, false), at(8.25));
   assert.equal(settleRowIndex(top(8), EXPECTED_MINUTE_OPTIONS, 0.1, true), at(8));
   assert.equal(settleRowIndex(top(9) + 20, EXPECTED_MINUTE_OPTIONS, 0.05, true), at(9));
-  assert.equal(settleRowIndex(top(8.5) + 20, EXPECTED_MINUTE_OPTIONS, 0.05, true), at(8.5));
+  assert.equal(settleRowIndex(top(8.25) + 20, EXPECTED_MINUTE_OPTIONS, 0.05, true), at(8.25));
 });
 
 test('the minute wheel is the expected-duration control and the loop uses it', () => {
@@ -301,8 +329,9 @@ test('the minute wheel is the expected-duration control and the loop uses it', (
   assert.match(videos, /lessonExpectedText/);
   assert.match(picker, /disabled/);
   const roundWheel = readFileSync(new URL('./timeWheel.ts', import.meta.url), 'utf8');
-  assert.match(roundWheel, /stepMs: SECOND_STEP_MS/);
-  assert.match(roundWheel, /stepMs: WHEEL_STEP_MS/);
+  assert.match(roundWheel, /export const DURATION_STEP_MS = 15_000/);
+  assert.match(roundWheel, /stepMs: DURATION_STEP_MS/);
+  assert.doesNotMatch(roundWheel, /SECOND_STEP_MS|WHEEL_STEP_MS/);
 });
 
 test('halves flow through export, class totals, and the round timer', () => {

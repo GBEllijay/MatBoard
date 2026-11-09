@@ -172,7 +172,7 @@ function defaultCompetitor(name: string): Competitor {
   return { name, gym: '', rank: '', points: 0, advantages: 0, disadvantages: 0 };
 }
 
-/** Saved match length snaps to the 10-second wheel. A full clock follows the snapped length. */
+/** Saved match length snaps to the 15-second wheel. A full clock follows the snapped length. */
 export function normalizeMatchClock(
   durationMs: unknown,
   remainingMs: unknown,
