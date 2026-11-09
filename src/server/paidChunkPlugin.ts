@@ -5,6 +5,7 @@ import {
   addPaidStylesheet,
   paidChunkNameForModule,
   planPaidBundle,
+  retargetBuildMetadata,
   rewriteRelativeUrls,
   type BundleChunk,
 } from './paidChunkBundle.ts';
@@ -22,7 +23,10 @@ type BundleFile = {
   dynamicImports?: readonly string[];
   code?: string;
   source?: string | Uint8Array;
-  viteMetadata?: { importedCss?: Iterable<string> };
+  viteMetadata?: {
+    importedCss?: Set<string>;
+    importedAssets?: Set<string>;
+  };
 };
 
 function isChunk(item: BundleFile): item is BundleFile & { code: string } {
@@ -75,6 +79,8 @@ export function paidChunkPlugin(): Plugin {
         }
       }
       for (const [file, importers] of cssImporters) addPaidStylesheet(plan, file, importers);
+      // Vite's preload list is built after this hook. Point it at the moved files.
+      retargetBuildMetadata(files, plan.moves);
 
       const oldToNew = new Map<string, string>();
       for (const item of files) oldToNew.set(item.fileName, item.fileName);

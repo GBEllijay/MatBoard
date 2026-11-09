@@ -79,6 +79,27 @@ test('owned tiers above the page are open links, not buy rungs', () => {
   );
 });
 
+test('Instructor open links use the ladder destination', () => {
+  const open = planEditionLadder({
+    page: 'pro',
+    unlocked: { white: true, student: true, media: true, instructor: true, pro: true },
+    seated: false,
+    email: null,
+  });
+  assert.equal(open.rungs.find((rung) => rung.id === 'instructor')?.href, '/coach-unlimited');
+  const home = read('../pages/Home.tsx');
+  const names = read('./productNames.ts');
+  const buy = read('../pages/BuyEdition.tsx');
+  const tier = read('../pages/BuyTier.tsx');
+  assert.match(home, /instructorUnlimited \? COACH_UNLIMITED_PATH : '\/coach'/);
+  assert.match(names, /title: PRO_INSTRUCTOR_HUB_LABEL, to: COACH_UNLIMITED_PATH/);
+  assert.match(buy, /to=\{COACH_UNLIMITED_PATH\} data-instructor-open/);
+  assert.match(tier, /openPath: COACH_UNLIMITED_PATH/);
+  const labels = read('./paidChunkAccess.ts');
+  assert.match(labels, /'coach-unlimited': 'Instructor Edition'/);
+  assert.doesNotMatch(labels, /'coach-unlimited': 'Coach Unlimited'/);
+});
+
 test('the top tier has no buy rungs, and a bar with nothing else stays hidden', () => {
   const cloud = planEditionLadder({
     page: 'pro-cloud',

@@ -48,6 +48,18 @@ test('paid screen code is outside the precache and the public bundle', { timeout
   }
 
   const entryScripts = publicFiles.filter((file) => file.endsWith('.js') && file.includes(`${sep}assets${sep}`));
+  const paidNames = new Set(paidFiles.map((file) => file.split(sep).pop() ?? ''));
+  for (const file of entryScripts) {
+    const text = readFileSync(file, 'utf8');
+    for (const name of paidNames) {
+      if (!name) continue;
+      assert.equal(
+        text.includes(`assets/${name}`),
+        false,
+        `${name} lives under /paid but ${file} still preloads assets/${name}`,
+      );
+    }
+  }
   assert.ok(entryScripts.some((file) => /import\(\s*["'][^"']*\/paid\//.test(readFileSync(file, 'utf8'))));
   for (const file of entryScripts) {
     const text = readFileSync(file, 'utf8');

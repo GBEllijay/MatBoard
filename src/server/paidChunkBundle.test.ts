@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { planPaidBundle, rewriteRelativeUrls } from './paidChunkBundle.ts';
+import { planPaidBundle, retargetBuildMetadata, rewriteRelativeUrls } from './paidChunkBundle.ts';
 
 test('only chunks reachable from the paid screens move under /paid', () => {
   const plan = planPaidBundle([
@@ -49,6 +49,21 @@ test('only chunks reachable from the paid screens move under /paid', () => {
   assert.deepEqual(plan.manifestFiles['pro-only.js'], ['pro-console', 'media-console']);
   assert.ok(plan.filesForChunk['lesson-cloud'].includes('/paid/lesson-cloud.js'));
   assert.equal(plan.filesForChunk['coach-unlimited'].includes('/paid/react.js'), false);
+});
+
+test('a moved stylesheet is retargeted before Vite writes the preload list', () => {
+  const css = new Set(['assets/CoachUnlimited-hash.css']);
+  const assets = new Set(['assets/logo.png']);
+  retargetBuildMetadata(
+    [{ viteMetadata: { importedCss: css, importedAssets: assets } }],
+    new Map([
+      ['assets/CoachUnlimited-hash.css', 'paid/CoachUnlimited-hash.css'],
+      ['assets/logo.png', 'assets/logo.png'],
+    ]),
+  );
+  assert.equal(css.has('assets/CoachUnlimited-hash.css'), false);
+  assert.equal(css.has('paid/CoachUnlimited-hash.css'), true);
+  assert.equal(assets.has('assets/logo.png'), true);
 });
 
 test('relative imports follow a chunk when it moves to /paid', () => {
