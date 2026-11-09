@@ -42,9 +42,15 @@ import {
   type ScoutingDraft,
 } from '../../lib/studentScouting';
 import { todayIso } from '../../lib/studentEdition';
+import { factorsFromRatings } from '../../preview/crystallineSweeps/overlay';
+import { TopoStage } from '../../preview/crystallineSweeps/TopoStage';
+import { buildTopo } from '../../preview/crystallineSweeps/topo';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import { SuggestField } from './SuggestField';
+import '../../preview/crystallineSweeps/crystallineSweeps.css';
 import './archive.css';
+
+const CARD_DIAMOND = buildTopo(() => null);
 
 export function ScoutingPage() {
   const to = useStudentPath();
@@ -613,10 +619,16 @@ function OpponentTracker({
     }
     node.focus();
   }, [focus]);
+  const [graph, setGraph] = useState<'diamond' | 'spider'>('diamond');
   const theirs = isCompleteRatings(card.ratings) ? card.ratings : null;
   const rows = compareToOpponent(selfScores, card.ratings);
   const groups = matchupLabels(rows);
   const save = (patch: { ratings: AreaRatings; strengths: string; weaknesses: string }) => onSave(patch);
+  const factors = useMemo(
+    () => ({ self: factorsFromRatings(selfScores), opponent: factorsFromRatings(card.ratings) }),
+    [selfScores, card.ratings],
+  );
+  const comparing = Object.keys(factors.self).length + Object.keys(factors.opponent).length > 0;
 
   return (
     <section className="scout-tracker" aria-label={`Opponent card for ${card.name}`}>
@@ -672,12 +684,58 @@ function OpponentTracker({
           </button>
         </div>
       </div>
-      <div className="scout-overlay" role="region" aria-label={`Me versus ${card.name}`}>
-        <RadarChart
-          series={chartSeries(card.name, selfScores, theirs)}
-          title={selfScores && theirs ? 'Me vs them' : 'Shape'}
-          empty="Rate this opponent to see their shape."
-        />
+      <div className="scout-overlay" role="region" aria-label={`Me versus ${card.name}`} data-graph={graph}>
+        <div className="archive-graph" role="group" aria-label={`Graph for ${card.name}`}>
+          <button
+            type="button"
+            className={graph === 'diamond' ? 'student-choice is-on' : 'student-choice'}
+            aria-pressed={graph === 'diamond'}
+            aria-label={`Diamond for ${card.name}`}
+            onClick={() => setGraph('diamond')}
+          >
+            Diamond
+          </button>
+          <button
+            type="button"
+            className={graph === 'spider' ? 'student-choice is-on' : 'student-choice'}
+            aria-pressed={graph === 'spider'}
+            aria-label={`Spider for ${card.name}`}
+            onClick={() => setGraph('spider')}
+          >
+            Spider
+          </button>
+        </div>
+        <p className="archive-help">
+          {graph === 'diamond' ? 'Eight areas on one shape. Peaks are stronger. Dips need work.' : 'The same areas as a spider graph.'}
+        </p>
+        {graph === 'diamond' ? (
+          <div className="archive-diamond">
+            <TopoStage
+              model={CARD_DIAMOND}
+              style="pyramid"
+              focus={-1}
+              selected={-1}
+              comparison={comparing}
+              pair={false}
+              compareFactors={comparing ? factors : null}
+              links={[]}
+              drillPath={[]}
+              relief={1}
+              hue={1}
+              chrome="bare"
+              spin={false}
+              onFocus={() => {}}
+              onSelect={() => {}}
+              onDrill={() => {}}
+            />
+          </div>
+        ) : (
+          <RadarChart
+            series={chartSeries(card.name, selfScores, theirs)}
+            title={selfScores && theirs ? 'Me vs them' : 'Shape'}
+            empty="Rate this opponent to see their shape."
+          />
+        )}
         {selfScores && rows.length ? (
           <ul className="scout-matchup" aria-label={`Comparison with ${card.name}`}>
             <li>{`Favored: ${matchupLine(groups.favored)}`}</li>

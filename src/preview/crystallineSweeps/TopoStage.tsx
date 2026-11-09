@@ -31,6 +31,8 @@ type Props = {
   hue: number;
   /** bare hides the zoom, pause, reset, and factor buttons for the sheet thumbnail. */
   chrome?: 'full' | 'bare';
+  /** False keeps the diamond still. The full D8 page spins. */
+  spin?: boolean;
   onExpand?: () => void;
   onFocus: (index: number) => void;
   onSelect: (index: number) => void;
@@ -46,12 +48,12 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, chrome = 'full', onExpand, onFocus, onSelect, onDrill }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
   const [paused, setPaused] = useState(
-    () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () => !spin || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches),
   );
   const view = useRef({
     rx: 0.28,

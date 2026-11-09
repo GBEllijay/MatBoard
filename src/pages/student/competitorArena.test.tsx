@@ -324,6 +324,17 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
     'At a disadvantage: Passing, Submissions, Mindset',
   ]);
   const overlay = labeled(host, 'Me versus Sam');
+  assert.equal(overlay.getAttribute('data-graph'), 'diamond');
+  assert.equal(labeled(host, 'Diamond for Sam').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Spider for Sam').getAttribute('aria-pressed'), 'false');
+  assert.ok(overlay.querySelector('.archive-diamond canvas'));
+  assert.equal(overlay.querySelector('[data-comparison]')?.getAttribute('data-comparison'), 'on');
+  assert.equal(overlay.querySelector('[data-comparison]')?.getAttribute('data-self-passing'), '1');
+  assert.equal(overlay.querySelectorAll('polygon.assess-chart__shape').length, 0);
+  act(() => {
+    labeled(host, 'Spider for Sam').click();
+  });
+  assert.equal(overlay.getAttribute('data-graph'), 'spider');
   assert.equal(overlay.querySelectorAll('polygon.assess-chart__shape').length, 2);
   assert.equal(overlay.querySelectorAll('polygon.assess-chart__shape--opponent').length, 1);
   assert.match(overlay.textContent ?? '', /Me/);
@@ -383,10 +394,17 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
   const legacy = mount(<ScoutingPage />, '/student/scouting?student=1');
   assert.equal(labeled(legacy.host, 'Riley Guard/Control 1').getAttribute('aria-pressed'), 'false');
   assert.equal(labeled(legacy.host, 'Riley Sweeps 1').getAttribute('aria-pressed'), 'false');
+  assert.equal(labeled(legacy.host, 'Diamond for Riley').getAttribute('aria-pressed'), 'true');
+  assert.equal(legacy.host.querySelector('[data-graph]')?.getAttribute('data-graph'), 'diamond');
+  assert.ok(legacy.host.querySelector('.archive-diamond canvas'));
+  assert.equal(legacy.host.querySelectorAll('polygon.assess-chart__shape').length, 0);
   assert.equal(
     control(legacy.host, 'a', 'Do your self-assessment').getAttribute('href'),
     '/student/self-assessment?from=scouting&student=1',
   );
+  act(() => {
+    labeled(legacy.host, 'Spider for Riley').click();
+  });
   assert.match(legacy.host.textContent ?? '', /Rate this opponent to see their shape/);
   assert.equal(legacy.host.querySelectorAll('polygon.assess-chart__shape').length, 0);
   unmount(legacy);

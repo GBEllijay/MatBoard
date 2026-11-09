@@ -114,6 +114,9 @@ test('scouting opponent tracker compares the latest self-assessment', async ({ p
   await tracker.getByRole('button', { name: 'Save notes for Sam', exact: true }).click();
 
   const overlay = page.getByRole('region', { name: 'Me versus Sam' });
+  await expect(overlay.getByRole('button', { name: 'Diamond for Sam', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(overlay.locator('.archive-diamond canvas')).toBeVisible();
+  await overlay.getByRole('button', { name: 'Spider for Sam', exact: true }).click();
   await expect(overlay.getByRole('img', { name: /Me versus Sam/ })).toBeVisible();
   await expect(overlay.getByRole('list', { name: 'Radar legend' })).toContainText('Me');
   await expect(overlay.getByRole('list', { name: 'Radar legend' })).toContainText('Sam');

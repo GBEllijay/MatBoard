@@ -133,3 +133,18 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+
+.student.student--arena.student--archive .archive-graph {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.student.student--arena.student--archive .archive-diamond .topo-stage {
+  height: 280px;
+  margin-top: 4px;
+}
+
+.student.student--arena.student--archive .archive-diamond .topo-label {
+  display: none;
+}
