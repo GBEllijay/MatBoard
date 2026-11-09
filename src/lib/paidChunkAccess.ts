@@ -24,7 +24,8 @@ export const PAID_CHUNK_LABELS: Record<PaidChunkId, string> = {
   'pro-console': 'Pro Console',
   'media-console': 'Media Console',
   'lesson-cloud': 'Lesson Cloud',
-  'coach-unlimited': 'Coach Unlimited',
+  // Display only. The chunk id stays coach-unlimited. The screen is Instructor Edition.
+  'coach-unlimited': 'Instructor Edition',
 };
 
 /** Presets that include Gallery, Events, or Pro Shop. */

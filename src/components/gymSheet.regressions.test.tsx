@@ -94,6 +94,35 @@ function setValue(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
   act(() => props?.onChange?.({ target: el, currentTarget: el }));
 }
 
+test('academy name keeps a trailing space while typing and trims when the field blurs', async () => {
+  blankProfile();
+  writeGymName('GracieBarra');
+  const sheet = await renderSheet();
+  await openEditor(sheet.host);
+  const name = field(sheet.host, 'Academy name') as HTMLInputElement;
+  setValue(name, 'GracieBarra');
+  setValue(name, 'GracieBarra ');
+  assert.equal(name.value, 'GracieBarra ');
+  assert.equal(readGymName(), 'GracieBarra ');
+  setValue(name, 'Gracie Barra Ellijay');
+  assert.equal(name.value, 'Gracie Barra Ellijay');
+  assert.equal(readGymName(), 'Gracie Barra Ellijay');
+  const key = Object.keys(name).find((item) => item.startsWith('__reactProps'));
+  const props = key ? (name as unknown as Record<string, { onBlur?: (event: unknown) => void }>)[key] : null;
+  await act(async () => {
+    props?.onBlur?.({ target: name, currentTarget: name });
+  });
+  assert.equal(readGymName(), 'Gracie Barra Ellijay');
+  setValue(name, 'Gracie Barra Ellijay ');
+  assert.equal(readGymName(), 'Gracie Barra Ellijay ');
+  await act(async () => {
+    props?.onBlur?.({ target: name, currentTarget: name });
+  });
+  assert.equal(readGymName(), 'Gracie Barra Ellijay');
+  assert.equal(name.value, 'Gracie Barra Ellijay');
+  await sheet.unmount();
+});
+
 test('founders and lineage keep a trailing space and a second space', async () => {
   blankProfile();
   const sheet = await renderSheet();

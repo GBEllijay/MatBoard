@@ -24,12 +24,19 @@ test('gym name key starts empty', () => {
   assert.equal(readGymName(), '');
 });
 
-test('a saved gym name round-trips from the paired key', () => {
-  writeGymName('  Alliance  ');
-  assert.equal(readGymName(), 'Alliance');
+test('a saved gym name keeps a space at the end so the next word can be typed', () => {
+  writeGymName('GracieBarra');
+  writeGymName('GracieBarra ');
+  assert.equal(readGymName(), 'GracieBarra ');
   const raw = JSON.parse(localStorage.getItem(GYM_NAME_STORAGE_KEY) ?? '');
   assert.equal(raw.version, 1);
-  assert.equal(raw.name, 'Alliance');
+  assert.equal(raw.name, 'GracieBarra ');
+  writeGymName('Gracie Barra Ellijay');
+  assert.equal(readGymName(), 'Gracie Barra Ellijay');
+  writeGymName('  Alliance  ');
+  assert.equal(readGymName(), '  Alliance  ');
+  writeGymName(readGymName().trim());
+  assert.equal(readGymName(), 'Alliance');
 });
 
 test('a blank gym name clears the key', () => {
