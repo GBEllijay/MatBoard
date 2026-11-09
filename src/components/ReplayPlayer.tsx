@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { ANNOTATED_FALLBACK_COPY, fileNameForMime, recordVisibleClip, type AnnotatedRecord } from '../lib/annotatedReplay';
-import { exitPageFullscreen, fullscreenElement, requestElementFullscreen } from '../lib/fullscreen';
+import { exitInlineVideoFullscreen, exitPageFullscreen, fullscreenElement, onIosVideoFullscreen, requestElementFullscreen } from '../lib/fullscreen';
+import { armOverlayExit } from '../lib/overlayExit';
+import { lockPageScroll, unlockPageScroll } from '../lib/pageScrollLock';
 import {
   EMPTY_MARKUP,
   MARKUP_COLORS,
@@ -220,17 +222,18 @@ export function ReplayPlayer({
 
   useEffect(() => {
     if (fsMode !== 'overlay') return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setFsMode('off');
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = previous;
-      window.removeEventListener('keydown', onKey);
-    };
+    lockPageScroll(document);
+    return () => unlockPageScroll(document);
   }, [fsMode]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    return onIosVideoFullscreen(video, () => {
+      exitInlineVideoFullscreen(video);
+      setFsMode((mode) => (mode === 'off' ? 'overlay' : mode));
+    });
+  }, [src]);
 
   const enterFullscreen = useCallback(async () => {
     const root = rootRef.current;
@@ -241,9 +244,19 @@ export function ReplayPlayer({
   }, []);
 
   const exitFullscreen = useCallback(async () => {
+    exitInlineVideoFullscreen(videoRef.current);
     if (fullscreenElement()) await exitPageFullscreen();
     setFsMode('off');
   }, []);
+
+  const exitRef = useRef(exitFullscreen);
+  exitRef.current = exitFullscreen;
+  useEffect(() => {
+    if (fsMode === 'off') return;
+    return armOverlayExit('replay-fullscreen', () => {
+      void exitRef.current();
+    });
+  }, [fsMode]);
 
   const seekTo = useCallback((next: number) => {
     const video = videoRef.current;

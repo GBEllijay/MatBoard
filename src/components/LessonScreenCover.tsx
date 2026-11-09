@@ -5,6 +5,7 @@ import { ScheduleWeekBoard } from './ScheduleWeekBoard';
 import { useGymLogo } from '../hooks/useGymBrand';
 import { useScheduleState } from '../hooks/useStores';
 import { exitPageFullscreen, fullscreenElement, requestElementFullscreen, type FullscreenRequestResult } from '../lib/fullscreen';
+import { armOverlayExit } from '../lib/overlayExit';
 import { ADVANTAGE_MARK_SRC } from '../lib/gymLogo';
 import {
   LESSON_COVER_HOME_HINT,
@@ -335,7 +336,9 @@ function LessonScreenCover({
     window.addEventListener('keydown', onKey);
     document.addEventListener('fullscreenchange', onFullscreen);
     document.addEventListener('webkitfullscreenchange', onFullscreen);
+    const releaseOverlay = armOverlayExit('lesson-cover', () => onShowRef.current(), { escape: false });
     return () => {
+      releaseOverlay();
       window.removeEventListener('keydown', onKey);
       document.removeEventListener('fullscreenchange', onFullscreen);
       document.removeEventListener('webkitfullscreenchange', onFullscreen);
