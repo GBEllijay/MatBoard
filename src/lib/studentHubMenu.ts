@@ -24,7 +24,7 @@ export const BACKUP_GROUP_LABEL = 'Backup & Print';
 export const COACH_FILE_LABEL = 'Make a file for my coach';
 export const COACH_FILE_HINT = 'This makes a file. You send it yourself.';
 export const CLEAR_STUDENT_LABEL = 'Clear all Student Edition data';
-export const SCOUTING_LABEL = 'Opponent scouting';
+export const SCOUTING_LABEL = 'Opponent card archive';
 export const NO_EVENT_LABEL = 'No event yet';
 export const ADD_TOURNAMENT_LABEL = 'Add a tournament';
 export const NO_MATCHES_LABEL = 'No matches yet';
@@ -79,7 +79,7 @@ export const COMPETE_LINKS: readonly MenuLink[] = [
   { label: 'Weight management', note: 'Weigh-ins and target', to: '/student/weight' },
   {
     label: SCOUTING_LABEL,
-    note: 'Weight class and open class',
+    note: 'Saved opponent cards',
     to: '/student/scouting',
   },
   { label: 'Results', note: 'Matches and bracket notes', to: '/student/results' },
@@ -111,7 +111,7 @@ export const FORMER_HUB_ITEMS: readonly MenuLink[] = [
   { label: 'Competitor', note: 'Tournaments and game', to: '/student/competitor' },
   { label: 'Weight', note: 'Weigh-ins and target', to: '/student/weight' },
   { label: 'Results', note: 'Matches and bracket notes', to: '/student/results' },
-  { label: SCOUTING_LABEL, note: 'Weight class and open class', to: '/student/scouting' },
+  { label: SCOUTING_LABEL, note: 'Saved opponent cards', to: '/student/scouting' },
   { label: 'Video Library', note: 'Technique and drill links', to: '/student/videos' },
   { label: 'My rank', note: 'Belt and stripes', to: '/student/rank' },
   { label: 'Belt progress', note: 'Practical benchmarks and personal goals', to: '/student/rubric' },
