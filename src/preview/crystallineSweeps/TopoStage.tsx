@@ -10,6 +10,7 @@ import {
   EXAMPLE_OPPONENT_SWEEPS,
   EXAMPLE_SELF_FACTORS,
   EXAMPLE_SELF_SWEEPS,
+  type CompareFactors,
 } from './overlay.ts';
 import { assignDrillCells, barycentric, classifyTap, connectionLayout, labelVisible, midpointQuarters, pointToSegment, screenSides } from './demoLinks.ts';
 
@@ -22,6 +23,8 @@ type Props = {
   selected: number;
   comparison: boolean;
   pair: boolean;
+  /** Real self and opponent face scores. Omitted, the example factors are used. */
+  compareFactors?: CompareFactors | null;
   links: readonly string[];
   drillPath: readonly string[];
   relief: number;
@@ -43,7 +46,7 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, links, drillPath, relief, hue, chrome = 'full', onExpand, onFocus, onSelect, onDrill }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, chrome = 'full', onExpand, onFocus, onSelect, onDrill }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
@@ -68,6 +71,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     faceHits: [] as { faceIndex: number; front: boolean; z: number; screen: [number, number][] }[],
     comparison: false,
     pair: false,
+    compareFactors: null as CompareFactors | null,
     links: [] as string[],
     relief: 1,
     hue: 1,
@@ -96,6 +100,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
   view.current.style = style;
   view.current.comparison = comparison;
   view.current.pair = pair;
+  view.current.compareFactors = compareFactors;
   view.current.links = [...links];
   view.current.onDrill = onDrill;
   view.current.relief = relief;
@@ -352,7 +357,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       const polys: { index: number; points: [number, number][]; z: number; light: number; front: boolean; shade: number; layer: 'base' | 'self' | 'opponent' }[] = [];
       const comparing = state.comparison;
       const paired = state.pair;
-      const sweepsOpen = comparing && !paired && state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps';
+      const sweepsOpen = comparing && !paired && !state.compareFactors && state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps';
       state.faceHits = [];
       const outward = (a: Vec, b: Vec, c: Vec): Vec => {
         const mid: Vec = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
@@ -503,8 +508,11 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
           const [a, b, c] = corners.map((index) => model.vertices[index]);
           const axis = outward(a, b, c);
           const mid: Vec = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
-          pushLayer(-1, [a, b, c], raised(mid, axis, EXAMPLE_SELF_FACTORS[face.id]), 'self');
-          pushLayer(-1, [a, b, c], raised(mid, axis, EXAMPLE_OPPONENT_FACTORS[face.id]), 'opponent');
+          const live = state.compareFactors;
+          const selfScore = live ? live.self[face.id] : EXAMPLE_SELF_FACTORS[face.id];
+          const opponentScore = live ? live.opponent[face.id] : EXAMPLE_OPPONENT_FACTORS[face.id];
+          if (selfScore) pushLayer(-1, [a, b, c], raised(mid, axis, selfScore), 'self');
+          if (opponentScore) pushLayer(-1, [a, b, c], raised(mid, axis, opponentScore), 'opponent');
           const rotated = [a, b, c].map(rot);
           const center: Vec = [0, 1, 2].map((part) => (rotated[0][part] + rotated[1][part] + rotated[2][part]) / 3) as Vec;
           const nrm = normal(rotated[0], rotated[1], rotated[2]);
@@ -871,6 +879,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         data-style={style}
         data-comparison={comparison ? 'on' : 'off'}
         data-pair={pair ? 'on' : 'off'}
+        data-self-passing={compareFactors?.self.passing ?? ''}
+        data-opponent-sweeps={compareFactors?.opponent.sweeps ?? ''}
         data-drill-depth={drillPath.length}
         aria-label="Topographic octahedron of assessment factors"
         tabIndex={0}
@@ -1003,7 +1013,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
             state.lastTap = { time: now, name: state.activeName };
             return;
           }
-          const sweepsOpen = state.comparison && state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps';
+          const sweepsOpen = state.comparison && !state.compareFactors && state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps';
           if (state.comparison && !sweepsOpen) {
             const faceHit = [...state.faceHits]
               .filter((item) => item.front)

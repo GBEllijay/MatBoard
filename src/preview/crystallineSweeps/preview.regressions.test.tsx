@@ -8,6 +8,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { ASSESSMENT_STORAGE_KEY, emptyAssessments, saveAssessment, writeAssessments, type AssessmentScores } from '../../lib/studentAssessment.ts';
+import { SCOUTING_STORAGE_KEY, addScoutingCard, loadScouting, saveScouting } from '../../lib/studentScouting.ts';
 import { STUDENT_EDITION_STORAGE_KEY } from '../../lib/studentEdition.ts';
 import { TECHNIQUE_TREE_STORAGE_KEY } from '../../lib/techniqueTreeStore.ts';
 import { PREVIEW_STORAGE_KEY } from '../../lib/techniqueTreePreview.ts';
@@ -149,6 +150,70 @@ test('example relief, list selection, curved toggle, and back do not write stora
   });
   assert.match(host.textContent ?? '', /does not connect one Sweeps move to another/);
   assert.equal(snapshot(), before);
+  act(() => {
+    mounted.root.unmount();
+  });
+});
+
+test('an opponent scouting card overlays the diamond and example scores stay the fallback', () => {
+  localStorage.clear();
+  writeAssessments(
+    localStorage,
+    saveAssessment(
+      emptyAssessments(),
+      {
+        date: '2026-11-02',
+        note: '',
+        scores: { guard: 5, passing: 1, sweeps: 2, takedowns: 3, escapes: 4, submissions: 2, conditioning: 5, mindset: 3 },
+      },
+      8,
+    ),
+  );
+  saveScouting(
+    localStorage,
+    addScoutingCard(
+      [],
+      {
+        name: 'Sam Rivera',
+        gym: 'Atos',
+        belt: 'Blue',
+        weightClass: 'Middle',
+        group: 'weight',
+        style: '',
+        notes: '',
+        ratings: { guard: 2, passing: 5, takedowns: 4, escapes: 4, submissions: 1, conditioning: 4, mindset: 5 },
+        strengths: 'pressure',
+        weaknesses: 'back',
+      },
+      9,
+    ),
+  );
+  const id = loadScouting(localStorage)[0].id;
+  assert.equal(loadScouting(localStorage)[0].ratings.sweeps, undefined);
+  const before = localStorage.getItem(SCOUTING_STORAGE_KEY);
+  const mounted = mount(<CrystallineSweepsPreview />, `${CRYSTAL_PREVIEW_PATH}?opponent=${encodeURIComponent(id)}`);
+  const host = mounted.host;
+  const stage = host.querySelector('[data-comparison]');
+  assert.equal(host.querySelector('[data-compare-source]')?.getAttribute('data-compare-source'), 'opponent');
+  assert.equal(host.querySelector('[data-opponent-id]')?.getAttribute('data-opponent-id'), id);
+  assert.equal(stage?.getAttribute('data-comparison'), 'on');
+  assert.equal(stage?.getAttribute('data-self-passing'), '1');
+  assert.equal(stage?.getAttribute('data-opponent-sweeps'), '');
+  assert.match(host.textContent ?? '', /Sam Rivera/);
+  assert.match(host.textContent ?? '', /Record 0-0-0/);
+  assert.equal((host.textContent ?? '').includes('Example self is higher'), false);
+  const sweepsRow = [...host.querySelectorAll('tr')].find((row) => row.textContent?.includes('Sweeps'));
+  assert.match(sweepsRow?.textContent ?? '', /Not rated/);
+  assert.equal(localStorage.getItem(SCOUTING_STORAGE_KEY), before);
+  act(() => {
+    labeled(host, 'Example comparison').click();
+  });
+  assert.equal(host.querySelector('[data-compare-source]')?.getAttribute('data-compare-source'), 'example');
+  assert.equal(host.querySelector('[data-comparison]')?.getAttribute('data-comparison'), 'on');
+  assert.equal(host.querySelector('[data-comparison]')?.getAttribute('data-self-passing'), '');
+  assert.match(host.textContent ?? '', /Example self is higher/);
+  assert.match(host.textContent ?? '', /not a prediction/i);
+  assert.equal(localStorage.getItem(SCOUTING_STORAGE_KEY), before);
   act(() => {
     mounted.root.unmount();
   });

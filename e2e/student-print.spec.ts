@@ -173,7 +173,7 @@ test('print reports hide the seat bar, save a profile, and download matching PDF
     'Journal summary',
     'Competition and weight',
     'Self-assessment',
-    'Opponent scouting',
+    'Opponent card archive',
     'Video library',
   ]) {
     await expect(progress.getByRole('heading', { name: title, exact: true })).toBeVisible();
@@ -188,8 +188,8 @@ test('print reports hide the seat bar, save a profile, and download matching PDF
   await expect(journal).toContainText('Fundamentals');
   await expect(journal).toContainText('collar grip deeper');
   await expect(journal).not.toContainText('Class:');
-  await expect(progress.getByRole('region', { name: 'Opponent scouting' })).toContainText('Dario Kent');
-  await expect(progress.getByRole('region', { name: 'Opponent scouting' })).toContainText('Guard 4');
+  await expect(progress.getByRole('region', { name: 'Opponent card archive' })).toContainText('Dario Kent');
+  await expect(progress.getByRole('region', { name: 'Opponent card archive' })).toContainText('Guard 4');
   await expect(progress.getByRole('region', { name: 'Video library' })).toContainText('Berimbolo to back take');
   await expect(progress).toContainText('Ada Student');
   await page.screenshot({ path: '/opt/cursor/artifacts/student-print-progress.png', fullPage: true });

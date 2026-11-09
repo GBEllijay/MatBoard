@@ -1,0 +1,135 @@
+/**
+ * Opponent card archive. Navy surfaces match the D8 mock:
+ * page #070b14, card #0e1726, inset #14203a, selected #004eba with a #6ea8ff ring.
+ * Yellow stays on the logo.
+ */
+
+.student.student--arena.student--archive {
+  --arena-bg: #070b14;
+  --arena-card: #0e1726;
+  --arena-fill: #14203a;
+  --arena-line: #2a3a60;
+  --arena-text: #eef2f8;
+  --arena-muted: #b9c3d4;
+  background: #070b14;
+  color: #eef2f8;
+}
+
+.student.student--arena.student--archive .student-paper,
+.student.student--arena.student--archive .student-leather {
+  background: #070b14;
+}
+
+.student.student--arena.student--archive .student-leather h1,
+.student.student--arena.student--archive h2,
+.student.student--arena.student--archive h3 {
+  color: #eef2f8;
+}
+
+.student.student--arena.student--archive .student-quiet,
+.student.student--arena.student--archive .archive-help {
+  margin: 0;
+  color: #b9c3d4;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.student.student--arena.student--archive .archive-kicker {
+  margin: 0;
+  color: #6ea8ff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.student.student--arena.student--archive .archive-card,
+.student.student--arena.student--archive .archive-panel {
+  display: grid;
+  gap: 12px;
+  background: #0e1726;
+  border: 1px solid #2a3a60;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.student.student--arena.student--archive .archive-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.student.student--arena.student--archive .archive-card__head strong {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.student.student--arena.student--archive .archive-record {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #14203a;
+  color: #eef2f8;
+  box-shadow: inset 0 0 0 1px #2a3a60;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.student.student--arena.student--archive input:not(.student-file),
+.student.student--arena.student--archive textarea,
+.student.student--arena.student--archive select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #2a3a60;
+  border-radius: 10px;
+  background: #14203a;
+  color: #eef2f8;
+}
+
+.student.student--arena.student--archive input:not(.student-file):focus,
+.student.student--arena.student--archive textarea:focus,
+.student.student--arena.student--archive select:focus,
+.student.student--arena.student--archive .archive-ratings:focus {
+  outline: 2px solid #6ea8ff;
+  outline-offset: 2px;
+}
+
+.student.student--arena.student--archive .student-choice.is-on,
+.student.student--arena.student--archive .assess-tap.is-on {
+  background: #004eba;
+  color: #ffffff;
+  box-shadow: 0 0 0 2px #6ea8ff;
+}
+
+.student.student--arena.student--archive .ink-btn--save {
+  background: #ffffff;
+  color: #0e1726;
+  box-shadow: none;
+}
+
+.student.student--arena.student--archive .archive-results {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.student.student--arena.student--archive .archive-results li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.student.student--arena.student--archive .archive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

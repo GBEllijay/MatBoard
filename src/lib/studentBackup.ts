@@ -63,7 +63,7 @@ export const CLEAR_STUDENT_DATA_ITEMS = [
   'Weight',
   'Self-assessment',
   'Tournaments',
-  'Opponent scouting',
+  'Opponent card archive',
   'Videos',
   'Profile photo',
   'Gym logo on My profile',
