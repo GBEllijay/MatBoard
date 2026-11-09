@@ -4,7 +4,7 @@
  * shared radar geometry, not a picture of the chart.
  */
 
-import { ASSESSMENT_AREAS, assessmentAverage, type AssessmentState } from './studentAssessment.ts';
+import { ASSESSMENT_AREAS, assessmentAverage, conditioningItemLines, mindsetGoalLines, type AssessmentState } from './studentAssessment.ts';
 import { radarPoint, RADAR_CENTER } from './radarChart.ts';
 import { advantageLogo } from './advantageLogo.ts';
 import { drawPdf, type PdfDraw, type PdfImageAsset, type Rgb } from './simplePdf.ts';
@@ -643,6 +643,8 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
     drawWrapped(state, 'Notes', 9, 'bold', NAVY, 2, MARGIN_X + 10, CONTENT_W - 20);
     drawWrapped(state, note, 10, 'regular', INK, 3, MARGIN_X + 10, CONTENT_W - 20);
     state.top = cardTop + cardH + 8;
+    for (const line of conditioningItemLines(latest.conditioningItems)) drawWrapped(state, line, 10, 'regular', INK, 3);
+    for (const line of mindsetGoalLines(latest.mindsetGoals)) drawWrapped(state, line, 10, 'regular', INK, 3);
 
     const earlier = entries.slice(1);
     if (earlier.length) {
@@ -654,6 +656,10 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
           `${entry.date} — average ${assessmentAverage(entry.scores).toFixed(1)}`,
           ASSESSMENT_AREAS.map((area) => `${area.label} ${entry.scores[area.id]}`).join(', '),
         ];
+        const conditioning = conditioningItemLines(entry.conditioningItems);
+        if (conditioning.length) bits.push(conditioning.join(', '));
+        const goals = mindsetGoalLines(entry.mindsetGoals);
+        if (goals.length) bits.push(goals.join(', '));
         if (entry.note.trim()) bits.push(entry.note.trim());
         for (const bit of bits) drawWrapped(state, bit, 10, 'regular', INK, 3);
         state.top += 4;

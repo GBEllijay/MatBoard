@@ -12,6 +12,8 @@ import type { CompetitionMatch, JournalEntry, MatchMethod, ProgressBelt, Student
 import {
   ASSESSMENT_AREAS,
   assessmentAverage,
+  conditioningItemLines,
+  mindsetGoalLines,
   isAssessmentScore,
   type AssessmentState,
 } from './studentAssessment.ts';
@@ -499,6 +501,8 @@ export function selfAssessmentLines(report: StudentProgressReport, assessment: A
   for (const entry of entries) {
     lines.push(`${entry.date} — average ${assessmentAverage(entry.scores).toFixed(1)}`);
     for (const area of ASSESSMENT_AREAS) lines.push(`  ${area.label}: ${entry.scores[area.id]}`);
+    for (const line of conditioningItemLines(entry.conditioningItems)) lines.push(`  ${line}`);
+    for (const line of mindsetGoalLines(entry.mindsetGoals)) lines.push(`  ${line}`);
     if (entry.note.trim()) lines.push(`  Note: ${entry.note.trim()}`);
     lines.push('');
   }
