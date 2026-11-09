@@ -26,6 +26,8 @@ type Props = {
   drillPath: readonly string[];
   relief: number;
   hue: number;
+  /** Face indexes to stroke on the solid. Empty leaves the diamond unchanged. */
+  marked?: readonly number[];
   /** bare hides the zoom, pause, reset, and factor buttons for the sheet thumbnail. */
   chrome?: 'full' | 'bare';
   onExpand?: () => void;
@@ -43,7 +45,7 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, links, drillPath, relief, hue, chrome = 'full', onExpand, onFocus, onSelect, onDrill }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, pair, links, drillPath, relief, hue, marked = [], chrome = 'full', onExpand, onFocus, onSelect, onDrill }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
@@ -71,6 +73,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     links: [] as string[],
     relief: 1,
     hue: 1,
+    marked: [] as readonly number[],
     chrome: 'full' as 'full' | 'bare',
     onExpand: () => {},
     grown: [] as { name: string; corners: [Vec, Vec, Vec] }[],
@@ -100,6 +103,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
   view.current.onDrill = onDrill;
   view.current.relief = relief;
   view.current.hue = hue;
+  view.current.marked = marked;
   view.current.chrome = chrome;
   view.current.onExpand = onExpand ?? (() => {});
 
@@ -678,8 +682,9 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
           drawn.slice(1).forEach((point) => context.lineTo(point[0], point[1]));
           context.closePath();
           context.setLineDash([]);
-          context.strokeStyle = faceIndex === state.focus ? '#ffffff' : 'rgba(118,234,255,.95)';
-          context.lineWidth = faceIndex === state.focus ? 2.5 : 1.6;
+          const onTrail = state.marked.includes(faceIndex);
+          context.strokeStyle = faceIndex === state.focus ? '#ffffff' : onTrail ? '#ffd27a' : 'rgba(118,234,255,.95)';
+          context.lineWidth = faceIndex === state.focus ? 2.5 : onTrail ? 3.4 : 1.6;
           context.stroke();
         }
         const node = faceNodes[faceIndex];
@@ -1070,7 +1075,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       </div>
       <nav className="topo-legend" aria-label="Focus a factor">
         {model.faces.map((face, index) => (
-          <button key={face.id} type="button" data-face-button={face.id} aria-pressed={focus === index} onClick={() => focusFace(index)}>
+          <button key={face.id} type="button" data-face-button={face.id} data-on-trail={marked.includes(index) ? 'true' : 'false'} aria-pressed={focus === index} onClick={() => focusFace(index)}>
             {index + 1}. {face.name} ({face.moves.length})
           </button>
         ))}
