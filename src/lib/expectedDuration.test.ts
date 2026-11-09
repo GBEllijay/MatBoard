@@ -200,8 +200,16 @@ test('the lesson duration is the video loop unless a manual length wins', () => 
   assert.equal(loopSecondsForSlot(technique, '1:30'), 90);
   assert.equal(loopSecondsForSlot(technique, ''), 5 * 60);
   assert.equal(loopSecondsForSlot(technique, null), 300);
-  assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 150 }, '12'), 150);
-  assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 420 }, '8'), 420);
+  // A set expected time is the countdown, even when the card was last saved at another length.
+  assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 150 }, '12'), 12 * 60);
+  assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 420 }, '8'), 8 * 60);
+  assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 300 }, '8:15'), 8 * 60 + 15);
+  assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 150 }, '8.25'), 8 * 60 + 15);
+  // No expected time: keep the card's own length, including a custom one.
+  assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 150 }, ''), 150);
+  assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 150 }, 'soon'), 150);
+  // A length the coach set on the video card still wins.
+  assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 150, drillManual: true }, '12'), 150);
   assert.equal(loopSecondsForSlot({ kind: 'technique', drillSec: 300, drillManual: true }, '8'), 300);
   assert.equal(loopSecondsForSlot({ kind: 'warmup', drillSec: 300 }, null), 0);
   assert.equal(loopSecondsForSlot({ kind: 'warmup', drillSec: 300 }, '8:00'), 8 * 60);
