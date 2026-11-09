@@ -44,6 +44,8 @@ export function CrystallineSweepsPreview() {
   const [selected, setSelected] = useState(-1);
   const [drillPath, setDrillPath] = useState<string[]>([]);
   const [detail, setDetail] = useState(false);
+  const [relief, setRelief] = useState(1);
+  const [hue, setHue] = useState(1);
   const model = useMemo(
     () =>
       buildTopo((id) => {
@@ -109,6 +111,33 @@ export function CrystallineSweepsPreview() {
             <li className="tone-submission">Submissions, red</li>
             <li className="tone-pass">Passes and sweeps, green</li>
           </ul>
+          <div className="crystal-sliders">
+            <label>
+              Relief height
+              <input
+                type="range"
+                name="relief"
+                min={0}
+                max={1}
+                step={0.01}
+                value={relief}
+                onChange={(event) => setRelief(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              Color strength
+              <input
+                type="range"
+                name="hue"
+                min={0}
+                max={1}
+                step={0.01}
+                value={hue}
+                onChange={(event) => setHue(Number(event.target.value))}
+              />
+            </label>
+          </div>
+          <p className="crystal-style-note">Color strength changes technique tiles only. The cyan and amber comparison stays as it is.</p>
           <p className="crystal-style-note">
             {compare
               ? 'Example self is cyan and solid. Example opponent is amber and dashed. Same faces, same spin. A higher number is not a prediction.'
@@ -125,6 +154,8 @@ export function CrystallineSweepsPreview() {
             pair={pair}
             links={compare ? hop.shown : []}
             drillPath={drillPath}
+            relief={relief}
+            hue={hue}
             onFocus={(index) => {
               setFocus(index);
               setSelected(-1);

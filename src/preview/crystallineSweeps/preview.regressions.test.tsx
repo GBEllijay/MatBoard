@@ -325,3 +325,39 @@ test('double-tap walks Mount to Armbar to Wrist lock without writing storage', (
     mounted.root.unmount();
   });
 });
+
+test('factor buttons still jump to that face and the bottom controls stay', () => {
+  localStorage.clear();
+  const mounted = mount(<CrystallineSweepsPreview />);
+  const host = mounted.host;
+  assert.equal(host.querySelectorAll('.topo-controls button').length, 4);
+  assert.ok(host.querySelector('[aria-label="Zoom in"]'));
+  assert.ok(host.querySelector('[aria-label="Zoom out"]'));
+  assert.ok(host.querySelector('.topo-reset'));
+  const faces: [string, string][] = [
+    ['guard-control', 'Guard/Control face'],
+    ['passing', 'Passing face'],
+    ['sweeps', 'About Sweeps'],
+    ['takedowns', 'Takedowns face'],
+    ['escapes-defense', 'Escapes/Defense face'],
+    ['submissions', 'Submissions face'],
+    ['conditioning', 'Conditioning face'],
+    ['mindset', 'Mindset face'],
+  ];
+  for (const [id, label] of faces) {
+    const button = host.querySelector(`[data-face-button="${id}"]`) as HTMLButtonElement;
+    act(() => {
+      button.click();
+    });
+    assert.equal(button.getAttribute('aria-pressed'), 'true');
+    assert.ok(host.querySelector(`[aria-label="${label}"]`), label);
+  }
+  act(() => {
+    labeled(host, 'Reset view').click();
+  });
+  assert.ok(host.querySelector('[aria-label="Eight faces"]'));
+  assert.equal(host.querySelectorAll('[data-face-button]').length, 8);
+  act(() => {
+    mounted.root.unmount();
+  });
+});

@@ -100,6 +100,29 @@ export function tileTone(id: string): TileTone {
   return 'position';
 }
 
+const TONE_ALIASES: Record<string, string> = {
+  Armbar: 'Armbar from guard',
+  'Triangle choke': 'Triangle',
+};
+
+/** Example drill names use the same colors as the catalog row they refer to. */
+export function toneForName(name: string): TileTone {
+  const wanted = TONE_ALIASES[name] ?? name;
+  for (const category of FUNDAMENTALS_CATALOG.categories) {
+    if (!category.items.some((item) => item.name === name || item.name === wanted)) continue;
+    if (category.id === 'submissions') return 'submission';
+    if (category.id === 'escapes' || category.id === 'defense') return 'defense';
+    if (category.id === 'passes' || category.id === 'sweeps') return 'pass';
+    return 'position';
+  }
+  return 'position';
+}
+
+/** 0 flattens every pyramid. 1 keeps the current 3.5H extreme. */
+export function reliefScale(offset: number, scale: number): number {
+  return offset * Math.min(1, Math.max(0, scale));
+}
+
 function catalogName(id: string): string {
   for (const category of FUNDAMENTALS_CATALOG.categories) {
     const item = category.items.find((row) => row.id === id);

@@ -205,6 +205,26 @@
   color: #b6f5cf;
 }
 
+.crystal-sliders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin: 8px 0;
+}
+
+.crystal-sliders label {
+  display: flex;
+  flex: 1 1 180px;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.crystal-sliders input {
+  width: 100%;
+  min-height: 44px;
+}
+
 .overlay-table {
   width: 100%;
   border-collapse: collapse;

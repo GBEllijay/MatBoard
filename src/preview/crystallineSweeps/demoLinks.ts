@@ -189,6 +189,59 @@ export function screenSides(tri: [[number, number], [number, number], [number, n
   ]
 }
 
+export function triangleArea(a: [number, number, number], b: [number, number, number], c: [number, number, number]): number {
+  const ux = b[0] - a[0]
+  const uy = b[1] - a[1]
+  const uz = b[2] - a[2]
+  const vx = c[0] - a[0]
+  const vy = c[1] - a[1]
+  const vz = c[2] - a[2]
+  const cx = uy * vz - uz * vy
+  const cy = uz * vx - ux * vz
+  const cz = ux * vy - uy * vx
+  return 0.5 * Math.hypot(cx, cy, cz)
+}
+
+/** Barycentric coordinates of a coplanar point. Inside the triangle when each is at least 0. */
+export function barycentric<T extends [number, number, number]>(point: T, a: T, b: T, c: T): [number, number, number] {
+  const v0 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]
+  const v1 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]]
+  const v2 = [point[0] - a[0], point[1] - a[1], point[2] - a[2]]
+  const dot = (p: number[], q: number[]) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2]
+  const d00 = dot(v0, v0)
+  const d01 = dot(v0, v1)
+  const d11 = dot(v1, v1)
+  const d20 = dot(v2, v0)
+  const d21 = dot(v2, v1)
+  const denom = d00 * d11 - d01 * d01 || 1
+  const v = (d11 * d20 - d01 * d21) / denom
+  const w = (d00 * d21 - d01 * d20) / denom
+  return [1 - v - w, v, w]
+}
+
+/**
+ * Join the three edge midpoints. Four congruent triangles cover the parent:
+ * the center, and one corner at each vertex. Nothing lands outside.
+ */
+export function midpointQuarters<T extends [number, number, number]>(corners: [T, T, T]): {
+  center: [T, T, T]
+  corners: [[T, T, T], [T, T, T], [T, T, T]]
+} {
+  const mid = (p: T, q: T): T => p.map((value, index) => (value + q[index]) / 2) as T
+  const [a, b, c] = corners
+  const ab = mid(a, b)
+  const bc = mid(b, c)
+  const ca = mid(c, a)
+  return {
+    center: [ab, bc, ca],
+    corners: [
+      [a, ab, ca],
+      [b, bc, ab],
+      [c, ca, bc],
+    ],
+  }
+}
+
 export function growOffEdge<T extends [number, number, number]>(corners: [T, T, T], edge: 0 | 1 | 2): [T, T, T] {
   const a = corners[edge]
   const b = corners[(edge + 1) % 3]

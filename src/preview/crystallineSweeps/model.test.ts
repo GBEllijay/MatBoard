@@ -34,9 +34,9 @@ import {
   tileVertices,
 } from './geometry.ts';
 import { FIT_PAD, VIEW_SIZE, defaultCamera, labelTier, projectLayout } from './project.ts';
-import { TOPO_H, TOPO_LEVEL, buildTopo, demoLevel, tileTone } from './topo.ts';
+import { TOPO_H, TOPO_LEVEL, buildTopo, demoLevel, reliefScale, tileTone, toneForName } from './topo.ts';
 import { EXAMPLE_OPPONENT_FACTORS, EXAMPLE_OPPONENT_SWEEPS, EXAMPLE_SELF_FACTORS, EXAMPLE_SELF_SWEEPS, exampleCompare, factorComparisons } from './overlay.ts';
-import { classifyTap, connectionLayout, demoCard, gridCells, growOffEdge, labelVisible, screenSides, sidesWithBack, subdivideTriangle, walkDemo, assignDrillCells } from './demoLinks.ts';
+import { classifyTap, connectionLayout, demoCard, gridCells, growOffEdge, labelVisible, midpointQuarters, screenSides, sidesWithBack, subdivideTriangle, triangleArea, barycentric, walkDemo, assignDrillCells } from './demoLinks.ts';
 
 function memory() {
   const store = new Map<string, string>();
@@ -513,4 +513,33 @@ test('example sides stay local and the Mount walk is recursive', () => {
   assert.equal(tileTone('pass.knee-slice'), 'pass');
   assert.equal(tileTone('sweep.scissor'), 'pass');
   assert.equal(tileTone('td.double-leg'), 'position');
+  const parent: [[number, number, number], [number, number, number], [number, number, number]] = [
+    [0, 0, 0],
+    [4, 0, 1],
+    [1, 3, 2],
+  ];
+  const parts = midpointQuarters(parent);
+  const kids = [parts.center, ...parts.corners];
+  const parentArea = triangleArea(parent[0], parent[1], parent[2]);
+  let sum = 0;
+  for (const tri of kids) {
+    for (const vertex of tri) {
+      for (const weight of barycentric(vertex, parent[0], parent[1], parent[2])) assert.ok(weight >= -1e-8);
+    }
+    sum += triangleArea(tri[0], tri[1], tri[2]);
+  }
+  assert.ok(Math.abs(sum - parentArea) < 1e-6);
+  const nested = midpointQuarters(parts.corners[0]);
+  for (const tri of [nested.center, ...nested.corners]) {
+    for (const vertex of tri) {
+      for (const weight of barycentric(vertex, parent[0], parent[1], parent[2])) assert.ok(weight >= -1e-8);
+    }
+  }
+  assert.equal(reliefScale(3.5, 0), 0);
+  assert.equal(reliefScale(-3.5, 1), -3.5);
+  assert.equal(reliefScale(3.5, 2), 3.5);
+  assert.equal(toneForName('Mount'), 'position');
+  assert.equal(toneForName('Armbar'), 'submission');
+  assert.equal(toneForName('Triangle choke'), 'submission');
+  assert.equal(toneForName('Pendulum sweep'), 'pass');
 });

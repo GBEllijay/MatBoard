@@ -4,14 +4,14 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ReliefScore } from './geometry.ts';
-import { TOPO_LEVEL, TOPO_REVISION, tileTone, topoWords, type TileTone, type TopoModel, type Vec } from './topo.ts';
+import { TOPO_LEVEL, TOPO_REVISION, reliefScale, tileTone, toneForName, topoWords, type TileTone, type TopoModel, type Vec } from './topo.ts';
 import {
   EXAMPLE_OPPONENT_FACTORS,
   EXAMPLE_OPPONENT_SWEEPS,
   EXAMPLE_SELF_FACTORS,
   EXAMPLE_SELF_SWEEPS,
 } from './overlay.ts';
-import { assignDrillCells, classifyTap, connectionLayout, growOffEdge, labelVisible, pointToSegment, screenSides } from './demoLinks.ts';
+import { assignDrillCells, barycentric, classifyTap, connectionLayout, labelVisible, midpointQuarters, pointToSegment, screenSides } from './demoLinks.ts';
 
 export type TopoStyle = 'pyramid' | 'curved';
 
@@ -24,6 +24,8 @@ type Props = {
   pair: boolean;
   links: readonly string[];
   drillPath: readonly string[];
+  relief: number;
+  hue: number;
   onFocus: (index: number) => void;
   onSelect: (index: number) => void;
   onDrill: (path: string[], detail: boolean) => void;
@@ -38,7 +40,7 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, links, drillPath, onFocus, onSelect, onDrill }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, pair, links, drillPath, relief, hue, onFocus, onSelect, onDrill }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
@@ -64,6 +66,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     comparison: false,
     pair: false,
     links: [] as string[],
+    relief: 1,
+    hue: 1,
     grown: [] as { name: string; corners: [Vec, Vec, Vec] }[],
     pendingPath: null as string[] | null,
     onDrill: (_path: string[], _detail: boolean) => {},
@@ -76,7 +80,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     frameKey: '',
     openedAt: 0,
     api: null as null | {
-      grow: (target: string, edge: 0 | 1 | 2) => void
+      grow: (target: string) => void
       enter: (target: string, corners: [Vec, Vec, Vec]) => void
       detail: () => void
     },
@@ -89,6 +93,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
   view.current.pair = pair;
   view.current.links = [...links];
   view.current.onDrill = onDrill;
+  view.current.relief = relief;
+  view.current.hue = hue;
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -203,7 +209,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       let dy = (targetYaw - state.ry) % (2 * Math.PI);
       dy = ((dy + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;
       const layout = connectionLayout(name, parent);
-      const parts = layout.mode === 'grid' ? layout.n : 1;
+      const parts = layout.mode === 'grid' ? layout.n : 2;
       let span = 0;
       for (let index = 0; index < 3; index += 1) {
         const from = corners[index];
@@ -212,7 +218,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       }
       const piece = Math.max(0.04, span / parts);
       const focal = state.height / 2 / Math.tan((19 * Math.PI) / 180);
-      const targetPx = layout.mode === 'grid' ? 96 : 168;
+      const targetPx = layout.mode === 'grid' ? 88 : 120;
       const zoom = (targetPx * 5.5) / (piece * focal);
       state.paused = true;
       setPaused(true);
@@ -226,6 +232,22 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         t: 0,
       };
     };
+    const roleQuarters = (corners: [Vec, Vec, Vec]) => {
+      const parts = midpointQuarters(corners);
+      const mark = (tri: [Vec, Vec, Vec]) => {
+        const pts = projectTri(tri);
+        return { tri, x: (pts[0][0] + pts[1][0] + pts[2][0]) / 3 };
+      };
+      const marks = parts.corners.map(mark);
+      let left = marks[0];
+      let right = marks[0];
+      for (const item of marks) {
+        if (item.x < left.x) left = item;
+        if (item.x > right.x) right = item;
+      }
+      const base = marks.find((item) => item !== left && item !== right) ?? marks[0];
+      return { center: parts.center, left: left.tri, right: right.tri, base: base.tri };
+    };
     const growToward = (fromName: string, parent: string | null, corners: [Vec, Vec, Vec], nextName: string): [Vec, Vec, Vec] | null => {
       const layout = connectionLayout(fromName, parent);
       if (layout.mode === 'grid') {
@@ -233,9 +255,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       }
       const role = (['left', 'base', 'right'] as const).find((item) => layout.sides[item] === nextName);
       if (!role) return null;
-      const mapped = screenSides(projectTri(corners)).find((item) => item.role === role);
-      if (!mapped) return null;
-      return growOffEdge(corners, mapped.edge);
+      return roleQuarters(corners)[role];
     };
     const syncPath = (path: readonly string[]) => {
       const tile = rootTile();
@@ -276,10 +296,12 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       state.frameKey = `${name}:${state.grown.length}`;
     };
     state.api = {
-      grow(target, edge) {
+      grow(target) {
         const active = activeOf();
         if (!active || state.grown.length >= 7) return;
-        const corners = growOffEdge(active.corners, edge);
+        const layout = connectionLayout(active.name, active.parent);
+        const role = (['left', 'base', 'right'] as const).find((item) => layout.mode === 'edges' && layout.sides[item] === target);
+        const corners = role ? roleQuarters(active.corners)[role] : active.corners;
         state.grown.push({ name: target, corners });
         rememberFrame(target);
         easeTo(corners, target, active.name);
@@ -331,7 +353,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         return mid.map((value) => value / length) as Vec;
       };
       const raised = (mid: Vec, axis: Vec, score: number): Vec => {
-        const offset = TOPO_LEVEL[score as 1 | 2 | 3 | 4 | 5];
+        const offset = reliefScale(TOPO_LEVEL[score as 1 | 2 | 3 | 4 | 5], state.relief);
         return mid.map((value, index) => value + axis[index] * offset) as Vec;
       };
       const pushLayer = (index: number, corners: [Vec, Vec, Vec], apex: Vec, layer: 'self' | 'opponent') => {
@@ -531,27 +553,39 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         };
         projected.push(item);
         if (tile.apex) {
-          const apex = rot(tile.apex);
-          (
-            [
-              [a, b],
-              [b, c],
-              [c, a],
-            ] as [Vec, Vec][]
-          ).forEach(([p, q]) => {
-            const n = normal(p, q, apex);
-            const length = Math.hypot(...n) || 1;
-            const amount = Math.abs(n[0] * lit[0] + n[1] * lit[1] + n[2] * lit[2]) / length;
-            polys.push({
-              index,
-              points: [p, q, apex].map(screen),
-              z: (p[2] + q[2] + apex[2]) / 3,
-              light: amount,
-              front: item.front,
-              shade,
-              layer: 'base',
+          const raw = tile.tri.map((corner) => corner.p);
+          const mid: Vec = [
+            (raw[0][0] + raw[1][0] + raw[2][0]) / 3,
+            (raw[0][1] + raw[1][1] + raw[2][1]) / 3,
+            (raw[0][2] + raw[1][2] + raw[2][2]) / 3,
+          ];
+          const scaled = mid.map((value, index) => value + (tile.apex![index] - mid[index]) * state.relief) as Vec;
+          const rise = Math.hypot(scaled[0] - mid[0], scaled[1] - mid[1], scaled[2] - mid[2]);
+          if (rise > 1e-4) {
+            const apex = rot(scaled);
+            (
+              [
+                [a, b],
+                [b, c],
+                [c, a],
+              ] as [Vec, Vec][]
+            ).forEach(([p, q]) => {
+              const n = normal(p, q, apex);
+              const length = Math.hypot(...n) || 1;
+              const amount = Math.abs(n[0] * lit[0] + n[1] * lit[1] + n[2] * lit[2]) / length;
+              polys.push({
+                index,
+                points: [p, q, apex].map(screen),
+                z: (p[2] + q[2] + apex[2]) / 3,
+                light: amount,
+                front: item.front,
+                shade,
+                layer: 'base',
+              });
             });
-          });
+          } else {
+            polys.push({ index, points: item.screen, z: item.z, light: 0.5 + 0.5 * Math.max(0, shade), front: item.front, shade, layer: 'base' });
+          }
         } else {
           polys.push({ index, points: item.screen, z: item.z, light: 0.5 + 0.5 * Math.max(0, shade), front: item.front, shade, layer: 'base' });
         }
@@ -598,7 +632,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         } else if (!poly.front) fill = 'rgba(24,114,160,.05)';
         else if (!tile || !model.faces[tile.faceIndex]?.moves.length) fill = `rgba(70,80,100,${0.25 + 0.3 * poly.shade})`;
         else if (!tile.move || tile.offset == null) fill = `rgba(24,60,90,${0.16 + 0.16 * Math.max(0, poly.shade)})`;
-        else fill = toneFill(tileTone(tile.move.id), k, chosen);
+        else fill = toneFill(tileTone(tile.move.id), k, chosen, state.hue);
         context.fillStyle = fill;
         context.fill();
         const unrated = poly.layer === 'base' && Boolean(tile?.move) && tile?.offset == null;
@@ -663,96 +697,100 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         } else {
           const layout = connectionLayout(active.name, active.parent);
           const frameKey = `${active.name}:${state.grown.length}:${layout.mode}`;
-          if ((layout.mode === 'grid' || state.grown.length > 0) && state.frameKey !== frameKey && !state.drag) {
+          if (state.selected >= 0 && state.frameKey !== frameKey && !state.drag) {
             state.frameKey = frameKey;
             easeTo(active.corners, active.name, active.parent);
           }
           stage.dataset.drillMode = layout.mode;
-          stage.dataset.drillN = layout.mode === 'grid' ? String(layout.n * layout.n) : '3';
-          for (const step of state.grown) {
-            const pts = projectTri(step.corners);
-            context.beginPath();
-            context.moveTo(pts[0][0], pts[0][1]);
-            context.lineTo(pts[1][0], pts[1][1]);
-            context.lineTo(pts[2][0], pts[2][1]);
-            context.closePath();
-            const current = step === state.grown[state.grown.length - 1];
-            context.fillStyle = current ? 'rgba(80, 190, 230, 0.22)' : 'rgba(40, 120, 160, 0.12)';
-            context.fill();
-            context.setLineDash([]);
-            context.strokeStyle = current ? '#ffffff' : 'rgba(118,234,255,.75)';
-            context.lineWidth = current ? 2 : 1;
-            context.stroke();
-            if (!current) continue;
-            const box = spanOf(pts);
-            if (!labelVisible(box, step.name) || layout.mode === 'grid') continue;
-            const labelX = (pts[0][0] + pts[1][0] + pts[2][0]) / 3;
-            const labelY = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
-            paintLabel(labelX, labelY, step.name, true);
-          }
-          const screenTri = projectTri(active.corners);
-          state.activeScreen = screenTri;
-          if (layout.mode === 'grid') {
-            state.sideHits = [];
-            const cells = assignDrillCells(active.corners, layout.names);
-            context.font = '11px sans-serif';
-            context.textAlign = 'center';
-            for (const cell of cells) {
-              const pts = projectTri(cell.corners);
-              state.cellHits.push({ name: cell.name, corners: cell.corners, screen: pts });
+          stage.dataset.drillN = layout.mode === 'grid' ? String(layout.n * layout.n) : '4';
+          const root = rootTile();
+          const rootBase = root ? rootCorners(root) : null;
+          const lift = (point: Vec): Vec => {
+            if (!rootBase || !root?.apex) return point;
+            const mid: Vec = [
+              (rootBase[0][0] + rootBase[1][0] + rootBase[2][0]) / 3,
+              (rootBase[0][1] + rootBase[1][1] + rootBase[2][1]) / 3,
+              (rootBase[0][2] + rootBase[1][2] + rootBase[2][2]) / 3,
+            ];
+            const weights = barycentric(point, rootBase[0], rootBase[1], rootBase[2]);
+            const factor = Math.max(0, Math.min(weights[0], weights[1], weights[2])) * 3 * state.relief;
+            return point.map((value, index) => value + (root.apex![index] - mid[index]) * factor) as Vec;
+          };
+          const drawPatch = (tri: [Vec, Vec, Vec], fill: string) => {
+            const peak = lift([
+              (tri[0][0] + tri[1][0] + tri[2][0]) / 3,
+              (tri[0][1] + tri[1][1] + tri[2][1]) / 3,
+              (tri[0][2] + tri[1][2] + tri[2][2]) / 3,
+            ]);
+            const faces: [Vec, Vec, Vec][] = [
+              [tri[0], tri[1], peak],
+              [tri[1], tri[2], peak],
+              [tri[2], tri[0], peak],
+            ];
+            for (const face of faces) {
+              const pts = face.map((vertex) => screen(rot(vertex)));
               context.beginPath();
               context.moveTo(pts[0][0], pts[0][1]);
-              context.lineTo(pts[1][0], pts[1][1]);
-              context.lineTo(pts[2][0], pts[2][1]);
+              if (state.style === 'curved') {
+                const pull = (from: [number, number], to: [number, number]): [number, number] => {
+                  const middle: [number, number] = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+                  return [middle[0] + (pts[2][0] - middle[0]) * 0.35, middle[1] + (pts[2][1] - middle[1]) * 0.35];
+                };
+                context.lineTo(pts[1][0], pts[1][1]);
+                context.quadraticCurveTo(...pull(pts[1], pts[2]), pts[2][0], pts[2][1]);
+                context.quadraticCurveTo(...pull(pts[0], pts[2]), pts[0][0], pts[0][1]);
+              } else {
+                context.lineTo(pts[1][0], pts[1][1]);
+                context.lineTo(pts[2][0], pts[2][1]);
+              }
               context.closePath();
-              context.fillStyle = cell.name ? 'rgba(90, 200, 235, 0.38)' : 'rgba(255,255,255,.04)';
+              context.fillStyle = fill;
               context.fill();
-              context.setLineDash(cell.name ? [] : [3, 3]);
-              context.strokeStyle = cell.name ? '#ffffff' : 'rgba(255,255,255,.28)';
-              context.lineWidth = cell.name ? 1.6 : 1;
-              context.stroke();
               context.setLineDash([]);
-              if (!cell.name) continue;
-              const box = spanOf(pts);
-              if (!labelVisible(box, cell.name)) continue;
-              const labelX = (pts[0][0] + pts[1][0] + pts[2][0]) / 3;
-              const labelY = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
-              paintLabel(labelX, labelY, cell.name, true);
+              context.strokeStyle = 'rgba(8, 16, 28, 0.55)';
+              context.lineWidth = 1;
+              context.stroke();
+            }
+          };
+          const labelAt = (tri: [Vec, Vec, Vec], text: string, linked: boolean) => {
+            const peak = lift([
+              (tri[0][0] + tri[1][0] + tri[2][0]) / 3,
+              (tri[0][1] + tri[1][1] + tri[2][1]) / 3,
+              (tri[0][2] + tri[1][2] + tri[2][2]) / 3,
+            ]);
+            const at = screen(rot(peak));
+            const box = spanOf(projectTri(tri));
+            if (!labelVisible(box, text)) return;
+            paintLabel(at[0], at[1], text, linked);
+          };
+          state.activeScreen = projectTri(active.corners);
+          state.sideHits = [];
+          if (layout.mode === 'grid') {
+            for (const cell of assignDrillCells(active.corners, layout.names)) {
+              state.cellHits.push({ name: cell.name, corners: cell.corners, screen: projectTri(cell.corners) });
+              drawPatch(cell.corners, cell.name ? toneFill(toneForName(cell.name), 0.8, false, state.hue) : 'rgba(20, 40, 60, 0.28)');
+              if (cell.name) labelAt(cell.corners, cell.name, true);
             }
           } else {
-            const roles = screenSides(screenTri);
-            state.sideHits = roles.map((role) => ({
-              edge: role.edge,
-              target: layout.sides[role.role],
-              a: screenTri[role.edge],
-              b: screenTri[(role.edge + 1) % 3],
-            }));
-            if (state.selected >= 0) {
-              context.font = '11px sans-serif';
-              context.textAlign = 'center';
-              const parentBox = spanOf(screenTri);
-              for (const hit of state.sideHits) {
-                const midX = (hit.a[0] + hit.b[0]) / 2;
-                const midY = (hit.a[1] + hit.b[1]) / 2;
-                const centerX = (screenTri[0][0] + screenTri[1][0] + screenTri[2][0]) / 3;
-                const centerY = (screenTri[0][1] + screenTri[1][1] + screenTri[2][1]) / 3;
-                const vx = midX - centerX;
-                const vy = midY - centerY;
-                const length = Math.hypot(vx, vy) || 1;
-                const x = midX + (vx / length) * 28;
-                const y = midY + (vy / length) * 28;
-                const text = hit.target ?? 'Empty';
-                context.setLineDash(hit.target ? [] : [4, 4]);
-                context.strokeStyle = hit.target ? '#ffffff' : 'rgba(255,255,255,.3)';
-                context.lineWidth = hit.target ? (labelVisible(parentBox, text) ? 6 : 2.4) : 1.5;
-                context.beginPath();
-                context.moveTo(hit.a[0], hit.a[1]);
-                context.lineTo(hit.b[0], hit.b[1]);
-                context.stroke();
-                context.setLineDash([]);
-                if (!labelVisible(parentBox, text)) continue;
-                paintLabel(x, y, text, Boolean(hit.target));
+            const quarters = roleQuarters(active.corners);
+            drawPatch(quarters.center, toneFill(toneForName(active.name), 0.85, true, state.hue));
+            labelAt(quarters.center, active.name, true);
+            for (const role of ['left', 'base', 'right'] as const) {
+              const name = layout.sides[role];
+              const tri = quarters[role];
+              state.cellHits.push({ name, corners: tri, screen: projectTri(tri) });
+              const screenTri = projectTri(active.corners);
+              const edge = screenSides(screenTri).find((item) => item.role === role);
+              if (edge) {
+                state.sideHits.push({
+                  edge: edge.edge,
+                  target: name,
+                  a: screenTri[edge.edge],
+                  b: screenTri[(edge.edge + 1) % 3],
+                });
               }
+              drawPatch(tri, name ? toneFill(toneForName(name), 0.75, false, state.hue) : 'rgba(20, 40, 60, 0.28)');
+              if (name) labelAt(tri, name, true);
             }
           }
         }
@@ -941,7 +979,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
               elapsedMs: elapsed,
             });
             if (kind === 'edge' && nearest?.target) {
-              state.api?.grow(nearest.target, nearest.edge);
+              state.api?.grow(nearest.target);
               state.openedAt = now;
               state.lastTap = null;
               return;
@@ -1032,14 +1070,22 @@ function zoomBy(state: { zoom: number }, factor: number) {
   state.zoom = Math.min(18, Math.max(0.6, state.zoom * factor));
 }
 
-function toneFill(tone: TileTone, light: number, chosen: boolean): string {
+function toneFill(tone: TileTone, light: number, chosen: boolean, hue: number): string {
   const alpha = chosen ? 0.9 : 0.55 + 0.28 * light;
-  if (tone === 'defense') return `rgba(${Math.round(190 + 40 * light)},${Math.round(120 + 50 * light)},${Math.round(20 + 16 * light)},${alpha})`;
-  if (tone === 'submission') return `rgba(${Math.round(176 + 50 * light)},${Math.round(36 + 24 * light)},${Math.round(48 + 16 * light)},${alpha})`;
-  if (tone === 'pass') return `rgba(${Math.round(24 + 36 * light)},${Math.round(140 + 70 * light)},${Math.round(64 + 36 * light)},${alpha})`;
-  return chosen
-    ? `rgba(${Math.round(37 + 120 * light)},${Math.round(150 + 80 * light)},255,${alpha})`
-    : `rgba(${Math.round(15 + 90 * light)},${Math.round(80 + 120 * light)},${Math.round(130 + 110 * light)},${alpha})`;
+  const neutral: [number, number, number] = chosen
+    ? [Math.round(37 + 120 * light), Math.round(150 + 80 * light), 255]
+    : [Math.round(15 + 90 * light), Math.round(80 + 120 * light), Math.round(130 + 110 * light)];
+  const colored: [number, number, number] =
+    tone === 'defense'
+      ? [Math.round(190 + 40 * light), Math.round(120 + 50 * light), Math.round(20 + 16 * light)]
+      : tone === 'submission'
+        ? [Math.round(176 + 50 * light), Math.round(36 + 24 * light), Math.round(48 + 16 * light)]
+        : tone === 'pass'
+          ? [Math.round(24 + 36 * light), Math.round(140 + 70 * light), Math.round(64 + 36 * light)]
+          : neutral;
+  const amount = tone === 'position' ? 0 : Math.min(1, Math.max(0, hue));
+  const rgb = neutral.map((value, index) => Math.round(value + (colored[index] - value) * amount));
+  return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`;
 }
 
 function inTri(point: [number, number], a: [number, number], b: [number, number], c: [number, number]): boolean {
