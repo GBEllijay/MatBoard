@@ -36,6 +36,7 @@ import {
 import { FIT_PAD, VIEW_SIZE, defaultCamera, labelTier, projectLayout } from './project.ts';
 import { TOPO_H, TOPO_LEVEL, buildTopo, demoLevel } from './topo.ts';
 import { EXAMPLE_OPPONENT_FACTORS, EXAMPLE_OPPONENT_SWEEPS, EXAMPLE_SELF_FACTORS, EXAMPLE_SELF_SWEEPS, exampleCompare, factorComparisons } from './overlay.ts';
+import { classifyTap, connectionLayout, demoCard, gridCells, growOffEdge, labelVisible, screenSides, sidesWithBack, subdivideTriangle, walkDemo, assignDrillCells } from './demoLinks.ts';
 
 function memory() {
   const store = new Map<string, string>();
@@ -117,11 +118,11 @@ test('apex offsets keep the boundary fixed and separate an empty score from flat
   assert.ok(sunk && shallow && flat && raised && tall && empty);
   assert.deepEqual(sunk.boundary, tall.boundary);
   assert.equal(sunk.boundary[0], layout.vertices[layout.tiles[0].vertexIndices[0]]);
-  assert.equal(sunk.apex && tall.apex && sunk.apex.z, -2 * cap);
-  assert.equal(shallow.apex?.z, -cap);
+  assert.equal(sunk.apex && tall.apex && sunk.apex.z, -3.5 * cap);
+  assert.equal(shallow.apex?.z, -1.5 * cap);
   assert.equal(flat.apex?.z, 0);
-  assert.equal(raised.apex?.z, cap);
-  assert.equal(tall.apex?.z, 2 * cap);
+  assert.equal(raised.apex?.z, 1.5 * cap);
+  assert.equal(tall.apex?.z, 3.5 * cap);
   assert.ok(sunk.apex && shallow.apex && flat.apex && raised.apex && tall.apex);
   assert.ok(sunk.apex.z < shallow.apex.z && shallow.apex.z < flat.apex.z && flat.apex.z < raised.apex.z && raised.apex.z < tall.apex.z);
   assert.equal(empty.apex, null);
@@ -323,11 +324,38 @@ test('topography uses the live map and keeps demo heights off the factor score',
   assert.ok(sweepTiles.some((tile) => tile.move == null && tile.apex == null));
   const shared = sweepTiles[0].tri[1];
   assert.ok(sweepTiles.some((tile, index) => index > 0 && tile.tri.includes(shared)));
-  assert.equal(TOPO_LEVEL[1], -2 * TOPO_H);
-  assert.equal(TOPO_LEVEL[2], -TOPO_H);
+  assert.equal(TOPO_LEVEL[1], -3.5 * TOPO_H);
+  assert.equal(TOPO_LEVEL[2], -1.5 * TOPO_H);
   assert.equal(TOPO_LEVEL[3], 0);
-  assert.equal(TOPO_LEVEL[4], TOPO_H);
-  assert.equal(TOPO_LEVEL[5], 2 * TOPO_H);
+  assert.equal(TOPO_LEVEL[4], 1.5 * TOPO_H);
+  assert.equal(TOPO_LEVEL[5], 3.5 * TOPO_H);
+  for (const fill of ['center', 'edges'] as const) {
+    const placed = buildTopo(() => 4, fill);
+    const face = placed.faces.find((item) => item.id === 'sweeps');
+    assert.ok(face);
+    const tiles = placed.tiles.filter((tile) => tile.faceId === 'sweeps');
+    const filled = tiles.filter((tile) => tile.move);
+    const empty = tiles.filter((tile) => !tile.move);
+    assert.equal(filled.length, 6);
+    assert.equal(empty.length, tiles.length - 6);
+    const mid = (points: { p: [number, number, number] }[]) =>
+      [0, 1, 2].map((axis) => points.reduce((sum, point) => sum + point.p[axis], 0) / points.length) as [number, number, number];
+    const faceMid = mid(tiles[0] ? [tiles[0].tri[0], tiles[0].tri[1], tiles[0].tri[2]] : []);
+    // Face centroid from all tile vertices is steadier than one tile.
+    const verts = tiles.flatMap((tile) => tile.tri.map((corner) => corner.p));
+    const unique = [...new Map(verts.map((point) => [point.join(), point])).values()];
+    const centroid = [0, 1, 2].map((axis) => unique.reduce((sum, point) => sum + point[axis], 0) / unique.length) as [number, number, number];
+    const distance = (point: [number, number, number]) => Math.hypot(point[0] - centroid[0], point[1] - centroid[1], point[2] - centroid[2]);
+    const tileDistance = (tile: (typeof tiles)[number]) => distance(mid(tile.tri));
+    const emptyFar = Math.max(...empty.map(tileDistance));
+    const filledNear = Math.min(...filled.map(tileDistance));
+    const filledFar = Math.max(...filled.map(tileDistance));
+    const emptyNear = Math.min(...empty.map(tileDistance));
+    if (fill === 'center') assert.ok(filledFar <= emptyNear + 1e-6);
+    else assert.ok(emptyFar <= filledNear + 1e-6);
+    const mean = [0, 1, 2].map((axis) => filled.reduce((sum, tile) => sum + mid(tile.tri)[axis], 0) / filled.length) as [number, number, number];
+    assert.ok(distance(mean) < distance(faceMid) || distance(mean) < 0.35, fill);
+  }
   assert.equal(demoLevel('sweep.scissor'), demoLevel('sweep.scissor'));
   const saved = buildTopo((id) => (id === 'sweep.pendulum' ? 3 : null));
   const pendulum = saved.tiles.find((tile) => tile.move?.id === 'sweep.pendulum');
@@ -379,7 +407,7 @@ test('student links keep student=1 and the coach tree link does not', () => {
 });
 
 test('the preview modules do not write records and the route stays outside the coach gate', () => {
-  for (const name of ['adapter.ts', 'geometry.ts', 'project.ts', 'topo.ts', 'overlay.ts', 'TopoStage.tsx', 'CrystallineSweepsPreview.tsx']) {
+  for (const name of ['adapter.ts', 'geometry.ts', 'project.ts', 'topo.ts', 'overlay.ts', 'demoLinks.ts', 'TopoStage.tsx', 'CrystallineSweepsPreview.tsx']) {
     const text = readFileSync(new URL(`./${name}`, import.meta.url), 'utf8');
     assert.doesNotMatch(text, /saveStudentReport|writeAssessments|saveTechniqueArchive|loadTechniqueArchive|loadStudentReport|localStorage\.setItem/);
   }
@@ -392,4 +420,90 @@ test('the preview modules do not write records and the route stays outside the c
   assert.equal(CRYSTAL_PREVIEW_PATH, '/preview/crystalline-sweeps');
   assert.equal(ASSESSMENT_STORAGE_KEY.length > 0, true);
   assert.equal(STUDENT_EDITION_STORAGE_KEY.length > 0, true);
+});
+
+test('example sides stay local and the Mount walk is recursive', () => {
+  const mount = demoCard('Mount');
+  assert.deepEqual(mount.sides, { left: 'Armbar', base: 'Cross collar choke', right: 'Americana' });
+  assert.deepEqual(mount.outgoing, ['Armbar', 'Cross collar choke', 'Americana']);
+  for (const name of ['Scissor sweep', 'Hip bump sweep', 'Flower sweep', 'Pendulum sweep']) {
+    assert.equal(mount.incoming.includes(name), true);
+    assert.equal(mount.more.includes(name), true);
+    assert.equal(mount.outgoing.includes(name), false);
+  }
+  const upright: [[number, number], [number, number], [number, number]] = [
+    [100, 10],
+    [40, 100],
+    [160, 100],
+  ];
+  const sides = screenSides(upright);
+  assert.equal(sides.find((side) => side.role === 'base')?.edge, 1);
+  assert.equal(sides.find((side) => side.role === 'left')?.edge, 0);
+  assert.equal(sides.find((side) => side.role === 'right')?.edge, 2);
+  const grown = growOffEdge(
+    [
+      [0, 0, 0],
+      [2, 0, 0],
+      [1, 2, 0],
+    ],
+    0,
+  );
+  assert.deepEqual(grown[0], [0, 0, 0]);
+  assert.deepEqual(grown[1], [2, 0, 0]);
+  assert.deepEqual(grown[2], [1, -2, 0]);
+  const walk = walkDemo('Mount', ['Armbar', 'Wrist lock']);
+  assert.deepEqual(walk.map((step) => step.name), ['Mount', 'Armbar', 'Wrist lock']);
+  assert.equal(walk[1]?.sides.left, 'Wrist lock');
+  assert.equal(walk[1]?.sides.right, 'Triangle choke');
+  assert.equal(walk[1]?.sides.base, 'Mount');
+  assert.equal(walk[2]?.sides.base, 'Armbar');
+  assert.equal(walk[2]?.sides.left, null);
+  assert.equal(walk[2]?.sides.right, null);
+  assert.deepEqual(sidesWithBack('Armbar', null), { left: 'Wrist lock', base: null, right: 'Triangle choke' });
+  assert.equal(walkDemo('Mount', ['Wrist lock']).map((step) => step.name).join('>'), 'Mount');
+  const mountGrid = connectionLayout('Mount', null);
+  assert.equal(mountGrid.mode, 'grid');
+  if (mountGrid.mode !== 'grid') return;
+  assert.equal(mountGrid.n, 3);
+  assert.equal(mountGrid.n * mountGrid.n, 9);
+  assert.equal(mountGrid.blanks, 2);
+  assert.deepEqual(mountGrid.names.slice(0, 3), ['Armbar', 'Cross collar choke', 'Americana']);
+  for (const name of ['Scissor sweep', 'Hip bump sweep', 'Flower sweep', 'Pendulum sweep']) {
+    assert.equal(mountGrid.names.includes(name), true);
+  }
+  const armbar = connectionLayout('Armbar', 'Mount');
+  assert.equal(armbar.mode, 'grid');
+  if (armbar.mode !== 'grid') return;
+  assert.equal(armbar.n, 2);
+  assert.equal(armbar.names.length, 4);
+  assert.equal(armbar.names.includes('Wrist lock'), true);
+  assert.equal(armbar.names.includes('Triangle choke'), true);
+  assert.equal(armbar.names.includes('Mount'), true);
+  assert.equal(connectionLayout('Wrist lock', 'Armbar').mode, 'edges');
+  assert.equal(connectionLayout('Closed guard', null).mode, 'edges');
+  assert.equal(gridCells(3), null);
+  assert.equal(gridCells(4), 4);
+  assert.equal(gridCells(7), 9);
+  assert.equal(gridCells(10), 16);
+  const cells = assignDrillCells(
+    [
+      [0, 0, 0],
+      [3, 0, 0],
+      [0, 3, 0],
+    ],
+    mountGrid.names,
+  );
+  assert.equal(cells.length, 9);
+  assert.equal(cells.filter((cell) => cell.name).length, 7);
+  assert.equal(new Set(cells.map((cell) => cell.name).filter(Boolean)).size, 7);
+  assert.equal(subdivideTriangle([[0, 0, 0], [2, 0, 0], [0, 2, 0]], 2).length, 4);
+  assert.equal(labelVisible({ w: 30, h: 40 }, 'Armbar'), false);
+  assert.equal(labelVisible({ w: 80, h: 40 }, 'Armbar'), true);
+  assert.equal(labelVisible({ w: 80, h: 40 }, 'Cross collar choke'), false);
+  assert.equal(classifyTap({ pinching: true, moved: false, edge: null, edgeHasLink: false, sameTile: true, elapsedMs: 10 }), 'ignore');
+  assert.equal(classifyTap({ pinching: false, moved: true, edge: null, edgeHasLink: false, sameTile: true, elapsedMs: 10 }), 'ignore');
+  assert.equal(classifyTap({ pinching: false, moved: false, edge: 0, edgeHasLink: true, sameTile: true, elapsedMs: 10 }), 'edge');
+  assert.equal(classifyTap({ pinching: false, moved: false, edge: null, edgeHasLink: false, sameTile: true, elapsedMs: 200 }), 'double');
+  assert.equal(classifyTap({ pinching: false, moved: false, edge: null, edgeHasLink: false, sameTile: false, elapsedMs: 10 }), 'single');
+  assert.equal(classifyTap({ pinching: false, moved: false, edge: 1, edgeHasLink: false, sameTile: true, elapsedMs: 10 }), 'single');
 });

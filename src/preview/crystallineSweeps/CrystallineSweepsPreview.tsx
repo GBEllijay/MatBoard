@@ -1,7 +1,7 @@
 /**
  * Owner's D8 topography, wired to the current factor map.
  * Demo pyramid heights are illustrative. Sweeps can also read this device.
- * Nothing here writes a record. Other faces do not open a tree.
+ * Example connections are a labeled preview walk. Nothing here writes a record.
  */
 import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -24,6 +24,7 @@ import {
   factorComparisons,
 } from './overlay.ts';
 import { AXES } from '../assessmentRadar/model.ts';
+import { DEMO_CONNECTION_NOTE, DRILL_LIMIT, catalogNameFor, connectionLayout, demoCard } from './demoLinks.ts';
 import './crystallineSweeps.css';
 
 export { CRYSTAL_PREVIEW_PATH };
@@ -38,14 +39,18 @@ export function CrystallineSweepsPreview() {
   const [style, setStyle] = useState<TopoStyle>('pyramid');
   const [focus, setFocus] = useState(-1);
   const [compare, setCompare] = useState(false);
+  const [pair, setPair] = useState(false);
+  const [fill, setFill] = useState<'center' | 'edges'>('center');
   const [selected, setSelected] = useState(-1);
+  const [drillPath, setDrillPath] = useState<string[]>([]);
+  const [detail, setDetail] = useState(false);
   const model = useMemo(
     () =>
       buildTopo((id) => {
         if (mode === 'demo') return demoLevel(id);
         return id in saved ? saved[id] : null;
-      }),
-    [mode, saved],
+      }, fill),
+    [mode, saved, fill],
   );
   const face = focus >= 0 ? model.faces[focus] : null;
   const tile = selected >= 0 ? model.tiles[selected] : null;
@@ -71,6 +76,33 @@ export function CrystallineSweepsPreview() {
               Example comparison
             </button>
           </div>
+          <div className="crystal-toggle" role="group" aria-label="Tile fill">
+            <button type="button" aria-pressed={fill === 'center'} onClick={() => setFill('center')}>
+              Center first
+            </button>
+            <button type="button" aria-pressed={fill === 'edges'} onClick={() => setFill('edges')}>
+              Edges first
+            </button>
+          </div>
+          <div className="crystal-toggle" role="group" aria-label="Comparison layout">
+            <button
+              type="button"
+              aria-pressed={!pair}
+              onClick={() => setPair(false)}
+            >
+              On the solid
+            </button>
+            <button
+              type="button"
+              aria-pressed={pair}
+              onClick={() => {
+                setPair(true);
+                setCompare(true);
+              }}
+            >
+              Side by side
+            </button>
+          </div>
           <p className="crystal-style-note">
             {compare
               ? 'Example self is cyan and solid. Example opponent is amber and dashed. Same faces, same spin. A higher number is not a prediction.'
@@ -84,12 +116,25 @@ export function CrystallineSweepsPreview() {
             focus={focus}
             selected={selected}
             comparison={compare}
+            pair={pair}
             links={compare ? hop.shown : []}
+            drillPath={drillPath}
             onFocus={(index) => {
               setFocus(index);
               setSelected(-1);
+              setDrillPath([]);
+              setDetail(false);
             }}
-            onSelect={setSelected}
+            onSelect={(index) => {
+              setSelected(index);
+              const name = index >= 0 ? model.tiles[index]?.move?.name ?? '' : '';
+              setDrillPath(name ? [name] : []);
+              setDetail(false);
+            }}
+            onDrill={(path, open) => {
+              setDrillPath(path.slice(0, DRILL_LIMIT));
+              if (open) setDetail(true);
+            }}
           />
           <p className="crystal-source">
             Unmapped built-in moves, not on any face:{' '}
@@ -135,21 +180,65 @@ export function CrystallineSweepsPreview() {
               onClick={() => {
                 setFocus(-1);
                 setSelected(-1);
+                setDrillPath([]);
+                setDetail(false);
               }}
             >
               Whole solid
             </button>
           ) : null}
-          {sweepMove ? (
-            <MoveDetail move={sweepMove} mode={mode} onBack={() => setSelected(-1)} />
-          ) : face ? (
+          {drillPath.length > 1 ? (
+            <button type="button" className="crystal-back" onClick={() => setDrillPath((path) => path.slice(0, -1))}>
+              Back
+            </button>
+          ) : null}
+          {drillPath.length ? (
+            <nav className="drill-path" aria-label="Drill path">
+              {drillPath.map((name, index) => (
+                <button
+                  key={`${name}-${index}`}
+                  type="button"
+                  data-crumb={index}
+                  onClick={() => {
+                    setDrillPath(drillPath.slice(0, index + 1));
+                    setDetail(true);
+                  }}
+                >
+                  {name}
+                </button>
+              ))}
+            </nav>
+          ) : null}
+          {sweepMove && drillPath.length <= 1 ? (
+            <MoveDetail
+              move={sweepMove}
+              mode={mode}
+              onBack={() => {
+                setSelected(-1);
+                setDrillPath([]);
+                setDetail(false);
+              }}
+            />
+          ) : null}
+          {detail && drillPath.length ? (
+            <ConnectionCard
+              name={drillPath[drillPath.length - 1]}
+              parent={drillPath.length > 1 ? drillPath[drillPath.length - 2] : null}
+              capped={drillPath.length >= DRILL_LIMIT}
+              onStep={(name) => {
+                setDrillPath((path) => (path.length >= DRILL_LIMIT ? path : [...path, name]));
+                setDetail(true);
+              }}
+            />
+          ) : null}
+          {detail ? null : face && !(sweepMove && drillPath.length <= 1) ? (
             <FaceCopy face={face} tile={tile?.move ?? null} mode={mode} proof={proof} />
-          ) : (
+          ) : !face ? (
             <section aria-label="Eight faces">
               <h2>Eight factors</h2>
-              <p>Drag to rotate. Scroll, pinch, or the plus and minus buttons to zoom. Tap a face, or use the row of factor buttons. Sweeps is the only face that opens a saved note or a technique-tree link.</p>
+              <p>Drag to rotate. Scroll, pinch, or the plus and minus buttons to zoom. Tap a face, or use the row of factor buttons. Sweeps is the only face that opens a saved note or a technique-tree link. Double-tap a highlighted tile for example connections.</p>
             </section>
-          )}
+          ) : null}
           {face ? (
             <section aria-label={`${face.name} moves`}>
               <h2>Moves</h2>
@@ -169,10 +258,20 @@ export function CrystallineSweepsPreview() {
                       <li key={move.id}>
                         <button
                           type="button"
+                          aria-current={tile?.move?.id === move.id ? 'true' : undefined}
                           onClick={() => {
                             const index = model.tiles.findIndex((item) => item.move?.id === move.id);
                             setFocus(faceIndex(model, face.id));
                             setSelected(index);
+                            setDrillPath([move.name]);
+                            setDetail(false);
+                          }}
+                          onDoubleClick={() => {
+                            const index = model.tiles.findIndex((item) => item.move?.id === move.id);
+                            setFocus(faceIndex(model, face.id));
+                            setSelected(index);
+                            setDrillPath([move.name]);
+                            setDetail(true);
                           }}
                         >
                           <span>{move.name}</span>
@@ -294,6 +393,88 @@ function faceIndex(model: ReturnType<typeof buildTopo>, id: string): number {
   return model.faces.findIndex((face) => face.id === id);
 }
 
+function ConnectionCard({
+  name,
+  parent,
+  capped,
+  onStep,
+}: {
+  name: string;
+  parent: string | null;
+  capped: boolean;
+  onStep: (name: string) => void;
+}) {
+  const card = demoCard(name);
+  const layout = connectionLayout(name, parent);
+  const catalog = catalogNameFor(name);
+  const specified = card.sides;
+  return (
+    <section aria-label={`${name} connections`} data-drill-mode={layout.mode} data-drill-n={layout.mode === 'grid' ? layout.n * layout.n : 3}>
+      <h2>{name}</h2>
+      <p className="crystal-kicker">{DEMO_CONNECTION_NOTE}</p>
+      {catalog ? <p>Catalog name: {catalog}.</p> : null}
+      {layout.mode === 'grid' ? (
+        <>
+          <h3>{layout.n * layout.n} tiles</h3>
+          <p>
+            {layout.names.length} local connections, split into {layout.n * layout.n} tiles.
+            {layout.blanks ? ` ${layout.blanks} empty.` : ''} Labels stay hidden until a tile is large enough to read.
+          </p>
+          {specified.left || specified.base || specified.right ? (
+            <p>
+              Example side order:{' '}
+              {[
+                specified.left ? `Left ${specified.left}` : '',
+                specified.base ? `Base ${specified.base}` : '',
+                specified.right ? `Right ${specified.right}` : '',
+              ]
+                .filter(Boolean)
+                .join(', ')}
+              .
+            </p>
+          ) : null}
+          <ul className="drill-sides">
+            {layout.names.map((tile) => (
+              <li key={tile}>
+                <button type="button" data-tile={tile} disabled={capped} onClick={() => onStep(tile)}>
+                  {tile}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <>
+          <h3>Three sides</h3>
+          <p>Three or fewer connections stay on the sides of this triangle.</p>
+          <ul className="drill-sides">
+            {([
+              ['left', 'Left'],
+              ['base', 'Base'],
+              ['right', 'Right'],
+            ] as const).map(([role, label]) => {
+              const target = layout.sides[role];
+              return (
+                <li key={role}>
+                  <span>{label}</span>
+                  <button type="button" data-side={role} disabled={!target || capped} onClick={() => target && onStep(target)}>
+                    {target ?? 'Empty'}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+      <h3>Incoming</h3>
+      <p>{card.incoming.length ? card.incoming.join(', ') : 'None in this example.'}</p>
+      <h3>Outgoing</h3>
+      <p>{card.outgoing.length ? card.outgoing.join(', ') : 'None in this example.'}</p>
+      {capped ? <p>This example stops after eight steps.</p> : null}
+    </section>
+  );
+}
+
 function FaceCopy({
   face,
   tile,
@@ -317,7 +498,7 @@ function FaceCopy({
           {mode === 'demo'
             ? `Demo proficiency ${scoreLabel(demoLevel(tile.id))}. Illustrative, not student data.`
             : 'Saved checklist is used only when this move has a row.'}{' '}
-          {face.id === 'sweeps' ? '' : 'This proof does not open a tree or a card from this factor.'}
+          {face.id === 'sweeps' ? '' : 'Single tap highlights this tile. Double-tap it to open example connections. More than three local connections split that tile into a grid. Nothing is saved.'}
         </p>
       ) : face.moves.length ? (
         <p>{face.moves.length} built-in moves mapped. Choosing one names it. Only Sweeps opens notes and links.</p>

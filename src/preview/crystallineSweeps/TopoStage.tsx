@@ -11,6 +11,7 @@ import {
   EXAMPLE_SELF_FACTORS,
   EXAMPLE_SELF_SWEEPS,
 } from './overlay.ts';
+import { assignDrillCells, classifyTap, connectionLayout, growOffEdge, labelVisible, pointToSegment, screenSides } from './demoLinks.ts';
 
 export type TopoStyle = 'pyramid' | 'curved';
 
@@ -20,9 +21,12 @@ type Props = {
   focus: number;
   selected: number;
   comparison: boolean;
+  pair: boolean;
   links: readonly string[];
+  drillPath: readonly string[];
   onFocus: (index: number) => void;
   onSelect: (index: number) => void;
+  onDrill: (path: string[], detail: boolean) => void;
 };
 
 type Proj = {
@@ -34,7 +38,7 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, links, onFocus, onSelect }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, pair, links, drillPath, onFocus, onSelect, onDrill }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
@@ -58,14 +62,33 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
     projected: [] as Proj[],
     faceHits: [] as { faceIndex: number; front: boolean; z: number; screen: [number, number][] }[],
     comparison: false,
+    pair: false,
     links: [] as string[],
+    grown: [] as { name: string; corners: [Vec, Vec, Vec] }[],
+    pendingPath: null as string[] | null,
+    onDrill: (_path: string[], _detail: boolean) => {},
+    lastTap: null as null | { time: number; name: string },
+    activeName: '',
+    activeCorners: null as [Vec, Vec, Vec] | null,
+    activeScreen: null as [[number, number], [number, number], [number, number]] | null,
+    sideHits: [] as { edge: 0 | 1 | 2; target: string | null; a: [number, number]; b: [number, number] }[],
+    cellHits: [] as { name: string | null; corners: [Vec, Vec, Vec]; screen: [[number, number], [number, number], [number, number]] }[],
+    frameKey: '',
+    openedAt: 0,
+    api: null as null | {
+      grow: (target: string, edge: 0 | 1 | 2) => void
+      enter: (target: string, corners: [Vec, Vec, Vec]) => void
+      detail: () => void
+    },
   });
   view.current.paused = paused;
   view.current.focus = focus;
   view.current.selected = selected;
   view.current.style = style;
   view.current.comparison = comparison;
+  view.current.pair = pair;
   view.current.links = [...links];
+  view.current.onDrill = onDrill;
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -103,7 +126,7 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
     observer?.observe(stage);
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      state.zoom = Math.min(6, Math.max(0.6, state.zoom * Math.exp(-event.deltaY * 0.0015)));
+      state.zoom = Math.min(18, Math.max(0.6, state.zoom * Math.exp(-event.deltaY * 0.0015)));
     };
     stage.addEventListener('wheel', onWheel, { passive: false });
 
@@ -129,11 +152,161 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
       const v: Vec = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
       return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
     };
+    const rootTile = () => {
+      if (state.selected < 0) return null;
+      const tile = model.tiles[state.selected];
+      return tile?.move ? tile : null;
+    };
+    const rootCorners = (tile: NonNullable<ReturnType<typeof rootTile>>): [Vec, Vec, Vec] =>
+      tile.tri.map((corner) => corner.p) as [Vec, Vec, Vec];
+    const projectTri = (corners: [Vec, Vec, Vec]): [[number, number], [number, number], [number, number]] =>
+      corners.map((point) => screen(rot(point))) as [[number, number], [number, number], [number, number]];
+    const spanOf = (pts: [number, number][]) => {
+      const xs = pts.map((point) => point[0]);
+      const ys = pts.map((point) => point[1]);
+      return { w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+    };
+    let labelBoxes: { x: number; y: number; w: number; h: number }[] = [];
+    const paintLabel = (x: number, y: number, text: string, linked: boolean) => {
+      context.font = '11px sans-serif';
+      context.textAlign = 'center';
+      const width = Math.min(116, Math.max(44, text.length * 6.5 + 8));
+      const rect = { x: x - width / 2, y: y - 9, w: width, h: 16 };
+      const crowded = labelBoxes.some(
+        (other) => rect.x < other.x + other.w + 4 && rect.x + rect.w + 4 > other.x && rect.y < other.y + other.h + 4 && rect.y + rect.h + 4 > other.y,
+      );
+      if (crowded) return;
+      labelBoxes.push(rect);
+      context.fillStyle = '#071324';
+      context.fillRect(rect.x, rect.y, rect.w, rect.h);
+      context.fillStyle = linked ? '#e7f6ff' : 'rgba(231,246,255,.45)';
+      context.fillText(text.slice(0, 18), x, y + 3);
+    };
+    const activeOf = () => {
+      const tile = rootTile();
+      if (!tile?.move) return null;
+      const rootName = tile.move.name;
+      if (!state.grown.length) return { name: rootName, parent: null as string | null, corners: rootCorners(tile) };
+      const lastStep = state.grown[state.grown.length - 1];
+      const parent = state.grown.length === 1 ? rootName : state.grown[state.grown.length - 2].name;
+      return { name: lastStep.name, parent, corners: lastStep.corners };
+    };
+    const easeTo = (corners: [Vec, Vec, Vec], name: string, parent: string | null) => {
+      const center: Vec = [
+        (corners[0][0] + corners[1][0] + corners[2][0]) / 3,
+        (corners[0][1] + corners[1][1] + corners[2][1]) / 3,
+        (corners[0][2] + corners[1][2] + corners[2][2]) / 3,
+      ];
+      const targetYaw = Math.atan2(-center[0], center[2]);
+      const flat = Math.hypot(center[0], center[2]);
+      const targetPitch = Math.atan2(center[1], flat);
+      let dy = (targetYaw - state.ry) % (2 * Math.PI);
+      dy = ((dy + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;
+      const layout = connectionLayout(name, parent);
+      const parts = layout.mode === 'grid' ? layout.n : 1;
+      let span = 0;
+      for (let index = 0; index < 3; index += 1) {
+        const from = corners[index];
+        const to = corners[(index + 1) % 3];
+        span = Math.max(span, Math.hypot(from[0] - to[0], from[1] - to[1], from[2] - to[2]));
+      }
+      const piece = Math.max(0.04, span / parts);
+      const focal = state.height / 2 / Math.tan((19 * Math.PI) / 180);
+      const targetPx = layout.mode === 'grid' ? 96 : 168;
+      const zoom = (targetPx * 5.5) / (piece * focal);
+      state.paused = true;
+      setPaused(true);
+      state.anim = {
+        rx0: state.rx,
+        ry0: state.ry,
+        rx1: targetPitch,
+        ry1: state.ry + dy,
+        z0: state.zoom,
+        z1: Math.min(18, Math.max(1.15, zoom)),
+        t: 0,
+      };
+    };
+    const growToward = (fromName: string, parent: string | null, corners: [Vec, Vec, Vec], nextName: string): [Vec, Vec, Vec] | null => {
+      const layout = connectionLayout(fromName, parent);
+      if (layout.mode === 'grid') {
+        return assignDrillCells(corners, layout.names).find((cell) => cell.name === nextName)?.corners ?? null;
+      }
+      const role = (['left', 'base', 'right'] as const).find((item) => layout.sides[item] === nextName);
+      if (!role) return null;
+      const mapped = screenSides(projectTri(corners)).find((item) => item.role === role);
+      if (!mapped) return null;
+      return growOffEdge(corners, mapped.edge);
+    };
+    const syncPath = (path: readonly string[]) => {
+      const tile = rootTile();
+      if (!tile?.move) {
+        state.grown = [];
+        state.frameKey = '';
+        return;
+      }
+      const rootName = tile.move.name;
+      const wanted = path[0] === rootName ? path.slice(1, 8) : [];
+      const same = wanted.length === state.grown.length && wanted.every((name, index) => state.grown[index]?.name === name);
+      if (same) return;
+      const prefix = wanted.length < state.grown.length && wanted.every((name, index) => state.grown[index]?.name === name);
+      if (prefix) {
+        state.grown = state.grown.slice(0, wanted.length);
+        state.frameKey = '';
+        return;
+      }
+      state.grown = [];
+      state.frameKey = '';
+      let name = rootName;
+      let parent: string | null = null;
+      let corners = rootCorners(tile);
+      for (const next of wanted) {
+        const grown = growToward(name, parent, corners, next);
+        if (!grown) break;
+        state.grown.push({ name: next, corners: grown });
+        parent = name;
+        name = next;
+        corners = grown;
+      }
+    };
+    const pathNames = () => {
+      const tile = rootTile();
+      return tile?.move ? [tile.move.name, ...state.grown.map((step) => step.name)] : [];
+    };
+    const rememberFrame = (name: string) => {
+      state.frameKey = `${name}:${state.grown.length}`;
+    };
+    state.api = {
+      grow(target, edge) {
+        const active = activeOf();
+        if (!active || state.grown.length >= 7) return;
+        const corners = growOffEdge(active.corners, edge);
+        state.grown.push({ name: target, corners });
+        rememberFrame(target);
+        easeTo(corners, target, active.name);
+        state.onDrill(pathNames(), false);
+      },
+      enter(target, corners) {
+        const active = activeOf();
+        if (!active || state.grown.length >= 7) return;
+        state.grown.push({ name: target, corners });
+        rememberFrame(target);
+        easeTo(corners, target, active.name);
+        state.onDrill(pathNames(), false);
+      },
+      detail() {
+        state.onDrill(pathNames(), true);
+      },
+    };
     let last = performance.now();
     let frame = 0;
     const draw = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
+      if (state.pendingPath) {
+        const path = state.pendingPath;
+        state.pendingPath = null;
+        syncPath(path);
+      }
       if (state.anim) {
         state.anim.t = Math.min(1, state.anim.t + dt * 2.5);
         const k = 1 - (1 - state.anim.t) ** 3;
@@ -141,7 +314,7 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
         state.ry = state.anim.ry0 + (state.anim.ry1 - state.anim.ry0) * k;
         state.zoom = state.anim.z0 + (state.anim.z1 - state.anim.z0) * k;
         if (state.anim.t >= 1) state.anim = null;
-      } else if (!state.paused && !state.drag) state.ry += dt * 0.18;
+      } else if (!state.paused && !state.drag && state.selected < 0) state.ry += dt * 0.18;
       const showLabels = state.zoom >= 1.8 || state.focus >= 0;
       const light: Vec = [-0.4, 0.6, 0.7];
       const lightLength = Math.hypot(...light) || 1;
@@ -149,7 +322,8 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
       const projected: Proj[] = [];
       const polys: { index: number; points: [number, number][]; z: number; light: number; front: boolean; shade: number; layer: 'base' | 'self' | 'opponent' }[] = [];
       const comparing = state.comparison;
-      const sweepsOpen = comparing && state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps';
+      const paired = state.pair;
+      const sweepsOpen = comparing && !paired && state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps';
       state.faceHits = [];
       const outward = (a: Vec, b: Vec, c: Vec): Vec => {
         const mid: Vec = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
@@ -189,7 +363,111 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
           });
         });
       };
-      if (comparing) {
+      if (paired) {
+        context.clearRect(0, 0, state.width, state.height);
+        for (const node of faceNodes) node.hidden = true;
+        for (const node of tileNodes) node.hidden = true;
+        const faceIndex = model.faces.findIndex((face) => face.id === 'sweeps');
+        const [fa, fb, fc] = model.faceCorners[faceIndex].map((index) => model.vertices[index]);
+        const axis = outward(fa, fb, fc);
+        const origin: Vec = [(fa[0] + fb[0] + fc[0]) / 3, (fa[1] + fb[1] + fc[1]) / 3, (fa[2] + fb[2] + fc[2]) / 3];
+        const up: Vec = Math.abs(axis[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+        const tx = up[1] * axis[2] - up[2] * axis[1];
+        const ty = up[2] * axis[0] - up[0] * axis[2];
+        const tz = up[0] * axis[1] - up[1] * axis[0];
+        const tlen = Math.hypot(tx, ty, tz) || 1;
+        const tangent: Vec = [tx / tlen, ty / tlen, tz / tlen];
+        const bitangent: Vec = [
+          axis[1] * tangent[2] - axis[2] * tangent[1],
+          axis[2] * tangent[0] - axis[0] * tangent[2],
+          axis[0] * tangent[1] - axis[1] * tangent[0],
+        ];
+        const facePoint = (point: Vec): Vec => {
+          const rel: Vec = [point[0] - origin[0], point[1] - origin[1], point[2] - origin[2]];
+          const dot = (base: Vec) => rel[0] * base[0] + rel[1] * base[1] + rel[2] * base[2];
+          return [dot(tangent) * 2.3, dot(bitangent) * 2.3, dot(axis) * 2.3];
+        };
+        const narrow = state.width < 560;
+        const boxes: { layer: 'self' | 'opponent'; title: string; x: number; y: number; w: number; h: number }[] = narrow
+          ? [
+              { layer: 'self', title: 'Self', x: 0, y: 0, w: state.width, h: state.height / 2 },
+              { layer: 'opponent', title: 'Opponent', x: 0, y: state.height / 2, w: state.width, h: state.height / 2 },
+            ]
+          : [
+              { layer: 'self', title: 'Self', x: 0, y: 0, w: state.width / 2, h: state.height },
+              { layer: 'opponent', title: 'Opponent', x: state.width / 2, y: 0, w: state.width / 2, h: state.height },
+            ];
+        const place = (point: Vec, box: (typeof boxes)[number]): [number, number] => {
+          const focal = (box.h / 2 / Math.tan((19 * Math.PI) / 180)) * Math.min(state.zoom, 1.15);
+          const depth = 5.5 - point[2];
+          return [box.x + box.w / 2 + (point[0] * focal) / depth, box.y + box.h / 2 - (point[1] * focal) / depth];
+        };
+        for (const box of boxes) {
+          context.save();
+          context.beginPath();
+          context.rect(box.x, box.y, box.w, box.h);
+          context.clip();
+          for (const tile of model.tiles) {
+            if (tile.faceId !== 'sweeps' || !tile.move) continue;
+            const corners = tile.tri.map((corner) => corner.p) as [Vec, Vec, Vec];
+            const mid: Vec = [
+              (corners[0][0] + corners[1][0] + corners[2][0]) / 3,
+              (corners[0][1] + corners[1][1] + corners[2][1]) / 3,
+              (corners[0][2] + corners[1][2] + corners[2][2]) / 3,
+            ];
+            const score = box.layer === 'self'
+              ? EXAMPLE_SELF_SWEEPS[tile.move.id as keyof typeof EXAMPLE_SELF_SWEEPS]
+              : EXAMPLE_OPPONENT_SWEEPS[tile.move.id as keyof typeof EXAMPLE_OPPONENT_SWEEPS];
+            const apex = raised(mid, axis, score);
+            const drawn = [...corners, apex].map(facePoint).map((point) => place(point, box));
+            const [p, q, r, tip] = drawn;
+            const pairs: [[number, number], [number, number]][] = [
+              [p, q],
+              [q, r],
+              [r, p],
+            ];
+            for (const [from, to] of pairs) {
+              context.beginPath();
+              context.moveTo(from[0], from[1]);
+              if (state.style === 'curved' && score !== 3) {
+                const face = [(from[0] + to[0] + tip[0]) / 3, (from[1] + to[1] + tip[1]) / 3];
+                const pull = (start: [number, number]) => {
+                  const middle: [number, number] = [(start[0] + tip[0]) / 2, (start[1] + tip[1]) / 2];
+                  return [middle[0] + (face[0] - middle[0]) * 0.55, middle[1] + (face[1] - middle[1]) * 0.55] as [number, number];
+                };
+                context.lineTo(to[0], to[1]);
+                context.quadraticCurveTo(...pull(to), tip[0], tip[1]);
+                context.quadraticCurveTo(...pull(from), from[0], from[1]);
+              } else {
+                context.lineTo(to[0], to[1]);
+                context.lineTo(tip[0], tip[1]);
+              }
+              context.closePath();
+              context.fillStyle = box.layer === 'self' ? 'rgba(40,170,210,.72)' : 'rgba(210,130,50,.62)';
+              context.fill();
+              context.setLineDash(box.layer === 'opponent' ? [5, 3] : []);
+              context.strokeStyle = box.layer === 'self' ? '#76eaff' : '#ffb05a';
+              context.lineWidth = 1.2;
+              context.stroke();
+              context.setLineDash([]);
+            }
+            const labelAt = place(facePoint(mid), box);
+            context.setLineDash([]);
+            context.fillStyle = '#071324';
+            context.fillRect(labelAt[0] - 42, labelAt[1] - 8, 84, 16);
+            context.fillStyle = '#e7f6ff';
+            context.font = '10px sans-serif';
+            context.textAlign = 'center';
+            context.fillText(`${tile.move.name.slice(0, 14)} ${score}`, labelAt[0], labelAt[1] + 4);
+          }
+          context.restore();
+          context.fillStyle = box.layer === 'self' ? '#b7f4ff' : '#ffd7a8';
+          context.font = '14px sans-serif';
+          context.textAlign = 'left';
+          context.fillText(box.title, box.x + 10, box.y + 18);
+        }
+      }
+      if (!paired && comparing) {
         model.faceCorners.forEach((corners, faceIndex) => {
           const face = model.faces[faceIndex];
           if (sweepsOpen && face.id === 'sweeps') return;
@@ -235,7 +513,7 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
           }
         }
       }
-      if (!comparing) model.tiles.forEach((tile, index) => {
+      if (!paired && !comparing) model.tiles.forEach((tile, index) => {
         const [a, b, c] = tile.tri.map((corner) => rot(corner.d));
         const center: Vec = [0, 1, 2].map((axis) => (a[axis] + b[axis] + c[axis]) / 3) as Vec;
         const faceNormal = normal(a, b, c);
@@ -279,7 +557,7 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
         }
       });
       state.projected = projected;
-      context.clearRect(0, 0, state.width, state.height);
+      if (!paired) context.clearRect(0, 0, state.width, state.height);
       polys.sort((a, b) => a.z - b.z);
       for (const poly of polys) {
         const tile = poly.index >= 0 ? model.tiles[poly.index] : undefined;
@@ -344,13 +622,13 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
         const tile = model.tiles[item.index];
         const node = tileNodes[item.index];
         const focused = (state.focus < 0 || tile.faceIndex === state.focus) && (!state.comparison || (state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps'));
-        node.hidden = !(showLabels && tile.move && item.front && item.shade > 0.2 && focused);
+        node.hidden = state.selected >= 0 || !(showLabels && tile.move && item.front && item.shade > 0.2 && focused);
         if (!node.hidden) {
           node.style.left = `${item.center[0]}px`;
           node.style.top = `${item.center[1]}px`;
         }
       });
-      model.faceCorners.forEach((corners, faceIndex) => {
+      if (!paired) model.faceCorners.forEach((corners, faceIndex) => {
         const points = corners.map((index) => rot(model.vertices[index]));
         const center: Vec = [0, 1, 2].map((axis) => (points[0][axis] + points[1][axis] + points[2][axis]) / 3) as Vec;
         const u: Vec = [points[1][0] - points[0][0], points[1][1] - points[0][1], points[1][2] - points[0][2]];
@@ -375,7 +653,116 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
         node.style.left = `${placed[0]}px`;
         node.style.top = `${placed[1]}px`;
       });
-      if (comparing && sweepsOpen && state.selected >= 0 && state.links.length) {
+      if (!paired) {
+        const active = activeOf();
+        state.activeName = active?.name ?? '';
+        state.activeCorners = active?.corners ?? null;
+        state.cellHits = [];
+        labelBoxes = [];
+        if (!active) {
+          state.frameKey = '';
+          state.activeScreen = null;
+          state.sideHits = [];
+          delete stage.dataset.drillMode;
+          delete stage.dataset.drillN;
+        } else {
+          const layout = connectionLayout(active.name, active.parent);
+          const frameKey = `${active.name}:${state.grown.length}:${layout.mode}`;
+          if ((layout.mode === 'grid' || state.grown.length > 0) && state.frameKey !== frameKey && !state.drag) {
+            state.frameKey = frameKey;
+            easeTo(active.corners, active.name, active.parent);
+          }
+          stage.dataset.drillMode = layout.mode;
+          stage.dataset.drillN = layout.mode === 'grid' ? String(layout.n * layout.n) : '3';
+          for (const step of state.grown) {
+            const pts = projectTri(step.corners);
+            context.beginPath();
+            context.moveTo(pts[0][0], pts[0][1]);
+            context.lineTo(pts[1][0], pts[1][1]);
+            context.lineTo(pts[2][0], pts[2][1]);
+            context.closePath();
+            const current = step === state.grown[state.grown.length - 1];
+            context.fillStyle = current ? 'rgba(80, 190, 230, 0.22)' : 'rgba(40, 120, 160, 0.12)';
+            context.fill();
+            context.setLineDash([]);
+            context.strokeStyle = current ? '#ffffff' : 'rgba(118,234,255,.75)';
+            context.lineWidth = current ? 2 : 1;
+            context.stroke();
+            if (!current) continue;
+            const box = spanOf(pts);
+            if (!labelVisible(box, step.name) || layout.mode === 'grid') continue;
+            const labelX = (pts[0][0] + pts[1][0] + pts[2][0]) / 3;
+            const labelY = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
+            paintLabel(labelX, labelY, step.name, true);
+          }
+          const screenTri = projectTri(active.corners);
+          state.activeScreen = screenTri;
+          if (layout.mode === 'grid') {
+            state.sideHits = [];
+            const cells = assignDrillCells(active.corners, layout.names);
+            context.font = '11px sans-serif';
+            context.textAlign = 'center';
+            for (const cell of cells) {
+              const pts = projectTri(cell.corners);
+              state.cellHits.push({ name: cell.name, corners: cell.corners, screen: pts });
+              context.beginPath();
+              context.moveTo(pts[0][0], pts[0][1]);
+              context.lineTo(pts[1][0], pts[1][1]);
+              context.lineTo(pts[2][0], pts[2][1]);
+              context.closePath();
+              context.fillStyle = cell.name ? 'rgba(90, 200, 235, 0.38)' : 'rgba(255,255,255,.04)';
+              context.fill();
+              context.setLineDash(cell.name ? [] : [3, 3]);
+              context.strokeStyle = cell.name ? '#ffffff' : 'rgba(255,255,255,.28)';
+              context.lineWidth = cell.name ? 1.6 : 1;
+              context.stroke();
+              context.setLineDash([]);
+              if (!cell.name) continue;
+              const box = spanOf(pts);
+              if (!labelVisible(box, cell.name)) continue;
+              const labelX = (pts[0][0] + pts[1][0] + pts[2][0]) / 3;
+              const labelY = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
+              paintLabel(labelX, labelY, cell.name, true);
+            }
+          } else {
+            const roles = screenSides(screenTri);
+            state.sideHits = roles.map((role) => ({
+              edge: role.edge,
+              target: layout.sides[role.role],
+              a: screenTri[role.edge],
+              b: screenTri[(role.edge + 1) % 3],
+            }));
+            if (state.selected >= 0) {
+              context.font = '11px sans-serif';
+              context.textAlign = 'center';
+              const parentBox = spanOf(screenTri);
+              for (const hit of state.sideHits) {
+                const midX = (hit.a[0] + hit.b[0]) / 2;
+                const midY = (hit.a[1] + hit.b[1]) / 2;
+                const centerX = (screenTri[0][0] + screenTri[1][0] + screenTri[2][0]) / 3;
+                const centerY = (screenTri[0][1] + screenTri[1][1] + screenTri[2][1]) / 3;
+                const vx = midX - centerX;
+                const vy = midY - centerY;
+                const length = Math.hypot(vx, vy) || 1;
+                const x = midX + (vx / length) * 28;
+                const y = midY + (vy / length) * 28;
+                const text = hit.target ?? 'Empty';
+                context.setLineDash(hit.target ? [] : [4, 4]);
+                context.strokeStyle = hit.target ? '#ffffff' : 'rgba(255,255,255,.3)';
+                context.lineWidth = hit.target ? (labelVisible(parentBox, text) ? 6 : 2.4) : 1.5;
+                context.beginPath();
+                context.moveTo(hit.a[0], hit.a[1]);
+                context.lineTo(hit.b[0], hit.b[1]);
+                context.stroke();
+                context.setLineDash([]);
+                if (!labelVisible(parentBox, text)) continue;
+                paintLabel(x, y, text, Boolean(hit.target));
+              }
+            }
+          }
+        }
+      }
+      if (comparing && sweepsOpen && state.selected >= 0 && state.links.length && !state.grown.length) {
         const anchor = projected.find((item) => item.index === state.selected);
         if (anchor) {
           context.font = '10px sans-serif';
@@ -407,6 +794,10 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
     };
   }, [model]);
 
+  useEffect(() => {
+    view.current.pendingPath = [...drillPath];
+  }, [drillPath, selected, model]);
+
   const focusFace = (index: number) => {
     const state = view.current;
     const center = model.faceCorners[index]
@@ -425,7 +816,7 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
       rx1: targetPitch,
       ry1: state.ry + dy,
       z0: state.zoom,
-      z1: Math.max(state.zoom, 1.55),
+      z1: Math.max(state.zoom, 1.15),
       t: 0,
     };
     onFocus(index);
@@ -439,6 +830,8 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
         data-layout={TOPO_REVISION}
         data-style={style}
         data-comparison={comparison ? 'on' : 'off'}
+        data-pair={pair ? 'on' : 'off'}
+        data-drill-depth={drillPath.length}
         aria-label="Topographic octahedron of assessment factors"
         tabIndex={0}
         onKeyDown={(event) => {
@@ -472,7 +865,7 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
           state.pointers.set(event.pointerId, [event.clientX, event.clientY]);
           if (state.pinch && state.pointers.size === 2) {
             const [a, b] = [...state.pointers.values()];
-            state.zoom = Math.min(6, Math.max(0.6, (state.pinch.z * Math.hypot(a[0] - b[0], a[1] - b[1])) / state.pinch.d));
+            state.zoom = Math.min(18, Math.max(0.6, (state.pinch.z * Math.hypot(a[0] - b[0], a[1] - b[1])) / state.pinch.d));
             return;
           }
           if (!state.drag) return;
@@ -500,6 +893,72 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
           if (!tap) return;
           const rect = event.currentTarget.getBoundingClientRect();
           const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
+          const active = state.activeScreen;
+          if (active && inTri(point, active[0], active[1], active[2])) {
+            const now = performance.now();
+            if (state.openedAt && now - state.openedAt < 380) {
+              state.api?.detail();
+              state.openedAt = 0;
+              return;
+            }
+            const cell = state.cellHits.find((item) => item.name && inTri(point, item.screen[0], item.screen[1], item.screen[2]));
+            if (cell?.name) {
+              state.api?.enter(cell.name, cell.corners);
+              state.openedAt = now;
+              return;
+            }
+            if (state.cellHits.length) {
+              const elapsed = state.lastTap && state.lastTap.name === state.activeName ? now - state.lastTap.time : 1000;
+              const kind = classifyTap({
+                pinching: false,
+                moved: false,
+                edge: null,
+                edgeHasLink: false,
+                sameTile: true,
+                elapsedMs: elapsed,
+              });
+              if (kind === 'double') {
+                state.api?.detail();
+                state.lastTap = null;
+                return;
+              }
+              state.lastTap = { time: now, name: state.activeName };
+              return;
+            }
+            const centroid: [number, number] = [
+              (active[0][0] + active[1][0] + active[2][0]) / 3,
+              (active[0][1] + active[1][1] + active[2][1]) / 3,
+            ];
+            let nearest: { edge: 0 | 1 | 2; target: string | null; dist: number } | null = null;
+            for (const hit of state.sideHits) {
+              const dist = pointToSegment(point, hit.a, hit.b);
+              if (!nearest || dist < nearest.dist) nearest = { edge: hit.edge, target: hit.target, dist };
+            }
+            const fromCenter = Math.hypot(point[0] - centroid[0], point[1] - centroid[1]);
+            const onEdge = Boolean(nearest && nearest.dist <= 44 && nearest.dist < fromCenter);
+            const elapsed = state.lastTap && state.lastTap.name === state.activeName ? now - state.lastTap.time : 1000;
+            const kind = classifyTap({
+              pinching: false,
+              moved: false,
+              edge: onEdge && nearest ? nearest.edge : null,
+              edgeHasLink: Boolean(onEdge && nearest?.target),
+              sameTile: true,
+              elapsedMs: elapsed,
+            });
+            if (kind === 'edge' && nearest?.target) {
+              state.api?.grow(nearest.target, nearest.edge);
+              state.openedAt = now;
+              state.lastTap = null;
+              return;
+            }
+            if (kind === 'double') {
+              state.api?.detail();
+              state.lastTap = null;
+              return;
+            }
+            state.lastTap = { time: now, name: state.activeName };
+            return;
+          }
           const sweepsOpen = state.comparison && state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps';
           if (state.comparison && !sweepsOpen) {
             const faceHit = [...state.faceHits]
@@ -516,7 +975,10 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
           if (!hit) return;
           const tile = model.tiles[hit.index];
           if (state.focus !== tile.faceIndex) focusFace(tile.faceIndex);
-          else if (tile.move) onSelect(hit.index);
+          else if (tile.move) {
+            onSelect(hit.index);
+            state.lastTap = { time: performance.now(), name: tile.move.name };
+          }
         }}
         onPointerCancel={(event) => {
           const state = view.current;
@@ -572,7 +1034,7 @@ export function TopoStage({ model, style, focus, selected, comparison, links, on
 }
 
 function zoomBy(state: { zoom: number }, factor: number) {
-  state.zoom = Math.min(6, Math.max(0.6, state.zoom * factor));
+  state.zoom = Math.min(18, Math.max(0.6, state.zoom * factor));
 }
 
 function inTri(point: [number, number], a: [number, number], b: [number, number], c: [number, number]): boolean {

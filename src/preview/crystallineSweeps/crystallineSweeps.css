@@ -190,6 +190,27 @@
   color: #0e1726;
 }
 
+.drill-path,
+.drill-sides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.drill-sides li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 44px;
+}
+
+.drill-sides button:disabled {
+  opacity: 0.45;
+}
+
 @media (max-width: 720px) {
   .topo-stage {
     height: 440px;
