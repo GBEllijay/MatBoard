@@ -361,3 +361,143 @@ test('factor buttons still jump to that face and the bottom controls stay', () =
     mounted.root.unmount();
   });
 });
+
+const FACE_NAMES = [
+  'Guard/Control',
+  'Passing',
+  'Sweeps',
+  'Takedowns',
+  'Escapes/Defense',
+  'Submissions',
+  'Conditioning',
+  'Mindset',
+] as const;
+
+function techniqueNodes(host: ParentNode): HTMLElement[] {
+  return [...host.querySelectorAll('[data-technique-label]')].filter(
+    (node): node is HTMLElement => node instanceof view.HTMLElement && Boolean(node.getAttribute('data-technique-label')),
+  );
+}
+
+function visibleTechniqueFaces(host: ParentNode): string[] {
+  return techniqueNodes(host)
+    .filter((node) => !node.hidden)
+    .map((node) => node.getAttribute('data-technique-face') ?? '');
+}
+
+test('default zoom hides technique labels; zoom-in or a face drill shows only that face', () => {
+  localStorage.clear();
+  const mounted = mount(<CrystallineSweepsPreview />);
+  const host = mounted.host;
+  const stage = () => {
+    const node = host.querySelector('.topo-stage');
+    if (!(node instanceof view.HTMLElement)) throw new Error('Missing stage');
+    return node;
+  };
+  const faceLabels = () => [...host.querySelectorAll('[data-face-label]')];
+  assert.deepEqual(
+    faceLabels().map((node) => node.textContent),
+    [...FACE_NAMES],
+  );
+  assert.equal(faceLabels().some((node) => node.textContent?.includes('no built-in')), false);
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(stage().dataset.drilled, '');
+  for (const node of techniqueNodes(host)) {
+    assert.equal(node.hidden, true, node.getAttribute('data-technique-label') ?? '');
+    assert.equal(node.getAttribute('data-label-policy'), 'hide');
+  }
+  act(() => {
+    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(stage().dataset.drilled, '');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  assert.equal((host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).getAttribute('aria-pressed'), 'true');
+  act(() => {
+    (host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.labelTier, 'techniques');
+  assert.equal(stage().dataset.labelFace, 'sweeps');
+  assert.equal(stage().dataset.drilled, '');
+  const shownFaces = new Set(visibleTechniqueFaces(host));
+  assert.equal(shownFaces.size <= 1, true);
+  if (shownFaces.size === 1) assert.equal([...shownFaces][0], 'sweeps');
+  const sweepsPolicy = techniqueNodes(host).filter((node) => node.getAttribute('data-technique-face') === 'sweeps');
+  assert.ok(sweepsPolicy.length >= 6);
+  for (const node of sweepsPolicy) assert.equal(node.getAttribute('data-label-policy'), 'show');
+  for (const node of techniqueNodes(host)) {
+    if (node.getAttribute('data-technique-face') !== 'sweeps') {
+      assert.equal(node.getAttribute('data-label-policy'), 'hide');
+      assert.equal(node.hidden, true);
+    }
+  }
+  act(() => {
+    (host.querySelector('[aria-label="Zoom out"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  for (const node of techniqueNodes(host)) assert.equal(node.getAttribute('data-label-policy'), 'hide');
+  act(() => {
+    (host.querySelector('[data-face-label="conditioning"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, 'conditioning');
+  assert.equal(stage().dataset.labelTier, 'techniques');
+  assert.equal(stage().dataset.labelFace, 'conditioning');
+  assert.equal(techniqueNodes(host).some((node) => node.getAttribute('data-technique-face') === 'conditioning'), false);
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  assert.equal((host.querySelector('[data-face-label="conditioning"]') as HTMLButtonElement).hidden, false);
+  act(() => {
+    (host.querySelector('[data-face-label="conditioning"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, '');
+  assert.equal(stage().dataset.labelTier, 'faces');
+  act(() => {
+    (host.querySelector('[data-face-label="mindset"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.labelFace, 'mindset');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  act(() => {
+    (host.querySelector('[data-face-label="passing"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, 'passing');
+  assert.equal(stage().dataset.labelFace, 'passing');
+  for (const node of techniqueNodes(host)) {
+    const show = node.getAttribute('data-technique-face') === 'passing';
+    assert.equal(node.getAttribute('data-label-policy'), show ? 'show' : 'hide');
+    if (!show) assert.equal(node.hidden, true);
+  }
+  act(() => {
+    (host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click();
+    (host.querySelector('[data-face-label="submissions"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, 'submissions');
+  assert.equal(stage().dataset.labelFace, 'submissions');
+  act(() => {
+    (host.querySelector('[data-face-label="submissions"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, '');
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  act(() => {
+    (host.querySelector('[data-face-label="guard-control"]') as HTMLButtonElement).click();
+    (host.querySelector('[data-face-label="takedowns"]') as HTMLButtonElement).click();
+    (host.querySelector('[data-face-label="escapes-defense"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, 'escapes-defense');
+  assert.equal(stage().dataset.labelFace, 'escapes-defense');
+  for (const node of techniqueNodes(host)) {
+    if (node.getAttribute('data-technique-face') !== 'escapes-defense') assert.equal(node.hidden, true);
+  }
+  act(() => {
+    labeled(host, 'Reset view').click();
+  });
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(stage().dataset.drilled, '');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  assert.equal(host.querySelectorAll('.topo-controls button').length, 4);
+  assert.equal(host.querySelectorAll('[data-face-button]').length, 8);
+  act(() => {
+    mounted.root.unmount();
+  });
+});

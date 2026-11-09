@@ -12,6 +12,17 @@ import {
   EXAMPLE_SELF_SWEEPS,
 } from './overlay.ts';
 import { assignDrillCells, barycentric, classifyTap, connectionLayout, labelVisible, midpointQuarters, pointToSegment, screenSides } from './demoLinks.ts';
+import {
+  FOCUS_FRAME_ZOOM,
+  REST_ZOOM,
+  ZOOM_STEP,
+  clampCrystalZoom,
+  crystalLabelState,
+  drillAfterZoom,
+  tileShowsTechniqueLabel,
+  zoomAfterClosingDrill,
+  zoomPastRest,
+} from './labels.ts';
 
 export type TopoStyle = 'pyramid' | 'curved';
 
@@ -50,10 +61,13 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
   const [paused, setPaused] = useState(
     () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
+  const [labelView, setLabelView] = useState({ zoom: REST_ZOOM, drilledFace: -1, frontFace: -1 });
   const view = useRef({
     rx: 0.28,
     ry: 0.4,
-    zoom: 1,
+    zoom: REST_ZOOM,
+    drilledFace: -1,
+    publishedFront: -2,
     paused,
     focus,
     selected,
@@ -84,6 +98,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     cellHits: [] as { name: string | null; corners: [Vec, Vec, Vec]; screen: [[number, number], [number, number], [number, number]] }[],
     frameKey: '',
     openedAt: 0,
+    applyZoom: (_next: number) => {},
+    onFrontFace: (_index: number) => {},
     api: null as null | {
       grow: (target: string) => void
       enter: (target: string, corners: [Vec, Vec, Vec]) => void
@@ -110,21 +126,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     if (!stage || !canvas || !labels) return undefined;
     const context = canvas.getContext('2d');
     if (!context) return undefined;
-    const faceNodes = model.faces.map((face) => {
-      const node = document.createElement('span');
-      node.className = 'topo-label topo-label-face';
-      node.textContent = face.moves.length ? face.name : `${face.name} · no built-in moves mapped`;
-      labels.append(node);
-      return node;
-    });
-    const tileNodes = model.tiles.map((tile) => {
-      const node = document.createElement('span');
-      node.className = 'topo-label';
-      node.textContent = tile.move?.name ?? '';
-      node.hidden = true;
-      labels.append(node);
-      return node;
-    });
+    const faceNodes = [...labels.querySelectorAll<HTMLElement>('.topo-label-face')];
+    const tileNodes = [...labels.querySelectorAll<HTMLElement>('[data-technique-label]')];
     const state = view.current;
     const resize = () => {
       state.width = stage.clientWidth || 320;
@@ -139,7 +142,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     observer?.observe(stage);
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
-      state.zoom = Math.min(18, Math.max(0.6, state.zoom * Math.exp(-event.deltaY * 0.0015)));
+      state.applyZoom(state.zoom * Math.exp(-event.deltaY * 0.0015));
     };
     stage.addEventListener('wheel', onWheel, { passive: false });
 
@@ -344,7 +347,6 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         state.zoom = state.anim.z0 + (state.anim.z1 - state.anim.z0) * k;
         if (state.anim.t >= 1) state.anim = null;
       } else if (!state.paused && !state.drag && state.selected < 0) state.ry += dt * (state.chrome === 'bare' ? 0.1 : 0.18);
-      const showLabels = state.zoom >= 1.8 || state.focus >= 0;
       const light: Vec = [-0.4, 0.6, 0.7];
       const lightLength = Math.hypot(...light) || 1;
       const lit = light.map((value) => value / lightLength) as Vec;
@@ -654,11 +656,49 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         context.stroke();
         context.setLineDash([]);
       }
+      let frontIndex = -1;
+      let frontScore = 0.12;
+      if (!paired) {
+        model.faceCorners.forEach((corners, faceIndex) => {
+          const points = corners.map((index) => rot(model.vertices[index]));
+          const center: Vec = [0, 1, 2].map((axis) => (points[0][axis] + points[1][axis] + points[2][axis]) / 3) as Vec;
+          const u: Vec = [points[1][0] - points[0][0], points[1][1] - points[0][1], points[1][2] - points[0][2]];
+          const v: Vec = [points[2][0] - points[0][0], points[2][1] - points[0][1], points[2][2] - points[0][2]];
+          const nrm: Vec = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+          const score = nrm[0] * -center[0] + nrm[1] * -center[1] + nrm[2] * (5.5 - center[2]);
+          if (score > frontScore) {
+            frontScore = score;
+            frontIndex = faceIndex;
+          }
+        });
+      }
+      if (zoomPastRest(state.zoom) && state.drilledFace < 0 && state.focus < 0 && frontIndex !== state.publishedFront) {
+        state.publishedFront = frontIndex;
+        state.onFrontFace(frontIndex);
+      }
+      const sweepsFace = model.faces.findIndex((face) => face.id === 'sweeps');
+      const labels = crystalLabelState({
+        zoom: state.zoom,
+        drilledFace: state.drilledFace,
+        focusedFace: state.focus,
+        frontFace: frontIndex,
+        comparison: state.comparison,
+        pair: paired,
+        sweepsFace,
+      });
+      stage.dataset.labelTier = labels.tier;
+      stage.dataset.labelFace = labels.face >= 0 ? (model.faces[labels.face]?.id ?? '') : '';
+      stage.dataset.drilled = state.drilledFace >= 0 ? (model.faces[state.drilledFace]?.id ?? '') : '';
+      for (const node of tileNodes) node.hidden = true;
       projected.forEach((item) => {
         const tile = model.tiles[item.index];
         const node = tileNodes[item.index];
-        const focused = (state.focus < 0 || tile.faceIndex === state.focus) && (!state.comparison || (state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps'));
-        node.hidden = state.selected >= 0 || !(showLabels && tile.move && item.front && item.shade > 0.2 && focused);
+        if (!node || !tile) return;
+        const show =
+          tileShowsTechniqueLabel(labels, tile.faceIndex, Boolean(tile.move), state.selected >= 0) &&
+          item.front &&
+          item.shade > 0.2;
+        node.hidden = !show;
         if (!node.hidden) {
           node.style.left = `${item.center[0]}px`;
           node.style.top = `${item.center[1]}px`;
@@ -683,8 +723,13 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
           context.stroke();
         }
         const node = faceNodes[faceIndex];
-        const hideName = showLabels && model.faces[faceIndex].moves.length > 0 && (state.focus < 0 || faceIndex === state.focus);
-        node.hidden = !visible || hideName;
+        if (!node) return;
+        const techniquesOpen =
+          labels.tier === 'techniques' &&
+          labels.face === faceIndex &&
+          model.faces[faceIndex].moves.length > 0 &&
+          state.selected < 0;
+        node.hidden = !visible || techniquesOpen;
         const placed = screen(center);
         node.style.left = `${placed[0]}px`;
         node.style.top = `${placed[1]}px`;
@@ -830,7 +875,6 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       cancelAnimationFrame(frame);
       stage.removeEventListener('wheel', onWheel);
       observer?.disconnect();
-      labels.replaceChildren();
     };
   }, [model]);
 
@@ -838,7 +882,33 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     view.current.pendingPath = [...drillPath];
   }, [drillPath, selected, model]);
 
-  const focusFace = (index: number) => {
+  useEffect(() => {
+    if (focus >= 0 || view.current.drilledFace < 0) return;
+    view.current.drilledFace = -1;
+    setLabelView((current) => (current.drilledFace < 0 ? current : { ...current, drilledFace: -1 }));
+  }, [focus]);
+
+  const publishLabels = (zoom: number, drilledFace: number) => {
+    view.current.zoom = zoom;
+    view.current.drilledFace = drilledFace;
+    setLabelView((current) =>
+      current.zoom === zoom && current.drilledFace === drilledFace ? current : { ...current, zoom, drilledFace },
+    );
+  };
+
+  const applyZoom = (next: number) => {
+    const state = view.current;
+    const before = state.zoom;
+    const zoom = clampCrystalZoom(next);
+    state.anim = null;
+    publishLabels(zoom, drillAfterZoom(before, zoom, state.drilledFace));
+  };
+  view.current.applyZoom = applyZoom;
+  view.current.onFrontFace = (index) => {
+    setLabelView((current) => (current.frontFace === index ? current : { ...current, frontFace: index }));
+  };
+
+  const focusFace = (index: number, drill: boolean) => {
     const state = view.current;
     const center = model.faceCorners[index]
       .map((corner) => model.vertices[corner])
@@ -856,11 +926,34 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       rx1: targetPitch,
       ry1: state.ry + dy,
       z0: state.zoom,
-      z1: Math.max(state.zoom, 1.15),
+      z1: Math.max(state.zoom, FOCUS_FRAME_ZOOM),
       t: 0,
     };
+    publishLabels(state.zoom, drill ? index : -1);
     onFocus(index);
   };
+
+  const toggleDrill = (index: number) => {
+    const state = view.current;
+    if (state.drilledFace === index) {
+      state.anim = null;
+      publishLabels(zoomAfterClosingDrill(state.zoom), -1);
+      onSelect(-1);
+      return;
+    }
+    focusFace(index, true);
+  };
+
+  const sweepsFace = model.faces.findIndex((face) => face.id === 'sweeps');
+  const labels = crystalLabelState({
+    zoom: labelView.zoom,
+    drilledFace: labelView.drilledFace,
+    focusedFace: focus,
+    frontFace: labelView.frontFace,
+    comparison,
+    pair,
+    sweepsFace,
+  });
 
   return (
     <div>
@@ -872,6 +965,9 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         data-comparison={comparison ? 'on' : 'off'}
         data-pair={pair ? 'on' : 'off'}
         data-drill-depth={drillPath.length}
+        data-label-tier={labels.tier}
+        data-label-face={labels.face >= 0 ? (model.faces[labels.face]?.id ?? '') : ''}
+        data-drilled={labelView.drilledFace >= 0 ? (model.faces[labelView.drilledFace]?.id ?? '') : ''}
         aria-label="Topographic octahedron of assessment factors"
         tabIndex={0}
         onKeyDown={(event) => {
@@ -880,8 +976,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
           else if (event.key === 'ArrowRight') state.ry += 0.12;
           else if (event.key === 'ArrowUp') state.rx -= 0.08;
           else if (event.key === 'ArrowDown') state.rx += 0.08;
-          else if (event.key === '+' || event.key === '=') zoomBy(state, 1.3);
-          else if (event.key === '-' || event.key === '_') zoomBy(state, 1 / 1.3);
+          else if (event.key === '+' || event.key === '=') applyZoom(view.current.zoom * ZOOM_STEP);
+          else if (event.key === '-' || event.key === '_') applyZoom(view.current.zoom / ZOOM_STEP);
           else if (event.key === 'Escape') onSelect(-1);
           else return;
           event.preventDefault();
@@ -905,7 +1001,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
           state.pointers.set(event.pointerId, [event.clientX, event.clientY]);
           if (state.pinch && state.pointers.size === 2) {
             const [a, b] = [...state.pointers.values()];
-            state.zoom = Math.min(18, Math.max(0.6, (state.pinch.z * Math.hypot(a[0] - b[0], a[1] - b[1])) / state.pinch.d));
+            state.applyZoom((state.pinch.z * Math.hypot(a[0] - b[0], a[1] - b[1])) / state.pinch.d);
             return;
           }
           if (!state.drag) return;
@@ -1009,7 +1105,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
               .filter((item) => item.front)
               .sort((a, b) => b.z - a.z)
               .find((item) => inTri(point, item.screen[0], item.screen[1], item.screen[2]));
-            if (faceHit) focusFace(faceHit.faceIndex);
+            if (faceHit) focusFace(faceHit.faceIndex, false);
             return;
           }
           const hit = [...state.projected]
@@ -1017,12 +1113,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
             .sort((a, b) => b.z - a.z)
             .find((item) => inTri(point, item.screen[0], item.screen[1], item.screen[2]));
           if (!hit) return;
-          const tile = model.tiles[hit.index];
-          if (state.focus !== tile.faceIndex) focusFace(tile.faceIndex);
-          else if (tile.move) {
-            onSelect(hit.index);
-            state.lastTap = { time: performance.now(), name: tile.move.name };
-          }
+          toggleDrill(model.tiles[hit.index].faceIndex);
         }}
         onPointerCancel={(event) => {
           const state = view.current;
@@ -1032,15 +1123,53 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         }}
       >
         <canvas ref={canvasRef} />
-        <div ref={labelsRef} className="topo-labels" />
+        <div ref={labelsRef} className="topo-labels">
+          {model.faces.map((face, index) => {
+            const techniquesOpen =
+              labels.tier === 'techniques' && labels.face === index && face.moves.length > 0 && selected < 0;
+            return (
+              <button
+                key={face.id}
+                type="button"
+                className="topo-label topo-label-face"
+                data-face-label={face.id}
+                aria-expanded={chrome === 'full' ? labelView.drilledFace === index : undefined}
+                hidden={techniquesOpen}
+                onPointerDown={(event) => event.stopPropagation()}
+                onPointerUp={(event) => event.stopPropagation()}
+                onClick={() => {
+                  if (chrome === 'bare') {
+                    onExpand?.();
+                    return;
+                  }
+                  toggleDrill(index);
+                }}
+              >
+                {face.name}
+              </button>
+            );
+          })}
+          {model.tiles.map((tile) => (
+            <span
+              key={tile.index}
+              className="topo-label"
+              data-technique-label={tile.move?.name ?? ''}
+              data-technique-face={tile.faceId}
+              data-label-policy={tileShowsTechniqueLabel(labels, tile.faceIndex, Boolean(tile.move), selected >= 0) ? 'show' : 'hide'}
+              hidden={!tileShowsTechniqueLabel(labels, tile.faceIndex, Boolean(tile.move), selected >= 0)}
+            >
+              {tile.move?.name ?? ''}
+            </span>
+          ))}
+        </div>
       </div>
       {chrome === 'full' ? (
       <>
       <div className="topo-controls">
-        <button type="button" aria-label="Zoom in" onClick={() => zoomBy(view.current, 1.3)}>
+        <button type="button" aria-label="Zoom in" onClick={() => applyZoom(view.current.zoom * ZOOM_STEP)}>
           +
         </button>
-        <button type="button" aria-label="Zoom out" onClick={() => zoomBy(view.current, 1 / 1.3)}>
+        <button type="button" aria-label="Zoom out" onClick={() => applyZoom(view.current.zoom / ZOOM_STEP)}>
           −
         </button>
         <button
@@ -1057,8 +1186,9 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
             const state = view.current;
             state.rx = 0.28;
             state.ry = 0.4;
-            state.zoom = 1;
             state.anim = null;
+            state.publishedFront = -2;
+            publishLabels(REST_ZOOM, -1);
             const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
             state.paused = reduce;
             setPaused(reduce);
@@ -1070,7 +1200,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       </div>
       <nav className="topo-legend" aria-label="Focus a factor">
         {model.faces.map((face, index) => (
-          <button key={face.id} type="button" data-face-button={face.id} aria-pressed={focus === index} onClick={() => focusFace(index)}>
+          <button key={face.id} type="button" data-face-button={face.id} aria-pressed={focus === index} onClick={() => focusFace(index, false)}>
             {index + 1}. {face.name} ({face.moves.length})
           </button>
         ))}
@@ -1079,10 +1209,6 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       ) : null}
     </div>
   );
-}
-
-function zoomBy(state: { zoom: number }, factor: number) {
-  state.zoom = Math.min(18, Math.max(0.6, state.zoom * factor));
 }
 
 function toneFill(tone: TileTone, light: number, chosen: boolean, hue: number): string {
