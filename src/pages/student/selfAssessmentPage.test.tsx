@@ -44,8 +44,8 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { radarPoints, selfAssessmentShapeLabel } from '../../lib/radarChart.ts';
-import { ASSESSMENT_STORAGE_KEY, saveAssessment, writeAssessments, type AssessmentScores } from '../../lib/studentAssessment.ts';
-import { installStudentMockGuard, resetStudentMockGuardForTests } from '../../lib/studentDemo.ts';
+import { ASSESSMENT_STORAGE_KEY, CONDITIONING_ITEMS, MINDSET_GOALS, saveAssessment, writeAssessments, type AssessmentScores } from '../../lib/studentAssessment.ts';
+import { clearStudentDemoOverlay, installStudentMockGuard, resetStudentMockGuardForTests } from '../../lib/studentDemo.ts';
 import { STUDENT_BACKUP_STAMP_KEY } from '../../lib/studentBackupStamp.ts';
 import { blankStudentReport, saveStudentReport, setFundamentalLevel, todayIso } from '../../lib/studentEdition.ts';
 import { withStarterRubric } from '../../lib/studentTools.ts';
@@ -131,6 +131,16 @@ function rateAll(host: ParentNode, score: number) {
   }
 }
 
+function areaLegends(): string[] {
+  const labels: string[] = [];
+  for (const [, label] of FORM) {
+    labels.push(label);
+    if (label === 'Conditioning') labels.push(...CONDITIONING_ITEMS.map((item) => item.label));
+    if (label === 'Mindset') labels.push(...MINDSET_GOALS.map((goal) => goal.label));
+  }
+  return labels;
+}
+
 const FORM = [
   ['guard', 'Guard/Control'],
   ['passing', 'Passing'],
@@ -162,7 +172,7 @@ test('the self-assessment page keeps every control and Back returns to Rank & Pr
   assert.equal(control(host, 'button', 'Save self-assessment').classList.contains('ink-btn--save'), true);
   assert.deepEqual(
     [...host.querySelectorAll('.assess-area legend')].map((node) => node.textContent),
-    FORM.map(([, label]) => label),
+    areaLegends(),
   );
   for (const [id, area] of FORM) {
     labeled(host, `${area} rating`);
@@ -524,7 +534,7 @@ test('an old seven-value check-in keeps Sweeps empty until that rating is saved'
   const mounted = mount(<SelfAssessmentPage />);
   assert.deepEqual(
     [...mounted.host.querySelectorAll('.assess-area legend')].map((node) => node.textContent),
-    ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset'],
+    areaLegends(),
   );
   assert.equal(labeled(mounted.host, 'Passing 3').getAttribute('aria-pressed'), 'true');
   assert.equal(labeled(mounted.host, 'Guard/Control 5').getAttribute('aria-pressed'), 'true');
@@ -536,6 +546,8 @@ test('an old seven-value check-in keeps Sweeps empty until that rating is saved'
   });
   const untouched = localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '';
   assert.equal(untouched.includes('sweeps'), false);
+  assert.equal(untouched.includes('mindsetGoals'), false);
+  assert.equal(untouched.includes('conditioningItems'), false);
   assert.match(untouched, /"passing":3/);
   assert.match(untouched, /"guard":5/);
 
@@ -565,6 +577,9 @@ test('an old seven-value check-in keeps Sweeps empty until that rating is saved'
   unmount(again);
 
   const card = mount(<CardRadar to={(path) => path} />);
+  act(() => {
+    control(card.host, 'button', 'Radar').click();
+  });
   assert.deepEqual(
     [...card.host.querySelectorAll('.assess-legend li')].map((node) => [...node.querySelectorAll('span')].map((span) => span.textContent).join(' ')),
     ['Guard/Control 5', 'Passing 3', 'Sweeps 1', 'Takedowns 4', 'Escapes/Defense 2', 'Submissions 4', 'Conditioning 2', 'Mindset 3'],
@@ -574,4 +589,153 @@ test('an old seven-value check-in keeps Sweeps empty until that rating is saved'
   assert.match(card.host.querySelector('svg')?.getAttribute('aria-label') ?? '', /Passing 3, Sweeps 1/);
   assert.doesNotMatch(card.host.querySelector('svg')?.getAttribute('aria-label') ?? '', /Sweeps 3|Sweeps not rated|Sweeps 0/);
   unmount(card);
+});
+
+function freshPhone() {
+  localStorage.clear();
+  clearStudentDemoOverlay();
+  saveStudentReport(localStorage, blankStudentReport());
+}
+
+test('mindset goals score on the same 1–5 taps and roll up without rewriting an older day', () => {
+  freshPhone();
+  const today = todayIso();
+  const older = {
+    guard: 5,
+    passing: 3,
+    takedowns: 4,
+    escapes: 2,
+    submissions: 4,
+    conditioning: 2,
+    mindset: 3,
+  };
+  writeAssessments(localStorage, saveAssessment({ entries: [] }, { date: '2024-05-01', note: 'kept from an older phone', scores: older }, 41));
+  const mounted = mount(<SelfAssessmentPage />);
+  const { host } = mounted;
+  for (const goal of MINDSET_GOALS) {
+    labeled(host, `${goal.label} rating`);
+    for (const score of [1, 2, 3, 4, 5]) {
+      assert.equal(labeled(host, `${goal.label} ${score}`).getAttribute('aria-pressed'), 'false');
+    }
+  }
+  act(() => {
+    labeled(host, `${MINDSET_GOALS[0].label} 5`).click();
+    labeled(host, `${MINDSET_GOALS[1].label} 2`).click();
+  });
+  assert.equal(labeled(host, `${MINDSET_GOALS[0].label} 5`).getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, `${MINDSET_GOALS[1].label} 2`).getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, `${MINDSET_GOALS[2].label} 5`).getAttribute('aria-pressed'), 'false');
+  assert.equal(labeled(host, 'Mindset 4').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Mindset 3').getAttribute('aria-pressed'), 'false');
+  rateAll(host, 4);
+  act(() => {
+    control(host, 'button', 'Save self-assessment').click();
+  });
+  const saved = JSON.parse(localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '{}') as {
+    entries: { date: string; note: string; scores: AssessmentScores & { sweeps?: number }; mindsetGoals?: Record<string, number> }[];
+  };
+  const todayEntry = saved.entries.find((entry) => entry.date === today);
+  const oldEntry = saved.entries.find((entry) => entry.date === '2024-05-01');
+  assert.ok(todayEntry);
+  assert.equal(todayEntry?.scores.mindset, 4);
+  assert.equal(todayEntry?.scores.guard, 4);
+  assert.equal(todayEntry?.scores.conditioning, 4);
+  assert.equal(todayEntry?.scores.sweeps, undefined);
+  assert.equal(todayEntry?.mindsetGoals?.['calm-focused'], 5);
+  assert.equal(todayEntry?.mindsetGoals?.['intentional-roll'], 2);
+  assert.equal(todayEntry?.mindsetGoals?.['game-plan'], undefined);
+  assert.equal(oldEntry?.note, 'kept from an older phone');
+  assert.equal(oldEntry?.scores.mindset, 3);
+  assert.equal(oldEntry?.mindsetGoals, undefined);
+  assert.match(host.textContent ?? '', /I've formed a routine and habit that keeps me calm and focused: 5/);
+  unmount(mounted);
+
+  const again = mount(<SelfAssessmentPage />);
+  assert.equal(labeled(again.host, `${MINDSET_GOALS[0].label} 5`).getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(again.host, `${MINDSET_GOALS[1].label} 2`).getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(again.host, 'Mindset 4').getAttribute('aria-pressed'), 'true');
+  setControl(labeled(again.host, 'Self-assessment date') as HTMLInputElement, '2024-05-01');
+  assert.equal(labeled(again.host, 'Mindset 3').getAttribute('aria-pressed'), 'true');
+  for (const goal of MINDSET_GOALS) {
+    assert.equal(labeled(again.host, `${goal.label} 5`).getAttribute('aria-pressed'), 'false');
+  }
+  unmount(again);
+});
+
+test('conditioning items score on the same 1–5 taps and roll up without rewriting an older day', () => {
+  freshPhone();
+  const today = todayIso();
+  const older = {
+    guard: 2,
+    passing: 2,
+    takedowns: 2,
+    escapes: 2,
+    submissions: 2,
+    conditioning: 2,
+    mindset: 2,
+  };
+  writeAssessments(localStorage, saveAssessment({ entries: [] }, { date: '2024-05-01', note: 'kept from an older phone', scores: older }, 42));
+  const mounted = mount(<SelfAssessmentPage />);
+  const { host } = mounted;
+  for (const item of CONDITIONING_ITEMS) {
+    labeled(host, `${item.label} rating`);
+    for (const score of [1, 2, 3, 4, 5]) {
+      assert.equal(labeled(host, `${item.label} ${score}`).getAttribute('aria-pressed'), 'false');
+    }
+  }
+  const speed = CONDITIONING_ITEMS.find((item) => item.id === 'speed');
+  const power = CONDITIONING_ITEMS.find((item) => item.id === 'power');
+  assert.ok(speed && power);
+  act(() => {
+    labeled(host, `${speed.label} 5`).click();
+    labeled(host, `${power.label} 1`).click();
+  });
+  assert.equal(labeled(host, 'Speed 5').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Power 1').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Flexibility 5').getAttribute('aria-pressed'), 'false');
+  assert.equal(labeled(host, 'Conditioning 3').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Conditioning 2').getAttribute('aria-pressed'), 'false');
+  act(() => {
+    labeled(host, 'Conditioning 5').click();
+  });
+  assert.equal(labeled(host, 'Conditioning 3').getAttribute('aria-pressed'), 'true');
+  rateAll(host, 4);
+  act(() => {
+    control(host, 'button', 'Save self-assessment').click();
+  });
+  const saved = JSON.parse(localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '{}') as {
+    entries: {
+      date: string;
+      note: string;
+      scores: AssessmentScores;
+      conditioningItems?: Record<string, number>;
+      mindsetGoals?: Record<string, number>;
+    }[];
+  };
+  const todayEntry = saved.entries.find((entry) => entry.date === today);
+  const oldEntry = saved.entries.find((entry) => entry.date === '2024-05-01');
+  assert.equal(todayEntry?.scores.conditioning, 3);
+  assert.equal(todayEntry?.scores.guard, 4);
+  assert.equal(todayEntry?.scores.mindset, 4);
+  assert.equal(todayEntry?.conditioningItems?.speed, 5);
+  assert.equal(todayEntry?.conditioningItems?.power, 1);
+  assert.equal(todayEntry?.conditioningItems?.flexibility, undefined);
+  assert.equal(todayEntry?.conditioningItems?.warmup, undefined);
+  assert.equal(todayEntry?.mindsetGoals, undefined);
+  assert.equal(oldEntry?.scores.conditioning, 2);
+  assert.equal(oldEntry?.conditioningItems, undefined);
+  assert.match(host.textContent ?? '', /Speed: 5/);
+  assert.match(host.textContent ?? '', /Power: 1/);
+  unmount(mounted);
+
+  const again = mount(<SelfAssessmentPage />);
+  assert.equal(labeled(again.host, 'Speed 5').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(again.host, 'Power 1').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(again.host, 'Conditioning 3').getAttribute('aria-pressed'), 'true');
+  setControl(labeled(again.host, 'Self-assessment date') as HTMLInputElement, '2024-05-01');
+  assert.equal(labeled(again.host, 'Conditioning 2').getAttribute('aria-pressed'), 'true');
+  for (const item of CONDITIONING_ITEMS) {
+    assert.equal(labeled(again.host, `${item.label} 5`).getAttribute('aria-pressed'), 'false');
+  }
+  unmount(again);
 });

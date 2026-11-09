@@ -5,17 +5,24 @@ import { sharedCheckpointId } from './progress/format.ts';
 import { PROGRESS_BELTS } from './progress/types.ts';
 import { blankStudentReport } from './studentEdition.ts';
 import { withStarterRubric } from './studentTools.ts';
+import { selfAssessmentLines } from './studentReport.ts';
 import {
   ASSESSMENT_AREAS,
   ASSESSMENT_MAX,
   ASSESSMENT_STORAGE_KEY,
+  CONDITIONING_ITEMS,
+  MINDSET_GOALS,
   assessmentAverage,
   assessmentChartScores,
   assessmentDraftScores,
   assessmentTrend,
   checkpointLinks,
+  conditioningItemsForDate,
+  conditioningScoreFromItems,
   emptyAssessments,
   loadAssessments,
+  mindsetGoalsForDate,
+  mindsetScoreFromGoals,
   removeAssessment,
   saveAssessment,
   writeAssessments,
@@ -267,4 +274,166 @@ test('sweeps is stored only when that day was rated, and it is not passing', () 
   assert.equal(kept.entries.length, 1);
   assert.equal(kept.entries[0].scores.passing, 5);
   assert.equal(Object.hasOwn(kept.entries[0].scores, 'sweeps'), false);
+});
+
+test('mindset goals are optional, roll up to Mindset, and do not rewrite an older day', () => {
+  assert.equal(MINDSET_GOALS.length, 6);
+  assert.deepEqual(
+    MINDSET_GOALS.map((goal) => goal.label),
+    [
+      "I've formed a routine and habit that keeps me calm and focused",
+      'I was intentional with my decisions throughout the roll',
+      'I drilled with my game plan in mind',
+      "I've done everything I could to be prepared for my challenge",
+      "I listened to and followed my coach's instructions",
+      'I approach training with an open mind, ready to receive new information',
+    ],
+  );
+  assert.equal(mindsetScoreFromGoals({}), null);
+  assert.equal(mindsetScoreFromGoals({ 'calm-focused': 5, 'intentional-roll': 2 }), 4);
+  assert.equal(mindsetScoreFromGoals({ 'calm-focused': 1, 'intentional-roll': 2 }), 2);
+  assert.equal(mindsetScoreFromGoals({ 'calm-focused': 5, 'game-plan': 4, prepared: 4 }), 4);
+
+  const storage = memory();
+  const older = JSON.stringify({
+    entries: [
+      {
+        id: 'old.3',
+        date: '2024-05-01',
+        note: 'kept from an older phone',
+        scores: { guard: 1, passing: 2, takedowns: 3, escapes: 4, submissions: 5, conditioning: 1, mindset: 2 },
+        mindsetGoals: { 'calm-focused': 0, missing: 5 },
+      },
+    ],
+  });
+  storage.setItem(ASSESSMENT_STORAGE_KEY, older);
+  const loaded = loadAssessments(storage);
+  assert.equal(loaded.entries.length, 1);
+  assert.equal(loaded.entries[0].scores.mindset, 2);
+  assert.equal(loaded.entries[0].scores.guard, 1);
+  assert.equal(loaded.entries[0].mindsetGoals, undefined);
+  assert.deepEqual(mindsetGoalsForDate(loaded.entries, '2024-05-01'), {});
+  const kept = writeAssessments(storage, loaded);
+  assert.equal(kept.entries[0].id, 'old.3');
+  assert.equal((storage.getItem(ASSESSMENT_STORAGE_KEY) ?? '').includes('mindsetGoals'), false);
+
+  const base = scores(3);
+  assert.throws(
+    () =>
+      saveAssessment(emptyAssessments(), {
+        date: '2026-11-09',
+        note: 'goals',
+        scores: { ...base, mindset: 1 },
+        mindsetGoals: { 'calm-focused': 5, 'open-mind': 9 },
+      }),
+    /open mind/,
+  );
+
+  const saved = saveAssessment(
+    emptyAssessments(),
+    {
+      date: '2026-11-09',
+      note: 'goals',
+      scores: { ...base, mindset: 1 },
+      mindsetGoals: { 'calm-focused': 5, 'intentional-roll': 2 },
+    },
+    81,
+  );
+  assert.equal(saved.entries[0].scores.mindset, 4);
+  assert.equal(saved.entries[0].scores.guard, 3);
+  assert.equal(saved.entries[0].scores.conditioning, 3);
+  assert.equal(saved.entries[0].mindsetGoals?.['calm-focused'], 5);
+  assert.equal(saved.entries[0].mindsetGoals?.['intentional-roll'], 2);
+  assert.equal(saved.entries[0].mindsetGoals?.['game-plan'], undefined);
+  assert.equal(Object.keys(saved.entries[0].mindsetGoals ?? {}).length, 2);
+
+  const preserved = saveAssessment(saved, { date: '2026-11-09', note: 'goals', scores: { ...base, mindset: 1 } }, 82);
+  assert.equal(preserved.entries[0].scores.mindset, 4);
+  assert.equal(preserved.entries[0].mindsetGoals?.['calm-focused'], 5);
+
+  const cleared = saveAssessment(
+    preserved,
+    { date: '2026-11-09', note: 'goals', scores: { ...base, mindset: 2 }, mindsetGoals: {} },
+    83,
+  );
+  assert.equal(cleared.entries[0].scores.mindset, 2);
+  assert.equal(cleared.entries[0].mindsetGoals, undefined);
+  assert.equal(cleared.entries[0].scores.passing, 3);
+
+  const lines = selfAssessmentLines(blankStudentReport(), saved);
+  assert.equal(lines.some((line) => line.includes("I've formed a routine and habit that keeps me calm and focused: 5")), true);
+  assert.equal(lines.some((line) => line.includes('I drilled with my game plan in mind')), false);
+  const oldLines = selfAssessmentLines(blankStudentReport(), loaded);
+  assert.equal(oldLines.some((line) => line.includes('Mindset: 2')), true);
+  assert.equal(oldLines.some((line) => line.includes('calm and focused')), false);
+});
+
+test('conditioning items roll up to Conditioning and an older day stays unchanged', () => {
+  assert.deepEqual(
+    CONDITIONING_ITEMS.map((item) => item.label),
+    [
+      'Warm-up difficulty — ability to complete the warm-up',
+      'Recovery time — tracked only, no benchmark',
+      'Speed',
+      'Stamina during live rolls',
+      'Power',
+      'Flexibility',
+    ],
+  );
+  assert.equal(conditioningScoreFromItems({}), null);
+  assert.equal(conditioningScoreFromItems({ speed: 5, power: 1 }), 3);
+  assert.equal(conditioningScoreFromItems({ stamina: 5 }), 5);
+
+  const storage = memory();
+  storage.setItem(
+    ASSESSMENT_STORAGE_KEY,
+    JSON.stringify({
+      entries: [
+        {
+          id: 'old.4',
+          date: '2024-06-01',
+          note: 'kept from an older phone',
+          scores: scores(2),
+          conditioningItems: { speed: 0, warmup: 'fast' },
+        },
+      ],
+    }),
+  );
+  const loaded = loadAssessments(storage);
+  assert.equal(loaded.entries[0].scores.conditioning, 2);
+  assert.equal(loaded.entries[0].conditioningItems, undefined);
+  assert.deepEqual(conditioningItemsForDate(loaded.entries, '2024-06-01'), {});
+  assert.equal((storage.getItem(ASSESSMENT_STORAGE_KEY) ?? '').includes('conditioningItems'), true);
+  const rewritten = writeAssessments(storage, loaded);
+  assert.equal(rewritten.entries[0].id, 'old.4');
+  assert.equal((storage.getItem(ASSESSMENT_STORAGE_KEY) ?? '').includes('conditioningItems'), false);
+
+  const base = scores(4);
+  assert.throws(
+    () =>
+      saveAssessment(emptyAssessments(), {
+        date: '2026-11-09',
+        note: '',
+        scores: base,
+        conditioningItems: { speed: 5, power: 0 },
+      }),
+    /Power/,
+  );
+  const saved = saveAssessment(
+    emptyAssessments(),
+    { date: '2026-11-09', note: 'engine', scores: { ...base, conditioning: 1 }, conditioningItems: { speed: 5, power: 1 } },
+    90,
+  );
+  assert.equal(saved.entries[0].scores.conditioning, 3);
+  assert.equal(saved.entries[0].scores.mindset, 4);
+  assert.equal(saved.entries[0].conditioningItems?.speed, 5);
+  assert.equal(saved.entries[0].conditioningItems?.power, 1);
+  assert.equal(saved.entries[0].conditioningItems?.flexibility, undefined);
+  assert.equal(saved.entries[0].mindsetGoals, undefined);
+  const kept = saveAssessment(saved, { date: '2026-11-09', note: 'engine', scores: { ...base, conditioning: 1 } }, 91);
+  assert.equal(kept.entries[0].scores.conditioning, 3);
+  assert.equal(kept.entries[0].conditioningItems?.speed, 5);
+  const lines = selfAssessmentLines(blankStudentReport(), saved);
+  assert.equal(lines.some((line) => line.includes('Speed: 5')), true);
+  assert.equal(lines.some((line) => line.includes('Flexibility')), false);
 });

@@ -662,6 +662,21 @@
   scroll-margin-top: 6.5rem;
 }
 
+.assess-goals {
+  display: grid;
+  gap: 16px;
+  padding-left: 12px;
+}
+
+.assess-goal {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
 .assess legend {
   padding: 0;
   color: var(--arena-text);
