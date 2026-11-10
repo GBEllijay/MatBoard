@@ -44,6 +44,7 @@ import { preservesAppHomeQuery } from './lib/submenuNav';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { StudentEditionPage } from './pages/StudentEdition';
+import { IndexCardProvider } from './indexCards/IndexCardHost';
 import { Journal2036Page } from './preview/journal2036/Journal2036Page';
 import { AssessmentRadarPreviewPage } from './preview/assessmentRadar/AssessmentRadarPreview';
 import { AssessmentSpherePreview } from './preview/assessmentSphere/AssessmentSpherePreview';
@@ -443,7 +444,7 @@ export default function App() {
   }, [halfOffParams]);
 
   return (
-    <>
+    <IndexCardProvider>
     <SeatSessionChrome />
     <LegacyAccessNotice />
     <PaymentGraceBanner />
@@ -825,6 +826,6 @@ export default function App() {
     </Routes>
     <OneDriveConnectResume />
     </InviteDoor>
-    </>
+    </IndexCardProvider>
   );
 }

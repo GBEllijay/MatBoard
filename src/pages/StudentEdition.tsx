@@ -75,6 +75,7 @@ import { StudentFaqPage } from './Faq';
 import { ProfileReportPage } from './student/ProfileReport';
 import { StudentLicenseClaimPage } from './student/StudentLicenseClaim';
 import { highlightParts, techniqueLineHits, videosForTechnique } from '../lib/journalIndex';
+import { IndexTermText } from '../indexCards/IndexTermLink';
 import { pageLabel, paginateJournal } from '../lib/journalPages';
 import { TechniqueLines, blankTechniqueLines, techniqueLinesFrom } from './student/TechniqueLines';
 import { EMPTY_EXTRAS, MatTimeField, SessionExtras, extrasDraft, extrasFromCard, matTimeLine, type SessionExtrasValue } from './student/MatTime';
@@ -547,8 +548,8 @@ function JournalList() {
                 if (!game) return null;
                 return (
                   <p key={tag}>
-                    <strong>{gameLetter(tag)} game.</strong> {game.techniques || 'No techniques yet'}
-                    {game.notes ? ` — ${game.notes}` : ''}
+                    <strong>{gameLetter(tag)} game.</strong> <IndexTermText text={game.techniques || 'No techniques yet'} />
+                    {game.notes ? <> — <IndexTermText text={game.notes} /></> : null}
                   </p>
                 );
               })}
@@ -571,11 +572,11 @@ function JournalList() {
                 <p key={`${hit.entryId}-${index}`}>
                   <Link to={to(`/student/cards/${hit.entryId}?q=${encodeURIComponent(query.trim())}`)}>{formatJournalDate(hit.date)}</Link>
                   {' · '}
-                  <Highlighted text={hit.name} query={query} />
+                  <IndexTermText text={hit.name} query={query} />
                   {hit.note ? (
                     <>
                       {' — What I learned: '}
-                      <Highlighted text={hit.note} query={query} />
+                      <IndexTermText text={hit.note} query={query} />
                     </>
                   ) : null}
                 </p>
@@ -840,7 +841,7 @@ function JournalPages({ lines, query }: { lines: string[]; query: string }) {
           </span>
           {rows.map((row, at) => (
             <p key={at} className={row.lead ? 'binder-page__row' : 'binder-page__row binder-page__row--cont'}>
-              <Highlighted text={row.text} query={query} />
+              <IndexTermText text={row.text} query={query} />
             </p>
           ))}
           <p className="binder-page__number">{pageLabel(index, pages.length)}</p>
@@ -858,7 +859,9 @@ function Amendments({ card }: { card: JournalCardView }) {
       {card.amendments.map((item) => (
         <article key={item.id} className="student-amend">
           <time dateTime={item.date}>{formatJournalDate(item.date)}</time>
-          <p>{item.body}</p>
+          <p>
+            <IndexTermText text={item.body} />
+          </p>
         </article>
       ))}
     </section>

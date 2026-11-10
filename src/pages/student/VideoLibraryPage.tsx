@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { IndexTermLink } from '../../indexCards/IndexTermLink';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { DeviceMediaInput } from '../../components/DeviceMediaInput';
 import { loadAcademyLink, loadPersonalDrive, providerLabel, type StudentDriveLink } from '../../lib/academyPathway';
@@ -512,7 +513,9 @@ function FilmedList({ query, tick, onChange }: { query: string; tick: number; on
                 </div>
               </>
             ) : (
-              <h3>{label}</h3>
+              <h3>
+                <IndexTermLink name={label} />
+              </h3>
             )}
             <p className="student-quiet">
               {film.fileName}

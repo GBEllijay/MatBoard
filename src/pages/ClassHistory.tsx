@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { IndexTermLink } from '../indexCards/IndexTermLink';
 import { useNavigate } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { DriveMediaPicker } from '../components/DriveMediaPicker';
@@ -240,7 +241,9 @@ export function ClassHistoryPage() {
                 {day.techniques.length ? (
                   <ul className="history__list">
                     {day.techniques.map((title) => (
-                      <li key={title}>{title}</li>
+                      <li key={title}>
+                        <IndexTermLink name={title} />
+                      </li>
                     ))}
                   </ul>
                 ) : (

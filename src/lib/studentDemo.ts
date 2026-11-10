@@ -58,10 +58,14 @@ export function studentDemoRequested(): boolean {
   return explicitStudentDemo(readDemoSearch());
 }
 
+/** Same key as indexCards. Duplicated so this guard does not import that module. */
+const STUDENT_INDEX_CARDS_GUARD_KEY = 'matboard.studentEdition.indexCards.v1';
+
 const STUDENT_GUARD_KEYS = new Set([
   STUDENT_FILE_STORAGE_KEY,
   STUDENT_ASSESSMENT_GUARD_KEY,
   STUDENT_BACKUP_STAMP_GUARD_KEY,
+  STUDENT_INDEX_CARDS_GUARD_KEY,
 ]);
 
 let demoSeedProvider: () => string = () => '';

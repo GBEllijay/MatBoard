@@ -1,0 +1,13 @@
+/* One treatment for every indexed term. The underline means the term is on the D8. */
+a.index-term {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+a.index-term:focus-visible {
+  outline: 3px solid #6ea8ff;
+  outline-offset: 2px;
+}
