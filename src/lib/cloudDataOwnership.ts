@@ -55,7 +55,8 @@ export function cloudPathScope(relativePath: string): CloudDataScope {
 }
 
 export function isStudentPersonalStorageKey(key: string): boolean {
-  return (STUDENT_PERSONAL_STORAGE_KEYS as readonly string[]).includes(key);
+  if ((STUDENT_PERSONAL_STORAGE_KEYS as readonly string[]).includes(key)) return true;
+  return STUDENT_PERSONAL_STORAGE_KEYS.some((base) => key.startsWith(`${base}::profile:`));
 }
 
 export function isInstructorPersonalStorageKey(key: string): boolean {

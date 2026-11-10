@@ -23,6 +23,8 @@ import {
   cloudPartPlan,
   cloudRelativePath,
   cloudTooLargeMessage,
+  academyCloudTileVisible,
+  cloudUsageFigures,
   cloudUsageLine,
   formatCloudBytes,
   readCloudMediaHome,
@@ -144,6 +146,28 @@ test('the bucket cap defaults to 8 GB and a full upload says so in plain words',
   assert.equal(cloudCapBytes('nope'), DEFAULT_CLOUD_CAP_BYTES);
   assert.equal(DEFAULT_MAX_UPLOAD_BYTES, 512_000_000);
   assert.equal(formatCloudBytes(8_000_000_000), '8 GB');
+  assert.deepEqual(cloudUsageFigures(null), [{ value: '…', unit: '', label: 'Advantage Cloud' }]);
+  assert.deepEqual(cloudUsageFigures({ phase: 'unbound' }), [{ value: '—', unit: '', label: 'Not connected' }]);
+  assert.deepEqual(cloudUsageFigures({ phase: 'error' }), [{ value: '—', unit: '', label: 'Could not read Cloud usage' }]);
+  assert.equal(academyCloudTileVisible({ owner: true, cloudEntitled: true, lapsed: false }), true);
+  assert.equal(academyCloudTileVisible({ owner: true, cloudEntitled: false, lapsed: false }), false);
+  assert.equal(academyCloudTileVisible({ owner: false, cloudEntitled: true, lapsed: false }), false);
+  assert.equal(academyCloudTileVisible({ owner: true, cloudEntitled: true, lapsed: true }), false);
+  assert.deepEqual(cloudUsageFigures({ phase: 'connected' }), [{ value: '—', unit: '', label: 'Sign in' }]);
+  assert.deepEqual(cloudUsageFigures({ phase: 'unavailable' }), [{ value: '—', unit: '', label: 'Not on this license' }]);
+  assert.deepEqual(
+    cloudUsageFigures({
+      phase: 'ready',
+      canUpload: true,
+      licenseUsedBytes: 96_000_000,
+      bucketUsedBytes: 397_000_000,
+      capBytes: 8_000_000_000,
+    }),
+    [
+      { value: '96', unit: 'MB', label: 'This license' },
+      { value: '397', unit: 'MB', label: 'of 8 GB' },
+    ],
+  );
   assert.match(cloudUsageLine(1200, 8_000_000_000, 8_000_000_000), /This license is using 1\.2 KB/);
   assert.match(cloudUsageLine(1200, 8_000_000_000, 8_000_000_000), /8 GB of 8 GB/);
   assert.match(cloudFullMessage(8_000_000_000, 8_000_000_000), /Advantage Cloud is full/);
@@ -188,6 +212,8 @@ test('Advantage Cloud is an added choice and does not replace Drive, OneDrive, o
   assert.doesNotMatch(gallery, /createMultipartUpload/);
   assert.match(panel, /if \(!status\?\.cloud\) return null/);
   assert.match(panel, /Upload a video/);
+  assert.match(panel, /isDailyPhoto/);
+  assert.match(panel, /notifyCloudMedia/);
   assert.match(panel, /Upload lesson media/);
   assert.match(panel, /Play/);
   assert.match(panel, /Download/);
@@ -243,6 +269,15 @@ test('the head instructor home says when Cloud is unbound, connected, or how ful
     assert.equal(ready.capBytes, 8000000000);
     assert.match(cloudHomeStatusLine(ready), /1\.8 MB/);
   }
+  const missingBytes = await loadAdvantageCloudHome(async (input) => {
+    const url = String(input);
+    if (url.includes('probe=1')) return new Response(JSON.stringify({ ok: true, bound: true }), { status: 200 });
+    return new Response(JSON.stringify({ ok: true, cloud: true, canUpload: true }), { status: 200 });
+  });
+  assert.equal(missingBytes.phase, 'error');
+  assert.equal(cloudHomeStatusLine(missingBytes), CLOUD_HOME_ERROR);
+  assert.match(CLOUD_HOME_ERROR, /Could not read Cloud usage/);
+  assert.doesNotMatch(cloudHomeStatusLine(missingBytes), /0 B|96 MB|397 MB/);
 
   const refused = await loadAdvantageCloudHome(async (input) => {
     const url = String(input);

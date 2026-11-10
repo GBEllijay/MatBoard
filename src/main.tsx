@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { installStudentMockGuard } from './lib/studentDemo';
+import { installStudentProfileScope } from './lib/studentProfiles';
 import { initMatchSync } from './lib/matchStore';
 import { settleOneDriveRedirect } from './lib/oneDriveAuth';
 import { initRankingSync } from './lib/rankingStore';
@@ -14,6 +15,9 @@ import { setPlaybackAudioSession, watchInstalledPersistence } from './lib/offlin
 import './index.css';
 
 installStudentMockGuard();
+// After the demo guard, so ?student=1 still overlays the default profile
+// and every other profile is stored under its own keys.
+installStudentProfileScope();
 initMatchSync();
 initTournamentSync();
 initRosterSync();

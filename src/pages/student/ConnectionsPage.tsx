@@ -45,6 +45,7 @@ import {
 import { runStudentEditionExport } from '../../lib/studentBackupExport';
 import { backupStampLabel, readStudentBackupStamp } from '../../lib/studentBackupStamp';
 import { clearFilmBlobs, putFilmBlob } from '../../lib/studentFilm';
+import { backupRestoreProfileId } from '../../lib/studentProfiles';
 import { StudentMarks, useStudentPath } from './chrome';
 import { AcademyConnect } from './AcademyConnect';
 import { ExportChoices } from './ExportChoices';
@@ -322,12 +323,13 @@ function ExportAndPrint({
     setBusy(true);
     setError('');
     try {
-      if (mode === 'replace') await clearFilmBlobs().catch(() => undefined);
+      const profileId = backupRestoreProfileId(localStorage, pending);
+      if (mode === 'replace') await clearFilmBlobs(profileId).catch(() => undefined);
       const result = applyBackupToMemory(localStorage, pending, mode, {
         rank: loadRankPictures(),
         bracket: loadBracketPhotos(),
       });
-      for (const item of filmBlobsFromBackup(pending)) await putFilmBlob(item.id, item.blob);
+      for (const item of filmBlobsFromBackup(pending)) await putFilmBlob(item.id, item.blob, profileId);
       setStatus('');
       setSavedNote(result.note);
       setSavedPulse((pulse) => pulse + 1);

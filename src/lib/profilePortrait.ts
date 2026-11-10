@@ -6,12 +6,18 @@
  */
 
 import { canvasBlob, openStill, type StillSource } from './phoneStill.ts';
+import { DEFAULT_STUDENT_PROFILE_ID, readActiveStudentProfileId } from './studentProfiles.ts';
 import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 const PORTRAIT_KEY = 'matboard.studentPortrait.v1';
 const DB_NAME = 'matboard.studentPortrait';
 const DB_STORE = 'portrait';
-const DB_ID = 'selfie';
+
+/** The original selfie record stays the default profile. Other profiles use their own id. */
+export function portraitMirrorId(profileId = readActiveStudentProfileId()): string {
+  if (!profileId || profileId === DEFAULT_STUDENT_PROFILE_ID) return 'selfie';
+  return `selfie:${profileId}`;
+}
 
 export const PORTRAIT_MAX_EDGE = 320;
 export const PORTRAIT_MAX_CHARS = 70_000;
@@ -205,7 +211,7 @@ async function idbPut(value: string): Promise<void> {
   await new Promise<void>((resolve) => {
     try {
       const tx = db.transaction(DB_STORE, 'readwrite');
-      tx.objectStore(DB_STORE).put(value, DB_ID);
+      tx.objectStore(DB_STORE).put(value, portraitMirrorId());
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
     } catch {
@@ -221,7 +227,24 @@ async function idbDelete(): Promise<void> {
   await new Promise<void>((resolve) => {
     try {
       const tx = db.transaction(DB_STORE, 'readwrite');
-      tx.objectStore(DB_STORE).delete(DB_ID);
+      tx.objectStore(DB_STORE).delete(portraitMirrorId());
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+  db.close();
+}
+
+/** Remove one profile's IndexedDB copy. The default profile's selfie record stays unless that id is passed. */
+export async function forgetProfilePortraitMirror(profileId: string): Promise<void> {
+  const db = await idbOpen();
+  if (!db) return;
+  await new Promise<void>((resolve) => {
+    try {
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).delete(portraitMirrorId(profileId));
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
     } catch {

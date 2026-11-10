@@ -9,10 +9,13 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { GymCharacterSheet } from './GymCharacterSheet.tsx';
+import { CLOUD_ROLE_HOME } from '../lib/advantageCloudMedia.ts';
+import { ADVANTAGE_CLOUD_DRIVE_NOTE } from '../lib/productNames.ts';
 import { clearGymLogo, readGymLogo, writeGymLogo } from '../lib/gymLogo.ts';
 import { GYM_NAME_STORAGE_KEY, readGymName, writeGymName } from '../lib/gymName.ts';
 import { readGymProfile, writeGymProfile } from '../lib/gymProfile.ts';
 import { installAcceptedSeat, signOutInstructorSeat } from '../lib/instructorSeats.ts';
+import { applyOwnerTestGrant, clearOwnerTestGrant } from '../lib/ownerTestGrant.ts';
 import { getSchedule, setBoardTitle } from '../lib/scheduleStore.ts';
 
 const dom = new Window({ url: 'http://localhost/pro' });
@@ -41,6 +44,7 @@ function blankProfile() {
   clearGymLogo();
   writeGymName('');
   signOutInstructorSeat();
+  clearOwnerTestGrant();
 }
 
 async function renderSheet(path = '/pro') {
@@ -326,4 +330,170 @@ test('count tiles open the existing screens and do not change the saved profile'
   assert.equal(readGymProfile().founders, 'Teacher A');
   assert.equal(readGymProfile().lineage, 'Founded under Teacher A.');
   await sheet.unmount();
+});
+
+const CLOUD_TOKEN_KEY = 'advantage.entitlement.token';
+const CLOUD_HOME_KEY = 'matboard.plusCloud.mediaHome.v1';
+
+function cloudStatusResponse(): Response {
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      cloud: true,
+      canUpload: true,
+      licenseUsedBytes: 96_000_000,
+      bucketUsedBytes: 397_000_000,
+      capBytes: 8_000_000_000,
+    }),
+    { status: 200, headers: { 'content-type': 'application/json' } },
+  );
+}
+
+async function settle() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+}
+
+test('a Cloud owner sees usage on the academy card and the details keep the cream-card actions', async () => {
+  blankProfile();
+  writeGymName('North Academy');
+  const previousFetch = globalThis.fetch;
+  const calls: string[] = [];
+  applyOwnerTestGrant({
+    grants: ['pro', 'coach', 'media', 'student', 'white'],
+    expiresAt: '2099-01-01T00:00:00.000Z',
+    tier: 'pro',
+  });
+  localStorage.setItem(CLOUD_TOKEN_KEY, 'signed-token');
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.includes('probe=1')) return new Response(JSON.stringify({ ok: true, bound: true }), { status: 200 });
+    if (url.includes('/api/gym/cloud')) return cloudStatusResponse();
+    if (url.includes('/api/token/refresh')) return new Response(JSON.stringify({ ok: false }), { status: 401 });
+    return new Response(JSON.stringify({ ok: true, events: [], cursor: 0 }), { status: 200 });
+  }) as typeof fetch;
+
+  try {
+    const sheet = await renderSheet('/pro');
+    await settle();
+    const metric = sheet.host.querySelector('[data-testid="cloud-usage-metric"]') as HTMLButtonElement;
+    assert.ok(metric);
+    assert.equal(metric.getAttribute('aria-haspopup'), 'dialog');
+    assert.equal(metric.getAttribute('aria-expanded'), 'false');
+    assert.match(metric.textContent ?? '', /96/);
+    assert.match(metric.textContent ?? '', /MB/);
+    assert.match(metric.textContent ?? '', /This license/);
+    assert.match(metric.textContent ?? '', /397/);
+    assert.match(metric.textContent ?? '', /of 8 GB/);
+    assert.equal(sheet.host.querySelector('[data-zone="stats"]')?.querySelector('[data-testid="cloud-usage-metric"]'), null);
+    const tenure = sheet.host.querySelector('[data-zone="tenure"]');
+    const cloudZone = sheet.host.querySelector('[data-zone="cloud"]');
+    assert.ok(tenure && cloudZone);
+    assert.equal(tenure?.nextElementSibling, cloudZone);
+    assert.equal(cloudZone?.querySelector('[data-testid="cloud-usage-metric"]'), metric);
+    assert.equal(sheet.host.querySelector('.cloud-home'), null);
+    assert.equal(document.querySelector('[role="dialog"]'), null);
+    assert.match(metric.getAttribute('aria-label') ?? '', /This license is using 96 MB/);
+    assert.match(metric.getAttribute('aria-label') ?? '', /397 MB of 8 GB/);
+
+    await act(async () => {
+      metric.click();
+    });
+    const dialog = document.querySelector('[role="dialog"]');
+    assert.ok(dialog);
+    assert.equal(metric.getAttribute('aria-expanded'), 'true');
+    assert.match(dialog?.textContent ?? '', /This license is using 96 MB/);
+    assert.match(dialog?.textContent ?? '', /Advantage Cloud is using 397 MB of 8 GB/);
+    assert.ok((dialog?.textContent ?? '').includes(CLOUD_ROLE_HOME));
+    assert.match(dialog?.textContent ?? '', /assistant coach can play and download/i);
+    assert.match(dialog?.textContent ?? '', /does not need Google Drive or OneDrive/);
+    assert.equal(ADVANTAGE_CLOUD_DRIVE_NOTE.includes('does not need Google Drive or OneDrive'), true);
+    assert.match(dialog?.textContent ?? '', /Check again/);
+    assert.match(dialog?.textContent ?? '', /Upload daily videos and photos/);
+    assert.equal(dialog?.querySelector('[data-cloud-daily-upload]')?.getAttribute('accept'), 'image/*,video/*');
+    assert.match(dialog?.textContent ?? '', /Upload lesson-plan media/);
+    assert.equal(dialog?.querySelector('.cloud-home'), null);
+
+    const before = calls.filter((url) => url.includes('/api/gym/cloud')).length;
+    const again = [...(dialog?.querySelectorAll('button') ?? [])].find((button) => button.textContent === 'Check again');
+    assert.ok(again);
+    await act(async () => {
+      again.click();
+    });
+    await settle();
+    assert.ok(calls.filter((url) => url.includes('/api/gym/cloud')).length > before);
+    assert.match(document.querySelector('[role="dialog"]')?.textContent ?? '', /397 MB of 8 GB/);
+
+    const close = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Close');
+    await act(async () => {
+      close?.click();
+    });
+    assert.equal(document.querySelector('[role="dialog"]'), null);
+    assert.equal(sheet.host.querySelector('[data-testid="cloud-usage-metric"]'), metric);
+    await sheet.unmount();
+  } finally {
+    globalThis.fetch = previousFetch;
+    localStorage.removeItem(CLOUD_TOKEN_KEY);
+    localStorage.removeItem(CLOUD_HOME_KEY);
+    clearOwnerTestGrant();
+  }
+});
+
+test('Drive, OneDrive, and no-cloud academies do not see the usage tile or the cream card', async () => {
+  blankProfile();
+  writeGymName('North Academy');
+  localStorage.setItem(
+    'matboard.pro.googleDriveFolder.v1',
+    JSON.stringify({ folderId: 'folder-1', folderName: 'Academy Drive', email: 'owner@gym.test' }),
+  );
+  const drive = await renderSheet('/pro');
+  assert.equal(drive.host.querySelector('[data-testid="cloud-usage-metric"]'), null);
+  assert.equal(drive.host.querySelector('[data-zone="cloud"]'), null);
+  assert.equal(drive.host.querySelector('.cloud-home'), null);
+  await drive.unmount();
+  localStorage.removeItem('matboard.pro.googleDriveFolder.v1');
+
+  localStorage.setItem(
+    'matboard.pro.oneDriveFolder.v1',
+    JSON.stringify({ folderId: 'one-1', folderName: 'Academy OneDrive' }),
+  );
+  const one = await renderSheet('/pro');
+  assert.equal(one.host.querySelector('[data-testid="cloud-usage-metric"]'), null);
+  assert.equal(one.host.querySelector('.cloud-home'), null);
+  await one.unmount();
+  localStorage.removeItem('matboard.pro.oneDriveFolder.v1');
+
+  const none = await renderSheet('/pro');
+  assert.equal(none.host.querySelector('[data-testid="cloud-usage-metric"]'), null);
+  assert.equal(none.host.querySelector('.cloud-home'), null);
+  await none.unmount();
+});
+
+test('a non-Cloud owner and a signed-in seat do not get the Cloud metric', async () => {
+  blankProfile();
+  writeGymName('North Academy');
+  const plain = await renderSheet('/pro');
+  assert.equal(plain.host.querySelector('[data-testid="cloud-usage-metric"]'), null);
+  assert.equal(plain.host.querySelector('.cloud-home'), null);
+  await plain.unmount();
+
+  applyOwnerTestGrant({
+    grants: ['pro'],
+    expiresAt: '2099-01-01T00:00:00.000Z',
+    tier: 'pro',
+  });
+  installAcceptedSeat({
+    id: 'seat-coach',
+    email: 'coach@example.test',
+    presetId: 'coach',
+    inviteToken: 'tok-seat-coach',
+  });
+  const seated = await renderSheet('/pro-plus-cloud');
+  assert.equal(seated.host.querySelector('[data-testid="cloud-usage-metric"]'), null);
+  assert.equal(seated.host.querySelector('[data-testid="academy-edit"]'), null);
+  await seated.unmount();
+  signOutInstructorSeat();
+  clearOwnerTestGrant();
 });
