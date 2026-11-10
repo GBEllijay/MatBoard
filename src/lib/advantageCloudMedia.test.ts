@@ -108,7 +108,10 @@ test('cloud paths stay on the gym tree and refuse a public or escaped key', () =
   assert.equal(lesson.ok && lesson.path, 'lessons/current/2026-W45/2026-11-03.json');
   assert.equal(media.ok && media.path, 'lessons/current/2026-W45/media/2026-11-03/demo-clip.mp4');
   assert.equal(cloudObjectKey('lic_owner-1', daily.ok ? daily.path : ''), 'groups/lic_owner-1/videos/daily/2026-11-03/armbar.mp4');
-  assert.equal(cloudObjectKey('lic_owner-1', 'gallery/approved/2026-11-03/photo.jpg'), null);
+  assert.equal(
+    cloudObjectKey('lic_owner-1', 'gallery/approved/2026-11-03/photo.jpg'),
+    'groups/lic_owner-1/gallery/approved/2026-11-03/photo.jpg',
+  );
   assert.equal(cloudObjectKey('lic_owner-1', '../secret'), null);
   assert.equal(cloudObjectKey('bad id', 'videos/daily/2026-11-03/armbar.mp4'), null);
   assert.equal(cloudListPrefix('lesson', '2026-11-03')?.plan, 'lessons/current/2026-W45/2026-11-03.json');

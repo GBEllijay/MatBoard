@@ -5,7 +5,7 @@
  */
 
 import { cloudPathScope } from './cloudDataOwnership.ts';
-import { lessonMediaPath, lessonWeekId, routeUpload, isCalendarDateKey, type GymActor } from './gymTree.ts';
+import { lessonMediaPath, lessonWeekId, routeUpload, isCalendarDateKey, safePathSegment, type GymActor } from './gymTree.ts';
 
 /** Same storage key as src/lib/entitlement.ts. Kept here so the server handler does not import the browser entitlement module. */
 const ENTITLEMENT_TOKEN_KEY = 'advantage.entitlement.token';
@@ -38,7 +38,15 @@ export const CLOUD_HOME_CONNECTED =
 export const CLOUD_ROLE_HOME =
   'The gym owner, a Coach, and Instructors can upload daily videos and lesson-plan media. An assistant coach can play and download them. A program director can send videos to today\'s daily videos, without opening lesson plans.';
 
-export type CloudMediaPurpose = 'daily-video' | 'lesson' | 'lesson-media' | 'replay-pending';
+export type CloudMediaPurpose =
+  | 'daily-video'
+  | 'lesson'
+  | 'lesson-media'
+  | 'replay-pending'
+  | 'gallery'
+  | 'instructor-video'
+  | 'instructor-photo'
+  | 'from-instructor';
 export type CloudMediaHome = 'device' | 'advantage-cloud';
 
 export type CloudAccess = { read: boolean; upload: boolean };
@@ -226,6 +234,9 @@ const PENDING_STATUS_KEY = /^pending\/status\/[A-Za-z0-9_-]{1,80}\/\d{4}-\d{2}-\
 const LESSON_MEDIA_KEY = /^lessons\/current\/\d{4}-W\d{2}\/media\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
 const SKIN_IMAGE_KEY = /^skins\/[a-z0-9]{8,40}$/;
 const SKIN_META_KEY = /^skins\/[a-z0-9]{8,40}\.json$/;
+const GALLERY_KEY = /^gallery\/(pending|approved|rejected)\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
+const INSTRUCTOR_FOLDER_KEY = /^instructors\/[A-Za-z0-9_-]{1,80}\/(videos|photos)\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
+const FROM_INSTRUCTOR_KEY = /^students\/[A-Za-z0-9][A-Za-z0-9._-]{0,79}\/from-instructor\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
 
 /** Uploaded skins per license. The bytes still use the bucket cap below. */
 export const CUSTOM_SKIN_CLOUD_CAP = 10;
@@ -257,13 +268,133 @@ export function cloudObjectKey(licenseId: string, relativePath: string): string 
     !SKIN_IMAGE_KEY.test(relativePath) &&
     !SKIN_META_KEY.test(relativePath) &&
     !PENDING_REPLAY_KEY.test(relativePath) &&
-    !PENDING_STATUS_KEY.test(relativePath)
+    !PENDING_STATUS_KEY.test(relativePath) &&
+    !GALLERY_KEY.test(relativePath) &&
+    !INSTRUCTOR_FOLDER_KEY.test(relativePath) &&
+    !FROM_INSTRUCTOR_KEY.test(relativePath)
   ) {
     return null;
   }
-  // Gym media upload is academy material only. A shared copy uses the inbox.
-  if (cloudPathScope(relativePath) !== 'academy') return null;
+  const scope = cloudPathScope(relativePath);
+  // A from-instructor file is a shared copy, and it still counts against the bucket cap.
+  if (scope === 'refused') return null;
+  if (scope === 'shared' && !FROM_INSTRUCTOR_KEY.test(relativePath)) return null;
+  if (scope !== 'academy' && !FROM_INSTRUCTOR_KEY.test(relativePath)) return null;
   return `groups/${licenseId}/${relativePath}`;
+}
+
+export type GalleryCloudLane = 'pending' | 'approved' | 'rejected';
+
+/**
+ * Owner photos go straight to approved. Coach and Instructors seats land in
+ * pending so the owner or an Instructors seat can approve them. Assistant
+ * coaches and program directors do not upload class photos.
+ */
+export function galleryUploadLane(input: { kind: 'owner' | 'seat'; preset?: string | null }): 'pending' | 'approved' | null {
+  if (input.kind === 'owner') return 'approved';
+  if (input.preset === 'coach' || input.preset === 'instructors') return 'pending';
+  return null;
+}
+
+/** Owner, or an Instructors seat. A coach cannot approve their own upload. */
+export function galleryDecisionAllowed(input: { kind: 'owner' | 'seat'; preset?: string | null }): boolean {
+  if (input.kind === 'owner') return true;
+  return input.preset === 'instructors';
+}
+
+export function galleryCloudPath(lane: GalleryCloudLane, dateKey: string, fileName: string): string | null {
+  if (!isCalendarDateKey(dateKey)) return null;
+  const name = safePathSegment((fileName.split(/[/\\]/).pop() ?? '').trim(), 'class-photo');
+  const path = `gallery/${lane}/${dateKey}/${name}`;
+  return GALLERY_KEY.test(path) ? path : null;
+}
+
+export function parseGalleryCloudPath(path: string): { lane: GalleryCloudLane; dateKey: string; name: string } | null {
+  const match = /^gallery\/(pending|approved|rejected)\/(\d{4}-\d{2}-\d{2})\/([A-Za-z0-9._-]{1,80})$/.exec(path);
+  if (!match) return null;
+  const lane = match[1];
+  if (lane !== 'pending' && lane !== 'approved' && lane !== 'rejected') return null;
+  return { lane, dateKey: match[2], name: match[3] };
+}
+
+export function instructorCloudPath(
+  seatId: string,
+  kind: 'videos' | 'photos',
+  dateKey: string,
+  fileName: string,
+): string | null {
+  if (!SEAT_SEGMENT.test(seatId) || !isCalendarDateKey(dateKey)) return null;
+  if (kind !== 'videos' && kind !== 'photos') return null;
+  const name = safePathSegment((fileName.split(/[/\\]/).pop() ?? '').trim(), kind === 'videos' ? 'clip' : 'photo');
+  const path = `instructors/${seatId}/${kind}/${dateKey}/${name}`;
+  return INSTRUCTOR_FOLDER_KEY.test(path) ? path : null;
+}
+
+export function parseInstructorCloudPath(
+  path: string,
+): { seatId: string; kind: 'videos' | 'photos'; dateKey: string; name: string } | null {
+  const match = /^instructors\/([A-Za-z0-9_-]{1,80})\/(videos|photos)\/(\d{4}-\d{2}-\d{2})\/([A-Za-z0-9._-]{1,80})$/.exec(path);
+  if (!match || (match[2] !== 'videos' && match[2] !== 'photos')) return null;
+  return { seatId: match[1], kind: match[2], dateKey: match[3], name: match[4] };
+}
+
+/** A claimed seat reads and writes only its own folder. The owner reads every seat. */
+export function instructorFolderAccess(input: {
+  kind: 'owner' | 'seat';
+  seatId?: string;
+  targetSeatId: string;
+  mode: 'read' | 'write';
+}): boolean {
+  if (!SEAT_SEGMENT.test(input.targetSeatId)) return false;
+  if (input.mode === 'read' && input.kind === 'owner') return true;
+  return input.kind === 'seat' && Boolean(input.seatId) && input.seatId === input.targetSeatId;
+}
+
+/** Owner, Coach, and Instructors. Assistant coach and program director cannot send. */
+export function canSendCloudFileToStudent(input: { kind: 'owner' | 'seat'; preset?: string | null }): boolean {
+  if (input.kind === 'owner') return true;
+  return input.preset === 'coach' || input.preset === 'instructors';
+}
+
+export function fromInstructorCloudPath(studentId: string, dateKey: string, fileName: string): string | null {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(studentId) || !isCalendarDateKey(dateKey)) return null;
+  const name = safePathSegment((fileName.split(/[/\\]/).pop() ?? '').trim(), 'file');
+  const path = `students/${studentId}/from-instructor/${dateKey}/${name}`;
+  return FROM_INSTRUCTOR_KEY.test(path) ? path : null;
+}
+
+export function parseFromInstructorCloudPath(path: string): { studentId: string; dateKey: string; name: string } | null {
+  const match = /^students\/([A-Za-z0-9][A-Za-z0-9._-]{0,79})\/from-instructor\/(\d{4}-\d{2}-\d{2})\/([A-Za-z0-9._-]{1,80})$/.exec(path);
+  if (!match) return null;
+  return { studentId: match[1], dateKey: match[2], name: match[3] };
+}
+
+export function isLessonMediaCloudPath(relativePath: string): boolean {
+  return LESSON_MEDIA_KEY.test(relativePath);
+}
+
+export function galleryDecisionPath(pendingPath: string, lane: 'approved' | 'rejected'): string | null {
+  const parsed = parseGalleryCloudPath(pendingPath);
+  if (!parsed || parsed.lane !== 'pending') return null;
+  const next = `gallery/${lane}/${parsed.dateKey}/${parsed.name}`;
+  return parseGalleryCloudPath(next) ? next : null;
+}
+
+/** True when this signed-in license has Advantage Cloud. A missing sign-in is off. */
+export async function advantageCloudReady(input?: { token?: string; fetcher?: CloudFetcher }): Promise<boolean> {
+  const token = input?.token ?? readCloudBearer();
+  if (!token) return false;
+  const fetcher = input?.fetcher ?? fetch;
+  try {
+    const response = await fetcher(cloudUrl('/api/gym/cloud?op=status'), {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return false;
+    const body = (await response.json()) as { cloud?: unknown };
+    return body.cloud === true;
+  } catch {
+    return false;
+  }
 }
 
 export function cloudRelativePath(input: {
@@ -272,7 +403,15 @@ export function cloudRelativePath(input: {
   dateKey: string;
   fileName: string;
 }): { ok: true; path: string } | { ok: false; error: string } {
-  if (input.purpose === 'replay-pending') return { ok: false, error: CLOUD_ROLE_MESSAGE };
+  if (
+    input.purpose === 'replay-pending' ||
+    input.purpose === 'gallery' ||
+    input.purpose === 'instructor-video' ||
+    input.purpose === 'instructor-photo' ||
+    input.purpose === 'from-instructor'
+  ) {
+    return { ok: false, error: CLOUD_ROLE_MESSAGE };
+  }
   if (input.purpose === 'lesson-media') {
     if (input.role === 'student' || input.role === 'program-director' || input.role === 'none') {
       return { ok: false, error: CLOUD_ROLE_MESSAGE };
@@ -488,6 +627,9 @@ export async function uploadAdvantageCloudFile(input: {
   mime: string;
   token?: string;
   fetcher?: CloudFetcher;
+  /** Gallery lane. The server still picks approved for the owner and pending for seats. */
+  lane?: 'pending' | 'approved';
+  studentId?: string;
   onProgress?: (sent: number, total: number) => void;
 }): Promise<CloudUploadResult> {
   const token = input.token ?? readCloudBearer();
@@ -504,6 +646,8 @@ export async function uploadAdvantageCloudFile(input: {
       fileName: input.fileName,
       size: input.file.size,
       mime: input.mime,
+      ...(input.lane ? { lane: input.lane } : {}),
+      ...(input.studentId ? { studentId: input.studentId } : {}),
     }),
   });
   if (!start.ok) return { ok: false, message: await readError(start, 'Advantage Cloud could not take that file.') };

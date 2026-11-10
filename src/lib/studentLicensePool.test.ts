@@ -38,7 +38,9 @@ test('student cloud scope is only that student\'s own files', () => {
   assert.equal(studentCloudPathAllowed(`students/${STUDENT}/photos/pending/photo-1.json`, STUDENT), true);
   assert.equal(studentCloudPathAllowed(`students/${STUDENT}/photos/approved/photo-1.png`, STUDENT), true);
   assert.equal(studentCloudPathAllowed(`students/${STUDENT}/events/open.json`, STUDENT), true);
+  assert.equal(studentCloudPathAllowed(`students/${STUDENT}/from-instructor/2026-11-04/clip.mp4`, STUDENT), true);
   assert.equal(studentCloudPathAllowed(`students/${STUDENT}/from-instructor/2026-11-04.json`, STUDENT), false);
+  assert.equal(studentCloudPathAllowed(`students/other-student/from-instructor/2026-11-04/clip.mp4`, STUDENT), false);
   assert.equal(studentCloudPathAllowed('lessons/current/2026-W45/2026-11-04.json', STUDENT), false);
   assert.equal(studentCloudPathAllowed('lessons/current/2026-W45/media/2026-11-04/clip.mp4', STUDENT), false);
   assert.equal(studentCloudPathAllowed('videos/daily/2026-11-04/class.mp4', STUDENT), false);

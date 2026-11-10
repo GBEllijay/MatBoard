@@ -4,8 +4,9 @@
  * 100-use checkout, not extra free licenses.
  *
  * Advantage Cloud scope for a claimed student (minimal):
- * - Allowed: that student's own inbox, photo submission, published photo, and
- *   tournament notices under groups/<gym>/students/<studentLicenseId>/.
+ * - Allowed: that student's own inbox, photo submission, published photo,
+ *   tournament notices, and from-instructor/{date}/{file} under
+ *   groups/<gym>/students/<studentLicenseId>/.
  * - Refused: coach lesson plans and lesson media, daily videos, skins, the gym
  *   roster, private coach notes, pending replay clips, and every other student's folder.
  * /api/gym/cloud and /api/gym/roster reject this pass outright.
@@ -81,6 +82,7 @@ export function studentCloudPathAllowed(relativePath: string, studentId: string)
   const root = `students/${studentId}/`;
   if (!relativePath.startsWith(root)) return false;
   const rest = relativePath.slice(root.length);
+  if (/^from-instructor\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/.test(rest)) return true;
   return STUDENT_PREFIXES.some((prefix) => {
     if (!rest.startsWith(prefix)) return false;
     const file = rest.slice(prefix.length);

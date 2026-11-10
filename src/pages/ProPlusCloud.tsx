@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { GalleryPendingBadge } from '../components/GalleryPendingNotice';
+import { useCurrentSeat } from '../components/SeatSessionBar';
 import { GymCharacterSheet } from '../components/GymCharacterSheet';
 import { InstructorSheet } from '../components/InstructorSheet';
 import { EditionLadder } from '../components/EditionLadder';
@@ -36,6 +38,7 @@ import './proHomeMenu.css';
  */
 export function ProPlusCloudPage() {
   const door = useSeatDoor();
+  const seat = useCurrentSeat();
   const hubs = consoleHubs(door, door.seat?.permissions ?? null).map((hub) =>
     hub.to === '/slideshow?folder=gallery' && hub.title === MEDIA_CONSOLE_NAME
       ? { ...hub, title: 'Advantage Media Edition' }
@@ -63,6 +66,7 @@ export function ProPlusCloudPage() {
             <InstructorSheet />
           ) : null}
           <PlusCloudConduct />
+          {!seat ? <GalleryPendingBadge /> : null}
           <Link className="pro-hub" to="/white" data-pro-entry="white">
             <BeltRail kind="white" />
             <span>Advantage White</span>
