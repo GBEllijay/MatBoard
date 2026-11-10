@@ -1,5 +1,6 @@
 /**
- * Opponent ratings use the same seven areas and 1–5 scale as self-assessment.
+ * Opponent ratings use the same 1–5 scale as self-assessment.
+ * Sweeps is optional. A card saved before that area loads with Sweeps blank.
  * A higher score for the student is favored. An equal score is even.
  * A lower score is a disadvantage. Areas missing on either side are left out.
  */
@@ -12,22 +13,28 @@ import {
   type AssessmentScores,
 } from './studentAssessment.ts';
 
-export type AreaRatings = Partial<Record<AssessmentAreaId, AssessmentScore>>;
+export type ScoutAreaId = AssessmentAreaId | 'sweeps';
+export type AreaRatings = Partial<Record<ScoutAreaId, AssessmentScore>>;
 export type AreaBalance = 'favored' | 'even' | 'disadvantage';
 
 export type AreaMatchup = {
-  id: AssessmentAreaId;
+  id: ScoutAreaId;
   label: string;
   mine: AssessmentScore;
   theirs: AssessmentScore;
   balance: AreaBalance;
 };
 
+const MATCHUP_AREAS: readonly { id: ScoutAreaId; label: string }[] = [
+  ...ASSESSMENT_AREAS,
+  { id: 'sweeps', label: 'Sweeps' },
+];
+
 export function cleanRatings(value: unknown): AreaRatings {
   if (!value || typeof value !== 'object') return {};
   const row = value as Record<string, unknown>;
   const ratings: AreaRatings = {};
-  for (const area of ASSESSMENT_AREAS) {
+  for (const area of MATCHUP_AREAS) {
     const raw = row[area.id];
     const score = typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : raw;
     if (isAssessmentScore(score)) ratings[area.id] = score;
@@ -42,7 +49,7 @@ export function isCompleteRatings(ratings: AreaRatings | null | undefined): rati
 
 export function compareToOpponent(mine: AreaRatings | null | undefined, theirs: AreaRatings | null | undefined): AreaMatchup[] {
   const rows: AreaMatchup[] = [];
-  for (const area of ASSESSMENT_AREAS) {
+  for (const area of MATCHUP_AREAS) {
     const mineScore = mine?.[area.id];
     const theirScore = theirs?.[area.id];
     if (!isAssessmentScore(mineScore) || !isAssessmentScore(theirScore)) continue;

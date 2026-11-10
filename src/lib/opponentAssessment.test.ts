@@ -42,10 +42,12 @@ test('comparison marks favored, even, and disadvantage and skips a missing area'
 });
 
 test('ratings keep 1 through 5 and drop anything else', () => {
-  assert.deepEqual(cleanRatings({ guard: 4, passing: '2', takedowns: 9, escapes: '0', submissions: '', mindset: 'no' }), {
+  assert.deepEqual(cleanRatings({ guard: 4, passing: '2', takedowns: 9, escapes: '0', submissions: '', mindset: 'no', sweeps: '3' }), {
     guard: 4,
     passing: 2,
+    sweeps: 3,
   });
+  assert.equal(cleanRatings({ sweeps: 9 }).sweeps, undefined);
   assert.deepEqual(cleanRatings(null), {});
   assert.equal(isCompleteRatings({ guard: 1, passing: 2, takedowns: 3, escapes: 4, submissions: 5, conditioning: 1, mindset: 2 }), true);
   assert.equal(isCompleteRatings({ guard: 1 }), false);

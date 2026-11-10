@@ -1,13 +1,16 @@
 /**
- * Opponent scouting cards. They stay on this phone, like the coach roster.
- * CSV import and export use the coach roster columns, plus Style, Class,
- * the seven rating columns, and optional Strengths and Weaknesses.
- * A file without the rating columns still imports.
+ * Opponent card archive. Cards stay on this phone.
+ * CSV import and export use the shared name columns, plus Style, Class,
+ * eight rating columns, Strengths, Weaknesses, and Record.
+ * A file without the newer columns still imports. Sweeps stays blank
+ * on a card saved before that area existed.
  */
 
+import { competitionOf } from './progress/competition.ts';
 import type { CompetitionResult } from './progress/types.ts';
-import { ASSESSMENT_AREAS } from './studentAssessment.ts';
-import { cleanRatings, type AreaRatings } from './opponentAssessment.ts';
+import { loadStudentReport } from './studentEdition.ts';
+import { isAssessmentScore } from './studentAssessment.ts';
+import { cleanRatings, type AreaRatings, type ScoutAreaId } from './opponentAssessment.ts';
 import {
   COMPETITOR_GYM_LABEL,
 } from './coachCopy.ts';
@@ -28,6 +31,33 @@ export const SCOUTING_STORAGE_KEY = 'matboard.studentEdition.scouting.v1';
 export const SCOUT_GROUPS = ['weight', 'open'] as const;
 export type ScoutGroup = (typeof SCOUT_GROUPS)[number];
 
+export const SCOUT_RESULTS = ['win', 'loss', 'draw'] as const;
+export type ScoutResult = (typeof SCOUT_RESULTS)[number];
+
+/** One result against this opponent. Date, event, and method can be blank. */
+export type ScoutBout = {
+  id: string;
+  result: ScoutResult;
+  date: string;
+  event: string;
+  method: string;
+};
+
+export type ScoutBoutDraft = {
+  result: ScoutResult;
+  date?: string;
+  event?: string;
+  method?: string;
+};
+
+export type ScoutRecord = {
+  wins: number;
+  losses: number;
+  draws: number;
+  /** Wins-losses-draws, for example 3-1-0. */
+  line: string;
+};
+
 export type ScoutingCard = {
   id: string;
   name: string;
@@ -37,10 +67,12 @@ export type ScoutingCard = {
   group: ScoutGroup;
   style: string;
   notes: string;
-  /** Absent on cards saved before opponent ratings. Empty when nothing is rated. */
+  /** Absent areas are unrated. Older cards omit Sweeps. */
   ratings: AreaRatings;
   strengths: string;
   weaknesses: string;
+  /** Manual results. Older cards omit this and load as an empty list. */
+  bouts: ScoutBout[];
 };
 
 export type ScoutingDraft = {
@@ -54,6 +86,7 @@ export type ScoutingDraft = {
   ratings?: AreaRatings;
   strengths?: string;
   weaknesses?: string;
+  bouts?: readonly ScoutBout[];
 };
 
 export type ScoutingImport = {
@@ -66,9 +99,31 @@ export type ScoutingImport = {
 
 const SCOUT_EXTRA_HEADERS = ['Style', 'Class'] as const;
 const SCOUT_NOTE_HEADERS = ['Strengths', 'Weaknesses'] as const;
+const SCOUT_RECORD_HEADER = 'Record';
+
+/**
+ * Export labels stay the short names an older file already uses.
+ * Sweeps is the added column. Import also accepts Guard/Control and Escapes/Defense.
+ */
+const RATING_COLUMNS: readonly { id: ScoutAreaId; label: string; keys: readonly string[] }[] = [
+  { id: 'guard', label: 'Guard', keys: ['guard', 'guard control'] },
+  { id: 'passing', label: 'Passing', keys: ['passing'] },
+  { id: 'sweeps', label: 'Sweeps', keys: ['sweeps'] },
+  { id: 'takedowns', label: 'Takedowns', keys: ['takedowns'] },
+  { id: 'escapes', label: 'Escapes', keys: ['escapes', 'escapes defense'] },
+  { id: 'submissions', label: 'Submissions', keys: ['submissions'] },
+  { id: 'conditioning', label: 'Conditioning', keys: ['conditioning'] },
+  { id: 'mindset', label: 'Mindset', keys: ['mindset'] },
+];
 
 function scoutingCsvHeader(): string[] {
-  return [...ROSTER_CSV_HEADERS, ...SCOUT_EXTRA_HEADERS, ...ASSESSMENT_AREAS.map((area) => area.label), ...SCOUT_NOTE_HEADERS];
+  return [
+    ...ROSTER_CSV_HEADERS,
+    ...SCOUT_EXTRA_HEADERS,
+    ...RATING_COLUMNS.map((area) => area.label),
+    ...SCOUT_NOTE_HEADERS,
+    SCOUT_RECORD_HEADER,
+  ];
 }
 
 function clip(value: string, max: number): string {
@@ -77,6 +132,40 @@ function clip(value: string, max: number): string {
 
 function newId(now: number): string {
   return `scout.${now.toString(36)}.${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function boutId(now: number): string {
+  return `bout.${now.toString(36)}.${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function cleanDate(value: string): string {
+  const text = value.trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
+}
+
+function cleanBout(value: unknown, fallbackId?: string): ScoutBout | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Partial<ScoutBout>;
+  if (row.result !== 'win' && row.result !== 'loss' && row.result !== 'draw') return null;
+  const id = typeof row.id === 'string' && row.id.trim() ? row.id.trim().slice(0, NAME_MAX) : fallbackId;
+  if (!id) return null;
+  return {
+    id,
+    result: row.result,
+    date: cleanDate(typeof row.date === 'string' ? row.date : ''),
+    event: clip(typeof row.event === 'string' ? row.event : '', NOTE_MAX),
+    method: clip(typeof row.method === 'string' ? row.method : '', NOTE_MAX),
+  };
+}
+
+function cleanBouts(value: unknown): ScoutBout[] {
+  if (!Array.isArray(value)) return [];
+  const bouts: ScoutBout[] = [];
+  for (const item of value) {
+    const bout = cleanBout(item);
+    if (bout && !bouts.some((row) => row.id === bout.id)) bouts.push(bout);
+  }
+  return bouts;
 }
 
 export function emptyScoutingDraft(): ScoutingDraft {
@@ -91,6 +180,7 @@ export function emptyScoutingDraft(): ScoutingDraft {
     ratings: {},
     strengths: '',
     weaknesses: '',
+    bouts: [],
   };
 }
 
@@ -120,7 +210,68 @@ function cardFromDraft(draft: ScoutingDraft, id: string, prior?: ScoutingCard): 
     ratings: draft.ratings === undefined ? (prior?.ratings ?? {}) : cleanRatings(draft.ratings),
     strengths: draft.strengths === undefined ? (prior?.strengths ?? '') : clip(draft.strengths, NOTE_MAX),
     weaknesses: draft.weaknesses === undefined ? (prior?.weaknesses ?? '') : clip(draft.weaknesses, NOTE_MAX),
+    bouts: draft.bouts === undefined ? (prior?.bouts ?? []) : cleanBouts(draft.bouts),
   };
+}
+
+export function addScoutBout(bouts: readonly ScoutBout[], draft: ScoutBoutDraft, now = Date.now()): ScoutBout[] {
+  const bout = cleanBout({ ...draft, id: boutId(now) });
+  if (!bout) throw new Error('Choose a win, loss, or draw.');
+  return [...cleanBouts(bouts), bout];
+}
+
+export function updateScoutBout(bouts: readonly ScoutBout[], id: string, draft: ScoutBoutDraft): ScoutBout[] {
+  const current = bouts.find((bout) => bout.id === id);
+  if (!current) return cleanBouts(bouts);
+  const bout = cleanBout({ ...draft, id: current.id });
+  if (!bout) throw new Error('Choose a win, loss, or draw.');
+  return cleanBouts(bouts).map((item) => (item.id === id ? bout : item));
+}
+
+export function removeScoutBout(bouts: readonly ScoutBout[], id: string): ScoutBout[] {
+  return cleanBouts(bouts).filter((bout) => bout.id !== id);
+}
+
+/**
+ * Manual results plus competition matches for this name.
+ * A competition match is skipped when a manual result already has the same
+ * outcome and the same event. If both dates are filled and they differ, both count.
+ */
+export function scoutRecordFromStorage(card: ScoutingCard, storage: Pick<Storage, 'getItem'>): ScoutRecord {
+  return scoutRecord(card, competitionOf(loadStudentReport(storage)).results);
+}
+
+export function scoutRecord(card: ScoutingCard, results: readonly CompetitionResult[]): ScoutRecord {
+  const hits = pastMatchesFor(card.name, results);
+  const used = new Set<string>();
+  for (const bout of card.bouts) {
+    const hit = hits.find((item) => !used.has(item.match.id) && sameEncounter(bout, item));
+    if (hit) used.add(hit.match.id);
+  }
+  let wins = 0;
+  let losses = 0;
+  let draws = 0;
+  const add = (result: ScoutResult) => {
+    if (result === 'win') wins += 1;
+    else if (result === 'loss') losses += 1;
+    else draws += 1;
+  };
+  for (const bout of card.bouts) add(bout.result);
+  for (const hit of hits) {
+    if (!used.has(hit.match.id)) add(hit.match.result);
+  }
+  return { wins, losses, draws, line: `${wins}-${losses}-${draws}` };
+}
+
+function sameEncounter(bout: ScoutBout, hit: PastMatchHit): boolean {
+  if (bout.result !== hit.match.result) return false;
+  const event = bout.event.trim().toLowerCase();
+  const tournament = hit.result.tournamentName.trim().toLowerCase();
+  if (!event || event !== tournament) return false;
+  const boutDate = bout.date.trim();
+  const matchDate = (hit.match.date ?? '').trim();
+  if (boutDate && matchDate && boutDate !== matchDate) return false;
+  return true;
 }
 
 export function addScoutingCard(cards: readonly ScoutingCard[], draft: ScoutingDraft, now = Date.now()): ScoutingCard[] {
@@ -175,6 +326,7 @@ export function scoutingHaystack(card: ScoutingCard, results: readonly Competiti
     card.notes,
     card.strengths,
     card.weaknesses,
+    ...card.bouts.flatMap((bout) => [bout.result, bout.date, bout.event, bout.method]),
     ...matches,
   ]
     .join('\n')
@@ -232,6 +384,7 @@ function normalizeCard(value: unknown): ScoutingCard | null {
       ratings: cleanRatings(row.ratings),
       strengths: typeof row.strengths === 'string' ? row.strengths : '',
       weaknesses: typeof row.weaknesses === 'string' ? row.weaknesses : '',
+      bouts: cleanBouts((row as { bouts?: unknown }).bouts),
     },
     typeof row.id === 'string' && row.id.trim() ? row.id.trim().slice(0, NAME_MAX) : newId(Date.now()),
   );
@@ -247,6 +400,7 @@ type ScoutExtra = {
   ratings: AreaRatings;
   strengths: string;
   weaknesses: string;
+  bouts: ScoutBout[];
 };
 
 function columnAt(header: string[], ...keys: string[]): number {
@@ -264,14 +418,18 @@ function extraByRow(text: string): ScoutExtra[] {
   const beltAt = columnAt(header, 'belt', 'rank');
   const strengthsAt = columnAt(header, 'strengths', 'strength');
   const weaknessesAt = columnAt(header, 'weaknesses', 'weakness');
-  const ratingAt = ASSESSMENT_AREAS.map((area) => columnAt(header, headerKey(area.label), headerKey(`${area.label} rating`)));
+  const recordAt = columnAt(header, 'record', 'win loss record');
+  const ratingAt = RATING_COLUMNS.map((area) => {
+    const keys = area.keys.flatMap((key) => [key, `${key} rating`]);
+    return columnAt(header, ...keys);
+  });
   const extras: ScoutExtra[] = [];
   for (const row of table.slice(headerRow + 1)) {
     const name = nameAt >= 0 ? row[nameAt] ?? '' : '';
     const belt = beltAt >= 0 ? row[beltAt] ?? '' : '';
     if (!name.trim() || !belt.trim()) continue;
     const rawRatings: Record<string, string> = {};
-    ASSESSMENT_AREAS.forEach((area, index) => {
+    RATING_COLUMNS.forEach((area, index) => {
       const at = ratingAt[index] ?? -1;
       if (at < 0) return;
       rawRatings[area.id] = row[at] ?? '';
@@ -282,9 +440,33 @@ function extraByRow(text: string): ScoutExtra[] {
       ratings: cleanRatings(rawRatings),
       strengths: strengthsAt >= 0 ? (row[strengthsAt] ?? '').trim() : '',
       weaknesses: weaknessesAt >= 0 ? (row[weaknessesAt] ?? '').trim() : '',
+      bouts: recordAt >= 0 ? parseScoutRecord(row[recordAt] ?? '') : [],
     });
   }
   return extras;
+}
+
+export function serializeScoutRecord(bouts: readonly ScoutBout[]): string {
+  if (!bouts.length) return '';
+  return JSON.stringify(
+    bouts.map((bout) => ({
+      id: bout.id,
+      result: bout.result,
+      date: bout.date,
+      event: bout.event,
+      method: bout.method,
+    })),
+  );
+}
+
+export function parseScoutRecord(value: string): ScoutBout[] {
+  const text = value.trim();
+  if (!text) return [];
+  try {
+    return cleanBouts(JSON.parse(text) as unknown);
+  } catch {
+    return [];
+  }
 }
 
 export function importScoutingCsv(text: string): ScoutingImport {
@@ -307,6 +489,7 @@ export function importScoutingCsv(text: string): ScoutingImport {
       ratings: extra?.ratings ?? {},
       strengths: clip(extra?.strengths ?? '', NOTE_MAX),
       weaknesses: clip(extra?.weaknesses ?? '', NOTE_MAX),
+      bouts: extra?.bouts ?? [],
     } satisfies ScoutingCard;
   });
   return {
@@ -349,9 +532,10 @@ export function exportScoutingCsv(cards: readonly ScoutingCard[]): string {
         '',
         card.style,
         scoutGroupLabel(card.group),
-        ...ASSESSMENT_AREAS.map((area) => (card.ratings[area.id] ? String(card.ratings[area.id]) : '')),
+        ...RATING_COLUMNS.map((area) => (isAssessmentScore(card.ratings[area.id]) ? String(card.ratings[area.id]) : '')),
         card.strengths,
         card.weaknesses,
+        serializeScoutRecord(card.bouts),
       ]
         .map(csvField)
         .join(','),
@@ -366,7 +550,7 @@ export function scoutingCsvTemplate(): string {
   return `${[header.join(','), blank, blank, blank].join('\r\n')}\r\n`;
 }
 
-/** Same columns as exportScoutingCsv. Older templates that say Notes, or omit Style, Class, and ratings, still import. */
+/** Same columns as exportScoutingCsv. Older templates that omit Style, Class, Sweeps, or Record still import. */
 export function scoutingCsvHeaders(): readonly string[] {
   return scoutingCsvHeader();
 }
@@ -397,3 +581,63 @@ export function scoutingImportSummary(result: ScoutingImport): string {
 }
 
 export const SCOUTING_GYM_LABEL = COMPETITOR_GYM_LABEL;
+
+/** Stable id for the labeled sample card a preview can open. */
+export const SAMPLE_OPPONENT_ID = 'sample.sam-rivera';
+
+/**
+ * Preview-only cards. Names say sample. They are written only when the
+ * archive is empty and the page was opened with sample=1.
+ */
+export function sampleScoutingCards(): ScoutingCard[] {
+  return [
+    {
+      id: SAMPLE_OPPONENT_ID,
+      name: 'Sam Rivera (sample)',
+      gym: 'Sample Gym',
+      belt: 'Blue',
+      weightClass: 'Middle',
+      group: 'weight',
+      style: 'Pressure passing',
+      notes: 'Sample card. Not a real opponent.',
+      ratings: {
+        guard: 2,
+        passing: 5,
+        sweeps: 3,
+        takedowns: 4,
+        escapes: 4,
+        submissions: 1,
+        conditioning: 4,
+        mindset: 5,
+      },
+      strengths: 'Pressure passing',
+      weaknesses: 'Back takes',
+      bouts: [
+        { id: 'sample.bout.1', result: 'win', date: '2026-03-14', event: 'City Open (sample)', method: 'points' },
+        { id: 'sample.bout.2', result: 'win', date: '2026-05-02', event: 'City Open (sample)', method: 'armbar' },
+        { id: 'sample.bout.3', result: 'win', date: '2026-06-20', event: 'Summer Open (sample)', method: '' },
+        { id: 'sample.bout.4', result: 'loss', date: '2026-08-01', event: 'Summer Open (sample)', method: 'points' },
+      ],
+    },
+    {
+      id: 'sample.riley-cho',
+      name: 'Riley Cho (sample)',
+      gym: 'Sample Gym',
+      belt: 'Purple',
+      weightClass: 'Light',
+      group: 'open',
+      style: 'Open guard',
+      notes: 'Sample card. Not a real opponent.',
+      ratings: { guard: 5, passing: 2, takedowns: 1, escapes: 3, submissions: 4, conditioning: 3, mindset: 2 },
+      strengths: 'Open guard',
+      weaknesses: 'Top pressure',
+      bouts: [],
+    },
+  ];
+}
+
+export function seedSampleScouting(storage: Pick<Storage, 'getItem' | 'setItem'>, search: string): ScoutingCard[] {
+  const saved = loadScouting(storage);
+  if (saved.length > 0 || !/(?:^|[?&])sample=1(?:&|$)/.test(search)) return saved;
+  return saveScouting(storage, sampleScoutingCards());
+}
