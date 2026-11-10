@@ -21,6 +21,7 @@ export function LoopClip({
   durationMs,
   onDurationEnd,
   onRemaining,
+  dock,
 }: {
   src: string;
   label: string;
@@ -36,6 +37,8 @@ export function LoopClip({
   durationMs?: number;
   onDurationEnd?: () => void;
   onRemaining?: (remainingMs: number) => void;
+  /** Start, Stop, and Fullscreen, drawn on the player so they stay in reach. */
+  dock?: ReactNode;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hideChromeTimer = useRef(0);
@@ -210,7 +213,8 @@ export function LoopClip({
         aria-label={label}
       />
       {overlay}
-      {chrome && onToggleFullscreen ? (
+      {dock}
+      {chrome && onToggleFullscreen && !dock ? (
         <div className="techniques__chrome" role="toolbar" aria-label="Playback controls">
           {fullscreen && onStop ? (
             <button
@@ -247,6 +251,21 @@ export function LoopClip({
             }}
           >
             {fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          </button>
+        </div>
+      ) : null}
+      {chrome && dock && fullscreen && onToggleMute ? (
+        <div className="techniques__chrome" role="toolbar" aria-label="Playback controls">
+          <button
+            type="button"
+            className={`techniques__chrome-btn${muted ? ' techniques__chrome-btn--on' : ''}`}
+            aria-pressed={muted}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleMute();
+            }}
+          >
+            Mute clips
           </button>
         </div>
       ) : null}

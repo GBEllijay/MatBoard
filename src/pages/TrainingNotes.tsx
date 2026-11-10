@@ -14,7 +14,7 @@ import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
 import { AdvantageCloudPanel } from '../components/AdvantageCloudMedia';
 import { ExpectedDurationField } from '../components/ExpectedDurationField';
-import { LessonMediaRail } from '../components/LessonMediaRail';
+import { LessonSectionVideo } from '../components/LessonSectionVideo';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
@@ -53,6 +53,7 @@ import {
   type LessonSlotRef,
   type LessonTreeCandidate,
 } from '../lib/lessonLinks';
+import { lessonClipLoopMs } from '../lib/lessonPlayback';
 import {
   OPEN_DRIVE_CLASS_LABEL,
   restoreNoticeFromState,
@@ -614,7 +615,7 @@ export function TrainingNotesPage() {
 
   const openVideo = (ref: LessonSlotRef) => {
     const offer = videoOffer(dayVideos, plan.videos, ref);
-    if (!offer.show) return;
+    if (!offer.show || offer.clipUrl) return;
     navigate(
       lessonVideoHref({
         section: ref.role,
@@ -680,12 +681,13 @@ export function TrainingNotesPage() {
     const offer = videoOffer(dayVideos, plan.videos, ref);
     const linked = tech ? matchLessonTree(tech.title, tech.treeId, treeCandidates) : null;
     return (
-      <LessonMediaRail
+      <LessonSectionVideo
         showVideo={offer.show}
-        videoLabel={label}
+        label={label}
         clipUrl={offer.clipUrl}
         mediaName={offer.mediaName}
-        onPlay={() => openVideo(ref)}
+        loopMs={lessonClipLoopMs(plan, dayVideos?.plan ?? null, ref)}
+        onOpenBoard={() => openVideo(ref)}
         linkedTree={linked ? { id: linked.id, name: linked.name } : null}
         treeChoices={tech ? treeChoices : []}
         canEditTree={Boolean(tech) && editingToday}

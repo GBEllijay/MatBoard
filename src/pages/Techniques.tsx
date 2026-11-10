@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AdvantageCloudPanel } from '../components/AdvantageCloudMedia';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
@@ -6,7 +6,7 @@ import { DriveConnectCard } from '../components/DriveConnectCard';
 import { DriveMediaPicker } from '../components/DriveMediaPicker';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { Sheet } from '../components/Sheet';
-import { FullscreenChip } from '../components/FullscreenChip';
+import { ClipDock } from '../components/ClipDock';
 import { LoopClip } from '../components/LoopClip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -746,6 +746,21 @@ export function TechniquesPage() {
   const warmup = plan?.slots.find((slot) => slot.kind === 'warmup') ?? null;
   const cooldown = plan?.slots.find((slot) => slot.kind === 'cooldown') ?? null;
   const techniques = plan?.slots.filter((slot) => slot.kind === 'technique') ?? [];
+  const playerDock = (active: boolean, playingThis: boolean): ReactNode =>
+    active ? (
+      <ClipDock
+        playing={playingThis}
+        canStart={canStart}
+        fullscreen={immersive}
+        showFullscreen={fs.supported || stage || immersive}
+        onStart={startDrill}
+        onStop={stopDrill}
+        onToggleFullscreen={() => {
+          if (!playback && canStart) startDrill();
+          void togglePlaybackFullscreen();
+        }}
+      />
+    ) : null;
 
   return (
     <main
@@ -758,19 +773,6 @@ export function TechniquesPage() {
           <h1>Daily Training Videos</h1>
         </div>
         <div className="techniques__actions">
-          <button type="button" className="btn" disabled={!canStart} onClick={startDrill}>
-            Start
-          </button>
-          <button type="button" className="btn btn--ghost" disabled={!playback} onClick={stopDrill}>
-            Stop
-          </button>
-          <FullscreenChip
-            supported={fs.supported || stage}
-            active={immersive}
-            nudge={fs.showFallback && !stage}
-            shortcut={fs.tvStation}
-            onToggle={() => void togglePlaybackFullscreen()}
-          />
           <button
             type="button"
             className={`techniques__mute${muteVideo ? ' techniques__mute--on' : ''}`}
@@ -844,6 +846,10 @@ export function TechniquesPage() {
             onRemove={() => void removeClip(warmup.slotId)}
             timedLoopMs={lessonPlan ? loopSecondsForSlot(warmup, lessonPlan.warmupExpected) * 1000 : undefined}
             fullscreen={immersive}
+            dock={playerDock(
+              !curriculumPick && plan?.selectedSlotId === warmup.slotId,
+              playing && plan?.selectedSlotId === warmup.slotId,
+            )}
             onToggleFullscreen={() => void togglePlaybackFullscreen()}
             onStop={stopDrill}
             onToggleMute={() => commitMute(!muteVideo)}
@@ -881,6 +887,10 @@ export function TechniquesPage() {
             }}
             onNudge={(delta) => commitDrill(slot.slotId, loopSec + delta)}
             fullscreen={immersive}
+            dock={playerDock(
+              !curriculumPick && plan?.selectedSlotId === slot.slotId,
+              playing && plan?.selectedSlotId === slot.slotId,
+            )}
             onToggleFullscreen={() => void togglePlaybackFullscreen()}
             onStop={stopDrill}
             onToggleMute={() => void commitMute(!muteVideo)}
@@ -908,6 +918,10 @@ export function TechniquesPage() {
             onRemove={() => void removeClip(cooldown.slotId)}
             timedLoopMs={lessonPlan ? loopSecondsForSlot(cooldown, lessonPlan.cooldownExpected) * 1000 : undefined}
             fullscreen={immersive}
+            dock={playerDock(
+              !curriculumPick && plan?.selectedSlotId === cooldown.slotId,
+              playing && plan?.selectedSlotId === cooldown.slotId,
+            )}
             onToggleFullscreen={() => void togglePlaybackFullscreen()}
             onStop={stopDrill}
             onToggleMute={() => commitMute(!muteVideo)}
@@ -938,6 +952,7 @@ export function TechniquesPage() {
               setCurriculumRemaining(0);
             }}
             onRemaining={setCurriculumRemaining}
+            dock={playerDock(curriculumPick === card.blockId, playingCurriculum && curriculumPick === card.blockId)}
             onToggleFullscreen={() => void togglePlaybackFullscreen()}
             onStop={stopDrill}
             onToggleMute={() => commitMute(!muteVideo)}
@@ -1007,6 +1022,7 @@ function CurriculumClipCard({
   onRemove,
   onDurationEnd,
   onRemaining,
+  dock,
   onToggleFullscreen,
   onStop,
   onToggleMute,
@@ -1024,6 +1040,7 @@ function CurriculumClipCard({
   onRemove: () => void;
   onDurationEnd: () => void;
   onRemaining: (remainingMs: number) => void;
+  dock?: ReactNode;
   onToggleFullscreen?: () => void;
   onStop?: () => void;
   onToggleMute?: () => void;
@@ -1049,6 +1066,7 @@ function CurriculumClipCard({
       }}
     >
       <h2 id={`techniques-heading-curriculum-${card.blockId}`}>{card.title}</h2>
+      <div className="techniques__player" data-player="">
       {playing && filled && src ? (
         <LoopClip
           src={src}
@@ -1060,6 +1078,7 @@ function CurriculumClipCard({
           durationMs={card.durationMs}
           onDurationEnd={onDurationEnd}
           onRemaining={onRemaining}
+          dock={dock}
           onToggleFullscreen={onToggleFullscreen}
           onStop={onStop}
           onToggleMute={onToggleMute}
@@ -1090,6 +1109,8 @@ function CurriculumClipCard({
           + Add video
         </button>
       )}
+      {playing && filled && src ? null : dock}
+      </div>
       {filled && !card.locked ? (
         <div className="techniques__slot-actions">
           <button type="button" className="btn" onClick={onAdd}>
@@ -1127,6 +1148,7 @@ function SlotCard({
   onCustom,
   onNudge,
   fullscreen,
+  dock,
   onToggleFullscreen,
   onStop,
   onToggleMute,
@@ -1154,6 +1176,7 @@ function SlotCard({
   onCustom?: () => void;
   onNudge?: (delta: number) => void;
   fullscreen?: boolean;
+  dock?: ReactNode;
   onToggleFullscreen?: () => void;
   onStop?: () => void;
   onToggleMute?: () => void;
@@ -1189,6 +1212,7 @@ function SlotCard({
       }}
     >
       <h2 id={`techniques-heading-${slot.slotId}`}>{title}</h2>
+      <div className="techniques__player" data-player="">
       {playing && filled && src ? (
         <LoopClip
           src={src}
@@ -1200,6 +1224,7 @@ function SlotCard({
           durationMs={showTimedLoop ? timedLoopMs : undefined}
           onDurationEnd={showTimedLoop ? onStop : undefined}
           onRemaining={showTimedLoop ? setTimedLeft : undefined}
+          dock={dock}
           onToggleFullscreen={onToggleFullscreen}
           onStop={onStop}
           onToggleMute={onToggleMute}
@@ -1249,6 +1274,8 @@ function SlotCard({
           + Add video
         </button>
       )}
+      {playing && filled && src ? null : dock}
+      </div>
       {filled ? (
         <div className="techniques__slot-actions">
           <button type="button" className="btn" onClick={onAdd}>
