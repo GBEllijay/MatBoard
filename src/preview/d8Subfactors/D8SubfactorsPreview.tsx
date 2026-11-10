@@ -107,6 +107,11 @@ export function D8SubfactorsPreview() {
   const drilled = variant === 'b' && drill.level !== 'diamond';
 
   useEffect(() => {
+    if (!listFaceId || drilled) return;
+    document.querySelector('[data-testid="face-card-list"]')?.scrollIntoView?.({ block: 'start' });
+  }, [listFaceId, drilled]);
+
+  useEffect(() => {
     if (variant !== 'b') return;
     if (zoom < ZOOM_LIST) {
       if (holdDiamond) setHoldDiamond(false);
@@ -666,6 +671,12 @@ function FacePanel({
         Face score {score == null ? 'not rated' : `${score} / 5`}
       </p>
       <p>Rounded average of every line on this face.</p>
+      {extra ? (
+        <button type="button" className="d8sf-badge" data-more={face.id} onClick={onOpenList}>
+          {extra}
+        </button>
+      ) : null}
+      {listOpen ? <CardList faceId={face.id} cards={cards} onOpen={onOpenCard} onAdd={() => onAdd()} /> : null}
       <div
         className="d8sf-pyramid"
         data-testid="face-pyramid"
@@ -700,12 +711,6 @@ function FacePanel({
           );
         })}
       </div>
-      {extra ? (
-        <button type="button" className="d8sf-badge" data-more={face.id} onClick={onOpenList}>
-          {extra}
-        </button>
-      ) : null}
-      {listOpen ? <CardList faceId={face.id} cards={cards} onOpen={onOpenCard} onAdd={() => onAdd()} /> : null}
       {face.proposed ? <p className="d8sf-proposed">{PROPOSED_NOTE}</p> : <p>Check-in labels. This preview does not save them.</p>}
       <ul className="d8sf-lines">
         {cards.map((card) => (
