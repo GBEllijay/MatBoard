@@ -183,7 +183,7 @@ test('products, card, White, Coach, Pro, and media console primaries are white',
 test('student backup and journal save stay white and the backup button still runs', async ({ page }) => {
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/student/backup?student=1');
-  const backup = page.getByRole('button', { name: 'Back up my journal (.json)', exact: true });
+  const backup = page.getByRole('button', { name: 'Download student packet (.advantage)', exact: true });
   await expect(backup).toBeEnabled();
   expectWhitePrimary(await paint(backup));
   await backup.focus();
@@ -205,7 +205,7 @@ test('student backup and journal save stay white and the backup button still run
   const downloadPromise = page.waitForEvent('download');
   await backup.click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/advantage-student-backup-/);
+  expect(download.suggestedFilename()).toMatch(/advantage-student-packet-/);
 
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/student?student=1');

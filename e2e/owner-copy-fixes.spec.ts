@@ -43,7 +43,7 @@ test('backup explains the four real file names', async ({ page }) => {
     const now = new Date();
     const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return [
-      `advantage-student-backup-${day}.json`,
+      `advantage-student-packet-${day}.advantage`,
       `advantage-student-templates-${day}.csv`,
       `advantage-student-progress-${day}.pdf`,
       `advantage-student-self-assessment-${day}.pdf`,
@@ -51,7 +51,7 @@ test('backup explains the four real file names', async ({ page }) => {
   });
 
   const backup = page.getByRole('region', { name: 'Back up and restore' });
-  await expect(backup.getByRole('button', { name: 'Back up my journal (.json)', exact: true })).toBeVisible();
+  await expect(backup.getByRole('button', { name: 'Download student packet (.advantage)', exact: true })).toBeVisible();
   await expect(backup.getByRole('button', { name: 'Download spreadsheet (.csv)', exact: true })).toBeVisible();
   await expect(backup.getByRole('button', { name: 'Download progress report (.pdf)', exact: true })).toBeVisible();
   await expect(backup.getByRole('button', { name: 'Download self-assessment (.pdf)', exact: true })).toBeVisible();
@@ -63,10 +63,10 @@ test('backup explains the four real file names', async ({ page }) => {
   await expect(backup.getByText(/Excel or Sheets/)).toBeVisible();
   await expect(backup.getByText(/A printable page of rank, journal, and competition/)).toBeVisible();
   await expect(backup.getByText(/seven areas/)).toBeVisible();
-  await expect(backup.getByText('Video files: off. The JSON backup does not include video files.')).toBeVisible();
+  await expect(backup.getByText('Video files: off. The student packet does not include video files.')).toBeVisible();
 
   await expect(page.getByRole('checkbox', { name: 'Include video files kept on this device' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Back up my journal (.json)' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download student packet (.advantage)' })).toBeVisible();
   await expect(page.getByLabel('Restore from backup')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Print progress report', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Print self-assessment', exact: true })).toBeVisible();

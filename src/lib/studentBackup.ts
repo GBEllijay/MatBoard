@@ -78,7 +78,7 @@ export const CLEAR_STUDENT_DATA_ITEMS = [
 export const BACKUP_REPLACE_WARN =
   'Replace removes the journal on this phone and uses the backup instead. A backup of the current journal is recommended first.';
 export const BACKUP_NOT_A_BACKUP =
-  'That file is not a Student Edition backup. Use the file from Back up my journal. A coach plan still imports from Import from coach.';
+  'That file is not a Student Edition backup. Use the student packet, or the older file from Back up my journal. A coach plan still imports from Import from coach.';
 
 export function backupVideoTooLargeMessage(bytes: number): string {
   const mb = Math.max(1, Math.round(bytes / (1024 * 1024)));
@@ -138,6 +138,7 @@ function csvRow(cells: readonly string[]): string {
 export function studentBackupNames(date: string) {
   const day = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : 'journal';
   return {
+    packet: `advantage-student-packet-${day}.advantage`,
     json: `advantage-student-backup-${day}.json`,
     csv: `advantage-student-templates-${day}.csv`,
     progressPdf: studentReportPdfName('progress', date),
@@ -145,7 +146,7 @@ export function studentBackupNames(date: string) {
   };
 }
 
-export type StudentExportKind = 'json' | 'csv' | 'progressPdf' | 'assessmentPdf';
+export type StudentExportKind = 'packet' | 'json' | 'csv' | 'progressPdf' | 'assessmentPdf';
 
 export type BackupFileGuide = {
   id: StudentExportKind;
@@ -154,14 +155,17 @@ export type BackupFileGuide = {
   detail: string;
 };
 
+export const PACKET_EXPORT_LABEL = 'Download student packet (.advantage)';
 export const JOURNAL_BACKUP_LABEL = 'Back up my journal (.json)';
 export const SPREADSHEET_EXPORT_LABEL = 'Download spreadsheet (.csv)';
 export const PROGRESS_PDF_LABEL = 'Download progress report (.pdf)';
 export const ASSESSMENT_PDF_LABEL = 'Download self-assessment (.pdf)';
-export const BACK_UP_FIRST_LABEL = 'Back up first (.json)';
+export const BACK_UP_FIRST_LABEL = 'Back up first (.advantage)';
 
 export function studentExportLabel(kind: StudentExportKind): string {
   switch (kind) {
+    case 'packet':
+      return PACKET_EXPORT_LABEL;
     case 'json':
       return JOURNAL_BACKUP_LABEL;
     case 'csv':
@@ -175,6 +179,8 @@ export function studentExportLabel(kind: StudentExportKind): string {
 
 export function studentExportBusyLabel(kind: StudentExportKind): string {
   switch (kind) {
+    case 'packet':
+      return 'Building student packet…';
     case 'json':
       return 'Building journal backup…';
     case 'csv':
@@ -189,8 +195,8 @@ export function studentExportBusyLabel(kind: StudentExportKind): string {
 /** Shown beside the include-videos switch. On means the JSON backup carries the files. */
 export function videoFilesLine(included: boolean): string {
   return included
-    ? 'Video files: on. They are included in the JSON backup.'
-    : 'Video files: off. The JSON backup does not include video files.';
+    ? 'Video files: on. They are included in the student packet.'
+    : 'Video files: off. The student packet does not include video files.';
 }
 
 /** Off until the student turns it on. The choice stays on this device. */
@@ -228,8 +234,10 @@ export function journalBackupFailure(message: string): string {
 export function studentExportDetail(kind: StudentExportKind, date: string): string {
   const names = studentBackupNames(date);
   switch (kind) {
+    case 'packet':
+      return `Downloads ${names.packet}. One file with the journal, self-assessment, ranks, index cards, and a spreadsheet. This is the file you restore with Merge or Replace.`;
     case 'json':
-      return `Downloads ${names.json}. This is the file you restore with Merge or Replace.`;
+      return `Downloads ${names.json}. An older backup file. A student packet is the file you restore with Merge or Replace.`;
     case 'csv':
       return `Downloads ${names.csv}. Spreadsheet rows for Excel or Sheets. This file cannot restore the phone.`;
     case 'progressPdf':
@@ -239,10 +247,10 @@ export function studentExportDetail(kind: StudentExportKind, date: string): stri
   }
 }
 
-/** Names and one-line descriptions for the four exports. A backup click writes only the JSON. */
+/** Names and one-line descriptions. The packet is the file that restores the phone. */
 export function backupFileGuide(date: string): BackupFileGuide[] {
   const names = studentBackupNames(date);
-  const kinds: StudentExportKind[] = ['json', 'csv', 'progressPdf', 'assessmentPdf'];
+  const kinds: StudentExportKind[] = ['packet', 'csv', 'progressPdf', 'assessmentPdf'];
   return kinds.map((id) => ({
     id,
     title: studentExportLabel(id),
@@ -306,6 +314,8 @@ export async function buildStudentBackup(input: {
   now?: Date;
   /** The JSON backup updates Last backup. Spreadsheet and PDF exports leave that stamp alone. */
   recordStamp?: boolean;
+  /** Packet export does not need the printable PDFs. */
+  prints?: boolean;
   stampStorage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null;
   /** Name and id written into the file. Defaults to the profile open on stampStorage. */
   profile?: { id: string; name: string };
@@ -357,15 +367,20 @@ export async function buildStudentBackup(input: {
   }
   const issuedOn = todayIso(when);
   if (input.recordStamp !== false) noteStudentBackupBuilt(when, input.stampStorage);
+  const progressPdf =
+    input.prints === false
+      ? new Uint8Array()
+      : progressReportPdf(input.report, input.assessment, { scouting: input.scouting, films }, issuedOn, {
+          selfie: marks?.includeSelfie ? marks.art?.selfie ?? null : null,
+          gymLogo: marks?.includeLogo ? marks.art?.gymLogo ?? null : null,
+        });
+  const assessmentPdf = input.prints === false ? new Uint8Array() : assessmentReportPdf(input.report, input.assessment, issuedOn);
   return {
     file,
     json: JSON.stringify(file),
     csv: studentTemplatesCsv(input),
-    progressPdf: progressReportPdf(input.report, input.assessment, { scouting: input.scouting, films }, issuedOn, {
-      selfie: marks?.includeSelfie ? marks.art?.selfie ?? null : null,
-      gymLogo: marks?.includeLogo ? marks.art?.gymLogo ?? null : null,
-    }),
-    assessmentPdf: assessmentReportPdf(input.report, input.assessment, issuedOn),
+    progressPdf,
+    assessmentPdf,
   };
 }
 
