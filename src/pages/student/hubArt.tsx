@@ -32,7 +32,7 @@ const ICON_FOR_LABEL: Record<string, keyof typeof ICONS> = {
   'Self-assessment': 'check',
   'Upcoming tournaments': 'cal',
   'Weight management': 'scale',
-  'Opponent scouting': 'people',
+  'Opponent card archive': 'people',
   Results: 'trophy',
   'Connect to my academy': 'qr',
   'Make a file for my coach': 'file',

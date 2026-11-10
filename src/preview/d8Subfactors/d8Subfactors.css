@@ -1,0 +1,198 @@
+/* Sub-factor preview. Navy D8 surfaces, with the term-card Sample chip. */
+
+.d8sf-top {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  max-width: 980px;
+  margin: 0 auto 12px;
+}
+
+.d8sf-top .crystal-banner {
+  margin: 0;
+}
+
+.d8sf h1 {
+  margin: 0;
+}
+
+.d8sf-sample {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  margin: 0;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #2a3a60;
+  background: #14203a;
+  color: #b9c3d4;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.d8sf-proposed,
+.d8sf-kicker {
+  margin: 0;
+  color: #b9c3d4;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.d8sf-proposed {
+  letter-spacing: 0;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.d8sf-kicker {
+  display: block;
+  text-transform: uppercase;
+}
+
+.d8sf-trail ol > li > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  white-space: normal;
+}
+
+.d8sf .topo-stage {
+  height: 420px;
+}
+
+.d8sf [data-on-trail='true'] {
+  border-color: #ffd27a;
+  box-shadow: inset 0 0 0 1px #ffd27a;
+}
+
+.d8sf-trail {
+  max-width: 980px;
+  margin: 0 auto 12px;
+  padding: 12px;
+  border: 1px solid #16485a;
+  border-radius: 8px;
+  background: #0a1c28;
+}
+
+.d8sf-trail ol,
+.d8sf-fan ul,
+.d8sf-lines,
+.d8sf-face-scores,
+.d8sf-chain-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.d8sf-trail li,
+.d8sf-fan {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.d8sf-fan {
+  align-items: flex-start;
+}
+
+.d8sf-fan ul {
+  margin: 4px 0 0;
+}
+
+.d8sf-arrow {
+  color: #ffd27a;
+  font-weight: 700;
+}
+
+.d8sf-lines {
+  display: grid;
+  gap: 12px;
+}
+
+.d8sf-lines li {
+  display: grid;
+  gap: 6px;
+}
+
+.d8sf-line,
+.d8sf-face-scores button,
+.d8sf-chain-list button,
+.d8sf-trail button {
+  width: auto;
+}
+
+.d8sf-line {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  white-space: normal;
+}
+
+.d8sf-rates {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.d8sf-rate {
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.d8sf-face-scores {
+  display: grid;
+}
+
+.d8sf-face-scores button,
+.d8sf-chain-list button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+}
+
+.d8sf-more {
+  margin-top: 14px;
+}
+
+.d8sf-more summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: #9ee7ef;
+  font-weight: 650;
+}
+
+.d8sf-readout,
+.crystal-readout {
+  margin-top: 12px;
+}
+
+html:has(.d8sf),
+body:has(.d8sf),
+#root:has(.d8sf) {
+  background: #071018;
+  background-image: none;
+}
+
+body:has(.d8sf) .seat-session-dock {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .d8sf .topo-stage {
+    height: 320px;
+  }
+}

@@ -171,7 +171,7 @@ test('clear all student edition data requires CLEAR and leaves other tools', asy
   await page.getByRole('button', { name: 'Continue without a backup' }).click();
   const confirm = page.getByRole('group', { name: 'Confirm clear all Student Edition data' });
   await expect(confirm.getByRole('listitem').filter({ hasText: /^Journal$/ })).toBeVisible();
-  await expect(confirm.getByRole('listitem').filter({ hasText: /^Opponent scouting$/ })).toBeVisible();
+  await expect(confirm.getByRole('listitem').filter({ hasText: /^Opponent card archive$/ })).toBeVisible();
   await expect(confirm.getByRole('listitem').filter({ hasText: /^Videos$/ })).toBeVisible();
   const erase = page.getByRole('button', { name: 'Erase Student Edition data' });
   await expect(erase).toBeDisabled();
