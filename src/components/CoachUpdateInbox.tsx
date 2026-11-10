@@ -27,7 +27,7 @@ import {
 } from '../lib/coachSync';
 import { writeStudentGymLogo } from '../lib/studentGymMark';
 import { assignStudentId, readStableStudentId } from '../lib/studentIdentity';
-import { clearStudentInboxItem, pullStudentInbox, readInboxPass } from '../lib/studentInboxClient';
+import { clearStudentInboxItem, downloadFromInstructor, pullStudentInbox, readInboxPass } from '../lib/studentInboxClient';
 import { useStudentFile } from '../pages/student/chrome';
 
 function matchingPacket(reportStudentId: string, packets: readonly CoachInboxPacket[]): CoachInboxPacket | null {
@@ -44,6 +44,7 @@ function matchingPacket(reportStudentId: string, packets: readonly CoachInboxPac
 export function CoachUpdateInbox() {
   const { report, commit } = useStudentFile();
   const [packets, setPackets] = useState<CoachInboxPacket[]>(() => readCoachQueue(localStorage));
+  const [fromInstructor, setFromInstructor] = useState<{ name: string; path: string; dateKey: string }[]>([]);
   const [choices, setChoices] = useState<Record<number, MatchKeep>>({});
   const [note, setNote] = useState('');
 
@@ -59,6 +60,7 @@ export function CoachUpdateInbox() {
     let alive = true;
     void pullStudentInbox(pass).then((result) => {
       if (!alive || !result.ok) return;
+      setFromInstructor(result.fromInstructor);
       for (const item of result.packets) {
         const received = receiveSyncPacket(localStorage, item);
         // A gym logo is not an accept card. Once recorded, clear it from the inbox list.
@@ -77,9 +79,24 @@ export function CoachUpdateInbox() {
     report.studentId,
     packets.filter((item) => gymPacketAllowed(localStorage, item)),
   );
-  if (!packet) return null;
+  const downloadInstructorFile = (path: string, name: string) => {
+    const pass = readInboxPass(localStorage);
+    if (!pass) return;
+    void downloadFromInstructor(pass, path).then((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+  };
+
+  if (!packet && fromInstructor.length === 0) return null;
 
   const finish = (kind: 'accept' | 'dismiss') => {
+    if (!packet) return;
     let current = report;
     if (current.studentId !== packet.studentId) {
       const stable = readStableStudentId(localStorage);
@@ -116,8 +133,27 @@ export function CoachUpdateInbox() {
     setNote('');
   };
 
-  const conflicts = packet.kind === 'coach-competition-update' ? competitionConflicts(report, packet) : [];
+  const conflicts = packet?.kind === 'coach-competition-update' ? competitionConflicts(report, packet) : [];
   return (
+    <>
+    {fromInstructor.length ? (
+      <section className="coach-update" aria-label="From your instructor">
+        <h2>From your instructor</h2>
+        <ul>
+          {fromInstructor.map((file) => (
+            <li key={file.path}>
+              <span>
+                {file.dateKey} · {file.name}
+              </span>
+              <button type="button" onClick={() => downloadInstructorFile(file.path, file.name)}>
+                Download
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null}
+    {packet ? (
     <section className="coach-update" aria-label="Coach update">
       <h2>From your coach</h2>
       <p>
@@ -192,5 +228,7 @@ export function CoachUpdateInbox() {
         </button>
       </div>
     </section>
+    ) : null}
+    </>
   );
 }

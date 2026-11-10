@@ -165,7 +165,10 @@ export async function deliverRankUpdate(
 export async function pullStudentInbox(
   pass: string,
   fetchImpl: typeof fetch = fetch,
-): Promise<{ ok: true; packets: unknown[] } | { ok: false; reason: 'unbound' | 'denied' | 'offline' }> {
+): Promise<
+  | { ok: true; packets: unknown[]; fromInstructor: { name: string; path: string; dateKey: string }[] }
+  | { ok: false; reason: 'unbound' | 'denied' | 'offline' }
+> {
   const license = inboxPassLicense(pass);
   const studentId = inboxPassStudentId(pass);
   if (!pass || !license || !studentId) return { ok: false, reason: 'denied' };
@@ -177,10 +180,37 @@ export async function pullStudentInbox(
     if (response.status === 503) return { ok: false, reason: 'unbound' };
     if (response.status === 401 || response.status === 403) return { ok: false, reason: 'denied' };
     if (!response.ok) return { ok: false, reason: 'offline' };
-    const body = (await response.json()) as { packets?: unknown };
-    return { ok: true, packets: Array.isArray(body.packets) ? body.packets : [] };
+    const body = (await response.json()) as { packets?: unknown; fromInstructor?: unknown };
+    const fromInstructor = Array.isArray(body.fromInstructor)
+      ? body.fromInstructor.filter((row): row is { name: string; path: string; dateKey: string } => {
+          if (!row || typeof row !== 'object') return false;
+          const file = row as { name?: unknown; path?: unknown; dateKey?: unknown };
+          return typeof file.name === 'string' && typeof file.path === 'string' && typeof file.dateKey === 'string';
+        })
+      : [];
+    return { ok: true, packets: Array.isArray(body.packets) ? body.packets : [], fromInstructor };
   } catch {
     return { ok: false, reason: 'offline' };
+  }
+}
+
+export async function downloadFromInstructor(
+  pass: string,
+  path: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Blob | null> {
+  const license = inboxPassLicense(pass);
+  const studentId = inboxPassStudentId(pass);
+  if (!pass || !license || !studentId || !path) return null;
+  try {
+    const response = await fetchImpl(
+      `/api/gym/inbox?license=${encodeURIComponent(license)}&studentId=${encodeURIComponent(studentId)}&file=${encodeURIComponent(path)}`,
+      { headers: { authorization: `Bearer ${pass}` } },
+    );
+    if (!response.ok) return null;
+    return response.blob();
+  } catch {
+    return null;
   }
 }
 

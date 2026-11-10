@@ -24,7 +24,7 @@ import { photoReadyToSend, readPhotoSubmission } from '../lib/rosterPhotoApprova
 import { cardShareReadyToSend, readStudentCardShare } from '../lib/studentCardShare.ts';
 import { readTournamentRegistration } from '../lib/studentEvents.ts';
 import { freeStudentGrantClosed } from './studentLicenses.ts';
-import { STUDENT_LICENSE_REVOKED_MESSAGE } from '../lib/studentLicensePool.ts';
+import { STUDENT_LICENSE_REVOKED_MESSAGE, studentCloudPathAllowed } from '../lib/studentLicensePool.ts';
 import { signingMaterial } from './tokenIssue.ts';
 import type { D1Database } from './d1.ts';
 
@@ -88,6 +88,7 @@ const UPLOAD_PRESETS = new Set(['coach', 'instructors']);
 export type InboxObject = {
   body?: ReadableStream | null;
   text?: () => Promise<string>;
+  httpMetadata?: { contentType?: string };
 };
 
 export type InboxBucket = {
@@ -675,6 +676,22 @@ export async function handleStudentInbox(
     }
     const inboxClosed = await closedFree(studentId);
     if (inboxClosed) return inboxClosed;
+    const file = url.searchParams.get('file') ?? '';
+    if (file && request.method === 'GET') {
+      if (!studentCloudPathAllowed(file, studentId) || !file.includes('/from-instructor/')) {
+        return json(404, { ok: false, error: 'That file is not in your folder.' });
+      }
+      const stored = await bucket.get(`groups/${license}/${file}`);
+      if (!stored) return json(404, { ok: false, error: 'That file is not in your folder.' });
+      const name = file.split('/').pop() ?? 'file';
+      const headers = new Headers({
+        'content-type': stored.httpMetadata?.contentType || 'application/octet-stream',
+        'cache-control': 'private, no-store',
+        'content-disposition': `attachment; filename="${name}"`,
+      });
+      if (stored.body) return new Response(stored.body, { status: 200, headers });
+      return new Response(await objectText(stored), { status: 200, headers });
+    }
     if (request.method === 'DELETE') {
       const updateId = url.searchParams.get('updateId') ?? '';
       if (!ID_RE.test(updateId)) return json(400, { ok: false, error: 'Missing update id.' });
@@ -703,7 +720,16 @@ export async function handleStudentInbox(
         /* a corrupt object stays out of the card list */
       }
     }
-    return json(200, { ok: true, packets });
+    const fromPrefix = `groups/${license}/students/${studentId}/from-instructor/`;
+    const fromListed = await bucket.list({ prefix: fromPrefix });
+    const fromInstructor: { name: string; path: string; dateKey: string }[] = [];
+    for (const object of fromListed.objects) {
+      const relative = object.key.startsWith(`groups/${license}/`) ? object.key.slice(`groups/${license}/`.length) : '';
+      if (!studentCloudPathAllowed(relative, studentId)) continue;
+      const parts = relative.split('/');
+      fromInstructor.push({ name: parts[4] ?? relative, path: relative, dateKey: parts[3] ?? '' });
+    }
+    return json(200, { ok: true, packets, fromInstructor });
   }
 
   return json(405, { ok: false, error: 'Method not allowed.' });

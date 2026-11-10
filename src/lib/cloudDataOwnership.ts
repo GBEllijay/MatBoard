@@ -44,6 +44,7 @@ export function cloudPathScope(relativePath: string): CloudDataScope {
     relativePath.startsWith('lessons/') ||
     relativePath.startsWith('videos/daily/') ||
     relativePath.startsWith('gallery/') ||
+    relativePath.startsWith('instructors/') ||
     relativePath.startsWith('skins/') ||
     relativePath.startsWith('pending/')
   ) {

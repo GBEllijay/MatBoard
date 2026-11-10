@@ -38,7 +38,15 @@ export const CLOUD_HOME_CONNECTED =
 export const CLOUD_ROLE_HOME =
   'The gym owner, a Coach, and Instructors can upload daily videos and lesson-plan media. An assistant coach can play and download them. A program director can send videos to today\'s daily videos, without opening lesson plans.';
 
-export type CloudMediaPurpose = 'daily-video' | 'lesson' | 'lesson-media' | 'replay-pending' | 'gallery';
+export type CloudMediaPurpose =
+  | 'daily-video'
+  | 'lesson'
+  | 'lesson-media'
+  | 'replay-pending'
+  | 'gallery'
+  | 'instructor-video'
+  | 'instructor-photo'
+  | 'from-instructor';
 export type CloudMediaHome = 'device' | 'advantage-cloud';
 
 export type CloudAccess = { read: boolean; upload: boolean };
@@ -227,6 +235,8 @@ const LESSON_MEDIA_KEY = /^lessons\/current\/\d{4}-W\d{2}\/media\/\d{4}-\d{2}-\d
 const SKIN_IMAGE_KEY = /^skins\/[a-z0-9]{8,40}$/;
 const SKIN_META_KEY = /^skins\/[a-z0-9]{8,40}\.json$/;
 const GALLERY_KEY = /^gallery\/(pending|approved|rejected)\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
+const INSTRUCTOR_FOLDER_KEY = /^instructors\/[A-Za-z0-9_-]{1,80}\/(videos|photos)\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
+const FROM_INSTRUCTOR_KEY = /^students\/[A-Za-z0-9][A-Za-z0-9._-]{0,79}\/from-instructor\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
 
 /** Uploaded skins per license. The bytes still use the bucket cap below. */
 export const CUSTOM_SKIN_CLOUD_CAP = 10;
@@ -259,12 +269,17 @@ export function cloudObjectKey(licenseId: string, relativePath: string): string 
     !SKIN_META_KEY.test(relativePath) &&
     !PENDING_REPLAY_KEY.test(relativePath) &&
     !PENDING_STATUS_KEY.test(relativePath) &&
-    !GALLERY_KEY.test(relativePath)
+    !GALLERY_KEY.test(relativePath) &&
+    !INSTRUCTOR_FOLDER_KEY.test(relativePath) &&
+    !FROM_INSTRUCTOR_KEY.test(relativePath)
   ) {
     return null;
   }
-  // Gym media upload is academy material only. A shared copy uses the inbox.
-  if (cloudPathScope(relativePath) !== 'academy') return null;
+  const scope = cloudPathScope(relativePath);
+  // A from-instructor file is a shared copy, and it still counts against the bucket cap.
+  if (scope === 'refused') return null;
+  if (scope === 'shared' && !FROM_INSTRUCTOR_KEY.test(relativePath)) return null;
+  if (scope !== 'academy' && !FROM_INSTRUCTOR_KEY.test(relativePath)) return null;
   return `groups/${licenseId}/${relativePath}`;
 }
 
@@ -302,6 +317,62 @@ export function parseGalleryCloudPath(path: string): { lane: GalleryCloudLane; d
   return { lane, dateKey: match[2], name: match[3] };
 }
 
+export function instructorCloudPath(
+  seatId: string,
+  kind: 'videos' | 'photos',
+  dateKey: string,
+  fileName: string,
+): string | null {
+  if (!SEAT_SEGMENT.test(seatId) || !isCalendarDateKey(dateKey)) return null;
+  if (kind !== 'videos' && kind !== 'photos') return null;
+  const name = safePathSegment((fileName.split(/[/\\]/).pop() ?? '').trim(), kind === 'videos' ? 'clip' : 'photo');
+  const path = `instructors/${seatId}/${kind}/${dateKey}/${name}`;
+  return INSTRUCTOR_FOLDER_KEY.test(path) ? path : null;
+}
+
+export function parseInstructorCloudPath(
+  path: string,
+): { seatId: string; kind: 'videos' | 'photos'; dateKey: string; name: string } | null {
+  const match = /^instructors\/([A-Za-z0-9_-]{1,80})\/(videos|photos)\/(\d{4}-\d{2}-\d{2})\/([A-Za-z0-9._-]{1,80})$/.exec(path);
+  if (!match || (match[2] !== 'videos' && match[2] !== 'photos')) return null;
+  return { seatId: match[1], kind: match[2], dateKey: match[3], name: match[4] };
+}
+
+/** A claimed seat reads and writes only its own folder. The owner reads every seat. */
+export function instructorFolderAccess(input: {
+  kind: 'owner' | 'seat';
+  seatId?: string;
+  targetSeatId: string;
+  mode: 'read' | 'write';
+}): boolean {
+  if (!SEAT_SEGMENT.test(input.targetSeatId)) return false;
+  if (input.mode === 'read' && input.kind === 'owner') return true;
+  return input.kind === 'seat' && Boolean(input.seatId) && input.seatId === input.targetSeatId;
+}
+
+/** Owner, Coach, and Instructors. Assistant coach and program director cannot send. */
+export function canSendCloudFileToStudent(input: { kind: 'owner' | 'seat'; preset?: string | null }): boolean {
+  if (input.kind === 'owner') return true;
+  return input.preset === 'coach' || input.preset === 'instructors';
+}
+
+export function fromInstructorCloudPath(studentId: string, dateKey: string, fileName: string): string | null {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(studentId) || !isCalendarDateKey(dateKey)) return null;
+  const name = safePathSegment((fileName.split(/[/\\]/).pop() ?? '').trim(), 'file');
+  const path = `students/${studentId}/from-instructor/${dateKey}/${name}`;
+  return FROM_INSTRUCTOR_KEY.test(path) ? path : null;
+}
+
+export function parseFromInstructorCloudPath(path: string): { studentId: string; dateKey: string; name: string } | null {
+  const match = /^students\/([A-Za-z0-9][A-Za-z0-9._-]{0,79})\/from-instructor\/(\d{4}-\d{2}-\d{2})\/([A-Za-z0-9._-]{1,80})$/.exec(path);
+  if (!match) return null;
+  return { studentId: match[1], dateKey: match[2], name: match[3] };
+}
+
+export function isLessonMediaCloudPath(relativePath: string): boolean {
+  return LESSON_MEDIA_KEY.test(relativePath);
+}
+
 export function galleryDecisionPath(pendingPath: string, lane: 'approved' | 'rejected'): string | null {
   const parsed = parseGalleryCloudPath(pendingPath);
   if (!parsed || parsed.lane !== 'pending') return null;
@@ -332,7 +403,15 @@ export function cloudRelativePath(input: {
   dateKey: string;
   fileName: string;
 }): { ok: true; path: string } | { ok: false; error: string } {
-  if (input.purpose === 'replay-pending' || input.purpose === 'gallery') return { ok: false, error: CLOUD_ROLE_MESSAGE };
+  if (
+    input.purpose === 'replay-pending' ||
+    input.purpose === 'gallery' ||
+    input.purpose === 'instructor-video' ||
+    input.purpose === 'instructor-photo' ||
+    input.purpose === 'from-instructor'
+  ) {
+    return { ok: false, error: CLOUD_ROLE_MESSAGE };
+  }
   if (input.purpose === 'lesson-media') {
     if (input.role === 'student' || input.role === 'program-director' || input.role === 'none') {
       return { ok: false, error: CLOUD_ROLE_MESSAGE };

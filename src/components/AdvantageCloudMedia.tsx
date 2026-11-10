@@ -53,6 +53,7 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [player, setPlayer] = useState<Player | null>(null);
+  const [studentLicenseId, setStudentLicenseId] = useState('');
 
   useEffect(() => {
     setHome(readCloudMediaHome(typeof localStorage === 'undefined' ? null : localStorage));
@@ -178,6 +179,29 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
     setNote(failed || CLOUD_SAVED_MESSAGE);
   };
 
+  const sendToStudent = async (file: CloudFileRow) => {
+    const headers = authHeaders();
+    const studentId = studentLicenseId.trim();
+    if (!headers || !studentId) {
+      setNote('Enter the student license, then send.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await fetch('/api/gym/cloud', {
+        method: 'POST',
+        headers: { ...headers, 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'send-to-student', key: file.path, studentId, dateKey }),
+      });
+      const body = await readJson<{ error?: string; path?: string }>(response);
+      setNote(response.ok ? `Sent ${file.name} to that student.` : body?.error || 'That did not send.');
+    } catch {
+      setNote('That did not send.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const savePlan = async () => {
     if (!canUpload || !planJson) return;
     setBusy(true);
@@ -222,6 +246,17 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
         <p>You can play and download these files. A coach uploads them.</p>
       )}
       {canUpload ? (
+        <label>
+          Student license
+          <input
+            data-send-student=""
+            value={studentLicenseId}
+            onChange={(event) => setStudentLicenseId(event.target.value)}
+            autoComplete="off"
+          />
+        </label>
+      ) : null}
+      {canUpload ? (
         <div className="cloud-media__actions">
           <label className="btn cloud-media__upload">
             <span>{purpose === 'daily-video' ? 'Upload a video' : 'Upload lesson media'}</span>
@@ -262,6 +297,11 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
               <button type="button" className="btn btn--ghost" onClick={() => void download(file)}>
                 Download
               </button>
+              {canUpload && (file.mime.startsWith('video/') || file.mime === 'application/octet-stream') ? (
+                <button type="button" className="btn" disabled={busy} onClick={() => void sendToStudent(file)}>
+                  Send to student
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
