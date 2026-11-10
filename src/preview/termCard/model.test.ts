@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+  EMPTY_JOURNAL,
   EMPTY_VIDEOS,
   JOURNAL,
   JOURNAL_PREVIEW_COUNT,
@@ -51,6 +52,7 @@ test('sample terms stay fictional and the untouched rating is 3', () => {
   assert.equal(escape.entries[0]?.line, "Stayed calm under side control, didn't panic.");
   assert.equal(previewEntries(escape, false).length, escape.entries.length);
   assert.equal(EMPTY_VIDEOS, 'No videos linked yet.');
+  assert.equal(EMPTY_JOURNAL, 'No journal entries yet.');
   assert.equal(shownRating(null), NEUTRAL_RATING);
   assert.equal(shownRating(undefined), 3);
   assert.equal(shownRating(3), 3);

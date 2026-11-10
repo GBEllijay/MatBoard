@@ -50,6 +50,14 @@ type Props = {
   onFocus: (index: number) => void;
   onSelect: (index: number) => void;
   onDrill: (path: string[], detail: boolean) => void;
+  /** Tap an empty tile once that face is already open. Omitted on the crystalline preview. */
+  onEmptyTile?: (index: number) => void;
+  /** Fired when the camera zoom changes, including Reset view. */
+  onZoom?: (zoom: number) => void;
+  /** Hides the mesh during a card drill without removing zoom, pause, reset, or the factor buttons. */
+  meshHidden?: boolean;
+  /** Parent asks for an exact zoom, for Back from a card drill. */
+  zoomCommand?: { zoom: number; id: number } | null;
 };
 
 type Proj = {
@@ -61,7 +69,7 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill, onEmptyTile, onZoom, meshHidden = false, zoomCommand = null }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
@@ -109,6 +117,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
     openedAt: 0,
     applyZoom: (_next: number) => {},
     onFrontFace: (_index: number) => {},
+    onEmptyTile: undefined as undefined | ((index: number) => void),
+    onZoom: undefined as undefined | ((zoom: number) => void),
     api: null as null | {
       grow: (target: string) => void
       enter: (target: string, corners: [Vec, Vec, Vec]) => void
@@ -129,6 +139,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
   view.current.marked = marked;
   view.current.chrome = chrome;
   view.current.onExpand = onExpand ?? (() => {});
+  view.current.onEmptyTile = onEmptyTile;
+  view.current.onZoom = onZoom;
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -906,6 +918,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
   const publishLabels = (zoom: number, drilledFace: number) => {
     view.current.zoom = zoom;
     view.current.drilledFace = drilledFace;
+    view.current.onZoom?.(zoom);
     setLabelView((current) =>
       current.zoom === zoom && current.drilledFace === drilledFace ? current : { ...current, zoom, drilledFace },
     );
@@ -919,6 +932,15 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
     publishLabels(zoom, drillAfterZoom(before, zoom, state.drilledFace));
   };
   view.current.applyZoom = applyZoom;
+
+  useEffect(() => {
+    if (!zoomCommand) return;
+    const state = view.current;
+    state.anim = null;
+    const zoom = clampCrystalZoom(zoomCommand.zoom);
+    const drilled = zoom > FOCUS_FRAME_ZOOM + 1e-4 ? state.drilledFace : -1;
+    publishLabels(zoom, drilled);
+  }, [zoomCommand]);
   view.current.onFrontFace = (index) => {
     setLabelView((current) => (current.frontFace === index ? current : { ...current, frontFace: index }));
   };
@@ -975,6 +997,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
       <div
         ref={stageRef}
         className="topo-stage"
+        hidden={meshHidden}
         data-layout={TOPO_REVISION}
         data-style={style}
         data-comparison={comparison ? 'on' : 'off'}
@@ -1130,7 +1153,12 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
             .sort((a, b) => b.z - a.z)
             .find((item) => inTri(point, item.screen[0], item.screen[1], item.screen[2]));
           if (!hit) return;
-          toggleDrill(model.tiles[hit.index].faceIndex);
+          const tile = model.tiles[hit.index];
+          if (state.drilledFace === tile.faceIndex && !tile.move) {
+            state.onEmptyTile?.(tile.index);
+            return;
+          }
+          toggleDrill(tile.faceIndex);
         }}
         onPointerCancel={(event) => {
           const state = view.current;

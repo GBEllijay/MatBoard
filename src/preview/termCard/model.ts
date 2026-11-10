@@ -18,6 +18,8 @@ export const OPTIONAL_NOTE = 'Rate only if you want to.';
 
 export const EMPTY_VIDEOS = 'No videos linked yet.';
 
+export const EMPTY_JOURNAL = 'No journal entries yet.';
+
 export type Rating = 1 | 2 | 3 | 4 | 5;
 
 export type JournalEntry = {
