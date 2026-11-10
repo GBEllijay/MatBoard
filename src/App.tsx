@@ -50,6 +50,7 @@ import { AssessmentSpherePreview } from './preview/assessmentSphere/AssessmentSp
 import { TERM_CARD_PATH, TermCardPreviewPage } from './preview/termCard/TermCardPreview';
 import { INDEX_CARD_PATH, IndexCardPreviewPage } from './preview/indexCard/IndexCardPreview';
 import { CRYSTAL_PREVIEW_PATH, CrystallineSweepsPreview } from './preview/crystallineSweeps/CrystallineSweepsPreview';
+import { D8_SUBFACTORS_PATH, D8SubfactorsPreview } from './preview/d8Subfactors/D8SubfactorsPreview';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
 import { ConnectCoachPreviewPage } from './preview/proHome/ConnectCoachPreview';
 import { InstructorCardsPreviewPage } from './preview/proHome/InstructorCardsPreview';
@@ -778,6 +779,8 @@ export default function App() {
       <Route path={INDEX_CARD_PATH} element={<IndexCardPreviewPage />} />
       {/* Isolated Sweeps crystal proof. Direct link only. It does not write a record. */}
       <Route path={CRYSTAL_PREVIEW_PATH} element={<CrystallineSweepsPreview />} />
+      {/* Isolated sub-factor diamond. Direct link only. It does not write a check-in. */}
+      <Route path={D8_SUBFACTORS_PATH} element={<D8SubfactorsPreview />} />
       <Route path="/preview/student-ancestry" element={<StudentAncestryPreview />} />
       <Route path="/preview/student-hours" element={<StudentHoursPreview />} />
       <Route path="/student/*" element={<StudentEditionPage />} />
