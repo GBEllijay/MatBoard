@@ -13,7 +13,7 @@ import { CONDITIONING_ITEMS, MINDSET_GOALS } from '../../lib/studentAssessment.t
 import { EMPTY_JOURNAL, EMPTY_VIDEOS } from '../termCard/model.ts';
 import { D8_SUBFACTORS_PATH, D8SubfactorsPreview } from './D8SubfactorsPreview.tsx';
 import { DUPLICATE_NAME, FACES, SAMPLE_CHIP, SUBFACTOR_DISCLAIMER } from './model.ts';
-import { EMPTY_BRANCHES, VARIANT_A_LABEL, VARIANT_B_LABEL } from './cards.ts';
+import { EMPTY_BRANCHES } from './cards.ts';
 
 const dom = new Window({ url: 'http://localhost/preview/d8-subfactors' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -181,8 +181,8 @@ test('blank and duplicate names are refused, and a saved line opens its face car
   localStorage.clear();
   sessionStorage.clear();
   localStorage.setItem(ASSESSMENT_STORAGE_KEY, 'kept');
-  const { root, host } = mount(<D8SubfactorsPreview />, `${D8_SUBFACTORS_PATH}?variant=a`);
-  assert.equal(host.querySelector('[data-variant-label]')?.textContent, VARIANT_A_LABEL);
+  const { root, host } = mount(<D8SubfactorsPreview />);
+  assert.equal(host.querySelector('[data-variant-label]'), null);
   focusFace(host, 'sweeps');
   click(host.querySelector('[data-empty-slot]'));
   assert.ok(host.querySelector('[data-testid="face-card-list"]'));
@@ -224,7 +224,7 @@ test('blank and duplicate names are refused, and a saved line opens its face car
 });
 
 test('every face line is a link, and a blank on Passing or Mindset opens that face list', () => {
-  const { root, host } = mount(<D8SubfactorsPreview />, `${D8_SUBFACTORS_PATH}?variant=a`);
+  const { root, host } = mount(<D8SubfactorsPreview />);
   for (const face of FACES) {
     focusFace(host, face.id);
     for (const line of face.subfactors) {
@@ -253,7 +253,7 @@ test('every face line is a link, and a blank on Passing or Mindset opens that fa
 });
 
 test('a full face shows nine tiles, a +3 more badge, the average of all twelve, and Add still works', () => {
-  const { root, host } = mount(<D8SubfactorsPreview />, `${D8_SUBFACTORS_PATH}?variant=a`);
+  const { root, host } = mount(<D8SubfactorsPreview />);
   focusFace(host, 'sweeps');
   click(host.querySelector('[data-empty-slot]'));
   for (let index = 1; index <= 6; index += 1) addCard(host, `Low ${index}`, 1);
@@ -269,18 +269,21 @@ test('a full face shows nine tiles, a +3 more badge, the average of all twelve, 
   assert.equal(host.querySelectorAll('[data-testid="face-pyramid"] [data-term-link]').length, 9);
   assert.equal(host.querySelector('[data-testid="drill-view"]'), null);
   zoomIn(host, 4);
-  assert.equal(host.querySelector('[data-testid="drill-view"]'), null);
-  assert.equal(host.querySelector('.topo-stage')?.hasAttribute('hidden'), false);
+  const drilled = host.querySelector('[data-testid="drill-view"] [data-testid="face-card-list"]');
+  assert.ok(drilled);
+  assert.equal(drilled.querySelectorAll('[data-list-card]').length, 13);
+  assert.equal(host.querySelector('.topo-stage')?.hasAttribute('hidden'), true);
   act(() => {
     root.unmount();
   });
   host.remove();
 });
 
-test('variant B lists every card after zooming in, then Back and Reset step up to the diamond', () => {
+test('zooming into a face lists every card, then Back and Reset step up to the diamond', () => {
   localStorage.clear();
-  const { root, host } = mount(<D8SubfactorsPreview />);
-  assert.equal(host.querySelector('[data-variant-label]')?.textContent, VARIANT_B_LABEL);
+  const { root, host } = mount(<D8SubfactorsPreview />, `${D8_SUBFACTORS_PATH}?variant=a`);
+  assert.equal(host.querySelector('[data-variant]'), null);
+  assert.equal(host.querySelector('[data-variant-label]'), null);
   focusFace(host, 'sweeps');
   assert.equal(host.querySelector('[data-testid="drill-view"]'), null);
   zoomIn(host, 4);

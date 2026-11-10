@@ -35,7 +35,7 @@ import {
   sampleRatings,
   scoreFace,
 } from './model.ts';
-import { DIAMOND_CAP, ZOOM_LIST, averageRating, moreCount, moreLabel, strongestCards, variantFromSearch, variantLabel, type FaceCard } from './cards.ts';
+import { DIAMOND_CAP, ZOOM_LIST, averageRating, moreCount, moreLabel, strongestCards, type FaceCard } from './cards.ts';
 import { applySubfactorScore, buildSubfactorTopo, faceSlots, placeOnEmptySlot, showOnDiamond } from './topoModel.ts';
 
 test('six lines round to the same average as the conditioning and mindset rollup', () => {
@@ -217,11 +217,6 @@ function faceCard(id: string, rating: AssessmentScore, addedAt: number): FaceCar
 test('twelve cards keep nine on the diamond and average every card', () => {
   assert.equal(DIAMOND_CAP, 9);
   assert.equal(ZOOM_LIST, 1.8);
-  assert.equal(variantFromSearch(''), 'b');
-  assert.equal(variantFromSearch('?variant=b'), 'b');
-  assert.equal(variantFromSearch('?variant=a'), 'a');
-  assert.equal(variantLabel('a'), 'Variant A · nine-cap');
-  assert.equal(variantLabel('b'), 'Variant B · fractal zoom-to-list');
   const cards = [
     faceCard('a5', 5, 1),
     faceCard('a4', 4, 2),

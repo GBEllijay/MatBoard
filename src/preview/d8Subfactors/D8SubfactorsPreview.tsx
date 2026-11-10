@@ -1,10 +1,9 @@
 /**
  * Draft preview. Eight D8 faces, sample lines, and in-memory index cards.
- * Variant A caps the diamond at nine. Variant B also drills in when you zoom.
+ * The diamond caps at nine. Zooming into a face lists every card, then a card, then its branches.
  * Nothing here is written to a record.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import { PREVIEW_BANNER } from '../crystallineSweeps/adapter.ts';
 import { TopoStage } from '../crystallineSweeps/TopoStage.tsx';
 import '../crystallineSweeps/crystallineSweeps.css';
@@ -19,10 +18,7 @@ import {
   moreLabel,
   sampleCards,
   strongestCards,
-  variantFromSearch,
-  variantLabel,
   type FaceCard,
-  type PreviewVariant,
 } from './cards.ts';
 import {
   BRANCH_LINKS,
@@ -65,8 +61,6 @@ type Drill =
   | { level: 'branches'; faceId: AxisId; cardId: string };
 
 export function D8SubfactorsPreview() {
-  const { search } = useLocation();
-  const variant = variantFromSearch(search);
   const modelRef = useRef<ReturnType<typeof buildSubfactorTopo> | null>(null);
   if (!modelRef.current) modelRef.current = buildSubfactorTopo(FACES, (id) => sampleCards().find((card) => card.id === id)?.rating ?? null);
   const model = modelRef.current;
@@ -104,7 +98,7 @@ export function D8SubfactorsPreview() {
       .filter((index) => index >= 0);
   }, [chain, model]);
   const face = focus >= 0 ? FACES[focus] : null;
-  const drilled = variant === 'b' && drill.level !== 'diamond';
+  const drilled = drill.level !== 'diamond';
 
   useEffect(() => {
     if (!listFaceId || drilled) return;
@@ -112,7 +106,6 @@ export function D8SubfactorsPreview() {
   }, [listFaceId, drilled]);
 
   useEffect(() => {
-    if (variant !== 'b') return;
     if (zoom < ZOOM_LIST) {
       if (holdDiamond) setHoldDiamond(false);
       return;
@@ -125,7 +118,7 @@ export function D8SubfactorsPreview() {
       if (current.level === 'face' && current.faceId !== faceId) return { level: 'face', faceId };
       return current;
     });
-  }, [variant, zoom, focus, holdDiamond]);
+  }, [zoom, focus, holdDiamond]);
 
   const cardsOn = (faceId: AxisId) => cards.filter((card) => card.faceId === faceId);
 
@@ -142,13 +135,13 @@ export function D8SubfactorsPreview() {
     const index = FACES.findIndex((item) => item.id === faceId);
     if (index >= 0) setFocus(index);
     setListFaceId(faceId);
-    if (variant === 'b' && zoom >= ZOOM_LIST && !holdDiamond) setDrill({ level: 'face', faceId });
+    if (zoom >= ZOOM_LIST && !holdDiamond) setDrill({ level: 'face', faceId });
   };
 
   const openCard = (id: string) => {
     const card = cards.find((item) => item.id === id);
     if (!card) return;
-    if (variant === 'b' && !holdDiamond && (drill.level !== 'diamond' || zoom >= ZOOM_LIST)) {
+    if (!holdDiamond && (drill.level !== 'diamond' || zoom >= ZOOM_LIST)) {
       setSheetId(null);
       setDrill({ level: 'card', faceId: card.faceId, cardId: card.id });
       return;
@@ -175,7 +168,6 @@ export function D8SubfactorsPreview() {
   };
 
   const openBranches = (faceId: AxisId, cardId: string) => {
-    if (variant !== 'b') return;
     setSheetId(null);
     setDraft(null);
     setDrill({ level: 'branches', faceId, cardId });
@@ -258,11 +250,8 @@ export function D8SubfactorsPreview() {
 
   return (
     <>
-      <main className="crystal d8sf" data-variant={variant}>
+      <main className="crystal d8sf">
         <header className="d8sf-top">
-          <p className="d8sf-variant" data-variant-label={variant}>
-            {variantLabel(variant)}
-          </p>
           <p className="d8sf-sample">{SAMPLE_CHIP}</p>
           <p className="crystal-banner" role="note" data-testid="preview-banner">
             {PREVIEW_BANNER} {SUBFACTOR_DISCLAIMER}
@@ -324,7 +313,6 @@ export function D8SubfactorsPreview() {
           <DrillView
             drill={drill}
             cards={cards}
-            variant={variant}
             onBack={back}
             onDiamond={goDiamond}
             onFace={(faceId) => setDrill({ level: 'face', faceId })}
@@ -428,7 +416,7 @@ export function D8SubfactorsPreview() {
           video={sheet.video}
           draft={false}
           error={null}
-          showBranches={variant === 'b'}
+          showBranches
           layout="sheet"
           onName={() => {}}
           onSave={() => {}}
@@ -446,7 +434,6 @@ export function D8SubfactorsPreview() {
 function DrillView({
   drill,
   cards,
-  variant,
   onBack,
   onDiamond,
   onFace,
@@ -461,7 +448,6 @@ function DrillView({
 }: {
   drill: Exclude<Drill, { level: 'diamond' }>;
   cards: readonly FaceCard[];
-  variant: PreviewVariant;
   onBack: () => void;
   onDiamond: () => void;
   onFace: (faceId: AxisId) => void;
@@ -506,7 +492,7 @@ function DrillView({
           video={card.video}
           draft={false}
           error={null}
-          showBranches={variant === 'b'}
+          showBranches
           layout="flow"
           onName={() => {}}
           onSave={() => {}}

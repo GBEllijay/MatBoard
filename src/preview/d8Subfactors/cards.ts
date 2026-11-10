@@ -10,15 +10,10 @@ import { FACES, faceScoreFromLines } from './model.ts';
 /** The diamond never grows past a 3×3 of tiles. */
 export const DIAMOND_CAP = 9;
 
-/** Same readable cutoff the stage already uses for labels. Past this, variant B lists the face. */
+/** Past this zoom, the focused face becomes a list of its cards. */
 export const ZOOM_LIST = 1.8;
 
 export const EMPTY_BRANCHES = 'No branches yet.';
-
-export const VARIANT_A_LABEL = 'Variant A · nine-cap';
-export const VARIANT_B_LABEL = 'Variant B · fractal zoom-to-list';
-
-export type PreviewVariant = 'a' | 'b';
 
 /** Reserved so a technique tree can be attached later. Null means nothing is linked under the card. */
 export type CardBranch = {
@@ -48,15 +43,6 @@ export type FaceCard = {
   video: CardVideo | null;
   tree: CardBranch | null;
 };
-
-export function variantFromSearch(search: string): PreviewVariant {
-  const value = new URLSearchParams(search).get('variant');
-  return value === 'a' ? 'a' : 'b';
-}
-
-export function variantLabel(variant: PreviewVariant): string {
-  return variant === 'a' ? VARIANT_A_LABEL : VARIANT_B_LABEL;
-}
 
 export function sampleCards(): FaceCard[] {
   let stamp = 0;
