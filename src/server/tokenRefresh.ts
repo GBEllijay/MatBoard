@@ -5,6 +5,7 @@ import { expandGrants, tierForGrants } from './grantMatrix.ts';
 import { claimForAccess } from './subscriptionAccess.ts';
 import { accessForLicense } from './subscriptionSync.ts';
 import { grantRowOpensPlusCloud, ownerCloudGrantOpen } from '../lib/advantageCloudMedia.ts';
+import { ensureAccountForLicense } from './accountId.ts';
 import { isPerpetualOwnerAcademyGrant, OWNER_SESSION_SECONDS } from './ownerCloudProvision.ts';
 import { cloudAccessForLicense } from './cloudSubscription.ts';
 import { doorsFromStored, grantsForLicense, linkedCodeProLicense, type StoredGrant } from './purchaseRecords.ts';
@@ -223,5 +224,14 @@ export async function handleTokenRefresh(
     env.ENTITLEMENT_KEY_ID,
   );
   if (!token) return json(401, { ok: false, revoked: true, error: 'This access is no longer active.' });
-  return json(200, { ok: true, token, grants: doors });
+  let accountId = '';
+  if (db && issuedLicense && issuedLicense !== 'owner-test') {
+    const linked = await ensureAccountForLicense(db, {
+      licenseId: issuedLicense,
+      pepper: env.CODE_HASH_PEPPER,
+      now: stamp,
+    });
+    accountId = linked?.accountId ?? '';
+  }
+  return json(200, { ok: true, token, grants: doors, ...(accountId ? { accountId } : {}) });
 }

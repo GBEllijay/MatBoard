@@ -5,6 +5,8 @@
  * the simpler count. No locked tiles.
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { AccountReference } from './AccountReference';
+import { readAccountReference } from '../lib/accountReference.ts';
 import { ensureGymBackfill, markPastPlansTaught } from '../lib/gymBackfill.ts';
 import { installGymActor } from '../lib/gymActor.ts';
 import { syncGymEvents } from '../lib/gymEventSync.ts';
@@ -99,6 +101,7 @@ export function InstructorSheet() {
               {role}
               {deviceGymName && seat ? ` · ${deviceGymName}` : ''} · {cloud ? 'Advantage Cloud' : 'This device'}
             </p>
+            <AccountReference id={readAccountReference()} />
           </div>
         </div>
       </div>

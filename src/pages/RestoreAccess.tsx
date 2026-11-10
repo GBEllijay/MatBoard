@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { AccountReference } from '../components/AccountReference';
 import { appVersionHeaders } from '../lib/appCapability';
+import { rememberAccountReference } from '../lib/accountReference';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { SecretField } from '../components/SecretField';
@@ -31,6 +33,7 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
   const [email, setEmail] = useState(() => (isWhiteRestoreEmail(presetEmail) ? presetEmail.trim() : ''));
   const [code, setCode] = useState('');
   const [note, setNote] = useState<string | null>(null);
+  const [accountReference, setAccountReference] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [check, setCheck] = useState<PersonCheck>('loading');
@@ -170,11 +173,15 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
           publicJwk,
         }),
       });
-      const body = (await response.json()) as { ok?: boolean; token?: string; error?: string; grants?: string[] };
+      const body = (await response.json()) as { ok?: boolean; token?: string; error?: string; grants?: string[]; accountId?: string };
       if (!response.ok || !body.ok || !body.token) {
         setError(body.error || "That code didn't work.");
         setPending(false);
         return;
+      }
+      if (body.accountId) {
+        rememberAccountReference(body.accountId);
+        setAccountReference(body.accountId);
       }
       const accepted = await acceptRestoredToken(body.token);
       if (accepted) {
@@ -287,6 +294,7 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
               {note}
             </p>
           ) : null}
+          <AccountReference id={accountReference} />
           <p>
             <button className="btn btn--ghost" type="button" onClick={() => void onSignOutOthers()} disabled={pending}>
               Sign out other devices

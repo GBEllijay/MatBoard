@@ -1,9 +1,11 @@
 import { thumbprintJwk, verifyToken, type PublicJwk } from '../lib/entitlementToken.ts';
 import type { Door } from '../lib/entitlementToken.ts';
+import { ensureAccountForLicense, licenseForVerifiedEmail, primaryLicenseForAccount } from './accountId.ts';
 import { keyedHash, normalizeEmail } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
 import type { EmailSender } from './emailSender.ts';
 import { expandGrants, tierForGrants } from './grantMatrix.ts';
+import { isPerpetualOwnerAcademyGrant, OWNER_SESSION_SECONDS } from './ownerCloudProvision.ts';
 import { RESTORE_FROM_ADDRESS } from './paywallDecisions.ts';
 import { clientIp } from './rateLimit.ts';
 import {
@@ -137,7 +139,11 @@ export async function handleRestoreRequest(
   const ipAllowed = await bumpRate(db, `restore-ip:${ipKey}`, IP_LIMIT, stamp.getTime(), HOUR);
   if (!emailAllowed || !ipAllowed) return json(429, { ok: false, error: 'Too many attempts. Wait an hour and try again.' });
 
-  const licenseId = await licenseIdForEmail(db, email, pepper);
+  const byAccount = await licenseForVerifiedEmail(db, email, pepper);
+  const licenseId = byAccount?.licenseId ?? (await licenseIdForEmail(db, email, pepper));
+  if (licenseId) {
+    await ensureAccountForLicense(db, { licenseId, email, pepper, now: stamp });
+  }
   const challengeId = crypto.randomUUID();
   if (licenseId) {
     const code = restoreCode();
@@ -205,16 +211,27 @@ export async function handleRestoreVerify(
     .run();
   if (consumed.meta.changes !== 1) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
 
-  const identity = await db
-    .prepare(`SELECT license_id AS licenseId FROM identities WHERE email_hash = ? LIMIT 1`)
+  const account = await db
+    .prepare(`SELECT id FROM accounts WHERE email_hash = ? LIMIT 1`)
     .bind(row.emailHash)
-    .first<{ licenseId: string }>();
-  if (!identity) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  const grants = await grantsForLicense(db, identity.licenseId, now());
+    .first<{ id: string }>();
+  const fromAccount = account ? await primaryLicenseForAccount(db, account.id) : null;
+  const identity = fromAccount
+    ? null
+    : await db
+        .prepare(`SELECT license_id AS licenseId FROM identities WHERE email_hash = ? LIMIT 1`)
+        .bind(row.emailHash)
+        .first<{ licenseId: string }>();
+  const licenseId = fromAccount ?? identity?.licenseId ?? '';
+  if (!licenseId) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
+  const linked = await ensureAccountForLicense(db, { licenseId, pepper, now: now() });
+  const grants = await grantsForLicense(db, licenseId, now());
   const doors = expandGrants(doorsFromStored(grants)) as Door[];
   if (!doors.length) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
+  const ownerAcademy = grants.some((grant) => isPerpetualOwnerAcademyGrant(grant) && grant.product === 'advantage-pro');
   const deviceId = typeof body.deviceId === 'string' && body.deviceId.trim() ? body.deviceId.trim().slice(0, 80) : crypto.randomUUID();
   const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
+  const accountId = linked?.accountId ?? account?.id ?? '';
   if (!material) {
     return json(200, {
       ok: true,
@@ -222,6 +239,7 @@ export async function handleRestoreVerify(
       degraded: true,
       grants: doors,
       deviceId,
+      ...(accountId ? { accountId } : {}),
       warning: 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY.',
     });
   }
@@ -232,30 +250,33 @@ export async function handleRestoreVerify(
       thumbprint = await thumbprintJwk(jwk);
     }
   }
-  const active = await touchDevice(db, { licenseId: identity.licenseId, deviceId, thumbprint: thumbprint ?? null, now: now() });
+  const active = await touchDevice(db, { licenseId, deviceId, thumbprint: thumbprint ?? null, now: now() });
   void active;
   const pro = doors.includes('pro');
   // A license that is only a free Student claim restores as that claim, including
   // the gym link. Every other license keeps the token it had before.
-  const studentClaim = await freeStudentRestoreShape(db, identity.licenseId, now(), env);
+  const studentClaim = ownerAcademy ? null : await freeStudentRestoreShape(db, licenseId, now(), env);
   // Cloud comes from the cloud grant on this license. A previous phone's token
   // is not part of this request, and its flags are not copied.
-  const cloud = studentClaim ? null : await cloudAccessForLicense(db, identity.licenseId, now());
-  const subs = studentClaim
+  const cloud = studentClaim || ownerAcademy ? null : await cloudAccessForLicense(db, licenseId, now());
+  const subs = ownerAcademy
     ? undefined
-    : cloud?.entitled
-      ? { state: 'active' as const, cloud: true as const }
-      : pro
-        ? { state: 'active' as const }
-        : undefined;
+    : studentClaim
+      ? undefined
+      : cloud?.entitled
+        ? { state: 'active' as const, cloud: true as const }
+        : pro
+          ? { state: 'active' as const }
+          : undefined;
   const token = await issueToken(env.ENTITLEMENT_SIGNING_KEY, {
-    licenseId: identity.licenseId,
+    licenseId,
     grants: doors,
-    tier: studentClaim ? 'student' : tierForGrants(doors, pro ? 'stripe' : 'code'),
-    src: studentClaim ? 'free' : pro ? 'stripe' : 'code',
+    tier: ownerAcademy ? 'owner' : studentClaim ? 'student' : tierForGrants(doors, pro ? 'stripe' : 'code'),
+    src: ownerAcademy ? 'owner' : studentClaim ? 'free' : pro ? 'stripe' : 'code',
     deviceId,
     now: now(),
-    kind: studentClaim ? 'onetime' : pro ? 'pro' : 'onetime',
+    kind: ownerAcademy ? 'owner-test' : studentClaim ? 'onetime' : pro ? 'pro' : 'onetime',
+    ownerTestSeconds: ownerAcademy ? OWNER_SESSION_SECONDS : undefined,
     emailHint: row.emailHash.slice(0, 16),
     thumbprint,
     subs,
@@ -270,6 +291,7 @@ export async function handleRestoreVerify(
     grants: doors,
     token,
     deviceId,
+    ...(accountId ? { accountId } : {}),
     ...(studentClaim?.studentPass ? { studentPass: studentClaim.studentPass } : {}),
   });
 }

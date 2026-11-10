@@ -134,6 +134,7 @@ export async function handleSessionRedeem(
   const source: PurchaseSource = session.mode === 'subscription' && !proCloud ? 'stripe_subscription' : 'stripe_payment';
   const cloudSub = subscriptionId(session);
   let licenseId: string = crypto.randomUUID();
+  let accountId = '';
   let recordedCloud = false;
   if (db) {
     const recorded = await recordPurchase(db, {
@@ -149,6 +150,7 @@ export async function handleSessionRedeem(
       status: 'active',
     });
     licenseId = recorded.licenseId;
+    accountId = recorded.accountId;
     const cloudEdition = cloudMeta ? cloudEditionForCheckoutProduct(product) : null;
     if (cloudEdition && cloudSub) {
       await recordCloudGrant(db, { licenseId, edition: cloudEdition, subscriptionId: cloudSub, now: stamp });
@@ -199,6 +201,7 @@ export async function handleSessionRedeem(
     deviceId,
     source: 'stripe',
   };
+  if (accountId) response.accountId = accountId;
   if (token) response.token = token;
   else {
     response.degraded = true;

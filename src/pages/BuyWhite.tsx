@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { AccountReference } from '../components/AccountReference';
 import { AlphaCodeEntry, redeemAlphaCode } from '../components/AlphaCodeEntry';
 import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
 import { HomeMark } from '../components/HomeMark';
@@ -43,6 +44,7 @@ export function BuyWhitePage() {
   const [carryNote, setCarryNote] = useState('');
   const [freeUnlock, setFreeUnlock] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [accountReference, setAccountReference] = useState<string | null>(null);
   const [promoInput, setPromoInput] = useState('');
   const [accessEmail, setAccessEmail] = useState('');
   const navigate = useNavigate();
@@ -73,6 +75,7 @@ export function BuyWhitePage() {
       if (cancelled) return;
       setConfirming(false);
       if (result.ok && result.grants.includes('white')) {
+        setAccountReference(result.accountId ?? null);
         rememberWhitePurchase({ entitled: true, grants: result.grants });
         const carried = settleDemoCarryover(localStorage, result.grants);
         if (carried.message) setCarryNote(carried.message);
@@ -210,6 +213,7 @@ export function BuyWhitePage() {
                     : "That payment isn't confirmed. Nothing was unlocked."}
               </p>
             ) : null}
+            {checkout === 'success' && record?.entitled ? <AccountReference id={accountReference} /> : null}
             {carryNote ? (
               <p className="buy__status" role="status">
                 {carryNote}

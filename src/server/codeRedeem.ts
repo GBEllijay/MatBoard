@@ -140,23 +140,25 @@ export async function handleCodeRedeem(
   const listed = record.grants.filter((door) => door !== 'seat');
   const doors = expandGrants(listed);
   const ownerPerpetual = record.kind === 'owner';
-  if (ownerPerpetual && !services.db) {
+  // A signed owner pass needs the stored academy. Listing the doors without a
+  // signing key does not create a license.
+  if (ownerPerpetual && services.signingKey && !services.db) {
     return json(503, { ok: false, error: 'Entitlement storage is not set up yet. Bind ENTITLEMENTS_DB.' });
-  }
-  if (ownerPerpetual && !services.signingKey) {
-    return json(503, { ok: false, error: 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY.' });
   }
   const expiresAt = ownerPerpetual ? null : grantExpiry(record, now());
   const deviceField = (body as { deviceId?: unknown }).deviceId;
   const deviceId = typeof deviceField === 'string' && deviceField.trim() ? deviceField.trim().slice(0, 80) : crypto.randomUUID();
   let token: string | null = null;
+  let accountId = '';
   if (services.signingKey && doors.length) {
     const src = record.kind === 'free-white' ? 'free' : record.kind === 'owner' ? 'owner' : 'code';
     const refSalt = email ? await keyedHash(normalizeEmail(email), pepper, 'email') : deviceId;
     const source = src === 'free' ? 'free' : src === 'owner' ? 'owner' : 'code';
     let licenseId: string = crypto.randomUUID();
     if (ownerPerpetual && services.db) {
-      licenseId = (await provisionOwnerAcademy(services.db, { now: now(), endsAt: null })).licenseId;
+      const provisioned = await provisionOwnerAcademy(services.db, { now: now(), endsAt: null, email, pepper });
+      licenseId = provisioned.licenseId;
+      accountId = provisioned.accountId;
     } else if (services.db) {
       const writeDoor = async (door: Door, attachTo?: string) =>
         recordPurchase(services.db!, {
@@ -176,12 +178,15 @@ export async function handleCodeRedeem(
       // license when this code includes Pro, so Cloud sees that grant.
       let shared = '';
       if (doors.includes('pro')) {
-        shared = (await writeDoor('pro')).licenseId;
+        const recorded = await writeDoor('pro');
+        shared = recorded.licenseId;
+        accountId = recorded.accountId;
       }
       for (const door of doors) {
         if (door === 'pro') continue;
         const recorded = await writeDoor(door, shared || undefined);
         if (!shared) shared = recorded.licenseId;
+        if (recorded.accountId) accountId = recorded.accountId;
       }
       if (shared) licenseId = shared;
     }
@@ -208,6 +213,7 @@ export async function handleCodeRedeem(
     grants: listed,
     expiresAt,
     source: 'code',
+    ...(accountId ? { accountId } : {}),
     ...(token ? { token, deviceId } : {}),
   });
 }

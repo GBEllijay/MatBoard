@@ -6,6 +6,7 @@
  * This does not read or write a student's journal, photos, or backup.
  */
 
+import { ensureAccountForLicense } from './accountId.ts';
 import type { D1Database } from './d1.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
 import { CLOUD_GRANT_PRODUCT } from './cloudSubscription.ts';
@@ -30,21 +31,27 @@ export function isPerpetualOwnerAcademyGrant(row: {
   return isStableOwnerAcademyGrant(row) && !row.endsAt;
 }
 
-export async function provisionOwnerAcademy(
-  db: D1Database,
-  input: { now: Date; endsAt: string | null },
-): Promise<{ licenseId: string }> {
-  const stamp = input.now.toISOString();
-  const existing = await db
+async function existingOwnerLicense(db: D1Database): Promise<string | null> {
+  const grant = await db
     .prepare(
       `SELECT license_id AS licenseId FROM grants
        WHERE source = 'owner' AND source_ref = ? AND product = ? LIMIT 1`,
     )
     .bind(PRO_REF, API_PRODUCT_PRO)
     .first<{ licenseId: string }>();
-  let licenseId = existing?.licenseId ?? '';
+  return grant?.licenseId || null;
+}
+
+export async function provisionOwnerAcademy(
+  db: D1Database,
+  input: { now: Date; endsAt: string | null; email?: string; pepper?: string },
+): Promise<{ licenseId: string; accountId: string }> {
+  const stamp = input.now.toISOString();
+  let licenseId = (await existingOwnerLicense(db)) ?? '';
+  let created = '';
   if (!licenseId) {
-    licenseId = crypto.randomUUID();
+    created = crypto.randomUUID();
+    licenseId = created;
     await db.prepare(`INSERT INTO licenses (id, created_at) VALUES (?, ?)`).bind(licenseId, stamp).run();
   }
   await writeGrant(db, {
@@ -61,7 +68,22 @@ export async function provisionOwnerAcademy(
     stamp,
     endsAt: input.endsAt,
   });
-  return { licenseId };
+  const confirmed = await existingOwnerLicense(db);
+  if (confirmed) licenseId = confirmed;
+  if (created && created !== licenseId) {
+    const used = await db
+      .prepare(`SELECT id FROM grants WHERE license_id = ? LIMIT 1`)
+      .bind(created)
+      .first<{ id: string }>();
+    if (!used) await db.prepare(`DELETE FROM licenses WHERE id = ? AND account_id IS NULL`).bind(created).run();
+  }
+  const account = await ensureAccountForLicense(db, {
+    licenseId,
+    email: input.email,
+    pepper: input.pepper,
+    now: input.now,
+  });
+  return { licenseId, accountId: account?.accountId ?? '' };
 }
 
 async function writeGrant(
@@ -73,7 +95,6 @@ async function writeGrant(
       `INSERT INTO grants (id, license_id, product, source, source_ref, status, created_at, ends_at, revoked_at)
        VALUES (?, ?, ?, 'owner', ?, 'active', ?, ?, NULL)
        ON CONFLICT(source, source_ref, product) DO UPDATE SET
-         license_id = excluded.license_id,
          status = 'active',
          ends_at = CASE
            WHEN grants.ends_at IS NULL AND excluded.ends_at IS NOT NULL THEN grants.ends_at

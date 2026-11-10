@@ -18419,6 +18419,18 @@ a.plan-pick {
   outline-offset: 2px;
 }
 
+.account-reference {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.account-reference span {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  user-select: text;
+}
+
 .home .buy p.buy__hint,
 .home .buy p.soon-ad__includes,
 .home .buy p.soon-ad__aside,
