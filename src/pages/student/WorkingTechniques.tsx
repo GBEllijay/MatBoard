@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { IndexTermLink } from '../../indexCards/IndexTermLink';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { ShareChoice, SharePreview } from '../../lib/techniqueShare';
 import {
@@ -174,7 +175,9 @@ export function WorkingTechniquesPage() {
               {graph.nodes.map((node) => (
                 <li key={node.id}>
                   <article className={node.id === focus ? 'work__card is-on' : 'work__card'} id={`work-${node.id}`}>
-                    <strong>{node.title}</strong>
+                    <strong>
+                      <IndexTermLink name={node.title} />
+                    </strong>
                     <span className="work__meta">
                       {node.kind === 'position' ? 'Position' : 'Technique'}
                       {node.fundamentalId ? ' · On fundamentals' : ' · Not on fundamentals'}
@@ -302,8 +305,18 @@ function TreeBranch({ frame, focus, onFocus }: { frame: TreeFrame; focus: string
             <li key={step.edge.id}>
               <span className="work__meta">
                 {relationLabel(step.edge.relation)}
-                {step.edge.label ? ` · ${step.edge.label}` : ''}
-                {step.next.cycle ? ` · returns to ${step.next.node.title}` : ''}
+                {step.edge.label ? (
+                  <>
+                    {' · '}
+                    <IndexTermLink name={step.edge.label} />
+                  </>
+                ) : null}
+                {step.next.cycle ? (
+                  <>
+                    {' · returns to '}
+                    <IndexTermLink name={step.next.node.title} />
+                  </>
+                ) : null}
               </span>
               {step.next.cycle ? (
                 <button type="button" className="work__btn" onClick={() => onFocus(step.next.node.id)}>
@@ -352,7 +365,9 @@ function NodeEditor({
   const others = nodes.filter((item) => item.id !== node.id);
   return (
     <section className="work__form" aria-label={`Edit ${node.title}`}>
-      <h2 className="ink__label">{node.title}</h2>
+      <h2 className="ink__label">
+        <IndexTermLink name={node.title} />
+      </h2>
       <div className="work__actions">
         {node.fundamentalId ? (
           <Link className="work__btn" to={fundamentalsTo}>

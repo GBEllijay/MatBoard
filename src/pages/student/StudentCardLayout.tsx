@@ -6,9 +6,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApprovedOctagonRadar } from '../../preview/assessmentRadar/OctagonChart';
-import { CrystallineSweepsPreview } from '../../preview/crystallineSweeps/CrystallineSweepsPreview';
-import { TopoStage } from '../../preview/crystallineSweeps/TopoStage';
-import { buildTopo, demoLevel } from '../../preview/crystallineSweeps/topo';
+import { LiveD8, SheetD8Thumb } from '../../indexCards/LiveD8';
 import '../../preview/crystallineSweeps/crystallineSweeps.css';
 import { loadAssessments } from '../../lib/studentAssessment';
 import { shapeAxesFromLegacy, shapeAxisLabel, shapeAxisValues } from '../../lib/shapeAxes';
@@ -108,31 +106,13 @@ export function MatTimerButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** Read-only Shape radar from the latest saved self-assessment. Display only. The stored day is not rewritten. */
-const SHEET_DIAMOND = buildTopo((id) => demoLevel(id), 'center');
-
+/** The student's D8. Untouched lines stay at 3. Expanding opens the same diamond with its cards. */
 function SheetDiamond() {
   const [open, setOpen] = useState(false);
   return (
     <div className="sheet-diamond" data-testid="sheet-diamond">
-      <p className="sheet-diamond__note">Example diamond. Not a saved score.</p>
-      <TopoStage
-        chrome="bare"
-        model={SHEET_DIAMOND}
-        style="pyramid"
-        focus={-1}
-        selected={-1}
-        comparison={false}
-        pair={false}
-        links={[]}
-        drillPath={[]}
-        relief={1}
-        hue={1}
-        onExpand={() => setOpen(true)}
-        onFocus={() => undefined}
-        onSelect={() => undefined}
-        onDrill={() => undefined}
-      />
+      <p className="sheet-diamond__note">Your D8. A line you have not rated stays at 3.</p>
+      <SheetD8Thumb onExpand={() => setOpen(true)} />
       <button type="button" className="sheet-diamond__expand" onClick={() => setOpen(true)}>
         Expand
       </button>
@@ -141,7 +121,7 @@ function SheetDiamond() {
           <button type="button" className="sheet-diamond-full__close" onClick={() => setOpen(false)}>
             Close
           </button>
-          <CrystallineSweepsPreview />
+          <LiveD8 />
         </div>
       ) : null}
     </div>
