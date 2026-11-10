@@ -1,6 +1,7 @@
 /* Indexed-term card preview. Navy surfaces from the D8 diamond. Yellow stays on the logo. */
 
-.tc-page {
+.tc-page,
+.tc-sheet {
   --tc-page: #070b14;
   --tc-s1: #0e1726;
   --tc-s2: #14203a;
@@ -10,6 +11,9 @@
   --tc-blue: #004eba;
   --tc-ring: #6ea8ff;
   --tc-link: #9ec0ff;
+}
+
+.tc-page {
   min-height: 100dvh;
   background: var(--tc-page);
   color: var(--tc-ink);
@@ -136,6 +140,11 @@ body:has(.tc-page) .seat-session-dock {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  color: var(--tc-ink);
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.45;
 }
 
 .tc-scrim {

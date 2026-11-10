@@ -137,3 +137,114 @@ export function buildSubfactorTopo(
     matchesCitedLists: false,
   };
 }
+
+const sub = (a: Vec, b: Vec): Vec => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const dot = (a: Vec, b: Vec) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const norm = (vector: Vec): Vec => {
+  const length = Math.hypot(vector[0], vector[1], vector[2]) || 1;
+  return [vector[0] / length, vector[1] / length, vector[2] / length];
+};
+
+export type FaceSlot = {
+  tileIndex: number;
+  moveId: string | null;
+  label: string | null;
+  /** Percent across the face, left to right. */
+  x: number;
+  /** Percent down the face. */
+  y: number;
+};
+
+/** Flat map of one face. Empty corners stay on the far tiles. Filled lines stay near the middle. */
+export function faceSlots(model: TopoModel, faceIndex: number): FaceSlot[] {
+  const corners = model.faceCorners[faceIndex];
+  if (!corners) return [];
+  const [a, b, c] = corners.map((index) => model.vertices[index]);
+  const u = norm(sub(b, a));
+  const ac = sub(c, a);
+  const along = dot(ac, u);
+  const v = norm(sub(ac, [u[0] * along, u[1] * along, u[2] * along]));
+  const raw = model.tiles
+    .filter((tile) => tile.faceIndex === faceIndex)
+    .map((tile) => {
+      const mid: Vec = [
+        (tile.tri[0].p[0] + tile.tri[1].p[0] + tile.tri[2].p[0]) / 3,
+        (tile.tri[0].p[1] + tile.tri[1].p[1] + tile.tri[2].p[1]) / 3,
+        (tile.tri[0].p[2] + tile.tri[1].p[2] + tile.tri[2].p[2]) / 3,
+      ];
+      const rel = sub(mid, a);
+      return { tile, x: dot(rel, u), y: dot(rel, v) };
+    });
+  if (!raw.length) return [];
+  const minX = Math.min(...raw.map((item) => item.x));
+  const maxX = Math.max(...raw.map((item) => item.x));
+  const minY = Math.min(...raw.map((item) => item.y));
+  const maxY = Math.max(...raw.map((item) => item.y));
+  const spanX = maxX - minX || 1;
+  const spanY = maxY - minY || 1;
+  return raw.map((item) => ({
+    tileIndex: item.tile.index,
+    moveId: item.tile.move?.id ?? null,
+    label: item.tile.move?.name ?? null,
+    x: 16 + ((item.x - minX) / spanX) * 68,
+    y: 14 + ((maxY - item.y) / spanY) * 72,
+  }));
+}
+
+const tileMidpoint = (tile: TopoModel['tiles'][number]): Vec =>
+  [0, 1, 2].map((axis) => (tile.tri[0].p[axis] + tile.tri[1].p[axis] + tile.tri[2].p[axis]) / 3) as Vec;
+
+/**
+ * Paint at most nine cards onto the face's existing triangles.
+ * The mesh stays a 3×3. Extra cards are not given a new row.
+ * `shown` should already be the strongest cards, closest tiles first.
+ */
+export function showOnDiamond(
+  model: TopoModel,
+  faceIndex: number,
+  shown: readonly { id: string; name: string; rating: ReliefScore }[],
+): void {
+  const face = model.faces[faceIndex];
+  const tiles = model.tiles.filter((tile) => tile.faceIndex === faceIndex);
+  if (!face || !tiles.length) return;
+  const corners = model.faceCorners[faceIndex].map((index) => model.vertices[index]);
+  const centroid: Vec = [0, 1, 2].map((axis) => (corners[0][axis] + corners[1][axis] + corners[2][axis]) / 3) as Vec;
+  const ranked = [...tiles].sort((left, right) => {
+    const leftMid = tileMidpoint(left);
+    const rightMid = tileMidpoint(right);
+    const leftDistance = Math.hypot(leftMid[0] - centroid[0], leftMid[1] - centroid[1], leftMid[2] - centroid[2]);
+    const rightDistance = Math.hypot(rightMid[0] - centroid[0], rightMid[1] - centroid[1], rightMid[2] - centroid[2]);
+    return leftDistance - rightDistance || left.index - right.index;
+  });
+  const capped = shown.slice(0, Math.min(9, ranked.length));
+  const moves: TopoMove[] = capped.map((card) => ({
+    id: card.id,
+    name: card.name,
+    subtype: 'card',
+    faceId: face.id,
+  }));
+  face.moves = moves;
+  for (const tile of tiles) {
+    tile.move = null;
+    tile.offset = null;
+    tile.apex = null;
+  }
+  capped.forEach((card, index) => {
+    const tile = ranked[index];
+    if (!tile) return;
+    tile.move = moves[index] ?? null;
+    applySubfactorScore(model, card.id, card.rating);
+  });
+}
+
+/** Put a new line on one empty tile. The other tiles stay where they are. Rating 3 is flat. */
+export function placeOnEmptySlot(model: TopoModel, tileIndex: number, id: string, label: string): boolean {
+  const tile = model.tiles[tileIndex];
+  if (!tile || tile.move) return false;
+  const move: TopoMove = { id, name: label, subtype: 'added', faceId: tile.faceId };
+  tile.move = move;
+  const face = model.faces[tile.faceIndex];
+  face.moves = [...face.moves, move];
+  applySubfactorScore(model, id, 3);
+  return true;
+}

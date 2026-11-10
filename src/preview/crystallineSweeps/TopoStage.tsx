@@ -34,6 +34,19 @@ type Props = {
   onFocus: (index: number) => void;
   onSelect: (index: number) => void;
   onDrill: (path: string[], detail: boolean) => void;
+  /** Tap an empty tile on the focused face. Omitted on the crystalline preview. */
+  onEmptyTile?: (index: number) => void;
+  /** Added line ids whose pyramid labels open as links. */
+  termIds?: readonly string[];
+  onOpenTerm?: (id: string, opener: HTMLElement) => void;
+  /** Fired when the camera zoom changes. Used by the fractal variant. */
+  onZoom?: (zoom: number) => void;
+  /** How far a face focus pulls the camera. The crystalline preview keeps 1.15. */
+  focusZoom?: number;
+  /** Hides the mesh during a drill without removing zoom, pause, reset, or the factor buttons. */
+  meshHidden?: boolean;
+  /** Parent asks for an exact zoom, for Back and Reset from a drill. */
+  zoomCommand?: { zoom: number; id: number } | null;
 };
 
 type Proj = {
@@ -45,7 +58,9 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, links, drillPath, relief, hue, marked = [], chrome = 'full', onExpand, onFocus, onSelect, onDrill }: Props) {
+const NO_TERM_IDS: readonly string[] = [];
+
+export function TopoStage({ model, style, focus, selected, comparison, pair, links, drillPath, relief, hue, marked = [], chrome = 'full', onExpand, onFocus, onSelect, onDrill, onEmptyTile, onOpenTerm, termIds = NO_TERM_IDS, onZoom, focusZoom = 1.15, meshHidden = false, zoomCommand = null }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
@@ -76,6 +91,12 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     marked: [] as readonly number[],
     chrome: 'full' as 'full' | 'bare',
     onExpand: () => {},
+    onEmptyTile: undefined as undefined | ((index: number) => void),
+    onOpenTerm: undefined as undefined | ((id: string, opener: HTMLElement) => void),
+    onZoom: undefined as undefined | ((zoom: number) => void),
+    reportedZoom: -1,
+    focusZoom: 1.15,
+    termIds: [] as readonly string[],
     grown: [] as { name: string; corners: [Vec, Vec, Vec] }[],
     pendingPath: null as string[] | null,
     onDrill: (_path: string[], _detail: boolean) => {},
@@ -106,6 +127,11 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
   view.current.marked = marked;
   view.current.chrome = chrome;
   view.current.onExpand = onExpand ?? (() => {});
+  view.current.onEmptyTile = onEmptyTile;
+  view.current.onOpenTerm = onOpenTerm;
+  view.current.onZoom = onZoom;
+  view.current.focusZoom = focusZoom;
+  view.current.termIds = termIds;
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -114,6 +140,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     if (!stage || !canvas || !labels) return undefined;
     const context = canvas.getContext('2d');
     if (!context) return undefined;
+    const state = view.current;
     const faceNodes = model.faces.map((face) => {
       const node = document.createElement('span');
       node.className = 'topo-label topo-label-face';
@@ -122,14 +149,39 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       return node;
     });
     const tileNodes = model.tiles.map((tile) => {
-      const node = document.createElement('span');
+      const node = document.createElement(state.onOpenTerm ? 'a' : 'span');
       node.className = 'topo-label';
       node.textContent = tile.move?.name ?? '';
       node.hidden = true;
+      if (state.onOpenTerm) {
+        node.addEventListener('click', (event) => {
+          const id = (event.currentTarget as HTMLElement).dataset.termLink;
+          if (!id) return;
+          event.preventDefault();
+          event.stopPropagation();
+          state.onOpenTerm?.(id, event.currentTarget as HTMLElement);
+        });
+      }
       labels.append(node);
       return node;
     });
-    const state = view.current;
+    const emptyNodes = model.tiles.map((tile) => {
+      if (tile.move || !state.onEmptyTile) return null;
+      const node = document.createElement('button');
+      node.type = 'button';
+      node.className = 'topo-empty';
+      node.dataset.canvasEmpty = String(tile.index);
+      node.setAttribute('aria-label', 'Empty slot');
+      node.textContent = '+';
+      node.hidden = true;
+      node.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        state.onEmptyTile?.(tile.index);
+      });
+      labels.append(node);
+      return node;
+    });
     const resize = () => {
       state.width = stage.clientWidth || 320;
       state.height = stage.clientHeight || 440;
@@ -348,6 +400,11 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
         state.zoom = state.anim.z0 + (state.anim.z1 - state.anim.z0) * k;
         if (state.anim.t >= 1) state.anim = null;
       } else if (!state.paused && !state.drag && state.selected < 0) state.ry += dt * (state.chrome === 'bare' ? 0.1 : 0.18);
+      const zoomMark = Math.round(state.zoom * 20) / 20;
+      if (zoomMark !== state.reportedZoom) {
+        state.reportedZoom = zoomMark;
+        state.onZoom?.(state.zoom);
+      }
       const showLabels = state.zoom >= 1.8 || state.focus >= 0;
       const light: Vec = [-0.4, 0.6, 0.7];
       const lightLength = Math.hypot(...light) || 1;
@@ -661,11 +718,35 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       projected.forEach((item) => {
         const tile = model.tiles[item.index];
         const node = tileNodes[item.index];
+        const name = tile.move?.name ?? '';
+        if (node.textContent !== name) node.textContent = name;
+        if (node instanceof HTMLAnchorElement) {
+          const linkId = tile.move && state.termIds.includes(tile.move.id) ? tile.move.id : '';
+          if (linkId) {
+            const href = `#${linkId}`;
+            if (node.getAttribute('href') !== href) node.setAttribute('href', href);
+            node.dataset.termLink = linkId;
+            node.style.pointerEvents = 'auto';
+          } else if (node.hasAttribute('href')) {
+            node.removeAttribute('href');
+            delete node.dataset.termLink;
+            node.style.pointerEvents = '';
+          }
+        }
         const focused = (state.focus < 0 || tile.faceIndex === state.focus) && (!state.comparison || (state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps'));
         node.hidden = state.selected >= 0 || !(showLabels && tile.move && item.front && item.shade > 0.2 && focused);
         if (!node.hidden) {
           node.style.left = `${item.center[0]}px`;
           node.style.top = `${item.center[1]}px`;
+        }
+        const empty = emptyNodes[item.index];
+        if (empty) {
+          const open = state.focus >= 0 && tile.faceIndex === state.focus && !tile.move && item.front && item.shade > 0.02;
+          empty.hidden = !open;
+          if (open) {
+            empty.style.left = `${item.center[0]}px`;
+            empty.style.top = `${item.center[1]}px`;
+          }
         }
       });
       if (!paired) model.faceCorners.forEach((corners, faceIndex) => {
@@ -843,6 +924,14 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
     view.current.pendingPath = [...drillPath];
   }, [drillPath, selected, model]);
 
+  useEffect(() => {
+    if (!zoomCommand) return;
+    const state = view.current;
+    state.anim = null;
+    state.zoom = zoomCommand.zoom;
+    state.onZoom?.(zoomCommand.zoom);
+  }, [zoomCommand]);
+
   const focusFace = (index: number) => {
     const state = view.current;
     const center = model.faceCorners[index]
@@ -861,7 +950,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       rx1: targetPitch,
       ry1: state.ry + dy,
       z0: state.zoom,
-      z1: Math.max(state.zoom, 1.15),
+      z1: Math.max(state.zoom, state.focusZoom),
       t: 0,
     };
     onFocus(index);
@@ -872,6 +961,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
       <div
         ref={stageRef}
         className="topo-stage"
+        hidden={meshHidden}
         data-layout={TOPO_REVISION}
         data-style={style}
         data-comparison={comparison ? 'on' : 'off'}
@@ -892,6 +982,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
           event.preventDefault();
         }}
         onPointerDown={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest?.('.topo-empty, a.topo-label')) return;
           const node = event.currentTarget;
           node.setPointerCapture?.(event.pointerId);
           const state = view.current;
@@ -1027,7 +1119,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
           else if (tile.move) {
             onSelect(hit.index);
             state.lastTap = { time: performance.now(), name: tile.move.name };
-          }
+          } else state.onEmptyTile?.(hit.index);
         }}
         onPointerCancel={(event) => {
           const state = view.current;
@@ -1064,6 +1156,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
             state.ry = 0.4;
             state.zoom = 1;
             state.anim = null;
+            state.onZoom?.(1);
             const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
             state.paused = reduce;
             setPaused(reduce);
@@ -1086,8 +1179,10 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, lin
   );
 }
 
-function zoomBy(state: { zoom: number }, factor: number) {
+function zoomBy(state: { zoom: number; anim: { t: number } | null; onZoom?: (zoom: number) => void }, factor: number) {
+  state.anim = null;
   state.zoom = Math.min(18, Math.max(0.6, state.zoom * factor));
+  state.onZoom?.(state.zoom);
 }
 
 function toneFill(tone: TileTone, light: number, chosen: boolean, hue: number): string {

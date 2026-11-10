@@ -17,6 +17,29 @@ export const D8_SUBFACTORS_PATH = '/preview/d8-subfactors';
 
 export const SUBFACTORS_PER_FACE = 6;
 
+/** Short refusal when a new name repeats one already on that face. */
+export const DUPLICATE_NAME = 'Already on this face.';
+
+export type AddedTerm = {
+  id: string;
+  faceId: AxisId;
+  label: string;
+  tileIndex: number;
+};
+
+/** Blank names are ignored. A repeat on this face is rejected. Other faces do not count. */
+export function reviewAddedName(labels: readonly string[], raw: string): { label: string } | { error: 'blank' | 'duplicate' } {
+  const label = raw.trim().replace(/\s+/g, ' ');
+  if (!label) return { error: 'blank' };
+  const key = label.toLocaleLowerCase();
+  if (labels.some((item) => item.toLocaleLowerCase() === key)) return { error: 'duplicate' };
+  return { label };
+}
+
+export function labelsOnFace(face: FaceModel, added: readonly AddedTerm[]): string[] {
+  return [...face.subfactors.map((line) => line.label), ...added.filter((item) => item.faceId === face.id).map((item) => item.label)];
+}
+
 /** Neutral chip. Same treatment as the term-card Sample chip, with this page's words. */
 export const SAMPLE_CHIP = 'Sample scores';
 
@@ -290,8 +313,15 @@ export function sampleRatings(faces: readonly FaceModel[] = FACES): Record<strin
   return ratings;
 }
 
-export function scoreFace(face: FaceModel, ratings: Readonly<Record<string, AssessmentScore | undefined>>): AssessmentScore | null {
-  return faceScoreFromLines(face.subfactors.map((line) => ratings[line.id]));
+export function scoreFace(
+  face: FaceModel,
+  ratings: Readonly<Record<string, AssessmentScore | undefined>>,
+  added: readonly Pick<AddedTerm, 'id' | 'faceId'>[] = [],
+): AssessmentScore | null {
+  return faceScoreFromLines([
+    ...face.subfactors.map((line) => ratings[line.id]),
+    ...added.filter((line) => line.faceId === face.id).map((line) => ratings[line.id]),
+  ]);
 }
 
 /**

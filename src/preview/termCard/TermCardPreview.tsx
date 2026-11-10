@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import {
+  EMPTY_JOURNAL,
   EMPTY_VIDEOS,
   JOURNAL,
   JOURNAL_PREVIEW_COUNT,
@@ -142,6 +143,20 @@ export function TermCardPreviewPage() {
   );
 }
 
+export function TermCard({
+  term,
+  rating,
+  onRate,
+  onClose,
+}: {
+  term: SampleTerm;
+  rating: Rating | undefined;
+  onRate: (value: Rating) => void;
+  onClose: () => void;
+}) {
+  return <TermSheet term={term} rating={rating} onRate={onRate} onClose={onClose} />;
+}
+
 function TermSheet({
   term,
   rating,
@@ -262,21 +277,25 @@ function TermSheet({
           </div>
           <section className="tc-block" aria-labelledby={journalId}>
             <h3 id={journalId}>Your journal</h3>
-            <ul className="tc-entries">
-              {entries.map((entry) => (
-                <li key={entry.id}>
-                  <button
-                    type="button"
-                    className="tc-entry"
-                    aria-pressed={activeId === entry.id}
-                    onClick={() => setActiveId((current) => (current === entry.id ? null : entry.id))}
-                  >
-                    <time>{entry.date}</time>
-                    <span>{entry.line}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {entries.length === 0 ? (
+              <p className="tc-empty">{EMPTY_JOURNAL}</p>
+            ) : (
+              <ul className="tc-entries">
+                {entries.map((entry) => (
+                  <li key={entry.id}>
+                    <button
+                      type="button"
+                      className="tc-entry"
+                      aria-pressed={activeId === entry.id}
+                      onClick={() => setActiveId((current) => (current === entry.id ? null : entry.id))}
+                    >
+                      <time>{entry.date}</time>
+                      <span>{entry.line}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             {canSeeAll ? (
               <button type="button" className="tc-more" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
                 {expanded ? `Show the latest ${JOURNAL_PREVIEW_COUNT}` : seeAllLabel(term.entries.length)}
