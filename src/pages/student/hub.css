@@ -1451,3 +1451,241 @@
   outline: 3px solid #6ea8ff;
   outline-offset: 3px;
 }
+
+.s-profiles {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(26, 50, 82, 0.96), rgba(16, 32, 54, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: #f2f4f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.s-profiles h2,
+.s-profiles h3,
+.s-profiles p {
+  margin: 0;
+}
+
+.s-profiles h2 {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(235, 240, 247, 0.74);
+}
+
+.s-profiles h3 {
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.s-profiles p,
+.s-profiles small {
+  color: rgba(235, 240, 247, 0.74);
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+
+.s-profiles ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.s-profiles__row {
+  display: grid;
+  gap: 8px;
+}
+
+.s-profiles__row > button:first-child {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+.s-profiles__row.is-current > button:first-child {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.s-profiles__row strong {
+  display: block;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.s-profiles__row small {
+  display: block;
+}
+
+.s-profiles__portrait {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #102033;
+}
+
+.s-profiles__portrait--letter {
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+.s-profiles__add,
+.s-profiles__panel button,
+.s-profiles__manage button {
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #f5f5f7;
+  color: #0e1726;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+
+.s-profiles__add {
+  width: 100%;
+}
+
+.s-profiles__panel {
+  display: grid;
+  gap: 10px;
+}
+
+.s-profiles__panel label {
+  display: grid;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.s-profiles__panel input[type='text'],
+.s-profiles__panel input:not([type]),
+.s-profiles__panel input[type='file'] {
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: #102033;
+  color: #f2f4f7;
+  font: inherit;
+  font-size: 16px;
+  padding: 8px 12px;
+}
+
+.s-profiles__actions,
+.s-profiles__manage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.s-profiles__danger {
+  background: #8f2d2d;
+  color: #fff;
+}
+
+.s-profiles__preview {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.s-profiles__error {
+  color: #ffb4b4;
+}
+
+.s-profiles button:focus-visible,
+.s-profiles input:focus-visible {
+  outline: 3px solid #6ea8ff;
+  outline-offset: 2px;
+}
+
+.student.student--profile .s-profiles {
+  margin: 0 16px 12px;
+}
+
+/* Profile pages use .student button, which clears the fill. Put the switcher controls back. */
+.student .s-profiles button,
+.student .s-profiles input {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.student .s-profiles .s-profiles__add,
+.student .s-profiles .s-profiles__panel button,
+.student .s-profiles .s-profiles__manage button,
+.student .s-profiles button.s-profiles__danger {
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #f5f5f7;
+  color: #0e1726;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.student .s-profiles .s-profiles__row > button:first-child {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f2f4f7;
+  font-size: 16px;
+  font-weight: 400;
+  text-align: left;
+}
+
+.student .s-profiles .s-profiles__row.is-current > button:first-child {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.student .s-profiles button.s-profiles__danger {
+  background: #8f2d2d;
+  color: #fff;
+}
+
+.student .s-profiles input:not([type='file']) {
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: #102033;
+  color: #f2f4f7;
+  font-size: 16px;
+  font-weight: 400;
+  box-shadow: none;
+}

@@ -39,6 +39,7 @@ import type { StudentProgressReport } from '../../lib/progress/types';
 import { useStudentFile, useStudentPath } from './chrome';
 import { GroupFrame, MenuList, MenuRow } from './groupChrome';
 import { BinderDecor, BracketArt, Chevron, JournalDecor, RowIcon } from './hubArt';
+import { StudentProfileSwitcher } from './StudentProfileSwitcher';
 import { WornBeltMark } from './wornBelt';
 
 function profileCardNote(report: StudentProgressReport): string {
@@ -104,6 +105,7 @@ export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
           <ProfileCard />
             </>
           )}
+          <StudentProfileSwitcher />
           <Link className="s-tile s-journal" to={to('/student/training')} aria-label={TRAINING_GROUP_LABEL}>
             <JournalDecor />
             <span className="s-tile__text">
@@ -231,6 +233,7 @@ export function ProgressMenu() {
         </span>
       </section>
       <ProfileCard />
+      <StudentProfileSwitcher />
       <MenuList label={RANK_GROUP_LABEL}>
         {links.map((item) => (
           <MenuRow

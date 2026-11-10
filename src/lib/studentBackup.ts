@@ -43,6 +43,12 @@ import { loadScouting, saveScouting, SCOUTING_STORAGE_KEY, type ScoutingCard } f
 import { BRACKET_PHOTO_KEY } from './bracketPhoto.ts';
 import { progressReportLines, selfAssessmentLines, studentReportPdfName } from './studentReport.ts';
 import { noteStudentBackupBuilt } from './studentBackupStamp.ts';
+import {
+  backupProfileFromUnknown,
+  backupRestoreProfileId,
+  bindStudentProfileStorage,
+  readActiveStudentProfile,
+} from './studentProfiles.ts';
 import { loadCoachShelf, saveCoachShelf, type CoachShelf } from './studentTools.ts';
 
 export { progressReportLines, selfAssessmentLines, studentReportPdfName };
@@ -97,6 +103,8 @@ export type StudentBackupFile = {
   portrait?: string;
   /** Gym logo. Present only when that switch was on at export. */
   gymLogo?: string;
+  /** Profile this file was exported from. Older files omit it and restore into the open profile. */
+  profile?: { id: string; name: string };
 };
 
 export type BackupMarkImages = {
@@ -299,6 +307,8 @@ export async function buildStudentBackup(input: {
   /** The JSON backup updates Last backup. Spreadsheet and PDF exports leave that stamp alone. */
   recordStamp?: boolean;
   stampStorage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null;
+  /** Name and id written into the file. Defaults to the profile open on stampStorage. */
+  profile?: { id: string; name: string };
   /** Selfie and gym logo ride along only when their switches are on. */
   marks?: BackupMarkImages;
 }): Promise<{ file: StudentBackupFile; json: string; csv: string; progressPdf: Uint8Array; assessmentPdf: Uint8Array }> {
@@ -318,6 +328,8 @@ export async function buildStudentBackup(input: {
     films,
   };
   const marks = input.marks;
+  const profile = input.profile ?? readActiveStudentProfile(input.stampStorage);
+  if (profile?.id && profile.name) file.profile = { id: profile.id, name: profile.name };
   if (marks?.includeSelfie && marks.selfie && portraitFits(marks.selfie)) file.portrait = marks.selfie;
   if (marks?.includeLogo && marks.gymLogo && coachGymLogoFits(marks.gymLogo)) file.gymLogo = marks.gymLogo;
   if (input.includeVideos) {
@@ -407,6 +419,7 @@ export function parseStudentBackup(text: string): { ok: true; file: StudentBacku
       filmFilesOmitted: Array.isArray(record.filmFilesOmitted) ? record.filmFilesOmitted : undefined,
       portrait: keptStill(record.portrait, portraitFits),
       gymLogo: keptStill(record.gymLogo, coachGymLogoFits),
+      profile: backupProfileFromUnknown(record.profile),
     },
   };
 }
@@ -586,45 +599,75 @@ export function mergedShelf(local: CoachShelf, incoming: CoachShelf): CoachShelf
   return { plan, feedback };
 }
 
+function rankPhotosFromStorage(storage: MemoryStore): RankPhotoStore {
+  try {
+    const raw = storage.getItem(RANK_PHOTO_KEY);
+    if (!raw) return emptyRankPhotoStore();
+    const parsed = JSON.parse(raw) as RankPhotoStore;
+    if (!parsed || typeof parsed !== 'object' || !parsed.belts || !parsed.tapes) return emptyRankPhotoStore();
+    return parsed;
+  } catch {
+    return emptyRankPhotoStore();
+  }
+}
+
+function bracketsFromStorage(storage: MemoryStore): Record<string, string> {
+  try {
+    const raw = storage.getItem(BRACKET_PHOTO_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return parsed as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
 export function applyBackupToMemory(
   storage: MemoryStore,
   file: StudentBackupFile,
   mode: BackupApplyMode,
   photos: { rank: RankPhotoStore; bracket: Record<string, string> },
 ): { report: StudentProgressReport; films: StudentFilm[]; note: string } {
-  const localReport = loadStudentReport(storage);
+  const targetId = backupRestoreProfileId(storage, file);
+  const scoped = bindStudentProfileStorage(storage, targetId);
+  const sameProfile = targetId === readActiveStudentProfile(storage).id;
+  const localPhotos = sameProfile ? photos : { rank: rankPhotosFromStorage(scoped), bracket: bracketsFromStorage(scoped) };
+  const localReport = loadStudentReport(scoped);
   const report = mode === 'replace' ? file.report : mergeStudentReports(localReport, file.report);
-  const saved = saveStudentReport(storage, report);
-  const assessment = mode === 'replace' ? file.assessment : mergeAssessments(loadAssessments(storage), file.assessment);
-  writeAssessments(storage, assessment);
-  const scouting = mode === 'replace' ? file.scouting : mergeById(loadScouting(storage), file.scouting, (_left, right) => right);
-  saveScouting(storage, scouting);
-  const rankPhotos = mode === 'replace' ? file.rankPhotos : mergePhotos(photos.rank, file.rankPhotos);
-  storage.setItem(RANK_PHOTO_KEY, JSON.stringify(rankPhotos));
-  const brackets = mode === 'replace' ? cleanBracket(file.bracketPhotos) : cleanBracket({ ...photos.bracket, ...file.bracketPhotos });
-  storage.setItem(BRACKET_PHOTO_KEY, JSON.stringify(brackets));
+  const saved = saveStudentReport(scoped, report);
+  const assessment = mode === 'replace' ? file.assessment : mergeAssessments(loadAssessments(scoped), file.assessment);
+  writeAssessments(scoped, assessment);
+  const scouting = mode === 'replace' ? file.scouting : mergeById(loadScouting(scoped), file.scouting, (_left, right) => right);
+  saveScouting(scoped, scouting);
+  const rankPhotos = mode === 'replace' ? file.rankPhotos : mergePhotos(localPhotos.rank, file.rankPhotos);
+  scoped.setItem(RANK_PHOTO_KEY, JSON.stringify(rankPhotos));
+  const brackets = mode === 'replace' ? cleanBracket(file.bracketPhotos) : cleanBracket({ ...localPhotos.bracket, ...file.bracketPhotos });
+  scoped.setItem(BRACKET_PHOTO_KEY, JSON.stringify(brackets));
   const shelf = backupShelf(file);
-  saveCoachShelf(storage, mode === 'replace' ? shelf : mergedShelf(loadCoachShelf(storage), shelf));
-  const films = mode === 'replace' ? writeFilms(storage, file.films) : writeFilms(storage, mergeById(loadFilms(storage), file.films, later));
+  saveCoachShelf(scoped, mode === 'replace' ? shelf : mergedShelf(loadCoachShelf(scoped), shelf));
+  const films = mode === 'replace' ? writeFilms(scoped, file.films) : writeFilms(scoped, mergeById(loadFilms(scoped), file.films, later));
   // A photo already on this phone stays on merge. Replace uses the backup photo.
   // A backup with no photo leaves whatever is already here.
-  if (file.portrait && (mode === 'replace' || !readProfilePortrait(storage))) {
-    writeProfilePortraitSync(file.portrait, storage);
+  if (file.portrait && (mode === 'replace' || !readProfilePortrait(scoped))) {
+    writeProfilePortraitSync(file.portrait, scoped);
   }
   if (file.gymLogo) {
     try {
-      writeStudentGymLogo(file.gymLogo, storage);
+      writeStudentGymLogo(file.gymLogo, scoped);
     } catch {
       /* a logo that no longer fits stays off this phone */
     }
   }
+  const base =
+    mode === 'replace'
+      ? 'The backup replaced the journal on this phone. Saved on this phone.'
+      : 'The backup was merged into the journal on this phone. Saved on this phone.';
+  const landed = file.profile && !sameProfile ? ` Restored into ${file.profile.name}.` : '';
   return {
     report: saved,
     films,
-    note:
-      mode === 'replace'
-        ? 'The backup replaced the journal on this phone. Saved on this phone.'
-        : 'The backup was merged into the journal on this phone. Saved on this phone.',
+    note: `${base}${landed}`,
   };
 }
 

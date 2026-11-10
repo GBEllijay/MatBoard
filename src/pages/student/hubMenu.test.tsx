@@ -25,6 +25,8 @@ import {
 import { DRIVE_BINDING_KEY } from '../../lib/googleDrive.ts';
 import { BackupMenu, ClearStudentMenu } from './BackupMenu.tsx';
 import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from './StudentMenus.tsx';
+import { StudentProfileSwitcher } from './StudentProfileSwitcher.tsx';
+import { ADD_PROFILE_LABEL, readActiveStudentProfile, readStudentProfiles } from '../../lib/studentProfiles.ts';
 import { WhitePage } from '../White.tsx';
 
 const dom = new Window({ url: 'http://localhost/student?student=1' });
@@ -545,4 +547,56 @@ test('Lock White uses the hub text button and leaves roster and journal in place
   assert.equal(localStorage.getItem('matboard.studentEdition.v1'), '{"keep":"journal-belt-benchmark"}');
   assert.equal(localStorage.getItem(DRIVE_BINDING_KEY), '{"folderId":"keep-folder"}');
   unmount(page);
+});
+
+test('a profile can be added and switched from the hub, then deleted after confirmation', () => {
+  localStorage.clear();
+  let reloads = 0;
+  Object.defineProperty(view.location, 'reload', {
+    configurable: true,
+    value: () => {
+      reloads += 1;
+    },
+  });
+  const hub = mount(<StudentHub />, '/student/hub?student=1');
+  const click = (host: ParentNode, name: string) => {
+    const button = [...host.querySelectorAll('button')].find((node) => node.textContent?.trim() === name);
+    assert.ok(button, name);
+    act(() => {
+      button.click();
+    });
+  };
+  const switcher = hub.host.querySelector('[data-testid="student-profile-switcher"]');
+  assert.equal(switcher?.textContent?.includes('$'), false);
+  click(hub.host, ADD_PROFILE_LABEL);
+  const name = hub.host.querySelector('input[aria-label="Profile name"]');
+  assert.ok(name instanceof view.HTMLInputElement);
+  act(() => {
+    const set = Object.getOwnPropertyDescriptor(view.HTMLInputElement.prototype, 'value')?.set;
+    set?.call(name, 'Sam');
+    const key = Object.keys(name).find((item) => item.startsWith('__reactProps'));
+    const props = key ? (name as unknown as Record<string, { onChange?: (event: unknown) => void }>)[key] : null;
+    props?.onChange?.({ target: name, currentTarget: name });
+  });
+  click(hub.host, 'Add profile');
+  assert.equal(readStudentProfiles(localStorage).profiles.some((profile) => profile.name === 'Sam'), true);
+  assert.match(hub.host.textContent ?? '', /Sam/);
+  const sam = hub.host.querySelector('button[aria-label="Sam"]');
+  assert.ok(sam);
+  act(() => {
+    sam.click();
+  });
+  assert.equal(reloads, 1);
+  assert.equal(readActiveStudentProfile(localStorage).name, 'Sam');
+  unmount(hub);
+
+  const page = mount(<StudentProfileSwitcher detail />, '/student/profile?student=1');
+  assert.match(page.host.textContent ?? '', /Sam/);
+  click(page.host, 'Delete');
+  assert.equal(readStudentProfiles(localStorage).profiles.some((profile) => profile.name === 'Sam'), true);
+  click(page.host, 'Delete Sam');
+  assert.equal(readStudentProfiles(localStorage).profiles.some((profile) => profile.name === 'Sam'), false);
+  assert.equal(readActiveStudentProfile(localStorage).name, 'My profile');
+  unmount(page);
+  localStorage.clear();
 });

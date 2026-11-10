@@ -14,6 +14,7 @@ import {
   quotaAddNote,
 } from './storageQuota.ts';
 import type { AcademyProvider } from './academyPathway.ts';
+import { DEFAULT_STUDENT_PROFILE_ID, readActiveStudentProfileId } from './studentProfiles.ts';
 
 export const FILM_STORAGE_KEY = 'matboard.studentEdition.films.v1';
 export const FILM_DB = 'matboard-student-films';
@@ -297,11 +298,25 @@ function openFilmDb(): Promise<IDBDatabase> {
   });
 }
 
-export async function putFilmBlob(id: string, blob: Blob): Promise<void> {
+const FILM_BLOB_PREFIX = 'profile-blob:';
+
+/** Default-profile blobs keep the film id. Other profiles cannot read them. */
+export function filmBlobKey(filmId: string, profileId = readActiveStudentProfileId()): string {
+  if (!profileId || profileId === DEFAULT_STUDENT_PROFILE_ID) return filmId;
+  return `${FILM_BLOB_PREFIX}${profileId}:${filmId}`;
+}
+
+function filmBlobBelongs(key: string, profileId: string): boolean {
+  if (!profileId || profileId === DEFAULT_STUDENT_PROFILE_ID) return !key.startsWith(FILM_BLOB_PREFIX);
+  return key.startsWith(`${FILM_BLOB_PREFIX}${profileId}:`);
+}
+
+export async function putFilmBlob(id: string, blob: Blob, profileId = readActiveStudentProfileId()): Promise<void> {
   const db = await openFilmDb();
+  const key = filmBlobKey(id, profileId);
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(FILM_STORE, 'readwrite');
-    tx.objectStore(FILM_STORE).put(blob, id);
+    tx.objectStore(FILM_STORE).put(blob, key);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
@@ -309,11 +324,12 @@ export async function putFilmBlob(id: string, blob: Blob): Promise<void> {
   db.close();
 }
 
-export async function getFilmBlob(id: string): Promise<Blob | null> {
+export async function getFilmBlob(id: string, profileId = readActiveStudentProfileId()): Promise<Blob | null> {
   const db = await openFilmDb();
+  const key = filmBlobKey(id, profileId);
   const blob = await new Promise<Blob | null>((resolve, reject) => {
     const tx = db.transaction(FILM_STORE, 'readonly');
-    const req = tx.objectStore(FILM_STORE).get(id);
+    const req = tx.objectStore(FILM_STORE).get(key);
     req.onsuccess = () => resolve(req.result instanceof Blob ? req.result : null);
     req.onerror = () => reject(req.error);
   });
@@ -321,22 +337,37 @@ export async function getFilmBlob(id: string): Promise<Blob | null> {
   return blob;
 }
 
-export async function deleteFilmBlob(id: string): Promise<void> {
+export async function deleteFilmBlob(id: string, profileId = readActiveStudentProfileId()): Promise<void> {
   const db = await openFilmDb();
+  const key = filmBlobKey(id, profileId);
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(FILM_STORE, 'readwrite');
-    tx.objectStore(FILM_STORE).delete(id);
+    tx.objectStore(FILM_STORE).delete(key);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
   db.close();
 }
 
-export async function clearFilmBlobs(): Promise<void> {
+export async function clearFilmBlobs(profileId = readActiveStudentProfileId()): Promise<void> {
   const db = await openFilmDb();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(FILM_STORE, 'readwrite');
-    tx.objectStore(FILM_STORE).clear();
+    const store = tx.objectStore(FILM_STORE);
+    if (typeof store.openCursor !== 'function') {
+      if (!profileId || profileId === DEFAULT_STUDENT_PROFILE_ID) store.clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      return;
+    }
+    const req = store.openCursor();
+    req.onsuccess = () => {
+      const cursor = req.result;
+      if (!cursor) return;
+      if (filmBlobBelongs(String(cursor.key), profileId)) cursor.delete();
+      cursor.continue();
+    };
+    req.onerror = () => reject(req.error);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
