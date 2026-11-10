@@ -32,6 +32,39 @@ test('the Pro home labels the first four hubs and keeps their destinations', () 
   assert.match(names, /to: COACH_UNLIMITED_PATH, belt: 'brown'/);
 });
 
+function proHubHref(source: string, entry: 'white' | 'student'): string {
+  const tag = source.match(new RegExp(`<Link className="pro-hub" to="([^"]+)" data-pro-entry="${entry}">`));
+  assert.ok(tag, `${entry} pro-hub link`);
+  return tag[1];
+}
+
+test('Pro + Cloud edition cards match Pro destinations, belts, and order', () => {
+  assert.equal(proHubHref(cloud, 'white'), proHubHref(pro, 'white'));
+  assert.equal(proHubHref(cloud, 'student'), proHubHref(pro, 'student'));
+  assert.equal(proHubHref(pro, 'white'), '/white');
+  assert.equal(proHubHref(pro, 'student'), '/student');
+
+  const whiteCard = cloud.slice(cloud.indexOf('data-pro-entry="white"'), cloud.indexOf('data-pro-entry="student"'));
+  const studentCard = cloud.slice(cloud.indexOf('data-pro-entry="student"'), cloud.indexOf('<ProToolboxCard'));
+  assert.match(whiteCard, /<BeltRail kind="white" \/>\s*<span>Advantage White<\/span>/);
+  assert.match(studentCard, /<BeltRail kind="blue" \/>\s*<span>Advantage Student Edition<\/span>/);
+  assert.doesNotMatch(whiteCard, /\/buy|whiteEntryPath|WHITE_BUY_PATH|editions\/white/);
+  assert.doesNotMatch(studentCard, /\/buy|editions\/student/);
+
+  const mediaRetitle =
+    /hub\.to === '\/slideshow\?folder=gallery' && hub\.title === MEDIA_CONSOLE_NAME\s*\?\s*\{ \.\.\.hub, title: 'Advantage Media Edition' \}/;
+  assert.match(pro, mediaRetitle);
+  assert.match(cloud, mediaRetitle);
+  assert.doesNotMatch(cloud, /to="\/media"|to="\/buy\/media"|to=\{MEDIA_EDITION_PATH\}|to="\/buy"/);
+
+  const upload = cloud.indexOf('<AdvantageCloudHome />');
+  const white = cloud.indexOf('data-pro-entry="white"');
+  const student = cloud.indexOf('data-pro-entry="student"');
+  const hubs = cloud.indexOf('<ProToolboxCard');
+  const invite = cloud.indexOf('<InstructorInvitePanel />');
+  assert.ok(upload > -1 && white > upload && student > white && hubs > student && invite > hubs);
+});
+
 test('the Pro home header clearance is page-local and the hub tiles stay cream', () => {
   assert.match(css, /\.home--pro-menu\.home--pro \.home__inner \{[^}]*padding-top:\s*calc\(0\.5rem \+ var\(--safe-t\)\)/);
   assert.match(css, /\.home--pro-menu \.pro-hub \{[^}]*background:\s*#efebe3/);
