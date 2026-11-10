@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { AdvantageCloudHome } from '../components/AdvantageCloudHome';
+import { GalleryPendingBadge } from '../components/GalleryPendingNotice';
+import { useCurrentSeat } from '../components/SeatSessionBar';
 import { GymCharacterSheet } from '../components/GymCharacterSheet';
 import { InstructorSheet } from '../components/InstructorSheet';
 import { EditionLadder } from '../components/EditionLadder';
@@ -31,6 +33,7 @@ import './proHomeMenu.css';
  */
 export function ProPlusCloudPage() {
   const door = useSeatDoor();
+  const seat = useCurrentSeat();
   const hubs = consoleHubs(door, door.seat?.permissions ?? null);
 
   useEffect(() => {
@@ -55,6 +58,7 @@ export function ProPlusCloudPage() {
           ) : null}
           <PlusCloudConduct />
           <AdvantageCloudHome />
+          {!seat ? <GalleryPendingBadge /> : null}
           <ProToolboxCard hubs={hubs} label={`${PRO_PLUS_CLOUD_NAME} hubs`} />
           <InstructorInvitePanel />
         </nav>

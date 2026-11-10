@@ -1,7 +1,8 @@
 /**
  * Signed-in Advantage Cloud files for one license.
  * The browser never receives a public bucket URL.
- * Gallery reads stay on functions/api/gym/media.ts.
+ * Gallery list, upload, and approval for staff stay on this route.
+ * Slideshow bytes for an approved photo still use functions/api/gym/media.ts.
  */
 
 import {
@@ -33,6 +34,11 @@ import {
   isCustomSkinImagePath,
   isCustomSkinMetaPath,
   isDailyVideoCloudPath,
+  galleryCloudPath,
+  galleryDecisionAllowed,
+  galleryDecisionPath,
+  galleryUploadLane,
+  parseGalleryCloudPath,
   claimsOpenPlusCloud,
   grantRowOpensPlusCloud,
   ownerCloudGrantOpen,
@@ -307,6 +313,35 @@ async function listFiles(bucket: GymMediaBucket, actor: Actor, purpose: 'daily-v
   return files;
 }
 
+async function listGallery(
+  bucket: GymMediaBucket,
+  actor: Actor,
+  lane: 'pending' | 'approved' | 'rejected',
+  dateKey: string,
+): Promise<CloudFileRow[]> {
+  const files: CloudFileRow[] = [];
+  const mediaKeyPrefix = `groups/${actor.licenseId}/gallery/${lane}/${dateKey ? `${dateKey}/` : ''}`;
+  let cursor: string | undefined;
+  for (let page = 0; page < 20; page += 1) {
+    const listed = await bucket.list({ prefix: mediaKeyPrefix, cursor, limit: 1000 });
+    for (const object of listed.objects) {
+      const relative = relativePath(actor.licenseId, object.key);
+      const parsed = parseGalleryCloudPath(relative);
+      if (!parsed || parsed.lane !== lane) continue;
+      if (dateKey && parsed.dateKey !== dateKey) continue;
+      files.push({
+        name: parsed.name,
+        path: relative,
+        size: object.size,
+        mime: object.httpMetadata?.contentType || 'application/octet-stream',
+      });
+    }
+    if (!listed.truncated || !listed.cursor) break;
+    cursor = listed.cursor;
+  }
+  return files;
+}
+
 type StartBody = {
   action?: string;
   purpose?: string;
@@ -321,7 +356,22 @@ type StartBody = {
 };
 
 function isPurpose(value: string): value is CloudMediaPurpose {
-  return value === 'daily-video' || value === 'lesson' || value === 'lesson-media' || value === 'replay-pending';
+  return (
+    value === 'daily-video' ||
+    value === 'lesson' ||
+    value === 'lesson-media' ||
+    value === 'replay-pending' ||
+    value === 'gallery'
+  );
+}
+
+/** Owner may write approved only. Coach and Instructors may write pending only. */
+function refuseGalleryWrite(actor: Actor, key: string): Response | null {
+  const parsed = parseGalleryCloudPath(relativePath(actor.licenseId, key));
+  if (!parsed) return null;
+  const lane = galleryUploadLane({ kind: actor.kind, preset: actor.preset });
+  if (lane !== parsed.lane) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+  return null;
 }
 
 /** A pending-only seat may only write under its own pending prefix. */
@@ -372,6 +422,7 @@ async function listPending(bucket: GymMediaBucket, actor: Actor): Promise<Pendin
 
 function mimeAllowed(purpose: CloudMediaPurpose, mime: string): boolean {
   if (purpose === 'lesson') return mime === 'application/json';
+  if (purpose === 'gallery') return mime.startsWith('image/') || mime.startsWith('video/');
   if (purpose === 'daily-video') return mime.startsWith('video/') || mime === 'application/octet-stream';
   if (purpose === 'replay-pending') return mime.startsWith('video/') || mime.startsWith('image/');
   return mime.startsWith('video/') || mime.startsWith('image/') || mime === 'application/octet-stream';
@@ -508,6 +559,16 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       return fileResponse(object);
     }
     if (!actor.read) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
+    if (op === 'list' && url.searchParams.get('purpose') === 'gallery') {
+      const lane = url.searchParams.get('lane') ?? 'pending';
+      if (lane !== 'pending' && lane !== 'approved' && lane !== 'rejected') {
+        return json(400, { ok: false, error: 'Choose a gallery lane.' });
+      }
+      const date = url.searchParams.get('date') ?? '';
+      if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return json(400, { ok: false, error: 'Choose a real date.' });
+      const files = await listGallery(bucket, actor, lane, date);
+      return json(200, { ok: true, files });
+    }
     if (op === 'list') {
       const purpose = url.searchParams.get('purpose') === 'lesson' ? 'lesson' : 'daily-video';
       const files = await listFiles(bucket, actor, purpose, url.searchParams.get('date') ?? '');
@@ -552,6 +613,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (!key) return json(400, { ok: false, error: 'That file is not in this license.' });
     const refused = laneRefused(key);
     if (refused) return refused;
+    const galleryRefused = refuseGalleryWrite(actor, key);
+    if (galleryRefused) return galleryRefused;
     const op = url.searchParams.get('op');
     const bytes = new Uint8Array(await request.arrayBuffer());
     if (op === 'part') {
@@ -628,6 +691,27 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     return json(200, { ok: true, status, ...(approvedPath ? { path: approvedPath } : {}) });
   }
 
+  if (body.action === 'gallery-approve' || body.action === 'gallery-reject') {
+    if (!galleryDecisionAllowed({ kind: actor.kind, preset: actor.preset })) {
+      return json(403, { ok: false, error: 'Only the owner or an Instructors seat can approve or reject.' });
+    }
+    const path = typeof body.key === 'string' ? body.key : '';
+    const lane = body.action === 'gallery-approve' ? 'approved' : 'rejected';
+    const targetPath = galleryDecisionPath(path, lane);
+    const sourceKey = parseGalleryCloudPath(path)?.lane === 'pending' ? cloudObjectKey(actor.licenseId, path) : null;
+    const targetKey = targetPath ? cloudObjectKey(actor.licenseId, targetPath) : null;
+    if (!sourceKey || !targetKey || !targetPath) return json(400, { ok: false, error: 'That photo is not waiting for approval.' });
+    const object = await bucket.get(sourceKey);
+    if (!object) return json(404, { ok: false, error: 'That photo is not waiting for approval.' });
+    const bytes = new Uint8Array(await new Response(object.body).arrayBuffer());
+    const [bucketUsed, existing] = await Promise.all([bytesUnder(bucket, ''), bucket.head(targetKey)]);
+    const next = bucketUsed - object.size - (existing?.size ?? 0) + bytes.byteLength;
+    if (next > cap) return json(409, { ok: false, error: cloudFullMessage(bucketUsed, cap) });
+    await bucket.put(targetKey, bytes, { httpMetadata: { contentType: object.httpMetadata?.contentType || 'image/jpeg' } });
+    await bucket.delete(sourceKey);
+    return json(200, { ok: true, lane, path: targetPath });
+  }
+
   if (dropOnly && body.action !== 'start' && body.action !== 'complete' && body.action !== 'abort') {
     return actor.dailyDrop ? dropRefused() : json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
   }
@@ -647,6 +731,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (!key || !body.uploadId) return json(400, { ok: false, error: 'That upload is already closed.' });
     const refused = laneRefused(key);
     if (refused) return refused;
+    const galleryRefused = refuseGalleryWrite(actor, key);
+    if (galleryRefused) return galleryRefused;
     await bucket.resumeMultipartUpload(key, body.uploadId).abort();
     return json(200, { ok: true });
   }
@@ -658,6 +744,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     }
     const refused = laneRefused(key);
     if (refused) return refused;
+    const galleryRefused = refuseGalleryWrite(actor, key);
+    if (galleryRefused) return galleryRefused;
     const parts = body.parts
       .map((part) => ({ partNumber: Number(part.partNumber), etag: typeof part.etag === 'string' ? part.etag : '' }))
       .filter((part) => Number.isInteger(part.partNumber) && part.partNumber > 0 && part.etag)
@@ -696,10 +784,37 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   if (size > maxUpload) return json(413, { ok: false, error: cloudTooLargeMessage(maxUpload) });
   const mime = safeCloudMime(typeof body.mime === 'string' ? body.mime : '', purpose === 'lesson' ? 'application/json' : 'video/mp4');
   if (!mimeAllowed(purpose, mime)) {
-    return json(400, { ok: false, error: purpose === 'daily-video' ? 'Daily videos are video files.' : 'That file type cannot go in the lesson plan.' });
+    const error =
+      purpose === 'daily-video'
+        ? 'Daily videos are video files.'
+        : purpose === 'gallery'
+          ? 'Class photos are photo or video files.'
+          : 'That file type cannot go in the lesson plan.';
+    return json(400, { ok: false, error });
   }
   if (purpose === 'replay-pending' && actor.replayUpload !== 'pending') {
     return json(403, { ok: false, error: actor.replayUpload === 'direct' ? 'Save replays to lesson media.' : CLOUD_ROLE_MESSAGE });
+  }
+  if (purpose === 'gallery') {
+    const lane = galleryUploadLane({ kind: actor.kind, preset: actor.preset });
+    if (!lane) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+    const galleryPath = galleryCloudPath(lane, dateKey, fileName);
+    const galleryKey = galleryPath ? cloudObjectKey(actor.licenseId, galleryPath) : null;
+    if (!galleryPath || !galleryKey) return json(400, { ok: false, error: 'That file name cannot be saved.' });
+    const galleryRoom = await roomFor(bucket, galleryKey, size, cap);
+    if (!galleryRoom.ok) return json(409, { ok: false, error: cloudFullMessage(galleryRoom.bucketUsed, cap) });
+    if (size > CLOUD_CHUNK_BYTES) {
+      const upload = await bucket.createMultipartUpload(galleryKey, { httpMetadata: { contentType: mime } });
+      return json(200, {
+        ok: true,
+        mode: 'multipart',
+        key: galleryKey,
+        path: galleryPath,
+        uploadId: upload.uploadId,
+        partSize: CLOUD_CHUNK_BYTES,
+      });
+    }
+    return json(200, { ok: true, mode: 'single', key: galleryKey, path: galleryPath });
   }
   const relative =
     purpose === 'replay-pending'
