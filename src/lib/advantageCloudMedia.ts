@@ -32,7 +32,7 @@ export const CLOUD_DAILY_DROP_ONLY =
   "A program director can send videos to today's daily videos. Lesson plans and other Cloud files stay with the coaches.";
 export const CLOUD_UNAVAILABLE_MESSAGE = 'Advantage Cloud is not on this license.';
 export const CLOUD_HOME_UNBOUND = 'Advantage Cloud is not connected on this site.';
-export const CLOUD_HOME_ERROR = 'Advantage Cloud could not be checked. Nothing on this device was changed.';
+export const CLOUD_HOME_ERROR = 'Could not read Cloud usage. Nothing on this device was changed.';
 export const CLOUD_HOME_CONNECTED =
   'Advantage Cloud is connected. Sign in on this device to see how much space this license is using.';
 export const CLOUD_ROLE_HOME =
@@ -342,9 +342,61 @@ export function cloudHomeStatusLine(view: CloudHomeView | null): string {
   return cloudUsageLine(view.licenseUsedBytes, view.bucketUsedBytes, view.capBytes);
 }
 
+export type CloudUsageFigure = {
+  /** Hero figure, same role as the other academy stat numbers. */
+  value: string;
+  /** Unit beside the figure. Empty when there is no measurement yet. */
+  unit: string;
+  /** Short line under the figure. */
+  label: string;
+};
+
+function splitCloudBytes(bytes: number): { value: string; unit: string } {
+  const text = formatCloudBytes(bytes);
+  const space = text.lastIndexOf(' ');
+  if (space < 0) return { value: text, unit: '' };
+  return { value: text.slice(0, space), unit: text.slice(space + 1) };
+}
+
+/**
+ * Compact academy-card figures for a Cloud owner.
+ * Ready: this license, then the bucket used of the quota.
+ * Anything else stays a single tappable figure with no invented bytes.
+ */
+export function cloudUsageFigures(view: CloudHomeView | null): CloudUsageFigure[] {
+  if (!view) return [{ value: '…', unit: '', label: 'Advantage Cloud' }];
+  if (view.phase !== 'ready') {
+    const label =
+      view.phase === 'unbound'
+        ? 'Not connected'
+        : view.phase === 'error'
+          ? 'Could not read Cloud usage'
+          : view.phase === 'connected'
+            ? 'Sign in'
+            : 'Not on this license';
+    return [{ value: '—', unit: '', label }];
+  }
+  const license = splitCloudBytes(view.licenseUsedBytes);
+  const bucket = splitCloudBytes(view.bucketUsedBytes);
+  return [
+    { value: license.value, unit: license.unit, label: 'This license' },
+    { value: bucket.value, unit: bucket.unit, label: `of ${formatCloudBytes(view.capBytes)}` },
+  ];
+}
+
+/**
+ * The academy card shows Cloud usage only for the owner of an entitled, active
+ * Advantage Cloud license. A Google Drive or OneDrive academy, a lapsed Cloud
+ * license, and a signed-in seat do not get the tile.
+ */
+export function academyCloudTileVisible(input: { owner: boolean; cloudEntitled: boolean; lapsed: boolean }): boolean {
+  return input.owner && input.cloudEntitled && !input.lapsed;
+}
+
 /**
  * Probe the site bucket, then read this license when the device is signed in.
- * This does not provision storage and does not call Google Drive or OneDrive.
+ * Numbers come only from `/api/gym/media?probe=1` and `/api/gym/cloud?op=status`.
+ * This does not invent usage and does not call Google Drive or OneDrive.
  */
 export async function loadAdvantageCloudHome(fetcher: CloudFetcher = fetch): Promise<CloudHomeView> {
   let bound = false;
@@ -368,12 +420,25 @@ export async function loadAdvantageCloudHome(fetcher: CloudFetcher = fetch): Pro
     if (!response.ok) return { phase: 'error' };
     const body = (await response.json()) as CloudStatusBody;
     if (!body.cloud) return { phase: 'unavailable' };
+    const licenseUsedBytes = body.licenseUsedBytes;
+    const bucketUsedBytes = body.bucketUsedBytes;
+    const capBytes = body.capBytes;
+    if (
+      typeof licenseUsedBytes !== 'number' ||
+      typeof bucketUsedBytes !== 'number' ||
+      typeof capBytes !== 'number' ||
+      !Number.isFinite(licenseUsedBytes) ||
+      !Number.isFinite(bucketUsedBytes) ||
+      !Number.isFinite(capBytes)
+    ) {
+      return { phase: 'error' };
+    }
     return {
       phase: 'ready',
       canUpload: Boolean(body.canUpload),
-      licenseUsedBytes: body.licenseUsedBytes ?? 0,
-      bucketUsedBytes: body.bucketUsedBytes ?? 0,
-      capBytes: body.capBytes ?? DEFAULT_CLOUD_CAP_BYTES,
+      licenseUsedBytes,
+      bucketUsedBytes,
+      capBytes,
     };
   } catch {
     return { phase: 'error' };
@@ -481,6 +546,7 @@ export async function uploadAdvantageCloudFile(input: {
       }),
     });
     if (!done.ok) return { ok: false, message: await readError(done, 'Advantage Cloud could not finish that file.') };
+    notifyCloudMedia();
     return { ok: true, path: opened.path };
   }
   const put = await fetcher(cloudUrl(`/api/gym/cloud?op=put&key=${encodeURIComponent(opened.key)}`), {
@@ -490,6 +556,7 @@ export async function uploadAdvantageCloudFile(input: {
   });
   if (!put.ok) return { ok: false, message: await readError(put, 'Advantage Cloud could not take that file.') };
   input.onProgress?.(input.file.size, input.file.size);
+  notifyCloudMedia();
   return { ok: true, path: opened.path };
 }
 

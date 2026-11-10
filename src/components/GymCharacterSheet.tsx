@@ -6,6 +6,7 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { CloudUsageMetric } from './AdvantageCloudHome';
 import { useCurrentSeat } from './SeatSessionBar';
 import {
   academyInstructorsHref,
@@ -33,6 +34,9 @@ import {
 import { getGymEventsSnapshot, readGymMeta, subscribeGymEvents } from '../lib/gymEventLog.ts';
 import { ADVANTAGE_MARK_SRC, readGymLogo, saveGymLogoFile, subscribeGymLogo } from '../lib/gymLogo.ts';
 import { GYM_NAME_MAX, readGymName, subscribeGymName, writeGymName } from '../lib/gymName.ts';
+import { academyCloudTileVisible } from '../lib/advantageCloudMedia.ts';
+import { readCloudLapse } from '../lib/cloudLapse.ts';
+import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud.ts';
 import {
   getGymProfileSnapshot,
   gymLineageText,
@@ -68,6 +72,7 @@ export function GymCharacterSheet() {
   const logo = useLogo();
   const deviceGymName = useDeviceGymName();
   const seat = useCurrentSeat();
+  const cloudEntitled = useProPlusCloudUnlocked();
   const home = academyProfileHome(useLocation().pathname);
   const [editing, setEditing] = useState(false);
   const [logoNote, setLogoNote] = useState('');
@@ -309,6 +314,16 @@ export function GymCharacterSheet() {
             : 'These numbers are this device. Full gym totals come with Advantage Cloud.'}
         </p>
       </div>
+      {academyCloudTileVisible({
+        owner,
+        cloudEntitled,
+        lapsed: readCloudLapse(typeof localStorage === 'undefined' ? null : localStorage, Date.now(), cloudEntitled).phase !== 'hidden',
+      }) ? (
+        <div className="sheet-zone sheet-zone--cloud" data-zone="cloud">
+          <h3 className="sheet-cap">Advantage Cloud</h3>
+          <CloudUsageMetric />
+        </div>
+      ) : null}
     </section>
   );
 }
