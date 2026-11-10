@@ -14,7 +14,7 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
 
   await page.goto('/student?student=1');
   await page.getByRole('link', { name: 'Competitor', exact: true }).click();
-  const scouting = page.getByRole('link', { name: 'Opponent scouting', exact: true });
+  const scouting = page.getByRole('link', { name: 'Opponent card archive', exact: true });
   const weightLink = page.getByRole('link', { name: 'Weight management', exact: true });
   const scoutingBox = await scouting.boundingBox();
   const weightBox = await weightLink.boundingBox();
@@ -22,8 +22,8 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
   expect(scoutingBox!.y).toBeGreaterThan(weightBox!.y);
   await scouting.click();
 
-  await expect(page.getByRole('heading', { name: 'Opponent scouting' }).first()).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Opponent scouting', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Opponent card archive' }).first()).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Opponent card archive', exact: true })).toBeVisible();
   await page.getByRole('group', { name: 'Opponent class' }).getByRole('button', { name: 'Weight class', exact: true }).click();
   await page.getByLabel('Opponent name').fill('Sam');
   await page.getByLabel('Opponent gym').fill('Atos');
@@ -37,7 +37,7 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
   await expect(weight.locator('strong').filter({ hasText: /^Sam$/ })).toBeVisible();
   await expect(weight.getByText('pressure passer')).toBeVisible();
   await expect(weight.getByRole('link', { name: 'Spring Open · Win · sub' })).toHaveAttribute('href', /\/student\/results/);
-  await expect(page.getByRole('region', { name: 'Opponent scouting for Sam' }).getByRole('link', { name: 'Do your self-assessment' })).toHaveAttribute(
+  await expect(page.getByRole('region', { name: 'Opponent card for Sam' }).getByRole('link', { name: 'Do your self-assessment' })).toHaveAttribute(
     'href',
     '/student/self-assessment?from=scouting&student=1',
   );
@@ -56,8 +56,8 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
   const open = page.getByRole('region', { name: 'Open class' });
   await expect(open.locator('strong').filter({ hasText: /^Riley$/ })).toBeVisible();
   await expect(open.getByText('guard puller')).toBeVisible();
-  await expect(open.getByText('No recorded matches yet.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Riley Guard 1', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(open.getByText('No competition results for this name yet.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Riley Guard/Control 1', exact: true })).toHaveAttribute('aria-pressed', 'false');
 
   await page.getByLabel('Import opponent CSV').setInputFiles({
     name: 'ratings.csv',
@@ -66,7 +66,7 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
       'Name,Belt,Division,Gym name / nickname,Notes,Style,Class,Guard,Passing,Takedowns,Escapes,Submissions,Conditioning,Mindset,Strengths,Weaknesses\nAlex,Blue,Medium,Alliance,patient,pressure,Weight class,5,4,3,2,4,5,1,"frames, long",open guard\n',
     ),
   });
-  await expect(page.getByRole('button', { name: 'Alex Guard 5', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Alex Guard/Control 5', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Strengths for Alex')).toHaveValue('frames, long');
   await expect(page.getByLabel('Weaknesses for Alex')).toHaveValue('open guard');
 });
@@ -75,10 +75,10 @@ test('scouting opponent tracker compares the latest self-assessment', async ({ p
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/student/self-assessment?from=scouting&student=1');
   const mine: Record<string, string> = {
-    Guard: '5',
+    'Guard/Control': '5',
     Passing: '4',
     Takedowns: '3',
-    Escapes: '2',
+    'Escapes/Defense': '2',
     Submissions: '4',
     Conditioning: '5',
     Mindset: '3',
@@ -97,15 +97,15 @@ test('scouting opponent tracker compares the latest self-assessment', async ({ p
   await page.getByRole('button', { name: 'Add opponent', exact: true }).click();
 
   const theirs: Record<string, string> = {
-    Guard: '2',
+    'Guard/Control': '2',
     Passing: '5',
     Takedowns: '3',
-    Escapes: '4',
+    'Escapes/Defense': '4',
     Submissions: '1',
     Conditioning: '4',
     Mindset: '5',
   };
-  const tracker = page.getByRole('region', { name: 'Opponent scouting for Sam' });
+  const tracker = page.getByRole('region', { name: 'Opponent card for Sam' });
   for (const [area, score] of Object.entries(theirs)) {
     await tracker.getByRole('button', { name: `Sam ${area} ${score}`, exact: true }).click();
   }
@@ -114,6 +114,9 @@ test('scouting opponent tracker compares the latest self-assessment', async ({ p
   await tracker.getByRole('button', { name: 'Save notes for Sam', exact: true }).click();
 
   const overlay = page.getByRole('region', { name: 'Me versus Sam' });
+  await expect(overlay.getByRole('button', { name: 'Diamond for Sam', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(overlay.locator('.archive-diamond canvas')).toBeVisible();
+  await overlay.getByRole('button', { name: 'Spider for Sam', exact: true }).click();
   await expect(overlay.getByRole('img', { name: /Me versus Sam/ })).toBeVisible();
   await expect(overlay.getByRole('list', { name: 'Radar legend' })).toContainText('Me');
   await expect(overlay.getByRole('list', { name: 'Radar legend' })).toContainText('Sam');

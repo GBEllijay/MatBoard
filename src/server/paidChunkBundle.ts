@@ -160,6 +160,36 @@ export function addPaidStylesheet(plan: PaidBundlePlan, cssFile: string, importe
   plan.manifestFiles[base] = PAID_CHUNK_IDS.filter((id) => previous.has(id));
 }
 
+type PathSet = {
+  has(value: string): boolean;
+  delete(value: string): boolean;
+  add(value: string): unknown;
+};
+
+/**
+ * Vite writes the preload list after this plugin, from each chunk's final
+ * file name and from `importedCss` / `importedAssets`. Moving a file updates
+ * its file name. These sets still name the old `assets/` path unless they are
+ * retargeted, so the browser preloads a stylesheet that is no longer there.
+ */
+export function retargetBuildMetadata(
+  files: readonly {
+    viteMetadata?: { importedCss?: PathSet; importedAssets?: PathSet };
+  }[],
+  moves: ReadonlyMap<string, string>,
+): void {
+  for (const [from, to] of moves) {
+    if (from === to) continue;
+    for (const file of files) {
+      for (const set of [file.viteMetadata?.importedCss, file.viteMetadata?.importedAssets]) {
+        if (!set?.has(from)) continue;
+        set.delete(from);
+        set.add(to);
+      }
+    }
+  }
+}
+
 export function specifierBetween(fromFile: string, toFile: string): string {
   let spec = posix.relative(posix.dirname(fromFile), toFile);
   if (!spec.startsWith('.')) spec = `./${spec}`;

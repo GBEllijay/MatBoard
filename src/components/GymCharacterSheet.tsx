@@ -153,7 +153,10 @@ export function GymCharacterSheet() {
                 className="gym-edit"
                 aria-expanded={editing}
                 data-testid="academy-edit"
-                onClick={() => setEditing((open) => !open)}
+                onClick={() => {
+                  if (editing) writeGymName(readGymName().trim());
+                  setEditing((open) => !open);
+                }}
               >
                 {editing ? 'Done' : '✎ Edit academy profile'}
               </button>
@@ -171,6 +174,7 @@ export function GymCharacterSheet() {
                 maxLength={GYM_NAME_MAX}
                 autoComplete="organization"
                 onChange={(event) => writeGymName(event.target.value)}
+                onBlur={(event) => writeGymName(event.target.value.trim())}
               />
             </label>
             <p className="gym-sheet__note">

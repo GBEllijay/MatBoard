@@ -1,43 +1,49 @@
 /**
  * Expected duration on a Daily Lesson Plan or Competition Class block.
- * Half minutes, 0:30 through 60:00 (120 rows). The coach picks them on the
- * shared scroll wheel (`WheelPicker`). No quick-pick chips.
+ * 15-second steps, 0:30 through 60:00. The coach picks them on the shared
+ * scroll wheel (`WheelPicker`). Labels are m:ss. No quick-pick chips.
  * 5, 10, and 15 minute rows are slow-scroll detents. A fast flick passes
- * through them. The coast still settles with the shared two-row catch.
+ * through them. The coast still settles with the shared two-row catch
+ * (30 seconds at this step).
  *
- * Stored value is a minute count: "8" or "8.5". Whole minutes stay whole, so
- * an existing save of "8" still reads as 8. Older free text migrates onto the
- * 30-second grid: "8:00" becomes "8", "1:30" becomes "1.5", "8 min" becomes
- * "8". Under 30 seconds lands on 0.5. Above 60 clamps to 60. Blank stays
- * blank and means the 5-minute default, so an untouched plan is not saved
- * just because every block shows 5.
+ * Stored value is a minute count: "8", "8.5", "8.25", or "8.75". Whole
+ * minutes stay whole, so an existing save of "8" still reads as 8 and shows
+ * 8:00. A saved half ("8.5") still reads as 8:30. Older free text migrates
+ * onto the 15-second grid: "8:00" becomes "8", "8:15" becomes "8.25",
+ * "1:30" becomes "1.5", "8 min" becomes "8". Under 30 seconds lands on 0.5.
+ * Above 60 clamps to 60. Blank stays blank and means the 5-minute default,
+ * so an untouched plan is not saved just because every block shows 5.
  *
  * Loop length precedence when a block has a looping video:
- * 1. A manual length on the Daily Training Videos card wins. That is the
- *    2:30 / 5:00 / 7:00 preset or the Custom stepper (`drillManual`), and any
- *    saved technique length that is not the untouched 5:00 default.
- * 2. Otherwise the block's expected minutes are the loop length. Blank is 5.
- *    Warm-up and Cool down use this when the video was opened from that class
- *    plan. Opened from the videos menu, with no class plan, they still loop
- *    with no time limit.
- * 3. Intro, Specific Training, and Game have the wheel and no video slot, so
+ * 1. A length the coach set on the Daily Training Videos card wins
+ *    (`drillManual`: the 2:30 / 5:00 / 7:00 preset or the Custom stepper).
+ * 2. Otherwise, when this technique's expected time is set, that time is the
+ *    countdown. "8:15" and "8.25" are 8 minutes 15 seconds. A saved length
+ *    that is not 5:00 still yields to the expected time until the coach
+ *    changes it on the video card.
+ * 3. When no expected time is set, the card keeps its own length.
+ *    Warm-up and Cool down use the expected minutes when the video was opened
+ *    from that class plan. Blank there is 5. Opened from the videos menu,
+ *    with no class plan, they still loop with no time limit.
+ * 4. Intro, Specific Training, and Game have the wheel and no video slot, so
  *    there is no loop to drive.
  * Competition class "Looping video" cards have no separate length control.
  * Their loop is the expected minutes (`expectedToWorkMs`). The round timer
- * opened from a block starts at those minutes (8.5 is 8:30). Its own wheel
- * still clamps the work period to 1:00–60:00, so 0:30 opens at 1:00.
+ * opened from a block starts at those minutes (8.5 is 8:30, 8.25 is 8:15). Its own
+ * wheel still clamps the work period to 1:00–60:00, so 0:30 opens at 1:00.
  */
 
-import { DEFAULT_DRILL_SEC } from './techniqueLogic.ts';
+import { formatMss } from './format.ts';
 
-/** Shortest row: 0:30. */
+/** Shortest row: 0:30. Fifteen seconds below that is not a class block. */
 export const EXPECTED_MIN_MINUTES = 0.5;
 export const EXPECTED_MAX_MINUTES = 60;
-export const EXPECTED_STEP_MINUTES = 0.5;
+/** 15 seconds, as a fraction of a minute. */
+export const EXPECTED_STEP_MINUTES = 0.25;
 export const DEFAULT_EXPECTED_MINUTES = 5;
 
-const MIN_HALVES = 1;
-const MAX_HALVES = EXPECTED_MAX_MINUTES * 2;
+const MIN_QUARTERS = Math.round(EXPECTED_MIN_MINUTES * 4);
+const MAX_QUARTERS = EXPECTED_MAX_MINUTES * 4;
 
 export type ExpectedMinuteOption = {
   value: number;
@@ -60,33 +66,35 @@ const EXPECTED_DETENT_SET = new Set<number>(EXPECTED_DETENT_MINUTES);
 const MINUTE_WORD = /^(?:(\d{1,3})\s*)?½(?:\s*(?:minutes|minute|mins|min|m))?$/i;
 const MINUTE_COUNT = /^(\d{1,3}(?:\.\d+)?)(?:\s*(?:minutes|minute|mins|min|m))?$/i;
 
-function clampHalves(halves: number): number {
-  if (!Number.isFinite(halves)) return MIN_HALVES;
-  return Math.min(MAX_HALVES, Math.max(MIN_HALVES, Math.round(halves)));
+function clampQuarters(quarters: number): number {
+  if (!Number.isFinite(quarters)) return MIN_QUARTERS;
+  return Math.min(MAX_QUARTERS, Math.max(MIN_QUARTERS, Math.round(quarters)));
 }
 
-/** "8" for a whole minute, "8.5" or "0.5" for a half. */
+/**
+ * Stored minute count. "8" for a whole minute, "8.5" for a half, "8.25" and
+ * "8.75" for the other 15-second rows. Whole minutes stay whole.
+ */
 export function formatExpectedDuration(minutes: number): string {
-  const halves = clampHalves(Math.round(minutes * 2));
-  const whole = Math.floor(halves / 2);
-  if (halves % 2 === 0) return String(whole);
-  return whole === 0 ? '0.5' : `${whole}.5`;
+  const quarters = clampQuarters(Math.round(minutes * 4));
+  const whole = Math.floor(quarters / 4);
+  const rem = quarters % 4;
+  if (rem === 0) return String(whole);
+  if (rem === 2) return whole === 0 ? '0.5' : `${whole}.5`;
+  return (quarters / 4).toFixed(2);
 }
 
-/** Wheel label. "8 min", "8½ min", and "½ min" for 0:30. Never m:ss. */
+/** Wheel label. "8:00", "8:15", "8:30", "8:45", and "0:30". */
 export function expectedDurationLabel(minutes: number): string {
-  const halves = clampHalves(Math.round(minutes * 2));
-  const whole = Math.floor(halves / 2);
-  if (halves % 2 === 0) return `${whole} min`;
-  if (whole === 0) return '½ min';
-  return `${whole}½ min`;
+  const quarters = clampQuarters(Math.round(minutes * 4));
+  return formatMss(quarters * 15);
 }
 
-/** One row per 30 seconds. Labels are "8 min" or "8½ min", never m:ss. */
+/** One row per 15 seconds, from 0:30 through 60:00. Labels are m:ss. */
 export const EXPECTED_MINUTE_OPTIONS: readonly ExpectedMinuteOption[] = Array.from(
-  { length: MAX_HALVES - MIN_HALVES + 1 },
+  { length: MAX_QUARTERS - MIN_QUARTERS + 1 },
   (_, index) => {
-    const value = (MIN_HALVES + index) / 2;
+    const value = (MIN_QUARTERS + index) / 4;
     return {
       value,
       label: expectedDurationLabel(value),
@@ -97,9 +105,10 @@ export const EXPECTED_MINUTE_OPTIONS: readonly ExpectedMinuteOption[] = Array.fr
 );
 
 /**
- * Minutes on the 30-second grid, or null when the text is not a duration.
- * "8:00" is 8. "1:30" is 1.5. Seconds snap to the nearest 30, then clamp
- * from 0.5 through 60. "8 min", "8.5", and "8½ min" are minute counts.
+ * Minutes on the 15-second grid, or null when the text is not a duration.
+ * "8:00" is 8. "8:15" is 8.25. "1:30" is 1.5. Seconds snap to the nearest
+ * 15, then clamp from 0.5 through 60. "8 min", "8.5", and "8½ min" are
+ * minute counts.
  */
 export function parseExpectedMinutes(value: string): number | null {
   const trimmed = value.trim();
@@ -107,21 +116,21 @@ export function parseExpectedMinutes(value: string): number | null {
   const clock = /^(\d{1,3}):([0-5]\d)$/.exec(trimmed);
   if (clock) {
     const totalSeconds = Number(clock[1]) * 60 + Number(clock[2]);
-    return clampHalves(Math.round(totalSeconds / 30)) / 2;
+    return clampQuarters(Math.round(totalSeconds / 15)) / 4;
   }
   const fraction = MINUTE_WORD.exec(trimmed);
   if (fraction) {
     const whole = fraction[1] ? Number(fraction[1]) : 0;
-    return clampHalves(whole * 2 + 1) / 2;
+    return clampQuarters(whole * 4 + 2) / 4;
   }
   const words = MINUTE_COUNT.exec(trimmed);
   if (!words) return null;
-  return clampHalves(Math.round(Number(words[1]) * 2)) / 2;
+  return clampQuarters(Math.round(Number(words[1]) * 4)) / 4;
 }
 
 /**
- * Value to store. A clock or minute phrase becomes "8" or "8.5".
- * Blank stays blank. Text that is not a duration is kept (trimmed).
+ * Value to store. A clock or minute phrase becomes "8", "8.25", "8.5", or
+ * "8.75". Blank stays blank. Text that is not a duration is kept (trimmed).
  */
 export function migrateExpectedDuration(value: string): string {
   const trimmed = value.trim();
@@ -152,9 +161,12 @@ export type LoopSlot = {
  */
 export function loopSecondsForSlot(slot: LoopSlot, expected: string | null): number {
   if (slot.kind === 'technique') {
-    const manual = slot.drillManual === true || slot.drillSec !== DEFAULT_DRILL_SEC;
-    if (manual || expected == null) return slot.drillSec;
-    return Math.round(expectedMinutes(expected) * 60);
+    // No class plan, a blank expected time, or a length set on the video card:
+    // keep the card's own countdown.
+    if (expected == null || slot.drillManual === true) return slot.drillSec;
+    const chosen = parseExpectedMinutes(expected);
+    if (chosen == null) return slot.drillSec;
+    return Math.round(chosen * 60);
   }
   if (expected == null) return 0;
   return Math.round(expectedMinutes(expected) * 60);

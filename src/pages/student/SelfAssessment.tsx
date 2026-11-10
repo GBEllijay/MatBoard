@@ -8,18 +8,30 @@ import { fundamentalsBoard, todayIso } from '../../lib/studentEdition';
 import { useScrollToHash } from './chrome';
 import {
   ASSESSMENT_AREAS,
+  ASSESSMENT_FORM_AREAS,
+  CONDITIONING_ITEMS,
+  MINDSET_GOALS,
   assessmentAverage,
   assessmentChartScores,
   assessmentDraftScores,
   assessmentTrend,
   checkpointLinks,
+  conditioningItemLines,
+  conditioningItemsForDate,
+  conditioningScoreFromItems,
   isAssessmentScore,
   loadAssessments,
+  mindsetGoalLines,
+  mindsetGoalsForDate,
+  mindsetScoreFromGoals,
   removeAssessment,
   saveAssessment,
   writeAssessments,
   type AssessmentEntry,
+  type AssessmentScore,
   type AssessmentScores,
+  type ConditioningItemScores,
+  type MindsetGoalScores,
 } from '../../lib/studentAssessment';
 
 type PathFn = (path: string) => string;
@@ -37,6 +49,8 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
   const [date, setDate] = useState(today);
   const [note, setNote] = useState(todayEntry?.note ?? '');
   const [scores, setScores] = useState<Partial<AssessmentScores>>(() => assessmentDraftScores(initial.entries, today, today, trackerScores(report)));
+  const [goals, setGoals] = useState<MindsetGoalScores>(() => mindsetGoalsForDate(initial.entries, today));
+  const [conditioning, setConditioning] = useState<ConditioningItemScores>(() => conditioningItemsForDate(initial.entries, today));
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState<string | null>(null);
   const entriesRef = useRef(entries);
@@ -51,6 +65,8 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
       if (entriesRef.current.length > 0 && next.entries.length === 0) {
         setNote('');
         setScores(assessmentDraftScores([], dateRef.current, todayIso(), trackerScores(reportRef.current)));
+        setGoals({});
+        setConditioning({});
         setError('');
       }
       setEntries((current) => (sameEntries(current, next.entries) ? current : next.entries));
@@ -58,24 +74,36 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
   }, []);
   const links = checkpointLinks(report);
   const savedOnDate = entries.find((entry) => entry.date === date);
-  const radarScores = assessmentChartScores(scores, savedOnDate?.scores, entries[0]?.scores);
+  const rolledMindset = mindsetScoreFromGoals(goals);
+  const rolledConditioning = conditioningScoreFromItems(conditioning);
+  const shownScores: Partial<AssessmentScores> = {
+    ...scores,
+    ...(rolledConditioning ? { conditioning: rolledConditioning } : {}),
+    ...(rolledMindset ? { mindset: rolledMindset } : {}),
+  };
+  const radarScores = assessmentChartScores(shownScores, savedOnDate?.scores, entries[0]?.scores);
   const trend = assessmentTrend(entries);
   const mindsetOpen =
     !savedOnDate &&
-    !isAssessmentScore(scores.mindset) &&
-    ASSESSMENT_AREAS.some((area) => area.id !== 'mindset' && isAssessmentScore(scores[area.id]));
+    !isAssessmentScore(shownScores.mindset) &&
+    ASSESSMENT_AREAS.some((area) => area.id !== 'mindset' && isAssessmentScore(shownScores[area.id]));
 
   const applyDate = (value: string) => {
     const found = entries.find((entry) => entry.date === value);
     setDate(value);
     setNote(found?.note ?? '');
     setScores(assessmentDraftScores(entries, value, today, trackerScores(report)));
+    setGoals(mindsetGoalsForDate(entries, value));
+    setConditioning(conditioningItemsForDate(entries, value));
     setError('');
   };
 
   const save = () => {
     try {
-      const next = writeAssessments(localStorage, saveAssessment({ entries }, { date, note, scores }));
+      const next = writeAssessments(
+        localStorage,
+        saveAssessment({ entries }, { date, note, scores: shownScores, mindsetGoals: goals, conditioningItems: conditioning }),
+      );
       setEntries(next.entries);
       setError('');
     } catch (err) {
@@ -119,8 +147,8 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
           <span className="ink__label">Date</span>
           <input type="date" aria-label="Self-assessment date" value={date} onChange={(event) => applyDate(event.target.value)} required />
         </label>
-        {ASSESSMENT_AREAS.map((area) => {
-          const link = links.find((item) => item.areaId === area.id);
+        {ASSESSMENT_FORM_AREAS.map((area) => {
+          const link = area.id === 'sweeps' ? undefined : links.find((item) => item.areaId === area.id);
           return (
             <fieldset key={area.id} id={`assess-${area.id}`} className="assess-area">
               <legend>{area.label}</legend>
@@ -134,15 +162,35 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
                   <button
                     key={value}
                     type="button"
-                    className={scores[area.id] === value ? 'assess-tap is-on' : 'assess-tap'}
-                    aria-pressed={scores[area.id] === value}
+                    className={shownScores[area.id] === value ? 'assess-tap is-on' : 'assess-tap'}
+                    aria-pressed={shownScores[area.id] === value}
                     aria-label={`${area.label} ${value}`}
-                    onClick={() => setScores((current) => ({ ...current, [area.id]: value }))}
+                    onClick={() => {
+                      if (area.id === 'mindset' && rolledMindset) return;
+                      if (area.id === 'conditioning' && rolledConditioning) return;
+                      setScores((current) => ({ ...current, [area.id]: value }));
+                    }}
                   >
                     {value}
                   </button>
                 ))}
               </div>
+              {area.id === 'conditioning' ? (
+                <ItemScales
+                  label="Conditioning items"
+                  items={CONDITIONING_ITEMS}
+                  values={conditioning}
+                  onPick={(id, value) => setConditioning((current) => ({ ...current, [id]: value }))}
+                />
+              ) : null}
+              {area.id === 'mindset' ? (
+                <ItemScales
+                  label="Mindset goals"
+                  items={MINDSET_GOALS}
+                  values={goals}
+                  onPick={(id, value) => setGoals((current) => ({ ...current, [id]: value }))}
+                />
+              ) : null}
             </fieldset>
           );
         })}
@@ -174,6 +222,8 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
                 if (entry.date === date) {
                   setNote('');
                   setScores(assessmentDraftScores(next.entries, date, today, trackerScores(report)));
+                  setGoals(mindsetGoalsForDate(next.entries, date));
+                  setConditioning(conditioningItemsForDate(next.entries, date));
                 }
               }}
             />
@@ -181,6 +231,42 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
         </ul>
       </div>
     </section>
+  );
+}
+
+function ItemScales<Id extends string>({
+  label,
+  items,
+  values,
+  onPick,
+}: {
+  label: string;
+  items: readonly { id: Id; label: string }[];
+  values: Partial<Record<Id, AssessmentScore>>;
+  onPick: (id: Id, value: AssessmentScore) => void;
+}) {
+  return (
+    <div className="assess-goals" role="group" aria-label={label}>
+      {items.map((item) => (
+        <fieldset key={item.id} className="assess-goal">
+          <legend>{item.label}</legend>
+          <div className="assess-scale" role="group" aria-label={`${item.label} rating`}>
+            {([1, 2, 3, 4, 5] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={values[item.id] === value ? 'assess-tap is-on' : 'assess-tap'}
+                aria-pressed={values[item.id] === value}
+                aria-label={`${item.label} ${value}`}
+                onClick={() => onPick(item.id, value)}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      ))}
+    </div>
   );
 }
 
@@ -205,7 +291,13 @@ function HistoryRow({
   onKeep: () => void;
   onRemove: () => void;
 }) {
-  const line = ASSESSMENT_AREAS.map((area) => `${area.label} ${entry.scores[area.id]}`).join(' · ');
+  const line = ASSESSMENT_FORM_AREAS.map((area) => {
+    if (area.id === 'sweeps') {
+      const value = entry.scores.sweeps;
+      return isAssessmentScore(value) ? `${area.label} ${value}` : `${area.label} not rated`;
+    }
+    return `${area.label} ${entry.scores[area.id]}`;
+  }).join(' · ');
   return (
     <li className="assess-row">
       <p className="assess-row__top">
@@ -213,6 +305,10 @@ function HistoryRow({
         <span>{assessmentAverage(entry.scores).toFixed(1)}</span>
       </p>
       <p className="assess-scoreline">{line}</p>
+      {conditioningItemLines(entry.conditioningItems).length ? (
+        <p className="assess-scoreline">{conditioningItemLines(entry.conditioningItems).join(' · ')}</p>
+      ) : null}
+      {mindsetGoalLines(entry.mindsetGoals).length ? <p className="assess-scoreline">{mindsetGoalLines(entry.mindsetGoals).join(' · ')}</p> : null}
       {entry.note ? <p>{entry.note}</p> : null}
       {confirming ? (
         <div className="student-actions" role="group" aria-label={`Remove check-in ${entry.date}`}>

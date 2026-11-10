@@ -135,20 +135,6 @@ export function BeltPhotoSection({
           {alert}
         </p>
       ) : null}
-      {photos.length ? (
-        <div className="rank-photos">
-          {photos.map((image, photoIndex) => (
-            <figure key={`${image.slice(-24)}-${photoIndex}`}>
-              <button type="button" className="rank-photos__open" aria-label={`Open ${label} photo ${photoIndex + 1}`} onClick={() => show(photoIndex)}>
-                <img src={image} alt={`${label} photo ${photoIndex + 1}`} />
-              </button>
-              <button type="button" className="ink-btn ink-btn--small" aria-label={`Remove ${label} photo ${photoIndex + 1}`} onClick={() => onRemove(photoIndex)}>
-                Remove
-              </button>
-            </figure>
-          ))}
-        </div>
-      ) : null}
       {open ? (
         <GalleryDialog
           id={galleryId}
@@ -164,7 +150,7 @@ export function BeltPhotoSection({
   );
 }
 
-function GalleryDialog({
+export function GalleryDialog({
   id,
   label,
   photos,
@@ -172,6 +158,7 @@ function GalleryDialog({
   onIndex,
   onClose,
   onRemove,
+  emptyNote = 'No photos on this belt yet. Photo adds one.',
 }: {
   id: string;
   label: string;
@@ -180,6 +167,7 @@ function GalleryDialog({
   onIndex: (index: number) => void;
   onClose: () => void;
   onRemove: (index: number) => void;
+  emptyNote?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -241,7 +229,7 @@ function GalleryDialog({
           </button>
         </div>
         {photos.length === 0 || !image ? (
-          <p className="rank-gallery__empty">No photos on this belt yet. Photo adds one.</p>
+          <p className="rank-gallery__empty">{emptyNote}</p>
         ) : (
           <>
             <img className="rank-gallery__stage" src={image} alt={`${label} photo ${index + 1}`} />

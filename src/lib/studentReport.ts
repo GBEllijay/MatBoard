@@ -12,6 +12,8 @@ import type { CompetitionMatch, JournalEntry, MatchMethod, ProgressBelt, Student
 import {
   ASSESSMENT_AREAS,
   assessmentAverage,
+  conditioningItemLines,
+  mindsetGoalLines,
   isAssessmentScore,
   type AssessmentState,
 } from './studentAssessment.ts';
@@ -203,10 +205,12 @@ function matchLine(match: CompetitionMatch): string {
 }
 
 export function ratingLine(ratings: AreaRatings | undefined): string {
-  return ASSESSMENT_AREAS.map((area) => {
+  const seven = ASSESSMENT_AREAS.map((area) => {
     const score = ratings?.[area.id];
     return `${area.label} ${isAssessmentScore(score) ? score : 'not rated'}`;
   }).join(', ');
+  const sweeps = ratings?.sweeps;
+  return `${seven}, Sweeps ${isAssessmentScore(sweeps) ? sweeps : 'not rated'}`;
 }
 
 function appendStripeLines(lines: string[], tapeCount: number, tapeDates: readonly string[] | undefined, indent = ''): void {
@@ -427,7 +431,7 @@ function assessmentBlock(assessment: AssessmentState): ReportBlock {
 }
 
 function scoutingBlock(cards: readonly ScoutingCard[]): ReportBlock {
-  if (!cards.length) return { title: 'Opponent scouting', lines: ['None yet'] };
+  if (!cards.length) return { title: 'Opponent card archive', lines: ['None yet'] };
   const lines: string[] = [];
   for (const card of cards) {
     const heading = [card.name, card.belt, card.gym.trim()].filter(Boolean).join(' — ');
@@ -436,7 +440,7 @@ function scoutingBlock(cards: readonly ScoutingCard[]): ReportBlock {
     if (card.style.trim()) lines.push(`  Style: ${card.style.trim()}`);
     if (card.notes.trim()) lines.push(`  ${card.notes.trim()}`);
   }
-  return { title: 'Opponent scouting', lines };
+  return { title: 'Opponent card archive', lines };
 }
 
 function videoBlock(report: StudentProgressReport, films: readonly StudentFilm[]): ReportBlock {
@@ -499,6 +503,8 @@ export function selfAssessmentLines(report: StudentProgressReport, assessment: A
   for (const entry of entries) {
     lines.push(`${entry.date} — average ${assessmentAverage(entry.scores).toFixed(1)}`);
     for (const area of ASSESSMENT_AREAS) lines.push(`  ${area.label}: ${entry.scores[area.id]}`);
+    for (const line of conditioningItemLines(entry.conditioningItems)) lines.push(`  ${line}`);
+    for (const line of mindsetGoalLines(entry.mindsetGoals)) lines.push(`  ${line}`);
     if (entry.note.trim()) lines.push(`  Note: ${entry.note.trim()}`);
     lines.push('');
   }

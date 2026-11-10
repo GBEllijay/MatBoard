@@ -117,6 +117,7 @@ export function GymLogoControl() {
         <input
           value={gymName}
           onChange={(event) => writeGymName(event.target.value.slice(0, GYM_NAME_MAX))}
+          onBlur={(event) => writeGymName(event.target.value.trim())}
           placeholder="School or academy"
           aria-label="Gym name"
           autoComplete="organization"

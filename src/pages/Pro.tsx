@@ -8,6 +8,7 @@ import { InstructionsButton } from '../components/InstructionsButton';
 import { LicenseShareButton } from '../components/LicenseShareButton';
 import { ProToolboxCard } from '../components/ProToolboxCard';
 import { useCurrentSeat } from '../components/SeatSessionBar';
+import { SignOutButton } from '../components/SignOutButton';
 import { SiteFooter } from '../components/SiteFooter';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
@@ -46,6 +47,11 @@ export function ProPage() {
   const seat = useCurrentSeat();
   const cloudConsole = useProPlusCloudUnlocked();
   const mediaSeat = hubs.length > 0 && hubs.every((hub) => hub.belt === 'purple');
+  const proMenuHubs = hubs.map((hub) =>
+    hub.to === '/slideshow?folder=gallery' && hub.title === MEDIA_CONSOLE_NAME
+      ? { ...hub, title: 'Advantage Media Edition' }
+      : hub,
+  );
 
   return (
     <main className="home home--pro home--pro-menu">
@@ -68,19 +74,13 @@ export function ProPage() {
           {cloudConsole && !seat ? <AdvantageCloudHome /> : null}
           <Link className="pro-hub" to="/white" data-pro-entry="white">
             <BeltRail kind="white" />
-            <span>
-              White
-              <small className="pro-hub__sub">Scoreboard and round timer.</small>
-            </span>
+            <span>Advantage White</span>
           </Link>
           <Link className="pro-hub" to="/student" data-pro-entry="student">
             <BeltRail kind="blue" />
-            <span>
-              Student Edition
-              <small className="pro-hub__sub">Personal journal.</small>
-            </span>
+            <span>Advantage Student Edition</span>
           </Link>
-          <ProToolboxCard hubs={hubs} label={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro hubs'} />
+          <ProToolboxCard hubs={proMenuHubs} label={mediaSeat ? MEDIA_CONSOLE_NAME : 'Advantage Pro hubs'} />
           <LicenseShareButton />
         </nav>
 
@@ -126,6 +126,8 @@ export function ProPage() {
               >
                 Lock Pro
               </button>
+              {' · '}
+              <SignOutButton />
               {door.mediaUnlocked ? (
                 <>
                   {' · '}
@@ -143,6 +145,8 @@ export function ProPage() {
               <Link className="home__text-btn" to={PRODUCTS_PATH}>
                 All products
               </Link>
+              {' · '}
+              <SignOutButton />
             </p>
           )}
         </div>

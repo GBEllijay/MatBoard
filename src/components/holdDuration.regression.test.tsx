@@ -113,7 +113,7 @@ function makeClock() {
 function configure() {
   resetTrainingSession();
   setWorkMs(7 * 60_000);
-  setBreakMs(20_000);
+  setBreakMs(15_000);
   setRounds(8, false);
   setStartSound(false);
   setWarningSound(false);
@@ -129,9 +129,9 @@ function toRoundTwoPaused() {
     toggleTrainingClock();
     Date.now = () => t0 + 7 * 60_000;
     tickTraining();
-    Date.now = () => t0 + 7 * 60_000 + 20_000;
+    Date.now = () => t0 + 7 * 60_000 + 15_000;
     tickTraining();
-    Date.now = () => t0 + 7 * 60_000 + 20_000 + 9_000;
+    Date.now = () => t0 + 7 * 60_000 + 15_000 + 9_000;
     toggleTrainingClock();
   } finally {
     Date.now = real;
@@ -293,7 +293,7 @@ test('holding the round indicator for 3 seconds resets the session and does not 
     assert.equal(reset.remainingMs, 7 * 60_000);
     assert.equal(reset.running, false);
     assert.equal(reset.workMs, 7 * 60_000);
-    assert.equal(reset.breakMs, 20_000);
+    assert.equal(reset.breakMs, 15_000);
     assert.equal(reset.rounds, 8);
     pointer(round, 'pointerup', 'touch');
     click(round);
@@ -322,7 +322,7 @@ test('holding the timer for 3 seconds restores the configured duration and keeps
     assert.notEqual(reset.remainingMs, 0);
     assert.equal(reset.running, false);
     assert.equal(reset.workMs, 7 * 60_000);
-    assert.equal(reset.breakMs, 20_000);
+    assert.equal(reset.breakMs, 15_000);
     assert.equal(reset.rounds, 8);
     pointer(timer, 'pointerup', 'mouse');
     click(timer);

@@ -21,15 +21,68 @@ export const ASSESSMENT_AREAS = [
   { id: 'mindset', label: 'Mindset' },
 ] as const;
 
+/**
+ * Check-in form order. Labels on this list are the approved names.
+ * Stored ids stay guard and escapes so an older file still loads.
+ * Sweeps is optional: a day without that field is unrated, not a copy of Passing.
+ */
+export const ASSESSMENT_FORM_AREAS = [
+  { id: 'guard', label: 'Guard/Control' },
+  { id: 'passing', label: 'Passing' },
+  { id: 'sweeps', label: 'Sweeps' },
+  { id: 'takedowns', label: 'Takedowns' },
+  { id: 'escapes', label: 'Escapes/Defense' },
+  { id: 'submissions', label: 'Submissions' },
+  { id: 'conditioning', label: 'Conditioning' },
+  { id: 'mindset', label: 'Mindset' },
+] as const;
+
+/**
+ * Scorable lines under Mindset. Same 1–5 scale as the category.
+ * A missing line is unscored. It is not a zero, and it is not required to save.
+ */
+export const MINDSET_GOALS = [
+  { id: 'calm-focused', label: "I've formed a routine and habit that keeps me calm and focused" },
+  { id: 'intentional-roll', label: 'I was intentional with my decisions throughout the roll' },
+  { id: 'game-plan', label: 'I drilled with my game plan in mind' },
+  { id: 'prepared', label: "I've done everything I could to be prepared for my challenge" },
+  { id: 'coach-instructions', label: "I listened to and followed my coach's instructions" },
+  { id: 'open-mind', label: 'I approach training with an open mind, ready to receive new information' },
+] as const;
+
+/**
+ * Scorable lines under Conditioning. Same 1–5 scale as the category.
+ * A missing line is unscored. It is not a zero, and it is not required to save.
+ * None of these lines is a promotion benchmark.
+ */
+export const CONDITIONING_ITEMS = [
+  { id: 'warmup', label: 'Warm-up difficulty — ability to complete the warm-up' },
+  { id: 'recovery', label: 'Recovery time — tracked only, no benchmark' },
+  { id: 'speed', label: 'Speed' },
+  { id: 'stamina', label: 'Stamina during live rolls' },
+  { id: 'power', label: 'Power' },
+  { id: 'flexibility', label: 'Flexibility' },
+] as const;
+
 export type AssessmentAreaId = (typeof ASSESSMENT_AREAS)[number]['id'];
+export type MindsetGoalId = (typeof MINDSET_GOALS)[number]['id'];
+export type ConditioningItemId = (typeof CONDITIONING_ITEMS)[number]['id'];
 export type AssessmentScore = 1 | 2 | 3 | 4 | 5;
-export type AssessmentScores = Record<AssessmentAreaId, AssessmentScore>;
+export type AssessmentScores = Record<AssessmentAreaId, AssessmentScore> & {
+  sweeps?: AssessmentScore;
+};
+export type MindsetGoalScores = Partial<Record<MindsetGoalId, AssessmentScore>>;
+export type ConditioningItemScores = Partial<Record<ConditioningItemId, AssessmentScore>>;
 
 export type AssessmentEntry = {
   id: string;
   date: string;
   note: string;
   scores: AssessmentScores;
+  /** Present only when at least one Mindset goal was scored. Older days omit it. */
+  mindsetGoals?: MindsetGoalScores;
+  /** Present only when at least one Conditioning item was scored. Older days omit it. */
+  conditioningItems?: ConditioningItemScores;
 };
 
 export type AssessmentState = {
@@ -39,7 +92,13 @@ export type AssessmentState = {
 export type AssessmentDraft = {
   date: string;
   note: string;
-  scores: Partial<Record<AssessmentAreaId, number>>;
+  scores: Partial<AssessmentScores>;
+  /**
+   * Omit a key to leave that saved day's lines alone.
+   * Pass an object, including an empty one, to replace them.
+   */
+  mindsetGoals?: MindsetGoalScores;
+  conditioningItems?: ConditioningItemScores;
 };
 
 export type AssessmentCheckpointLink = {
@@ -69,8 +128,13 @@ export function emptyAssessments(): AssessmentState {
 }
 
 export function assessmentAverage(scores: AssessmentScores): number {
-  const total = AREA_IDS.reduce((sum, id) => sum + scores[id], 0);
-  return Math.round((total / AREA_IDS.length) * 10) / 10;
+  let total = AREA_IDS.reduce((sum, id) => sum + scores[id], 0);
+  let count = AREA_IDS.length;
+  if (isAssessmentScore(scores.sweeps)) {
+    total += scores.sweeps;
+    count += 1;
+  }
+  return Math.round((total / count) * 10) / 10;
 }
 
 /** Oldest first, for the trend line. */
@@ -105,15 +169,57 @@ export function writeAssessments(storage: MemoryStore, state: AssessmentState): 
 export function saveAssessment(state: AssessmentState, draft: AssessmentDraft, now = Date.now()): AssessmentState {
   const date = requireDate(draft.date);
   const note = cleanNote(draft.note);
-  const scores = requireScores(draft.scores);
   const existing = state.entries.find((entry) => entry.date === date);
-  const nextEntry: AssessmentEntry = existing
-    ? { ...existing, note, scores }
-    : { id: newId(now), date, note, scores };
+  const mindsetGoals = resolveLines(MINDSET_GOALS, existing?.mindsetGoals, draft, 'mindsetGoals');
+  const conditioningItems = resolveLines(CONDITIONING_ITEMS, existing?.conditioningItems, draft, 'conditioningItems');
+  const rolledMindset = mindsetScoreFromGoals(mindsetGoals);
+  const rolledConditioning = conditioningScoreFromItems(conditioningItems);
+  const scoreInput: Partial<AssessmentScores> = { ...draft.scores };
+  if (rolledMindset) scoreInput.mindset = rolledMindset;
+  if (rolledConditioning) scoreInput.conditioning = rolledConditioning;
+  const scores = requireScores(scoreInput);
+  const nextEntry: AssessmentEntry = {
+    id: existing?.id ?? newId(now),
+    date,
+    note,
+    scores,
+  };
+  if (hasLineScore(MINDSET_GOALS, mindsetGoals)) nextEntry.mindsetGoals = mindsetGoals;
+  if (hasLineScore(CONDITIONING_ITEMS, conditioningItems)) nextEntry.conditioningItems = conditioningItems;
   const entries = existing
     ? state.entries.map((entry) => (entry.date === date ? nextEntry : entry))
     : [...state.entries, nextEntry];
   return normalizeState({ entries });
+}
+
+/** Goals saved on this date. A day with none, including an older file, comes back empty. */
+export function mindsetGoalsForDate(entries: readonly AssessmentEntry[], date: string): MindsetGoalScores {
+  return { ...(entries.find((entry) => entry.date === date)?.mindsetGoals ?? {}) };
+}
+
+/** Conditioning lines saved on this date. A day with none, including an older file, comes back empty. */
+export function conditioningItemsForDate(entries: readonly AssessmentEntry[], date: string): ConditioningItemScores {
+  return { ...(entries.find((entry) => entry.date === date)?.conditioningItems ?? {}) };
+}
+
+/**
+ * Average of the lines that were actually scored, rounded to the 1–5 category score.
+ * Unscored lines are left out. None scored means that category stays as it was saved.
+ */
+export function mindsetScoreFromGoals(goals: MindsetGoalScores | undefined): AssessmentScore | null {
+  return lineScore(MINDSET_GOALS, goals);
+}
+
+export function conditioningScoreFromItems(items: ConditioningItemScores | undefined): AssessmentScore | null {
+  return lineScore(CONDITIONING_ITEMS, items);
+}
+
+export function mindsetGoalLines(goals: MindsetGoalScores | undefined): string[] {
+  return lineText(MINDSET_GOALS, goals);
+}
+
+export function conditioningItemLines(items: ConditioningItemScores | undefined): string[] {
+  return lineText(CONDITIONING_ITEMS, items);
 }
 
 export function removeAssessment(state: AssessmentState, id: string): AssessmentState {
@@ -179,18 +285,35 @@ function nameHits(name: string, words: readonly string[]): boolean {
   return words.some((word) => tokens.includes(word));
 }
 
-function requireScores(scores: Partial<Record<AssessmentAreaId, number>>): AssessmentScores {
+function requireScores(scores: Partial<AssessmentScores>): AssessmentScores {
   const next = {} as AssessmentScores;
   for (const id of AREA_IDS) {
     const value = scores[id];
     if (!isScore(value)) throw new Error(`Rate ${labelFor(id)} from 1 to 5.`);
     next[id] = value;
   }
+  if (Object.prototype.hasOwnProperty.call(scores, 'sweeps')) {
+    if (!isScore(scores.sweeps)) throw new Error('Rate Sweeps from 1 to 5.');
+    next.sweeps = scores.sweeps;
+  }
   return next;
 }
 
-function labelFor(id: AssessmentAreaId): string {
-  return ASSESSMENT_AREAS.find((area) => area.id === id)?.label ?? id;
+function labelFor(id: AssessmentAreaId | 'sweeps'): string {
+  return ASSESSMENT_FORM_AREAS.find((area) => area.id === id)?.label ?? id;
+}
+
+/** Seven required ratings, plus Sweeps only when that day actually stored one. */
+function storedScores(raw: unknown): AssessmentScores | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const row = raw as Record<string, unknown>;
+  const next = {} as AssessmentScores;
+  for (const id of AREA_IDS) {
+    if (!isScore(row[id])) return null;
+    next[id] = row[id];
+  }
+  if (Object.prototype.hasOwnProperty.call(row, 'sweeps') && isScore(row.sweeps)) next.sweeps = row.sweeps;
+  return next;
 }
 
 export function isAssessmentScore(value: unknown): value is AssessmentScore {
@@ -246,12 +369,78 @@ function normalizeEntry(raw: unknown): AssessmentEntry | null {
   if (typeof row.id !== 'string' || !row.id.trim()) return null;
   if (typeof row.date !== 'string' || !DATE_RE.test(row.date)) return null;
   if (typeof row.note !== 'string') return null;
-  try {
-    const scores = requireScores((row.scores ?? {}) as Partial<Record<AssessmentAreaId, number>>);
-    return { id: row.id.trim().slice(0, 80), date: row.date, note: row.note.trim().slice(0, PROGRESS_NOTE_MAX), scores };
-  } catch {
-    return null;
+  const scores = storedScores(row.scores);
+  if (!scores) return null;
+  const entry: AssessmentEntry = {
+    id: row.id.trim().slice(0, 80),
+    date: row.date,
+    note: row.note.trim().slice(0, PROGRESS_NOTE_MAX),
+    scores,
+  };
+  const mindsetGoals = readLines(MINDSET_GOALS, row.mindsetGoals);
+  if (hasLineScore(MINDSET_GOALS, mindsetGoals)) entry.mindsetGoals = mindsetGoals;
+  const conditioningItems = readLines(CONDITIONING_ITEMS, row.conditioningItems);
+  if (hasLineScore(CONDITIONING_ITEMS, conditioningItems)) entry.conditioningItems = conditioningItems;
+  return entry;
+}
+
+type LineDef<Id extends string> = readonly { id: Id; label: string }[];
+type LineScores<Id extends string> = Partial<Record<Id, AssessmentScore>>;
+
+function lineScore<Id extends string>(lines: LineDef<Id>, values: LineScores<Id> | undefined): AssessmentScore | null {
+  if (!values) return null;
+  const scored = lines.map((line) => values[line.id]).filter(isAssessmentScore);
+  if (!scored.length) return null;
+  const rounded = Math.round(scored.reduce((sum, value) => sum + value, 0) / scored.length);
+  return isAssessmentScore(rounded) ? rounded : null;
+}
+
+function lineText<Id extends string>(lines: LineDef<Id>, values: LineScores<Id> | undefined): string[] {
+  if (!values) return [];
+  return lines.flatMap((line) => {
+    const value = values[line.id];
+    return isAssessmentScore(value) ? [`${line.label}: ${value}`] : [];
+  });
+}
+
+function resolveLines<Id extends string>(
+  lines: LineDef<Id>,
+  saved: LineScores<Id> | undefined,
+  draft: AssessmentDraft,
+  key: 'mindsetGoals' | 'conditioningItems',
+): LineScores<Id> {
+  if (!Object.prototype.hasOwnProperty.call(draft, key)) return { ...(saved ?? {}) };
+  return requireLines(lines, draft[key], key === 'mindsetGoals' ? 'Mindset goals are not valid.' : 'Conditioning items are not valid.');
+}
+
+function requireLines<Id extends string>(lines: LineDef<Id>, raw: unknown, invalid: string): LineScores<Id> {
+  if (raw == null) return {};
+  if (typeof raw !== 'object' || Array.isArray(raw)) throw new Error(invalid);
+  const row = raw as Record<string, unknown>;
+  const next: LineScores<Id> = {};
+  for (const line of lines) {
+    if (!Object.prototype.hasOwnProperty.call(row, line.id)) continue;
+    const value = row[line.id];
+    if (!isScore(value)) throw new Error(`Rate ${line.label} from 1 to 5.`);
+    next[line.id] = value;
   }
+  return next;
+}
+
+/** A bad or missing list does not drop the check-in. Unscored and invalid lines are left out. */
+function readLines<Id extends string>(lines: LineDef<Id>, raw: unknown): LineScores<Id> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const row = raw as Record<string, unknown>;
+  const next: LineScores<Id> = {};
+  for (const line of lines) {
+    const value = row[line.id];
+    if (isScore(value)) next[line.id] = value;
+  }
+  return next;
+}
+
+function hasLineScore<Id extends string>(lines: LineDef<Id>, values: LineScores<Id>): boolean {
+  return lines.some((line) => isScore(values[line.id]));
 }
 
 function newId(now: number): string {

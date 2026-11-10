@@ -5,12 +5,16 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RadarChart } from '../../components/RadarChart';
+import { ApprovedOctagonRadar } from '../../preview/assessmentRadar/OctagonChart';
+import { LiveD8, SheetD8Thumb } from '../../indexCards/LiveD8';
+import '../../preview/crystallineSweeps/crystallineSweeps.css';
 import { loadAssessments } from '../../lib/studentAssessment';
+import { shapeAxesFromLegacy, shapeAxisLabel, shapeAxisValues } from '../../lib/shapeAxes';
 import { matHoursSplit, matHoursTotal } from '../../lib/matHours';
 import { wornBeltPreview, type WornBeltPreview } from '../../lib/studentRank';
 import { readStreakTarget, streakLabel, streakWeekLine, trainingStreak } from '../../lib/trainingStreak';
 import { MEDAL_LABEL, recentMedals, type CardMedal, type MedalKind } from '../../lib/cardMedals';
+import { PodiumPhotoRow } from './PodiumPhotos';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { WIN_METHOD_LONG, winsBreakdownLine, winsSummary } from '../../lib/winsSummary';
 import { MatQuickAddSheet } from './MatQuickAdd';
@@ -102,14 +106,57 @@ export function MatTimerButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** Read-only Shape radar from the latest saved self-assessment. */
+/** The student's D8. Untouched lines stay at 3. Expanding opens the same diamond with its cards. */
+function SheetDiamond() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="sheet-diamond" data-testid="sheet-diamond">
+      <p className="sheet-diamond__note">Your D8. A line you have not rated stays at 3.</p>
+      <SheetD8Thumb onExpand={() => setOpen(true)} />
+      <button type="button" className="sheet-diamond__expand" onClick={() => setOpen(true)}>
+        Expand
+      </button>
+      {open ? (
+        <div className="sheet-diamond-full" role="dialog" aria-modal="true" aria-label="Assessment diamond">
+          <button type="button" className="sheet-diamond-full__close" onClick={() => setOpen(false)}>
+            Close
+          </button>
+          <LiveD8 />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function CardRadar({ to }: { to: (path: string) => string }) {
+  const [shape, setShape] = useState<'diamond' | 'radar'>('diamond');
   const entries = typeof localStorage === 'undefined' ? [] : loadAssessments(localStorage).entries;
   const latest = entries[0];
+  const axes = latest ? shapeAxesFromLegacy(latest.scores) : [];
   return (
-    <section className="card-radar" aria-label="Shape" data-testid="card-radar">
-      {latest ? (
-        <RadarChart scores={latest.scores} />
+    <section className="card-radar" aria-label="Shape" data-testid="card-radar" data-shape={shape}>
+      <div className="sheet-shape-toggle" role="group" aria-label="Shape drawing">
+        <button type="button" aria-pressed={shape === 'diamond'} onClick={() => setShape('diamond')}>
+          Diamond
+        </button>
+        <button type="button" aria-pressed={shape === 'radar'} onClick={() => setShape('radar')}>
+          Radar
+        </button>
+      </div>
+      {shape === 'diamond' ? (
+        <SheetDiamond />
+      ) : latest ? (
+        <>
+          <ApprovedOctagonRadar values={shapeAxisValues(latest.scores)} label={shapeAxisLabel(latest.scores)} />
+          <ul className="assess-legend" aria-label="Area scores">
+            {axes.map((axis) => (
+              <li key={axis.id} data-area={axis.id}>
+                <span>{axis.label}</span>
+                <span>{axis.value == null ? 'Not rated' : axis.value}</span>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : (
         <div className="card-empty" data-testid="card-radar-empty">
           <h3>Shape</h3>
@@ -197,6 +244,7 @@ export function CardMedals({ report, to, rail = false }: { report: StudentProgre
                 <b>{m.name}</b>
                 <span>{m.place}</span>
               </button>
+              <PodiumPhotoRow studentId={report.studentId} resultId={m.resultId} label={m.name} />
             </li>
           ))}
         </ul>

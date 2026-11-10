@@ -20,6 +20,7 @@ import {
   classPlanRowLabel,
   copyPlan,
   emptyPlan,
+  freshClassPlan,
   isWithinRetention,
   loadTrainingArchive,
   loadTrainingNotes,
@@ -32,6 +33,7 @@ import {
   removeTechnique,
   saveDay,
   saveTrainingNotes,
+  stampClassPlanVideos,
   shiftDateKey,
 } from './trainingNotesStore.ts';
 
@@ -328,10 +330,15 @@ test('an explicit tree link is saved on the drill and junk ids are dropped', () 
   assert.equal(cleaned.techniques[0].treeId, undefined);
 });
 
-test('lesson plan fields ship with no placeholder hints except class designation and time', () => {
+test('lesson plan fields ship with no placeholder hints except class time, and GB1 is not suggested', () => {
   const source = readFileSync(new URL('../pages/TrainingNotes.tsx', import.meta.url), 'utf8');
   const placeholders = [...source.matchAll(/placeholder="([^"]*)"/g)].map((match) => match[1]);
-  assert.deepEqual(placeholders, ['GB1', '5:00 PM']);
+  assert.deepEqual(placeholders, ['5:00 PM']);
+  assert.doesNotMatch(source, /GB1/i);
+  assert.doesNotMatch(source, /<datalist[\s\S]*GB1/i);
+  assert.doesNotMatch(source, /<option[^>]*>\s*GB1\s*</i);
+  assert.equal(emptyPlan().classDesignation, '');
+  assert.equal(freshClassPlan().classDesignation, '');
   assert.doesNotMatch(source, /Drop seoi|Whose class|Sprawls|seminar date/i);
   assert.match(source, /Specific Training \/ Rounds/);
   assert.equal(source.includes("role: 'specific'"), false);
@@ -693,4 +700,46 @@ test('opening a class plan loads that plans video and leaves the other plans cli
   const adopted = adoptPlanVideos(TODAY, legacy.id, planVideoRefsFromVideoPlan(withA), TODAY);
   assert.equal(adopted?.videos?.[0]?.name, 'VideoA.mp4');
   assert.equal(adoptPlanVideos(TODAY, legacy.id, [], TODAY), null);
+});
+
+test('a new class plan starts with no video and an existing plan keeps its own', () => {
+  storage.clear();
+  const existing = emptyPlan();
+  existing.intro = 'Alpha';
+  existing.classDesignation = 'GB1';
+  existing.videos = [
+    {
+      section: 'warmup',
+      index: null,
+      localClipId: 'clip-a',
+      driveFileId: 'drive-a',
+      url: null,
+      name: 'VideoA.mp4',
+      mime: 'video/mp4',
+    },
+  ];
+  saveDay(TODAY, existing, TODAY);
+
+  const created = freshClassPlan();
+  assert.deepEqual(created.videos, []);
+  created.classDesignation = 'Plan B';
+  created.intro = 'Beta';
+  const dayBoard = existing.videos ?? [];
+  const stamped = stampClassPlanVideos(created, false, dayBoard);
+  assert.deepEqual(stamped.videos, []);
+  saveDay(TODAY, stamped, TODAY);
+
+  const loaded = plansOnDay(loadTrainingArchive(TODAY), TODAY);
+  const kept = loaded.find((plan) => plan.id === existing.id);
+  const blank = loaded.find((plan) => plan.id === created.id);
+  assert.equal(kept?.videos?.[0]?.localClipId, 'clip-a');
+  assert.equal(kept?.videos?.[0]?.name, 'VideoA.mp4');
+  assert.equal(kept?.classDesignation, 'GB1');
+  assert.deepEqual(blank?.videos, []);
+
+  const reopened = stampClassPlanVideos(kept ?? existing, true, dayBoard);
+  assert.equal(reopened.videos?.[0]?.localClipId, 'clip-a');
+  const reloaded = plansOnDay(loadTrainingArchive(TODAY), TODAY).find((plan) => plan.id === existing.id);
+  assert.equal(reloaded?.videos?.[0]?.name, 'VideoA.mp4');
+  assert.equal(reloaded?.classDesignation, 'GB1');
 });

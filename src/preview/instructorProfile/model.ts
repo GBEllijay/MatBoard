@@ -5,7 +5,7 @@
  *
  * Class length uses the student mat-time wheel (`matQuarterOptions`): 0, then
  * every 15 minutes. That is not the lesson-plan Expected Duration wheel
- * (30-second steps) and not the round-timer second wheel.
+ * (15-second steps, labeled m:ss) and not the round-timer duration wheel.
  */
 import { defaultTechniquePolicy } from '../../lib/studentBenchmarks';
 import { clockMatTime, matQuarterOptions } from '../../lib/matHours';

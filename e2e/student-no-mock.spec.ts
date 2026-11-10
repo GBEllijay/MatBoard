@@ -115,7 +115,7 @@ test('a fresh Student Edition stays White with an empty journal past the old fli
   await shot(page, 'student_results_fresh_390');
 
   await page.goto('/student/scouting?student=1');
-  await expect(page.getByRole('heading', { level: 1, name: 'Opponent scouting', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Opponent card archive', exact: true })).toBeVisible();
   await expect(page.getByText('No opponents in this class yet.').first()).toBeVisible();
   await expectNoMock(page);
   await shot(page, 'student_scouting_fresh_390');

@@ -94,3 +94,15 @@ export const FUNDAMENTALS_CATALOG: FundamentalsCatalog = {
     ]),
   ],
 };
+
+/**
+ * Still in the catalog so a saved checklist row keeps its name.
+ * A blank fundamentals board does not offer them. A coach can add a custom line.
+ */
+export const DEFAULT_EVALUATION_OMITTED_IDS = [
+  'move.breakfalls',
+  'move.shrimp',
+  'move.bridge',
+  'move.technical-standup',
+  'def.sprawl',
+] as const;

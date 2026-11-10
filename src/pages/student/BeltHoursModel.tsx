@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BELT_SPANS, HOURS_PER_WEEK, IBJJF_GRADUATION_URL, spanHours, spanWeeks, type HoursPerWeek } from '../../lib/beltHoursModel';
+import { BELT_SPANS, HOURS_PER_WEEK, IBJJF_GRADUATION_URL, MAT_TIME_ONLY, spanHours, spanWeeks, type HoursPerWeek } from '../../lib/beltHoursModel';
 
 /** Calendar estimate on the report card. It does not read or write the journal. */
 export function BeltHoursModel() {
@@ -10,7 +10,7 @@ export function BeltHoursModel() {
         Planning model <span className="report__source">Not your log</span>
       </h3>
       <p className="report__private">
-        Hours = years × 52 × hours a week. 18 months is 1.5 years. At 3 hours a week the totals are 1.5× the 2-hour totals. At 4 hours a week they are 2×. This estimate is not added to your journal hours.
+        Hours = years × 52 × hours a week. 18 months is 1.5 years. At 3 hours a week the totals are 1.5× the 2-hour totals. At 4 hours a week they are 2×. This estimate is not added to your journal hours. {MAT_TIME_ONLY}
       </p>
       <div className="report__target" role="group" aria-label="Hours per week">
         <span>Hours a week</span>

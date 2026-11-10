@@ -1,0 +1,49 @@
+.sphere { min-height: 100dvh; background: #07111f; color: #e8f7ff; }
+.sphere-shell { max-width: 440px; margin: 0 auto; padding: 1rem; display: grid; gap: 12px; }
+.sphere-banner, .sphere-note { margin: 0; color: #9fd8ea; font-size: 14px; line-height: 1.4; }
+.sphere-banner { padding: 10px 12px; border: 1px solid rgba(126, 231, 255, 0.45); border-radius: 12px; background: #0d2233; }
+.sphere h1, .sphere h2 { margin: 0; }
+.sphere h1 { font-size: 1.7rem; }
+.sphere-stage {
+  position: relative;
+  height: 360px;
+  border-radius: 50%;
+  border: 1px solid rgba(126, 231, 255, 0.45);
+  background:
+    radial-gradient(circle at 40% 35%, rgba(126, 231, 255, 0.22), transparent 42%),
+    radial-gradient(circle at 50% 50%, #123044 0%, #07111f 72%);
+  touch-action: none;
+  overflow: hidden;
+}
+.sphere-node {
+  position: absolute;
+  width: 112px;
+  min-height: 44px;
+  margin: -22px 0 0 -56px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(126, 231, 255, 0.75);
+  background: rgba(7, 28, 46, 0.88);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+.sphere-node[data-occluded='true'] { opacity: 0.28; pointer-events: none; }
+.sphere-node[data-front='true'] { box-shadow: 0 0 16px rgba(126, 231, 255, 0.35); }
+.sphere-score { display: block; color: #7ee7ff; font-size: 12px; }
+.sphere-btn {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(126, 231, 255, 0.7);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+}
+.sphere-tree, .sphere-bench { display: grid; gap: 8px; padding: 12px; border: 1px solid rgba(126, 231, 255, 0.45); border-radius: 12px; background: #0d2233; }
+.sphere-tree ul, .sphere-bench p { margin: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .sphere-node { transition: none; }
+}

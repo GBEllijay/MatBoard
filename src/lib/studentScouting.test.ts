@@ -3,16 +3,23 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import type { CompetitionResult } from './progress/types.ts';
 import {
+  SCOUTING_STORAGE_KEY,
+  SAMPLE_OPPONENT_ID,
+  addScoutBout,
   addScoutingCard,
   exportScoutingCsv,
   importScoutingCsv,
+  loadScouting,
+  pastMatchesFor,
+  removeScoutBout,
+  saveScouting,
+  scoutRecord,
   scoutingCsvHeaders,
   scoutingCsvTemplate,
   scoutingExportFileName,
-  pastMatchesFor,
-  saveScouting,
-  loadScouting,
   searchScoutingCards,
+  seedSampleScouting,
+  updateScoutBout,
   updateScoutingCard,
 } from './studentScouting.ts';
 
@@ -206,7 +213,7 @@ test('ratings and notes stay on the card, and a card saved without them still lo
   );
 });
 
-test('csv export writes the seven ratings and import still accepts a file without them', () => {
+test('csv export writes the eight ratings and import still accepts a file without them', () => {
   const cards = addScoutingCard(
     [],
     {
@@ -224,7 +231,7 @@ test('csv export writes the seven ratings and import still accepts a file withou
     21,
   );
   const csv = exportScoutingCsv(cards);
-  assert.match(csv, /Style,Class,Guard,Passing,Takedowns,Escapes,Submissions,Conditioning,Mindset,Strengths,Weaknesses/);
+  assert.match(csv, /Style,Class,Guard,Passing,Sweeps,Takedowns,Escapes,Submissions,Conditioning,Mindset,Strengths,Weaknesses,Record/);
   const imported = importScoutingCsv(csv);
   assert.equal(imported.error, undefined);
   assert.deepEqual(imported.cards[0].ratings, rated);
@@ -258,7 +265,7 @@ test('the scouting template matches the export, and old and new csv files import
   assert.ok(headers.includes('Competitor Notes'));
   assert.ok(headers.includes('Style'));
   assert.ok(headers.includes('Class'));
-  for (const label of ['Guard', 'Passing', 'Takedowns', 'Escapes', 'Submissions', 'Conditioning', 'Mindset']) {
+  for (const label of ['Guard', 'Passing', 'Sweeps', 'Takedowns', 'Escapes', 'Submissions', 'Conditioning', 'Mindset', 'Record']) {
     assert.ok(headers.includes(label));
   }
 
@@ -283,4 +290,213 @@ test('the scouting template matches the export, and old and new csv files import
   assert.equal(roundTrip.cards[0].name, 'Dario Kent (mock)');
   assert.equal(roundTrip.cards[0].style.includes('berimbolo'), true);
   assert.equal(roundTrip.cards[2].group, 'open');
+  assert.deepEqual(roundTrip.cards[0].bouts, []);
+  assert.equal(roundTrip.cards[0].ratings.sweeps, undefined);
+});
+
+test('an older seven-area card migrates in place and keeps every saved field', () => {
+  const storage = memory();
+  const raw = {
+    version: 1,
+    cards: [
+      {
+        id: 'scout.old',
+        name: 'Riley',
+        gym: 'Checkmat',
+        belt: 'Purple',
+        weightClass: 'Light',
+        group: 'open',
+        style: 'guard puller',
+        notes: 'lefty',
+        ratings: { guard: 4, passing: 2, takedowns: 5, escapes: 3, submissions: 1, conditioning: 4, mindset: 5 },
+        strengths: 'frames',
+        weaknesses: 'open guard',
+      },
+    ],
+  };
+  storage.setItem(SCOUTING_STORAGE_KEY, JSON.stringify(raw));
+  const loaded = loadScouting(storage);
+  assert.equal(loaded.length, 1);
+  assert.equal(loaded[0].id, 'scout.old');
+  assert.equal(loaded[0].name, 'Riley');
+  assert.equal(loaded[0].gym, 'Checkmat');
+  assert.equal(loaded[0].group, 'open');
+  assert.equal(loaded[0].notes, 'lefty');
+  assert.equal(loaded[0].ratings.guard, 4);
+  assert.equal(loaded[0].ratings.mindset, 5);
+  assert.equal(loaded[0].ratings.sweeps, undefined);
+  assert.equal(loaded[0].strengths, 'frames');
+  assert.deepEqual(loaded[0].bouts, []);
+
+  const saved = saveScouting(storage, loaded);
+  const again = loadScouting(storage);
+  assert.equal(again[0].id, 'scout.old');
+  assert.equal(again[0].ratings.guard, 4);
+  assert.equal(again[0].ratings.sweeps, undefined);
+  assert.equal(again[0].notes, 'lefty');
+  assert.match(storage.getItem(SCOUTING_STORAGE_KEY) ?? '', /"version":1/);
+  assert.match(storage.getItem(SCOUTING_STORAGE_KEY) ?? '', /scout\.old/);
+
+  const withSweeps = updateScoutingCard(saved, 'scout.old', {
+    name: 'Riley',
+    gym: 'Checkmat',
+    belt: 'Purple',
+    weightClass: 'Light',
+    group: 'open',
+    style: 'guard puller',
+    notes: 'lefty',
+    ratings: { ...saved[0].ratings, sweeps: 2 },
+    bouts: addScoutBout([], { result: 'win', date: '2026-04-01', event: 'Spring Open', method: 'armbar' }, 40),
+  });
+  saveScouting(storage, withSweeps);
+  const migrated = loadScouting(storage);
+  assert.equal(migrated[0].ratings.guard, 4);
+  assert.equal(migrated[0].ratings.sweeps, 2);
+  assert.equal(migrated[0].strengths, 'frames');
+  assert.equal(migrated[0].bouts[0].result, 'win');
+  assert.equal(migrated[0].bouts[0].event, 'Spring Open');
+});
+
+test('csv round-trip keeps eight ratings, notes, and the win loss record', () => {
+  const bouts = addScoutBout(
+    addScoutBout([], { result: 'win', date: '2026-03-14', event: 'City Open, finals', method: 'armbar "tight"' }, 41),
+    { result: 'loss', date: '', event: '', method: '' },
+    42,
+  );
+  const cards = addScoutingCard(
+    [],
+    {
+      name: 'Sam',
+      gym: 'Atos',
+      belt: 'Blue',
+      weightClass: 'Middle',
+      group: 'weight',
+      style: 'pressure passer',
+      notes: 'long arms',
+      ratings: { ...rated, sweeps: 3 },
+      strengths: 'frames, long',
+      weaknesses: 'open guard',
+      bouts,
+    },
+    43,
+  );
+  const imported = importScoutingCsv(exportScoutingCsv(cards));
+  assert.equal(imported.error, undefined);
+  assert.equal(imported.cards[0].ratings.sweeps, 3);
+  assert.deepEqual(imported.cards[0].ratings, { ...rated, sweeps: 3 });
+  assert.equal(imported.cards[0].strengths, 'frames, long');
+  assert.equal(imported.cards[0].weaknesses, 'open guard');
+  assert.equal(imported.cards[0].notes, 'long arms');
+  assert.equal(imported.cards[0].style, 'pressure passer');
+  assert.deepEqual(imported.cards[0].bouts, bouts);
+
+  const legacyLabels = importScoutingCsv(
+    'Name,Belt,Guard/Control,Passing,Sweeps,Takedowns,Escapes/Defense,Submissions,Conditioning,Mindset\nAlex,Blue,5,4,2,3,1,4,5,3\n',
+  );
+  assert.equal(legacyLabels.cards[0].ratings.guard, 5);
+  assert.equal(legacyLabels.cards[0].ratings.sweeps, 2);
+  assert.equal(legacyLabels.cards[0].ratings.escapes, 1);
+  assert.deepEqual(legacyLabels.cards[0].bouts, []);
+
+  const oldSeven = importScoutingCsv(
+    'Name,Belt,Guard,Passing,Takedowns,Escapes,Submissions,Conditioning,Mindset,Strengths,Weaknesses\nRiley,Purple,4,2,5,3,1,4,5,frames,open guard\n',
+  );
+  assert.equal(oldSeven.cards[0].ratings.guard, 4);
+  assert.equal(oldSeven.cards[0].ratings.sweeps, undefined);
+  assert.equal(oldSeven.cards[0].strengths, 'frames');
+  assert.deepEqual(oldSeven.cards[0].bouts, []);
+});
+
+test('the record counts manual results and competition matches once', () => {
+  let cards = addScoutingCard(
+    [],
+    { name: 'Sam', gym: 'Atos', belt: 'Blue', weightClass: 'Middle', group: 'weight', style: '', notes: '' },
+    50,
+  );
+  let bouts = addScoutBout([], { result: 'win', event: 'Spring Open', date: '', method: 'armbar' }, 51);
+  bouts = addScoutBout(bouts, { result: 'loss', event: 'Other Open', date: '2026-05-01', method: '' }, 52);
+  bouts = addScoutBout(bouts, { result: 'draw', event: '', date: '', method: '' }, 53);
+  cards = updateScoutingCard(cards, cards[0].id, {
+    name: 'Sam',
+    gym: 'Atos',
+    belt: 'Blue',
+    weightClass: 'Middle',
+    group: 'weight',
+    style: '',
+    notes: '',
+    bouts,
+  });
+  const spring: CompetitionResult = {
+    ...result,
+    matches: [
+      { id: 'match.sam', opponent: 'Sam', result: 'win', method: 'sub', note: 'closed the guard' },
+      { id: 'match.other', opponent: 'Sam', result: 'win', method: 'points', note: '', date: '2026-04-02' },
+    ],
+  };
+  const counted = scoutRecord(cards[0], [spring]);
+  assert.equal(counted.line, '2-1-1');
+  assert.equal(counted.wins, 2);
+  assert.equal(counted.losses, 1);
+  assert.equal(counted.draws, 1);
+
+  const sameDay = {
+    ...spring,
+    matches: [{ id: 'match.dated', opponent: 'Sam', result: 'loss', method: 'points', note: '', date: '2026-05-01' }],
+  };
+  const dated = updateScoutingCard(cards, cards[0].id, {
+    name: 'Sam',
+    gym: 'Atos',
+    belt: 'Blue',
+    weightClass: 'Middle',
+    group: 'weight',
+    style: '',
+    notes: '',
+    bouts: [{ id: 'bout.same', result: 'loss', date: '2026-05-01', event: 'Spring Open', method: 'points' }],
+  });
+  assert.equal(scoutRecord(dated[0], [sameDay]).line, '0-1-0');
+
+  const differentDay = updateScoutingCard(cards, cards[0].id, {
+    name: 'Sam',
+    gym: 'Atos',
+    belt: 'Blue',
+    weightClass: 'Middle',
+    group: 'weight',
+    style: '',
+    notes: '',
+    bouts: [{ id: 'bout.diff', result: 'loss', date: '2026-01-01', event: 'Spring Open', method: '' }],
+  });
+  const split = {
+    ...spring,
+    matches: [{ id: 'match.later', opponent: 'Sam', result: 'loss', method: 'points', note: '', date: '2026-05-01' }],
+  };
+  assert.equal(scoutRecord(differentDay[0], [split]).line, '0-2-0');
+
+  const edited = updateScoutBout(bouts, bouts[0].id, { result: 'draw', event: 'Finals', date: '2026-03-01', method: 'points' });
+  assert.equal(edited[0].result, 'draw');
+  assert.equal(edited[0].id, bouts[0].id);
+  assert.equal(removeScoutBout(edited, edited[0].id).some((bout) => bout.id === edited[0].id), false);
+  assert.equal(scoutRecord({ ...cards[0], bouts: [] }, []).line, '0-0-0');
+});
+
+test('sample opponents are written only for an empty archive opened with sample=1', () => {
+  const storage = memory();
+  assert.equal(seedSampleScouting(storage, '').length, 0);
+  assert.equal(storage.getItem(SCOUTING_STORAGE_KEY), null);
+  const seeded = seedSampleScouting(storage, '?sample=1');
+  assert.equal(seeded[0].id, SAMPLE_OPPONENT_ID);
+  assert.match(seeded[0].name, /\(sample\)/);
+  assert.match(seeded[0].notes, /Not a real opponent/);
+  assert.equal(seeded[0].ratings.sweeps, 3);
+  assert.equal(seeded[1].ratings.sweeps, undefined);
+  assert.equal(scoutRecord(seeded[0], []).line, '3-1-0');
+  const again = seedSampleScouting(storage, '?sample=1');
+  assert.equal(again.length, 2);
+  const kept = saveScouting(storage, [
+    addScoutingCard([], { name: 'Real', gym: '', belt: 'Blue', weightClass: '', group: 'weight', style: '', notes: 'keep me' }, 60)[0],
+  ]);
+  const untouched = seedSampleScouting(storage, '?sample=1&student=1');
+  assert.equal(untouched.length, 1);
+  assert.equal(untouched[0].name, 'Real');
+  assert.equal(untouched[0].notes, 'keep me');
+  assert.equal(kept[0].id, untouched[0].id);
 });

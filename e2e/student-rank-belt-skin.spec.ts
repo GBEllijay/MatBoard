@@ -37,7 +37,9 @@ test('my rank and belt progress keep every control and match the arena skin', as
   const rank = page.locator('main.student--rank');
   await expect(rank).toHaveClass(/student--arena/);
   await expect(rank).toHaveCSS('font-family', /Inter/);
-  await expect(rank).toHaveCSS('background-color', 'rgb(0, 0, 0)');
+  await expect(rank).toHaveClass(/s-group/);
+  await expect(rank).toHaveCSS('background-color', 'rgb(18, 36, 58)');
+  await expect(rank).toHaveCSS('background-image', /home-mat-tatami\.png/);
   await expect(rank.locator('.student-leather')).toHaveCount(0);
   await expect(rank.locator('.student-paper')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'My rank', exact: true })).toHaveCSS('font-family', /Inter/);

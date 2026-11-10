@@ -4,7 +4,7 @@
  * a "What I learned" note, and an optional "On my fundamentals list?" link.
  * Pick opens the fundamentals list with a search box and a My techniques section.
  */
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { ageIllegalTechniques } from '../../lib/studentBenchmarks';
@@ -17,6 +17,7 @@ import {
   type FundamentalRow,
   type JournalTechniqueLine,
 } from '../../lib/studentEdition';
+import { armOverlayExit } from '../../lib/overlayExit';
 import { techniquePicker, techniqueSuggestions } from '../../lib/techniqueIndex';
 import { useStudentPath } from './chrome';
 import {
@@ -97,6 +98,14 @@ export function TechniqueLines({
     setNotice(adopted.created ? `${adopted.node.title} is on Techniques I'm working on.` : `Linked to ${adopted.node.title}. Same technique, not a second copy.`);
   };
   const view = picker === null ? null : techniquePicker(report, search);
+  useEffect(() => {
+    if (picker === null) return;
+    return armOverlayExit('student-technique-picker', () => setPicker(null), { lockScroll: true });
+  }, [picker]);
+  useEffect(() => {
+    if (workingFor === null) return;
+    return armOverlayExit('student-working-picker', () => setWorkingFor(null), { lockScroll: true });
+  }, [workingFor]);
   return (
     <>
       <datalist id={listId}>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { IndexTermLink } from '../../indexCards/IndexTermLink';
 import { Link } from 'react-router-dom';
 import { beltModeOf } from '../../lib/beltBook';
 import {
@@ -474,7 +475,9 @@ function FundamentalLine({
             </button>
           </form>
         ) : (
-          <h3>{item.label}</h3>
+          <h3>
+            <IndexTermLink name={item.label} />
+          </h3>
         )}
         <div className="fund-move__tools">
           <button

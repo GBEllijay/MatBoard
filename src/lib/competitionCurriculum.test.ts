@@ -79,6 +79,8 @@ test('expected duration keeps whole minutes and halves, and sets the timer', () 
   assert.equal(normalizeExpectedDuration('8:00'), '8');
   assert.equal(normalizeExpectedDuration('8'), '8');
   assert.equal(normalizeExpectedDuration('8.5'), '8.5');
+  assert.equal(normalizeExpectedDuration('8:15'), '8.25');
+  assert.equal(normalizeExpectedDuration('8.25'), '8.25');
   assert.equal(normalizeExpectedDuration('1:30'), '1.5');
   assert.equal(normalizeExpectedDuration('200'), '60');
   assert.equal(normalizeExpectedDuration(''), '');
@@ -87,6 +89,8 @@ test('expected duration keeps whole minutes and halves, and sets the timer', () 
   assert.equal(expectedToWorkMs('8:00'), 8 * 60_000);
   assert.equal(expectedToWorkMs('8'), 8 * 60_000);
   assert.equal(expectedToWorkMs('8.5'), 8 * 60_000 + 30_000);
+  assert.equal(expectedToWorkMs('8.25'), 8 * 60_000 + 15_000);
+  assert.equal(expectedToWorkMs('8:15'), 8 * 60_000 + 15_000);
   assert.equal(expectedToWorkMs('1:30'), 90_000);
   assert.equal(expectedToWorkMs(''), 5 * 60_000);
   assert.equal(expectedToWorkMs('soon'), 5 * 60_000);

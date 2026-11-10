@@ -8,6 +8,8 @@ import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { LearnMoreLink } from '../components/LearnMoreLink';
 import { OwnerTestSheet } from '../components/OwnerTestSheet';
+import { SignOutButton } from '../components/SignOutButton';
+import { takeSignOutCleanupNotice } from '../lib/signOut';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
@@ -102,6 +104,7 @@ export function HomePage() {
   const instructorOpenTo = instructorUnlimited ? COACH_UNLIMITED_PATH : '/coach';
   const instructorOpenLabel = instructorUnlimited ? 'Open Advantage Instructor Edition' : 'Open Coach';
   const [ownerTestOpen, setOwnerTestOpen] = useState(false);
+  const [signOutNotice] = useState(() => takeSignOutCleanupNotice());
 
   return (
     <main className="home home--ladder">
@@ -110,6 +113,11 @@ export function HomePage() {
         <HistoryBackMark fallback="/" />
         <HomeMark to="/" motto={HOME_MOTTO} tagline="BJJ scoreboard, round timer, and gym tools." />
 
+        {signOutNotice ? (
+          <p className="home__hint" role="alert">
+            {signOutNotice} Access on this browser is still signed out.
+          </p>
+        ) : null}
         <nav className="home__modes" aria-label="Products">
           {whiteUnlocked ? (
             <article className="mode-card mode-card--white">
@@ -225,6 +233,8 @@ export function HomePage() {
             <button type="button" className="btn btn--ghost" onClick={() => setOwnerTestOpen(true)}>
               Owner test unlock
             </button>
+            {' '}
+            <SignOutButton />
           </p>
         </div>
         <SiteFooter />

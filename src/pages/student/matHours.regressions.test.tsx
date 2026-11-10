@@ -470,7 +470,8 @@ test('journal search: a typo finds the card and the hit is highlighted', () => {
  * Controls touched: profile mat hours frame (units toggle), Add mat time timer, card radar link,
  * medal buttons, match log Close, Results link, My report card. */
 import { recentMedals } from '../../lib/cardMedals.ts';
-import { ASSESSMENT_AREAS, saveAssessment, writeAssessments } from '../../lib/studentAssessment.ts';
+import { ASSESSMENT_AREAS, ASSESSMENT_STORAGE_KEY, saveAssessment, writeAssessments } from '../../lib/studentAssessment.ts';
+import { ApprovedOctagonRadar } from '../../preview/assessmentRadar/OctagonChart.tsx';
 import { beltFrameColor } from './StudentCardLayout.tsx';
 import { wornBeltPreview } from '../../lib/studentRank.ts';
 import type { CompetitionResult, StudentProgressReport } from '../../lib/progress/types.ts';
@@ -546,6 +547,8 @@ test('medals on the card open a match log; empty states for medals and radar', (
   seed('white', { minutes: 0 });
   let page = mount(<StudentEditionPage />, '/student/profile?student=1');
   assert.ok(page.host.querySelector('[data-testid="card-medals-empty"]'));
+  assert.ok(page.host.querySelector('[data-testid="sheet-diamond"]'));
+  click(control(page.host, 'button', 'Radar'));
   assert.ok(page.host.querySelector('[data-testid="card-radar-empty"]'));
   unmount(page);
   seedResults([result('x', 'Sample Open', ['win', 'win'], '2026-03-14', ['6-2', ''])]);
@@ -565,17 +568,62 @@ test('medals on the card open a match log; empty states for medals and radar', (
 
 test('card radar reads the latest check-in; the self-assessment page is unchanged', () => {
   seed('white', { minutes: 0 });
-  writeAssessments(localStorage, saveAssessment({ entries: [] }, { date: '2026-10-01', note: '', scores: Object.fromEntries(ASSESSMENT_AREAS.map((a) => [a.id, 3])) as never }));
+  const legacy = { guard: 5, passing: 3, takedowns: 4, escapes: 2, submissions: 4, conditioning: 2, mindset: 3 };
+  writeAssessments(localStorage, saveAssessment({ entries: [] }, { date: '2026-11-07', note: '', scores: legacy }));
+  const stored = localStorage.getItem(ASSESSMENT_STORAGE_KEY);
   const page = mount(<StudentEditionPage />, '/student/profile?student=1');
+  click(control(page.host, 'button', 'Radar'));
   const radar = page.host.querySelector('[data-testid="card-radar"]') as HTMLElement;
-  assert.ok(radar.querySelector('svg.assess-chart polygon.assess-chart__shape'));
+  const cage = radar.querySelector('polygon.oct-cage');
+  assert.equal(cage?.getAttribute('points')?.trim().split(/\s+/).length, 8);
+  assert.equal(radar.querySelectorAll('line.oct-grid').length, 0, 'no spider web');
+  assert.ok(radar.querySelector('.oct-mark'));
+  assert.equal(radar.querySelector('.oct-shape--filled'), null, 'an unrated Sweeps corner is not closed through zero');
+  assert.equal((radar.querySelector('.oct-shape-line')?.getAttribute('points') ?? '').includes('100.00,100.00'), false);
+  assert.deepEqual(
+    [...radar.querySelectorAll('.oct-label__name')].map((node) => node.textContent),
+    ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset'],
+  );
+  assert.deepEqual(
+    [...radar.querySelectorAll('.assess-legend li')].map((node) => [...node.querySelectorAll('span')].map((span) => span.textContent).join(' ')),
+    ['Guard/Control 5', 'Passing 3', 'Sweeps Not rated', 'Takedowns 4', 'Escapes/Defense 2', 'Submissions 4', 'Conditioning 2', 'Mindset 3'],
+  );
+  assert.match(radar.querySelector('svg')?.getAttribute('aria-label') ?? '', /Sweeps not rated/);
+  assert.doesNotMatch(radar.querySelector('svg')?.getAttribute('aria-label') ?? '', /Sweeps 0|Sweeps 3/);
   assert.equal(radar.querySelector('button.assess-tap'), null, 'read-only');
+  assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY), stored, 'rendering does not rewrite the saved check-in');
+  const parsed = JSON.parse(stored ?? '{}') as { entries: { scores: Record<string, number> }[] };
+  assert.equal(Object.hasOwn(parsed.entries[0].scores, 'sweeps'), false);
+  assert.equal(parsed.entries[0].scores.guard, 5);
+  assert.equal(parsed.entries[0].scores.escapes, 2);
   unmount(page);
   const assess = mount(<StudentEditionPage />, '/student/self-assessment?student=1');
   assert.ok(assess.host.querySelector('#self-assessment .assess-visuals svg.assess-chart'));
+  assert.equal(assess.host.querySelector('#self-assessment polygon.oct-cage'), null);
   assert.ok(assess.host.querySelectorAll('button.assess-tap').length >= 5);
   assert.equal(assess.host.querySelector('[data-testid="card-radar"], [data-testid="card-medals"], [data-testid="mat-hours-frame"]'), null);
   unmount(assess);
+});
+
+test('a complete eight-value cage closes on eight vertices', () => {
+  const page = mount(
+    <ApprovedOctagonRadar
+      values={[5, 4, 3, 2, 4, 5, 3, 2]}
+      label="Self-assessment shape, Guard/Control 5, Passing 4, Sweeps 3, Takedowns 2, Escapes/Defense 4, Submissions 5, Conditioning 3, Mindset 2"
+    />,
+    '/student/profile?student=1',
+  );
+  const cage = page.host.querySelector('polygon.oct-cage');
+  const filled = page.host.querySelector('polygon.oct-shape--filled');
+  assert.equal(cage?.getAttribute('points')?.trim().split(/\s+/).length, 8);
+  assert.equal(filled?.getAttribute('points')?.trim().split(/\s+/).length, 8);
+  assert.equal(page.host.querySelectorAll('line.oct-grid').length, 0);
+  assert.equal(page.host.querySelectorAll('.oct-dot').length, 8);
+  assert.ok(page.host.querySelector('.oct-mark'));
+  const closing = page.host.querySelector('.oct-shape-line')?.getAttribute('points')?.trim().split(/\s+/) ?? [];
+  assert.equal(closing.length, 9);
+  assert.equal(closing[0], closing[closing.length - 1]);
+  unmount(page);
 });
 
 test('the profile rank link is the rank only and still opens My rank', () => {

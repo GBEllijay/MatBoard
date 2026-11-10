@@ -38,11 +38,36 @@
 }
 .card-radar .assess-visual { margin: 0; }
 .card-radar .assess-chart { max-width: 260px; width: 100%; height: auto; justify-self: center; display: block; margin: 0 auto; }
+.card-radar .shape-octagon {
+  --oct-ink: #f2ebda;
+  --oct-muted: #d7e6ff;
+  margin-top: 0;
+}
+.card-radar .assess-legend { margin-top: 8px; }
 .card-empty { font-size: 14px; margin: 0; opacity: 0.9; }
 .card-empty h3, .card-medals__k { margin: 0; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
 .card-link { min-height: 44px; display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; color: inherit; }
 
+.sheet-shape-toggle { display: flex; gap: 8px; }
+.sheet-shape-toggle button {
+  min-height: 44px; padding: 8px 12px; border-radius: 6px; font: inherit; cursor: pointer;
+  color: inherit; background: transparent; border: 1px solid currentColor;
+}
+.sheet-shape-toggle button[aria-pressed='true'] { background: color-mix(in srgb, currentColor 16%, transparent); }
+.sheet-diamond .topo-stage { height: 220px; }
+.sheet-diamond__note { margin: 0; font-size: 12px; opacity: 0.8; }
+.sheet-diamond__expand, .sheet-diamond-full__close {
+  min-height: 44px; padding: 8px 12px; border-radius: 6px; font: inherit; cursor: pointer;
+  color: inherit; background: transparent; border: 1px solid currentColor;
+}
+.sheet-diamond-full {
+  position: fixed; inset: 0; z-index: 40; overflow: auto;
+  background: #071018; color: #d7eef2; padding: 12px;
+}
+.sheet-diamond-full__close { color: #e7f8fb; border-color: #76eaff; margin-bottom: 8px; }
+
 .card-medals__strip { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.card-medals__strip > li { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
 .card-medal {
   width: 100%; min-height: 44px; display: grid; justify-items: center; gap: 2px; text-align: center;
   padding: 8px 4px 10px; border-radius: 14px; cursor: pointer; font: inherit; color: inherit;

@@ -202,7 +202,7 @@ type SeatArchive = {
   seats: InstructorSeat[];
 };
 
-export type IssueInviteFailure = 'email' | 'duplicate' | 'storage' | 'cap' | 'owner';
+export type IssueInviteFailure = 'email' | 'duplicate' | 'storage' | 'cap' | 'owner' | 'unavailable';
 
 export type IssueInviteResult =
   | { ok: true; seat: InstructorSeat; inviteLink: string }
