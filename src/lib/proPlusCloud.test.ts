@@ -141,10 +141,15 @@ test('Pro Plus Cloud page is the head instructor home', () => {
   assert.doesNotMatch(home, /Connect Google|OneDrive/);
   assert.match(home, /CLOUD_ROLE_HOME/);
   assert.match(home, /ADVANTAGE_CLOUD_DRIVE_NOTE/);
-  assert.match(home, /Upload daily videos/);
+  assert.match(home, /CLOUD_DAILY_MEDIA_LABEL/);
+  assert.match(home, /MEDIA_LIBRARY_ACCEPT/);
   assert.match(home, /Upload lesson-plan media/);
-  assert.match(home, /UNLIMITED_VIDEOS_PATH/);
+  assert.doesNotMatch(home, /UNLIMITED_VIDEOS_PATH/);
   assert.match(home, /UNLIMITED_LESSON_PATH/);
+  const daily = readFileSync(new URL('./dailyOwnerUpload.ts', import.meta.url), 'utf8');
+  assert.match(daily, /Upload daily videos and photos/);
+  assert.match(daily, /publishGymFile/);
+  assert.match(daily, /did not store this photo/);
   assert.match(home, /export function CloudUsageMetric/);
   assert.match(home, /<Sheet /);
   assert.doesNotMatch(home, /Coming soon/);
@@ -152,7 +157,9 @@ test('Pro Plus Cloud page is the head instructor home', () => {
   assert.match(saver, /cloudCustomer \? <AdvantageCloudHome \/> : null/);
   const academy = readFileSync(new URL('../components/GymCharacterSheet.tsx', import.meta.url), 'utf8');
   assert.match(academy, /useProPlusCloudUnlocked/);
-  assert.match(academy, /owner && cloudOwner \? <CloudUsageMetric \/> : null/);
+  assert.match(academy, /academyCloudTileVisible/);
+  assert.match(academy, /data-zone="cloud"/);
+  assert.match(academy, /data-zone="tenure"/);
   assert.doesNotMatch(academy, /DriveConnectCard/);
   const invite = readFileSync(new URL('../components/InstructorInvitePanel.tsx', import.meta.url), 'utf8');
   assert.match(invite, /qrDataUrl/);

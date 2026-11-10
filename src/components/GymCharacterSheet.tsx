@@ -34,6 +34,8 @@ import {
 import { getGymEventsSnapshot, readGymMeta, subscribeGymEvents } from '../lib/gymEventLog.ts';
 import { ADVANTAGE_MARK_SRC, readGymLogo, saveGymLogoFile, subscribeGymLogo } from '../lib/gymLogo.ts';
 import { GYM_NAME_MAX, readGymName, subscribeGymName, writeGymName } from '../lib/gymName.ts';
+import { academyCloudTileVisible } from '../lib/advantageCloudMedia.ts';
+import { readCloudLapse } from '../lib/cloudLapse.ts';
 import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud.ts';
 import {
   getGymProfileSnapshot,
@@ -70,7 +72,7 @@ export function GymCharacterSheet() {
   const logo = useLogo();
   const deviceGymName = useDeviceGymName();
   const seat = useCurrentSeat();
-  const cloudOwner = useProPlusCloudUnlocked();
+  const cloudEntitled = useProPlusCloudUnlocked();
   const home = academyProfileHome(useLocation().pathname);
   const [editing, setEditing] = useState(false);
   const [logoNote, setLogoNote] = useState('');
@@ -250,7 +252,6 @@ export function GymCharacterSheet() {
           <CountTile owner={owner} href={academyRosterHref(home)} label="Stripes given" count={stripes} detail="Open the roster. Stripes are entered on a student card." />
           <CountTile owner={owner} href={academyLessonHref(home)} label="Classes taught" count={classes.count} detail="Open the lesson plan. I taught this is what this count records." />
           <CountTile owner={owner} href={academyRosterHref(home)} label="Active students" count={active} detail="Open the roster. Students are added there." />
-          {owner && cloudOwner ? <CloudUsageMetric /> : null}
         </div>
       </div>
       <div className="sheet-zone sheet-zone--radar" data-zone="belts">
@@ -313,6 +314,16 @@ export function GymCharacterSheet() {
             : 'These numbers are this device. Full gym totals come with Advantage Cloud.'}
         </p>
       </div>
+      {academyCloudTileVisible({
+        owner,
+        cloudEntitled,
+        lapsed: readCloudLapse(typeof localStorage === 'undefined' ? null : localStorage, Date.now(), cloudEntitled).phase !== 'hidden',
+      }) ? (
+        <div className="sheet-zone sheet-zone--cloud" data-zone="cloud">
+          <h3 className="sheet-cap">Advantage Cloud</h3>
+          <CloudUsageMetric />
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -3,6 +3,7 @@ import {
   CLOUD_MEDIA_EVENT,
   CLOUD_SAVED_MESSAGE,
   cloudUsageLine,
+  notifyCloudMedia,
   readCloudBearer,
   readCloudMediaHome,
   setCloudUploadReady,
@@ -14,6 +15,8 @@ import {
   type CloudStatusBody,
   type PendingReplayRow,
 } from '../lib/advantageCloudMedia';
+import { isDailyPhoto, uploadDailyMediaFile } from '../lib/dailyOwnerUpload';
+import { MEDIA_LIBRARY_ACCEPT } from '../lib/mediaPicker';
 import { useCurrentSeat } from './SeatSessionBar';
 
 type Purpose = 'daily-video' | 'lesson';
@@ -108,8 +111,13 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
   if (!status?.cloud) return null;
 
   const canUpload = Boolean(status.canUpload);
-  const usage = cloudUsageLine(status.licenseUsedBytes ?? 0, status.bucketUsedBytes ?? 0, status.capBytes ?? 0);
-  const accept = purpose === 'daily-video' ? 'video/*' : 'video/*,image/*';
+  const usage =
+    typeof status.licenseUsedBytes === 'number' &&
+    typeof status.bucketUsedBytes === 'number' &&
+    typeof status.capBytes === 'number'
+      ? cloudUsageLine(status.licenseUsedBytes, status.bucketUsedBytes, status.capBytes)
+      : 'Could not read Cloud usage.';
+  const accept = purpose === 'daily-video' ? MEDIA_LIBRARY_ACCEPT : 'video/*,image/*';
 
   const chooseHome = (next: CloudMediaHome) => {
     writeCloudMediaHome(localStorage, next);
@@ -157,11 +165,20 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
     if (!list?.length || !canUpload) return;
     setBusy(true);
     setNote('');
-    let failed = '';
+    const notes: string[] = [];
+    let cloudWrote = false;
     for (let index = 0; index < list.length; index += 1) {
       const file = list[index];
       if (!file) continue;
-      setNote(list.length === 1 ? 'Uploading to Advantage Cloud…' : `Uploading ${index + 1} of ${list.length} to Advantage Cloud…`);
+      const photo = purpose === 'daily-video' && isDailyPhoto(file);
+      setNote(photo ? 'Saving photo…' : list.length === 1 ? 'Uploading to Advantage Cloud…' : `Uploading ${index + 1} of ${list.length} to Advantage Cloud…`);
+      if (photo) {
+        const saved = await uploadDailyMediaFile(file, dateKey);
+        notes.push(saved.message);
+        if (saved.cloud) cloudWrote = true;
+        if (!saved.ok) break;
+        continue;
+      }
       const result = await uploadAdvantageCloudFile({
         purpose: purpose === 'lesson' ? 'lesson-media' : 'daily-video',
         dateKey,
@@ -170,12 +187,15 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
         mime: file.type || (purpose === 'daily-video' ? 'video/mp4' : 'application/octet-stream'),
       });
       if (!result.ok) {
-        failed = result.message;
+        notes.push(result.message);
         break;
       }
+      cloudWrote = true;
+      notes.push(CLOUD_SAVED_MESSAGE);
     }
     setBusy(false);
-    setNote(failed || CLOUD_SAVED_MESSAGE);
+    setNote(notes.join(' ') || (cloudWrote ? CLOUD_SAVED_MESSAGE : 'Could not read Cloud usage.'));
+    if (cloudWrote) notifyCloudMedia();
   };
 
   const savePlan = async () => {

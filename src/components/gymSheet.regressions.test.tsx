@@ -387,6 +387,12 @@ test('a Cloud owner sees usage on the academy card and the details keep the crea
     assert.match(metric.textContent ?? '', /This license/);
     assert.match(metric.textContent ?? '', /397/);
     assert.match(metric.textContent ?? '', /of 8 GB/);
+    assert.equal(sheet.host.querySelector('[data-zone="stats"]')?.querySelector('[data-testid="cloud-usage-metric"]'), null);
+    const tenure = sheet.host.querySelector('[data-zone="tenure"]');
+    const cloudZone = sheet.host.querySelector('[data-zone="cloud"]');
+    assert.ok(tenure && cloudZone);
+    assert.equal(tenure?.nextElementSibling, cloudZone);
+    assert.equal(cloudZone?.querySelector('[data-testid="cloud-usage-metric"]'), metric);
     assert.equal(sheet.host.querySelector('.cloud-home'), null);
     assert.equal(document.querySelector('[role="dialog"]'), null);
     assert.match(metric.getAttribute('aria-label') ?? '', /This license is using 96 MB/);
@@ -405,7 +411,8 @@ test('a Cloud owner sees usage on the academy card and the details keep the crea
     assert.match(dialog?.textContent ?? '', /does not need Google Drive or OneDrive/);
     assert.equal(ADVANTAGE_CLOUD_DRIVE_NOTE.includes('does not need Google Drive or OneDrive'), true);
     assert.match(dialog?.textContent ?? '', /Check again/);
-    assert.match(dialog?.textContent ?? '', /Upload daily videos/);
+    assert.match(dialog?.textContent ?? '', /Upload daily videos and photos/);
+    assert.equal(dialog?.querySelector('[data-cloud-daily-upload]')?.getAttribute('accept'), 'image/*,video/*');
     assert.match(dialog?.textContent ?? '', /Upload lesson-plan media/);
     assert.equal(dialog?.querySelector('.cloud-home'), null);
 
@@ -418,13 +425,6 @@ test('a Cloud owner sees usage on the academy card and the details keep the crea
     await settle();
     assert.ok(calls.filter((url) => url.includes('/api/gym/cloud')).length > before);
     assert.match(document.querySelector('[role="dialog"]')?.textContent ?? '', /397 MB of 8 GB/);
-
-    const upload = [...document.querySelectorAll('a')].find((link) => link.textContent === 'Upload daily videos') as HTMLAnchorElement;
-    assert.match(upload?.getAttribute('href') ?? '', /\/techniques\?from=unlimited/);
-    await act(async () => {
-      upload.click();
-    });
-    assert.equal(localStorage.getItem(CLOUD_HOME_KEY), 'advantage-cloud');
 
     const close = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Close');
     await act(async () => {
@@ -439,6 +439,36 @@ test('a Cloud owner sees usage on the academy card and the details keep the crea
     localStorage.removeItem(CLOUD_HOME_KEY);
     clearOwnerTestGrant();
   }
+});
+
+test('Drive, OneDrive, and no-cloud academies do not see the usage tile or the cream card', async () => {
+  blankProfile();
+  writeGymName('North Academy');
+  localStorage.setItem(
+    'matboard.pro.googleDriveFolder.v1',
+    JSON.stringify({ folderId: 'folder-1', folderName: 'Academy Drive', email: 'owner@gym.test' }),
+  );
+  const drive = await renderSheet('/pro');
+  assert.equal(drive.host.querySelector('[data-testid="cloud-usage-metric"]'), null);
+  assert.equal(drive.host.querySelector('[data-zone="cloud"]'), null);
+  assert.equal(drive.host.querySelector('.cloud-home'), null);
+  await drive.unmount();
+  localStorage.removeItem('matboard.pro.googleDriveFolder.v1');
+
+  localStorage.setItem(
+    'matboard.pro.oneDriveFolder.v1',
+    JSON.stringify({ folderId: 'one-1', folderName: 'Academy OneDrive' }),
+  );
+  const one = await renderSheet('/pro');
+  assert.equal(one.host.querySelector('[data-testid="cloud-usage-metric"]'), null);
+  assert.equal(one.host.querySelector('.cloud-home'), null);
+  await one.unmount();
+  localStorage.removeItem('matboard.pro.oneDriveFolder.v1');
+
+  const none = await renderSheet('/pro');
+  assert.equal(none.host.querySelector('[data-testid="cloud-usage-metric"]'), null);
+  assert.equal(none.host.querySelector('.cloud-home'), null);
+  await none.unmount();
 });
 
 test('a non-Cloud owner and a signed-in seat do not get the Cloud metric', async () => {
