@@ -36,6 +36,17 @@ import {
 import { FIT_PAD, VIEW_SIZE, defaultCamera, labelTier, projectLayout } from './project.ts';
 import { TOPO_H, TOPO_LEVEL, buildTopo, demoLevel, reliefScale, tileTone, toneForName } from './topo.ts';
 import { EXAMPLE_OPPONENT_FACTORS, EXAMPLE_OPPONENT_SWEEPS, EXAMPLE_SELF_FACTORS, EXAMPLE_SELF_SWEEPS, exampleCompare, factorComparisons } from './overlay.ts';
+import {
+  FOCUS_FRAME_ZOOM,
+  REST_ZOOM,
+  ZOOM_STEP,
+  crystalLabelState,
+  drillAfterZoom,
+  faceShowsTechniqueLabels,
+  tileShowsTechniqueLabel,
+  zoomAfterClosingDrill,
+  zoomPastRest,
+} from './labels.ts';
 import { classifyTap, connectionLayout, demoCard, gridCells, growOffEdge, labelVisible, midpointQuarters, screenSides, sidesWithBack, subdivideTriangle, triangleArea, barycentric, walkDemo, assignDrillCells } from './demoLinks.ts';
 
 function memory() {
@@ -407,7 +418,7 @@ test('student links keep student=1 and the coach tree link does not', () => {
 });
 
 test('the preview modules do not write records and the route stays outside the coach gate', () => {
-  for (const name of ['adapter.ts', 'geometry.ts', 'project.ts', 'topo.ts', 'overlay.ts', 'demoLinks.ts', 'TopoStage.tsx', 'CrystallineSweepsPreview.tsx']) {
+  for (const name of ['adapter.ts', 'geometry.ts', 'project.ts', 'topo.ts', 'overlay.ts', 'demoLinks.ts', 'labels.ts', 'TopoStage.tsx', 'CrystallineSweepsPreview.tsx']) {
     const text = readFileSync(new URL(`./${name}`, import.meta.url), 'utf8');
     assert.doesNotMatch(text, /saveStudentReport|writeAssessments|saveTechniqueArchive|loadTechniqueArchive|loadStudentReport|localStorage\.setItem/);
   }
@@ -542,4 +553,74 @@ test('example sides stay local and the Mount walk is recursive', () => {
   assert.equal(toneForName('Armbar'), 'submission');
   assert.equal(toneForName('Triangle choke'), 'submission');
   assert.equal(toneForName('Pendulum sweep'), 'pass');
+});
+
+test('default zoom hides technique names; zoom-in or a face drill shows one face', () => {
+  const topo = buildTopo(() => 3, 'center');
+  const sweepsFace = topo.faces.findIndex((face) => face.id === 'sweeps');
+  assert.equal(topo.faces.map((face) => face.name).join('|'), AXES.map((axis) => axis.label).join('|'));
+  assert.deepEqual(
+    topo.faces.map((face) => face.name),
+    ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset'],
+  );
+  const empty = topo.faces.filter((face) => face.moves.length === 0).map((face) => face.id);
+  assert.deepEqual(empty, ['conditioning', 'mindset']);
+  for (const name of ['labels.ts', 'TopoStage.tsx', 'CrystallineSweepsPreview.tsx']) {
+    const text = readFileSync(new URL(`./${name}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(text, /MINDSET_GOALS|CONDITIONING_ITEMS/);
+  }
+  const rest = {
+    zoom: REST_ZOOM,
+    drilledFace: -1,
+    focusedFace: -1,
+    frontFace: 3,
+    comparison: false,
+    pair: false,
+    sweepsFace,
+  };
+  assert.equal(zoomPastRest(REST_ZOOM), false);
+  assert.equal(zoomPastRest(FOCUS_FRAME_ZOOM), false);
+  assert.equal(zoomPastRest(REST_ZOOM * ZOOM_STEP), true);
+  assert.deepEqual(crystalLabelState(rest), { tier: 'faces', face: -1 });
+  assert.deepEqual(crystalLabelState({ ...rest, zoom: FOCUS_FRAME_ZOOM, focusedFace: 4 }), { tier: 'faces', face: -1 });
+  for (let face = 0; face < topo.faces.length; face += 1) {
+    assert.deepEqual(crystalLabelState({ ...rest, focusedFace: face }), { tier: 'faces', face: -1 });
+    assert.deepEqual(crystalLabelState({ ...rest, drilledFace: face, focusedFace: face }), { tier: 'techniques', face });
+    assert.equal(faceShowsTechniqueLabels(crystalLabelState({ ...rest, drilledFace: face }), face, topo.faces[face].moves.length, false), topo.faces[face].moves.length > 0);
+    const zoomed = crystalLabelState({ ...rest, zoom: REST_ZOOM * ZOOM_STEP, focusedFace: face, frontFace: (face + 1) % 8 });
+    assert.deepEqual(zoomed, { tier: 'techniques', face });
+    for (const tile of topo.tiles) {
+      const show = tileShowsTechniqueLabel(zoomed, tile.faceIndex, Boolean(tile.move), false);
+      if (show) assert.equal(tile.faceIndex, face);
+      if (tile.faceIndex !== face || !tile.move) assert.equal(show, false);
+    }
+    const names = topo.tiles
+      .filter((tile) => tileShowsTechniqueLabel(zoomed, tile.faceIndex, Boolean(tile.move), false))
+      .map((tile) => tile.move?.name ?? '')
+      .sort();
+    assert.deepEqual(
+      names,
+      topo.faces[face].moves.map((move) => move.name).sort(),
+    );
+  }
+  const spinning = crystalLabelState({ ...rest, zoom: REST_ZOOM * ZOOM_STEP, frontFace: 2 });
+  assert.deepEqual(spinning, { tier: 'techniques', face: 2 });
+  assert.deepEqual(crystalLabelState({ ...rest, zoom: REST_ZOOM * ZOOM_STEP, drilledFace: 5, focusedFace: 1, frontFace: 2 }), {
+    tier: 'techniques',
+    face: 5,
+  });
+  assert.equal(drillAfterZoom(REST_ZOOM * ZOOM_STEP, FOCUS_FRAME_ZOOM, 5), -1);
+  assert.equal(drillAfterZoom(REST_ZOOM, REST_ZOOM / ZOOM_STEP, 5), -1);
+  assert.equal(drillAfterZoom(REST_ZOOM, REST_ZOOM * ZOOM_STEP, 5), 5);
+  assert.equal(zoomAfterClosingDrill(REST_ZOOM * ZOOM_STEP), FOCUS_FRAME_ZOOM);
+  assert.equal(zoomAfterClosingDrill(REST_ZOOM), REST_ZOOM);
+  assert.deepEqual(crystalLabelState({ ...rest, pair: true, zoom: 2, drilledFace: 2 }), { tier: 'faces', face: -1 });
+  assert.deepEqual(crystalLabelState({ ...rest, comparison: true, zoom: 2, focusedFace: 1, frontFace: 1 }), { tier: 'faces', face: -1 });
+  assert.deepEqual(
+    crystalLabelState({ ...rest, comparison: true, zoom: 2, focusedFace: sweepsFace, drilledFace: sweepsFace }),
+    { tier: 'techniques', face: sweepsFace },
+  );
+  const drilledMindset = crystalLabelState({ ...rest, drilledFace: topo.faces.findIndex((face) => face.id === 'mindset') });
+  assert.equal(tileShowsTechniqueLabel(drilledMindset, drilledMindset.face, false, false), false);
+  assert.equal(faceShowsTechniqueLabels(drilledMindset, drilledMindset.face, 0, false), false);
 });

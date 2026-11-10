@@ -4,8 +4,40 @@
  * A higher number is only a higher example score, not a prediction.
  */
 
+import { isAssessmentScore, type AssessmentScores } from '../../lib/studentAssessment.ts';
+import type { AreaRatings } from '../../lib/opponentAssessment.ts';
 import { SHEET_AXIS_IDS, type AxisId } from '../assessmentRadar/model.ts';
 import type { ReliefScore } from './geometry.ts';
+
+const AREA_AXIS = {
+  guard: 'guard-control',
+  passing: 'passing',
+  sweeps: 'sweeps',
+  takedowns: 'takedowns',
+  escapes: 'escapes-defense',
+  submissions: 'submissions',
+  conditioning: 'conditioning',
+  mindset: 'mindset',
+} as const satisfies Record<string, AxisId>;
+
+export type CompareFactors = {
+  self: Partial<Record<AxisId, ReliefScore>>;
+  opponent: Partial<Record<AxisId, ReliefScore>>;
+};
+
+/** Map a scouting card or a self-assessment onto the eight diamond faces. Blank areas stay off. */
+export function factorsFromRatings(
+  ratings: AreaRatings | Partial<AssessmentScores> | null | undefined,
+): Partial<Record<AxisId, ReliefScore>> {
+  const out: Partial<Record<AxisId, ReliefScore>> = {};
+  if (!ratings) return out;
+  const row = ratings as Partial<Record<keyof typeof AREA_AXIS, unknown>>;
+  for (const area of Object.keys(AREA_AXIS) as (keyof typeof AREA_AXIS)[]) {
+    const score = row[area];
+    if (isAssessmentScore(score)) out[AREA_AXIS[area]] = score;
+  }
+  return out;
+}
 
 export const EXAMPLE_SELF_FACTORS = {
   'guard-control': 5,

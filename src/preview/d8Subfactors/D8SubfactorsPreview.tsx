@@ -286,7 +286,6 @@ export function D8SubfactorsPreview() {
           relief={1}
           hue={1}
           marked={marked}
-          termIds={cards.map((card) => card.id)}
           meshHidden={drilled}
           zoomCommand={zoomCommand}
           onZoom={setZoom}
@@ -294,7 +293,6 @@ export function D8SubfactorsPreview() {
             const tile = model.tiles[tileIndex];
             if (tile) openList(tile.faceId);
           }}
-          onOpenTerm={(id) => openCard(id)}
           onFocus={(index) => {
             if (index < 0) {
               pending.current = null;

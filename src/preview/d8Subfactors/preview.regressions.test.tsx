@@ -68,10 +68,19 @@ test('sample ratings update the face score and the scissor chain stays in memory
   assert.ok(host.querySelector('[aria-label="Zoom out"]'));
   assert.ok(host.querySelector('[data-spin]'));
   assert.match(host.textContent ?? '', /Reset view/);
+  const stage = () => host.querySelector('.topo-stage') as HTMLElement;
+  const techniqueLabels = () =>
+    [...host.querySelectorAll('[data-technique-label]')].filter((node) => node.getAttribute('data-technique-label'));
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.ok(techniqueLabels().length >= 48);
+  for (const node of techniqueLabels()) assert.equal((node as HTMLElement).hidden, true);
 
   act(() => {
     (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
   });
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(stage().dataset.drilled, '');
+  for (const node of techniqueLabels()) assert.equal((node as HTMLElement).hidden, true);
   assert.match(host.textContent ?? '', /Scissor sweep/);
   assert.match(host.textContent ?? '', /Hip bump sweep/);
   assert.match(host.textContent ?? '', /Butterfly sweep/);
@@ -99,6 +108,24 @@ test('sample ratings update the face score and the scissor chain stays in memory
   assert.equal(host.querySelector('[data-face-button="guard-control"]')?.getAttribute('data-on-trail'), 'true');
   assert.equal(host.querySelector('[data-face-button="submissions"]')?.getAttribute('data-on-trail'), 'true');
   assert.equal(host.querySelector('[data-face-button="passing"]')?.getAttribute('data-on-trail'), 'false');
+
+  act(() => {
+    (host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.labelTier, 'techniques');
+  assert.equal(stage().dataset.labelFace, 'sweeps');
+  assert.equal(host.querySelector('[data-testid="drill-view"]'), null);
+  const sweepsNames = techniqueLabels().filter((node) => node.getAttribute('data-technique-face') === 'sweeps');
+  assert.equal(sweepsNames.length, 6);
+  for (const node of sweepsNames) assert.equal(node.getAttribute('data-label-policy'), 'show');
+  for (const node of techniqueLabels()) {
+    if (node.getAttribute('data-technique-face') !== 'sweeps') assert.equal((node as HTMLElement).hidden, true);
+  }
+  act(() => {
+    (host.querySelector('[aria-label="Zoom out"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.labelTier, 'faces');
+  for (const node of techniqueLabels()) assert.equal((node as HTMLElement).hidden, true);
 
   act(() => {
     (host.querySelector('[data-face-button="conditioning"]') as HTMLButtonElement).click();

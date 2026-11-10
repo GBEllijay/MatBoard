@@ -78,7 +78,8 @@
   color: inherit;
 }
 
-.crystal button {
+.crystal button,
+.crystal select {
   min-height: 44px;
   padding: 8px 12px;
   border: 1px solid #2a7f90;
@@ -137,6 +138,25 @@
   font-size: 13px;
   font-weight: 650;
   border-color: #76eaff;
+}
+
+button.topo-label-face,
+.crystal button.topo-label-face {
+  min-height: 0;
+  margin: 0;
+  padding: 1px 4px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: 0;
+  color: #e3faff;
+  background: #071324df;
+  border: 1px solid #76eaff;
+  border-radius: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  appearance: none;
 }
 
 .topo-controls,

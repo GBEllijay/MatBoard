@@ -150,6 +150,7 @@ const scout: ScoutingCard = {
   ratings: { guard: 4, passing: 3, takedowns: 2, escapes: 5, submissions: 4, conditioning: 3, mindset: 5 },
   strengths: '',
   weaknesses: '',
+  bouts: [],
 };
 
 test('progress PDF keeps every section, the student track, and checkpoint status', () => {
@@ -208,7 +209,7 @@ test('progress PDF keeps every section, the student track, and checkpoint status
     'Journal summary',
     'Competition and weight',
     'Self-assessment',
-    'Opponent scouting',
+    'Opponent card archive',
     'Video library',
   ]) {
     assert.ok(text.includes(title), title);
@@ -295,7 +296,7 @@ test('an empty progress report omits blank lists or says None yet', () => {
   assert.match(text, /No journal cards\./);
   assert.match(text, /No tournaments recorded\./);
   assert.match(text, /Fundamentals proficiency\nNone yet/);
-  assert.match(text, /Opponent scouting\nNone yet/);
+  assert.match(text, /Opponent card archive\nNone yet/);
   assert.match(text, /Video library\nNone yet/);
   assert.equal(text.includes('No saved links.'), false);
   assert.equal(text.includes('No filmed clips.'), false);
@@ -494,7 +495,7 @@ test('profile fields survive backup, and the assessment file name matches the do
   assert.equal(pdfIncludes(built.progressPdf, 'Rank and stripes'), true);
   assert.equal(pdfIncludes(built.progressPdf, 'Fundamentals proficiency'), true);
   assert.equal(pdfIncludes(built.progressPdf, 'Journal summary'), true);
-  assert.equal(pdfIncludes(built.progressPdf, 'Opponent scouting'), true);
+  assert.equal(pdfIncludes(built.progressPdf, 'Opponent card archive'), true);
   assert.equal(pdfIncludes(built.assessmentPdf, 'calm rounds'), true);
   assert.equal(extractPdfText(built.progressPdf).includes('?'), false);
   const parsed = parseStudentBackup(built.json);

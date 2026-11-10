@@ -3,8 +3,14 @@
  * Demo pyramid heights are illustrative. Sweeps can also read this device.
  * Example connections are a labeled preview walk. Nothing here writes a record.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { loadAssessments } from '../../lib/studentAssessment.ts';
+import {
+  scoutRecordFromStorage,
+  seedSampleScouting,
+  type ScoutingCard,
+} from '../../lib/studentScouting.ts';
 import {
   CRYSTAL_PREVIEW_PATH,
   EXAMPLE_NOTE,
@@ -22,6 +28,7 @@ import {
   EXAMPLE_SELF_SWEEPS,
   exampleCompare,
   factorComparisons,
+  factorsFromRatings,
 } from './overlay.ts';
 import { AXES } from '../assessmentRadar/model.ts';
 import { DEMO_CONNECTION_NOTE, DRILL_LIMIT, catalogNameFor, connectionLayout, demoCard } from './demoLinks.ts';
@@ -30,6 +37,7 @@ import './crystallineSweeps.css';
 export { CRYSTAL_PREVIEW_PATH };
 
 type HeightMode = 'demo' | 'saved';
+type CompareSource = 'off' | 'example' | 'opponent';
 
 export function CrystallineSweepsPreview() {
   const location = useLocation();
@@ -38,7 +46,9 @@ export function CrystallineSweepsPreview() {
   const [mode, setMode] = useState<HeightMode>('demo');
   const [style, setStyle] = useState<TopoStyle>('pyramid');
   const [focus, setFocus] = useState(-1);
-  const [compare, setCompare] = useState(false);
+  const [source, setSource] = useState<CompareSource>('off');
+  const [opponentId, setOpponentId] = useState('');
+  const [cards, setCards] = useState<ScoutingCard[]>([]);
   const [pair, setPair] = useState(false);
   const [fill, setFill] = useState<'center' | 'edges'>('center');
   const [selected, setSelected] = useState(-1);
@@ -54,13 +64,29 @@ export function CrystallineSweepsPreview() {
       }, fill),
     [mode, saved, fill],
   );
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextCards = seedSampleScouting(localStorage, location.search);
+    setCards(nextCards);
+    const requested = params.get('opponent');
+    if (!requested) return;
+    setSource('opponent');
+    if (nextCards.some((card) => card.id === requested)) setOpponentId(requested);
+  }, [location.search]);
+  const chosen = cards.find((card) => card.id === opponentId) ?? null;
+  const mine = loadAssessments(storage()).entries[0]?.scores ?? null;
+  const selfFactors = factorsFromRatings(mine);
+  const opponentFactors = factorsFromRatings(chosen?.ratings);
+  const opponentOverlay = source === 'opponent' && Boolean(chosen) && (Object.keys(selfFactors).length > 0 || Object.keys(opponentFactors).length > 0);
+  const example = source === 'example';
+  const paired = example && pair;
   const face = focus >= 0 ? model.faces[focus] : null;
   const tile = selected >= 0 ? model.tiles[selected] : null;
   const sweepMove = tile?.move && tile.move.faceId === 'sweeps' ? proof.moves.find((move) => move.id === tile.move?.id) ?? null : null;
   const hop = sweepMove ? oneHop(sweepMove) : { shown: [] as string[], extra: 0 };
 
   return (
-    <main className="crystal topo">
+    <main className="crystal topo" data-compare-source={source} data-opponent-id={chosen?.id ?? ''}>
       <p className="crystal-banner" role="note">
         {PREVIEW_BANNER} Each face is one official factor. The raised and inverted pyramids in Demo are illustrative, not student data.
         Move lists follow the current catalog and factor map, checked against the topography file from {TOPO_CITED_COMMIT}.
@@ -74,10 +100,14 @@ export function CrystallineSweepsPreview() {
             <button type="button" aria-pressed={style === 'curved'} onClick={() => setStyle('curved')}>
               Curved relief
             </button>
-            <button type="button" aria-pressed={compare} onClick={() => setCompare((current) => !current)}>
+            <button type="button" aria-pressed={example} onClick={() => setSource((current) => (current === 'example' ? 'off' : 'example'))}>
               Example comparison
             </button>
+            <button type="button" aria-pressed={source === 'opponent'} onClick={() => setSource((current) => (current === 'opponent' ? 'off' : 'opponent'))}>
+              Opponent scouting card
+            </button>
           </div>
+          {source === 'opponent' ? <OpponentPicker cards={cards} opponentId={opponentId} onPick={setOpponentId} /> : null}
           <div className="crystal-toggle" role="group" aria-label="Tile fill">
             <button type="button" aria-pressed={fill === 'center'} onClick={() => setFill('center')}>
               Center first
@@ -89,17 +119,17 @@ export function CrystallineSweepsPreview() {
           <div className="crystal-toggle" role="group" aria-label="Comparison layout">
             <button
               type="button"
-              aria-pressed={!pair}
+              aria-pressed={!paired}
               onClick={() => setPair(false)}
             >
               On the solid
             </button>
             <button
               type="button"
-              aria-pressed={pair}
+              aria-pressed={paired}
               onClick={() => {
                 setPair(true);
-                setCompare(true);
+                setSource((current) => (current === 'off' ? 'example' : current));
               }}
             >
               Side by side
@@ -139,20 +169,23 @@ export function CrystallineSweepsPreview() {
           </div>
           <p className="crystal-style-note">Color strength changes technique tiles only. The cyan and amber comparison stays as it is.</p>
           <p className="crystal-style-note">
-            {compare
+            {example
               ? 'Example self is cyan and solid. Example opponent is amber and dashed. Same faces, same spin. A higher number is not a prediction.'
-              : style === 'pyramid'
-                ? 'Pointed pyramids, the original drawing. 1 is deep inward, 3 is flat, 5 is tall outward.'
-                : 'Same octahedron and the same apex heights. Edges bow inward so the point is less sharp.'}
+              : opponentOverlay && chosen
+                ? `${chosen.name} is the dashed shape. Your self-assessment is the solid shape.`
+                : style === 'pyramid'
+                  ? 'Pointed pyramids, the original drawing. 1 is deep inward, 3 is flat, 5 is tall outward.'
+                  : 'Same octahedron and the same apex heights. Edges bow inward so the point is less sharp.'}
           </p>
           <TopoStage
             model={model}
             style={style}
             focus={focus}
             selected={selected}
-            comparison={compare}
-            pair={pair}
-            links={compare ? hop.shown : []}
+            comparison={example || opponentOverlay}
+            pair={paired}
+            compareFactors={opponentOverlay ? { self: selfFactors, opponent: opponentFactors } : null}
+            links={example ? hop.shown : []}
             drillPath={drillPath}
             relief={relief}
             hue={hue}
@@ -209,7 +242,8 @@ export function CrystallineSweepsPreview() {
                 : 'Heights follow a saved checklist level for that move. No row stays not rated. The Sweeps factor is not copied onto a move.'}
             </p>
           </fieldset>
-          {compare ? <Comparison faceId={face?.id ?? null} hop={hop} moveOpen={Boolean(sweepMove)} /> : null}
+          {example ? <Comparison faceId={face?.id ?? null} hop={hop} moveOpen={Boolean(sweepMove)} /> : null}
+          {source === 'opponent' ? <OpponentCompare card={chosen} selfFactors={selfFactors} opponentFactors={opponentFactors} /> : null}
           {face ? (
             <button
               type="button"
@@ -273,7 +307,7 @@ export function CrystallineSweepsPreview() {
           ) : !face ? (
             <section aria-label="Eight faces">
               <h2>Eight factors</h2>
-              <p>Drag to rotate. Scroll, pinch, or the plus and minus buttons to zoom. Tap a face, or use the row of factor buttons. Sweeps is the only face that opens a saved note or a technique-tree link. Double-tap a highlighted tile for example connections.</p>
+              <p>Drag to rotate. At the starting zoom only the eight factor names show, while the solid spins or sits still. Zoom in past that view, or tap a face, to read that face&apos;s techniques. Tap the face again, zoom back out, or Reset view to hide them. The factor buttons turn to a face and leave those technique names hidden. Sweeps is the only face that opens a saved note or a technique-tree link. Double-tap a highlighted tile for example connections.</p>
             </section>
           ) : null}
           {face ? (
@@ -282,7 +316,7 @@ export function CrystallineSweepsPreview() {
               {face.moves.length ? (
                 <ul className="crystal-list">
                   {face.moves.map((move) => {
-                    const level = compare
+                    const level = example
                       ? null
                       : mode === 'demo'
                         ? demoLevel(move.id)
@@ -312,8 +346,8 @@ export function CrystallineSweepsPreview() {
                           }}
                         >
                           <span>{move.name}</span>
-                          <span className={level == null && !compare ? 'crystal-unrated' : undefined}>
-                            {compare && self && opponent ? `Self ${self} · Opponent ${opponent}` : scoreLabel(level)}
+                          <span className={level == null && !example ? 'crystal-unrated' : undefined}>
+                            {example && self && opponent ? `Self ${self} · Opponent ${opponent}` : scoreLabel(level)}
                           </span>
                         </button>
                       </li>
@@ -341,6 +375,85 @@ function oneHop(move: MoveRecord): { shown: string[]; extra: number } {
   for (const node of move.workingNodes) names.push(...node.links.map((link) => link.otherTitle));
   const unique = [...new Set(names.map((name) => name.trim()).filter(Boolean))];
   return { shown: unique.slice(0, 3), extra: Math.max(0, unique.length - 3) };
+}
+
+function OpponentPicker({
+  cards,
+  opponentId,
+  onPick,
+}: {
+  cards: readonly ScoutingCard[];
+  opponentId: string;
+  onPick: (id: string) => void;
+}) {
+  if (!cards.length) {
+    return (
+      <p className="crystal-style-note">
+        No opponent card yet. Add one in the Opponent card archive, then choose it here. <Link to="/student/scouting">Browse saved</Link>
+      </p>
+    );
+  }
+  return (
+    <label>
+      Opponent
+      <select aria-label="Choose an opponent" value={opponentId} onChange={(event) => onPick(event.target.value)}>
+        <option value="">Choose an opponent</option>
+        {cards.map((card) => (
+          <option key={card.id} value={card.id}>
+            {card.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function OpponentCompare({
+  card,
+  selfFactors,
+  opponentFactors,
+}: {
+  card: ScoutingCard | null;
+  selfFactors: ReturnType<typeof factorsFromRatings>;
+  opponentFactors: ReturnType<typeof factorsFromRatings>;
+}) {
+  if (!card) {
+    return (
+      <section aria-label="Opponent scouting card">
+        <h2>No opponent card yet</h2>
+        <p>Add a card in the Opponent card archive and it will show up here.</p>
+        <Link to="/student/scouting">Browse saved</Link>
+      </section>
+    );
+  }
+  const record = scoutRecordFromStorage(card, storage());
+  return (
+    <section aria-label="Opponent scouting card">
+      <h2>{card.name}</h2>
+      <p>
+        Game-plan against {card.name}. Their card is the dashed shape. Your self-assessment is the solid shape. Record {record.line}.
+      </p>
+      <table className="overlay-table">
+        <caption>Eight factors</caption>
+        <thead>
+          <tr>
+            <th>Factor</th>
+            <th>You</th>
+            <th>{card.name}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {AXES.map((axis) => (
+            <tr key={axis.id}>
+              <th>{axis.label}</th>
+              <td>{selfFactors[axis.id] ?? 'Not rated'}</td>
+              <td>{opponentFactors[axis.id] ?? 'Not rated'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
 }
 
 function Comparison({

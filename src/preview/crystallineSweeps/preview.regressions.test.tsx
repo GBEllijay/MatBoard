@@ -8,6 +8,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { ASSESSMENT_STORAGE_KEY, emptyAssessments, saveAssessment, writeAssessments, type AssessmentScores } from '../../lib/studentAssessment.ts';
+import { SCOUTING_STORAGE_KEY, addScoutingCard, loadScouting, saveScouting } from '../../lib/studentScouting.ts';
 import { STUDENT_EDITION_STORAGE_KEY } from '../../lib/studentEdition.ts';
 import { TECHNIQUE_TREE_STORAGE_KEY } from '../../lib/techniqueTreeStore.ts';
 import { PREVIEW_STORAGE_KEY } from '../../lib/techniqueTreePreview.ts';
@@ -149,6 +150,70 @@ test('example relief, list selection, curved toggle, and back do not write stora
   });
   assert.match(host.textContent ?? '', /does not connect one Sweeps move to another/);
   assert.equal(snapshot(), before);
+  act(() => {
+    mounted.root.unmount();
+  });
+});
+
+test('an opponent scouting card overlays the diamond and example scores stay the fallback', () => {
+  localStorage.clear();
+  writeAssessments(
+    localStorage,
+    saveAssessment(
+      emptyAssessments(),
+      {
+        date: '2026-11-02',
+        note: '',
+        scores: { guard: 5, passing: 1, sweeps: 2, takedowns: 3, escapes: 4, submissions: 2, conditioning: 5, mindset: 3 },
+      },
+      8,
+    ),
+  );
+  saveScouting(
+    localStorage,
+    addScoutingCard(
+      [],
+      {
+        name: 'Sam Rivera',
+        gym: 'Atos',
+        belt: 'Blue',
+        weightClass: 'Middle',
+        group: 'weight',
+        style: '',
+        notes: '',
+        ratings: { guard: 2, passing: 5, takedowns: 4, escapes: 4, submissions: 1, conditioning: 4, mindset: 5 },
+        strengths: 'pressure',
+        weaknesses: 'back',
+      },
+      9,
+    ),
+  );
+  const id = loadScouting(localStorage)[0].id;
+  assert.equal(loadScouting(localStorage)[0].ratings.sweeps, undefined);
+  const before = localStorage.getItem(SCOUTING_STORAGE_KEY);
+  const mounted = mount(<CrystallineSweepsPreview />, `${CRYSTAL_PREVIEW_PATH}?opponent=${encodeURIComponent(id)}`);
+  const host = mounted.host;
+  const stage = host.querySelector('[data-comparison]');
+  assert.equal(host.querySelector('[data-compare-source]')?.getAttribute('data-compare-source'), 'opponent');
+  assert.equal(host.querySelector('[data-opponent-id]')?.getAttribute('data-opponent-id'), id);
+  assert.equal(stage?.getAttribute('data-comparison'), 'on');
+  assert.equal(stage?.getAttribute('data-self-passing'), '1');
+  assert.equal(stage?.getAttribute('data-opponent-sweeps'), '');
+  assert.match(host.textContent ?? '', /Sam Rivera/);
+  assert.match(host.textContent ?? '', /Record 0-0-0/);
+  assert.equal((host.textContent ?? '').includes('Example self is higher'), false);
+  const sweepsRow = [...host.querySelectorAll('tr')].find((row) => row.textContent?.includes('Sweeps'));
+  assert.match(sweepsRow?.textContent ?? '', /Not rated/);
+  assert.equal(localStorage.getItem(SCOUTING_STORAGE_KEY), before);
+  act(() => {
+    labeled(host, 'Example comparison').click();
+  });
+  assert.equal(host.querySelector('[data-compare-source]')?.getAttribute('data-compare-source'), 'example');
+  assert.equal(host.querySelector('[data-comparison]')?.getAttribute('data-comparison'), 'on');
+  assert.equal(host.querySelector('[data-comparison]')?.getAttribute('data-self-passing'), '');
+  assert.match(host.textContent ?? '', /Example self is higher/);
+  assert.match(host.textContent ?? '', /not a prediction/i);
+  assert.equal(localStorage.getItem(SCOUTING_STORAGE_KEY), before);
   act(() => {
     mounted.root.unmount();
   });
@@ -356,6 +421,146 @@ test('factor buttons still jump to that face and the bottom controls stay', () =
     labeled(host, 'Reset view').click();
   });
   assert.ok(host.querySelector('[aria-label="Eight faces"]'));
+  assert.equal(host.querySelectorAll('[data-face-button]').length, 8);
+  act(() => {
+    mounted.root.unmount();
+  });
+});
+
+const FACE_NAMES = [
+  'Guard/Control',
+  'Passing',
+  'Sweeps',
+  'Takedowns',
+  'Escapes/Defense',
+  'Submissions',
+  'Conditioning',
+  'Mindset',
+] as const;
+
+function techniqueNodes(host: ParentNode): HTMLElement[] {
+  return [...host.querySelectorAll('[data-technique-label]')].filter(
+    (node): node is HTMLElement => node instanceof view.HTMLElement && Boolean(node.getAttribute('data-technique-label')),
+  );
+}
+
+function visibleTechniqueFaces(host: ParentNode): string[] {
+  return techniqueNodes(host)
+    .filter((node) => !node.hidden)
+    .map((node) => node.getAttribute('data-technique-face') ?? '');
+}
+
+test('default zoom hides technique labels; zoom-in or a face drill shows only that face', () => {
+  localStorage.clear();
+  const mounted = mount(<CrystallineSweepsPreview />);
+  const host = mounted.host;
+  const stage = () => {
+    const node = host.querySelector('.topo-stage');
+    if (!(node instanceof view.HTMLElement)) throw new Error('Missing stage');
+    return node;
+  };
+  const faceLabels = () => [...host.querySelectorAll('[data-face-label]')];
+  assert.deepEqual(
+    faceLabels().map((node) => node.textContent),
+    [...FACE_NAMES],
+  );
+  assert.equal(faceLabels().some((node) => node.textContent?.includes('no built-in')), false);
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(stage().dataset.drilled, '');
+  for (const node of techniqueNodes(host)) {
+    assert.equal(node.hidden, true, node.getAttribute('data-technique-label') ?? '');
+    assert.equal(node.getAttribute('data-label-policy'), 'hide');
+  }
+  act(() => {
+    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(stage().dataset.drilled, '');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  assert.equal((host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).getAttribute('aria-pressed'), 'true');
+  act(() => {
+    (host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.labelTier, 'techniques');
+  assert.equal(stage().dataset.labelFace, 'sweeps');
+  assert.equal(stage().dataset.drilled, '');
+  const shownFaces = new Set(visibleTechniqueFaces(host));
+  assert.equal(shownFaces.size <= 1, true);
+  if (shownFaces.size === 1) assert.equal([...shownFaces][0], 'sweeps');
+  const sweepsPolicy = techniqueNodes(host).filter((node) => node.getAttribute('data-technique-face') === 'sweeps');
+  assert.ok(sweepsPolicy.length >= 6);
+  for (const node of sweepsPolicy) assert.equal(node.getAttribute('data-label-policy'), 'show');
+  for (const node of techniqueNodes(host)) {
+    if (node.getAttribute('data-technique-face') !== 'sweeps') {
+      assert.equal(node.getAttribute('data-label-policy'), 'hide');
+      assert.equal(node.hidden, true);
+    }
+  }
+  act(() => {
+    (host.querySelector('[aria-label="Zoom out"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  for (const node of techniqueNodes(host)) assert.equal(node.getAttribute('data-label-policy'), 'hide');
+  act(() => {
+    (host.querySelector('[data-face-label="conditioning"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, 'conditioning');
+  assert.equal(stage().dataset.labelTier, 'techniques');
+  assert.equal(stage().dataset.labelFace, 'conditioning');
+  assert.equal(techniqueNodes(host).some((node) => node.getAttribute('data-technique-face') === 'conditioning'), false);
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  assert.equal((host.querySelector('[data-face-label="conditioning"]') as HTMLButtonElement).hidden, false);
+  act(() => {
+    (host.querySelector('[data-face-label="conditioning"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, '');
+  assert.equal(stage().dataset.labelTier, 'faces');
+  act(() => {
+    (host.querySelector('[data-face-label="mindset"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.labelFace, 'mindset');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  act(() => {
+    (host.querySelector('[data-face-label="passing"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, 'passing');
+  assert.equal(stage().dataset.labelFace, 'passing');
+  for (const node of techniqueNodes(host)) {
+    const show = node.getAttribute('data-technique-face') === 'passing';
+    assert.equal(node.getAttribute('data-label-policy'), show ? 'show' : 'hide');
+    if (!show) assert.equal(node.hidden, true);
+  }
+  act(() => {
+    (host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click();
+    (host.querySelector('[data-face-label="submissions"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, 'submissions');
+  assert.equal(stage().dataset.labelFace, 'submissions');
+  act(() => {
+    (host.querySelector('[data-face-label="submissions"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, '');
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  act(() => {
+    (host.querySelector('[data-face-label="guard-control"]') as HTMLButtonElement).click();
+    (host.querySelector('[data-face-label="takedowns"]') as HTMLButtonElement).click();
+    (host.querySelector('[data-face-label="escapes-defense"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.drilled, 'escapes-defense');
+  assert.equal(stage().dataset.labelFace, 'escapes-defense');
+  for (const node of techniqueNodes(host)) {
+    if (node.getAttribute('data-technique-face') !== 'escapes-defense') assert.equal(node.hidden, true);
+  }
+  act(() => {
+    labeled(host, 'Reset view').click();
+  });
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(stage().dataset.drilled, '');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  assert.equal(host.querySelectorAll('.topo-controls button').length, 4);
   assert.equal(host.querySelectorAll('[data-face-button]').length, 8);
   act(() => {
     mounted.root.unmount();
