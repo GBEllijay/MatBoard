@@ -342,6 +342,48 @@ export function cloudHomeStatusLine(view: CloudHomeView | null): string {
   return cloudUsageLine(view.licenseUsedBytes, view.bucketUsedBytes, view.capBytes);
 }
 
+export type CloudUsageFigure = {
+  /** Hero figure, same role as the other academy stat numbers. */
+  value: string;
+  /** Unit beside the figure. Empty when there is no measurement yet. */
+  unit: string;
+  /** Short line under the figure. */
+  label: string;
+};
+
+function splitCloudBytes(bytes: number): { value: string; unit: string } {
+  const text = formatCloudBytes(bytes);
+  const space = text.lastIndexOf(' ');
+  if (space < 0) return { value: text, unit: '' };
+  return { value: text.slice(0, space), unit: text.slice(space + 1) };
+}
+
+/**
+ * Compact academy-card figures for a Cloud owner.
+ * Ready: this license, then the bucket used of the quota.
+ * Anything else stays a single tappable figure with no invented bytes.
+ */
+export function cloudUsageFigures(view: CloudHomeView | null): CloudUsageFigure[] {
+  if (!view) return [{ value: '…', unit: '', label: 'Advantage Cloud' }];
+  if (view.phase !== 'ready') {
+    const label =
+      view.phase === 'unbound'
+        ? 'Not connected'
+        : view.phase === 'error'
+          ? 'Could not check'
+          : view.phase === 'connected'
+            ? 'Sign in'
+            : 'Not on this license';
+    return [{ value: '—', unit: '', label }];
+  }
+  const license = splitCloudBytes(view.licenseUsedBytes);
+  const bucket = splitCloudBytes(view.bucketUsedBytes);
+  return [
+    { value: license.value, unit: license.unit, label: 'This license' },
+    { value: bucket.value, unit: bucket.unit, label: `of ${formatCloudBytes(view.capBytes)}` },
+  ];
+}
+
 /**
  * Probe the site bucket, then read this license when the device is signed in.
  * This does not provision storage and does not call Google Drive or OneDrive.

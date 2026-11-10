@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { AdvantageCloudHome } from '../components/AdvantageCloudHome';
 import { GymCharacterSheet } from '../components/GymCharacterSheet';
 import { InstructorSheet } from '../components/InstructorSheet';
 import { EditionLadder } from '../components/EditionLadder';
@@ -33,7 +32,7 @@ import './proHomeMenu.css';
  * and the purple hub keeps the Media Console destination while showing
  * Advantage Media Edition. The other Pro hubs stay.
  * The header stays the worn black belt: white stripe, red bar, white stripe.
- * Advantage Cloud status and upload links stay above those cards.
+ * Cloud usage sits on the academy profile. The instructor invite lives under the hubs.
  */
 export function ProPlusCloudPage() {
   const door = useSeatDoor();
@@ -64,7 +63,6 @@ export function ProPlusCloudPage() {
             <InstructorSheet />
           ) : null}
           <PlusCloudConduct />
-          <AdvantageCloudHome />
           <Link className="pro-hub" to="/white" data-pro-entry="white">
             <BeltRail kind="white" />
             <span>Advantage White</span>

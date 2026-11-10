@@ -23,6 +23,7 @@ import {
   cloudPartPlan,
   cloudRelativePath,
   cloudTooLargeMessage,
+  cloudUsageFigures,
   cloudUsageLine,
   formatCloudBytes,
   readCloudMediaHome,
@@ -141,6 +142,24 @@ test('the bucket cap defaults to 8 GB and a full upload says so in plain words',
   assert.equal(cloudCapBytes('nope'), DEFAULT_CLOUD_CAP_BYTES);
   assert.equal(DEFAULT_MAX_UPLOAD_BYTES, 512_000_000);
   assert.equal(formatCloudBytes(8_000_000_000), '8 GB');
+  assert.deepEqual(cloudUsageFigures(null), [{ value: '…', unit: '', label: 'Advantage Cloud' }]);
+  assert.deepEqual(cloudUsageFigures({ phase: 'unbound' }), [{ value: '—', unit: '', label: 'Not connected' }]);
+  assert.deepEqual(cloudUsageFigures({ phase: 'error' }), [{ value: '—', unit: '', label: 'Could not check' }]);
+  assert.deepEqual(cloudUsageFigures({ phase: 'connected' }), [{ value: '—', unit: '', label: 'Sign in' }]);
+  assert.deepEqual(cloudUsageFigures({ phase: 'unavailable' }), [{ value: '—', unit: '', label: 'Not on this license' }]);
+  assert.deepEqual(
+    cloudUsageFigures({
+      phase: 'ready',
+      canUpload: true,
+      licenseUsedBytes: 96_000_000,
+      bucketUsedBytes: 397_000_000,
+      capBytes: 8_000_000_000,
+    }),
+    [
+      { value: '96', unit: 'MB', label: 'This license' },
+      { value: '397', unit: 'MB', label: 'of 8 GB' },
+    ],
+  );
   assert.match(cloudUsageLine(1200, 8_000_000_000, 8_000_000_000), /This license is using 1\.2 KB/);
   assert.match(cloudUsageLine(1200, 8_000_000_000, 8_000_000_000), /8 GB of 8 GB/);
   assert.match(cloudFullMessage(8_000_000_000, 8_000_000_000), /Advantage Cloud is full/);

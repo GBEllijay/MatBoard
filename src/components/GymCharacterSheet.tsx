@@ -6,6 +6,7 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { CloudUsageMetric } from './AdvantageCloudHome';
 import { useCurrentSeat } from './SeatSessionBar';
 import {
   academyInstructorsHref,
@@ -33,6 +34,7 @@ import {
 import { getGymEventsSnapshot, readGymMeta, subscribeGymEvents } from '../lib/gymEventLog.ts';
 import { ADVANTAGE_MARK_SRC, readGymLogo, saveGymLogoFile, subscribeGymLogo } from '../lib/gymLogo.ts';
 import { GYM_NAME_MAX, readGymName, subscribeGymName, writeGymName } from '../lib/gymName.ts';
+import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud.ts';
 import {
   getGymProfileSnapshot,
   gymLineageText,
@@ -68,6 +70,7 @@ export function GymCharacterSheet() {
   const logo = useLogo();
   const deviceGymName = useDeviceGymName();
   const seat = useCurrentSeat();
+  const cloudOwner = useProPlusCloudUnlocked();
   const home = academyProfileHome(useLocation().pathname);
   const [editing, setEditing] = useState(false);
   const [logoNote, setLogoNote] = useState('');
@@ -247,6 +250,7 @@ export function GymCharacterSheet() {
           <CountTile owner={owner} href={academyRosterHref(home)} label="Stripes given" count={stripes} detail="Open the roster. Stripes are entered on a student card." />
           <CountTile owner={owner} href={academyLessonHref(home)} label="Classes taught" count={classes.count} detail="Open the lesson plan. I taught this is what this count records." />
           <CountTile owner={owner} href={academyRosterHref(home)} label="Active students" count={active} detail="Open the roster. Students are added there." />
+          {owner && cloudOwner ? <CloudUsageMetric /> : null}
         </div>
       </div>
       <div className="sheet-zone sheet-zone--radar" data-zone="belts">

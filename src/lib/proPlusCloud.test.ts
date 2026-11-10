@@ -128,7 +128,7 @@ test('Pro Plus Cloud page is the head instructor home', () => {
   assert.match(page, /<BeltHeader kind="black" worn title=\{PRO_PLUS_CLOUD_NAME\} blurb=\{PRO_PLUS_CLOUD_BELT_BLURB\} \/>/);
   assert.match(page, /consoleHubs\(door/);
   assert.match(page, /<ProToolboxCard hubs=\{hubs\}/);
-  assert.match(page, /<AdvantageCloudHome \/>/);
+  assert.doesNotMatch(page, /AdvantageCloudHome/);
   assert.match(page, /<InstructorInvitePanel \/>/);
   assert.doesNotMatch(page, /Coming soon|How uploading will work|ADVANTAGE_CLOUD_UPLOAD_STEPS/);
   assert.doesNotMatch(page, /AcademyPathwayPanel|DriveConnectCard/);
@@ -145,7 +145,15 @@ test('Pro Plus Cloud page is the head instructor home', () => {
   assert.match(home, /Upload lesson-plan media/);
   assert.match(home, /UNLIMITED_VIDEOS_PATH/);
   assert.match(home, /UNLIMITED_LESSON_PATH/);
+  assert.match(home, /export function CloudUsageMetric/);
+  assert.match(home, /<Sheet /);
   assert.doesNotMatch(home, /Coming soon/);
+  const saver = readFileSync(new URL('../pages/Screensaver.tsx', import.meta.url), 'utf8');
+  assert.match(saver, /cloudCustomer \? <AdvantageCloudHome \/> : null/);
+  const academy = readFileSync(new URL('../components/GymCharacterSheet.tsx', import.meta.url), 'utf8');
+  assert.match(academy, /useProPlusCloudUnlocked/);
+  assert.match(academy, /owner && cloudOwner \? <CloudUsageMetric \/> : null/);
+  assert.doesNotMatch(academy, /DriveConnectCard/);
   const invite = readFileSync(new URL('../components/InstructorInvitePanel.tsx', import.meta.url), 'utf8');
   assert.match(invite, /qrDataUrl/);
   assert.match(invite, /Copy invite link/);
@@ -190,7 +198,7 @@ test('Pro and Pro + Cloud show the academy profile under the belt', () => {
   assert.doesNotMatch(pro, /preview\/white-hub|preview\/pro-home/);
   assert.match(pro, /cloudConsole \? <PlayExitMark to=\{PRO_PLUS_CLOUD_PATH\} \/> : null/);
   assert.match(pro, /<HomeMark to=\{PRODUCTS_PATH\} \/>/);
-  assert.match(pro, /cloudConsole && !seat \? <AdvantageCloudHome \/> : null/);
+  assert.doesNotMatch(pro, /AdvantageCloudHome/);
   assert.doesNotMatch(pro, /Navigate to=\{PRO_PLUS_CLOUD_PATH\}/);
   const css = readFileSync(new URL('../components/gymSheet.css', import.meta.url), 'utf8');
   assert.match(css, /\.home--pro \.home__inner \{\s*padding-top: calc\(var\(--mark-home\) \+ 1rem \+ var\(--safe-t\)\);/);
