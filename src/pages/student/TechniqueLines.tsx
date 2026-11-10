@@ -19,6 +19,8 @@ import {
 } from '../../lib/studentEdition';
 import { armOverlayExit } from '../../lib/overlayExit';
 import { techniquePicker, techniqueSuggestions } from '../../lib/techniqueIndex';
+import { GlossaryField } from '../../glossary/GlossaryField';
+import { hiddenGlossaryTerms } from '../../lib/glossarySource';
 import { useStudentPath } from './chrome';
 import {
   adoptWorkingNode,
@@ -58,6 +60,7 @@ export function TechniqueLines({
   onReport?: (next: StudentProgressReport) => void;
 }) {
   const to = useStudentPath();
+  const hiddenTerms = hiddenGlossaryTerms(report);
   const listId = `technique-suggestions-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const [picker, setPicker] = useState<number | null>(null);
   const [workingFor, setWorkingFor] = useState<number | null>(null);
@@ -137,10 +140,18 @@ export function TechniqueLines({
                 Pick
               </button>
             </label>
-            <label className="ink ink--wobble journal-note technique-line__note">
-              <span className="ink__label">What I learned</span>
-              <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`${idPrefix}${techniqueNoteLabel(index)}`} rows={2} maxLength={400} value={row.note} onChange={(event) => set(index, { note: event.target.value })} />
-            </label>
+            <GlossaryField
+              className="ink ink--wobble journal-note technique-line__note"
+              label="What I learned"
+              ariaLabel={`${idPrefix}${techniqueNoteLabel(index)}`}
+              rows={2}
+              maxLength={400}
+              value={row.note}
+              onChange={(note) => set(index, { note })}
+              blockedIds={hiddenTerms.ids}
+              blockedNames={hiddenTerms.names}
+              testId={index === 0 ? 'technique-note' : undefined}
+            />
             <label className="technique-line__link">
               <input
                 type="checkbox"
