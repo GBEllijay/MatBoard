@@ -55,6 +55,32 @@ export async function requestPageFullscreen(): Promise<boolean> {
   return result !== 'unsupported';
 }
 
+type WebkitVideo = HTMLVideoElement & {
+  webkitDisplayingFullscreen?: boolean;
+  webkitExitFullscreen?: () => void;
+};
+
+/** Leave iOS's video-element fullscreen so a custom Close is not left behind it. */
+export function exitInlineVideoFullscreen(video: HTMLVideoElement | null | undefined): void {
+  const el = video as WebkitVideo | null | undefined;
+  if (!el?.webkitDisplayingFullscreen) return;
+  try {
+    el.webkitExitFullscreen?.();
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * iOS can take the video element itself fullscreen and hide the page Close.
+ * The handler should leave that mode and show the in-page controls.
+ */
+export function onIosVideoFullscreen(video: HTMLVideoElement, onBegin: () => void): () => void {
+  const begin = () => onBegin();
+  video.addEventListener('webkitbeginfullscreen', begin);
+  return () => video.removeEventListener('webkitbeginfullscreen', begin);
+}
+
 export async function exitPageFullscreen(): Promise<void> {
   const doc = document as FsDoc;
   if (!fullscreenElement()) return;

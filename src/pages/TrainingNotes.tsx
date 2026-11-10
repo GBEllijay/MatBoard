@@ -14,7 +14,7 @@ import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
 import { AdvantageCloudPanel } from '../components/AdvantageCloudMedia';
 import { ExpectedDurationField } from '../components/ExpectedDurationField';
-import { LessonMediaRail } from '../components/LessonMediaRail';
+import { LessonSectionVideo } from '../components/LessonSectionVideo';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
@@ -53,6 +53,7 @@ import {
   type LessonSlotRef,
   type LessonTreeCandidate,
 } from '../lib/lessonLinks';
+import { lessonClipLoopMs } from '../lib/lessonPlayback';
 import {
   OPEN_DRIVE_CLASS_LABEL,
   restoreNoticeFromState,
@@ -143,7 +144,7 @@ import {
   classBrowseFolders,
   classPlanRowLabel,
   copyPlan,
-  emptyPlan,
+  freshClassPlan,
   findPlanById,
   loadTrainingArchive,
   localDateKey,
@@ -156,6 +157,7 @@ import {
   searchLessonPlans,
   removeDayPlan,
   saveDay,
+  stampClassPlanVideos,
   shiftDateKey,
   type TechniqueBlock,
   type TrainingNotesArchive,
@@ -250,7 +252,7 @@ export function TrainingNotesPage() {
     const viewKey = restoredDayKey(searchParams.get('date'), today, (dateKey) => plansOnDay(archive, dateKey).length > 0);
     const dayPlans = plansOnDay(archive, viewKey);
     const requested = searchParams.get('class');
-    const plan = dayPlans.find((item) => item.id === requested) ?? dayPlans[0] ?? emptyPlan();
+    const plan = dayPlans.find((item) => item.id === requested) ?? dayPlans[0] ?? freshClassPlan();
     return { today, archive, viewKey, plan };
   });
   const [todayKey, setTodayKey] = useState(boot.today);
@@ -291,7 +293,7 @@ export function TrainingNotesPage() {
         const loaded = loadTrainingArchive(next);
         setArchive(loaded);
         setViewKey(next);
-        setPlan(plansOnDay(loaded, next)[0] ?? emptyPlan());
+        setPlan(plansOnDay(loaded, next)[0] ?? freshClassPlan());
         setConfirmPlanId(null);
         setRemoveArmed(false);
         setClassesOpen(false);
@@ -458,6 +460,11 @@ export function TrainingNotesPage() {
     folderKey !== null ? (classFolders.find((folder) => folder.key === folderKey) ?? null) : null;
   const savedPlans = plansOnDay(archive, viewKey);
   const currentSaved = savedPlans.some((item) => item.id === plan.id);
+  const shownVideos = stampClassPlanVideos(
+    plan,
+    currentSaved,
+    dayVideos ? planVideoRefsFromVideoPlan(dayVideos.plan) : null,
+  ).videos;
   const classPlans =
     currentSaved || !editingToday ? savedPlans : savedPlans.length === 0 ? [plan] : [...savedPlans, plan];
   const yesterdayPlans = plansOnDay(archive, yesterdayKey).filter(planHasContent);
@@ -467,12 +474,14 @@ export function TrainingNotesPage() {
   const confirmPlan = confirmPlanId ? findPlanById(archive, confirmPlanId) : null;
 
   const persistToday = (next: TrainingNotesPlan) => {
-    // A plan that has never stored its own videos picks up the day's board once.
-    // A plan with an empty list keeps that empty list.
-    const stamped =
-      next.videos === undefined && dayVideos
-        ? { ...next, videos: planVideoRefsFromVideoPlan(dayVideos.plan) }
-        : next;
+    // A new class starts with no video. A plan already stored keeps its own list.
+    // Only a legacy plan that never stored a list still picks up the day's board.
+    const alreadyStored = plansOnDay(archive, todayKey).some((item) => item.id === next.id);
+    const stamped = stampClassPlanVideos(
+      next,
+      alreadyStored,
+      dayVideos ? planVideoRefsFromVideoPlan(dayVideos.plan) : null,
+    );
     const saved = saveDay(todayKey, stamped, todayKey);
     setArchive(saved.archive);
     setPlan(saved.plan);
@@ -509,7 +518,7 @@ export function TrainingNotesPage() {
     setRemoveArmed(false);
     setClassesOpen(false);
     setFolderKey(null);
-    setPlan(plansOnDay(archive, key)[0] ?? emptyPlan());
+    setPlan(plansOnDay(archive, key)[0] ?? freshClassPlan());
     setTemplateAsk(null);
     setRemoveBlockKey(null);
   };
@@ -553,8 +562,7 @@ export function TrainingNotesPage() {
         setArchive(loadTrainingArchive(todayKey));
       }
     }
-    const next = emptyPlan();
-    next.videos = [];
+    const next = freshClassPlan();
     setPlan(next);
     setConfirmPlanId(null);
     setRemoveArmed(false);
@@ -566,7 +574,7 @@ export function TrainingNotesPage() {
     const nextArchive = removeDayPlan(todayKey, plan.id, todayKey);
     setArchive(nextArchive);
     const remaining = plansOnDay(nextArchive, todayKey);
-    setPlan(remaining[0] ?? emptyPlan());
+    setPlan(remaining[0] ?? freshClassPlan());
     setRemoveArmed(false);
     setConfirmPlanId(null);
   };
@@ -613,8 +621,8 @@ export function TrainingNotesPage() {
   };
 
   const openVideo = (ref: LessonSlotRef) => {
-    const offer = videoOffer(dayVideos, plan.videos, ref);
-    if (!offer.show) return;
+    const offer = videoOffer(dayVideos, shownVideos, ref);
+    if (!offer.show || offer.clipUrl) return;
     navigate(
       lessonVideoHref({
         section: ref.role,
@@ -677,15 +685,16 @@ export function TrainingNotesPage() {
   };
 
   const sectionMedia = (ref: LessonSlotRef, label: string, tech?: TechniqueBlock) => {
-    const offer = videoOffer(dayVideos, plan.videos, ref);
+    const offer = videoOffer(dayVideos, shownVideos, ref);
     const linked = tech ? matchLessonTree(tech.title, tech.treeId, treeCandidates) : null;
     return (
-      <LessonMediaRail
+      <LessonSectionVideo
         showVideo={offer.show}
-        videoLabel={label}
+        label={label}
         clipUrl={offer.clipUrl}
         mediaName={offer.mediaName}
-        onPlay={() => openVideo(ref)}
+        loopMs={lessonClipLoopMs(plan, dayVideos?.plan ?? null, ref)}
+        onOpenBoard={() => openVideo(ref)}
         linkedTree={linked ? { id: linked.id, name: linked.name } : null}
         treeChoices={tech ? treeChoices : []}
         canEditTree={Boolean(tech) && editingToday}
@@ -1130,7 +1139,6 @@ export function TrainingNotesPage() {
                 id="notes-class"
                 value={plan.classDesignation}
                 maxLength={CLASS_DESIGNATION_MAX}
-                placeholder="GB1"
                 autoComplete="off"
                 readOnly={!editingToday}
                 onChange={(event) => commit({ ...plan, classDesignation: event.target.value })}

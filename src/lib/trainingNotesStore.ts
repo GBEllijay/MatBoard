@@ -236,6 +236,35 @@ export function emptyPlan(): TrainingNotesPlan {
   };
 }
 
+/**
+ * A class plan that has not been saved yet.
+ * `videos: []` means this plan has no clip. It does not follow the day's
+ * shared video board, so a new class does not show the previous plan's video.
+ */
+export function freshClassPlan(): TrainingNotesPlan {
+  const plan = emptyPlan();
+  plan.videos = [];
+  return plan;
+}
+
+/**
+ * Videos to store for this save.
+ * A plan that is not already stored starts empty.
+ * A stored plan keeps its own list, including an empty one.
+ * A stored plan from before per-plan videos (no list yet) still takes the
+ * day's board when that board is known.
+ */
+export function stampClassPlanVideos(
+  plan: TrainingNotesPlan,
+  alreadyStored: boolean,
+  dayRefs: readonly PlanVideoRef[] | null,
+): TrainingNotesPlan {
+  if (plan.videos) return plan;
+  if (!alreadyStored) return { ...plan, videos: [] };
+  if (!dayRefs) return plan;
+  return { ...plan, videos: dayRefs.map((row) => ({ ...row })) };
+}
+
 const PLAN_VIDEO_URL_MAX = 2_000;
 
 function httpUrl(value: unknown): string | null {

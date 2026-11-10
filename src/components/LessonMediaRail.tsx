@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 type TreeChoice = {
@@ -13,6 +13,8 @@ type Props = {
   clipUrl?: string;
   /** Clip name saved with that day's plan. Empty when the slot has no media. */
   mediaName?: string;
+  videoAction?: 'open' | 'play';
+  player?: ReactNode;
   onPlay: () => void;
   linkedTree?: { id: string; name: string } | null;
   treeChoices?: TreeChoice[];
@@ -30,6 +32,10 @@ export function LessonMediaRail({
   videoLabel,
   clipUrl,
   mediaName = '',
+  /** `play` stays on the lesson plan. `open` goes to Daily Training Videos. */
+  videoAction = 'open',
+  /** Inline player. Replaces the thumbnail while a clip is open on the plan. */
+  player = null,
   onPlay,
   linkedTree = null,
   treeChoices = [],
@@ -103,12 +109,16 @@ export function LessonMediaRail({
 
   return (
     <div className="notes__media" ref={railRef}>
-      {showVideo ? (
+      {player ? (
+        player
+      ) : showVideo ? (
         <button
           type="button"
           className={clipUrl && !thumbFailed ? 'notes__video notes__video--on' : 'notes__video notes__video--go'}
-          aria-label={`Open Daily Training Videos for ${videoLabel}`}
-          title={`Open Daily Training Videos for ${videoLabel}`}
+          aria-label={
+            videoAction === 'play' ? `Play ${videoLabel}` : `Open Daily Training Videos for ${videoLabel}`
+          }
+          title={videoAction === 'play' ? `Play ${videoLabel}` : `Open Daily Training Videos for ${videoLabel}`}
           onClick={onPlay}
         >
           {clipUrl && !thumbFailed ? (

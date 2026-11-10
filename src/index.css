@@ -2683,7 +2683,7 @@ span.role-plan__mark {
 
 .saver.saver--belt > .sheet.sheet--dock-footer .sheet__head {
   position: sticky;
-  top: 0;
+  top: var(--safe-t);
   z-index: 6;
   margin: -1rem -1rem 0.8rem;
   padding: 1rem 1rem 0.6rem;
@@ -5484,7 +5484,8 @@ button.tm-phase {
 
 .sheet__panel {
   position: relative;
-  max-height: 88dvh;
+  /* 88dvh when there is no notch. A top inset keeps Close below the status bar. */
+  max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top, 0px) - 0.5rem));
   overflow: auto;
   background-color: var(--mat-fill);
   background-image:
@@ -11652,6 +11653,57 @@ input.roster-pick__name:focus,
   cursor: pointer;
 }
 
+.techniques__player {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.techniques__dock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.techniques__dock .btn {
+  min-height: 48px;
+  min-width: 5.5rem;
+}
+
+.techniques__dock .btn:disabled {
+  opacity: 0.45;
+}
+
+/* On the player, including fullscreen. Safe-area insets keep Exit above the home indicator. */
+.techniques__frame .techniques__dock {
+  position: absolute;
+  z-index: 5;
+  left: calc(0.65rem + var(--safe-l));
+  right: calc(0.65rem + var(--safe-r));
+  bottom: calc(0.65rem + var(--safe-b));
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+
+.techniques__frame .techniques__dock .btn,
+.techniques__frame .techniques__dock .play-fs {
+  min-width: 0;
+  flex: 1 1 0;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+}
+
+/* Page fullscreen hides every .play-fs chip. This one is the exit, so it stays. */
+.play--fs .techniques__frame .techniques__dock .play-fs {
+  display: inline-flex;
+}
+
+.techniques__frame:has(.techniques__dock) .techniques__chrome,
+.techniques__frame:has(.techniques__dock) .saver__unmute {
+  bottom: calc(5.2rem + var(--safe-b));
+  z-index: 4;
+}
+
 .techniques--play .techniques__card--playing .techniques__frame {
   min-height: min(58vh, 34rem);
 }
@@ -11700,7 +11752,7 @@ input.roster-pick__name:focus,
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.45rem;
-  max-width: calc(100% - 1.4rem);
+  max-width: calc(100% - 1.4rem - var(--safe-l) - var(--safe-r));
 }
 
 .techniques__chrome-btn {
@@ -12726,6 +12778,56 @@ html.lesson-cover-open body {
   gap: 0.35rem;
   width: max-content;
   max-width: 11rem;
+}
+
+.notes__card-actions:has(.lesson-player),
+.notes__section-side:has(.lesson-player) {
+  flex: 1 1 100%;
+  width: 100%;
+  max-width: none;
+}
+
+.notes__card-actions:has(.lesson-player) {
+  flex-wrap: wrap;
+}
+
+.notes__media:has(.lesson-player) {
+  width: 100%;
+  max-width: none;
+  justify-items: stretch;
+}
+
+.lesson-player {
+  width: 100%;
+}
+
+.lesson-player .techniques__frame {
+  min-height: min(46vh, 18rem);
+}
+
+.lesson-player--fill,
+.lesson-player:fullscreen {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+
+.lesson-player--fill .techniques__player,
+.lesson-player:fullscreen .techniques__player,
+.lesson-player--fill .techniques__frame,
+.lesson-player:fullscreen .techniques__frame {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
 }
 
 .notes__video {
