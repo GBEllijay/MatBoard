@@ -15,14 +15,17 @@
  * so an untouched plan is not saved just because every block shows 5.
  *
  * Loop length precedence when a block has a looping video:
- * 1. A manual length on the Daily Training Videos card wins. That is the
- *    2:30 / 5:00 / 7:00 preset or the Custom stepper (`drillManual`), and any
- *    saved technique length that is not the untouched 5:00 default.
- * 2. Otherwise the block's expected minutes are the loop length. Blank is 5.
- *    Warm-up and Cool down use this when the video was opened from that class
- *    plan. Opened from the videos menu, with no class plan, they still loop
- *    with no time limit.
- * 3. Intro, Specific Training, and Game have the wheel and no video slot, so
+ * 1. A length the coach set on the Daily Training Videos card wins
+ *    (`drillManual`: the 2:30 / 5:00 / 7:00 preset or the Custom stepper).
+ * 2. Otherwise, when this technique's expected time is set, that time is the
+ *    countdown. "8:15" and "8.25" are 8 minutes 15 seconds. A saved length
+ *    that is not 5:00 still yields to the expected time until the coach
+ *    changes it on the video card.
+ * 3. When no expected time is set, the card keeps its own length.
+ *    Warm-up and Cool down use the expected minutes when the video was opened
+ *    from that class plan. Blank there is 5. Opened from the videos menu,
+ *    with no class plan, they still loop with no time limit.
+ * 4. Intro, Specific Training, and Game have the wheel and no video slot, so
  *    there is no loop to drive.
  * Competition class "Looping video" cards have no separate length control.
  * Their loop is the expected minutes (`expectedToWorkMs`). The round timer
@@ -31,7 +34,6 @@
  */
 
 import { formatMss } from './format.ts';
-import { DEFAULT_DRILL_SEC } from './techniqueLogic.ts';
 
 /** Shortest row: 0:30. Fifteen seconds below that is not a class block. */
 export const EXPECTED_MIN_MINUTES = 0.5;
@@ -159,9 +161,12 @@ export type LoopSlot = {
  */
 export function loopSecondsForSlot(slot: LoopSlot, expected: string | null): number {
   if (slot.kind === 'technique') {
-    const manual = slot.drillManual === true || slot.drillSec !== DEFAULT_DRILL_SEC;
-    if (manual || expected == null) return slot.drillSec;
-    return Math.round(expectedMinutes(expected) * 60);
+    // No class plan, a blank expected time, or a length set on the video card:
+    // keep the card's own countdown.
+    if (expected == null || slot.drillManual === true) return slot.drillSec;
+    const chosen = parseExpectedMinutes(expected);
+    if (chosen == null) return slot.drillSec;
+    return Math.round(chosen * 60);
   }
   if (expected == null) return 0;
   return Math.round(expectedMinutes(expected) * 60);
