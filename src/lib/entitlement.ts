@@ -4,6 +4,7 @@
  * the amnesty instant, and only for the keys in legacyUnlock.ts.
  */
 
+import { forgetAccountReference } from './accountReference.ts';
 import { CLIENT_APP_VERSION } from './appCapability.ts';
 import {
   base64UrlToBytes,
@@ -387,6 +388,7 @@ export async function acceptServerToken(token: string): Promise<boolean> {
 export function discardEntitlementPass(): void {
   verified = null;
   removeItem(ENTITLEMENT_TOKEN_KEY);
+  forgetAccountReference();
   notifyEntitlement();
 }
 

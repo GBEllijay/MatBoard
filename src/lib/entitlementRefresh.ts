@@ -1,3 +1,4 @@
+import { rememberAccountReference } from './accountReference.ts';
 import { appVersionHeaders } from './appCapability.ts';
 import { signRefreshProof } from './deviceProof.ts';
 import { ensureDeviceKey, devicePublicJwk } from './deviceKey.ts';
@@ -45,7 +46,7 @@ export async function refreshEntitlement(): Promise<boolean> {
       body: JSON.stringify(body),
       signal: bootTimeoutSignal(),
     });
-    const parsed = (await response.json()) as { ok?: boolean; token?: string; revoked?: boolean };
+    const parsed = (await response.json()) as { ok?: boolean; token?: string; revoked?: boolean; accountId?: string };
     if (currentAccessEpoch() !== epoch || readStoredToken() !== sent) return false;
     if (parsed.revoked) {
       clearEntitlementToken();
@@ -57,6 +58,7 @@ export async function refreshEntitlement(): Promise<boolean> {
     }
     if (currentAccessEpoch() !== epoch || readStoredToken() !== sent) return false;
     markEntitlementOffline(false);
+    if (parsed.accountId) rememberAccountReference(parsed.accountId);
     return acceptServerToken(parsed.token);
   } catch {
     markEntitlementOffline(true);

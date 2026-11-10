@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AccountReference } from '../components/AccountReference';
 import { CloudAddonChoice, CloudAddonLine, InstructorCloudCopy } from '../components/CloudAddon';
 import { HalfOffCheckoutNote } from '../components/HalfOffCheckoutNote';
 import { HomeMark } from '../components/HomeMark';
@@ -112,6 +113,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
   const [carry, setCarry] = useState<CarryResult | null>(null);
   const [carryGrants, setCarryGrants] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
+  const [accountReference, setAccountReference] = useState<string | null>(null);
   const halfOff = useHalfOffArrival();
   const proUnlocked = useProUnlocked();
   const studentDoor = studentEditionEntitled({
@@ -153,10 +155,12 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
       if (cancelled) return;
       setConfirming(false);
       if (!result.ok) {
+        setAccountReference(null);
         setRecord({ entitled: false, product: tier.product === 'pro' ? PRO_PRODUCT_ID : STUDENT_PRODUCT_ID });
         setError(result.error);
         return;
       }
+      setAccountReference(result.accountId ?? null);
       const product =
         result.product ??
         (tier.product === 'pro'
@@ -253,6 +257,7 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
                         : "That payment isn't confirmed. Nothing was unlocked."}
               </p>
             ) : null}
+            {checkout === 'success' && record?.entitled ? <AccountReference id={accountReference} /> : null}
             {carry?.message ? (
               <div className="buy__status" role="status">
                 <p>{carry.message}</p>
