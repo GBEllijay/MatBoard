@@ -2683,7 +2683,7 @@ span.role-plan__mark {
 
 .saver.saver--belt > .sheet.sheet--dock-footer .sheet__head {
   position: sticky;
-  top: 0;
+  top: var(--safe-t);
   z-index: 6;
   margin: -1rem -1rem 0.8rem;
   padding: 1rem 1rem 0.6rem;
@@ -5484,7 +5484,8 @@ button.tm-phase {
 
 .sheet__panel {
   position: relative;
-  max-height: 88dvh;
+  /* 88dvh when there is no notch. A top inset keeps Close below the status bar. */
+  max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top, 0px) - 0.5rem));
   overflow: auto;
   background-color: var(--mat-fill);
   background-image:
@@ -11751,7 +11752,7 @@ input.roster-pick__name:focus,
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.45rem;
-  max-width: calc(100% - 1.4rem);
+  max-width: calc(100% - 1.4rem - var(--safe-l) - var(--safe-r));
 }
 
 .techniques__chrome-btn {

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { exitInlineVideoFullscreen, onIosVideoFullscreen } from '../lib/fullscreen';
+import { armOverlayExit } from '../lib/overlayExit';
 import { LOOP_RESTART_MIN_MS, nextLoopStep } from '../lib/videoLoop';
 
 /**
@@ -46,8 +48,28 @@ export function LoopClip({
   const [chrome, setChrome] = useState(false);
   const durationEndRef = useRef(onDurationEnd);
   const remainingRef = useRef(onRemaining);
+  const toggleRef = useRef(onToggleFullscreen);
+  const fullscreenRef = useRef(fullscreen);
   durationEndRef.current = onDurationEnd;
   remainingRef.current = onRemaining;
+  toggleRef.current = onToggleFullscreen;
+  fullscreenRef.current = fullscreen;
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    return armOverlayExit('loop-clip', () => {
+      toggleRef.current?.();
+    });
+  }, [fullscreen]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    return onIosVideoFullscreen(video, () => {
+      exitInlineVideoFullscreen(video);
+      if (!fullscreenRef.current) toggleRef.current?.();
+    });
+  }, [src]);
   const timedLoop = durationMs != null;
 
   const revealChrome = useCallback(() => {
