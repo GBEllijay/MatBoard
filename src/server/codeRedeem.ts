@@ -3,6 +3,7 @@ import { catalogHasCaps, findCode, loadCodeCatalog, type CodeRecord, type KvList
 import { keyedHash, normalizeCode, normalizeEmail } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
 import { expandGrants, tierForGrants } from './grantMatrix.ts';
+import { OWNER_SESSION_SECONDS, provisionOwnerAcademy } from './ownerCloudProvision.ts';
 import { emailHint, recordPurchase } from './purchaseRecords.ts';
 import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
 import { appVersionOf } from '../lib/appCapability.ts';
@@ -138,16 +139,27 @@ export async function handleCodeRedeem(
 
   const listed = record.grants.filter((door) => door !== 'seat');
   const doors = expandGrants(listed);
-  const expiresAt = grantExpiry(record, now());
+  const ownerPerpetual = record.kind === 'owner';
+  // A signed owner pass needs the stored academy. Listing the doors without a
+  // signing key does not create a license.
+  if (ownerPerpetual && services.signingKey && !services.db) {
+    return json(503, { ok: false, error: 'Entitlement storage is not set up yet. Bind ENTITLEMENTS_DB.' });
+  }
+  const expiresAt = ownerPerpetual ? null : grantExpiry(record, now());
   const deviceField = (body as { deviceId?: unknown }).deviceId;
   const deviceId = typeof deviceField === 'string' && deviceField.trim() ? deviceField.trim().slice(0, 80) : crypto.randomUUID();
   let token: string | null = null;
+  let accountId = '';
   if (services.signingKey && doors.length) {
     const src = record.kind === 'free-white' ? 'free' : record.kind === 'owner' ? 'owner' : 'code';
     const refSalt = email ? await keyedHash(normalizeEmail(email), pepper, 'email') : deviceId;
     const source = src === 'free' ? 'free' : src === 'owner' ? 'owner' : 'code';
     let licenseId: string = crypto.randomUUID();
-    if (services.db) {
+    if (ownerPerpetual && services.db) {
+      const provisioned = await provisionOwnerAcademy(services.db, { now: now(), endsAt: null, email, pepper });
+      licenseId = provisioned.licenseId;
+      accountId = provisioned.accountId;
+    } else if (services.db) {
       const writeDoor = async (door: Door, attachTo?: string) =>
         recordPurchase(services.db!, {
           email,
@@ -166,12 +178,15 @@ export async function handleCodeRedeem(
       // license when this code includes Pro, so Cloud sees that grant.
       let shared = '';
       if (doors.includes('pro')) {
-        shared = (await writeDoor('pro')).licenseId;
+        const recorded = await writeDoor('pro');
+        shared = recorded.licenseId;
+        accountId = recorded.accountId;
       }
       for (const door of doors) {
         if (door === 'pro') continue;
         const recorded = await writeDoor(door, shared || undefined);
         if (!shared) shared = recorded.licenseId;
+        if (recorded.accountId) accountId = recorded.accountId;
       }
       if (shared) licenseId = shared;
     }
@@ -184,7 +199,8 @@ export async function handleCodeRedeem(
         src,
         deviceId,
         now: now(),
-        kind: 'code',
+        kind: ownerPerpetual ? 'owner-test' : 'code',
+        ownerTestSeconds: ownerPerpetual ? OWNER_SESSION_SECONDS : undefined,
         grantEndsAt: expiresAt,
         emailHint: await emailHint(email, pepper),
         appVersion: appVersionOf(request),
@@ -197,6 +213,7 @@ export async function handleCodeRedeem(
     grants: listed,
     expiresAt,
     source: 'code',
+    ...(accountId ? { accountId } : {}),
     ...(token ? { token, deviceId } : {}),
   });
 }

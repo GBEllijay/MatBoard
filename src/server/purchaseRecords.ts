@@ -1,3 +1,4 @@
+import { ensureAccountForLicense, licenseForVerifiedEmail } from './accountId.ts';
 import { keyedHash } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
 import { grantsForProduct } from './grantMatrix.ts';
@@ -53,7 +54,7 @@ export async function emailHint(email: string, pepper: string): Promise<string |
  * Insert one grant row. Two overlapping checkouts write two rows.
  * The same session and product is stored once.
  */
-export async function recordPurchase(db: D1Database, input: PurchaseWrite): Promise<{ licenseId: string }> {
+export async function recordPurchase(db: D1Database, input: PurchaseWrite): Promise<{ licenseId: string; accountId: string }> {
   const now = input.now.toISOString();
   const hash = await emailHash(input.email, input.pepper);
   const existing = await db
@@ -63,20 +64,37 @@ export async function recordPurchase(db: D1Database, input: PurchaseWrite): Prom
     .bind(input.source, input.sourceRef, input.product)
     .first<{ licenseId: string }>();
   let licenseId = existing?.licenseId ?? '';
-  if (!licenseId && input.licenseId) licenseId = input.licenseId;
+  let matchedExisting = Boolean(licenseId);
+  if (!licenseId && input.licenseId) {
+    licenseId = input.licenseId;
+    matchedExisting = true;
+  }
   if (!licenseId && hash) {
     const identity = await db
       .prepare(`SELECT license_id AS licenseId FROM identities WHERE email_hash = ? LIMIT 1`)
       .bind(hash)
       .first<{ licenseId: string }>();
-    licenseId = identity?.licenseId ?? '';
+    if (identity?.licenseId) {
+      licenseId = identity.licenseId;
+      matchedExisting = true;
+    }
+  }
+  if (!licenseId && input.email && input.pepper) {
+    const linked = await licenseForVerifiedEmail(db, input.email, input.pepper);
+    if (linked?.licenseId) {
+      licenseId = linked.licenseId;
+      matchedExisting = true;
+    }
   }
   if (!licenseId && input.subscriptionId) {
     const subscription = await db
       .prepare(`SELECT license_id AS licenseId FROM subscriptions WHERE stripe_subscription_id = ? LIMIT 1`)
       .bind(input.subscriptionId)
       .first<{ licenseId: string }>();
-    licenseId = subscription?.licenseId ?? '';
+    if (subscription?.licenseId) {
+      licenseId = subscription.licenseId;
+      matchedExisting = true;
+    }
   }
   if (!licenseId) {
     licenseId = id();
@@ -131,7 +149,14 @@ export async function recordPurchase(db: D1Database, input: PurchaseWrite): Prom
       .bind(input.subscriptionId, licenseId, status, now, now)
       .run();
   }
-  return { licenseId };
+  const account = await ensureAccountForLicense(db, {
+    licenseId,
+    email: input.email,
+    pepper: input.pepper,
+    now: input.now,
+    replaceEmail: matchedExisting,
+  });
+  return { licenseId, accountId: account?.accountId ?? '' };
 }
 
 const CODE_DOOR_SUFFIX = /:(white|student|coach|pro|media)$/;

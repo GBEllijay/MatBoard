@@ -1,6 +1,7 @@
 import { appVersionHeaders } from './appCapability.ts';
 import { checkoutNonceHash, currentCheckoutNonce } from './checkoutNonce.ts';
 import { devicePublicJwk } from './deviceKey.ts';
+import { rememberAccountReference } from './accountReference.ts';
 import { acceptServerToken, clearOwnerTestToken, clearRelocksFor, readDeviceId } from './entitlement.ts';
 import { applyOwnerTestGrant, clearOwnerTestGrant } from './ownerTestGrant.ts';
 import { applyServerGrant } from './serverGrant.ts';
@@ -51,8 +52,16 @@ export async function redeemAccessCode(code: string, email = ''): Promise<Redeem
       body: JSON.stringify({ code, email: email || undefined, deviceId: readDeviceId(), publicJwk }),
     });
     if (response.status === 429) return { ok: false, error: await readError(response, 'Too many attempts. Wait a few minutes and try again.') };
-    const body = (await response.json()) as { ok?: boolean; error?: string; grants?: string[]; expiresAt?: string | null; token?: string };
+    const body = (await response.json()) as {
+      ok?: boolean;
+      error?: string;
+      grants?: string[];
+      expiresAt?: string | null;
+      token?: string;
+      accountId?: string;
+    };
     if (!response.ok || !body.ok) return { ok: false, error: body.error || "That code didn't work." };
+    if (body.accountId) rememberAccountReference(body.accountId);
     if (body.token) await acceptServerToken(body.token);
     if (!applyServerGrant(body) && !body.token) return { ok: false, error: "That code didn't work." };
     // Reopen every door the code implies that a Lock button closed here (tierImplications.ts).
@@ -64,7 +73,7 @@ export async function redeemAccessCode(code: string, email = ''): Promise<Redeem
 }
 
 export async function confirmCheckoutSession(sessionId: string): Promise<
-  { ok: true; product?: string; grants: string[] } | { ok: false; error: string }
+  { ok: true; product?: string; grants: string[]; accountId?: string } | { ok: false; error: string }
 > {
   try {
     const publicJwk = await devicePublicJwk();
@@ -85,16 +94,18 @@ export async function confirmCheckoutSession(sessionId: string): Promise<
       product?: string;
       grants?: string[];
       token?: string;
+      accountId?: string;
     };
     if (!response.ok || !body.entitled || !body.ok) {
       return { ok: false, error: body.error || "That payment isn't confirmed." };
     }
     const grants = Array.isArray(body.grants) ? body.grants.filter((door) => typeof door === 'string') : [];
+    if (body.accountId) rememberAccountReference(body.accountId);
     if (body.token) {
       // applyServerGrant clears the Lock marks on the flag path. The token path must too.
       if (await acceptServerToken(body.token)) clearRelocksFor(grants);
     } else applyServerGrant({ grants });
-    return { ok: true, product: body.product, grants };
+    return { ok: true, product: body.product, grants, ...(body.accountId ? { accountId: body.accountId } : {}) };
   } catch {
     return { ok: false, error: 'Could not confirm that payment. Check your connection and try again.' };
   }
