@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { AdvantageCloudHome } from '../components/AdvantageCloudHome';
 import { GymCharacterSheet } from '../components/GymCharacterSheet';
 import { InstructorSheet } from '../components/InstructorSheet';
 import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
+import { BeltRail } from '../components/BeltRail';
 import { PlusCloudConduct } from '../components/PlusCloudConduct';
 import { HomeMark } from '../components/HomeMark';
 import { FaqLink } from '../components/FaqLink';
@@ -25,13 +27,21 @@ import { ownerIdentitySheetVisible } from '../lib/ownerIdentitySheet';
 import './proHomeMenu.css';
 
 /**
- * Advantage Pro Plus Cloud menu. Same four hubs as Advantage Pro.
+ * Advantage Pro Plus Cloud menu.
+ * Edition cards match Advantage Pro (src/pages/Pro.tsx): White opens /white
+ * (the unlocked scoreboard and timer hub, not /buy), Student opens /student,
+ * and the purple hub keeps the Media Console destination while showing
+ * Advantage Media Edition. The other Pro hubs stay.
  * The header stays the worn black belt: white stripe, red bar, white stripe.
- * Advantage Cloud status, upload links, and the instructor invite live under the hubs.
+ * Advantage Cloud status and upload links stay above those cards.
  */
 export function ProPlusCloudPage() {
   const door = useSeatDoor();
-  const hubs = consoleHubs(door, door.seat?.permissions ?? null);
+  const hubs = consoleHubs(door, door.seat?.permissions ?? null).map((hub) =>
+    hub.to === '/slideshow?folder=gallery' && hub.title === MEDIA_CONSOLE_NAME
+      ? { ...hub, title: 'Advantage Media Edition' }
+      : hub,
+  );
 
   useEffect(() => {
     const previous = document.title;
@@ -55,6 +65,14 @@ export function ProPlusCloudPage() {
           ) : null}
           <PlusCloudConduct />
           <AdvantageCloudHome />
+          <Link className="pro-hub" to="/white" data-pro-entry="white">
+            <BeltRail kind="white" />
+            <span>Advantage White</span>
+          </Link>
+          <Link className="pro-hub" to="/student" data-pro-entry="student">
+            <BeltRail kind="blue" />
+            <span>Advantage Student Edition</span>
+          </Link>
           <ProToolboxCard hubs={hubs} label={`${PRO_PLUS_CLOUD_NAME} hubs`} />
           <InstructorInvitePanel />
         </nav>
