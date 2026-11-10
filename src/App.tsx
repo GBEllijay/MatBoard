@@ -48,6 +48,7 @@ import { Journal2036Page } from './preview/journal2036/Journal2036Page';
 import { AssessmentRadarPreviewPage } from './preview/assessmentRadar/AssessmentRadarPreview';
 import { AssessmentSpherePreview } from './preview/assessmentSphere/AssessmentSpherePreview';
 import { TERM_CARD_PATH, TermCardPreviewPage } from './preview/termCard/TermCardPreview';
+import { INDEX_CARD_PATH, IndexCardPreviewPage } from './preview/indexCard/IndexCardPreview';
 import { CRYSTAL_PREVIEW_PATH, CrystallineSweepsPreview } from './preview/crystallineSweeps/CrystallineSweepsPreview';
 import { D8_SUBFACTORS_PATH, D8SubfactorsPreview } from './preview/d8Subfactors/D8SubfactorsPreview';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
@@ -774,6 +775,8 @@ export default function App() {
       <Route path="/preview/assessment-sphere" element={<AssessmentSpherePreview />} />
       {/* Isolated indexed-term card. Direct link only. It does not write a journal, a rating, or a D8 score. */}
       <Route path={TERM_CARD_PATH} element={<TermCardPreviewPage />} />
+      {/* Isolated index card. Direct link only. Sample data stays in memory. It does not write a journal, a rating, or a D8 score. */}
+      <Route path={INDEX_CARD_PATH} element={<IndexCardPreviewPage />} />
       {/* Isolated Sweeps crystal proof. Direct link only. It does not write a record. */}
       <Route path={CRYSTAL_PREVIEW_PATH} element={<CrystallineSweepsPreview />} />
       {/* Isolated sub-factor diamond. Direct link only. It does not write a check-in. */}
