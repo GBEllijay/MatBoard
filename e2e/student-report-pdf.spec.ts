@@ -205,7 +205,7 @@ test('print reports at 390px stay on two pages and the download keeps the new se
     'Journal summary',
     'Competition and weight',
     'Self-assessment',
-    'Opponent scouting',
+    'Opponent card archive',
     'Video library',
   ]) {
     await expect(progress.getByRole('heading', { name: title, exact: true })).toBeVisible();
@@ -218,7 +218,7 @@ test('print reports at 390px stay on two pages and the download keeps the new se
   await expect(progress).toContainText('Rafael Quinn');
   await expect(progress.getByRole('region', { name: 'Competition and weight' })).toContainText('Bracket notes');
   await expect(progress.getByRole('region', { name: 'Competition and weight' })).toContainText('Final');
-  await expect(progress.getByRole('region', { name: 'Opponent scouting' })).toContainText('Dario Kent');
+  await expect(progress.getByRole('region', { name: 'Opponent card archive' })).toContainText('Dario Kent');
   await expect(progress.getByRole('region', { name: 'Video library' })).toContainText('Berimbolo to back take');
   await expect(progress.getByRole('region', { name: 'Video library' })).toContainText('https://example.com/armbar');
   await expect(progress.getByRole('region', { name: 'Video library' })).not.toContainText('video/mp4');
@@ -233,7 +233,7 @@ test('print reports at 390px stay on two pages and the download keeps the new se
   expect(progressText).toContain('Student: Ada Student');
   expect(progressText).toContain('Gym: GB Ellijay');
   expect(progressText).toContain('Started: 2014-03-01');
-  expect(progressText).toContain('Opponent scouting');
+  expect(progressText).toContain('Opponent card archive');
   expect(progressText).toContain('Dario Kent');
   expect(progressText).toContain('2026-04-12 -- Loss vs Rafael Quinn');
   expect(progressText).toContain('Bracket notes');

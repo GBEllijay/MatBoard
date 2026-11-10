@@ -78,7 +78,8 @@
   color: inherit;
 }
 
-.crystal button {
+.crystal button,
+.crystal select {
   min-height: 44px;
   padding: 8px 12px;
   border: 1px solid #2a7f90;
