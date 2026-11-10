@@ -307,7 +307,7 @@ export function CrystallineSweepsPreview() {
           ) : !face ? (
             <section aria-label="Eight faces">
               <h2>Eight factors</h2>
-              <p>Drag to rotate. Scroll, pinch, or the plus and minus buttons to zoom. Tap a face, or use the row of factor buttons. Sweeps is the only face that opens a saved note or a technique-tree link. Double-tap a highlighted tile for example connections.</p>
+              <p>Drag to rotate. At the starting zoom only the eight factor names show, while the solid spins or sits still. Zoom in past that view, or tap a face, to read that face&apos;s techniques. Tap the face again, zoom back out, or Reset view to hide them. The factor buttons turn to a face and leave those technique names hidden. Sweeps is the only face that opens a saved note or a technique-tree link. Double-tap a highlighted tile for example connections.</p>
             </section>
           ) : null}
           {face ? (
