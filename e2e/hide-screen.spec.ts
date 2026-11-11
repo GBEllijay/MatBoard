@@ -112,7 +112,18 @@ async function openLesson(page: Page, path: string) {
   await expect(page.getByRole('heading', { name: 'Daily Lesson Plan' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: BACK, exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('radiogroup', { name: 'What the hidden screen shows' })).toHaveCount(0);
+}
+
+async function openCardCover(page: Page, mode: 'Logo' | 'Schedule' | 'Black', label = 'Intro') {
+  const hide = page.getByRole('button', { name: `Hide screen for ${label}`, exact: true });
+  await hide.scrollIntoViewIfNeeded();
+  await hide.click();
+  await page
+    .getByRole('radiogroup', { name: `Hide screen options for ${label}` })
+    .getByRole('radio', { name: mode, exact: true })
+    .click();
 }
 
 async function showPlan(page: Page) {
@@ -126,16 +137,19 @@ test('hide screen covers a saved lesson with Logo, Schedule, and Black', async (
   await seed(page);
   await openLesson(page, '/notes?from=coach');
 
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), NOTES_KEY)).toContain('"videos"');
   const saved = await page.evaluate((key) => localStorage.getItem(key), NOTES_KEY);
   expect(saved).toContain('Closed guard armbar.');
   await expect(page.locator('#notes-intro')).toHaveValue('Closed guard armbar.');
-  await expect(page.getByRole('radio', { name: 'Logo', exact: true })).toHaveAttribute('aria-checked', 'true');
-  const logoOn = await page.getByRole('radio', { name: 'Logo', exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor);
-  const hideFill = await page.getByRole('button', { name: 'Hide screen', exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor);
+  const introHide = page.getByRole('button', { name: 'Hide screen for Intro', exact: true });
+  await introHide.scrollIntoViewIfNeeded();
+  await introHide.click();
+  const logo = page.getByRole('radiogroup', { name: 'Hide screen options for Intro' }).getByRole('radio', { name: 'Logo', exact: true });
+  await expect(logo).toHaveAttribute('aria-checked', 'true');
+  const logoOn = await logo.evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(logoOn).toBe('rgb(0, 78, 186)');
-  expect(hideFill).toBe('rgb(255, 255, 255)');
 
-  await page.getByRole('radio', { name: 'Logo', exact: true }).click();
+  await logo.click();
   const cover = page.getByRole('dialog', { name: 'Screen hidden' });
   await expect(cover).toBeVisible();
   await expect(cover).toHaveAttribute('data-cover-mode', 'logo');
@@ -144,7 +158,7 @@ test('hide screen covers a saved lesson with Logo, Schedule, and Black', async (
   await expect(page.locator('#notes-intro')).toBeHidden();
   await showPlan(page);
 
-  await page.getByRole('radio', { name: 'Schedule', exact: true }).click();
+  await openCardCover(page, 'Schedule');
   await expect(cover).toHaveAttribute('data-cover-mode', 'schedule');
   await expect(page.getByRole('region', { name: 'Weekly class schedule' })).toBeVisible();
   await expect(page.getByText('Fundamentals')).toBeVisible();
@@ -152,7 +166,7 @@ test('hide screen covers a saved lesson with Logo, Schedule, and Black', async (
   await expect(page.locator('#notes-intro')).toBeHidden();
   await showPlan(page);
 
-  await page.getByRole('radio', { name: 'Black', exact: true }).click();
+  await openCardCover(page, 'Black');
   await expect(cover).toHaveAttribute('data-cover-mode', 'black');
   await expect(page.locator('.notes-cover--black img')).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Weekly class schedule' })).toHaveCount(0);
@@ -162,10 +176,12 @@ test('hide screen covers a saved lesson with Logo, Schedule, and Black', async (
   await showPlan(page);
 
   await page.reload();
-  await expect(page.getByRole('radio', { name: 'Black', exact: true })).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByRole('dialog', { name: 'Screen hidden' })).toHaveCount(0);
   await expect(page.locator('#notes-intro')).toHaveValue('Closed guard armbar.');
-  await page.getByRole('button', { name: 'Hide screen', exact: true }).click();
+  await page.getByRole('button', { name: 'Hide screen for Intro', exact: true }).click();
+  const remembered = page.getByRole('radiogroup', { name: 'Hide screen options for Intro' }).getByRole('radio', { name: 'Black', exact: true });
+  await expect(remembered).toHaveAttribute('aria-checked', 'true');
+  await remembered.click();
   await expect(cover).toHaveAttribute('data-cover-mode', 'black');
   await showPlan(page);
 
@@ -180,7 +196,7 @@ test('Coach Unlimited and Pro lesson plans use the same hide screen', async ({ p
   await seed(page);
 
   await openLesson(page, '/notes?plan=unlimited');
-  await page.getByRole('button', { name: 'Hide screen', exact: true }).click();
+  await openCardCover(page, 'Logo');
   await expect(page.getByRole('dialog', { name: 'Screen hidden' })).toHaveAttribute('data-cover-mode', 'logo');
   await showPlan(page);
   await page.getByRole('link', { name: BACK, exact: true }).click();
@@ -191,7 +207,7 @@ test('Coach Unlimited and Pro lesson plans use the same hide screen', async ({ p
   await page.getByRole('link', { name: 'Daily Lesson Plan', exact: true }).click();
   await openLesson(page, page.url());
   await expect(page).toHaveURL(/plan=unlimited/);
-  await page.getByRole('radio', { name: 'Schedule', exact: true }).click();
+  await openCardCover(page, 'Schedule');
   await expect(page.getByRole('region', { name: 'Weekly class schedule' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Daily Lesson Plan' })).toBeHidden();
   await showPlan(page);
@@ -202,12 +218,12 @@ test('a saved gym logo replaces the Advantage mark, and Month uses the month boa
   await page.setViewportSize(PHONE);
   await seed(page, { gymLogo: TINY_PNG, template: 'monthly' });
   await openLesson(page, '/notes?from=coach');
-  await page.getByRole('radio', { name: 'Logo', exact: true }).click();
+  await openCardCover(page, 'Logo');
   const logo = page.getByRole('img', { name: 'Gym logo', exact: true });
   await expect(logo).toBeVisible();
   await expect(logo).toHaveAttribute('src', TINY_PNG);
   await showPlan(page);
-  await page.getByRole('radio', { name: 'Schedule', exact: true }).click();
+  await openCardCover(page, 'Schedule');
   await expect(page.getByRole('region', { name: 'Monthly class schedule' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Weekly class schedule' })).toHaveCount(0);
   await expect(page.locator('#notes-intro')).toBeHidden();
@@ -232,7 +248,7 @@ test('lesson editor, technique slots, video return, drill timer, and back still 
   await page.getByRole('button', { name: 'Add technique', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Technique / Drill 4' })).toBeVisible();
 
-  await page.getByRole('radio', { name: 'Black', exact: true }).click();
+  await openCardCover(page, 'Black');
   await expect(intro).toBeHidden();
   await showPlan(page);
   await expect(intro).toHaveValue('Armbar details for today.');
@@ -268,23 +284,23 @@ test('phone and TV screenshots of the hide screen covers', async ({ page }) => {
   await openLesson(page, '/notes?from=coach');
   await page.screenshot({ path: '/opt/cursor/artifacts/hide-screen-toggle-390.png' });
 
-  await page.getByRole('radio', { name: 'Logo', exact: true }).click();
+  await openCardCover(page, 'Logo');
   await expect(page.getByRole('img', { name: 'Advantage', exact: true })).toBeVisible();
   await page.screenshot({ path: '/opt/cursor/artifacts/hide-screen-logo-390.png' });
   await showPlan(page);
 
-  await page.getByRole('radio', { name: 'Schedule', exact: true }).click();
+  await openCardCover(page, 'Schedule');
   await expect(page.getByText('Fundamentals')).toBeVisible();
   await page.screenshot({ path: '/opt/cursor/artifacts/hide-screen-schedule-390.png' });
   await showPlan(page);
 
-  await page.getByRole('radio', { name: 'Black', exact: true }).click();
+  await openCardCover(page, 'Black');
   await expect(page.locator('.notes-cover--black')).toBeVisible();
   await page.screenshot({ path: '/opt/cursor/artifacts/hide-screen-black-390.png' });
   await showPlan(page);
 
   await page.setViewportSize(TV);
-  await page.getByRole('radio', { name: 'Schedule', exact: true }).click();
+  await openCardCover(page, 'Schedule');
   await expect(page.getByRole('region', { name: 'Weekly class schedule' })).toBeVisible();
   await expect(page.getByText('Fundamentals')).toBeVisible();
   await page.screenshot({ path: '/opt/cursor/artifacts/hide-screen-schedule-1920.png' });

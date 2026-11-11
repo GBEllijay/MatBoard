@@ -99,7 +99,8 @@ test('Daily Lesson Plan keeps the corner back and adds Hide screen without a cen
   assert.match(page, /PlayExitMark/);
   assert.doesNotMatch(page, /TierHomeMark|SubmenuMarks/);
   assert.match(page, /LessonCoverProvider/);
-  assert.match(page, /LessonScreenHide/);
+  assert.match(page, /<LessonScreenHide enabled=\{false\} \/>/);
+  assert.doesNotMatch(page, /<LessonScreenHide\s*\/>/);
   assert.match(page, /lessonVideoHref/);
   assert.match(page, /notes-intro/);
   assert.match(page, /Technique \/ Drill/);
@@ -118,6 +119,37 @@ test('Daily Lesson Plan keeps the corner back and adds Hide screen without a cen
   assert.match(cover, /lessonCardHidePickerBox/);
   assert.match(cover, /window\.scrollTo\(0, saved\.y\)/);
   assert.doesNotMatch(cover, /tier-home|aria-label="Home"/);
+});
+
+test('Hide screen is absent at the top of the lesson plan and stays on technique and reading cards', () => {
+  const page = readFileSync(new URL('../pages/TrainingNotes.tsx', import.meta.url), 'utf8');
+  const cover = readFileSync(new URL('../components/LessonScreenCover.tsx', import.meta.url), 'utf8');
+
+  const top = page.slice(page.indexOf('<header className="notes__bar">'), page.indexOf('<div className="notes__plan">'));
+  assert.ok(top.includes('notes__bar'));
+  assert.match(top, /<LessonScreenHide enabled=\{false\} \/>/);
+  assert.doesNotMatch(top, /<LessonScreenHide\s*\/>/);
+  assert.doesNotMatch(top, /Hide screen/);
+  assert.doesNotMatch(top, /What the hidden screen shows/);
+  assert.match(cover, /enabled = true/);
+  assert.match(cover, /if \(!enabled\) return null/);
+  assert.match(cover, />\s*Hide screen\s*</);
+  assert.match(cover, /LESSON_COVER_LABELS\[id\]/);
+  assert.match(cover, /Hide screen for \$\{label\}/);
+
+  const technique = page.slice(page.indexOf('function TechniqueBlockView'), page.indexOf('function GameBlockView'));
+  assert.match(technique, /CardHideScreen label=\{`Technique \/ Drill \$\{number\}`\}/);
+  assert.match(technique, /\bmedia\b/);
+
+  const reading = page.slice(page.indexOf('function NoteSection'), page.indexOf('function TechniqueBlockView'));
+  assert.match(reading, /<CardHideScreen label=\{title\} \/>/);
+  assert.match(reading, /<textarea/);
+  assert.match(page, /<CardHideScreen label="Intro" \/>/);
+  assert.match(page, /id="notes-intro"/);
+  assert.match(page, /<CardHideScreen label="Closing" \/>/);
+  assert.match(page, /id="notes-closing"/);
+  const cardHides = page.match(/<CardHideScreen\b/g) ?? [];
+  assert.ok(cardHides.length >= 5);
 });
 
 test('the card hide picker stays inside a 390px phone and opens above a low card', () => {

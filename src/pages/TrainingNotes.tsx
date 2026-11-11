@@ -1287,7 +1287,7 @@ export function TrainingNotesPage() {
           <h1>{TRAINING_NOTES_LABEL}</h1>
         </div>
       </header>
-      {lessonBlocked ? null : <LessonScreenHide />}
+      {lessonBlocked ? null : <LessonScreenHide enabled={false} />}
       {unlimitedPlan ? <p className="notes__lead">{UNLIMITED_SHARE_LEAD}</p> : null}
       {unlimitedPlan ? <p className="notes__lead">{NOTES_LEAD}</p> : null}
       {lessonBlocked ? (
