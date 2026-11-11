@@ -5,7 +5,9 @@ import { buildCoachRankUpdate, rankUpdateSentence } from '../lib/coachRankUpdate
 import { coachGymLogoFits } from '../lib/coachGymFit';
 import { readGymLogo } from '../lib/gymLogo';
 import { readGymName } from '../lib/gymName';
-import { linkRosterCard, type Student } from '../lib/rosterStore';
+import { canonicalBelt, linkRosterCard, type Student } from '../lib/rosterStore';
+import { readRosterCard, updateRosterCard } from '../lib/rosterCardStore';
+import { blueBeltNotes, cleanBirthYear, coachKidsToBlue } from '../lib/blueBeltCheer';
 import { sendCardSync } from '../lib/cardSync';
 import { parseStudentLink } from '../lib/studentIdentity';
 import type { CoachGymBrand } from '../lib/progress/types';
@@ -91,8 +93,40 @@ export function LinkStudentSheet({ student, onClose }: { student: Student | null
   );
 }
 
-export function SendRankUpdateSheet({ student, onClose }: { student: Student | null; onClose: () => void }) {
+/** What the coach saw on the card for the kids-to-blue confirmation. */
+function blueBeltFacts(student: Student) {
+  const card = readRosterCard(student.id);
+  const birthYear = card.birthYear ?? card.snapshot?.beltBook?.birthYear ?? null;
+  const trainingSince = card.trainingStartedOn || card.snapshot?.startedOn || '';
+  return { birthYear, trainingSince };
+}
+
+export function SendRankUpdateSheet({
+  student,
+  onClose,
+  previousBelt = null,
+  preview: previewOnly = false,
+  facts,
+}: {
+  student: Student | null;
+  onClose: () => void;
+  /** The belt on the card before this save. Kids belt to Blue asks for a confirmation. */
+  previousBelt?: string | null;
+  /** Preview link only: shows the sheet with sample data and never sends. */
+  preview?: boolean;
+  /** Preview link only: sample birth year and training start. */
+  facts?: { birthYear: number | null; trainingSince: string };
+}) {
   const [note, setNote] = useState('');
+  const kidsToBlue = Boolean(student && coachKidsToBlue(previousBelt, student.belt));
+  const [known] = useState(() => (student ? facts ?? blueBeltFacts(student) : { birthYear: null, trainingSince: '' }));
+  const [yearText, setYearText] = useState(known.birthYear != null ? String(known.birthYear) : '');
+  const [blueConfirmed, setBlueConfirmed] = useState(false);
+  const birthYear = cleanBirthYear(yearText);
+  const blueNotes = kidsToBlue
+    ? blueBeltNotes({ birthYear, trainingSince: known.trainingSince, name: student?.name })
+    : [];
+  const blueReady = !kidsToBlue || (blueConfirmed && birthYear != null);
   const [status, setStatus] = useState('');
   const [pass, setPass] = useState('');
   const [busy, setBusy] = useState(false);
@@ -108,7 +142,14 @@ export function SendRankUpdateSheet({ student, onClose }: { student: Student | n
       : null;
 
   const send = async () => {
-    if (!student?.linkedStudentId || busy) return;
+    if (!student?.linkedStudentId || busy || !blueReady) return;
+    if (previewOnly) {
+      setStatus('Preview only. Nothing was sent. On the student’s phone, Accept asks them to confirm Blue and their birth year, then the master cheers.');
+      return;
+    }
+    if (kidsToBlue && birthYear != null) {
+      updateRosterCard(student.id, (record) => ({ ...record, birthYear }));
+    }
     setBusy(true);
     setStatus('');
     try {
@@ -153,6 +194,48 @@ export function SendRankUpdateSheet({ student, onClose }: { student: Student | n
             it. Their checklist is not changed.
           </p>
           {preview?.ok ? <p>{rankUpdateSentence(preview.packet)}</p> : null}
+          {kidsToBlue ? (
+            <fieldset className="blue-belt-confirm" aria-label="Confirm blue belt">
+              <legend>Kids belt to blue belt</legend>
+              <p>
+                {student.name || 'This student'} moves from {canonicalBelt(previousBelt ?? '')} to <strong>Blue</strong>. Confirm the
+                belt and birth year before you send. When they accept, the master congratulates them on their phone.
+              </p>
+              <p>New belt: Blue</p>
+              <label>
+                Birth year
+                <input
+                  aria-label="Birth year"
+                  inputMode="numeric"
+                  value={yearText}
+                  placeholder="YYYY"
+                  maxLength={4}
+                  onChange={(event) => {
+                    setYearText(event.target.value);
+                    setBlueConfirmed(false);
+                  }}
+                />
+              </label>
+              <p>Training since: {known.trainingSince || 'Not on this card'}</p>
+              {blueNotes.map((line) => (
+                <p key={line} className="blue-belt-confirm__note">
+                  {line}
+                </p>
+              ))}
+              <label className="blue-belt-confirm__check">
+                <input
+                  type="checkbox"
+                  checked={blueConfirmed}
+                  disabled={birthYear == null}
+                  onChange={(event) => setBlueConfirmed(event.target.checked)}
+                />
+                {birthYear == null
+                  ? 'Add a birth year to confirm'
+                  : `I confirm Blue belt and birth year ${birthYear}`}
+              </label>
+            </fieldset>
+          ) : null}
+          {previewOnly ? <p className="student-quiet">Preview: sample student. Nothing is sent.</p> : null}
           {preview && !preview.ok ? (
             <p className="roster-edit__error" role="alert">
               {preview.error}
@@ -177,7 +260,7 @@ export function SendRankUpdateSheet({ student, onClose }: { student: Student | n
             </label>
           ) : null}
           <div className="roster-card__actions">
-            <button type="button" className="btn" disabled={busy || !preview?.ok} onClick={() => void send()}>
+            <button type="button" className="btn" disabled={busy || !preview?.ok || !blueReady} onClick={() => void send()}>
               Send to student
             </button>
             <button type="button" className="btn btn--ghost" onClick={onClose}>

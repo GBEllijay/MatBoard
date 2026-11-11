@@ -44,6 +44,8 @@ export type StudentSnapshot = {
 export type RosterCardRecord = {
   trainingStartedOn: string;
   trainingStyle: TrainingStyle | '';
+  /** Birth year the coach confirmed at a kids-to-blue promotion. Coach device only. Omitted on older cards. */
+  birthYear?: number;
   coachRank?: CoachRankLog;
   coachAssessments: AssessmentEntry[];
   /** Checkpoint id → the coach confirmed it. */
@@ -100,12 +102,15 @@ function cleanRecord(value: unknown): RosterCardRecord {
   const style = row.trainingStyle;
   // Fields this store does not know (added by the roster backup or a newer app) ride along.
   const extras: Record<string, unknown> = {};
-  for (const [key, field] of Object.entries(value as Record<string, unknown>)) if (!(key in base) && key !== 'coachRank' && key !== 'snapshot') extras[key] = field;
+  for (const [key, field] of Object.entries(value as Record<string, unknown>)) if (!(key in base) && key !== 'coachRank' && key !== 'snapshot' && key !== 'birthYear') extras[key] = field;
   return {
     ...(extras as Partial<RosterCardRecord>),
     ...base,
     trainingStartedOn: typeof row.trainingStartedOn === 'string' && DATE_RE.test(row.trainingStartedOn) ? row.trainingStartedOn : '',
     trainingStyle: style === 'gi' || style === 'nogi' || style === 'both' ? style : '',
+    ...(typeof row.birthYear === 'number' && Number.isInteger(row.birthYear) && row.birthYear >= 1900 && row.birthYear <= 2100
+      ? { birthYear: row.birthYear }
+      : {}),
     ...(row.coachRank && typeof row.coachRank.belt === 'string'
       ? {
           coachRank: {

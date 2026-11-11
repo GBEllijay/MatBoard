@@ -11298,6 +11298,36 @@ input.roster-pick__name:focus,
   font-weight: 700;
 }
 
+.blue-belt-confirm {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.25rem 0;
+  padding: 0.7rem 0.8rem 0.8rem;
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+}
+
+.blue-belt-confirm legend {
+  padding: 0 0.3rem;
+  font-weight: 800;
+}
+
+.blue-belt-confirm p {
+  margin: 0;
+}
+
+.blue-belt-confirm__note {
+  color: #fde68a;
+  font-weight: 700;
+}
+
+.blue-belt-confirm__check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+}
+
 .t-slot .roster-field,
 .bracket__champ .roster-field,
 .tournament__seeds .roster-field {

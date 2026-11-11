@@ -864,6 +864,22 @@ export function graduateToAdult(
   return startFreshAdult(adult, choice, isoDay(today), now);
 }
 
+/**
+ * Coach promotion from a kids belt onto an adult belt (the coach pushed it).
+ * Same moves as graduateToAdult, without the age gate: the coach decided and
+ * the student confirmed. Kids belts stay on the file under Earlier belts.
+ */
+export function startAdultFromKids(
+  report: StudentProgressReport,
+  belt: ProgressBelt,
+  awardedOn: string,
+  now = Date.now(),
+): StudentProgressReport {
+  const marked = markEarlierBelts(report, now);
+  const adult = setBeltMode(marked, 'adult', now);
+  return startFreshAdult(adult, belt, awardedOn, now);
+}
+
 function startFreshAdult(report: StudentProgressReport, belt: ProgressBelt, awardedOn: string, now: number): StudentProgressReport {
   const current = rankOf(report);
   let history = current.history;

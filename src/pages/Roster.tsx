@@ -118,6 +118,23 @@ function downloadRosterCsv(filename: string, csv: string): void {
   URL.revokeObjectURL(url);
 }
 
+/** `/roster?bluebelt=preview`: sample kids-to-blue send sheet. Nothing is saved or sent. */
+const BLUE_BELT_PREVIEW_STUDENT: Student = {
+  id: 'blue-belt-preview',
+  name: 'Sample Student',
+  belt: 'Blue',
+  division: '',
+  gym: '',
+  photo: '',
+  lastPromotion: new Date().toISOString().slice(0, 10),
+  lastPromotionDetail: '',
+  note: '',
+  checkedIn: false,
+  rosterList: 'student',
+  linkedStudentId: 'stu-blue-preview',
+  stripes: 0,
+};
+
 export function RosterPage() {
   const seat = useCurrentSeat();
   const showRosterSubmit = !seat || seatPermissionAllows(seat.permissions, 'rosterSubmit');
@@ -173,6 +190,8 @@ export function RosterPage() {
   const [saveError, setSaveError] = useState('');
   const [linkTarget, setLinkTarget] = useState<Student | null>(null);
   const [sendTarget, setSendTarget] = useState<Student | null>(null);
+  const [sendFromBelt, setSendFromBelt] = useState<string | null>(null);
+  const [bluePreview, setBluePreview] = useState(() => searchParams.get('bluebelt') === 'preview');
   const [syncTarget, setSyncTarget] = useState<Student | null>(null);
   const syncActor = syncActorFromToken(readStoredEntitlementToken());
   const [samePerson, setSamePerson] = useState<Student | null>(null);
@@ -594,6 +613,7 @@ export function RosterPage() {
                 rankSendOffer(before, saved) === 'send' &&
                 syncSendGate(saved, syncActor, roster.students) === 'send'
               ) {
+                setSendFromBelt(before.belt);
                 setSendTarget(saved);
               }
               if (studentRoster && !before) setSyncOffer(saved);
@@ -610,7 +630,25 @@ export function RosterPage() {
       />
       {studentRoster ? <PendingCardShares roster={roster.students} title="New student cards" /> : <GuestArchive />}
       <LinkStudentSheet key={linkTarget?.id ?? 'link'} student={linkTarget} onClose={() => setLinkTarget(null)} />
-      <SendRankUpdateSheet key={sendTarget?.id ?? 'send'} student={sendTarget} onClose={() => setSendTarget(null)} />
+      <SendRankUpdateSheet
+        key={sendTarget?.id ?? 'send'}
+        student={sendTarget}
+        previousBelt={sendFromBelt}
+        onClose={() => {
+          setSendTarget(null);
+          setSendFromBelt(null);
+        }}
+      />
+      {bluePreview ? (
+        <SendRankUpdateSheet
+          key="blue-belt-preview"
+          student={BLUE_BELT_PREVIEW_STUDENT}
+          previousBelt="Green"
+          preview
+          facts={{ birthYear: new Date().getFullYear() - 16, trainingSince: '2019-09-01' }}
+          onClose={() => setBluePreview(false)}
+        />
+      ) : null}
       {studentRoster ? (
         <RosterCardSheet
           student={cardStudent}
