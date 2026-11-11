@@ -72,7 +72,8 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  * A chart score is the average of the started moves in that area, rounded to
  * the nearest whole number from 1 to 5.
  *
- * Guard: sweeps; guard positions (closed, open, half, butterfly); guard retention.
+ * Guard: guard positions (closed, open, half, butterfly); guard retention.
+ * Sweeps: the Sweeps list. Sweeps is its own D8 face, so it no longer counts toward Guard.
  * Passing: passes; mount, side control, knee on belly, north-south, scarf hold.
  * Takedowns: takedowns; standing; sprawl.
  * Escapes: escapes; turtle; submission defense.
@@ -87,7 +88,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  * are not copied onto the chart.
  */
 const CATEGORY_AREA: Record<string, string> = {
-  sweeps: 'guard',
+  sweeps: 'sweeps',
   escapes: 'escapes',
   passes: 'passing',
   submissions: 'submissions',
@@ -116,6 +117,7 @@ const ITEM_AREA: Record<string, string> = {
 const AREA_LABEL: Record<string, string> = {
   guard: 'Guard',
   passing: 'Passing',
+  sweeps: 'Sweeps',
   takedowns: 'Takedowns',
   escapes: 'Escapes',
   submissions: 'Submissions',
@@ -127,6 +129,7 @@ export type FundamentalChartScore = 1 | 2 | 3 | 4 | 5;
 export type FundamentalChartScores = Partial<{
   guard: FundamentalChartScore;
   passing: FundamentalChartScore;
+  sweeps: FundamentalChartScore;
   takedowns: FundamentalChartScore;
   escapes: FundamentalChartScore;
   submissions: FundamentalChartScore;
@@ -218,7 +221,7 @@ function isChartScore(value: number): value is FundamentalChartScore {
   return value === 1 || value === 2 || value === 3 || value === 4 || value === 5;
 }
 
-/** Started fundamentals (level 1–5) averaged into the seven chart areas. Mindset stays empty. */
+/** Started fundamentals (level 1–5) averaged into the D8 faces. Mindset stays empty. */
 export function fundamentalAssessmentScores(rows: readonly FundamentalScoreRow[]): FundamentalChartScores {
   const buckets = new Map<string, number[]>();
   for (const row of rows) {
@@ -236,6 +239,7 @@ export function fundamentalAssessmentScores(rows: readonly FundamentalScoreRow[]
     if (!isChartScore(clamped)) continue;
     if (area === 'guard') scores.guard = clamped;
     else if (area === 'passing') scores.passing = clamped;
+    else if (area === 'sweeps') scores.sweeps = clamped;
     else if (area === 'takedowns') scores.takedowns = clamped;
     else if (area === 'escapes') scores.escapes = clamped;
     else if (area === 'submissions') scores.submissions = clamped;

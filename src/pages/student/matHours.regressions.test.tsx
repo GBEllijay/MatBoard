@@ -569,7 +569,8 @@ test('medals on the card open a match log; empty states for medals and radar', (
 test('card radar reads the latest check-in; the self-assessment page is unchanged', () => {
   seed('white', { minutes: 0 });
   const legacy = { guard: 5, passing: 3, takedowns: 4, escapes: 2, submissions: 4, conditioning: 2, mindset: 3 };
-  writeAssessments(localStorage, saveAssessment({ entries: [] }, { date: '2026-11-07', note: '', scores: legacy }));
+  // Stored before Sweeps existed: seven faces, no Sweeps key.
+  localStorage.setItem(ASSESSMENT_STORAGE_KEY, JSON.stringify({ entries: [{ id: 'assess.legacy', date: '2026-11-07', note: '', scores: legacy }] }));
   const stored = localStorage.getItem(ASSESSMENT_STORAGE_KEY);
   const page = mount(<StudentEditionPage />, '/student/profile?student=1');
   click(control(page.host, 'button', 'Radar'));

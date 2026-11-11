@@ -13,7 +13,7 @@ import {
   weightToTarget,
 } from './progress/competition.ts';
 import type { StudentProgressReport } from './progress/types.ts';
-import { ASSESSMENT_AREAS } from './studentAssessment.ts';
+import { ASSESSMENT_FORM_AREAS } from './studentAssessment.ts';
 import { studentDemoRequested } from './studentDemo.ts';
 
 export const TRAINING_GROUP_LABEL = 'Training & Journal';
@@ -200,7 +200,7 @@ export function isSelfAssessmentHash(id: string): boolean {
   if (id === 'self-assessment') return true;
   if (!id.startsWith('assess-')) return false;
   const area = id.slice('assess-'.length);
-  return ASSESSMENT_AREAS.some((item) => item.id === area);
+  return ASSESSMENT_FORM_AREAS.some((item) => item.id === area);
 }
 
 /**

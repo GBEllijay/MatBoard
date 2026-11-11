@@ -628,7 +628,7 @@ export function sampleScoutingCards(): ScoutingCard[] {
       group: 'open',
       style: 'Open guard',
       notes: 'Sample card. Not a real opponent.',
-      ratings: { guard: 5, passing: 2, takedowns: 1, escapes: 3, submissions: 4, conditioning: 3, mindset: 2 },
+      ratings: { guard: 5, passing: 2, sweeps: 5, takedowns: 1, escapes: 3, submissions: 4, conditioning: 3, mindset: 2 },
       strengths: 'Open guard',
       weaknesses: 'Top pressure',
       bouts: [],

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ASSESSMENT_AREAS, isAssessmentScore, type AssessmentScore, type AssessmentScores } from '../lib/studentAssessment';
+import { ASSESSMENT_FORM_AREAS, isAssessmentScore, type AssessmentScore, type AssessmentScores } from '../lib/studentAssessment';
 import { radarPoint, radarPoints, radarSeriesLabel, selfAssessmentShapeLabel } from '../lib/radarChart';
 
 export type RadarSeries = {
@@ -26,14 +26,14 @@ export function RadarChart({
   return <SeriesRadar series={series} title={title} empty={empty} />;
 }
 
-function rated(scores: Partial<AssessmentScores> | null, id: (typeof ASSESSMENT_AREAS)[number]['id']): AssessmentScore | null {
+function rated(scores: Partial<AssessmentScores> | null, id: (typeof ASSESSMENT_FORM_AREAS)[number]['id']): AssessmentScore | null {
   const value = scores?.[id];
   return isAssessmentScore(value) ? value : null;
 }
 
 function SingleRadar({ scores, note }: { scores: Partial<AssessmentScores> | null; note?: string }) {
-  const any = ASSESSMENT_AREAS.some((area) => rated(scores, area.id) !== null);
-  const shape = any ? radarPoints(ASSESSMENT_AREAS.map((area) => rated(scores, area.id) ?? 0)) : '';
+  const any = ASSESSMENT_FORM_AREAS.some((area) => rated(scores, area.id) !== null);
+  const shape = any ? radarPoints(ASSESSMENT_FORM_AREAS.map((area) => rated(scores, area.id) ?? 0)) : '';
   return (
     <div className="assess-visual">
       <h3>Shape</h3>
@@ -41,7 +41,7 @@ function SingleRadar({ scores, note }: { scores: Partial<AssessmentScores> | nul
         {shape ? <polygon className="assess-chart__shape" points={shape} /> : null}
       </RadarFrame>
       <ul className="assess-legend">
-        {ASSESSMENT_AREAS.map((area) => (
+        {ASSESSMENT_FORM_AREAS.map((area) => (
           <li key={area.id}>
             <span>{area.label}</span>
             <span>{rated(scores, area.id) ?? '—'}</span>
@@ -66,7 +66,7 @@ function SeriesRadar({ series, title, empty }: { series: RadarSeries[]; title: s
             <polygon
               key={`${item.tone}-${item.name}`}
               className={item.tone === 'opponent' ? 'assess-chart__shape assess-chart__shape--opponent' : 'assess-chart__shape'}
-              points={radarPoints(ASSESSMENT_AREAS.map((area) => item.scores?.[area.id] ?? 0))}
+              points={radarPoints(ASSESSMENT_FORM_AREAS.map((area) => item.scores?.[area.id] ?? 0))}
             />
           ) : null,
         )}
@@ -88,9 +88,9 @@ function RadarFrame({ label, children }: { label: string; children: ReactNode })
   return (
     <svg className="assess-chart" viewBox="0 0 320 320" role="img" aria-label={label}>
       {[5, 3].map((ring) => (
-        <polygon key={ring} className="assess-chart__grid" points={radarPoints(ASSESSMENT_AREAS.map(() => ring))} />
+        <polygon key={ring} className="assess-chart__grid" points={radarPoints(ASSESSMENT_FORM_AREAS.map(() => ring))} />
       ))}
-      {ASSESSMENT_AREAS.map((area, index) => {
+      {ASSESSMENT_FORM_AREAS.map((area, index) => {
         const end = radarPoint(index, 5);
         return <line key={area.id} className="assess-chart__grid" x1="160" y1="160" x2={end.x} y2={end.y} />;
       })}

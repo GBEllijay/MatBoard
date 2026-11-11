@@ -233,7 +233,8 @@ test('saved scores stay on their own records and a missing Sweeps factor is not 
     17,
   );
   saveStudentReport(store, report);
-  writeAssessments(store, saveAssessment(emptyAssessments(), { date: '2026-11-01', note: 'seven', scores: seven(5) }, 18));
+  // A day stored before Sweeps existed: seven faces, no Sweeps key.
+  store.setItem(ASSESSMENT_STORAGE_KEY, JSON.stringify({ entries: [{ id: 'assess.seven', date: '2026-11-01', note: 'seven', scores: seven(5) }] }));
   store.setItem(
     TECHNIQUE_TREE_STORAGE_KEY,
     JSON.stringify({

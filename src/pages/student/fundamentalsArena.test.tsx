@@ -150,8 +150,8 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
   assert.equal(live.getAttribute('aria-checked'), 'true');
   assert.ok(sweeps.textContent?.includes('1 of 6 ready when a partner resists'));
   assert.equal(
-    control(sweeps, 'a', 'Open: Guard self-assessment').getAttribute('href'),
-    '/student/self-assessment?from=fundamentals#assess-guard',
+    control(sweeps, 'a', 'Open: Sweeps self-assessment').getAttribute('href'),
+    '/student/self-assessment?from=fundamentals#assess-sweeps',
   );
   assert.equal(
     control(sweeps, 'a', 'Open: From closed guard, perform one sweep and one submission in drilling. benchmark').getAttribute('href'),
@@ -439,12 +439,12 @@ test('polish: per-move Open links are styled buttons that keep their destination
   localStorage.clear();
   const mounted = mount(<FundamentalsPage />);
   const sweeps = labeled(mounted.host, 'Sweeps');
-  const open = control(sweeps, 'a', 'Open: Guard self-assessment');
+  const open = control(sweeps, 'a', 'Open: Sweeps self-assessment');
   assert.ok(open.classList.contains('fund-chip-btn'));
   const href = open.getAttribute('href');
   unmount(mounted);
   assert.equal(
-    clickAndWhere((h) => control(labeled(h, 'Sweeps'), 'a', 'Open: Guard self-assessment')),
+    clickAndWhere((h) => control(labeled(h, 'Sweeps'), 'a', 'Open: Sweeps self-assessment')),
     href,
   );
 });

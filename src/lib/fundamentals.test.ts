@@ -95,7 +95,7 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
   const backEscape = checkpointForMove(report.rubric.levels, 'escape.back', 'white');
   assert.equal(backEscape?.checkpointId, 'checkpoint.white.s2-back');
   assert.equal(backEscape?.checkpointName, 'Back escape');
-  assert.equal(assessmentAreaForMove('sweeps', 'Scissor sweep'), 'guard');
+  assert.equal(assessmentAreaForMove('sweeps', 'Scissor sweep'), 'sweeps');
   assert.equal(assessmentAreaForMove('positions', 'Closed guard'), 'guard');
   assert.equal(assessmentAreaForMove('positions', 'Mount'), 'passing');
   assert.equal(assessmentAreaForMove('positions', 'Top pin', 'pos.mount'), 'passing');
@@ -137,12 +137,12 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
     to: (path) => path,
   });
   assert.deepEqual(links.map((link) => link.href), [
-    '/student/self-assessment?from=fundamentals#assess-guard',
+    '/student/self-assessment?from=fundamentals#assess-sweeps',
     '/student/rubric#checkpoint.white.s1-guard-attack',
     '/student/videos#clip-clip-scissor',
   ]);
   assert.deepEqual(links.map((link) => link.label), [
-    'Open: Guard self-assessment',
+    'Open: Sweeps self-assessment',
     'Open: From closed guard, perform one sweep and one submission in drilling. benchmark',
     'Open: Scissor sweep detail in Video Library',
   ]);
@@ -206,7 +206,7 @@ test('fundamentals levels average into the chart and skip hidden or unstarted mo
   assert.equal(assessmentAreaForMove('positions', 'Standing', 'pos.standing'), 'takedowns');
   assert.equal(assessmentAreaForMove('positions', 'Turtle', 'pos.turtle'), 'escapes');
   assert.equal(assessmentAreaForMove('defense', 'Guard retention', 'def.guard-retention'), 'guard');
-  assert.equal(assessmentAreaForMove('sweeps', 'Lasso'), 'guard');
+  assert.equal(assessmentAreaForMove('sweeps', 'Lasso'), 'sweeps');
   assert.equal(assessmentAreaForMove('positions', 'Truck'), '');
   assert.equal(assessmentAreaForMove('movement', 'Jump rope'), 'conditioning');
 
@@ -224,16 +224,18 @@ test('fundamentals levels average into the chart and skip hidden or unstarted mo
     { catalogItemId: 'move.shrimp', categoryId: 'movement', name: 'Shrimp', level: 4 },
     { catalogItemId: '', categoryId: 'positions', name: 'Truck', level: 5 },
   ]);
-  assert.equal(scores.guard, 3);
+  // Sweeps is its own face now, so the scissor sweep (4) no longer averages into Guard.
+  assert.equal(scores.guard, 2);
+  assert.equal(scores.sweeps, 4);
   assert.equal(scores.passing, 3);
   assert.equal(scores.takedowns, 3);
   assert.equal(scores.escapes, 2);
   assert.equal(scores.submissions, 1);
   assert.equal(scores.conditioning, 4);
   assert.equal(scores.mindset, undefined);
-  assert.equal(fundamentalAssessmentScores([{ catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep', level: 0 }]).guard, undefined);
+  assert.equal(fundamentalAssessmentScores([{ catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep', level: 0 }]).sweeps, undefined);
   assert.equal(
-    fundamentalAssessmentScores([{ catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep', level: fundamentalLevelOf({ learnedOn: '2024-04-01' }) }]).guard,
+    fundamentalAssessmentScores([{ catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep', level: fundamentalLevelOf({ learnedOn: '2024-04-01' }) }]).sweeps,
     3,
   );
 
@@ -242,5 +244,6 @@ test('fundamentals levels average into the chart and skip hidden or unstarted mo
   report = setFundamentalLevel(report, { catalogItemId: 'sweep.hip-bump', categoryId: 'sweeps', name: 'Hip bump sweep' }, 2, 12);
   report = hideFundamental(report, { catalogItemId: 'sweep.hip-bump', categoryId: 'sweeps', name: 'Hip bump sweep' }, 13);
   const visible = fundamentalAssessmentScores(fundamentalsBoard(report).flatMap((category) => category.items));
-  assert.equal(visible.guard, 4);
+  assert.equal(visible.sweeps, 4);
+  assert.equal(visible.guard, undefined);
 });
