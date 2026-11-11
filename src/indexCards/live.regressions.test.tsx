@@ -11,6 +11,7 @@ import { STUDENT_EDITION_STORAGE_KEY, addJournalEntry, blankStudentReport, saveS
 import { ASSESSMENT_STORAGE_KEY } from '../lib/studentAssessment.ts';
 import { readFileSync } from 'node:fs';
 import { EMPTY_JOURNAL, INDEX_CARDS_STORAGE_KEY, NEUTRAL_NOTE } from '../lib/indexCards.ts';
+import { GLOSSARY_ADDITIONS_KEY } from '../lib/glossaryAdditions.ts';
 import { CAMERA_Z, LIVE_ZOOM_MAX, MESH_RADIUS, NEAR_GAP, projectFit } from '../preview/crystallineSweeps/labels.ts';
 import { D8_FACE_CAP, D8_STAGE_DEFAULT, D8_STAGE_HEIGHT_KEY, d8FaceGrids, d8StageMax } from './LiveD8.tsx';
 import { D8GridPreview, d8GridSampleFile } from './D8GridPreview.tsx';
@@ -484,4 +485,77 @@ test('the grid preview shows sample cards in memory and never writes the saved f
   assert.equal(localStorage.getItem(INDEX_CARDS_STORAGE_KEY), saved);
   localStorage.clear();
   resetIndexCardStoreForTests();
+});
+
+test('an unlisted move asks for a face, saves on it, and lands in the additions pool', () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  const mounted = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  click(mounted.host.querySelector('[data-testid="add-any-move"]'));
+  let card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  assert.equal(card?.getAttribute('data-face'), 'none');
+  const input = card?.querySelector('[aria-label="New card name"]') as HTMLInputElement;
+  typeInto(input, 'kim');
+  card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  assert.equal(card?.querySelector('[data-testid="glossary-suggest"] [data-suggest]')?.getAttribute('data-suggest'), 'Kimura');
+  typeInto(input, 'Zombie sweep');
+  card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  assert.match(card?.querySelector('[data-testid="draft-new-note"]')?.textContent ?? '', /Which face/);
+  assert.equal(card?.querySelector('[data-testid="face-picker"]')?.getAttribute('data-prompt'), 'true');
+  assert.equal(card?.querySelector('[data-face-pick="other"]'), null);
+  assert.equal(card?.querySelectorAll('[data-face-pick]').length, 8);
+  click(card?.querySelector('button[type="submit"]'));
+  card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  assert.match(card?.querySelector('[role="alert"]')?.textContent ?? '', /Pick a D8 face/);
+  assert.equal(localStorage.getItem(INDEX_CARDS_STORAGE_KEY), null);
+  click(card?.querySelector('[data-face-pick="sweeps"]'));
+  click(card?.querySelector('button[type="submit"]'));
+  assert.equal(mounted.host.querySelector('[data-testid="live-index-card"]'), null);
+  assert.match(localStorage.getItem(INDEX_CARDS_STORAGE_KEY) ?? '', /Zombie sweep/);
+  assert.match(localStorage.getItem(GLOSSARY_ADDITIONS_KEY) ?? '', /"kind":"new"/);
+  const review = mounted.host.querySelector('[data-testid="glossary-additions"]');
+  assert.match(review?.textContent ?? '', /Zombie sweep/);
+  focusFace(mounted.host, 'sweeps');
+  const made = [...mounted.host.querySelectorAll('[data-term-link]')].find((node) => node.textContent === 'Zombie sweep');
+  assert.equal(made?.getAttribute('data-term-link'), 'term.zombie-sweep');
+  click(made);
+  card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  assert.ok(card?.querySelector('[data-testid="glossary-tag-none"]'));
+  act(() => mounted.root.unmount());
+  mounted.host.remove();
+});
+
+test('a built-in move can be renamed and moved, and reset back to the glossary', () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  const mounted = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  focusFace(mounted.host, 'submissions');
+  click([...mounted.host.querySelectorAll('[data-term-link]')].find((node) => node.textContent === 'Kimura'));
+  let card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  assert.equal(card?.querySelector('[data-testid="glossary-tag"]')?.getAttribute('data-glossary'), 'kimura');
+  click(card?.querySelector('[data-testid="card-edit-open"]'));
+  card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  typeInto(card?.querySelector('[aria-label="Card name"]') as HTMLInputElement, 'Figure four');
+  click(card?.querySelector('[data-testid="card-edit"] [data-face-pick="guard-control"]'));
+  click(card?.querySelector('[data-testid="card-edit-save"]'));
+  card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  assert.equal(card?.getAttribute('data-face'), 'guard-control');
+  assert.equal(card?.querySelector('h2')?.textContent, 'Figure four');
+  assert.match(card?.querySelector('[data-testid="glossary-tag"]')?.textContent ?? '', /Glossary lists it under Submissions/);
+  assert.ok(card?.querySelector('[data-testid="card-edited"]'));
+  assert.match(localStorage.getItem(GLOSSARY_ADDITIONS_KEY) ?? '', /"kind":"renamed"/);
+  click(card?.querySelector('[data-testid="card-reset"]'));
+  card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  assert.equal(card?.querySelector('h2')?.textContent, 'Kimura');
+  assert.equal(card?.getAttribute('data-face'), 'submissions');
+  act(() => mounted.root.unmount());
+  mounted.host.remove();
 });

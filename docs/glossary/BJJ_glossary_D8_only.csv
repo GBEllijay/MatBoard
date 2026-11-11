@@ -1,0 +1,246 @@
+﻿term,aliases,short_definition,d8_face,sub_factor,change
+Flexibility,Mobility,"How freely your hips, shoulders, and spine move, which helps your guard and keeps you safe in tight spots.",Conditioning,Flexibility,
+Power,Bodyweight strength,"The strength you can put behind a move in a short burst, like a hard bridge or a fast hip escape.",Conditioning,Power,
+Recovery,Recovery time,"How fast your body bounces back between rounds and between training days, including sleep and rest.",Conditioning,"Recovery time — tracked only, no benchmark",sub_factor fixed to exact app text
+Speed,,"How quickly you react, move, and finish a technique once you see the opening.",Conditioning,Speed,
+Stamina,Cardio; Gas tank; Gassed / Gas Tank,"How long you can keep rolling hard before you slow down. Running out of it is called being gassed, and your gas tank is how much you have.",Conditioning,Stamina during live rolls,merged: Gassed / Gas Tank
+Warm-Up,Warm up,"The easy movement at the start of class, like shrimping and rolls, that gets your body ready to train.",Conditioning,Warm-up difficulty — ability to complete the warm-up,sub_factor fixed to exact app text
+Armbar Defense,,"A named way out of a pin, submission, or bad spot.",Escapes/Defense,,
+Back Escape,,Clearing hooks and turning in to escape back control.,Escapes/Defense,,
+Bridge,,Hip drive to the ceiling used to off-balance or escape.,Escapes/Defense,,
+Bridge and Roll,Upa,Trap an arm and bridge to reverse mount.,Escapes/Defense,Bridge and Roll,aliases added; sub_factor set
+Elbow Escape,,Elbow-knee shrimp escape from mount or side pressure.,Escapes/Defense,Elbow Escape,sub_factor set
+Frame,,"A rigid structure created with the arms or legs to manage distance, support weight, and create space against pressure.",Escapes/Defense,,moved from Guard/Control
+Ghost Escape,,Frame-and-backdoor slide out from a pin.,Escapes/Defense,,
+Granby Roll,,Shoulder roll used to recover guard or relieve back pressure.,Escapes/Defense,,
+Guard Recovery,Re-guard; Guard Replacement; Turtle to Guard; Shin Shield Recovery,The process of rebuilding or re-establishing guard after it has been compromised or partially passed.,Escapes/Defense,,"merged: Re-guard, Guard Replacement, Turtle to Guard, Shin Shield Recovery"
+Guard Retention,,"The ability to prevent a guard pass by maintaining frames, angle management, and leg positioning.",Escapes/Defense,Guard Retention,sub_factor set
+Guillotine Defense,,"A named way out of a pin, submission, or bad spot.",Escapes/Defense,,
+Headlock Escape,,"Freeing a pinned headlock, especially from scarf or side.",Escapes/Defense,,
+Hitchhiker Escape,,"A named way out of a pin, submission, or bad spot.",Escapes/Defense,,
+Inversion,,Rolling to the shoulders so hips and legs can move freely.,Escapes/Defense,,moved from General/none
+Kipping Escape,,Explosive kip that creates space under a heavy pin.,Escapes/Defense,,
+Mount Escape,,"Getting out from under mount, often bridge-and-roll or elbow escape.",Escapes/Defense,Mount Escape,sub_factor set
+North-South Escape,,"A named way out of a pin, submission, or bad spot.",Escapes/Defense,,
+Reversal,,Bottom-to-top change that did not start from guard.,Escapes/Defense,,moved from General/none
+RNC Defense,,"A named way out of a pin, submission, or bad spot.",Escapes/Defense,,
+Shrimp,Frame And Shrimp; Hip Escape; Hip escape; Shrimp Escape,Hip-escape scoot that creates space and recovers guard.,Escapes/Defense,Shrimp,sub_factor set
+Side Control Escape,,Recovering frames and hips to re-guard or reverse from side control.,Escapes/Defense,Side Control Escape,sub_factor set
+Sit-Out,,Spin through from turtle or sprawl to face or take the back.,Escapes/Defense,,
+Sprawl,,Hips-down reaction that stuffs a takedown shot.,Escapes/Defense,,
+Submission Defense,,"Hand fighting, posture, and escapes that stop finishes.",Escapes/Defense,,
+Technical Stand Up,Technical lift/stand-up,Getting to the feet while posting and protecting.,Escapes/Defense,,aliases fixed
+Triangle Escape,Triangle Escape Position,"A named way out of a pin, submission, or bad spot.",Escapes/Defense,,merged: Triangle Escape Position
+Turtle,,Defensive hands-and-knees shell used to survive or recover guard.,Escapes/Defense,,moved from Guard/Control
+Turtle Escape,,"A named way out of a pin, submission, or bad spot.",Escapes/Defense,,
+100 Kilos,,Heavy side pin that sprawls hips low across the torso.,Guard/Control,,
+3-4 Mount,,Three-quarter mount variation used to pin and attack.,Guard/Control,,
+50-50,50-50 Guard; 50/50,Symmetric leg entanglement common in modern leg-lock exchanges.,Guard/Control,,
+Ashi garami,,Leg-entanglement family used to control a leg for locks.,Guard/Control,,
+Back control,,Behind the opponent with hooks in and upper-body control.,Guard/Control,Back control,sub_factor set
+Back Take,,Sequence that puts you on the back with control.,Guard/Control,,moved from General/none
+Base,,"The ability to maintain balance, posture, and stability while resisting sweeps, takedowns, or off-balancing attempts.",Guard/Control,,
+Berimbolo,,"Invert-under entry, often from De La Riva, to the back.",Guard/Control,,moved from General/none
+Body Triangle,,A back-control configuration where the legs are locked in a figure-four around the opponent’s torso to increase control and restrict movement.,Guard/Control,,
+Butterfly Guard,,Seated guard with both hooks inside the opponent’s thighs.,Guard/Control,,
+Butterfly Half Guard,,Half guard that adds a butterfly hook for elevation.,Guard/Control,,
+Clamp Guard,,Tight knee-clamp half-guard style that stalls the pass.,Guard/Control,,
+Closed Guard,,Ankles locked around the opponent’s waist from bottom.,Guard/Control,Closed Guard,sub_factor set
+Collar Sleeve Guard,Collar-Sleeve Guard,Open guard built on one collar grip and one sleeve grip.,Guard/Control,,merged: Collar-Sleeve Guard
+Crab Ride,,Back ride that uses the legs like crab claws for control.,Guard/Control,,
+Cross Body Ride,,A named back-riding control used to hold and advance.,Guard/Control,,moved from General/none
+Crossface,,Head-and-shoulder control that turns an opponent’s face away and disrupts alignment to increase top pressure and control.,Guard/Control,,
+Crucifix,,Control that traps an arm with your legs and frees neck attacks.,Guard/Control,,
+De La Riva guard,,Outside hook on the lead leg used for sweeps and back takes.,Guard/Control,,
+Deep Half Guard,,Half guard played deep under the hips for sweeps.,Guard/Control,,
+Dogfight Position,,Knee-to-knee half-guard scramble race for the underhook.,Guard/Control,,
+Double Sleeve Guard Gi,,Open guard built on two sleeve grips.,Guard/Control,,
+Feet on Hips Guard,,Open guard with both feet posted on the hips.,Guard/Control,,
+Front Headlock,,Head-and-arm control from the front after a sprawl or snap.,Guard/Control,,moved from General/none
+Gift Wrap,,Trapping an arm across their face or neck to take the back or mount.,Guard/Control,,
+Grips,Sleeve grip; Collar grip; Pant grip,"Hand holds on the gi — typically sleeve, collar, or pant — used to control posture and movement.",Guard/Control,,added
+Guard,,Bottom game using legs and hips to control and attack.,Guard/Control,,
+Half Guard,,Bottom controls one of the top player’s legs between both of theirs.,Guard/Control,Half Guard,sub_factor set
+Head and Arm control,Head and arm; Head-and-arm control,"Pinning the head and one arm together, often from side control or a front headlock, to hold and attack.",Guard/Control,,added
+High Mount,,"Mount ridden up toward the shoulders, often to attack the arms or neck.",Guard/Control,,added
+Hook,,"Foot or leg inserted for control, especially back hooks.",Guard/Control,,
+Imanari Roll,,Rolling entry into leg entanglements.,Guard/Control,,moved from General/none
+Inside Ashi,Inside Ashi Garami,"An inside-leg entanglement (inside ashi garami) related to, but distinct from, the saddle or inside sankaku.",Guard/Control,,added
+Inverted Guard,,Upside-down guard that uses inversion to recover or attack.,Guard/Control,,
+K-guard,,"Modern open guard shaped like a K, often into legs or back takes.",Guard/Control,,
+Kesa gatame,Kuzure Kesa Gatame; Scarf hold; Scarf Hold,Scarf-hold side pin wrapping the head and near arm.,Guard/Control,,
+Kiss of the Dragon,,Common BJJ training term.,Guard/Control,,moved from General/none
+Knee on Belly,,"Shin across the belly for mobile, high-pressure top control.",Guard/Control,Knee on Belly,sub_factor set
+Knee Shield,,Shin frame across the midsection from half guard.,Guard/Control,,
+Knee Shield Half Guard,Z-guard,Half guard whose main frame is the knee shield.,Guard/Control,,merged: Z-guard
+Lapel Guard,,Family of gi guards that weaponize the jacket lapel.,Guard/Control,,
+Lasso Guard,,Spider-style guard that wraps a shin around the opponent’s arm.,Guard/Control,,
+Lockdown,,Half-guard figure-four on the leg that stalls and sets sweeps.,Guard/Control,,
+Mount,Full Mount,Top sit on the torso with knees down; strong pin and attack base.,Guard/Control,Mount,sub_factor set
+North-south,,"Top pin facing opposite their head, often for chokes.",Guard/Control,,
+Octopus Guard,,Twisty open guard that wraps and off-balances for sweeps or back takes.,Guard/Control,,
+Open Guard,,Any guard without locked ankles; feet and grips manage distance.,Guard/Control,,
+Overhook,Overhook Control; Whizzer,"An arm wrapped over an opponent’s arm to control movement, limit mobility, and create offensive opportunities.",Guard/Control,,
+Overhook Guard,,Guard that prioritizes an overhook for sweeps and submissions.,Guard/Control,,
+Posture,Posture Recovery,"A strong body structure that maintains alignment, balance, and defensive integrity while preventing control or attacks.",Guard/Control,,merged: Posture Recovery
+Quarter Guard,,Shallow half guard trapping only a foot or ankle.,Guard/Control,,
+Reverse De La Riva,,"Inside hook on the lead leg, often for reverse entries and back takes.",Guard/Control,,
+Reverse Half Guard,,Half guard played with reversed hip orientation.,Guard/Control,,
+Reverse Kesa Gatame,,Common BJJ training term.,Guard/Control,,
+Reverse Side Control,,A named control position that sets up advances or finishes.,Guard/Control,,
+Rodeo Ride,,Dynamic back ride that follows a turtling opponent.,Guard/Control,,
+Rubber Guard,,High flexible guard that traps posture with your own leg and hand.,Guard/Control,,
+S-Mount,,High mount with hips near the head for armbars.,Guard/Control,,
+Saddle,4/11; 411; Honey hole; Inside sankaku,Inside-leg entanglement also called honey hole or 411.,Guard/Control,,aliases fixed
+Seatbelt Control,,Over-under upper-body grip from the back.,Guard/Control,,
+Seated Guard,,Any upright seated open guard as a starting platform.,Guard/Control,,
+Shin-to-shin Guard,,Seated guard with shin against their shin as the primary frame.,Guard/Control,,
+Shoulder pressure,,"Driving a shoulder into the face, jaw, or chest to turn, pin, or open a pass.",Guard/Control,,added
+Side Control,,Chest-to-chest pin beside the opponent without being in their guard.,Guard/Control,Side Control,sub_factor set
+Single-leg X,,One-leg entanglement used for sweeps and ankle attacks.,Guard/Control,,aliases fixed
+Sit-Up Guard,,Seated open guard posting on a hand while gripping a sleeve or collar.,Guard/Control,,
+Spider Guard,,Open guard with sleeve grips and feet on biceps.,Guard/Control,,
+Squid Guard Gi,,Gi open-guard variant related to spider and lasso controls.,Guard/Control,,
+Standing Guard,,Open guard played against a standing passer.,Guard/Control,,
+Technical Mount,,Sideways high mount that opens armbars and chokes.,Guard/Control,,
+Truck,,"Twisting lower-body back attack position, often from turtle.",Guard/Control,,
+Underhook,Underhook Control,"An arm threaded underneath an opponent’s arm to gain control, improve positioning, or initiate attacks.",Guard/Control,,
+Williams Guard,,Closed-guard system built around a deep overhook and high leg.,Guard/Control,,
+Worm Guard,,Gi guard that feeds a lapel under a leg for control.,Guard/Control,,
+X-guard,,Deep bottom entanglement that X-wraps a standing leg for elevation.,Guard/Control,,
+Breathing,Breath control,"Controlled breathing used to stay calm, manage pace, and recover during training.",Mindset,I've formed a routine and habit that keeps me calm and focused,added
+Coachability,Coach's instructions; Coach's instructions,Listening to and following the coach's instructions in class and competition.,Mindset,I listened to and followed my coach's instructions,added; alias added: Coach's instructions (D8 tile name)
+Composure,Calm and focused,Maintaining calm decision-making and technical execution under pressure.,Mindset,I've formed a routine and habit that keeps me calm and focused,sub_factor retagged (calm-focused fits better than open-mind); alias added: Calm and focused (D8 tile name)
+Ego,,Winning-first mindset that can block learning if left unchecked.,Mindset,"I approach training with an open mind, ready to receive new information",
+Open mind,Open-minded; Beginner's mind,Coming to training ready to take in new information instead of defending what you already know.,Mindset,"I approach training with an open mind, ready to receive new information",added (D8 tile name)
+Game plan,Gameplan,The techniques and positions you intend to use in drilling or a roll.,Mindset,I drilled with my game plan in mind,added
+Intentionality,Intentional decisions; Intentional rolling; Intentional roll,Making deliberate decisions during a roll instead of reacting on autopilot.,Mindset,I was intentional with my decisions throughout the roll,added; alias added: Intentional roll (D8 tile name)
+Preparation,Preparedness; Prepared,"The work done before a challenge — rest, drilling, and being ready to compete or test.",Mindset,I've done everything I could to be prepared for my challenge,added; alias added: Prepared (D8 tile name)
+Backstep,Back step,Stepping the trail leg back and around to clear a hook or complete a pass.,Passing,,added
+Body Lock Pass,Bodylock Pass,Pass that clamps around the torso after clearing the legs.,Passing,Body Lock Pass,sub_factor set
+Combat Base,,One-knee-down stance used to start passes or defend on top.,Passing,,moved from Guard/Control
+Float Pass,,A passing style that stays light and mobile on the hips instead of smashing through.,Passing,,added
+Folding Pass,,Pass that collapses the guard structure inward.,Passing,,
+Guard Pass,,Clearing the legs to a dominant top pin.,Passing,,
+Headquarters (HQ),Headquarters Pass,Passing checkpoint with a leg pinning theirs before committing.,Passing,,merged: Headquarters Pass; moved from Guard/Control
+Hip Drag Pass,,A named method for getting past the guard.,Passing,,
+Knee slice pass,Knee cut; Knee Cut; Knee Cut Pass,Knee cutting across the trapped thigh into side control.,Passing,Knee slice pass,sub_factor set
+Leg drag,,Dragging a leg across your body to flatten and pass.,Passing,,moved from General/none
+Leg Pummel,Leg pummeling,"Weaving your leg inside or outside theirs to free a trapped leg, recover guard, or advance a pass.",Passing,,added
+Leg Weave Pass,Leg Weave,A named method for getting past the guard.,Passing,,merged: Leg Weave
+Long Step Pass,,Big step around the guard to the far side.,Passing,,
+Open Closed Guard,,Breaking closed guard so the pass or standing game can start.,Passing,,
+Over-Under Pass,,Pressure pass with one arm over and one under the legs.,Passing,Over-Under Pass,sub_factor set
+Pressure Pass,,Slow smash-style pass that pins hips and shoulders.,Passing,Pressure Pass,sub_factor set
+Sao Paulo Pass,,A named method for getting past the guard.,Passing,,
+Smash Pass,Smash / Smashing; Butterfly Smash,Pressure-oriented pass that uses weight and pins more than speed.,Passing,Smash Pass,"merged: Smash / Smashing, Butterfly Smash; sub_factor set"
+Stack Pass,Double Under Pass,"Folding them onto their shoulders, then circling past the legs.",Passing,,aliases added
+Torreando pass,Bullfighter pass; Toreando Pass; Toreando pass,Standing pass that clears the legs like a cape.,Passing,Torreando pass,sub_factor set
+X-Pass,,Step-over style pass that clears open guard.,Passing,,
+Americana,Americana Lock; Key lock; Keylock; Ude garami,Shoulder lock bending the arm the opposite way from a kimura.,Submissions,Americana,sub_factor set
+Anaconda choke,,Front-headlock choke threaded the opposite way from a D’Arce.,Submissions,,
+Arm triangle,Arm Triangle Choke; Kata gatame; Mounted Arm-triangle Choke; Reverse Arm-triangle Choke,Shoulder-and-arm choke trapping their arm against their neck.,Submissions,,
+Armbar,Armbar Finish; Armbar From Guard; Belly Down Armbar; Collar Sleeve Armbar; Far Side Armbar; Flying Armbar; Inverted Armbar; Juji gatame; Rolling Armbar; Side Control Armbar; Spider Guard Armbar; Spinning Armbar; Straight Armbar; Straight armlock,Elbow hyperextension with the arm isolated against your hips.,Submissions,Armbar from mount,aliases added; sub_factor set
+Banana Split,,"Splits the legs to attack the hips, often from truck.",Submissions,,
+Baseball Bat Choke,,A named choke that attacks the neck to force a tap.,Submissions,,
+Bicep Slicer,,Compression lock against the bicep and elbow.,Submissions,,
+Bow and arrow choke,Bow and Arrow Gi,Back gi choke that pulls collar and leg like drawing a bow.,Submissions,,
+Buggy Choke,,Bottom-side inverted choke using a lat and arm frame.,Submissions,,
+Bulldog choke,,Head-and-arm crush often finished from the front or side.,Submissions,,
+Calf slicer,,Compression lock against the calf and knee.,Submissions,,
+Can Opener,,Neck crank that pulls the head up from inside closed guard.,Submissions,,
+Canto Choke Gi,,A named choke that attacks the neck to force a tap.,Submissions,,
+Choke (Shime Waza),,Submission that restricts air or blood at the neck.,Submissions,,
+Clock choke,,Gi choke on a turtled partner while walking around the head.,Submissions,,
+Cross collar choke,Cross Collar Choke from Mount Gi,Gi choke using deep crossed collar grips.,Submissions,Cross collar choke,sub_factor set
+D'Arce choke,Brabo choke,Arm-triangle style choke threaded under the near arm.,Submissions,,aliases added
+Electric Chair,,Stretch submission that splits the legs from a lockdown-style spot.,Submissions,,
+Estima Lock,,Footlock variation often hit from certain passing angles.,Submissions,,
+Ezekiel choke,,"Choke using your own sleeve, often from mount.",Submissions,,
+Gogoplata,,"Shin-across-throat choke, usually from a high guard.",Submissions,,
+Guillotine,Arm-in guillotine; High-elbow guillotine,Front headlock choke under the chin.,Submissions,,aliases added
+Hammerlock,,Behind-the-back shoulder and arm control that can become a lock.,Submissions,,
+Heel hook,Inside Heel Hook No-gi; Outside Heel Hook No-gi,Twists the heel to attack the knee; high injury risk.,Submissions,,
+Japanese necktie,,Front-headlock variation finished across the neck and shoulder line.,Submissions,,
+Kimura,Gyaku ude garami; Kimura From Guard; Reverse Kimura; Double wristlock,Figure-four shoulder lock driving the wrist behind the back.,Submissions,Kimura,aliases added; sub_factor set
+Kneebar,Flying Kneebar; Kneebar Finish,Hyperextends the knee much like an armbar on the leg.,Submissions,,
+Lapel Choke Gi,,A named choke that attacks the neck to force a tap.,Submissions,,
+Leg Lock,,"Any submission that attacks the ankle, knee, or hip line.",Submissions,,
+Loop choke,,Gi collar choke finished with a looping arm path.,Submissions,,
+Neck Crank,,Forces the neck beyond normal range to make them tap.,Submissions,,
+North South Choke,North-south choke,A named choke that attacks the neck to force a tap.,Submissions,,
+Omoplata,Collar Sleeve Omoplata; Omoplata From Guard; Reverse Omoplata; Rolling Omoplata; Spider Guard Omoplata; Worm Guard Omoplata,Shoulder lock applied with your legs from guard.,Submissions,,
+Paper cutter choke,,Side-control gi choke with collar grip and forearm pressure.,Submissions,,
+Peruvian necktie,,Front-headlock finish with legs draped for extra pressure.,Submissions,,
+Rear naked choke,Mata Leão,No-gi blood choke from the back without using cloth.,Submissions,Rear naked choke,aliases added; sub_factor set
+Rear Triangle,,Triangle structure applied from the back.,Submissions,,
+Short choke,,"A compact rear choke finished with the choking arm tight around the neck, often without a full deep seatbelt.",Submissions,,added
+Straight ankle lock,,Hyperextends the ankle; common first legal leg lock.,Submissions,,
+Toe hold,,Figure-four twist on the foot and ankle.,Submissions,,
+Triangle choke,Collar Sleeve Triangle; Flying Triangle; Front Triangle Choke; Inverted Triangle; Lasso Triangle; No Arm Triangle; Spider Guard Triangle; Triangle; Triangle Choke From Mount; Triangle Choke Front; Triangle Choke Side; Triangle From Closed Guard; Triangle From Guard,Leg triangle around neck and one arm that cuts blood flow.,Submissions,Triangle choke,aliases fixed; sub_factor set
+Twister,Twister Finish No-gi,"Spinal and neck torque submission, usually advanced no-gi only.",Submissions,,
+Von Flue choke,,Sprawl-and-shoulder choke that punishes a held guillotine.,Submissions,,
+Wristlock,Wrist Lock; Wrist lock,Joint lock on the wrist available from many positions.,Submissions,,
+Balloon Sweep,,Elevate them overhead from guard and spin to the top.,Sweeps,,
+Bolo Sweep,,A named guard reversal that puts you on top.,Sweeps,,
+Butterfly sweep,Elevator sweep; Hook sweep,Elevate with butterfly hooks and roll them over.,Sweeps,Butterfly sweep,aliases added; sub_factor set
+De La Riva Sweep,,Off-balance from the outside hook into a top position.,Sweeps,,
+Double Ankle Sweep,,A named guard reversal that puts you on top.,Sweeps,,
+Flower sweep,,Closed-guard sweep under a hook that loads them over the shoulder.,Sweeps,Flower sweep,sub_factor set
+Hip bump sweep,Sit-up sweep,Sit-up sweep that bumps them over your posted hip.,Sweeps,Hip bump sweep,aliases added; sub_factor set
+Knee Lever Sweep,,A named guard reversal that puts you on top.,Sweeps,,
+Lumberjack Sweep,,Pull both ankles and kick through to stand them up then down.,Sweeps,,
+Muscle sweep,,A closed-guard sit-up sweep that hugs tight and rolls them over with upper-body pressure.,Sweeps,,added
+Old School Sweep,,Classic half-guard underhook sweep to the weak side.,Sweeps,,
+Omoplata Sweep,,Use omoplata shoulder control to roll into top.,Sweeps,,
+Pendulum sweep,,Pendulum swing of the legs that puts them on their back.,Sweeps,Pendulum sweep,sub_factor set
+Scissor sweep,,Closed-guard sweep that scissors the legs while pulling them over.,Sweeps,Scissor sweep,sub_factor set
+Sickle sweep,,"A reaping, sickle-like hook of the opponent's standing leg that dumps them backward or sideways.",Sweeps,,added
+Single Leg X Sweep,SLX Sweep; Single-leg X sweep,A sweep from single-leg X that off-balances the opponent and comes up on top.,Sweeps,,added
+Spider Guard Sweep Gi,,A named guard reversal that puts you on top.,Sweeps,,
+Technical stand-up sweep,Technical standup sweep,Using a technical stand-up to off-balance the opponent and come up on top.,Sweeps,,added
+Tripod sweep,,Open-guard sweep using a foot on the hip and a hook behind a leg.,Sweeps,Tripod sweep,sub_factor set
+Waiter Sweep,,Seated sweep that loads a leg like a tray and dumps them.,Sweeps,,
+X-guard Sweep,,A named guard reversal that puts you on top.,Sweeps,,
+Ankle Pick,,Grab an ankle while breaking posture to drop them.,Takedowns,Ankle Pick,sub_factor set
+Arm Drag,,Pulling the arm across to expose the back or angle.,Takedowns,Arm Drag,sub_factor set
+Body Lock,Body Lock Takedown,Arms locked around the torso for control or a takedown.,Takedowns,,merged: Body Lock Takedown
+Breakfall,Breakfalls; Ukemi,Safe way to hit the mat when thrown.,Takedowns,,moved from General/none
+Clinch,,Standing body contact used to set throws and trips.,Takedowns,,
+Collar Drag Gi,Collar drag standing; Standing collar drag,Drag the collar across to take an angle or the back.,Takedowns,,moved from General/none; aliases added
+Collar Tie,,Hand on the neck or collar used to control posture standing.,Takedowns,,
+Double leg,Double Leg Entry; Double Leg Finish; Double Leg Takedown; Double leg takedown,Shoot and capture both legs to drive them down.,Takedowns,Double leg,sub_factor set
+Double Unders,,Both underhooks secured in the clinch.,Takedowns,,
+Duck Under,,Slip under an arm to the back or hips.,Takedowns,,
+Fireman's Carry,,Shoulder carry that dumps them over your back.,Takedowns,,
+Foot Sweep,Outside Foot Sweep; De ashi barai,Timed sweep of a stepping foot.,Takedowns,,merged: Outside Foot Sweep; moved from Sweeps; aliases added
+Footwork,,"The movement patterns used to create angles, manage distance, and improve timing while standing.",Takedowns,,
+Grip Fighting,Grip Break,"The process of establishing, maintaining, breaking, or replacing grips to gain positional advantage.",Takedowns,,merged: Grip Break
+Guard Pull,Pull Guard; Sitting Guard Pull,Sitting or pulling directly to guard from standing.,Takedowns,,"merged: Pull Guard, Sitting Guard Pull"
+Hand Fighting,,"The battle for wrist, arm, head, and inside control that creates opportunities for takedowns and defensive reactions.",Takedowns,,
+Harai Goshi,Sweeping hip throw,A sweeping-hip throw that reaps the far leg while loading them over your hip.,Takedowns,,added
+High Crotch,,Deep single-leg entry higher on the thigh.,Takedowns,,
+Hip throw,O Goshi; Hip Toss; Hip toss,Load them over the hip and throw.,Takedowns,Hip throw,aliases fixed; sub_factor set
+Inside Tie,,Clinch grip on the near upper arm.,Takedowns,,
+Kani Basami,,Scissors takedown into the legs; often restricted by rules.,Takedowns,,
+Knee Tap,,Tap the knee while driving to force the fall.,Takedowns,,
+Kouchi Gari,,Minor inner reap from judo.,Takedowns,,
+Level Change,,"The lowering of the body's center of gravity to improve penetration, balance, and takedown entries.",Takedowns,,
+Osoto gari,Outside Trip,Major outer reap that chops the leg while driving back.,Takedowns,Osoto gari,merged: Outside Trip; sub_factor set
+Ouchi Gari,Inside Trip,Major inner reap from judo.,Takedowns,,merged: Inside Trip
+Penetration Step,,Lead step that drives a wrestling shot in.,Takedowns,,
+Pummeling,Pummel,Common BJJ training term.,Takedowns,,merged: Pummel
+Russian Tie,,Two-on-one wrist-and-elbow control from the clinch.,Takedowns,,
+Sasae Tsurikomi Ashi,Sasae,A judo foot block that stops their stepping foot while you lift and turn them over it.,Takedowns,,added
+Seoi nage,Ippon Seoi Nage; Morote Seoi Nage,Shoulder throw that loads them onto your back.,Takedowns,,
+Shooting,Shot,Driving in for a takedown.,Takedowns,,aliases added
+Shot defense,Shot Defence; Sprawl defense,"Sprawling, framing, and hip pressure used to stop a takedown shot.",Takedowns,,added
+Single leg,Single Leg Entry; Single Leg Finish; Single leg takedown; Single Leg Takedown,Attack one leg to finish a takedown.,Takedowns,Single leg,sub_factor set
+Snap Down,Snap Down to Front Headlock,Yank the head down into a sprawl or front headlock.,Takedowns,,merged: Snap Down to Front Headlock
+Stance,,Standing base and posture before a shot or throw.,Takedowns,,
+Standing Rear Clinch,,Behind them on the feet with a body lock.,Takedowns,,
+Sumi Gaeshi,,A sacrifice throw that pulls them over your hooked hip or calf from a seated or falling angle.,Takedowns,,added
+Suplex,,Lift and arch to throw them over backward.,Takedowns,,
+Tomoe Nage,,Sacrifice circle throw that puts them over your hips.,Takedowns,,
+Uchi mata,,Inner-thigh throw that lifts them over the hip or leg.,Takedowns,,
+Wrist Control,,Controlling their wrist to clear ties or set attacks.,Takedowns,,

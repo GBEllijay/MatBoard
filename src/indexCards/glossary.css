@@ -1,0 +1,203 @@
+/* Glossary typeahead, face picker, and the additions list. Same dark card look as the index card. */
+.gl-faces {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gl-faces[data-prompt='true'] .gl-face-chips {
+  padding: 6px;
+  border: 1px dashed #ffd36a;
+  border-radius: 10px;
+}
+
+.gl-face-chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (min-width: 560px) {
+  .gl-face-chips {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.gl-face-chip {
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid #2a7f90;
+  border-radius: 8px;
+  background: #071324;
+  color: #e7f8fb;
+  font-size: 14px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.gl-face-chip[aria-pressed='true'] {
+  border-color: #68d8ff;
+  background: #134a5c;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px #68d8ff;
+}
+
+.gl-suggest {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gl-suggest button {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #2a3a60;
+  border-radius: 8px;
+  background: #10192c;
+  color: #e7f8fb;
+  text-align: left;
+}
+
+.gl-suggest small,
+.gl-note {
+  color: #b9c3d4;
+  font-size: 13px;
+}
+
+.gl-note {
+  margin: 0;
+}
+
+.gl-note[data-tone='new'] {
+  color: #ffd36a;
+  font-weight: 650;
+}
+
+.gl-tag {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.gl-tag strong {
+  color: #68d8ff;
+}
+
+.gl-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gl-edit-row button {
+  flex: 1 1 auto;
+}
+
+.gl-additions,
+.gl-unsorted {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(28, 20, 14, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 252, 245, 0.72);
+  color: var(--d8-ink, #1c140e);
+}
+
+.gl-additions .gl-note,
+.gl-unsorted .gl-note {
+  color: #3a3128;
+}
+
+.gl-unsorted h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.gl-additions summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.gl-additions ul,
+.gl-unsorted ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gl-additions li,
+.gl-unsorted li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  align-items: center;
+}
+
+.gl-unsorted select {
+  min-height: 44px;
+  border: 2px solid #1c140e;
+  border-radius: 10px;
+  background: #fff;
+  color: #1c140e;
+}
+
+/* Cream index-card sheet: same ink, paper, and blue as the rating buttons. */
+.d8-live-sheet .gl-face-chip {
+  border-radius: 999px;
+  font-size: 14px;
+}
+
+.d8-live-sheet .gl-face-chip[aria-pressed='true'] {
+  background: #004eba;
+  border-color: #004eba;
+  color: #fff;
+  box-shadow: none;
+}
+
+.d8-live-sheet .gl-suggest button {
+  border-radius: 12px;
+  font-weight: 650;
+}
+
+.d8-live-sheet .gl-suggest small {
+  color: #5c5148;
+  font-weight: 600;
+}
+
+.d8-live-sheet .gl-tag,
+.d8-live-sheet .d8sf-index > .gl-note {
+  color: #3a3128;
+}
+
+.d8-live-sheet .gl-tag .gl-note {
+  color: #3a3128;
+}
+
+.d8-live-sheet .gl-tag strong {
+  color: #004eba;
+}
+
+.d8-live-sheet .d8sf-add .gl-note {
+  color: #d9e4ee;
+}
+
+.d8-live-sheet .d8sf-add .gl-note[data-tone='new'] {
+  color: #ffd36a;
+}
+
+.d8-live-sheet .d8sf-add .d8sf-kicker {
+  color: #c9d3e0;
+}
