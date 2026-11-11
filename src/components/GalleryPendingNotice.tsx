@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CLOUD_MEDIA_EVENT } from '../lib/advantageCloudMedia';
-import { APPROVAL_DAY_LINK, APPROVAL_WAITING, pendingDayCopy, readGalleryApproval } from '../lib/galleryApproval';
+import { APPROVAL_DAY_LINK, APPROVAL_WAITING, GALLERY_REVIEW_PATH, pendingDayCopy, pendingPhotosLabel } from '../lib/galleryApproval';
+import { readGalleryApprovalHere } from '../lib/galleryApprovalDefault';
 import { listClassPhotoPromotions, listPendingClassPhotos } from '../lib/classPhotoPromotions';
 import { cloudGalleryPendingCount } from '../lib/galleryCloud';
 
@@ -12,7 +13,7 @@ export function GalleryPendingNotice({ dateKey }: { dateKey?: string }) {
   useEffect(() => {
     let cancel = false;
     const loadLocal = () => {
-      const settings = readGalleryApproval(localStorage);
+      const settings = readGalleryApprovalHere(localStorage);
       if (!settings.required) {
         setWaiting(0);
         setDayCount(0);
@@ -90,6 +91,41 @@ export function GalleryPendingBadge() {
       <Link to="/review">
         {waiting} {noun} waiting for approval
       </Link>
+    </p>
+  );
+}
+
+/** "Pending photos (N)" under the owner's gallery approval switch. Opens the existing queue on Review Inbox. */
+export function GalleryPendingLink() {
+  const [waiting, setWaiting] = useState<number | null>(null);
+  useEffect(() => {
+    let cancel = false;
+    const load = () => {
+      void cloudGalleryPendingCount().then((cloud) => {
+        if (cancel) return;
+        if (cloud) {
+          setWaiting(cloud.waiting);
+          return;
+        }
+        void listPendingClassPhotos()
+          .then((rows) => {
+            if (!cancel) setWaiting(rows.length);
+          })
+          .catch(() => {
+            if (!cancel) setWaiting(0);
+          });
+      });
+    };
+    load();
+    window.addEventListener(CLOUD_MEDIA_EVENT, load);
+    return () => {
+      cancel = true;
+      window.removeEventListener(CLOUD_MEDIA_EVENT, load);
+    };
+  }, []);
+  return (
+    <p className="invite-form__note" data-gallery-pending-link="">
+      <Link to={GALLERY_REVIEW_PATH}>{pendingPhotosLabel(waiting)}</Link>
     </p>
   );
 }

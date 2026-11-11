@@ -26,6 +26,20 @@ No Stripe product, price, or coupon is created here.
 
 Rank updates use the same private `GYM_MEDIA` bucket. The object key is `groups/<license>/students/<studentId>/inbox/<updateId>.json`. `GET /api/gym/inbox?probe=1` returns unbound when the bucket is missing, and the coach saves a file instead. Only the gym owner, or a Coach or Instructors seat, can write. A student inbox code can read and clear only that student's folder.
 
+## Gallery photos and clips
+
+Class photos and short clips use the same private `GYM_MEDIA` bucket. The object key is:
+
+`groups/<license>/gallery/<lane>/<YYYY-MM-DD>/<file>`
+
+- `<lane>` is `pending`, `approved`, or `rejected` (`GALLERY_KEY` in `src/lib/advantageCloudMedia.ts`).
+- The server picks the lane on upload by role, not by the switch on a device (`galleryUploadLane`). The gym owner's uploads go to `approved`. Coach and Instructors seat uploads go to `pending`. Assistant coach and program director seats do not upload class photos.
+- Approve or reject (`POST /api/gym/cloud`, `gallery-approve` / `gallery-reject`, in `src/server/gymCloud.ts`) copies the file from `pending` to `approved` or `rejected` under the same date and name, then deletes the `pending` copy. Only the owner or an Instructors seat can decide (`galleryDecisionAllowed`).
+- The slideshow and Media Console play only `approved`.
+- Review Inbox (`/review`) lists `pending` in the gallery review queue (`src/components/GalleryReviewQueue.tsx`). The owner's Gallery approval section on `/pro-plus-cloud` links there as "Pending photos (N)".
+- The "Require approval" switch is saved per device (`matboard.gym.galleryApproval.v1`). It decides the lane only for the phone and Google Drive/OneDrive gallery. For an Advantage Pro Plus Cloud owner who never saved a choice, it starts on. A saved choice, on or off, is kept.
+- Tests: `src/server/gymCloudGallery.test.ts`. There is no separate `gymCloudGallery` server module. The handler lives in `src/server/gymCloud.ts`.
+
 ## Safety steps for the owner
 
 1. Turn on Cloudflare's CSAM Scanning Tool for the zone `advantagebjjtimer.com`. Gallery images are served from `/api/gym/media` on that zone, not from a public bucket URL.

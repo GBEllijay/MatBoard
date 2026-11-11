@@ -117,7 +117,7 @@ test('the photo copy switches to Advantage Cloud only when Cloud is on', () => {
     CLASS_PHOTO_PROMOTIONS_SAVED_PHONE,
   );
   const ui = readFileSync(new URL('../components/ClassPhotoPromotions.tsx', import.meta.url), 'utf8');
-  assert.match(ui, /classPhotoStayCopy\(cloudOn\)/);
+  assert.match(ui, /classPhotoStayCopy\(cloudOn, approvalRequired\)/);
   assert.match(ui, /classPhotoResultNote/);
   const notice = readFileSync(new URL('../components/GalleryPendingNotice.tsx', import.meta.url), 'utf8');
   assert.match(notice, /cloudGalleryPendingCount/);

@@ -21,6 +21,7 @@ import {
 } from '../lib/mediaPicker';
 import { loadAdvantageCloudHome } from '../lib/advantageCloudMedia';
 import { quotaAddNote } from '../lib/storageQuota';
+import { readGalleryApprovalHere } from '../lib/galleryApprovalDefault';
 
 const PHOTO_CAPTURE_ID = 'class-photo-promotions-capture';
 const VIDEO_RECORD_ID = 'class-photo-promotions-record';
@@ -45,6 +46,7 @@ export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: s
   const [revision, setRevision] = useState(0);
   const [previews, setPreviews] = useState<Preview[]>([]);
   const [cloudOn, setCloudOn] = useState(false);
+  const approvalRequired = readGalleryApprovalHere(typeof localStorage === 'undefined' ? null : localStorage).required;
 
   useEffect(() => {
     let cancelled = false;
@@ -110,7 +112,7 @@ export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: s
     <aside className="notes__distribute notes__class-photos" aria-label={CLASS_PHOTO_PROMOTIONS_LABEL}>
       <h2>{CLASS_PHOTO_PROMOTIONS_LABEL}</h2>
       {readOnly ? null : <p>{CLASS_PHOTO_PROMOTIONS_LEAD}</p>}
-      {readOnly ? null : <p>{classPhotoStayCopy(cloudOn)}</p>}
+      {readOnly ? null : <p>{classPhotoStayCopy(cloudOn, approvalRequired)}</p>}
       <PlayingFromLine />
       {readOnly ? null : (
         <button
@@ -150,7 +152,7 @@ export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: s
         captureInputId={PHOTO_CAPTURE_ID}
         recordInputId={VIDEO_RECORD_ID}
         libraryInputId={LIBRARY_ID}
-        stay={classPhotoStayCopy(cloudOn)}
+        stay={classPhotoStayCopy(cloudOn, approvalRequired)}
         onClose={() => setOpen(false)}
       />
       <DeviceMediaInput
