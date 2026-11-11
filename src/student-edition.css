@@ -3244,3 +3244,45 @@ body:has(main.academy-modern) .parent-approvals ~ main.student.academy-modern {
   flex: 1 1 12rem;
   min-height: 44px;
 }
+
+/* Static D8 diamond on the self-assessment print sheet: diamond above, eight bars below. */
+.report-layout.report-layout--diamond {
+  grid-template-columns: 1fr !important;
+  align-items: start;
+}
+
+.report-diamond__svg {
+  display: block;
+  width: 100%;
+  max-width: 34rem;
+  height: auto;
+}
+
+.report-diamond__caption {
+  font: 700 10px Inter, Helvetica, Arial, sans-serif;
+  fill: #0c2344;
+}
+
+.report-diamond__label {
+  font: 400 10px Inter, Helvetica, Arial, sans-serif;
+  fill: #1d1d1f;
+}
+
+.report-diamond__score {
+  font: 700 13px Inter, Helvetica, Arial, sans-serif;
+}
+
+.report-layout--diamond .report-bars li {
+  grid-template-columns: 7.6rem 1fr auto;
+}
+
+.report-bar__prior {
+  color: #6e6e73;
+  font-weight: 400;
+}
+
+@media print {
+  .report-diamond__svg {
+    max-width: 6.5in;
+  }
+}

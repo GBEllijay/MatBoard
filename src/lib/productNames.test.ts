@@ -254,7 +254,7 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.equal(
     INSTRUCTOR_COACH_ENTRY,
-    'Advantage Coach Unlimited',
+    'Instructor Edition',
   );
   assert.equal(COACH_UNLIMITED_PATH, '/coach-unlimited');
   assert.equal(UNLIMITED_LESSON_PATH, '/notes?plan=unlimited');
@@ -670,7 +670,7 @@ test('Pro Plus Cloud copy stays off the Advantage Pro blurb', () => {
   );
   assert.equal(
     INSTRUCTOR_DRIVE_REQUIREMENT,
-    'Requires gym setup with a third-party drive (Google Drive, OneDrive, or Dropbox). Advantage does not host it.',
+    'Requires gym setup with a third-party drive (Google Drive or OneDrive). Advantage does not host it.',
   );
   assert.doesNotMatch(PRO_PLUS_CLOUD_DESCRIPTION, /Cloudflare/);
   assert.equal(PRO_PLUS_CLOUD_PATH, '/pro-plus-cloud');

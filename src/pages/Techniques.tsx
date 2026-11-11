@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AdvantageCloudPanel } from '../components/AdvantageCloudMedia';
+import { useAdvantageCloudOn } from '../components/useAdvantageCloudOn';
+import { TRAINING_DRIVE_CONNECT_HINT_CLOUD, TRAINING_DRIVE_CONNECT_LABEL_CLOUD } from '../lib/storageCopy';
 import { DeviceMediaInput } from '../components/DeviceMediaInput';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { DriveMediaPicker } from '../components/DriveMediaPicker';
@@ -162,16 +164,21 @@ export function TechniquesPage() {
   const seatedAuthorized = isLiveSeat(seat) && videosMenu;
   const driveBinding = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
   const driveNotice = useSyncExternalStore(subscribeDriveNotice, getDriveNotice, () => idleDriveNotice);
+  const cloudOn = useAdvantageCloudOn();
   const handoff = trainingClipHandoff({
     proSuite,
     driveConnected: Boolean(driveBinding),
     seatedAuthorized,
+    cloudOn,
   });
   const stayCopy = trainingClipStayCopy({
     proSuite,
     driveConnected: Boolean(driveBinding),
     seatedAuthorized,
+    cloudOn,
   });
+  const driveConnectLabel = cloudOn ? TRAINING_DRIVE_CONNECT_LABEL_CLOUD : TRAINING_DRIVE_CONNECT_LABEL;
+  const driveConnectHint = cloudOn ? TRAINING_DRIVE_CONNECT_HINT_CLOUD : trainingDriveConnectHint(seatedAuthorized);
   const shareDay = handoff.share;
   const eyebrow = techniquesPageEyebrow(proUnlocked, coachUnlocked, isLiveSeat(seat));
   const seatRole = seat ? instructorSeatBinderLabel(seat.presetId, seat.permissions) : '';
@@ -885,9 +892,9 @@ export function TechniquesPage() {
                 <p>{handoff.warning}</p>
                 <OpenMyDrive
                   openLabel={shareDay ? TRAINING_DRIVE_OPEN_LABEL : undefined}
-                  connectLabel={shareDay ? TRAINING_DRIVE_CONNECT_LABEL : undefined}
+                  connectLabel={shareDay ? driveConnectLabel : undefined}
                   connectTitle={shareDay ? TRAINING_DRIVE_CONNECT_TITLE : undefined}
-                  connectHint={shareDay ? trainingDriveConnectHint(seatedAuthorized) : undefined}
+                  connectHint={shareDay ? driveConnectHint : undefined}
                 />
                 <AdvantageCloudPanel purpose="daily-video" dateKey={boardDate} />
               </>
@@ -1025,9 +1032,9 @@ export function TechniquesPage() {
             libraryInputId="techniques-video-library"
             stay={stayCopy}
             driveOpenLabel={shareDay ? TRAINING_DRIVE_OPEN_LABEL : undefined}
-            driveConnectLabel={shareDay ? TRAINING_DRIVE_CONNECT_LABEL : undefined}
+            driveConnectLabel={shareDay ? driveConnectLabel : undefined}
             driveConnectTitle={shareDay ? TRAINING_DRIVE_CONNECT_TITLE : undefined}
-            driveConnectHint={shareDay ? trainingDriveConnectHint(seatedAuthorized) : undefined}
+            driveConnectHint={shareDay ? driveConnectHint : undefined}
             onPickDrive={openDrivePick}
             onClose={() => setAddOpen(false)}
           />
@@ -1086,9 +1093,9 @@ export function TechniquesPage() {
         <SeatSessionBar />
         <OpenMyDrive
           openLabel={shareDay ? TRAINING_DRIVE_OPEN_LABEL : undefined}
-          connectLabel={shareDay ? TRAINING_DRIVE_CONNECT_LABEL : undefined}
+          connectLabel={shareDay ? driveConnectLabel : undefined}
           connectTitle={shareDay ? TRAINING_DRIVE_CONNECT_TITLE : undefined}
-          connectHint={shareDay ? trainingDriveConnectHint(seatedAuthorized) : undefined}
+          connectHint={shareDay ? driveConnectHint : undefined}
         />
       </header>
 
@@ -1267,9 +1274,9 @@ export function TechniquesPage() {
         libraryInputId="techniques-video-library"
         stay={stayCopy}
         driveOpenLabel={shareDay ? TRAINING_DRIVE_OPEN_LABEL : undefined}
-        driveConnectLabel={shareDay ? TRAINING_DRIVE_CONNECT_LABEL : undefined}
+        driveConnectLabel={shareDay ? driveConnectLabel : undefined}
         driveConnectTitle={shareDay ? TRAINING_DRIVE_CONNECT_TITLE : undefined}
-        driveConnectHint={shareDay ? trainingDriveConnectHint(seatedAuthorized) : undefined}
+        driveConnectHint={shareDay ? driveConnectHint : undefined}
         onPickDrive={openDrivePick}
         onClose={() => setAddOpen(false)}
       />

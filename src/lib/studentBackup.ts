@@ -235,7 +235,7 @@ export function studentExportDetail(kind: StudentExportKind, date: string): stri
     case 'progressPdf':
       return `Downloads ${names.progressPdf}. A printable page of rank, journal, and competition.`;
     case 'assessmentPdf':
-      return `Downloads ${names.assessmentPdf}. A printable page of the seven areas and check-in notes.`;
+      return `Downloads ${names.assessmentPdf}. A printable page of the eight areas, Sweeps included, and check-in notes.`;
   }
 }
 

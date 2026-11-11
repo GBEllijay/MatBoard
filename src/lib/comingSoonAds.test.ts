@@ -173,7 +173,7 @@ test('Pro ad lists the live Pro hubs and keeps launch pricing off the feature co
   // Display only: Pro's feature list says Instructor Edition, not Coach Unlimited.
   assert.match(text, /Advantage Instructor Edition/);
   assert.doesNotMatch(text, /Advantage Coach Unlimited/);
-  assert.equal(INSTRUCTOR_COACH_ENTRY, 'Advantage Coach Unlimited');
+  assert.equal(INSTRUCTOR_COACH_ENTRY, 'Instructor Edition');
   assert.match(text, /Instructor Invitation and Access Management/);
   assert.doesNotMatch(text, /Competitor Management System/);
   assert.doesNotMatch(text, /competitor roster/i);

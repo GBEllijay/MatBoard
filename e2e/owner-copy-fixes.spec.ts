@@ -62,7 +62,7 @@ test('backup explains the four real file names', async ({ page }) => {
   await expect(backup.getByText(/This is the file you restore with Merge or Replace/)).toBeVisible();
   await expect(backup.getByText(/Excel or Sheets/)).toBeVisible();
   await expect(backup.getByText(/A printable page of rank, journal, and competition/)).toBeVisible();
-  await expect(backup.getByText(/seven areas/)).toBeVisible();
+  await expect(backup.getByText(/eight areas/)).toBeVisible();
   await expect(backup.getByText('Video files: off. The JSON backup does not include video files.')).toBeVisible();
 
   await expect(page.getByRole('checkbox', { name: 'Include video files kept on this device' })).toBeVisible();
