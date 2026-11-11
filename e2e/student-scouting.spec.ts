@@ -119,7 +119,8 @@ test('scouting opponent tracker compares the latest self-assessment', async ({ p
   await overlay.getByRole('button', { name: 'Spider for Sam', exact: true }).click();
   await expect(overlay.getByRole('img', { name: /Me versus Sam/ })).toBeVisible();
   await expect(overlay.getByRole('list', { name: 'Radar legend' })).toContainText('Me');
-  await expect(overlay.getByRole('list', { name: 'Radar legend' })).toContainText('Sam');
+  await expect(overlay.getByRole('list', { name: 'Radar legend' })).toContainText('Opponent');
+  await expect(overlay.getByRole('img', { name: /Sweeps not rated/ })).toBeVisible();
   await expect(overlay.getByRole('list', { name: 'Comparison with Sam' })).toContainText('Favored: Guard, Submissions, Conditioning');
   await expect(overlay.getByRole('list', { name: 'Comparison with Sam' })).toContainText('Even: Takedowns');
   await expect(overlay.getByRole('list', { name: 'Comparison with Sam' })).toContainText('At a disadvantage: Passing, Escapes, Mindset');

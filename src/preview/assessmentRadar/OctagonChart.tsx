@@ -3,6 +3,7 @@
  * (PR 445, 399fdf9). The profile Shape card reuses this drawing.
  * A missing score stays an open corner. It is not drawn as zero.
  */
+import { CageFigure } from '../../components/CleanCage.tsx';
 import {
   AXES,
   COACH_EXAMPLE_SCORES,
@@ -38,10 +39,6 @@ function cageLayers(variant: ChartVariant, values: readonly (number | null)[]): 
   }
   if (!isCageView(variant)) return [];
   return [{ id: variant === 'center' ? 'sheet' : variant, values: values.map((value) => value ?? 0) }];
-}
-
-function isRating(value: number | null | undefined): value is number {
-  return value === 1 || value === 2 || value === 3 || value === 4 || value === 5;
 }
 
 export function Chart({
@@ -148,7 +145,7 @@ export function Chart({
   );
 }
 
-/** Read-only Shape card. Same cage, center mark, and outside labels as the locked preview. */
+/** Read-only Shape card. The clean cage is shared with the opponent spider. */
 export function ApprovedOctagonRadar({
   values,
   label,
@@ -156,24 +153,9 @@ export function ApprovedOctagonRadar({
   values: readonly (number | null)[];
   label: string;
 }) {
-  const eight = SHEET_AXIS_IDS.map((_, index) => (isRating(values[index]) ? values[index] : null));
   return (
-    <div className="oct-figure oct-figure--placed oct-figure--cage shape-octagon" data-testid="shape-octagon">
-      {SHEET_AXIS_IDS.map((id, index) => {
-        const axis = AXES.find((item) => item.id === id) ?? AXES[0];
-        const value = eight[index];
-        const text = value == null ? 'Not rated' : String(value);
-        return (
-          <p key={id} className="oct-label" data-area={id} aria-hidden="true">
-            <span className="oct-label__name">{axis.label}</span>
-            <span className={value == null ? 'oct-label__words' : 'oct-label__score'}>{text}</span>
-          </p>
-        );
-      })}
-      <div className="oct-chart">
-        <Chart values={eight} selected="guard-control" label={label} variant="center" openGaps markSelected={false} />
-        <div className="oct-mark" aria-hidden="true" />
-      </div>
+    <div className="clean-cage-panel">
+      <CageFigure label={label} series={[{ id: 'me', tone: 'me', values }]} scores={values} meFill={0.36} />
     </div>
   );
 }
