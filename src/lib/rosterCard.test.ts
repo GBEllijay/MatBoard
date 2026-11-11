@@ -164,6 +164,19 @@ test('assessment summary: coach view by default, gap and trend', () => {
   assert.equal(empty.strengths, '');
 });
 
+test('assessment summary: eight rows with Sweeps; a seven-face entry leaves Sweeps not rated', () => {
+  const old: AssessmentEntry[] = [{ id: 'o', date: '2026-01-01', note: '', scores: { guard: 3, passing: 3, takedowns: 3, escapes: 3, submissions: 3, conditioning: 5, mindset: 1 } as never }];
+  const view = assessmentSummary(old, [], 'coach');
+  assert.deepEqual(view.rows.map((row) => row.id), ['guard', 'passing', 'sweeps', 'takedowns', 'escapes', 'submissions', 'conditioning', 'mindset']);
+  assert.equal(view.rows.find((row) => row.id === 'sweeps')?.coach, null);
+  assert.doesNotMatch(view.strengths + view.weaknesses, /Sweeps|NaN/);
+  const now: AssessmentEntry[] = [{ id: 'n', date: '2026-02-01', note: '', scores: { ...(old[0].scores as object), sweeps: 5 } as never }];
+  const next = assessmentSummary(now, [{ id: 's', date: '2026-02-02', note: '', scores: { sweeps: 2 } as never }], 'coach');
+  assert.equal(next.rows.find((row) => row.id === 'sweeps')?.coach, 5);
+  assert.equal(next.rows.find((row) => row.id === 'sweeps')?.gap, -3);
+  assert.match(next.strengths, /Sweeps/);
+});
+
 test('benchmarks: coach confirms, student marks show as waiting for the coach', () => {
   const rows = [
     { id: 'c1', name: 'Escape mount', met: true, note: '', criteria: [] },

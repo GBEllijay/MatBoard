@@ -26,7 +26,7 @@ import {
 } from '../../lib/cardSync';
 import { cardLookCode, readCardLook, subscribeCardLook } from '../../lib/cardLook';
 import { readPhotoReviews } from '../../lib/rosterPhotoApproval';
-import { ASSESSMENT_AREAS, type AssessmentScore, type AssessmentScores } from '../../lib/studentAssessment';
+import { ASSESSMENT_FORM_AREAS, type AssessmentScore, type AssessmentScores } from '../../lib/studentAssessment';
 import { readGymLogo, subscribeGymLogo } from '../../lib/gymLogo';
 import { useGymName } from '../../hooks/useGymBrand';
 import { getRoster, setNoPhotos, subscribeRoster, type Student } from '../../lib/rosterStore';
@@ -470,7 +470,7 @@ function NewAssessmentSheet({
   const [date, setDate] = useState(todayIso());
   const [note, setNote] = useState('');
   const [scores, setScores] = useState<AssessmentScores>(
-    () => Object.fromEntries(ASSESSMENT_AREAS.map((area) => [area.id, 3])) as AssessmentScores,
+    () => Object.fromEntries(ASSESSMENT_FORM_AREAS.map((area) => [area.id, 3])) as AssessmentScores,
   );
   return (
     <Sheet open={open} title="New assessment" onClose={onClose} stacked portal>
@@ -487,7 +487,8 @@ function NewAssessmentSheet({
           <input type="date" value={date} onChange={(event) => setDate(event.target.value || todayIso())} />
         </label>
         <div className="clipboard__scores">
-          {ASSESSMENT_AREAS.map((area) => (
+          {/* All eight D8 faces, Sweeps included. */}
+          {ASSESSMENT_FORM_AREAS.map((area) => (
             <label key={area.id} className="clipboard__field">
               {area.label}
               <select
