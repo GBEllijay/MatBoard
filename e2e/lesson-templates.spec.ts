@@ -21,7 +21,8 @@ test('plain Coach keeps Adult, locks Competition, and Kids starts with a Game be
   await expect(page.getByRole('heading', { name: 'Daily Lesson Plan', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: BACK, exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('radiogroup', { name: 'What the hidden screen shows' })).toHaveCount(0);
 
   const adult = page.getByRole('radio', { name: 'Adult class', exact: true });
   const kids = page.getByRole('radio', { name: 'Kids class', exact: true });
@@ -80,7 +81,10 @@ test('plain Coach keeps Adult, locks Competition, and Kids starts with a Game be
   await expect(page.locator('#notes-intro')).toHaveValue('Kids closed guard.');
   await expect(page.getByRole('heading', { name: 'Game', exact: true })).toBeVisible();
 
-  await page.getByRole('radio', { name: 'Logo', exact: true }).click();
+  const introHide = page.getByRole('button', { name: 'Hide screen for Intro', exact: true });
+  await introHide.scrollIntoViewIfNeeded();
+  await introHide.click();
+  await page.getByRole('radiogroup', { name: 'Hide screen options for Intro' }).getByRole('radio', { name: 'Logo', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Screen hidden' })).toBeVisible();
   await page.getByRole('button', { name: 'Show screen', exact: true }).click();
   await expect(page.locator('#notes-intro')).toHaveValue('Kids closed guard.');
@@ -122,11 +126,8 @@ test('Coach Unlimited opens Competition class from the picker and the hub button
   await expect(page.getByRole('heading', { name: 'Competition Class Curriculum', exact: true })).toBeVisible();
   await expect(page.getByLabel('Competition Class Designation')).toBeVisible();
   await expect(page.getByRole('button', { name: "Lock In Today's Curriculum", exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('radiogroup', { name: 'What the hidden screen shows' })).toHaveCount(0);
   await page.screenshot({ path: '/opt/cursor/artifacts/lesson-template-competition-390.png' });
-
-  await page.getByRole('radio', { name: 'Logo', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Screen hidden' })).toBeVisible();
-  await page.getByRole('button', { name: 'Show screen', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Competition Class Curriculum', exact: true })).toBeVisible();
 });

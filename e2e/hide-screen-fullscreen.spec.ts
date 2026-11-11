@@ -12,6 +12,17 @@ async function openLesson(page: Page) {
   await page.setViewportSize(PHONE);
   await page.goto('/notes?from=coach');
   await expect(page.getByRole('heading', { name: 'Daily Lesson Plan', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toHaveCount(0);
+}
+
+async function openCardCover(page: Page, mode: 'Logo' | 'Schedule' | 'Black') {
+  const hide = page.getByRole('button', { name: 'Hide screen for Intro', exact: true });
+  await hide.scrollIntoViewIfNeeded();
+  await hide.click();
+  await page
+    .getByRole('radiogroup', { name: 'Hide screen options for Intro' })
+    .getByRole('radio', { name: mode, exact: true })
+    .click();
 }
 
 test('Chromium fullscreen mock fills the Hide screen cover and a second tap returns', async ({ page }) => {
@@ -41,7 +52,7 @@ test('Chromium fullscreen mock fills the Hide screen cover and a second tap retu
     Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, get: () => true });
   });
   await openLesson(page);
-  await page.getByRole('radio', { name: 'Logo', exact: true }).click();
+  await openCardCover(page, 'Logo');
   const cover = page.getByRole('dialog', { name: 'Screen hidden' });
   await expect(cover).toBeVisible();
   await expect(cover).toHaveAttribute('data-cover-api', 'standard');
@@ -57,12 +68,12 @@ test('Chromium fullscreen mock fills the Hide screen cover and a second tap retu
   const exits = await page.evaluate(() => (window as unknown as { __fs: { exits: number } }).__fs.exits);
   expect(exits).toBeGreaterThan(0);
 
-  await page.getByRole('radio', { name: 'Black', exact: true }).click();
+  await openCardCover(page, 'Black');
   await expect(page.locator('.notes-cover--black')).toHaveAttribute('data-cover-api', 'standard');
   await page.getByRole('button', { name: 'Show screen', exact: true }).click();
   await expect(page.locator('#notes-intro')).toBeVisible();
 
-  await page.getByRole('radio', { name: 'Schedule', exact: true }).click();
+  await openCardCover(page, 'Schedule');
   await expect(page.locator('.notes-cover--schedule')).toHaveAttribute('data-cover-api', 'standard');
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
   await expect(page.getByRole('radio', { name: 'Week', exact: true })).toHaveCount(0);
@@ -98,7 +109,7 @@ test('WebKit prefix fullscreen is used when requestFullscreen is missing', async
     };
   });
   await openLesson(page);
-  await page.getByRole('button', { name: 'Hide screen', exact: true }).click();
+  await openCardCover(page, 'Logo');
   const cover = page.getByRole('dialog', { name: 'Screen hidden' });
   await expect(cover).toHaveAttribute('data-cover-api', 'webkit');
   const calls = await page.evaluate(() => (window as unknown as { __wk: { calls: number } }).__wk.calls);
@@ -121,7 +132,7 @@ test('iOS Safari falls back to a fixed cover and a Home Screen hint', async ({ p
   await openLesson(page);
   const viewport = await page.locator('meta[name="viewport"]').getAttribute('content');
   expect(viewport).toContain('viewport-fit=cover');
-  await page.getByRole('radio', { name: 'Black', exact: true }).click();
+  await openCardCover(page, 'Black');
   const cover = page.getByRole('dialog', { name: 'Screen hidden' });
   await expect(cover).toHaveAttribute('data-cover-api', 'unsupported');
   await expect(cover).toHaveClass(/notes-cover--fallback/);
@@ -177,12 +188,12 @@ test('Hide screen schedule cover hides editor chrome and Show returns to the pla
           { id: 'c2', kind: 'class', day: 'wed', time: '18:30', title: 'Advanced', location: 'MAT 2', subtitle: '', level: 'advanced' },
           { id: 'c3', kind: 'class', day: 'fri', time: '17:00', title: 'Kids', location: 'MAT 1', subtitle: '', level: 'kids' },
         ],
-        specials: [{ id: 'seminar', kind: 'special', date: '2026-10-17', title: 'Seminar', body: '', flyerId: null }],
+        specials: [{ id: 'seminar', kind: 'special', date: '2026-11-17', title: 'Seminar', body: '', flyerId: null }],
       }),
     );
   });
   await openLesson(page);
-  await page.getByRole('radio', { name: 'Schedule', exact: true }).click();
+  await openCardCover(page, 'Schedule');
   const cover = page.getByRole('dialog', { name: 'Screen hidden' });
   await expect(cover).toHaveAttribute('data-cover-mode', 'schedule');
   await expect(cover).toHaveAttribute('data-cover-api', 'standard');
@@ -211,9 +222,10 @@ test('Hide screen schedule cover hides editor chrome and Show returns to the pla
   const exits = await page.evaluate(() => (window as unknown as { __fs: { exits: number } }).__fs.exits);
   expect(exits).toBeGreaterThan(0);
 
-  await page.getByRole('radio', { name: 'Schedule', exact: true }).click();
+  await openCardCover(page, 'Schedule');
   await expect(cover).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: 'Daily Lesson Plan', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Hide screen for Intro', exact: true })).toBeVisible();
 });

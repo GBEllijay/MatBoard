@@ -28,7 +28,8 @@ async function openLesson(page: Page) {
   await page.goto('/notes?from=coach');
   await expect(page.getByRole('heading', { name: 'Daily Lesson Plan', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: BACK, exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('radiogroup', { name: 'What the hidden screen shows' })).toHaveCount(0);
 }
 
 function installFullscreenMock(page: Page) {
@@ -126,10 +127,8 @@ test('hide from a lower card returns to that scroll position', async ({ page }) 
   }, beforeTop)).toBeLessThanOrEqual(2);
   await page.screenshot({ path: '/opt/cursor/artifacts/card-hide-returned-390.png' });
 
-  await page.getByRole('button', { name: 'Hide screen', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Screen hidden' })).toHaveAttribute('data-cover-mode', 'black');
-  await expect(page.getByRole('dialog', { name: 'Screen hidden' })).not.toHaveAttribute('data-cover-block', 'lesson-block-closing');
-  await page.getByRole('button', { name: 'Show screen', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('radiogroup', { name: 'What the hidden screen shows' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Daily Lesson Plan', exact: true })).toBeVisible();
   await expect(page.locator('#notes-intro')).toBeVisible();
 
@@ -179,5 +178,6 @@ test('iOS Safari card hide shows the Home Screen hint and keeps the scroll posit
   await expect(cover).toHaveCount(0);
   await expect.poll(async () => page.evaluate((saved) => Math.abs(window.scrollY - saved), beforeY)).toBeLessThanOrEqual(2);
   await expect(page.getByRole('heading', { name: 'Technique / Drill 3', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Hide screen', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Hide screen for Technique / Drill 3', exact: true })).toBeVisible();
 });
