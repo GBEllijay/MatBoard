@@ -631,6 +631,7 @@ function OpponentTracker({
       <div ref={rateRef} className="scout-rates archive-ratings" role="group" tabIndex={-1} aria-label={`Ratings for ${card.name}`}>
         <h3>Ratings</h3>
         <p className="archive-help">{`Rate ${card.name}. 1 is early. 5 is ready to rely on.`}</p>
+        {/* Same eight faces as the daily check-in. No sub-item ratings. Sweeps stays optional. */}
         {ASSESSMENT_FORM_AREAS.map((area) => (
           <fieldset key={area.id} className="assess-area">
             <legend>{area.label}</legend>

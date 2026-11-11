@@ -1,5 +1,5 @@
 /**
- * Opponent ratings use the same 1–5 scale as self-assessment.
+ * Opponent ratings use the same eight faces as the daily check-in, with no sub-items.
  * Sweeps is optional. A card saved before that area loads with Sweeps blank.
  * A higher score for the student is favored. An equal score is even.
  * A lower score is a disadvantage. Areas missing on either side are left out.
@@ -25,7 +25,8 @@ export type AreaMatchup = {
   balance: AreaBalance;
 };
 
-const MATCHUP_AREAS: readonly { id: ScoutAreaId; label: string }[] = [
+/** The eight faces. Sweeps stays last, and a missing Sweeps rating is left out. */
+export const MATCHUP_AREAS: readonly { id: ScoutAreaId; label: string }[] = [
   ...ASSESSMENT_AREAS,
   { id: 'sweeps', label: 'Sweeps' },
 ];

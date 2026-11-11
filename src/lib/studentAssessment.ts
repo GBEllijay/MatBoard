@@ -38,7 +38,8 @@ export const ASSESSMENT_FORM_AREAS = [
 ] as const;
 
 /**
- * Scorable lines under Mindset. Same 1–5 scale as the category.
+ * Personal goals for the technique-based check-in.
+ * Generic mode rates Mindset as one face and does not score these lines.
  * A missing line is unscored. It is not a zero, and it is not required to save.
  */
 export const MINDSET_GOALS = [
@@ -51,8 +52,9 @@ export const MINDSET_GOALS = [
 ] as const;
 
 /**
- * Scorable lines under Conditioning. Same 1–5 scale as the category.
- * A missing line is unscored. It is not a zero, and it is not required to save.
+ * Context under the generic Conditioning face.
+ * Stamina, power, and flexibility are named there. They are not separate ratings.
+ * A missing older line is unscored. It is not a zero, and it is not required to save.
  * None of these lines is a promotion benchmark.
  */
 export const CONDITIONING_ITEMS = [
@@ -74,6 +76,15 @@ export type AssessmentScores = Record<AssessmentAreaId, AssessmentScore> & {
 export type MindsetGoalScores = Partial<Record<MindsetGoalId, AssessmentScore>>;
 export type ConditioningItemScores = Partial<Record<ConditioningItemId, AssessmentScore>>;
 
+/**
+ * A face the student rated directly on the generic check-in.
+ * Legacy sub-lines stay stored. They no longer cover that face.
+ */
+export type DirectFaces = {
+  conditioning?: true;
+  mindset?: true;
+};
+
 export type AssessmentEntry = {
   id: string;
   date: string;
@@ -83,6 +94,8 @@ export type AssessmentEntry = {
   mindsetGoals?: MindsetGoalScores;
   /** Present only when at least one Conditioning item was scored. Older days omit it. */
   conditioningItems?: ConditioningItemScores;
+  /** Omitted until the student rates that face on the generic check-in. */
+  directFaces?: DirectFaces;
 };
 
 export type AssessmentState = {
@@ -99,6 +112,7 @@ export type AssessmentDraft = {
    */
   mindsetGoals?: MindsetGoalScores;
   conditioningItems?: ConditioningItemScores;
+  directFaces?: DirectFaces;
 };
 
 export type AssessmentCheckpointLink = {
@@ -141,7 +155,7 @@ export function assessmentAverage(scores: AssessmentScores): number {
 export function assessmentTrend(entries: readonly AssessmentEntry[]): { date: string; average: number }[] {
   return [...entries]
     .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-    .map((entry) => ({ date: entry.date, average: assessmentAverage(entry.scores) }));
+    .map((entry) => ({ date: entry.date, average: assessmentAverage(displayedAssessmentScores(entry)) }));
 }
 
 export function loadAssessments(storage: Pick<Storage, 'getItem'>): AssessmentState {
@@ -165,19 +179,57 @@ export function writeAssessments(storage: MemoryStore, state: AssessmentState): 
   return loadAssessments(storage);
 }
 
-/** One check-in per date. Saving the same day again replaces that day. */
+/**
+ * Short names under the generic Conditioning face.
+ * The three lines are context, not a second set of ratings.
+ */
+export function conditioningContextText(): string {
+  const short: Record<(typeof CONDITIONING_ITEMS)[number]['id'], string> = {
+    warmup: 'Warm-up',
+    recovery: 'Recovery',
+    speed: 'Speed',
+    stamina: 'Stamina',
+    power: 'power',
+    flexibility: 'flexibility',
+  };
+  const names = (['stamina', 'power', 'flexibility'] as const).flatMap((id) =>
+    CONDITIONING_ITEMS.some((item) => item.id === id) ? [short[id]] : [],
+  );
+  if (names.length === 0) return '';
+  if (names.length === 1) return `${names[0]}.`;
+  const last = names[names.length - 1];
+  return `${names.slice(0, -1).join(', ')}, and ${last}.`;
+}
+
+/**
+ * One number per face for the check-in.
+ * Legacy sub-lines average into Conditioning or Mindset until that face is rated directly.
+ * The stored face score and the lines themselves are left as saved.
+ */
+export function displayedAssessmentScores(
+  entry: Pick<AssessmentEntry, 'scores' | 'mindsetGoals' | 'conditioningItems' | 'directFaces'>,
+): AssessmentScores {
+  const scores: AssessmentScores = { ...entry.scores };
+  if (!entry.directFaces?.mindset) {
+    const averaged = mindsetScoreFromGoals(entry.mindsetGoals);
+    if (averaged) scores.mindset = averaged;
+  }
+  if (!entry.directFaces?.conditioning) {
+    const averaged = conditioningScoreFromItems(entry.conditioningItems);
+    if (averaged) scores.conditioning = averaged;
+  }
+  return scores;
+}
+
+/** One check-in per date. Saving the same day again replaces that day. Face scores are the numbers passed in. */
 export function saveAssessment(state: AssessmentState, draft: AssessmentDraft, now = Date.now()): AssessmentState {
   const date = requireDate(draft.date);
   const note = cleanNote(draft.note);
   const existing = state.entries.find((entry) => entry.date === date);
   const mindsetGoals = resolveLines(MINDSET_GOALS, existing?.mindsetGoals, draft, 'mindsetGoals');
   const conditioningItems = resolveLines(CONDITIONING_ITEMS, existing?.conditioningItems, draft, 'conditioningItems');
-  const rolledMindset = mindsetScoreFromGoals(mindsetGoals);
-  const rolledConditioning = conditioningScoreFromItems(conditioningItems);
-  const scoreInput: Partial<AssessmentScores> = { ...draft.scores };
-  if (rolledMindset) scoreInput.mindset = rolledMindset;
-  if (rolledConditioning) scoreInput.conditioning = rolledConditioning;
-  const scores = requireScores(scoreInput);
+  const directFaces = resolveDirect(existing?.directFaces, draft);
+  const scores = requireScores(draft.scores);
   const nextEntry: AssessmentEntry = {
     id: existing?.id ?? newId(now),
     date,
@@ -186,6 +238,7 @@ export function saveAssessment(state: AssessmentState, draft: AssessmentDraft, n
   };
   if (hasLineScore(MINDSET_GOALS, mindsetGoals)) nextEntry.mindsetGoals = mindsetGoals;
   if (hasLineScore(CONDITIONING_ITEMS, conditioningItems)) nextEntry.conditioningItems = conditioningItems;
+  if (directFaces) nextEntry.directFaces = directFaces;
   const entries = existing
     ? state.entries.map((entry) => (entry.date === date ? nextEntry : entry))
     : [...state.entries, nextEntry];
@@ -381,6 +434,8 @@ function normalizeEntry(raw: unknown): AssessmentEntry | null {
   if (hasLineScore(MINDSET_GOALS, mindsetGoals)) entry.mindsetGoals = mindsetGoals;
   const conditioningItems = readLines(CONDITIONING_ITEMS, row.conditioningItems);
   if (hasLineScore(CONDITIONING_ITEMS, conditioningItems)) entry.conditioningItems = conditioningItems;
+  const directFaces = readDirect(row.directFaces);
+  if (directFaces) entry.directFaces = directFaces;
   return entry;
 }
 
@@ -401,6 +456,20 @@ function lineText<Id extends string>(lines: LineDef<Id>, values: LineScores<Id> 
     const value = values[line.id];
     return isAssessmentScore(value) ? [`${line.label}: ${value}`] : [];
   });
+}
+
+function resolveDirect(saved: DirectFaces | undefined, draft: AssessmentDraft): DirectFaces | undefined {
+  if (!Object.prototype.hasOwnProperty.call(draft, 'directFaces')) return readDirect(saved);
+  return readDirect(draft.directFaces);
+}
+
+function readDirect(raw: unknown): DirectFaces | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const row = raw as Record<string, unknown>;
+  const next: DirectFaces = {};
+  if (row.conditioning === true) next.conditioning = true;
+  if (row.mindset === true) next.mindset = true;
+  return next.conditioning || next.mindset ? next : undefined;
 }
 
 function resolveLines<Id extends string>(
