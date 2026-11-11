@@ -5,7 +5,8 @@
  */
 import assert from 'node:assert/strict';
 import { beforeEach, describe, it } from 'node:test';
-import { addStudent, getRoster, linkRosterCard, noPhotosChange, normalizeRoster, resetRoster, setNoPhotos, updateStudent, type Student } from './rosterStore.ts';
+import { addStudent, competitorGamePlan, competitorReady, fillBlankCompetitorFromLinkedStudent, getRoster, linkCompetitorToRosterStudent, linkRosterCard, noPhotosChange, normalizeRoster, resetRoster, setGameNotes, setNoPhotos, setReadyFlag, updateStudent, type Student } from './rosterStore.ts';
+import { blankCompetitorPatch, followedCompetitorPhoto } from './competitorCarryOver.ts';
 import { importRosterCsv, serializeRosterCsv, NO_PHOTOS_HEADER } from './rosterCsv.ts';
 import { buildRosterBackup, mergeRosterBackup, parseRosterBackup, serializeRosterBackup, sharedRosterBackup, type RosterBackupSources } from './rosterBackup.ts';
 import { readCardFile, readPrivateNotes } from './rosterCardFields.ts';
@@ -344,5 +345,92 @@ describe('Add to Competitor Roster', () => {
     const comp = addStudent({ name: 'Comp Only', belt: 'white', division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', note: '', photo: '' });
     assert.ok(comp);
     assert.equal(addToCompetitorRoster(comp.id, new MemoryStorage()).ok, false);
+  });
+
+  it('fills only blank fields when the switch reuses a linked competitor card', () => {
+    const store = new MemoryStorage();
+    const card = studentCard();
+    updateStudent(card.id, { division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', photo: '' });
+    const made = addToCompetitorRoster(card.id, store);
+    assert.ok(made.ok && made.created);
+    const compId = (made as { competitorId: string }).competitorId;
+    const keptPhoto = 'data:image/png;base64,BBBB';
+    updateStudent(compId, { gym: 'Kept gym', photo: keptPhoto, note: 'KEEP-NOTE', stripes: 0 });
+    updateRosterCard(card.id, (row) => ({ ...row, trainingStyle: 'gi' }), store);
+    setGameNotes(compId, 'a', 'KEEP-GAME');
+    setReadyFlag(compId, 'medical', true);
+    updateStudent(card.id, {
+      division: 'Adult Blue',
+      gym: 'Ellijay',
+      lastPromotion: '2026-06-01',
+      lastPromotionDetail: 'Blue belt',
+      photo: PHOTO,
+      stripes: 2,
+    });
+    const again = addToCompetitorRoster(card.id, store);
+    assert.ok(again.ok && !again.created);
+    const next = getRoster().students.find((row) => row.id === compId) as Student;
+    assert.equal(next.gym, 'Kept gym');
+    assert.equal(next.photo, keptPhoto);
+    assert.equal(next.stripes, 0);
+    assert.equal(next.note, 'KEEP-NOTE');
+    assert.equal(next.division, 'Gi');
+    assert.equal(next.lastPromotion, '2026-06-01');
+    assert.equal(next.lastPromotionDetail, 'Blue belt');
+    assert.equal(competitorGamePlan(compId).a.notes, 'KEEP-GAME');
+    assert.equal(competitorReady(compId).flags.medical, true);
+    assert.equal(getRoster().competitionPlans[compId], undefined);
+  });
+
+  it('same person link fills blanks and leaves competitor-only notes alone', () => {
+    const store = new MemoryStorage();
+    const card = studentCard('Paige');
+    linkRosterCard(card.id, 'stu-paige');
+    updateStudent(card.id, {
+      division: 'Adult',
+      gym: 'Ellijay',
+      lastPromotion: '2026-01-02',
+      lastPromotionDetail: 'stripe',
+      photo: PHOTO,
+      stripes: 2,
+    });
+    updateRosterCard(card.id, (row) => ({ ...row, trainingStyle: '' }), store);
+    const comp = addStudent({ name: 'Paige', belt: 'Black', division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', note: 'KEEP', photo: '' });
+    assert.ok(comp);
+    setGameNotes(comp.id, 'home', 'KEEP-HOME');
+    const linked = linkCompetitorToRosterStudent(comp.id, card.id);
+    assert.equal(linked.ok, true);
+    const next = getRoster().students.find((row) => row.id === comp.id) as Student;
+    assert.equal(next.belt, 'Black');
+    assert.equal(next.division, 'Adult');
+    assert.equal(next.gym, 'Ellijay');
+    assert.equal(next.lastPromotion, '2026-01-02');
+    assert.equal(next.lastPromotionDetail, 'stripe');
+    assert.equal(next.photo, PHOTO);
+    assert.equal(next.stripes, 2);
+    assert.equal(next.note, 'KEEP');
+    assert.equal(competitorGamePlan(comp.id).home.notes, 'KEEP-HOME');
+    const other = 'data:image/webp;base64,CCCC';
+    updateStudent(comp.id, { photo: other });
+    updateStudent(card.id, { photo: PHOTO, gym: 'New gym' });
+    const filled = fillBlankCompetitorFromLinkedStudent(comp.id, store);
+    assert.equal(filled?.photo, other);
+    assert.equal(filled?.gym, 'Ellijay');
+    assert.equal(followedCompetitorPhoto(filled as Student, getRoster().students.find((row) => row.id === card.id)), PHOTO);
+  });
+
+  it('does not copy a photo when No photos is set, and a patch never includes notes', () => {
+    const card = studentCard();
+    setNoPhotos(card.id, true, 'coach');
+    const patch = blankCompetitorPatch(
+      { name: '', belt: '', stripes: undefined, division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', photo: '', noPhotos: undefined },
+      getRoster().students.find((row) => row.id === card.id) as Student,
+      { trainingStyle: 'nogi' },
+    );
+    assert.equal(patch?.name, 'Ana Lima');
+    assert.equal(patch?.division, 'No-Gi');
+    assert.equal(patch?.photo, undefined);
+    assert.equal((patch as { note?: string } | null)?.note, undefined);
+    assert.equal(followedCompetitorPhoto({ photo: PHOTO, noPhotos: undefined }, { photo: PHOTO, noPhotos: 'coach' }), '');
   });
 });

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { EmptyHint } from '../components/EmptyHint';
 import { ImportStudentProgress, StudentCompetitionPlan } from '../components/StudentCompetitionPlan';
@@ -65,7 +65,7 @@ export function CompetitionReadyPage() {
       </header>
 
       {selected ? (
-        <Checklist key={selected.id} student={selected} />
+        <Checklist key={selected.id} student={selected} focusItem={searchParams.get('item') ?? ''} />
       ) : (
         <>
           <p className="roster__lead">{COMPETITION_READY_LEAD}</p>
@@ -130,9 +130,17 @@ function CompetitorPick({ competitor, ready }: { competitor: Student; ready: Com
   );
 }
 
-function Checklist({ student }: { student: Student }) {
+function Checklist({ student, focusItem }: { student: Student; focusItem: string }) {
   const roster = useRosterState();
   const ready = competitorReady(student.id, roster);
+  useEffect(() => {
+    if (!focusItem) return;
+    const node = document.getElementById(`ready-item-${focusItem}`);
+    if (!node) return;
+    node.scrollIntoView?.({ block: 'center' });
+    const button = node.querySelector('button');
+    button?.focus();
+  }, [focusItem, student.id]);
   const [note, setNote] = useState(ready.note);
   const [extraLabel, setExtraLabel] = useState('');
   const atExtraMax = ready.extras.length >= READY_EXTRA_MAX;
@@ -153,6 +161,7 @@ function Checklist({ student }: { student: Student }) {
           {visible.map((item) => (
             <ReadyRow
               key={item.id}
+              id={`ready-item-${item.id}`}
               label={item.label}
               on={ready.flags[item.id]}
               onToggle={() => setReadyFlag(student.id, item.id, !ready.flags[item.id])}
@@ -178,6 +187,7 @@ function Checklist({ student }: { student: Student }) {
           {removed.map((item) => (
             <button
               key={item.id}
+              id={`ready-item-${item.id}`}
               type="button"
               className="btn btn--ghost"
               onClick={() => restoreReadyItem(student.id, item.id)}
@@ -241,18 +251,20 @@ function Checklist({ student }: { student: Student }) {
 }
 
 function ReadyRow({
+  id,
   label,
   on,
   onToggle,
   onRemove,
 }: {
+  id?: string;
   label: string;
   on: boolean;
   onToggle: () => void;
   onRemove?: () => void;
 }) {
   return (
-    <li className={`ready-row${on ? ' ready-row--on' : ''}`}>
+    <li id={id} className={`ready-row${on ? ' ready-row--on' : ''}`}>
       <span className="ready-row__label">{label}</span>
       <button
         type="button"

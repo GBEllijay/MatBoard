@@ -38,6 +38,7 @@ import {
   addGameLink,
   competitorCards,
   competitorGamePlan,
+  migrateSharedGamePlan,
   removeGameLink,
   searchStudents,
   setGameLinkFlag,
@@ -149,6 +150,9 @@ function CompetitorPick({ competitor, plan }: { competitor: Student; plan: Compe
 }
 
 function PlanEditor({ student, archive }: { student: Student; archive: TechniqueTreeArchive }) {
+  useEffect(() => {
+    migrateSharedGamePlan(student.id);
+  }, [student.id]);
   const roster = useRosterState();
   const plan = competitorGamePlan(student.id, roster);
 
@@ -196,6 +200,9 @@ function LayerCard({
   archive: TechniqueTreeArchive;
 }) {
   const [notes, setNotes] = useState(layer.notes);
+  useEffect(() => {
+    setNotes((current) => (current.trim() === layer.notes ? current : layer.notes));
+  }, [layer.notes]);
   const [showAll, setShowAll] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const suggestions = suggestTechniqueTargets(archive, notes, layer.links);
