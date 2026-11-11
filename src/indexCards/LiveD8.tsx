@@ -8,9 +8,29 @@ import { TopoStage } from '../preview/crystallineSweeps/TopoStage.tsx';
 import { ZOOM_LIST } from '../preview/d8Subfactors/cards.ts';
 import { FACES } from '../preview/d8Subfactors/model.ts';
 import { buildSubfactorTopo, faceSlots, showOnDiamond } from '../preview/d8Subfactors/topoModel.ts';
-import { faceScoreExact, type IndexFaceId, type LiveCard } from '../lib/indexCards.ts';
+import {
+  INDEX_FACE_IDS,
+  faceScoreExact,
+  unsortedCards,
+  withCardEdit,
+  type IndexFaceId,
+  type LiveCard,
+} from '../lib/indexCards.ts';
+import { GLOSSARY_FACE_LABELS } from '../lib/glossary.ts';
+import { additionsCsv, additionsForReview } from '../lib/glossaryAdditions.ts';
 import { IndexTermLink } from './IndexTermLink.tsx';
-import { openTerm, startDraft, useLiveCards } from './store.ts';
+import {
+  catalogLines,
+  commitIndexCards,
+  getIndexCardFile,
+  noteAddition,
+  openTerm,
+  startDraft,
+  useAdditions,
+  useIndexCardFile,
+  useLiveCards,
+} from './store.ts';
+import './glossary.css';
 import '../preview/crystallineSweeps/crystallineSweeps.css';
 import '../preview/d8Subfactors/d8Subfactors.css';
 import './liveD8.css';
@@ -243,8 +263,90 @@ function FaceScores({ cards }: { cards: readonly LiveCard[] }) {
             );
           })}
         </ul>
+        <button type="button" data-testid="add-any-move" onClick={() => startDraft(null)}>
+          Add a move
+        </button>
+        <UnsortedMoves />
+        <AdditionsReview />
       </section>
     </div>
+  );
+}
+
+/** Old or imported moves with no face. They stay off the diamond, with no glossary tag, until placed. */
+function UnsortedMoves() {
+  const file = useIndexCardFile();
+  const rows = unsortedCards(file);
+  if (!rows.length) return null;
+  return (
+    <section className="gl-unsorted" data-testid="unsorted-moves" aria-label="Moves that need a face">
+      <h3>Needs a face</h3>
+      <p className="gl-note">These moves came in without a D8 face. Pick one to put each on your D8.</p>
+      <ul>
+        {rows.map((row) => (
+          <li key={row.id} data-unsorted={row.id}>
+            <span>{row.name}</span>
+            <select
+              aria-label={`Face for ${row.name}`}
+              value=""
+              onChange={(event) => {
+                const faceId = event.target.value as IndexFaceId;
+                const result = withCardEdit(catalogLines(), getIndexCardFile(), row.id, { name: row.name, faceId });
+                if ('error' in result) return;
+                commitIndexCards(result.file);
+                noteAddition({ name: row.name, faceId });
+              }}
+            >
+              <option value="" disabled>
+                Pick a face
+              </option>
+              {INDEX_FACE_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {GLOSSARY_FACE_LABELS[id]}
+                </option>
+              ))}
+            </select>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+const KIND_LABEL = { new: 'New move', renamed: 'Your name', recategorized: 'Your face' } as const;
+
+/** The student's additions pool, for a later glossary review. The core glossary is not changed here. */
+function AdditionsReview() {
+  const pool = useAdditions();
+  const rows = additionsForReview(pool);
+  if (!rows.length) return null;
+  const download = () => {
+    const csv = additionsCsv(pool, (id) => GLOSSARY_FACE_LABELS[id]);
+    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'advantage-glossary-additions.csv';
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  return (
+    <details className="gl-additions" data-testid="glossary-additions">
+      <summary>{`Your additions (${rows.length})`}</summary>
+      <p className="gl-note">Moves you added, renamed, or moved. They stay yours and are kept for the glossary review.</p>
+      <ul>
+        {rows.map((row) => (
+          <li key={row.id} data-addition={row.id}>
+            <span>{row.name}</span>
+            <span className="gl-note">
+              {`${KIND_LABEL[row.kind]} · ${GLOSSARY_FACE_LABELS[row.faceId]}${row.glossaryTerm && row.glossaryTerm !== row.name ? ` · was ${row.glossaryTerm}` : ''}${row.count > 1 ? ` · ×${row.count}` : ''}`}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <button type="button" data-testid="additions-csv" onClick={download}>
+        Download CSV
+      </button>
+    </details>
   );
 }
 

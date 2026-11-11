@@ -15,11 +15,15 @@ import {
   type LiveCard,
 } from '../lib/indexCards.ts';
 import { beginAppStudentSave, endAppStudentSave } from '../lib/studentDemo.ts';
+import { loadAdditions, recordAddition, writeAdditions, type AdditionInput, type AdditionsPool } from '../lib/glossaryAdditions.ts';
 import { d8Catalog } from './catalog.ts';
 
-export type OpenState = null | { kind: 'card'; id: string } | { kind: 'draft'; faceId: IndexFaceId };
+/** A draft with no face asks the student to pick one before it can be saved. */
+export type OpenState = null | { kind: 'card'; id: string } | { kind: 'draft'; faceId: IndexFaceId | null };
 
 let snapshot: IndexCardFile | null = null;
+let additions: AdditionsPool | null = null;
+const additionListeners = new Set<() => void>();
 let openState: OpenState = null;
 const fileListeners = new Set<() => void>();
 const openListeners = new Set<() => void>();
@@ -67,7 +71,36 @@ export function openTerm(nameOrId: string): void {
   emitOpen();
 }
 
-export function startDraft(faceId: IndexFaceId): void {
+export function getAdditions(): AdditionsPool {
+  if (!additions) additions = loadAdditions(storage());
+  return additions;
+}
+
+/** Notes one save in the student's additions pool. Glossary moves on their own face are skipped. */
+export function noteAddition(input: AdditionInput): void {
+  const next = recordAddition(getAdditions(), input);
+  if (next === additions) return;
+  beginAppStudentSave();
+  try {
+    additions = writeAdditions(storage(), next);
+  } catch {
+    additions = next;
+  } finally {
+    endAppStudentSave();
+  }
+  for (const listener of additionListeners) listener();
+}
+
+export function useAdditions(): AdditionsPool {
+  return useSyncExternalStore(subscribeAdditions, getAdditions, getAdditions);
+}
+
+function subscribeAdditions(listener: () => void): () => void {
+  additionListeners.add(listener);
+  return () => additionListeners.delete(listener);
+}
+
+export function startDraft(faceId: IndexFaceId | null): void {
   openState = { kind: 'draft', faceId };
   emitOpen();
 }
@@ -80,8 +113,10 @@ export function closeIndexCard(): void {
 
 export function resetIndexCardStoreForTests(): void {
   snapshot = null;
+  additions = null;
   openState = null;
   emitFile();
+  for (const listener of additionListeners) listener();
   emitOpen();
 }
 
