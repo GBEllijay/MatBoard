@@ -177,7 +177,7 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
   return (
     <div aria-label="Student updates waiting">
       <h3>Student updates waiting</h3>
-      <p>Adding fills only blank fields on the linked card, including a blank bout division from an entered tournament. Tournaments and weight are kept with the student's updates. Belt and stripes change only when you approve them.</p>
+      <p>Adding fills only blank fields on the linked card, including a blank bout division from an entered tournament. Tournaments, weight, and opponent cards are kept with the student's updates. Belt and stripes change only when you approve them. Dismiss leaves that file off the card.</p>
       {updates.map((update) => {
         const card = roster.find((row) => row.linkedStudentId === update.studentId && !row.guestId);
         const tournaments = update.competition?.tournaments ?? [];
@@ -192,14 +192,34 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
               {update.assessments?.length ? ` · ${update.assessments.length} self-assessment(s)` : ''}
               {update.weight?.weighIns.length ? ` · weigh-ins ${update.weight.weighIns.map((w) => `${w.weight} ${w.unit} ${w.date}`).join(', ')}` : ''}
               {update.weight?.goalWeight ? ` · goal ${update.weight.goalWeight} ${update.weight.goalUnit || update.weight.unit}` : ''}
+              {update.scouting?.cards.length ? ` · ${update.scouting.cards.length} opponent card(s)` : ''}
             </p>
+            {update.scouting?.cards.length ? (
+              <ul aria-label="Opponent cards">
+                {update.scouting.cards.map((scout) => (
+                  <li key={scout.id}>
+                    {scout.name}
+                    {scout.gym ? ` · ${scout.gym}` : ''}
+                    {` · ${scout.group === 'open' ? 'Open class' : 'Weight class'}`}
+                    {scout.weightClass ? ` · ${scout.weightClass}` : ''}
+                    {scout.belt ? ` · ${scout.belt}` : ''}
+                    {scout.style ? ` · ${scout.style}` : ''}
+                    {` · record ${scout.record.line}`}
+                    {scout.strengths ? ` · strengths ${scout.strengths}` : ''}
+                    {scout.weaknesses ? ` · weaknesses ${scout.weaknesses}` : ''}
+                    {scout.notes ? ` · ${scout.notes}` : ''}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <button
               type="button"
               className="btn"
               disabled={!card}
               onClick={() => {
                 const result = applyStudentUpdate(update.updateId, false);
-                done(result.ok ? `Added. Filled: ${result.filled.join(', ') || 'nothing blank'}.` : `Could not add (${result.reason}).`);
+                const cards = update.scouting?.cards.length ? ` Opponent cards kept: ${update.scouting.cards.length}.` : '';
+                done(result.ok ? `Added. Filled: ${result.filled.join(', ') || 'nothing blank'}.${cards}` : `Could not add (${result.reason}).`);
               }}
             >
               Add (fill blanks)
@@ -211,7 +231,8 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
                 disabled={!card}
                 onClick={() => {
                   const result = applyStudentUpdate(update.updateId, true);
-                  done(result.ok ? 'Added. Belt and stripes approved.' : result.reason === 'not-allowed' ? 'Only a Coach seat or the owner can approve belt changes.' : `Could not add (${result.reason}).`);
+                  const cards = update.scouting?.cards.length ? ` Opponent cards kept: ${update.scouting.cards.length}.` : '';
+                  done(result.ok ? `Added. Belt and stripes approved.${cards}` : result.reason === 'not-allowed' ? 'Only a Coach seat or the owner can approve belt changes.' : `Could not add (${result.reason}).`);
                 }}
               >
                 Add and approve belt

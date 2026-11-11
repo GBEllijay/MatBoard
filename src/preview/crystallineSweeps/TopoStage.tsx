@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ReliefScore } from './geometry.ts';
-import { TOPO_LEVEL, TOPO_REVISION, reliefScale, tileTone, toneForName, topoWords, type TileTone, type TopoModel, type Vec } from './topo.ts';
+import { TOPO_LEVEL, TOPO_REVISION, reliefScale, tileToneFor, toneForName, topoWords, type TileTone, type TopoModel, type Vec } from './topo.ts';
 import {
   EXAMPLE_OPPONENT_FACTORS,
   EXAMPLE_OPPONENT_SWEEPS,
@@ -18,11 +18,16 @@ import {
   REST_ZOOM,
   ZOOM_STEP,
   clampCrystalZoom,
+  clampLiveZoom,
   crystalLabelState,
   drillAfterZoom,
+  labelFontPx,
+  placeDiamondLabels,
+  projectFit,
   tileShowsTechniqueLabel,
   zoomAfterClosingDrill,
   zoomPastRest,
+  type DiamondLabel,
 } from './labels.ts';
 
 export type TopoStyle = 'pyramid' | 'curved';
@@ -58,6 +63,10 @@ type Props = {
   meshHidden?: boolean;
   /** Parent asks for an exact zoom, for Back from a card drill. */
   zoomCommand?: { zoom: number; id: number } | null;
+  /** Live D8: +, −, pinch, and wheel stay inside the stage and keep the focused face centered. */
+  fitZoom?: boolean;
+  /** Live D8: one face of technique names, no edge-on pile-up. */
+  separateLabels?: boolean;
 };
 
 type Proj = {
@@ -69,7 +78,7 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill, onEmptyTile, onZoom, meshHidden = false, zoomCommand = null }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill, onEmptyTile, onZoom, meshHidden = false, zoomCommand = null, fitZoom = false, separateLabels = false }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
@@ -119,6 +128,9 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
     onFrontFace: (_index: number) => {},
     onEmptyTile: undefined as undefined | ((index: number) => void),
     onZoom: undefined as undefined | ((zoom: number) => void),
+    fitZoom: false,
+    separateLabels: false,
+    anchor: [0, 0, 0] as Vec,
     api: null as null | {
       grow: (target: string) => void
       enter: (target: string, corners: [Vec, Vec, Vec]) => void
@@ -141,6 +153,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
   view.current.onExpand = onExpand ?? (() => {});
   view.current.onEmptyTile = onEmptyTile;
   view.current.onZoom = onZoom;
+  view.current.fitZoom = fitZoom;
+  view.current.separateLabels = separateLabels;
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -182,6 +196,10 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
       return [x, y, z];
     };
     const screen = (point: Vec): [number, number] => {
+      if (state.fitZoom) {
+        const placed = projectFit(point, state.anchor, state.zoom, state.width, state.height);
+        return [placed.x, placed.y];
+      }
       const focal = state.height / 2 / Math.tan((19 * Math.PI) / 180) * state.zoom;
       const depth = 5.5 - point[2];
       return [state.width / 2 + (point[0] * focal) / depth, state.height / 2 - (point[1] * focal) / depth];
@@ -253,6 +271,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
       const focal = state.height / 2 / Math.tan((19 * Math.PI) / 180);
       const targetPx = layout.mode === 'grid' ? 88 : 120;
       const zoom = (targetPx * 5.5) / (piece * focal);
+      const nextZoom = Math.min(18, Math.max(1.15, zoom));
       state.paused = true;
       setPaused(true);
       state.anim = {
@@ -261,7 +280,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
         rx1: targetPitch,
         ry1: state.ry + dy,
         z0: state.zoom,
-        z1: Math.min(18, Math.max(1.15, zoom)),
+        z1: state.fitZoom ? clampLiveZoom(nextZoom, state.width, state.height) : nextZoom,
         t: 0,
       };
     };
@@ -368,8 +387,28 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
         state.rx = state.anim.rx0 + (state.anim.rx1 - state.anim.rx0) * k;
         state.ry = state.anim.ry0 + (state.anim.ry1 - state.anim.ry0) * k;
         state.zoom = state.anim.z0 + (state.anim.z1 - state.anim.z0) * k;
+        if (state.fitZoom) state.zoom = clampLiveZoom(state.zoom, state.width, state.height);
         if (state.anim.t >= 1) state.anim = null;
       } else if (!state.paused && !state.drag && state.selected < 0) state.ry += dt * (state.chrome === 'bare' ? 0.1 : 0.18);
+      if (state.fitZoom) {
+        const faceIndex =
+          state.selected >= 0
+            ? (model.tiles[state.selected]?.faceIndex ?? -1)
+            : state.focus >= 0
+              ? state.focus
+              : state.drilledFace;
+        const corners = faceIndex >= 0 ? model.faceCorners[faceIndex] : undefined;
+        if (corners && corners.length) {
+          const sum = corners.reduce(
+            (acc, index) => {
+              const point = model.vertices[index];
+              return [acc[0] + point[0], acc[1] + point[1], acc[2] + point[2]] as Vec;
+            },
+            [0, 0, 0] as Vec,
+          );
+          state.anchor = rot(sum.map((value) => value / corners.length) as Vec);
+        } else state.anchor = [0, 0, 0];
+      } else state.anchor = [0, 0, 0];
       const light: Vec = [-0.4, 0.6, 0.7];
       const lightLength = Math.hypot(...light) || 1;
       const lit = light.map((value) => value / lightLength) as Vec;
@@ -667,7 +706,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
         } else if (!poly.front) fill = 'rgba(24,114,160,.05)';
         else if (!tile || !model.faces[tile.faceIndex]?.moves.length) fill = `rgba(70,80,100,${0.25 + 0.3 * poly.shade})`;
         else if (!tile.move || tile.offset == null) fill = `rgba(24,60,90,${0.16 + 0.16 * Math.max(0, poly.shade)})`;
-        else fill = toneFill(tileTone(tile.move.id), k, chosen, state.hue);
+        else fill = toneFill(tileToneFor(tile.move.id, tile.faceId), k, chosen, state.hue);
         context.fillStyle = fill;
         context.fill();
         const unrated = poly.layer === 'base' && Boolean(tile?.move) && tile?.offset == null;
@@ -895,6 +934,67 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
           });
         }
       }
+      if (state.separateLabels) {
+        const font = labelFontPx(state.height);
+        if (labelsRef.current) labelsRef.current.style.fontSize = `${font}px`;
+        const measure = (text: string, kind: 'face' | 'technique') => ({
+          w: Math.min(Math.max(48, state.width * 0.46), Math.max(52, text.length * font * 0.56 + 14)),
+          h: font + (kind === 'face' ? 12 : 10),
+        });
+        const pending: DiamondLabel[] = [];
+        model.faceCorners.forEach((corners, faceIndex) => {
+          const node = faceNodes[faceIndex];
+          if (!node) return;
+          const points = corners.map((index) => rot(model.vertices[index]));
+          const center: Vec = [0, 1, 2].map((axis) => (points[0][axis] + points[1][axis] + points[2][axis]) / 3) as Vec;
+          const u: Vec = [points[1][0] - points[0][0], points[1][1] - points[0][1], points[1][2] - points[0][2]];
+          const v: Vec = [points[2][0] - points[0][0], points[2][1] - points[0][1], points[2][2] - points[0][2]];
+          const nrm: Vec = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+          const toward: Vec = [-center[0], -center[1], 5.5 - center[2]];
+          const facing =
+            (nrm[0] * toward[0] + nrm[1] * toward[1] + nrm[2] * toward[2]) /
+            ((Math.hypot(...nrm) || 1) * (Math.hypot(...toward) || 1));
+          const at = screen(center);
+          const text = (node.textContent ?? '').trim();
+          const box = measure(text, 'face');
+          pending.push({ id: `face:${faceIndex}`, kind: 'face', x: at[0] - box.w / 2, y: at[1] - box.h / 2, w: box.w, h: box.h, facing });
+        });
+        projected.forEach((item) => {
+          const tile = model.tiles[item.index];
+          if (!tile?.move || !tileShowsTechniqueLabel(labels, tile.faceIndex, true, state.selected >= 0)) return;
+          const box = measure(tile.move.name, 'technique');
+          pending.push({
+            id: `tile:${item.index}`,
+            kind: 'technique',
+            x: item.center[0] - box.w / 2,
+            y: item.center[1] - box.h / 2,
+            w: box.w,
+            h: box.h,
+            facing: item.shade,
+          });
+        });
+        const placed = placeDiamondLabels(pending, { width: state.width, height: state.height });
+        for (const label of placed) {
+          const faceHit = /^face:(\d+)$/.exec(label.id);
+          const tileHit = /^tile:(\d+)$/.exec(label.id);
+          const node = faceHit ? faceNodes[Number(faceHit[1])] : tileHit ? tileNodes[Number(tileHit[1])] : undefined;
+          if (!node) continue;
+          node.hidden = label.hidden;
+          if (!label.hidden) {
+            node.style.left = `${label.x + label.w / 2}px`;
+            node.style.top = `${label.y + label.h / 2}px`;
+          }
+        }
+      }
+      if (state.fitZoom) {
+        const placed = projectFit(state.anchor, state.anchor, state.zoom, state.width, state.height);
+        const dx = placed.x - state.width / 2;
+        const dy = placed.y - state.height / 2;
+        stage.dataset.anchorDx = dx.toFixed(2);
+        stage.dataset.anchorDy = dy.toFixed(2);
+        stage.dataset.centered = Math.hypot(dx, dy) < 1 ? 'yes' : 'no';
+      }
+      stage.dataset.zoom = String(state.zoom);
       frame = requestAnimationFrame(draw);
     };
     frame = requestAnimationFrame(draw);
@@ -927,7 +1027,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
   const applyZoom = (next: number) => {
     const state = view.current;
     const before = state.zoom;
-    const zoom = clampCrystalZoom(next);
+    const zoom = state.fitZoom ? clampLiveZoom(next, state.width, state.height) : clampCrystalZoom(next);
     state.anim = null;
     publishLabels(zoom, drillAfterZoom(before, zoom, state.drilledFace));
   };
@@ -937,7 +1037,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
     if (!zoomCommand) return;
     const state = view.current;
     state.anim = null;
-    const zoom = clampCrystalZoom(zoomCommand.zoom);
+    const zoom = state.fitZoom ? clampLiveZoom(zoomCommand.zoom, state.width, state.height) : clampCrystalZoom(zoomCommand.zoom);
     const drilled = zoom > FOCUS_FRAME_ZOOM + 1e-4 ? state.drilledFace : -1;
     publishLabels(zoom, drilled);
   }, [zoomCommand]);
@@ -1008,6 +1108,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
         data-label-tier={labels.tier}
         data-label-face={labels.face >= 0 ? (model.faces[labels.face]?.id ?? '') : ''}
         data-drilled={labelView.drilledFace >= 0 ? (model.faces[labelView.drilledFace]?.id ?? '') : ''}
+        data-zoom={labelView.zoom}
         aria-label="Topographic octahedron of assessment factors"
         tabIndex={0}
         onKeyDown={(event) => {

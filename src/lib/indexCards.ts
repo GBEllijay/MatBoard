@@ -140,12 +140,24 @@ export function ratingNote(value: number | null | undefined): string {
   return shownRating(value) === NEUTRAL_RATING ? NEUTRAL_NOTE : OPTIONAL_NOTE;
 }
 
+function scoredRatings(ratings: readonly number[]): AssessmentScore[] {
+  return ratings.filter((value): value is AssessmentScore => isAssessmentScore(value));
+}
+
 /** Rounded average of every line. An empty face is the neutral 3. */
 export function faceAverage(ratings: readonly number[]): AssessmentScore {
-  const scored = ratings.filter((value): value is AssessmentScore => isAssessmentScore(value));
+  const scored = scoredRatings(ratings);
   if (!scored.length) return NEUTRAL_RATING;
   const rounded = Math.round(scored.reduce((sum, value) => sum + value, 0) / scored.length);
   return isAssessmentScore(rounded) ? rounded : NEUTRAL_RATING;
+}
+
+/** Unrounded mean, to one decimal. An empty face is the neutral 3. Geometry still uses faceAverage. */
+export function faceAverageExact(ratings: readonly number[]): number {
+  const scored = scoredRatings(ratings);
+  if (!scored.length) return NEUTRAL_RATING;
+  const mean = scored.reduce((sum, value) => sum + value, 0) / scored.length;
+  return Math.round(mean * 10) / 10;
 }
 
 export function loadIndexCards(storage: Pick<Storage, 'getItem'>): IndexCardFile {
@@ -357,6 +369,10 @@ export function faceCards(cards: readonly LiveCard[], faceId: IndexFaceId): Live
 
 export function faceScore(cards: readonly LiveCard[], faceId: IndexFaceId): AssessmentScore {
   return faceAverage(faceCards(cards, faceId).map((card) => card.rating));
+}
+
+export function faceScoreExact(cards: readonly LiveCard[], faceId: IndexFaceId): number {
+  return faceAverageExact(faceCards(cards, faceId).map((card) => card.rating));
 }
 
 /** Whole words only. "Mount" matches "mount", not "mountain". */

@@ -6,6 +6,7 @@ import { GalleryPendingNotice } from '../components/GalleryPendingNotice';
 import { CloudLapseNotice } from '../components/CloudLapseNotice';
 import { DriveVideoFolders } from '../components/DriveVideoFolders';
 import { CompetitionCurriculumPage } from './CompetitionCurriculum';
+import { FocusShell } from '../components/FocusShell';
 import { CardHideScreen, LessonCoverProvider, LessonScreenHide } from '../components/LessonScreenCover';
 import { DriveHandoffCheck, DriveHandoffGuide, useDriveConnected } from '../components/DriveHandoffGuide';
 import { LessonVersionHistory } from '../components/LessonVersionHistory';
@@ -54,6 +55,14 @@ import {
   type LessonTreeCandidate,
 } from '../lib/lessonLinks';
 import { lessonClipLoopMs } from '../lib/lessonPlayback';
+import {
+  defaultFocusStepIndex,
+  focusStepLabel,
+  focusStepRef,
+  focusVideoSteps,
+  lessonBlockCopy,
+  notesPreview,
+} from '../lib/focusLayout';
 import {
   OPEN_DRIVE_CLASS_LABEL,
   restoreNoticeFromState,
@@ -115,7 +124,7 @@ import { ADD_REPLAY_LABEL, MAX_REPLAYS, replayHeading } from '../lib/replayAnaly
 import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
 import { ReviewSlotControls } from '../components/ReviewSlotControls';
 import { blockOffersReviewToggle } from '../lib/competitionCurriculum';
-import { INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
+import { COACH_BOARD_FROM, INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
 import { classHistoryHref } from '../lib/submenuNav';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { listPhotos } from '../lib/photoStore';
@@ -265,6 +274,8 @@ export function TrainingNotesPage() {
   const [removeArmed, setRemoveArmed] = useState(false);
   const [templateAsk, setTemplateAsk] = useState<LessonTemplateId | null>(null);
   const [removeBlockKey, setRemoveBlockKey] = useState<string | null>(null);
+  const [focusStepId, setFocusStepId] = useState<string | null>(null);
+  const [focusAsideKey, setFocusAsideKey] = useState<string | null>(null);
   const [videos, setVideos] = useState<TodayVideos | null>(null);
   const [galleryToday, setGalleryToday] = useState<GalleryTodayState>({ status: 'loading', videos: [] });
   const [driveToday, setDriveToday] = useState<DriveTodayState>({
@@ -684,17 +695,24 @@ export function TrainingNotesPage() {
     }
   };
 
-  const sectionMedia = (ref: LessonSlotRef, label: string, tech?: TechniqueBlock) => {
+  const sectionMedia = (
+    ref: LessonSlotRef,
+    label: string,
+    tech?: TechniqueBlock,
+    opts?: { startOpen?: boolean; dockBelow?: boolean; treeOnly?: boolean },
+  ) => {
     const offer = videoOffer(dayVideos, shownVideos, ref);
     const linked = tech ? matchLessonTree(tech.title, tech.treeId, treeCandidates) : null;
     return (
       <LessonSectionVideo
-        showVideo={offer.show}
+        showVideo={opts?.treeOnly ? false : offer.show}
         label={label}
         clipUrl={offer.clipUrl}
         mediaName={offer.mediaName}
         loopMs={lessonClipLoopMs(plan, dayVideos?.plan ?? null, ref)}
         onOpenBoard={() => openVideo(ref)}
+        startOpen={opts?.startOpen}
+        dockBelow={opts?.dockBelow}
         linkedTree={linked ? { id: linked.id, name: linked.name } : null}
         treeChoices={tech ? treeChoices : []}
         canEditTree={Boolean(tech) && editingToday}
@@ -713,6 +731,546 @@ export function TrainingNotesPage() {
       />
     );
   };
+
+  const coachFocus = searchParams.get('from') === COACH_BOARD_FROM && !unlimitedPlan && !lessonBlocked;
+  const focusBlocks = showCompetition ? [] : orderedBlocks;
+  const videoSteps = focusVideoSteps(focusBlocks);
+  const foundStep = videoSteps.findIndex((step) => step.id === focusStepId);
+  const stepCursor = foundStep >= 0 ? foundStep : defaultFocusStepIndex(videoSteps);
+  const resolvedStep = videoSteps[stepCursor] ?? null;
+  const techniqueTotal = videoSteps.filter((step) => step.kind === 'technique').length;
+  const asideIndex = focusAsideKey
+    ? orderedBlocks.findIndex((block, index) => blockKey(block, index) === focusAsideKey)
+    : -1;
+  const summaryBlock = asideIndex >= 0 ? orderedBlocks[asideIndex] : resolvedStep ? focusBlocks[resolvedStep.blockIndex] : null;
+  const summaryCopy = summaryBlock ? lessonBlockCopy(plan, summaryBlock) : { title: '', notes: '', expected: '', water: false };
+  const summaryOrdinals = summaryBlock
+    ? {
+        technique: orderedBlocks.slice(0, (asideIndex >= 0 ? asideIndex : resolvedStep?.blockIndex ?? 0) + 1).filter((block) => block.kind === 'technique').length,
+        game: orderedBlocks.slice(0, (asideIndex >= 0 ? asideIndex : resolvedStep?.blockIndex ?? 0) + 1).filter((block) => block.kind === 'game').length,
+        replay: orderedBlocks.slice(0, (asideIndex >= 0 ? asideIndex : resolvedStep?.blockIndex ?? 0) + 1).filter((block) => block.kind === 'replay').length,
+      }
+    : { technique: 1, game: 1, replay: 1 };
+  const summaryHeading = summaryBlock
+    ? blockHeading(summaryBlock, summaryOrdinals.technique || 1, summaryOrdinals.game || 1, summaryOrdinals.replay || 1)
+    : plan.lessonTitle || TRAINING_NOTES_LABEL;
+  const named = summaryCopy.title.trim();
+  const summaryTitle = named && named !== 'Technique' && named !== 'Game' && named !== 'Video replay' ? named : summaryHeading;
+  const stepRef = resolvedStep ? focusStepRef(resolvedStep) : null;
+  const stepBlock = resolvedStep ? focusBlocks[resolvedStep.blockIndex] : null;
+  const stepCopy = stepBlock ? lessonBlockCopy(plan, stepBlock) : summaryCopy;
+  const playerLabel = stepCopy.title && stepCopy.title !== 'Technique' ? stepCopy.title : focusStepLabel(resolvedStep, techniqueTotal);
+
+  const chooseStep = (id: string) => {
+    setFocusStepId(id);
+    setFocusAsideKey(null);
+  };
+
+  const focusEditor = (block: (typeof orderedBlocks)[number], index: number) => {
+    const techniqueOrdinal = orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'technique').length;
+    const gameOrdinal = orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'game').length;
+    const replayOrdinal = orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'replay').length;
+    const heading = blockHeading(block, techniqueOrdinal, gameOrdinal, replayOrdinal);
+    const tech = block.kind === 'technique' ? plan.techniques.find((item) => item.id === block.id) : undefined;
+    const game = block.kind === 'game' ? plan.games?.find((item) => item.id === block.id) : undefined;
+    const replay = block.kind === 'replay' ? plan.replays?.find((item) => item.id === block.id) : undefined;
+    const tools = editingToday ? (
+      <BlockTools
+        heading={heading}
+        index={index}
+        count={orderedBlocks.length}
+        confirming={removeBlockKey === blockKey(block, index)}
+        onMove={(direction) => {
+          setRemoveBlockKey(null);
+          commit(moveLessonBlock(plan, index, direction));
+        }}
+        onAskRemove={() => setRemoveBlockKey(blockKey(block, index))}
+        onCancelRemove={() => setRemoveBlockKey(null)}
+        onRemove={() => {
+          commit(removeLessonBlock(plan, index));
+          setRemoveBlockKey(null);
+        }}
+      />
+    ) : null;
+    if (block.kind === 'technique' && tech) {
+      return (
+        <>
+          <TechniqueBlockView
+            index={techniqueOrdinal - 1}
+            tech={tech}
+            readOnly={!editingToday}
+            onChange={(patch) => patchTechnique(tech.id, patch)}
+            media={sectionMedia({ role: 'technique', index: techniqueOrdinal - 1 }, heading, tech, { treeOnly: true })}
+          />
+          {tools}
+        </>
+      );
+    }
+    if (block.kind === 'game' && game) {
+      return (
+        <>
+          <GameBlockView
+            heading={heading}
+            game={game}
+            readOnly={!editingToday}
+            onChange={(patch) =>
+              commit({
+                ...plan,
+                games: (plan.games ?? []).map((item) => (item.id === game.id ? { ...item, ...patch } : item)),
+              })
+            }
+          />
+          {tools}
+        </>
+      );
+    }
+    if (block.kind === 'replay' && replay) {
+      return (
+        <>
+          <ReplayAnalysisCard
+            replay={replay}
+            heading={heading}
+            dateKey={viewKey}
+            readOnly={!editingToday}
+            canCapture={canCaptureReplay}
+            onChange={(patch) => commit(updateLessonReplay(plan, replay.id, patch))}
+          />
+          {tools}
+        </>
+      );
+    }
+    if (block.kind === 'warmup' || block.kind === 'specific' || block.kind === 'cooldown') {
+      const field =
+        block.kind === 'warmup'
+          ? { id: 'notes-warmup', value: plan.warmupNote, expected: plan.warmupExpected, max: WARMUP_NOTE_MAX, onChange: (warmupNote: string) => commit({ ...plan, warmupNote }), onExpected: (warmupExpected: string) => commit({ ...plan, warmupExpected }) }
+          : block.kind === 'specific'
+            ? { id: 'notes-specific', value: plan.specificNote, expected: plan.specificExpected, max: SPECIFIC_NOTE_MAX, onChange: (specificNote: string) => commit({ ...plan, specificNote }), onExpected: (specificExpected: string) => commit({ ...plan, specificExpected }) }
+            : { id: 'notes-cooldown', value: plan.cooldownNote, expected: plan.cooldownExpected, max: COOLDOWN_NOTE_MAX, onChange: (cooldownNote: string) => commit({ ...plan, cooldownNote }), onExpected: (cooldownExpected: string) => commit({ ...plan, cooldownExpected }) };
+      return (
+        <>
+          <NoteSection
+            id={field.id}
+            title={heading}
+            label="Special note"
+            value={field.value}
+            expected={field.expected}
+            maxLength={field.max}
+            readOnly={!editingToday}
+            onChange={field.onChange}
+            onExpected={field.onExpected}
+          />
+          {tools}
+        </>
+      );
+    }
+    const intro = block.kind === 'intro';
+    return (
+      <>
+        <section className="notes__card" data-lesson-block={heading}>
+          <label className="notes__field" htmlFor={intro ? 'notes-intro' : 'notes-closing'}>
+            {heading}
+            <textarea
+              id={intro ? 'notes-intro' : 'notes-closing'}
+              value={intro ? plan.intro : plan.closing}
+              rows={4}
+              maxLength={intro ? INTRO_MAX : CLOSING_MAX}
+              readOnly={!editingToday}
+              onChange={(event) => commit(intro ? { ...plan, intro: event.target.value } : { ...plan, closing: event.target.value })}
+            />
+          </label>
+        </section>
+        {tools}
+      </>
+    );
+  };
+
+  if (coachFocus) {
+    const planPanel = (
+      <>
+        <LessonTemplatePicker
+          template={activeLessonTemplate(plan)}
+          competitionAllowed={competitionAllowed}
+          readOnly={!editingToday}
+          onPick={requestTemplate}
+        />
+        {templateAsk ? (
+          <div className="notes__confirm" role="group" aria-label="Apply class template">
+            <p>{templateConfirmCopy(templateAsk)}</p>
+            <div className="notes__confirm-actions">
+              <button type="button" className="btn btn--ghost" onClick={() => setTemplateAsk(null)}>
+                Cancel
+              </button>
+              <button type="button" className="btn" onClick={applyAskedTemplate}>
+                Apply template
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {!competitionAllowed ? <p className="notes__when">Competition class is included with Coach Unlimited and Pro.</p> : null}
+        {showCompetition ? (
+          <>
+            <CompetitionCurriculumPage embedded />
+            {competitionReplays.map((block, index) => {
+              const replay = plan.replays?.find((item) => item.id === block.id);
+              if (!replay) return null;
+              return (
+                <ReplayAnalysisCard
+                  key={block.id}
+                  replay={replay}
+                  heading={replayHeading(index + 1)}
+                  dateKey={viewKey}
+                  readOnly={!editingToday}
+                  canCapture={canCaptureReplay}
+                  onChange={(patch) => commit(updateLessonReplay(plan, replay.id, patch))}
+                />
+              );
+            })}
+          </>
+        ) : (
+          <>
+            <section className="notes__archive" aria-label="Saved days">
+              <PlanDateNav
+                todayKey={todayKey}
+                viewKey={viewKey}
+                activePlanId={plan.id}
+                hitsFor={(query) => searchLessonPlans(archive, todayKey, query)}
+                onOpenDate={openDay}
+                onOpenHit={(dateKey, planId) => {
+                  const found = plansOnDay(archive, dateKey).find((item) => item.id === planId);
+                  if (found) openSavedPlan(dateKey, found);
+                  else openDay(dateKey);
+                }}
+              />
+              <div className="notes__days">
+                <button type="button" className={viewKey === todayKey ? 'notes__day notes__day--on' : 'notes__day'} aria-pressed={viewKey === todayKey} onClick={() => openDay(todayKey)}>
+                  Today
+                  <span className="notes__day-date">{planDayStamp(todayKey)}</span>
+                </button>
+                <button type="button" className={viewKey === yesterdayKey ? 'notes__day notes__day--on' : 'notes__day'} aria-pressed={viewKey === yesterdayKey} onClick={() => openDay(yesterdayKey)}>
+                  Yesterday
+                </button>
+                <button
+                  type="button"
+                  className={classesOpen ? 'notes__day notes__day--on' : 'notes__day'}
+                  aria-expanded={classesOpen}
+                  onClick={() => {
+                    setConfirmPlanId(null);
+                    setRemoveArmed(false);
+                    setClassesOpen((open) => !open);
+                  }}
+                >
+                  Classes
+                </button>
+              </div>
+              <p className="notes__when">
+                {planDayTitle(viewKey, todayKey)} · {planDayStamp(viewKey)}
+                {editingToday ? '' : ' · View only'}
+              </p>
+              {classesOpen ? (
+                classFolders.length ? (
+                  <ul className="notes__recent" aria-label="Class folders">
+                    {classFolders.map((folder) => (
+                      <li key={folder.key || 'unlabeled'}>
+                        <button type="button" className="notes__recent-btn" onClick={() => setFolderKey(folder.key === folderKey ? null : folder.key)}>
+                          <span>{folder.label}</span>
+                          <span>{folder.dates.length === 1 ? '1 day' : `${folder.dates.length} days`}</span>
+                        </button>
+                        {folderKey === folder.key
+                          ? folder.dates.map((day) => (
+                              <ul key={day.dateKey} className="notes__recent">
+                                {day.plans.map((item) => (
+                                  <li key={item.id}>
+                                    <button type="button" className="notes__recent-btn" onClick={() => openSavedPlan(day.dateKey, item)}>
+                                      {planDayTitle(day.dateKey, todayKey)} · {classPlanRowLabel(item)}
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            ))
+                          : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="notes__recent-empty">No saved classes yet.</p>
+                )
+              ) : null}
+              {confirmPlan ? (
+                <div className="notes__confirm" role="group" aria-label="Add class plan to today">
+                  <p>Add {planListLabel(confirmPlan)} to today? Today&apos;s other class plans stay.</p>
+                  <div className="notes__confirm-actions">
+                    <button type="button" className="btn btn--ghost" onClick={() => setConfirmPlanId(null)}>
+                      Cancel
+                    </button>
+                    <button type="button" className="btn" onClick={() => applyCopy(confirmPlan)}>
+                      Add to today
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              {copyTargets.length && !confirmPlanId
+                ? copyTargets.map((source) => (
+                    <button key={source.id} type="button" className="btn btn--ghost notes__copy" onClick={() => requestCopy(source)}>
+                      {copyTargets.length === 1 ? (editingToday ? 'Copy yesterday' : 'Copy into today') : `Copy ${planListLabel(source)}`}
+                    </button>
+                  ))
+                : null}
+            </section>
+            {classPlans.length > 1 ? (
+              <ul className="notes__class-list">
+                {classPlans.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      className={item.id === plan.id ? 'notes__class-btn notes__class-btn--on' : 'notes__class-btn'}
+                      aria-pressed={item.id === plan.id}
+                      onClick={() => setPlan(item)}
+                    >
+                      {planListLabel(item)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <ol className="focus-outline">
+              {orderedBlocks.map((block, index) => {
+                const copy = lessonBlockCopy(plan, block);
+                const key = blockKey(block, index);
+                const step = videoSteps.find((item) => item.blockIndex === index);
+                const now = Boolean(step && resolvedStep && step.id === resolvedStep.id && asideIndex < 0);
+                const heading = blockHeading(
+                  block,
+                  orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'technique').length || 1,
+                  orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'game').length || 1,
+                  orderedBlocks.slice(0, index + 1).filter((item) => item.kind === 'replay').length || 1,
+                );
+                const rowTitle = copy.title && copy.title !== 'Technique' && copy.title !== 'Game' ? copy.title : heading;
+                return (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      className={now || focusAsideKey === key ? 'focus-row focus-row--now' : 'focus-row'}
+                      onClick={() => {
+                        if (step) chooseStep(step.id);
+                        else setFocusAsideKey(key);
+                      }}
+                    >
+                      <span className="focus-row__title">{rowTitle}</span>
+                      {copy.expected ? <span className="focus-row__time">{copy.expected}</span> : null}
+                      {now ? <span className="focus-row__now">Now</span> : null}
+                      {copy.water ? <span className="focus-row__chip">Water break</span> : null}
+                      {copy.notes ? <span className="focus-row__notes">{notesPreview(copy.notes).text}</span> : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </>
+        )}
+      </>
+    );
+
+    return (
+      <main className="notes notes--focus">
+        <PlayExitMark
+          to={exitPath}
+          onExit={() => {
+            navigate(exitPath);
+          }}
+        />
+        <LessonCoverProvider>
+          <FocusShell
+            eyebrow={[plan.classDesignation || COACH_LESSON_EYEBROW, plan.classTime].filter(Boolean).join(' · ')}
+            title={plan.lessonTitle.trim() || TRAINING_NOTES_LABEL}
+            more={
+              <>
+                <AdvantageCloudPanel purpose="lesson" dateKey={viewKey} planJson={JSON.stringify(lessonPlanForDrive(plan))} />
+                <OpenMyDrive />
+                {editingToday ? (
+                  <button type="button" className="btn" onClick={() => {
+                    void listClassPhotoPromotions(todayKey).then((photos) => {
+                      const photo = photos[photos.length - 1];
+                      const submitted = submitForReview({
+                        revisionId: lessonDraftRevisionId(todayKey, plan.coachName, plan.id),
+                        dateKey: todayKey,
+                        coachName: plan.coachName,
+                        plan,
+                        photoId: photo?.id ?? '',
+                        photoName: photo?.name ?? '',
+                      });
+                      setReviewNote(REVIEW_SUBMITTED);
+                      void publishReviewToGym(submitted);
+                    });
+                  }}>
+                    {REVIEW_SUBMIT}
+                  </button>
+                ) : null}
+                {reviewNote ? <p role="status">{reviewNote}</p> : null}
+                <LessonVersionHistory versions={listPlanVersions(viewKey, plan.id)} />
+                {editingToday ? <CoachPlanExport dateKey={todayKey} plan={plan} /> : null}
+                {canRemoveClass ? (
+                  <button type="button" className="btn btn--ghost" onClick={() => setRemoveArmed(true)}>
+                    Remove this class plan
+                  </button>
+                ) : null}
+                {removeArmed ? (
+                  <div className="notes__confirm" role="group" aria-label="Remove this class plan">
+                    <button type="button" className="btn" onClick={removeClassPlan}>
+                      Remove
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            }
+            player={
+              stepRef ? (
+                sectionMedia(stepRef, playerLabel, undefined, { startOpen: true, dockBelow: true })
+              ) : (
+                <div className="focus-shell__plate">{showCompetition ? 'Competition class' : plan.lessonTitle.trim() || 'Daily Lesson Plan'}</div>
+              )
+            }
+            stepLabel={focusStepLabel(resolvedStep, techniqueTotal)}
+            onPrev={() => {
+              const next = videoSteps[stepCursor - 1];
+              if (next) chooseStep(next.id);
+            }}
+            onNext={() => {
+              const next = videoSteps[stepCursor + 1];
+              if (next) chooseStep(next.id);
+            }}
+            prevDisabled={!resolvedStep || stepCursor <= 0}
+            nextDisabled={!resolvedStep || stepCursor >= videoSteps.length - 1}
+            summaryTitle={summaryTitle}
+            summaryText={summaryCopy.notes}
+            hide={<LessonScreenHide />}
+            tabs={[
+              { id: 'plan', label: 'Plan', panel: planPanel },
+              {
+                id: 'videos',
+                label: 'Videos',
+                panel: (
+                  <ol className="focus-outline">
+                    {videoSteps.map((step) => {
+                      const block = focusBlocks[step.blockIndex];
+                      const copy = block ? lessonBlockCopy(plan, block) : { title: focusStepLabel(step, techniqueTotal), notes: '', expected: '', water: false };
+                      const now = resolvedStep?.id === step.id;
+                      return (
+                        <li key={step.id}>
+                          <button type="button" className={now ? 'focus-row focus-row--now' : 'focus-row'} onClick={() => chooseStep(step.id)}>
+                            <span className="focus-row__title">{copy.title && copy.title !== 'Technique' ? copy.title : focusStepLabel(step, techniqueTotal)}</span>
+                            {copy.expected ? <span className="focus-row__time">{copy.expected}</span> : null}
+                            {now ? <span className="focus-row__now">Now</span> : null}
+                          </button>
+                        </li>
+                      );
+                    })}
+                    {stepRef ? (
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        onClick={() =>
+                          navigate(
+                            lessonVideoHref({
+                              section: stepRef.role,
+                              date: viewKey,
+                              index: stepRef.role === 'technique' ? stepRef.index : undefined,
+                              search: searchParams.toString(),
+                              classId: plan.id,
+                            }),
+                          )
+                        }
+                      >
+                        Open on Daily Training Videos
+                      </button>
+                    ) : null}
+                  </ol>
+                ),
+              },
+              {
+                id: 'details',
+                label: 'Details',
+                panel: (
+                  <>
+                    <label className="notes__field" htmlFor="notes-coach">
+                      Coach name
+                      <input
+                        id="notes-coach"
+                        value={plan.coachName}
+                        maxLength={COACH_NAME_MAX}
+                        autoComplete="off"
+                        readOnly={!editingToday}
+                        onChange={(event) => commit({ ...plan, coachName: event.target.value })}
+                      />
+                    </label>
+                    <label className="notes__field" htmlFor="notes-class">
+                      Class designation
+                      <input
+                        id="notes-class"
+                        value={plan.classDesignation}
+                        maxLength={CLASS_DESIGNATION_MAX}
+                        autoComplete="off"
+                        readOnly={!editingToday}
+                        onChange={(event) => commit({ ...plan, classDesignation: event.target.value })}
+                      />
+                    </label>
+                    <label className="notes__field" htmlFor="notes-lesson-title">
+                      Lesson title
+                      <input
+                        id="notes-lesson-title"
+                        value={plan.lessonTitle}
+                        maxLength={LESSON_TITLE_MAX}
+                        autoComplete="off"
+                        readOnly={!editingToday}
+                        onChange={(event) => commit({ ...plan, lessonTitle: event.target.value })}
+                      />
+                    </label>
+                    <label className="notes__field" htmlFor="notes-class-time">
+                      Class time
+                      <input
+                        id="notes-class-time"
+                        value={plan.classTime}
+                        maxLength={CLASS_TIME_MAX}
+                        placeholder="5:00 PM"
+                        autoComplete="off"
+                        readOnly={!editingToday}
+                        onChange={(event) => commit({ ...plan, classTime: event.target.value })}
+                      />
+                    </label>
+                    {summaryBlock ? focusEditor(summaryBlock, asideIndex >= 0 ? asideIndex : resolvedStep?.blockIndex ?? 0) : null}
+                    {editingToday ? (
+                      <div className="notes__add-row">
+                        <button
+                          type="button"
+                          className="btn"
+                          disabled={atMax}
+                          onClick={() => {
+                            const next = addLessonTechnique(plan);
+                            commit(next);
+                            const added = next.techniques.find((item) => !plan.techniques.some((tech) => tech.id === item.id));
+                            const steps = focusVideoSteps(lessonBlocks(next));
+                            const step = steps.find((item) => item.kind === 'technique' && item.id === `technique:${added?.id ?? ''}`);
+                            if (step) chooseStep(step.id);
+                          }}
+                        >
+                          Add technique
+                        </button>
+                        <button type="button" className="btn btn--ghost" disabled={atMaxGames} onClick={() => commit(addLessonGame(plan))}>
+                          Add game
+                        </button>
+                        <button type="button" className="btn btn--ghost" disabled={atMaxReplays} onClick={() => commit(addLessonReplay(plan))}>
+                          {ADD_REPLAY_LABEL}
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                ),
+              },
+            ]}
+          />
+        </LessonCoverProvider>
+      </main>
+    );
+  }
 
   return (
     <main className="notes">

@@ -5,9 +5,10 @@ import { LOOP_RESTART_MIN_MS, nextLoopStep } from '../lib/videoLoop';
 
 /**
  * Looping clip player from Daily Training Videos. Loops forever, or for a
- * timed loop when durationMs is set. Chrome toolbar: Stop, Mute clips,
- * Fullscreen. Shared with the program director's Camera window so both
- * screens play today's videos the same way.
+ * timed loop when durationMs is set. Shared with the lesson-plan technique
+ * window and the program director's Camera window.
+ * Full screen is the picture only: no dock, no chrome, no native controls.
+ * A tap there leaves full screen. The mute toggle stays in the window.
  */
 export function LoopClip({
   src,
@@ -17,7 +18,6 @@ export function LoopClip({
   unlockSound,
   fullscreen,
   onToggleFullscreen,
-  onStop,
   onToggleMute,
   overlay,
   durationMs,
@@ -66,6 +66,7 @@ export function LoopClip({
     const video = videoRef.current;
     if (!video) return;
     return onIosVideoFullscreen(video, () => {
+      video.controls = false;
       exitInlineVideoFullscreen(video);
       if (!fullscreenRef.current) toggleRef.current?.();
     });
@@ -84,10 +85,12 @@ export function LoopClip({
   }, []);
 
   useEffect(() => {
-    if (!fullscreen) return;
-    revealChrome();
-    return () => window.clearTimeout(hideChromeTimer.current);
-  }, [revealChrome, fullscreen]);
+    const el = videoRef.current;
+    if (!el) return;
+    el.controls = false;
+    el.defaultMuted = true;
+    el.muted = muted;
+  }, [muted, src, fullscreen]);
 
   useEffect(() => {
     if (timedLoop) return;
@@ -105,7 +108,9 @@ export function LoopClip({
     const start = async () => {
       try {
         el.currentTime = 0;
-        el.muted = muted;
+        el.controls = false;
+        el.defaultMuted = true;
+        el.muted = true;
         if (!muted && unlockSound) el.muted = false;
         await el.play();
         if (cancelled) return;
@@ -187,7 +192,10 @@ export function LoopClip({
 
     const onEnded = () => apply(true);
     el.loop = false;
-    el.muted = muted;
+    el.controls = false;
+    el.defaultMuted = true;
+    el.muted = true;
+    if (!muted && unlockSound) el.muted = false;
     el.addEventListener('ended', onEnded);
     timer = window.setInterval(() => {
       if (restarting) return;
@@ -208,18 +216,17 @@ export function LoopClip({
     };
   }, [durationMs, playing, src, timedLoop]);
 
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el || !timedLoop) return;
-    el.muted = muted;
-  }, [muted, timedLoop]);
-
   return (
     <div
       className={`techniques__frame${fullscreen ? ' techniques__frame--fill' : ''}`}
       onClick={(event) => {
         const target = event.target as HTMLElement | null;
         if (target?.closest('button, a, label')) return;
+        if (fullscreen) {
+          event.stopPropagation();
+          onToggleFullscreen?.();
+          return;
+        }
         if (chrome) hideChrome();
         else revealChrome();
       }}
@@ -229,69 +236,53 @@ export function LoopClip({
         className="techniques__video"
         src={src}
         muted={muted}
+        controls={false}
         playsInline
         loop={!timedLoop}
         disableRemotePlayback
         aria-label={label}
       />
       {overlay}
-      {dock}
-      {chrome && onToggleFullscreen && !dock ? (
+      {fullscreen ? null : dock}
+      {!fullscreen && onToggleMute ? (
+        <button
+          type="button"
+          className={`techniques__sound${muted ? ' techniques__sound--muted' : ''}`}
+          aria-pressed={muted}
+          aria-label={muted ? 'Unmute video' : 'Mute video'}
+          onClick={(event) => {
+            event.stopPropagation();
+            const el = videoRef.current;
+            if (el) {
+              el.controls = false;
+              el.muted = !muted;
+              if (muted) {
+                setNeedsUnmute(false);
+                void el.play();
+              }
+            }
+            onToggleMute();
+          }}
+        >
+          {muted ? 'Unmute' : 'Mute'}
+        </button>
+      ) : null}
+      {!fullscreen && chrome && onToggleFullscreen && !dock ? (
         <div className="techniques__chrome" role="toolbar" aria-label="Playback controls">
-          {fullscreen && onStop ? (
-            <button
-              type="button"
-              className="techniques__chrome-btn"
-              onClick={(event) => {
-                event.stopPropagation();
-                onStop();
-              }}
-            >
-              Stop
-            </button>
-          ) : null}
-          {fullscreen && onToggleMute ? (
-            <button
-              type="button"
-              className={`techniques__chrome-btn${muted ? ' techniques__chrome-btn--on' : ''}`}
-              aria-pressed={muted}
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleMute();
-              }}
-            >
-              Mute clips
-            </button>
-          ) : null}
           <button
             type="button"
             className="techniques__chrome-btn techniques__chrome-btn--go"
-            aria-pressed={fullscreen}
+            aria-pressed={false}
             onClick={(event) => {
               event.stopPropagation();
               onToggleFullscreen();
             }}
           >
-            {fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            Fullscreen
           </button>
         </div>
       ) : null}
-      {chrome && dock && fullscreen && onToggleMute ? (
-        <div className="techniques__chrome" role="toolbar" aria-label="Playback controls">
-          <button
-            type="button"
-            className={`techniques__chrome-btn${muted ? ' techniques__chrome-btn--on' : ''}`}
-            aria-pressed={muted}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleMute();
-            }}
-          >
-            Mute clips
-          </button>
-        </div>
-      ) : null}
-      {!muted && needsUnmute ? (
+      {!fullscreen && !muted && needsUnmute ? (
         <button
           type="button"
           className="saver__unmute"

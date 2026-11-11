@@ -14,6 +14,7 @@
  */
 
 import { migrateExpectedDuration } from './expectedDuration.ts';
+import { techniqueInsertIndex } from './focusLayout.ts';
 import {
   EXPECTED_MAX,
   MAX_TECHNIQUES,
@@ -334,9 +335,10 @@ export function addLessonTechnique(plan: TrainingNotesPlan): TrainingNotesPlan {
   if (techniqueIds(lessonBlocks(plan)).length >= MAX_TECHNIQUES) return plan;
   const listed = ensureListed(plan);
   const tech = createTechnique();
-  const blocks = [...(listed.blocks ?? []), { kind: 'technique' as const, id: tech.id }];
-  const techniques = [...techniquesFor(listed, listed.blocks ?? []), tech];
-  return withStructure(listed, blocks, techniques, gamesFor(listed, blocks), listed.template ?? 'adult');
+  const blocks = [...(listed.blocks ?? [])];
+  blocks.splice(techniqueInsertIndex(blocks), 0, { kind: 'technique', id: tech.id });
+  const pool = { ...listed, techniques: [...listed.techniques, tech] };
+  return withStructure(listed, blocks, techniquesFor(pool, blocks), gamesFor(listed, blocks), listed.template ?? 'adult');
 }
 
 export function addLessonGame(plan: TrainingNotesPlan): TrainingNotesPlan {
