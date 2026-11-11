@@ -46,7 +46,7 @@ const { addStudent, getRoster, linkRosterCard, resetRoster, setNoPhotos, updateS
 const { CARD_LOOKS, readCardLook, writeCardLook } = await import('../../lib/cardLook.ts');
 const { getCardSyncState } = await import('../../lib/cardSync.ts');
 const { updateRosterCard } = await import('../../lib/rosterCardStore.ts');
-const { ASSESSMENT_AREAS } = await import('../../lib/studentAssessment.ts');
+const { ASSESSMENT_AREAS, ASSESSMENT_FORM_AREAS } = await import('../../lib/studentAssessment.ts');
 const { ProfilePage } = await import('../../pages/student/ProfilePage.tsx');
 const { StudentCard } = await import('../../pages/Roster.tsx');
 const { readRosterCard } = await import('../../lib/rosterCardStore.ts');
@@ -1176,15 +1176,58 @@ test('a new assessment keeps its scores and note, and Save assessment stays a su
   const note = form.querySelector('textarea') as HTMLTextAreaElement;
   const selects = [...form.querySelectorAll('select')] as HTMLSelectElement[];
   assert.equal(note.value, '');
-  assert.equal(selects.length, ASSESSMENT_AREAS.length);
+  assert.equal(selects.length, ASSESSMENT_FORM_AREAS.length, 'all eight faces, Sweeps included');
+  assert.equal(selects.length, 8);
   assert.ok(selects.every((item) => item.value === '3'));
+  const labels = [...form.querySelectorAll('.clipboard__scores label')].map((node) => node.firstChild?.textContent?.trim());
+  assert.deepEqual(labels, ASSESSMENT_FORM_AREAS.map((area) => area.label));
+  const sweepsSelect = selects[ASSESSMENT_FORM_AREAS.findIndex((area) => area.id === 'sweeps')];
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(sweepsSelect), 'value')?.set;
+    setter?.call(sweepsSelect, '1');
+    sweepsSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  assert.equal(sweepsSelect.value, '1');
   click(save);
   const saved = readRosterCard(card.id).coachAssessments.at(-1);
   assert.equal(saved?.note, '');
   assert.equal(saved?.scores.mindset, 3);
+  assert.equal(saved?.scores.sweeps, 1, 'coach-entered Sweeps saves');
   assert.equal(fresh(card.id).name, 'Rio Assessment');
   assert.equal(fresh(card.id).belt, 'Blue');
   assert.equal(document.querySelector('form.clipboard--form'), null);
+  unmount(m);
+
+  // Reload: the saved Sweeps shows on the card's eight-row assessment table.
+  const again = mount(sheet(fresh(card.id)));
+  click(buttons(/^Assessments/)[0]);
+  const rows = [...document.querySelectorAll('.clipboard table tbody tr')].map((tr) =>
+    [...tr.querySelectorAll('td')].map((td) => td.textContent?.trim()).slice(0, 2).join(' '),
+  );
+  assert.equal(rows.length, 8);
+  assert.deepEqual(rows.map((r) => r.split(' ').slice(0, -1).join(' ')), ASSESSMENT_FORM_AREAS.map((area) => area.label));
+  assert.ok(rows.includes('Sweeps 1'), rows.join(' | '));
+  assert.equal(readRosterCard(card.id).coachAssessments.at(-1)?.scores.sweeps, 1, 'reloads');
+  unmount(again);
+});
+
+test('a coach assessment saved before Sweeps shows Sweeps as not rated on the roster card', () => {
+  localStorage.clear();
+  resetRoster();
+  const card = studentCard('Old Seven');
+  const scores = Object.fromEntries(ASSESSMENT_AREAS.map((a) => [a.id, 4]));
+  updateRosterCard(card.id, (r) => ({ ...r, coachAssessments: [{ id: 'old7', date: '2026-10-01', note: '', scores } as never] }));
+  const m = mount(sheet(card));
+  click(buttons(/^Assessments/)[0]);
+  const rows = [...document.querySelectorAll('.clipboard table tbody tr')].map((tr) =>
+    [...tr.querySelectorAll('td')].map((td) => td.textContent?.trim()),
+  );
+  assert.equal(rows.length, 8);
+  const sweeps = rows.find((r) => r[0] === 'Sweeps');
+  assert.ok(sweeps);
+  assert.notEqual(sweeps?.[1], '4', 'not invented');
+  assert.notEqual(sweeps?.[1], '0');
+  assert.match(text(), /Avg 4/, 'the trend averages the seven it has');
   unmount(m);
 });
 

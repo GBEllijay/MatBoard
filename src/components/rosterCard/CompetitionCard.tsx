@@ -12,7 +12,7 @@ import { SharedGamePlanFields } from './CompetitorWorkspace';
 import type { ImportedCompetitionPlan } from '../../lib/progress/competition';
 import { formatWeight, tournamentStatusLabel } from '../../lib/progress/competition';
 import type { AssessmentScore } from '../../lib/studentAssessment';
-import { ASSESSMENT_AREAS } from '../../lib/studentAssessment';
+import { ASSESSMENT_FORM_AREAS } from '../../lib/studentAssessment';
 import { cardDate, initialsOf } from '../../lib/rosterCard';
 import { METHOD_LABELS, competitionRecord, latestWeighIn, opponentsFaced, tournamentsIcs, upcomingTournaments } from '../../lib/competitionCard';
 import { DEFAULT_CARD_LOOK, type CardLook } from '../../lib/cardLook';
@@ -238,7 +238,7 @@ export function CompetitionCard({
             <>
               <CardRadar coach={coachScores} self={null} />
               <ul className="comp-card__scores">
-                {ASSESSMENT_AREAS.map((area) => (
+                {ASSESSMENT_FORM_AREAS.map((area) => (
                   <li key={area.id}>
                     <span>{area.label}</span>
                     <b>{coachScores[area.id] ?? '—'}/5</b>

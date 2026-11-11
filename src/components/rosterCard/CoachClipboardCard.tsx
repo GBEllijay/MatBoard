@@ -6,7 +6,7 @@
  * This file draws. It does not save. Callers pass values and handlers.
  */
 import { useId, useState, type ReactNode } from 'react';
-import { ASSESSMENT_AREAS, type AssessmentEntry, type AssessmentScore } from '../../lib/studentAssessment';
+import { ASSESSMENT_FORM_AREAS, isAssessmentScore, type AssessmentEntry, type AssessmentScore } from '../../lib/studentAssessment';
 import type { AssessmentSummary, BenchmarkItem, DateFacts } from '../../lib/rosterCard';
 import { cardDate, NO_DATE } from '../../lib/rosterCard';
 import type { TrainingStyle } from '../../lib/progress/types';
@@ -435,8 +435,9 @@ function AssessmentHistory({ entries }: { entries: readonly AssessmentEntry[] })
       </h3>
       <ul className="clipboard__history">
         {rows.map((row) => {
-          const values = ASSESSMENT_AREAS.map((area) => row.scores[area.id]);
-          const avg = Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10;
+          // An entry saved before Sweeps averages the faces it has.
+          const values = ASSESSMENT_FORM_AREAS.map((area) => row.scores[area.id]).filter(isAssessmentScore);
+          const avg = values.length ? Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10 : 0;
           return (
             <li key={row.id}>
               <b>{cardDate(row.date)}</b>
@@ -520,26 +521,26 @@ const R_CY = 97;
 const R_R = 75;
 
 function point(index: number, value: number): string {
-  const theta = -Math.PI / 2 + (index * 2 * Math.PI) / ASSESSMENT_AREAS.length;
+  const theta = -Math.PI / 2 + (index * 2 * Math.PI) / ASSESSMENT_FORM_AREAS.length;
   const span = (value / 5) * R_R;
   return `${(R_CX + Math.cos(theta) * span).toFixed(1)},${(R_CY + Math.sin(theta) * span).toFixed(1)}`;
 }
 
 function shape(scores: Record<string, AssessmentScore> | null): string {
   if (!scores) return '';
-  return ASSESSMENT_AREAS.map((area, index) => point(index, scores[area.id] ?? 0)).join(' ');
+  return ASSESSMENT_FORM_AREAS.map((area, index) => point(index, scores[area.id] ?? 0)).join(' ');
 }
 
 export function CardRadar({ coach, self }: { coach: Record<string, AssessmentScore> | null; self: Record<string, AssessmentScore> | null }) {
   return (
     <svg viewBox="0 0 310 194" className="clipboard__radar" role="img" aria-label="Assessment shape">
       {[1, 2, 3, 4, 5].map((ring) => (
-        <polygon key={ring} className={ring === 5 ? 'ring ring--out' : 'ring'} points={ASSESSMENT_AREAS.map((_, index) => point(index, ring)).join(' ')} />
+        <polygon key={ring} className={ring === 5 ? 'ring ring--out' : 'ring'} points={ASSESSMENT_FORM_AREAS.map((_, index) => point(index, ring)).join(' ')} />
       ))}
       {coach ? <polygon className="coach" points={shape(coach)} strokeWidth="2.2" strokeLinejoin="round" /> : null}
       {self ? <polygon className="self" points={shape(self)} strokeWidth="2.2" strokeDasharray="5 4" strokeLinejoin="round" /> : null}
-      {ASSESSMENT_AREAS.map((area, index) => {
-        const theta = -Math.PI / 2 + (index * 2 * Math.PI) / ASSESSMENT_AREAS.length;
+      {ASSESSMENT_FORM_AREAS.map((area, index) => {
+        const theta = -Math.PI / 2 + (index * 2 * Math.PI) / ASSESSMENT_FORM_AREAS.length;
         const x = R_CX + Math.cos(theta) * (R_R + 14);
         const y = R_CY + Math.sin(theta) * (R_R + 12) + 3;
         const anchor = Math.abs(Math.cos(theta)) < 0.2 ? 'middle' : Math.cos(theta) > 0 ? 'start' : 'end';
@@ -568,7 +569,7 @@ function Spark({ points }: { points: number[] }) {
 function CardBars({ coach, self }: { coach: Record<string, AssessmentScore> | null; self: Record<string, AssessmentScore> | null }) {
   return (
     <ul className="clipboard__bars" aria-label="Scouting report">
-      {ASSESSMENT_AREAS.map((area) => {
+      {ASSESSMENT_FORM_AREAS.map((area) => {
         const c = coach ? coach[area.id] ?? null : null;
         const v = self ? self[area.id] ?? null : null;
         return (
