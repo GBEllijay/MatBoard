@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { RadarChart, type RadarSeries } from '../../components/RadarChart';
+import { ScoutCage } from '../../components/CleanCage';
 import { competitionOf } from '../../lib/progress/competition';
 import type { CompetitionResult } from '../../lib/progress/types';
 import {
@@ -584,14 +584,6 @@ function matchWord(result: CompetitionResult['matches'][number]['result']): stri
   return 'Loss';
 }
 
-function chartSeries(name: string, mine: AssessmentScores | null, theirs: AssessmentScores | null): RadarSeries[] {
-  const series: RadarSeries[] = [];
-  if (mine) series.push({ name: 'Me', scores: mine, tone: 'me' });
-  if (theirs) series.push({ name, scores: theirs, tone: 'opponent' });
-  if (!series.length) series.push({ name, scores: null, tone: 'opponent' });
-  return series;
-}
-
 function OpponentTracker({
   card,
   selfScores,
@@ -730,8 +722,10 @@ function OpponentTracker({
             />
           </div>
         ) : (
-          <RadarChart
-            series={chartSeries(card.name, selfScores, theirs)}
+          <ScoutCage
+            mine={selfScores}
+            theirs={theirs}
+            opponentName={card.name}
             title={selfScores && theirs ? 'Me vs them' : 'Shape'}
             empty="Rate this opponent to see their shape."
           />

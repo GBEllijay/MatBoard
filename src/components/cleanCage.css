@@ -1,0 +1,161 @@
+/* Direction A clean cage. Strokes live in the SVG viewBox so a TV
+   scales the drawing once. Labels stay the live cage size. */
+
+.clean-cage-panel {
+  min-width: 0;
+  background: #0e1726;
+  border-radius: 20px;
+  padding: 8px 4px 10px;
+}
+
+.assess-visual.clean-cage-panel {
+  background: #0e1726;
+  border-radius: 20px;
+  padding: 14px 2px 12px;
+}
+
+.clean-cage.oct-figure--placed {
+  display: grid;
+  grid-template-columns: max-content minmax(6.25rem, 1fr) max-content;
+  grid-template-areas:
+    'mindset guard-control passing'
+    'conditioning chart sweeps'
+    'submissions escapes-defense takedowns';
+  gap: 2px 4px;
+  align-items: center;
+  justify-items: stretch;
+  width: 100%;
+  margin-top: 0;
+}
+
+.clean-cage .oct-chart {
+  grid-area: chart;
+  position: relative;
+  width: 100%;
+  max-width: none;
+  justify-self: center;
+}
+
+.clean-cage .oct-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 2px 1px;
+  color: #eef2f8;
+  text-align: center;
+}
+
+.clean-cage .oct-label[data-area='guard-control'] { grid-area: guard-control; }
+.clean-cage .oct-label[data-area='passing'] { grid-area: passing; }
+.clean-cage .oct-label[data-area='sweeps'] { grid-area: sweeps; }
+.clean-cage .oct-label[data-area='takedowns'] { grid-area: takedowns; }
+.clean-cage .oct-label[data-area='escapes-defense'] { grid-area: escapes-defense; }
+.clean-cage .oct-label[data-area='submissions'] { grid-area: submissions; }
+.clean-cage .oct-label[data-area='conditioning'] { grid-area: conditioning; }
+.clean-cage .oct-label[data-area='mindset'] { grid-area: mindset; }
+
+.clean-cage.oct-figure--cage .oct-label__name {
+  flex: none;
+  color: #eef2f8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.clean-cage.oct-figure--cage .oct-label__score {
+  flex: none;
+  color: #6ea8ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.clean-cage.oct-figure--cage .oct-label__words {
+  flex: none;
+  color: #d7e6ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.clean-cage .oct-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 13.6%;
+  height: 13.6%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+  background: rgba(245, 241, 232, 0.92);
+  -webkit-mask-image: url('/student/advantage-deboss-mask.png');
+  mask-image: url('/student/advantage-deboss-mask.png');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.clean-cage-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.cage-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 10px 4px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cage-key li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  color: #eef2f8;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.cage-key .assess-swatch--me {
+  background: #6ea8ff;
+}
+
+.cage-key .assess-swatch--opponent {
+  background: #ff8a3d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fence-pattern {
+    opacity: 0;
+  }
+}
+
+.no-texture .fence-pattern {
+  opacity: 0;
+}
+
+@media (min-width: 1200px) {
+  .clean-cage.oct-figure--cage .oct-label__name,
+  .clean-cage .oct-label__name {
+    font-size: 11px;
+  }
+
+  .clean-cage .oct-label__score,
+  .clean-cage .oct-label__words {
+    font-size: 12px;
+  }
+}

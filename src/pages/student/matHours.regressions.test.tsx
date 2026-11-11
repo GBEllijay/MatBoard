@@ -576,10 +576,14 @@ test('card radar reads the latest check-in; the self-assessment page is unchange
   const radar = page.host.querySelector('[data-testid="card-radar"]') as HTMLElement;
   const cage = radar.querySelector('polygon.oct-cage');
   assert.equal(cage?.getAttribute('points')?.trim().split(/\s+/).length, 8);
-  assert.equal(radar.querySelectorAll('line.oct-grid').length, 0, 'no spider web');
+  assert.equal(radar.querySelectorAll('line.cage-spoke').length, 8, 'eight spokes, one per factor');
+  assert.equal(radar.querySelectorAll('.cage-post').length, 8);
+  assert.equal(radar.querySelectorAll('polygon.cage-ring').length, 5);
   assert.ok(radar.querySelector('.oct-mark'));
+  assert.ok(radar.querySelector('.fence-pattern'));
   assert.equal(radar.querySelector('.oct-shape--filled'), null, 'an unrated Sweeps corner is not closed through zero');
   assert.equal((radar.querySelector('.oct-shape-line')?.getAttribute('points') ?? '').includes('100.00,100.00'), false);
+  assert.equal((radar.querySelector('.oct-shape-line')?.getAttribute('points') ?? '').includes('110.00,110.00'), false);
   assert.deepEqual(
     [...radar.querySelectorAll('.oct-label__name')].map((node) => node.textContent),
     ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset'],
@@ -617,7 +621,7 @@ test('a complete eight-value cage closes on eight vertices', () => {
   const filled = page.host.querySelector('polygon.oct-shape--filled');
   assert.equal(cage?.getAttribute('points')?.trim().split(/\s+/).length, 8);
   assert.equal(filled?.getAttribute('points')?.trim().split(/\s+/).length, 8);
-  assert.equal(page.host.querySelectorAll('line.oct-grid').length, 0);
+  assert.equal(page.host.querySelectorAll('line.cage-spoke').length, 8);
   assert.equal(page.host.querySelectorAll('.oct-dot').length, 8);
   assert.ok(page.host.querySelector('.oct-mark'));
   const closing = page.host.querySelector('.oct-shape-line')?.getAttribute('points')?.trim().split(/\s+/) ?? [];

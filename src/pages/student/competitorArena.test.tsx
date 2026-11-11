@@ -330,15 +330,33 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
   assert.ok(overlay.querySelector('.archive-diamond canvas'));
   assert.equal(overlay.querySelector('[data-comparison]')?.getAttribute('data-comparison'), 'on');
   assert.equal(overlay.querySelector('[data-comparison]')?.getAttribute('data-self-passing'), '1');
-  assert.equal(overlay.querySelectorAll('polygon.assess-chart__shape').length, 0);
+  assert.equal(overlay.querySelectorAll('.cage-series').length, 0);
   act(() => {
     labeled(host, 'Spider for Sam').click();
   });
   assert.equal(overlay.getAttribute('data-graph'), 'spider');
-  assert.equal(overlay.querySelectorAll('polygon.assess-chart__shape').length, 2);
-  assert.equal(overlay.querySelectorAll('polygon.assess-chart__shape--opponent').length, 1);
+  assert.equal(labeled(host, 'Spider for Sam').textContent?.trim(), 'Spider');
+  assert.equal(overlay.querySelector('polygon.oct-cage')?.getAttribute('points')?.trim().split(/\s+/).length, 8);
+  assert.equal(overlay.querySelectorAll('line.cage-spoke').length, 8);
+  assert.equal(overlay.querySelectorAll('.cage-post').length, 8);
+  assert.equal(overlay.querySelectorAll('.cage-series').length, 2);
+  assert.equal(overlay.querySelectorAll('.cage-series--opponent').length, 1);
+  assert.equal(overlay.querySelectorAll('.oct-dot').length, 14, 'Sweeps is unrated on both, so it is not a seventh side or a zero');
+  assert.equal(overlay.querySelector('.oct-shape--filled'), null);
+  assert.equal(overlay.querySelectorAll('.oct-label__score').length, 0);
+  assert.deepEqual(
+    [...overlay.querySelectorAll('.oct-label__name')].map((node) => node.textContent),
+    ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset'],
+  );
+  assert.deepEqual(
+    [...overlay.querySelectorAll('.cage-key li')].map((node) => node.textContent?.trim()),
+    ['Me', 'Opponent'],
+  );
+  assert.match(overlay.querySelector('svg')?.getAttribute('aria-label') ?? '', /Me versus Sam/);
+  assert.match(overlay.querySelector('svg')?.getAttribute('aria-label') ?? '', /Sweeps not rated/);
+  assert.equal((overlay.querySelector('svg')?.getAttribute('aria-label') ?? '').includes('Sweeps 0'), false);
   assert.match(overlay.textContent ?? '', /Me/);
-  assert.match(overlay.textContent ?? '', /Sam/);
+  assert.match(overlay.textContent ?? '', /Opponent/);
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.textContent?.includes('Do your self-assessment')),
     false,
@@ -406,7 +424,13 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
     labeled(legacy.host, 'Spider for Riley').click();
   });
   assert.match(legacy.host.textContent ?? '', /Rate this opponent to see their shape/);
-  assert.equal(legacy.host.querySelectorAll('polygon.assess-chart__shape').length, 0);
+  assert.equal(legacy.host.querySelectorAll('.cage-series').length, 0);
+  assert.equal(legacy.host.querySelectorAll('.oct-dot').length, 0);
+  assert.equal(legacy.host.querySelector('polygon.oct-cage')?.getAttribute('points')?.trim().split(/\s+/).length, 8);
+  assert.deepEqual(
+    [...legacy.host.querySelectorAll('.oct-label__name')].map((node) => node.textContent),
+    ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset'],
+  );
   unmount(legacy);
 });
 
