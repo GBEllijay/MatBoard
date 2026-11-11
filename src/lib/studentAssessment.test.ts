@@ -5,6 +5,7 @@ import { sharedCheckpointId } from './progress/format.ts';
 import { PROGRESS_BELTS } from './progress/types.ts';
 import { blankStudentReport } from './studentEdition.ts';
 import { withStarterRubric } from './studentTools.ts';
+import { INDEX_CARDS_STORAGE_KEY } from './indexCards.ts';
 import { selfAssessmentLines } from './studentReport.ts';
 import {
   ASSESSMENT_AREAS,
@@ -17,8 +18,10 @@ import {
   assessmentDraftScores,
   assessmentTrend,
   checkpointLinks,
+  conditioningContextText,
   conditioningItemsForDate,
   conditioningScoreFromItems,
+  displayedAssessmentScores,
   emptyAssessments,
   loadAssessments,
   mindsetGoalsForDate,
@@ -276,7 +279,7 @@ test('sweeps is stored only when that day was rated, and it is not passing', () 
   assert.equal(Object.hasOwn(kept.entries[0].scores, 'sweeps'), false);
 });
 
-test('mindset goals are optional, roll up to Mindset, and do not rewrite an older day', () => {
+test('mindset goals stay on the day and do not replace the Mindset face', () => {
   assert.equal(MINDSET_GOALS.length, 6);
   assert.deepEqual(
     MINDSET_GOALS.map((goal) => goal.label),
@@ -339,16 +342,18 @@ test('mindset goals are optional, roll up to Mindset, and do not rewrite an olde
     },
     81,
   );
-  assert.equal(saved.entries[0].scores.mindset, 4);
+  assert.equal(saved.entries[0].scores.mindset, 1);
   assert.equal(saved.entries[0].scores.guard, 3);
   assert.equal(saved.entries[0].scores.conditioning, 3);
   assert.equal(saved.entries[0].mindsetGoals?.['calm-focused'], 5);
   assert.equal(saved.entries[0].mindsetGoals?.['intentional-roll'], 2);
   assert.equal(saved.entries[0].mindsetGoals?.['game-plan'], undefined);
   assert.equal(Object.keys(saved.entries[0].mindsetGoals ?? {}).length, 2);
+  assert.equal(displayedAssessmentScores(saved.entries[0]).mindset, 4);
+  assert.equal(displayedAssessmentScores(saved.entries[0]).guard, 3);
 
   const preserved = saveAssessment(saved, { date: '2026-11-09', note: 'goals', scores: { ...base, mindset: 1 } }, 82);
-  assert.equal(preserved.entries[0].scores.mindset, 4);
+  assert.equal(preserved.entries[0].scores.mindset, 1);
   assert.equal(preserved.entries[0].mindsetGoals?.['calm-focused'], 5);
 
   const cleared = saveAssessment(
@@ -368,7 +373,7 @@ test('mindset goals are optional, roll up to Mindset, and do not rewrite an olde
   assert.equal(oldLines.some((line) => line.includes('calm and focused')), false);
 });
 
-test('conditioning items roll up to Conditioning and an older day stays unchanged', () => {
+test('conditioning items stay on the day and do not replace the Conditioning face', () => {
   assert.deepEqual(
     CONDITIONING_ITEMS.map((item) => item.label),
     [
@@ -424,16 +429,96 @@ test('conditioning items roll up to Conditioning and an older day stays unchange
     { date: '2026-11-09', note: 'engine', scores: { ...base, conditioning: 1 }, conditioningItems: { speed: 5, power: 1 } },
     90,
   );
-  assert.equal(saved.entries[0].scores.conditioning, 3);
+  assert.equal(saved.entries[0].scores.conditioning, 1);
   assert.equal(saved.entries[0].scores.mindset, 4);
   assert.equal(saved.entries[0].conditioningItems?.speed, 5);
   assert.equal(saved.entries[0].conditioningItems?.power, 1);
   assert.equal(saved.entries[0].conditioningItems?.flexibility, undefined);
   assert.equal(saved.entries[0].mindsetGoals, undefined);
+  assert.equal(displayedAssessmentScores(saved.entries[0]).conditioning, 3);
   const kept = saveAssessment(saved, { date: '2026-11-09', note: 'engine', scores: { ...base, conditioning: 1 } }, 91);
-  assert.equal(kept.entries[0].scores.conditioning, 3);
+  assert.equal(kept.entries[0].scores.conditioning, 1);
   assert.equal(kept.entries[0].conditioningItems?.speed, 5);
   const lines = selfAssessmentLines(blankStudentReport(), saved);
   assert.equal(lines.some((line) => line.includes('Speed: 5')), true);
   assert.equal(lines.some((line) => line.includes('Flexibility')), false);
+});
+
+test('older sub-line scores load, average into the face, and export without loss', () => {
+  assert.equal(conditioningContextText(), 'Stamina, power, and flexibility.');
+  const storage = memory();
+  storage.setItem(INDEX_CARDS_STORAGE_KEY, '{"version":1,"cards":[{"id":"sweep.hip-bump","faceId":"sweeps","name":"Hip bump sweep","rating":4,"tree":null}]}');
+  storage.setItem(
+    ASSESSMENT_STORAGE_KEY,
+    JSON.stringify({
+      entries: [
+        {
+          id: 'old.lines',
+          date: '2024-07-01',
+          note: 'kept from an older phone',
+          scores: { guard: 2, passing: 2, takedowns: 2, escapes: 2, submissions: 2, conditioning: 1, mindset: 5 },
+          conditioningItems: { stamina: 5, power: 1, flexibility: 3, speed: 5 },
+          mindsetGoals: { 'calm-focused': 5, 'intentional-roll': 2, 'game-plan': 4 },
+        },
+      ],
+    }),
+  );
+  const loaded = loadAssessments(storage);
+  const entry = loaded.entries[0];
+  assert.equal(entry.scores.conditioning, 1);
+  assert.equal(entry.scores.mindset, 5);
+  assert.equal(entry.scores.guard, 2);
+  assert.equal(entry.conditioningItems?.stamina, 5);
+  assert.equal(entry.conditioningItems?.power, 1);
+  assert.equal(entry.conditioningItems?.flexibility, 3);
+  assert.equal(entry.conditioningItems?.speed, 5);
+  assert.equal(entry.mindsetGoals?.['calm-focused'], 5);
+  assert.equal(entry.mindsetGoals?.['intentional-roll'], 2);
+  assert.equal(entry.mindsetGoals?.['game-plan'], 4);
+  assert.equal(displayedAssessmentScores(entry).conditioning, 4);
+  assert.equal(displayedAssessmentScores(entry).mindset, 4);
+  assert.equal(displayedAssessmentScores(entry).guard, 2);
+
+  const lines = selfAssessmentLines(blankStudentReport(), loaded);
+  assert.equal(lines.some((line) => line.includes('Conditioning: 1')), true);
+  assert.equal(lines.some((line) => line.includes('Mindset: 5')), true);
+  assert.equal(lines.some((line) => line.includes('Stamina during live rolls: 5')), true);
+  assert.equal(lines.some((line) => line.includes('Power: 1')), true);
+  assert.equal(lines.some((line) => line.includes('Flexibility: 3')), true);
+  assert.equal(lines.some((line) => line.includes('Speed: 5')), true);
+  assert.equal(lines.some((line) => line.includes("I've formed a routine and habit that keeps me calm and focused: 5")), true);
+  assert.equal(lines.some((line) => line.includes('I was intentional with my decisions throughout the roll: 2')), true);
+  assert.equal(lines.some((line) => line.includes('I drilled with my game plan in mind: 4')), true);
+
+  const rewritten = writeAssessments(storage, loaded);
+  const raw = storage.getItem(ASSESSMENT_STORAGE_KEY) ?? '';
+  assert.equal(rewritten.entries[0].id, 'old.lines');
+  assert.match(raw, /"stamina":5/);
+  assert.match(raw, /"power":1/);
+  assert.match(raw, /"flexibility":3/);
+  assert.match(raw, /"calm-focused":5/);
+  assert.equal(storage.getItem(INDEX_CARDS_STORAGE_KEY), '{"version":1,"cards":[{"id":"sweep.hip-bump","faceId":"sweeps","name":"Hip bump sweep","rating":4,"tree":null}]}');
+
+  const rated = saveAssessment(
+    rewritten,
+    {
+      date: '2024-07-01',
+      note: 'kept from an older phone',
+      scores: { ...entry.scores, conditioning: 5 },
+      directFaces: { conditioning: true },
+    },
+    70,
+  );
+  assert.equal(rated.entries[0].scores.conditioning, 5);
+  assert.equal(rated.entries[0].scores.mindset, 5);
+  assert.equal(rated.entries[0].conditioningItems?.stamina, 5);
+  assert.equal(rated.entries[0].conditioningItems?.flexibility, 3);
+  assert.equal(rated.entries[0].mindsetGoals?.['game-plan'], 4);
+  assert.equal(rated.entries[0].directFaces?.conditioning, true);
+  assert.equal(displayedAssessmentScores(rated.entries[0]).conditioning, 5);
+  assert.equal(displayedAssessmentScores(rated.entries[0]).mindset, 4);
+  const again = selfAssessmentLines(blankStudentReport(), rated);
+  assert.equal(again.some((line) => line.includes('Stamina during live rolls: 5')), true);
+  assert.equal(again.some((line) => line.includes('Flexibility: 3')), true);
+  assert.equal(again.some((line) => line.includes("I've formed a routine and habit that keeps me calm and focused: 5")), true);
 });

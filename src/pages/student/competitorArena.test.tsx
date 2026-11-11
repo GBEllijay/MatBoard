@@ -361,6 +361,11 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
     [...host.querySelectorAll('a')].some((link) => link.textContent?.includes('Do your self-assessment')),
     false,
   );
+  assert.deepEqual(
+    [...host.querySelectorAll('.scout-rates .assess-area > legend')].map((node) => node.textContent),
+    ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset'],
+  );
+  assert.equal(host.querySelector('.scout-rates .assess-goal'), null);
   for (const area of ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset']) {
     for (const score of [1, 2, 3, 4, 5]) labeled(host, `Sam ${area} ${score}`);
   }
