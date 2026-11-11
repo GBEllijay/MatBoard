@@ -9,6 +9,7 @@ import { INDEX_CARDS_STORAGE_KEY } from './indexCards.ts';
 import { selfAssessmentLines } from './studentReport.ts';
 import {
   ASSESSMENT_AREAS,
+  ASSESSMENT_FORM_AREAS,
   ASSESSMENT_MAX,
   ASSESSMENT_STORAGE_KEY,
   CONDITIONING_ITEMS,
@@ -47,6 +48,7 @@ function scores(value: AssessmentScores[keyof AssessmentScores] = 4): Assessment
   return {
     guard: value,
     passing: value,
+    sweeps: value,
     takedowns: value,
     escapes: value,
     submissions: value,
@@ -187,6 +189,7 @@ test('the competitor skin keeps 56px targets and leaves the hub notebook alone',
   assert.match(hubLink, /Patrick Hand/);
   assert.match(hubLink, /#f4f0e4/);
   assert.equal(ASSESSMENT_AREAS.length, 7);
+  assert.equal(ASSESSMENT_FORM_AREAS.length, 8);
 });
 
 test('an older assessment file still loads, and a saved day beats the tracker', () => {
@@ -221,21 +224,38 @@ test('an older assessment file still loads, and a saved day beats the tracker', 
   const savedDay = assessmentDraftScores(loaded.entries, '2024-05-01', '2026-11-01', tracker);
   assert.equal(savedDay.guard, 1);
   assert.equal(savedDay.mindset, 2);
+  // A new day starts from the last check-in, not the tracker. That older day has no Sweeps,
+  // and this tracker has none either, so Sweeps stays blank instead of borrowing Passing.
   const today = assessmentDraftScores(loaded.entries, '2026-11-01', '2026-11-01', tracker);
-  assert.equal(today.guard, 5);
-  assert.equal(today.mindset, undefined);
+  assert.equal(today.guard, 1);
+  assert.equal(today.mindset, 2);
+  assert.equal(today.sweeps, undefined);
+  assert.equal(assessmentDraftScores(loaded.entries, '2026-11-01', '2026-11-01', { ...tracker, sweeps: 4 }).sweeps, 4);
+  const fresh = assessmentDraftScores([], '2026-11-01', '2026-11-01', tracker);
+  assert.equal(fresh.guard, 5);
+  assert.equal(fresh.mindset, undefined);
   const otherDay = assessmentDraftScores(loaded.entries, '2026-10-01', '2026-11-01', tracker);
   assert.deepEqual(otherDay, {});
-  assert.equal(assessmentChartScores(today, undefined, loaded.entries[0].scores)?.guard, 5);
+  assert.equal(assessmentChartScores(fresh, undefined, loaded.entries[0].scores)?.guard, 5);
+  assert.equal(assessmentChartScores({ sweeps: 3 }, undefined, loaded.entries[0].scores)?.sweeps, 3);
   assert.equal(assessmentChartScores({}, loaded.entries[0].scores, undefined)?.guard, 1);
   assert.equal(assessmentChartScores({}, undefined, loaded.entries[0].scores)?.mindset, 2);
   assert.equal(assessmentChartScores({}, undefined, undefined), null);
 });
 
-test('sweeps is stored only when that day was rated, and it is not passing', () => {
+test('sweeps is a full face on a new day, an older day without it still loads and re-saves, and it is not passing', () => {
   const seven = scores(3);
   seven.passing = 5;
-  const legacy = saveAssessment(emptyAssessments(), { date: '2026-11-07', note: 'seven', scores: seven }, 30);
+  delete seven.sweeps;
+  assert.throws(() => saveAssessment(emptyAssessments(), { date: '2026-11-07', note: 'seven', scores: seven }, 29), /Rate Sweeps/);
+  const olderFile = memory();
+  olderFile.setItem(
+    ASSESSMENT_STORAGE_KEY,
+    JSON.stringify({ entries: [{ id: 'assess.old', date: '2026-11-07', note: 'seven', scores: seven }] }),
+  );
+  const older = loadAssessments(olderFile);
+  const legacy = saveAssessment(older, { date: '2026-11-07', note: 'seven', scores: seven }, 30);
+  assert.equal(legacy.entries[0].note, 'seven');
   assert.equal(Object.hasOwn(legacy.entries[0].scores, 'sweeps'), false);
   assert.equal(legacy.entries[0].scores.passing, 5);
   assert.equal(assessmentAverage(legacy.entries[0].scores), Math.round(((3 * 6 + 5) / 7) * 10) / 10);
@@ -256,9 +276,12 @@ test('sweeps is stored only when that day was rated, and it is not passing', () 
   assert.equal(reloaded.entries[0].scores.passing, 5);
   assert.equal(assessmentAverage(reloaded.entries[0].scores), Math.round(((3 * 6 + 5 + 1) / 8) * 10) / 10);
 
-  const otherDay = saveAssessment(reloaded, { date: '2026-11-01', note: 'older', scores: seven }, 32);
-  assert.equal(otherDay.entries.find((entry) => entry.date === '2026-11-01')?.scores.sweeps, undefined);
+  assert.throws(() => saveAssessment(reloaded, { date: '2026-11-01', note: 'older', scores: seven }, 32), /Rate Sweeps/);
+  const otherDay = saveAssessment(reloaded, { date: '2026-11-01', note: 'older', scores: { ...seven, sweeps: 2 } }, 32);
+  assert.equal(otherDay.entries.find((entry) => entry.date === '2026-11-01')?.scores.sweeps, 2);
   assert.equal(otherDay.entries.find((entry) => entry.date === '2026-11-07')?.scores.sweeps, 1);
+  // Once an older day has Sweeps, it is required on that day too.
+  assert.throws(() => saveAssessment(otherDay, { date: '2026-11-07', note: 'seven', scores: seven }, 33), /Rate Sweeps/);
 
   assert.throws(() => saveAssessment(emptyAssessments(), { date: '2026-11-08', note: '', scores: { ...seven, sweeps: 0 } }), /Sweeps/);
   const junk = JSON.stringify({
@@ -521,4 +544,41 @@ test('older sub-line scores load, average into the face, and export without loss
   assert.equal(again.some((line) => line.includes('Stamina during live rolls: 5')), true);
   assert.equal(again.some((line) => line.includes('Flexibility: 3')), true);
   assert.equal(again.some((line) => line.includes("I've formed a routine and habit that keeps me calm and focused: 5")), true);
+});
+
+test('a new day carries all eight faces, Sweeps included, from the last check-in before it', () => {
+  let state = saveAssessment(emptyAssessments(), { date: '2026-11-05', note: '', scores: { ...scores(2), sweeps: 1 } }, 1);
+  state = saveAssessment(state, { date: '2026-11-09', note: '', scores: { ...scores(4), passing: 5, sweeps: 3 } }, 2);
+  // A check-in dated after today is not "the last one" for today.
+  state = saveAssessment(state, { date: '2026-11-20', note: '', scores: { ...scores(1), sweeps: 5 } }, 3);
+  const tracker = { guard: 1 as const, passing: 1 as const, sweeps: 1 as const, takedowns: 1 as const, escapes: 1 as const, submissions: 1 as const, conditioning: 1 as const };
+  const today = assessmentDraftScores(state.entries, '2026-11-11', '2026-11-11', tracker);
+  assert.deepEqual(today, { guard: 4, passing: 5, sweeps: 3, takedowns: 4, escapes: 4, submissions: 4, conditioning: 4, mindset: 4 });
+  assert.equal(Object.keys(today).length, ASSESSMENT_FORM_AREAS.length);
+  // The carried draft saves as-is: nothing is missing.
+  const saved = saveAssessment(state, { date: '2026-11-11', note: '', scores: today }, 4);
+  assert.equal(saved.entries.find((entry) => entry.date === '2026-11-11')?.scores.sweeps, 3);
+  // A saved day still wins, and an empty past day stays blank.
+  assert.equal(assessmentDraftScores(state.entries, '2026-11-05', '2026-11-11', tracker).sweeps, 1);
+  assert.deepEqual(assessmentDraftScores(state.entries, '2026-11-07', '2026-11-11', tracker), {});
+  // Nothing was written: the draft is not an entry.
+  assert.equal(state.entries.some((entry) => entry.date === '2026-11-11'), false);
+});
+
+test('a face the last check-in lacks starts from the tracker, and averages skip an unrated Sweeps', () => {
+  const olderFile = memory();
+  olderFile.setItem(
+    ASSESSMENT_STORAGE_KEY,
+    JSON.stringify({
+      entries: [{ id: 'old.7', date: '2026-10-01', note: '', scores: { guard: 2, passing: 2, takedowns: 2, escapes: 2, submissions: 2, conditioning: 2, mindset: 2 } }],
+    }),
+  );
+  const older = loadAssessments(olderFile);
+  assert.equal(older.entries.length, 1, 'an entry without Sweeps still loads');
+  assert.equal(assessmentAverage(older.entries[0].scores), 2);
+  assert.equal(assessmentAverage({ ...older.entries[0].scores, sweeps: 5 }), Math.round(((2 * 7 + 5) / 8) * 10) / 10);
+  const today = assessmentDraftScores(older.entries, '2026-11-11', '2026-11-11', { guard: 5, sweeps: 4 });
+  assert.equal(today.guard, 2, 'the last check-in beats the tracker');
+  assert.equal(today.sweeps, 4, 'Sweeps the old day lacks comes from the tracker');
+  assert.equal(assessmentDraftScores(older.entries, '2026-11-11', '2026-11-11', {}).sweeps, undefined, 'never a copied number');
 });

@@ -182,6 +182,9 @@ const areaScores = {
   mindset: 4,
 } as const;
 
+/** A new check-in rates all eight faces. */
+const eightScores = { ...areaScores, sweeps: 3 } as const;
+
 function simAthleteJournal(): string {
   let report = setStudentProfile(blankStudentReport(1), { displayName: 'Sim Athlete Coach Two', gymName: 'Sim Gym Alpha' }, 2);
   report = setRankTapeCount(setRankBelt(report, 'blue', 3), 3, 4);
@@ -300,7 +303,7 @@ test('clear forgets sim self-assessment history, including a later 10-26 entry, 
 
   writeAssessments(
     storage,
-    saveAssessment(emptyAssessments(), { date: '2026-10-20', note: 'my own check-in', scores: areaScores }, 4),
+    saveAssessment(emptyAssessments(), { date: '2026-10-20', note: 'my own check-in', scores: eightScores }, 4),
   );
   noteStudentBackupBuilt(new Date('2026-10-22T15:00:00.000Z'), storage);
   assert.equal(loadAssessments(storage).entries.length, 1);
@@ -332,7 +335,7 @@ test('clear forgets sim self-assessment history, including a later 10-26 entry, 
 
   writeAssessments(
     storage,
-    saveAssessment(emptyAssessments(), { date: '2026-10-26', note: 'real check-in after clear', scores: areaScores }, 8),
+    saveAssessment(emptyAssessments(), { date: '2026-10-26', note: 'real check-in after clear', scores: eightScores }, 8),
   );
   noteStudentBackupBuilt(new Date('2026-10-26T16:00:00.000Z'), storage);
   assert.equal(loadAssessments(storage).entries[0]?.note, 'real check-in after clear');
@@ -347,10 +350,10 @@ test('clear forgets sim self-assessment history, including a later 10-26 entry, 
 test('saving earlier check-ins does not invent a check-in for today', () => {
   const first = saveAssessment(
     emptyAssessments(),
-    { date: '2026-10-24', note: 'Mock self-assessment before Pan Pacific.', scores: { ...areaScores, guard: 5, passing: 5, escapes: 5, mindset: 5 } },
+    { date: '2026-10-24', note: 'Mock self-assessment before Pan Pacific.', scores: { ...eightScores, guard: 5, passing: 5, escapes: 5, mindset: 5 } },
     1,
   );
-  const second = saveAssessment(first, { date: '2026-10-25', note: 'Drill the pass. Stop reaching.', scores: areaScores }, 2);
+  const second = saveAssessment(first, { date: '2026-10-25', note: 'Drill the pass. Stop reaching.', scores: eightScores }, 2);
   assert.deepEqual(
     second.entries.map((entry) => entry.date),
     ['2026-10-25', '2026-10-24'],

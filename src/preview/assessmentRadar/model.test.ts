@@ -69,7 +69,7 @@ test('the outer grid is a regular octagon and the live chart stays seven axes', 
   assert.ok(Math.abs(radiusOf(three) - OCTAGON_RADIUS * 0.6) < 1e-6);
   assert.equal(ASSESSMENT_AREAS.length, 7);
   assert.equal(ASSESSMENT_AREAS.some((area) => area.id === 'control'), false);
-  assert.equal(radarPoints([5, 5, 5, 5, 5, 5, 5]).split(' ').length, 7);
+  assert.equal(radarPoints([5, 5, 5, 5, 5, 5, 5, 5]).split(' ').length, 8);
 });
 
 test('a partial rating leaves a gap instead of a zero at the middle', () => {
@@ -227,7 +227,7 @@ test('the preview stays off the live assessment save path and reuses the chart c
   assert.match(app, /\/preview\/assessment-radar/);
   assert.match(live, /1 is early\. 5 is ready to rely on\./);
   assert.doesNotMatch(live, /assessmentRadar|oct-preview|Eight-area shape/);
-  assert.match(radar, /ASSESSMENT_AREAS\.length/);
+  assert.match(radar, /ASSESSMENT_FORM_AREAS\.length/);
   assert.doesNotMatch(`${page}\n${model}\n${css}`, /ASSESSMENT_STORAGE_KEY|writeAssessments|saveAssessment|localStorage|reportPdf/);
   assert.match(css, /#1f7ae0/);
   assert.match(css, /#18202e/);

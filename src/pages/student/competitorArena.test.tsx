@@ -32,7 +32,7 @@ import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
-import { emptyAssessments, saveAssessment, writeAssessments, type AssessmentScores } from '../../lib/studentAssessment.ts';
+import { ASSESSMENT_STORAGE_KEY, emptyAssessments, saveAssessment, writeAssessments, type AssessmentScores } from '../../lib/studentAssessment.ts';
 import { addTournament, addWeighIn, setCompetitionGame } from '../../lib/studentCompetition.ts';
 import { blankStudentReport, loadStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
 import { SCOUTING_STORAGE_KEY, addScoutingCard, loadScouting, saveScouting } from '../../lib/studentScouting.ts';
@@ -283,9 +283,16 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
     conditioning: 5,
     mindset: 3,
   };
-  let assessments = saveAssessment(emptyAssessments(), { date: '2026-10-01', note: 'old', scores: allScores(1) }, 1);
-  assessments = saveAssessment(assessments, { date: '2026-10-20', note: 'new', scores: mine }, 2);
-  writeAssessments(localStorage, assessments);
+  // Both check-ins were stored before Sweeps existed, so they have seven faces.
+  localStorage.setItem(
+    ASSESSMENT_STORAGE_KEY,
+    JSON.stringify({
+      entries: [
+        { id: 'assess.old', date: '2026-10-01', note: 'old', scores: allScores(1) },
+        { id: 'assess.new', date: '2026-10-20', note: 'new', scores: mine },
+      ],
+    }),
+  );
   const theirs = {
     guard: 2,
     passing: 4,
@@ -319,7 +326,7 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
   const { host } = mounted;
   const lines = () => [...host.querySelectorAll('.scout-matchup li')].map((item) => item.textContent?.trim());
   assert.deepEqual(lines(), [
-    'Favored: Guard, Escapes',
+    'Favored: Guard/Control, Escapes/Defense',
     'Even: Takedowns, Conditioning',
     'At a disadvantage: Passing, Submissions, Mindset',
   ]);
@@ -384,8 +391,8 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
   });
   assert.equal(loadScouting(localStorage)[0].ratings.guard, 5);
   assert.deepEqual(lines(), [
-    'Favored: Escapes',
-    'Even: Guard, Takedowns, Conditioning',
+    'Favored: Escapes/Defense',
+    'Even: Guard/Control, Takedowns, Conditioning',
     'At a disadvantage: Passing, Submissions, Mindset',
   ]);
 
@@ -450,6 +457,63 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
   assert.ok(legacy.host.querySelector('.archive-diamond canvas'));
   assert.match(legacy.host.textContent ?? '', /Eight areas on one shape\. Peaks are stronger\. Dips need work\./);
   unmount(legacy);
+});
+
+test('Sweeps is a full face on opponent cards: it counts in Me vs Them and draws on both shapes', () => {
+  localStorage.clear();
+  writeAssessments(
+    localStorage,
+    saveAssessment(
+      emptyAssessments(),
+      { date: '2026-10-20', note: 'eight', scores: { ...allScores(3), sweeps: 5 } },
+      1,
+    ),
+  );
+  saveScouting(
+    localStorage,
+    addScoutingCard(
+      [],
+      {
+        name: 'Kai',
+        gym: '',
+        belt: 'Blue',
+        weightClass: '',
+        group: 'weight',
+        style: '',
+        notes: '',
+        ratings: { ...allScores(3), sweeps: 2 },
+        strengths: '',
+        weaknesses: '',
+      },
+      30,
+    ),
+  );
+  const mounted = mount(<ScoutingPage />, '/student/scouting?student=1');
+  const { host } = mounted;
+  const lines = () => [...host.querySelectorAll('.scout-matchup li')].map((item) => item.textContent?.trim());
+  assert.deepEqual(lines(), [
+    'Favored: Sweeps',
+    'Even: Guard/Control, Passing, Takedowns, Escapes/Defense, Submissions, Conditioning, Mindset',
+    'At a disadvantage: None',
+  ]);
+  const overlay = labeled(host, 'Me versus Kai');
+  assert.match(overlay.textContent ?? '', /Me vs them/);
+  assert.equal(overlay.querySelectorAll('.cage-series').length, 2);
+  assert.equal(overlay.querySelectorAll('.oct-dot').length, 16, 'eight faces on each side, Sweeps included');
+  const label = overlay.querySelector('svg')?.getAttribute('aria-label') ?? '';
+  assert.equal(label.includes('Sweeps not rated'), false);
+  assert.match(label, /Sweeps 5/);
+  assert.match(label, /Sweeps 2/);
+  act(() => {
+    labeled(host, 'Kai Sweeps 5').click();
+  });
+  assert.equal(loadScouting(localStorage)[0].ratings.sweeps, 5);
+  assert.deepEqual(lines(), [
+    'Favored: None',
+    'Even: Guard/Control, Passing, Sweeps, Takedowns, Escapes/Defense, Submissions, Conditioning, Mindset',
+    'At a disadvantage: None',
+  ]);
+  unmount(mounted);
 });
 
 function valueOf(host: ParentNode, name: string): string {

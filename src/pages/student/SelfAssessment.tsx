@@ -9,7 +9,6 @@ import { subscribeStudentJournal } from '../../lib/studentDemo';
 import { fundamentalsBoard, todayIso } from '../../lib/studentEdition';
 import { useScrollToHash } from './chrome';
 import {
-  ASSESSMENT_AREAS,
   ASSESSMENT_FORM_AREAS,
   MINDSET_GOALS,
   assessmentAverage,
@@ -115,7 +114,7 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
   const mindsetOpen =
     !savedOnDate &&
     !isAssessmentScore(shownScores.mindset) &&
-    ASSESSMENT_AREAS.some((area) => area.id !== 'mindset' && isAssessmentScore(shownScores[area.id]));
+    ASSESSMENT_FORM_AREAS.some((area) => area.id !== 'mindset' && isAssessmentScore(shownScores[area.id]));
 
   const applyDate = (value: string) => {
     const found = entries.find((entry) => entry.date === value);
@@ -175,7 +174,8 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
         <h1>Self-assessment</h1>
         <p className="student-quiet">Rate the work in front of you. 1 is early. 5 is ready to rely on. Saved on this phone by date.</p>
         <p className="student-quiet">
-          Today's ratings start from Fundamentals. Mindset is rated on this page. A day you already saved stays as you saved it.
+          Today's ratings start from your last check-in, all eight areas including Sweeps. Anything that check-in lacks starts
+          from Fundamentals. Mindset is rated on this page. A day you already saved stays as you saved it.
         </p>
       </div>
 
@@ -229,7 +229,7 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
           <input type="date" aria-label="Self-assessment date" value={date} onChange={(event) => applyDate(event.target.value)} required />
         </label>
         {ASSESSMENT_FORM_AREAS.map((area) => {
-          const link = area.id === 'sweeps' ? undefined : links.find((item) => item.areaId === area.id);
+          const link = links.find((item) => item.areaId === area.id);
           const techniques = cards.filter((card) => card.faceId === INDEX_FACE[area.id] && !GOAL_IDS.has(card.id));
           return (
             <fieldset key={area.id} id={`assess-${area.id}`} className="assess-area">
@@ -414,11 +414,9 @@ function HistoryRow({
 }) {
   const shown = displayedAssessmentScores(entry);
   const line = ASSESSMENT_FORM_AREAS.map((area) => {
-    if (area.id === 'sweeps') {
-      const value = shown.sweeps;
-      return isAssessmentScore(value) ? `${area.label} ${value}` : `${area.label} not rated`;
-    }
-    return `${area.label} ${shown[area.id]}`;
+    // A day saved before Sweeps existed shows it as not rated.
+    const value = shown[area.id];
+    return isAssessmentScore(value) ? `${area.label} ${value}` : `${area.label} not rated`;
   }).join(' · ');
   return (
     <li className="assess-row">

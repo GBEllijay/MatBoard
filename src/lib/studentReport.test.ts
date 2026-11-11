@@ -160,7 +160,7 @@ test('progress PDF keeps every section, the student track, and checkpoint status
     {
       date: '2026-10-23',
       note: 'conditioning is the limiter',
-      scores: { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 },
+      scores: { guard: 5, passing: 4, sweeps: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 },
     },
   );
   const lines = progressReportLines(report, assessment, { scouting: [scout], films: [film] });
@@ -352,14 +352,17 @@ test('a kids belt report lists only the kids track, in order', () => {
 
 test('self-assessment PDF draws the static D8 diamond and does not add an empty page', () => {
   const report = setStudentProfile(blankStudentReport(3), { displayName: 'Ada', gymName: 'GB', startedOn: '2020-01-02' }, 4);
-  const first = saveAssessment(
-    { entries: [] },
-    {
-      date: '2026-10-01',
-      note: 'earlier pass',
-      scores: { guard: 2, passing: 2, takedowns: 2, escapes: 2, submissions: 2, conditioning: 2, mindset: 2 },
-    },
-  );
+  // The earlier day was saved before Sweeps existed, so it has no Sweeps rating.
+  const first = {
+    entries: [
+      {
+        id: 'assess.old',
+        date: '2026-10-01',
+        note: 'earlier pass',
+        scores: { guard: 2, passing: 2, takedowns: 2, escapes: 2, submissions: 2, conditioning: 2, mindset: 2 } as const,
+      },
+    ],
+  };
   const assessment = saveAssessment(first, {
     date: '2026-10-23',
     note: 'calm rounds',
@@ -406,19 +409,19 @@ test('self-assessment PDF draws the static D8 diamond and does not add an empty 
 test('the black-belt sample fits on one page', () => {
   let report = setStudentProfile(blankStudentReport(8), { displayName: 'Ada Student', gymName: 'GB Ellijay', startedOn: '2014-03-01' }, 9);
   report = { ...report, profile: { ...report.profile, belt: 'black' } };
-  const latest = { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 } as const;
+  const latest = { guard: 5, passing: 4, sweeps: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 } as const;
   let assessment = saveAssessment(
     { entries: [] },
     {
       date: '2026-08-01',
       note: 'hip bump is late',
-      scores: { guard: 3, passing: 3, takedowns: 2, escapes: 3, submissions: 3, conditioning: 2, mindset: 4 },
+      scores: { guard: 3, passing: 3, sweeps: 3, takedowns: 2, escapes: 3, submissions: 3, conditioning: 2, mindset: 4 },
     },
   );
   assessment = saveAssessment(assessment, {
     date: '2026-09-12',
     note: 'passing still stalls',
-    scores: { guard: 4, passing: 3, takedowns: 3, escapes: 4, submissions: 4, conditioning: 3, mindset: 4 },
+    scores: { guard: 4, passing: 3, sweeps: 3, takedowns: 3, escapes: 4, submissions: 4, conditioning: 3, mindset: 4 },
   });
   assessment = saveAssessment(assessment, {
     date: '2026-10-23',
@@ -443,7 +446,7 @@ test('a long self-assessment history continues onto the next page', () => {
     assessment = saveAssessment(assessment, {
       date: `2026-0${index + 1}-15`,
       note: `history note ${index}`,
-      scores: { guard: 3, passing: 3, takedowns: 3, escapes: 3, submissions: 3, conditioning: 3, mindset: 3 },
+      scores: { guard: 3, passing: 3, sweeps: 3, takedowns: 3, escapes: 3, submissions: 3, conditioning: 3, mindset: 3 },
     });
   }
   const pdf = assessmentReportPdf(report, assessment, '2026-10-23');
@@ -455,14 +458,17 @@ test('a long self-assessment history continues onto the next page', () => {
 
 test('a check-in saved before Sweeps existed prints Sweeps as not rated, not a copied number', () => {
   const report = setStudentProfile(blankStudentReport(3), { displayName: 'Ada', gymName: 'GB', startedOn: '2020-01-02' }, 4);
-  const assessment = saveAssessment(
-    { entries: [] },
-    {
-      date: '2026-10-23',
-      note: 'calm rounds',
-      scores: { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 },
-    },
-  );
+  // Stored before Sweeps existed: seven faces, no Sweeps key.
+  const assessment = {
+    entries: [
+      {
+        id: 'assess.pre-sweeps',
+        date: '2026-10-23',
+        note: 'calm rounds',
+        scores: { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 } as const,
+      },
+    ],
+  };
   const layout = layoutAssessment(report, assessment, '2026-10-23');
   assert.ok(layout.diamond);
   const draws = layout.pages.flat();
@@ -490,7 +496,7 @@ test('profile fields survive backup, and the assessment file name matches the do
     {
       date: '2026-10-17',
       note: 'calm rounds',
-      scores: { guard: 3, passing: 4, takedowns: 2, escapes: 5, submissions: 3, conditioning: 4, mindset: 5 },
+      scores: { guard: 3, passing: 4, sweeps: 3, takedowns: 2, escapes: 5, submissions: 3, conditioning: 4, mindset: 5 },
     },
   );
   const built = await buildStudentBackup({

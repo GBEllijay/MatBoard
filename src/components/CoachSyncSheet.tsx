@@ -27,7 +27,7 @@ import {
   type PhotoApprover,
 } from '../lib/rosterPhotoApproval';
 import { setCardPhoto, setCardSyncSettings, type Student } from '../lib/rosterStore';
-import { ASSESSMENT_AREAS } from '../lib/studentAssessment';
+import { ASSESSMENT_FORM_AREAS } from '../lib/studentAssessment';
 import { coachPhotoRequest, readStoredEntitlementToken } from '../lib/studentInboxClient';
 
 function downloadText(name: string, text: string): void {
@@ -262,7 +262,7 @@ export function CoachSyncSheet({
 
           <fieldset disabled={gate !== 'send' || busy}>
             <legend>Assessment</legend>
-            {ASSESSMENT_AREAS.map((area) => (
+            {ASSESSMENT_FORM_AREAS.map((area) => (
               <label key={area.id}>
                 {area.label}
                 <select

@@ -5,7 +5,7 @@ import { competitionOf } from '../../lib/progress/competition';
 import type { CompetitionResult } from '../../lib/progress/types';
 import {
   compareToOpponent,
-  isCompleteRatings,
+  isDrawableRatings,
   matchupLabels,
   matchupLine,
   type AreaRatings,
@@ -612,7 +612,7 @@ function OpponentTracker({
     node.focus();
   }, [focus]);
   const [graph, setGraph] = useState<'cage' | 'diamond'>('cage');
-  const theirs = isCompleteRatings(card.ratings) ? card.ratings : null;
+  const theirs = isDrawableRatings(card.ratings) ? card.ratings : null;
   const rows = compareToOpponent(selfScores, card.ratings);
   const groups = matchupLabels(rows);
   const save = (patch: { ratings: AreaRatings; strengths: string; weaknesses: string }) => onSave(patch);
@@ -631,7 +631,7 @@ function OpponentTracker({
       <div ref={rateRef} className="scout-rates archive-ratings" role="group" tabIndex={-1} aria-label={`Ratings for ${card.name}`}>
         <h3>Ratings</h3>
         <p className="archive-help">{`Rate ${card.name}. 1 is early. 5 is ready to rely on.`}</p>
-        {/* Same eight faces as the daily check-in. No sub-item ratings. Sweeps stays optional. */}
+        {/* Same eight faces as the daily check-in, Sweeps included. No sub-item ratings. */}
         {ASSESSMENT_FORM_AREAS.map((area) => (
           <fieldset key={area.id} className="assess-area">
             <legend>{area.label}</legend>

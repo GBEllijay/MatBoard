@@ -469,3 +469,23 @@ test('an older share file still imports, and extra scouting fields are dropped',
   assert.equal((read.scouting.cards[0].ratings as { secret?: number }).secret, undefined);
   assert.doesNotMatch(JSON.stringify(read), /OTHER-PRIVATE|SECRETPHOTO|INJECTED|NOPE/);
 });
+
+test('a student self-assessment with Sweeps reaches the coach, and an older seven-face one still does', () => {
+  const student = testMemory();
+  const coach = testMemory();
+  const eight = [
+    { id: 'as-old', date: '2026-10-01', note: '', scores: { guard: 2, passing: 2, takedowns: 2, escapes: 2, submissions: 2, conditioning: 2, mindset: 2 } },
+    { id: 'as-new', date: '2026-11-02', note: '', scores: { guard: 3, passing: 4, sweeps: 5, takedowns: 2, escapes: 3, submissions: 4, conditioning: 2, mindset: 3 } },
+  ];
+  const built = buildCoachUpdateFile(baseReport(), { storage: student, assessments: eight as never, now: 100, today: '2026-11-04' });
+  assert.equal(built.update.assessments?.find((row) => row.id === 'as-new')?.scores.sweeps, 5);
+  const read = readStudentCoachUpdate(JSON.parse(built.json));
+  assert.equal(read?.assessments?.find((row) => row.id === 'as-new')?.scores.sweeps, 5);
+  assert.equal(Object.hasOwn(read?.assessments?.find((row) => row.id === 'as-old')?.scores ?? {}, 'sweeps'), false, 'not invented');
+  assert.equal(receiveStudentCoachUpdate(coach, JSON.parse(built.json)), 'pending');
+  const cards = [card({ id: 'c1', linkedStudentId: 'stu-alex' } as Partial<Student> & { id: string })];
+  assert.ok(applyStudentCoachUpdate(coach, built.update.updateId, roster(cards), { actor: 'coach', approveRank: false }).ok);
+  const self = approvedStudentScouting(coach, 'stu-alex').self;
+  assert.equal(self?.date, '2026-11-02');
+  assert.equal(self?.scores.sweeps, 5);
+});

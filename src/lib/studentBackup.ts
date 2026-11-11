@@ -24,6 +24,7 @@ import {
   ASSESSMENT_AREAS,
   ASSESSMENT_STORAGE_KEY,
   emptyAssessments,
+  isAssessmentScore,
   loadAssessments,
   writeAssessments,
   type AssessmentState,
@@ -282,6 +283,10 @@ export function studentTemplatesCsv(input: {
   for (const entry of input.assessment.entries) {
     for (const area of ASSESSMENT_AREAS) {
       extra.push(csvRow(['Self-assessment', entry.id, entry.date, '', '', area.label, area.label, '', '', String(entry.scores[area.id]), entry.note]));
+    }
+    // Sweeps is the eighth face. A day saved before it existed has no Sweeps row.
+    if (isAssessmentScore(entry.scores.sweeps)) {
+      extra.push(csvRow(['Self-assessment', entry.id, entry.date, '', '', 'Sweeps', 'Sweeps', '', '', String(entry.scores.sweeps), entry.note]));
     }
   }
   for (const card of input.scouting) {

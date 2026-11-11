@@ -76,6 +76,7 @@ function scores(value: 2 | 3 | 4 | 5) {
   return {
     guard: value,
     passing: value,
+    sweeps: value,
     takedowns: value,
     escapes: value,
     submissions: value,

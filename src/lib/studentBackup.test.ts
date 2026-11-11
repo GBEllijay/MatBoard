@@ -100,7 +100,7 @@ test('backup round-trips journal, rank words, assessment, and filmed metadata', 
   const assessment = saveAssessment({ entries: [] }, {
     date: '2026-10-17',
     note: 'calm rounds',
-    scores: { guard: 3, passing: 4, takedowns: 2, escapes: 5, submissions: 3, conditioning: 4, mindset: 5 },
+    scores: { guard: 3, passing: 4, sweeps: 3, takedowns: 2, escapes: 5, submissions: 3, conditioning: 4, mindset: 5 },
   });
   const film: StudentFilm = {
     id: 'film.test',

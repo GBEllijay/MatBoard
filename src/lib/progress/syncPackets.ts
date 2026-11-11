@@ -17,10 +17,20 @@ import {
   type CoachNote,
 } from './types.ts';
 
-/** Same ids as ASSESSMENT_AREAS in studentAssessment.ts. A test keeps them equal. */
+/**
+ * Same ids, same order, as ASSESSMENT_FORM_AREAS in studentAssessment.ts: the eight D8 faces.
+ * A test keeps them equal.
+ *
+ * Compatibility, no packet version bump needed:
+ *  - scores is a partial map. A packet from an older app has seven keys and no `sweeps`;
+ *    it still imports, and Sweeps stays not rated. Nothing is invented.
+ *  - An older app reading a newer packet skips keys it does not know, so it keeps the
+ *    seven faces it knows and drops Sweeps. It does not refuse the packet.
+ */
 export const SYNC_ASSESSMENT_AREA_IDS = [
   'guard',
   'passing',
+  'sweeps',
   'takedowns',
   'escapes',
   'submissions',
