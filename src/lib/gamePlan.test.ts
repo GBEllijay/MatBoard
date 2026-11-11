@@ -5,15 +5,20 @@ import {
   gamePlanMentionIndex,
   gamePlanStatusLabel,
   mentionsForNode,
+  mergeImportedGameNotes,
   normalizeGamePlan,
   suggestTechniqueTargets,
   withGameLink,
 } from './gamePlan.ts';
 import {
+  addCompetitorWeighIn,
   addGameLink,
   addStudent,
   competitorGamePlan,
   dropSiblingCompetitor,
+  getRoster,
+  importStudentCompetition,
+  migrateSharedGamePlan,
   normalizeRoster,
   removeGameLink,
   removeStudent,
@@ -25,6 +30,8 @@ import {
   setGameNotes,
   updateStudent,
 } from './rosterStore.ts';
+import { blankStudentReport } from './studentEdition.ts';
+import { setCompetitionGame } from './studentCompetition.ts';
 import { activeTree, addChild, emptyTree, setRoot, updateNode, type TechniqueTreeArchive } from './techniqueTreeStore.ts';
 
 function sampleArchive(): TechniqueTreeArchive {
@@ -180,6 +187,75 @@ describe('technique links stay optional and bidirectional', () => {
     removeGameLink(added.id, 'a', tree.id, nodeId);
     assert.equal(competitorGamePlan(added.id).a.links.length, 0);
     assert.equal(competitorGamePlan(added.id).home.links.length, 1);
+    resetRoster();
+  });
+});
+
+describe('one shared competitor game plan', () => {
+  it('a note written from the card is the note Competitor Management reads, and the other way around', () => {
+    resetRoster();
+    const added = addStudent({ name: 'Alex Rivera', belt: 'Blue', division: '', gym: '', lastPromotion: '', note: '' });
+    assert.ok(added);
+    setGameNotes(added.id, 'a', 'Management A');
+    setGameNotes(added.id, 'home', 'Management home');
+    assert.equal(competitorGamePlan(added.id).a.notes, 'Management A');
+    setGameNotes(added.id, 'b', 'Card B');
+    setGameNotes(added.id, 'a', 'Card rewrote A');
+    const shared = competitorGamePlan(added.id);
+    assert.equal(shared.a.notes, 'Card rewrote A');
+    assert.equal(shared.b.notes, 'Card B');
+    assert.equal(shared.home.notes, 'Management home');
+    assert.equal(shared.c.notes, '');
+    resetRoster();
+  });
+
+  it('copies imported A/B/C notes into blank coach sections and keeps both when the coach already wrote', () => {
+    resetRoster();
+    const added = addStudent({ name: 'Alex Rivera', belt: 'Blue', division: '', gym: '', lastPromotion: '', note: '' });
+    assert.ok(added);
+    setGameNotes(added.id, 'b', 'Coach pass');
+    setGameNotes(added.id, 'home', 'Film study');
+    addGameLink(added.id, 'a', { treeId: 'tree-1', nodeId: 'node-1' });
+    let report = blankStudentReport(10);
+    report = setCompetitionGame(report, 'a', { techniques: 'Armbar from mount', notes: 'Finish the grip' }, 11);
+    report = setCompetitionGame(report, 'c', { techniques: '', notes: 'C note' }, 12);
+    assert.equal(importStudentCompetition(added.id, JSON.stringify(report), 13), '');
+    const merged = migrateSharedGamePlan(added.id);
+    assert.match(merged.a.notes, /Armbar from mount/);
+    assert.match(merged.a.notes, /Finish the grip/);
+    assert.equal(merged.a.links.length, 1);
+    assert.equal(merged.b.notes, 'Coach pass');
+    assert.equal(merged.c.notes, 'C note');
+    assert.equal(merged.home.notes, 'Film study');
+    const imported = getRoster().competitionPlans[added.id];
+    assert.equal(imported.games.a.notes, 'Finish the grip');
+    assert.equal(imported.games.b.notes, '');
+    const again = migrateSharedGamePlan(added.id);
+    assert.equal(again.a.notes, merged.a.notes);
+    assert.equal(mergeImportedGameNotes(again, imported.games), again);
+    resetRoster();
+  });
+
+  it('adds a weigh-in on the competition plan without dropping tournaments or the game plan', () => {
+    resetRoster();
+    const added = addStudent({ name: 'Alex Rivera', belt: 'Blue', division: '', gym: '', lastPromotion: '', note: '' });
+    assert.ok(added);
+    setGameNotes(added.id, 'home', 'Film study');
+    let report = blankStudentReport(20);
+    report = setCompetitionGame(report, 'a', { techniques: 'Armbar', notes: '' }, 21);
+    assert.equal(importStudentCompetition(added.id, JSON.stringify(report), 22), '');
+    const addedWeigh = addCompetitorWeighIn(added.id, { date: '2026-11-01', weight: '150.2', unit: 'lb', note: 'morning' }, 23);
+    assert.equal(addedWeigh.ok, true);
+    if (!addedWeigh.ok) return;
+    assert.equal(addedWeigh.plan.weighIns.length, 1);
+    assert.equal(addedWeigh.plan.weighIns[0].weight, 150.2);
+    assert.equal(addedWeigh.plan.games.a.techniques, 'Armbar');
+    assert.equal(competitorGamePlan(added.id).home.notes, 'Film study');
+    const round = normalizeRoster(JSON.parse(JSON.stringify(getRoster())));
+    assert.equal(round.competitionPlans[added.id].weighIns[0].weight, 150.2);
+    assert.equal(round.competitionPlans[added.id].weighIns[0].note, 'morning');
+    assert.equal(round.gamePlans[added.id].home.notes, 'Film study');
+    assert.equal(addCompetitorWeighIn(added.id, { date: 'yesterday', weight: '10', unit: 'lb' }).ok, false);
     resetRoster();
   });
 });

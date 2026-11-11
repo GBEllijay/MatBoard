@@ -6,6 +6,7 @@
 
 import {
   addStudent,
+  fillBlankCompetitorFromLinkedStudent,
   getRoster,
   linkRosterCard,
   removeStudent,
@@ -64,6 +65,8 @@ export function addToCompetitorRoster(rosterId: string, storage?: MemoryStore | 
   if (existing && existing.rosterList !== 'student') {
     updateRosterCard(rosterId, (row) => ({ ...row, competitorOn: true }), storage ?? undefined);
     syncPairCheckIn(rosterId, existing.id);
+    // A later edit on the Student Roster card fills blanks on the card this switch already made.
+    fillBlankCompetitorFromLinkedStudent(existing.id, storage ?? undefined);
     return { ok: true, competitorId: existing.id, created: false };
   }
   const draft = competitorDraftFromStudentCard(student, record);

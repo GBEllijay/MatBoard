@@ -126,6 +126,18 @@
   color: var(--cb-ink) !important;
   border-color: var(--cb-btn-ring);
 }
+.comp-card__ready-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.comp-card__ready-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+}
 .comp-card__btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;

@@ -15962,6 +15962,7 @@ a.plan-pick {
 }
 
 .ready-row {
+  scroll-margin-top: 5.5rem;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 5.75rem;
   gap: 0.55rem 0.65rem;

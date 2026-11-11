@@ -36,6 +36,8 @@ import { dismissCardNotice, getCardNotices, subscribeCardSync } from '../lib/car
 import { coachDoorOpen } from '../lib/productNames';
 import { readRosterCard, recordRosterRankChange, removeRosterCard, subscribeRosterCards, writePrivateCoachNotes } from '../lib/rosterCardStore';
 import { personCheckedIn, setPersonCheckedIn, toggleCompetitor } from '../lib/rosterCardActions';
+import { followedCompetitorPhoto } from '../lib/competitorCarryOver';
+import { CompetitorWorkspace } from '../components/rosterCard/CompetitorWorkspace';
 import { useRosterState } from '../hooks/useStores';
 import { COMPETITOR_SYSTEM_NAME, isCoachStudentRoster } from '../lib/productNames';
 import { competitorPhotoFromFile } from '../lib/competitorPhoto';
@@ -86,11 +88,15 @@ import {
   archiveStudent,
   archivedStudents,
   competitorCards,
+  fillBlankCompetitorFromLinkedStudent,
+  getRoster,
   isKnownBelt,
   draftFromStudent,
   emptyDraft,
   linkCompetitorToRosterStudent,
+  linkedRosterStudent,
   formatPromotion,
+  migrateSharedGamePlan,
   removeStudent,
   restoreStudent,
   searchStudents,
@@ -142,6 +148,27 @@ export function RosterPage() {
   useEffect(() => {
     ensureGymBackfill();
   }, []);
+  const editStudentId = studentRoster ? searchParams.get('edit') : null;
+  useEffect(() => {
+    if (!editStudentId) return;
+    const student = getRoster().students.find((row) => row.id === editStudentId && row.rosterList === 'student');
+    if (student) setEditor({ id: student.id, draft: draftWithStripes(student) });
+    const next = new URLSearchParams(searchParams);
+    next.delete('edit');
+    const search = next.toString();
+    navigate({ pathname, search: search ? `?${search}` : '' }, { replace: true });
+  }, [editStudentId, navigate, pathname, searchParams]);
+  useEffect(() => {
+    if (studentRoster) return;
+    for (const card of competitorCards(roster.students)) {
+      try {
+        fillBlankCompetitorFromLinkedStudent(card.id);
+        migrateSharedGamePlan(card.id);
+      } catch {
+        /* Keep the card that is already saved on this device. */
+      }
+    }
+  }, [studentRoster, roster.students]);
   const [csvNote, setCsvNote] = useState('');
   const [saveError, setSaveError] = useState('');
   const [linkTarget, setLinkTarget] = useState<Student | null>(null);
@@ -191,6 +218,18 @@ export function RosterPage() {
     scroller.style.scrollBehavior = previous;
   };
   const openAdd = () => setEditor({ id: null, draft: { ...emptyDraft(), gym: readGymName() } });
+  const openCompetitorEditor = (card: Student) => {
+    let next = card;
+    try {
+      next = fillBlankCompetitorFromLinkedStudent(card.id) ?? card;
+      migrateSharedGamePlan(card.id);
+    } catch {
+      next = getRoster().students.find((row) => row.id === card.id) ?? card;
+    }
+    setEditor({ id: next.id, draft: draftWithStripes(next) });
+  };
+  const editingCompetitorId = !studentRoster && editor?.id ? editor.id : '';
+  const linkedStudent = editingCompetitorId ? linkedRosterStudent(editingCompetitorId) ?? null : null;
 
   const onImportFiles = (files: FileList | null) => {
     const file = files?.[0];
@@ -364,7 +403,10 @@ export function RosterPage() {
               studentRoster={studentRoster}
               plan={studentRoster ? undefined : roster.competitionPlans[competitor.id]}
               pending={pendingRemove === competitor.id}
-              onEdit={() => setEditor({ id: competitor.id, draft: draftWithStripes(competitor) })}
+              onEdit={() => {
+                if (studentRoster) setEditor({ id: competitor.id, draft: draftWithStripes(competitor) });
+                else openCompetitorEditor(competitor);
+              }}
               onAskRemove={() => setPendingRemove(competitor.id)}
               onCancelRemove={() => setPendingRemove(null)}
               onConfirmRemove={(reason) => {
@@ -378,7 +420,19 @@ export function RosterPage() {
                 setPendingRemove(null);
               }}
               onOpenCard={studentRoster ? () => setCardTarget(competitor.id) : undefined}
-              onOpenFace={studentRoster ? () => setCardTarget(competitor.id) : () => setCompCardTarget(competitor.id)}
+              onOpenFace={
+                studentRoster
+                  ? () => setCardTarget(competitor.id)
+                  : () => {
+                      try {
+                        fillBlankCompetitorFromLinkedStudent(competitor.id);
+                        migrateSharedGamePlan(competitor.id);
+                      } catch {
+                        /* Keep the card that is already saved on this device. */
+                      }
+                      setCompCardTarget(competitor.id);
+                    }
+              }
               notices={
                 competitor.linkedStudentId && !competitor.guestId
                   ? getCardNotices(competitor.id, { roster: roster.students }).map((notice) => ({ id: notice.eventId, text: registrationText(notice) }))
@@ -387,7 +441,7 @@ export function RosterPage() {
               onNotice={(id, status) => {
                 // Got it opens the card where the coach acts; neither choice writes coach data.
                 if (status === 'applied' && studentRoster) setCardTarget(competitor.id);
-                else if (status === 'applied') setEditor({ id: competitor.id, draft: draftFromStudent(competitor) });
+                else if (status === 'applied') openCompetitorEditor(competitor);
                 else dismissCardNotice(id);
               }}
               onToggleCheckIn={() => setPersonCheckedIn(competitor.id, !competitor.checkedIn)}
@@ -506,6 +560,15 @@ export function RosterPage() {
         }
         studentRoster={studentRoster}
         noPhotos={Boolean(editor?.id && roster.students.find((row) => row.id === editor.id)?.noPhotos)}
+        linkedStudent={linkedStudent}
+        competitorId={editingCompetitorId}
+        onEditLinked={() => {
+          if (!linkedStudent) return;
+          const id = linkedStudent.id;
+          setSaveError('');
+          setEditor(null);
+          navigate(`/roster?from=students&edit=${encodeURIComponent(id)}`);
+        }}
         draft={editor?.draft ?? emptyDraft()}
         saveError={saveError}
         focusStripes={Boolean(editor?.focusStripes)}
@@ -572,7 +635,7 @@ export function RosterPage() {
           onToggleCheckIn={() => setPersonCheckedIn(compStudent.id, !compStudent.checkedIn)}
           onChangeDetails={() => {
             setCompCardTarget(null);
-            setEditor({ id: compStudent.id, draft: draftFromStudent(compStudent) });
+            openCompetitorEditor(compStudent);
           }}
         />
       ) : null}
@@ -1117,6 +1180,9 @@ function StudentEditor({
   title,
   studentRoster,
   noPhotos = false,
+  linkedStudent = null,
+  competitorId = '',
+  onEditLinked,
   draft,
   saveError,
   focusStripes = false,
@@ -1129,6 +1195,10 @@ function StudentEditor({
   studentRoster: boolean;
   /** Per-student No photos: the photo field shows the badge and no picker. */
   noPhotos?: boolean;
+  /** Student Roster card this competitor follows. Null when the competitor is not linked. */
+  linkedStudent?: Student | null;
+  competitorId?: string;
+  onEditLinked?: () => void;
   draft: StudentDraft;
   saveError: string;
   /** Opened from the card's belt: the Promotion stripes control is the belt. */
@@ -1178,6 +1248,19 @@ function StudentEditor({
   };
 
   const look = readCardLook();
+  const linkedPhoto = linkedStudent
+    ? followedCompetitorPhoto({ photo: draft.photo ?? '', noPhotos: noPhotos ? 'coach' : linkedStudent.noPhotos }, linkedStudent)
+    : '';
+  const identityBits = linkedStudent
+    ? [
+        linkedStudent.belt ? `${linkedStudent.belt} belt` : '',
+        linkedStudent.stripes ? `${linkedStudent.stripes} ${linkedStudent.stripes === 1 ? 'stripe' : 'stripes'}` : '',
+        linkedStudent.division,
+        linkedStudent.gym,
+        linkedStudent.lastPromotion ? `Last promotion ${formatPromotion(linkedStudent.lastPromotion) || linkedStudent.lastPromotion}` : '',
+        linkedStudent.lastPromotionDetail,
+      ].filter(Boolean)
+    : [];
   const isNew = /^Add /.test(title);
   const initials = draft.name
     .trim()
@@ -1222,11 +1305,30 @@ function StudentEditor({
                   <span className="clipboard__initials card-entry__slot card-entry__slot--photo" data-testid="card-entry-photo-slot" aria-label={initials ? 'Initials' : 'No photo yet'}>
                     {initials || <span className="card-entry__ghost">Photo</span>}
                   </span>
+                ) : linkedStudent ? (
+                  <>
+                    <button
+                      type="button"
+                      className="card-entry__slot card-entry__slot--photo card-entry__tap"
+                      data-testid="card-entry-photo-slot"
+                      aria-label="Photo. Edit on student card."
+                      onClick={onEditLinked}
+                    >
+                      {linkedPhoto ? (
+                        <img className="roster-edit__photo-img clipboard__photo" src={linkedPhoto} alt="Competitor face photo" />
+                      ) : (
+                        <span className="card-entry__ghost">Photo</span>
+                      )}
+                    </button>
+                    <span className="card-entry__photo-label" data-testid="card-entry-photo-label">Photo</span>
+                    {noPhotos || linkedStudent.noPhotos ? <span className="clipboard__nophotos">No photos</span> : null}
+                  </>
                 ) : noPhotos ? (
                   <>
-                    <span className="clipboard__initials card-entry__slot card-entry__slot--photo" aria-label="No photo yet">
-                      {initials || <span className="card-entry__ghost">AB</span>}
+                    <span className="clipboard__initials card-entry__slot card-entry__slot--photo" data-testid="card-entry-photo-slot" aria-label="No photo yet">
+                      {initials || <span className="card-entry__ghost">Photo</span>}
                     </span>
+                    <span className="card-entry__photo-label" data-testid="card-entry-photo-label">Photo</span>
                     <span className="clipboard__nophotos">No photos</span>
                   </>
                 ) : (
@@ -1245,6 +1347,7 @@ function StudentEditor({
                         <span className="card-entry__ghost">{photoBusy ? 'Adding…' : '+ Photo'}</span>
                       )}
                     </button>
+                    <span className="card-entry__photo-label" data-testid="card-entry-photo-label">Photo</span>
                     {draft.photo ? (
                       <button
                         type="button"
@@ -1276,6 +1379,7 @@ function StudentEditor({
                   />
                 </label>
               </div>
+              {linkedStudent ? null : (
               <div className="clipboard__brow card-entry__brow">
                 <button type="button" className="card-entry__tap card-entry__beltslot" data-testid="card-entry-belt-slot" onClick={focusBelts}>
                   {draft.belt.trim() ? (
@@ -1285,7 +1389,16 @@ function StudentEditor({
                   )}
                 </button>
               </div>
+              )}
             </header>
+            {linkedStudent ? (
+              <p className="card-entry__identity" data-testid="competitor-identity">
+                <span>{identityBits.join(' · ') || linkedStudent.name}</span>
+                <button type="button" className="card-entry__mini" data-testid="edit-on-student-card" onClick={onEditLinked}>
+                  Edit on student card
+                </button>
+              </p>
+            ) : null}
             {studentRoster || !noPhotos ? null : (
               <p className="roster-edit__hint card-entry__note" data-testid="editor-no-photos">
                 <strong>No photos</strong> · photos are off for this student.
@@ -1293,6 +1406,8 @@ function StudentEditor({
             )}
             {photoNote ? <p className="roster-edit__error card-entry__note">{photoNote}</p> : null}
             <div className="card-entry__body">
+              {linkedStudent ? null : (
+              <>
               <fieldset className="roster-edit__belts card-entry__rack" ref={rackRef}>
                 <legend>Belt rank</legend>
                 <p className="roster-edit__hint">
@@ -1404,6 +1519,9 @@ function StudentEditor({
                   </label>
                 ) : null}
               </div>
+              </>
+              )}
+              {!studentRoster && competitorId ? <CompetitorWorkspace competitorId={competitorId} /> : null}
               <label className="card-entry__cell card-entry__notes">
                 {studentRoster ? STUDENT_NOTES_LABEL : 'Competitor Notes'}
                 <textarea

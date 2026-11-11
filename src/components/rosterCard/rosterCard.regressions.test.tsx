@@ -722,7 +722,11 @@ test('Competition card: sections in order, record and upcoming from the imported
     assert.ok(!root.classList.contains('roster-card'), 'not a .roster-card (e2e counts rows)');
     assert.equal(document.querySelector('.comp-card__sheet')?.getAttribute('aria-label'), 'Maya Alvarez Competition card');
     const order = [...document.querySelectorAll('[data-testid^="comp-"]')].map((el) => (el as HTMLElement).dataset.testid);
-    assert.deepEqual(order.filter((id) => id !== 'comp-archive'), ['comp-record', 'comp-upcoming', 'comp-assessment', 'comp-results', 'comp-scouting']);
+    assert.deepEqual(order.filter((id) => id !== 'comp-archive'), ['comp-ready', 'comp-record', 'comp-upcoming', 'comp-assessment', 'comp-results', 'comp-scouting', 'comp-game']);
+    const readyItems = [...document.querySelectorAll('[data-ready-item]')].map((el) => el.getAttribute('data-ready-item'));
+    assert.deepEqual(readyItems, ['medical', 'gi', 'division', 'travel', 'waiver', 'weighIn']);
+    const giHref = document.querySelector('[data-ready-item="gi"]')?.getAttribute('href') ?? '';
+    assert.match(giHref, new RegExp(`/competition-ready\\?id=${card.id}&item=gi`));
     const body = text();
     assert.match(body, /Competition card/);
     assert.match(body, /60% win rate/);
@@ -787,7 +791,10 @@ test('Roster page: Rolodex wraps both lists in the card look and opens the right
   const { readFileSync } = await import('node:fs');
   const page = readFileSync('src/pages/Roster.tsx', 'utf8');
   assert.match(page, /className="clipboard rolodex"/);
-  assert.match(page, /onOpenFace=\{studentRoster \? \(\) => setCardTarget\([^)]*\) : \(\) => setCompCardTarget\([^)]*\)\}/);
+  assert.match(
+    page,
+    /onOpenFace=\{\s*studentRoster\s*\?\s*\(\) => setCardTarget\(competitor\.id\)\s*:[\s\S]*?setCompCardTarget\(competitor\.id\)/,
+  );
   assert.match(page, /<CompetitionCard\b/);
   const css = readFileSync('src/components/rosterCard/rolodex.css', 'utf8');
   assert.match(css, /scroll-snap-type:\s*none/);
