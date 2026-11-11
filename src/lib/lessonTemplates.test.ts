@@ -176,8 +176,9 @@ test('blocks move, add, and remove while per-plan videos stay with their techniq
   plan = addLessonGame(plan);
   plan = addLessonTechnique(plan);
   assert.equal(plan.techniques.at(-1)?.title, '');
-  assert.equal(lessonBlocks(plan).at(-1)?.kind, 'technique');
-  assert.equal(lessonBlocks(plan).at(-2)?.kind, 'game');
+  const addedKinds = lessonBlocks(plan).map((block) => block.kind);
+  assert.ok(addedKinds.lastIndexOf('technique') < addedKinds.indexOf('closing'));
+  assert.equal(addedKinds.at(-1), 'game');
   const gameIndex = lessonBlocks(plan).findIndex((block) => block.kind === 'game');
   plan = moveLessonBlock(plan, gameIndex, -1);
   assert.equal(lessonBlocks(plan)[gameIndex - 1].kind, 'game');

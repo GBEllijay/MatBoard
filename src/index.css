@@ -11674,7 +11674,7 @@ input.roster-pick__name:focus,
   opacity: 0.45;
 }
 
-/* On the player, including fullscreen. Safe-area insets keep Exit above the home indicator. */
+/* On the player while it is in the window. Full screen hides this bar. */
 .techniques__frame .techniques__dock {
   position: absolute;
   z-index: 5;
@@ -11693,9 +11693,59 @@ input.roster-pick__name:focus,
   padding-right: 0.4rem;
 }
 
-/* Page fullscreen hides every .play-fs chip. This one is the exit, so it stays. */
-.play--fs .techniques__frame .techniques__dock .play-fs {
-  display: inline-flex;
+/* Full screen is the picture. Start, Stop, Exit, and Unmute stay in the window. */
+.techniques__frame--fill .techniques__dock,
+.techniques__frame--fill .techniques__chrome,
+.techniques__frame--fill .techniques__sound,
+.techniques__frame--fill .saver__unmute,
+.play--fs .techniques__frame .techniques__dock,
+.play--fs .techniques__frame .techniques__chrome,
+.play--fs .techniques__frame .techniques__sound,
+.play--fs .techniques__frame .saver__unmute,
+.lesson-player--fill .techniques__dock,
+.lesson-player--fill .techniques__chrome,
+.lesson-player--fill .techniques__sound,
+.lesson-player--fill .saver__unmute,
+.lesson-player:fullscreen .techniques__dock,
+.lesson-player:fullscreen .techniques__chrome,
+.lesson-player:fullscreen .techniques__sound,
+.lesson-player:fullscreen .saver__unmute,
+.techniques__frame:fullscreen .techniques__dock,
+.techniques__frame:fullscreen .techniques__chrome,
+.techniques__frame:fullscreen .techniques__sound,
+.techniques__frame:fullscreen .saver__unmute {
+  display: none;
+}
+
+.techniques__sound {
+  position: absolute;
+  z-index: 6;
+  top: calc(0.45rem + var(--safe-t));
+  left: calc(0.45rem + var(--safe-l));
+  min-height: 44px;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(252, 192, 0, 0.9);
+  background: rgba(8, 12, 20, 0.92);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.techniques__sound--muted {
+  background: var(--permission-on);
+  border-color: transparent;
+  color: var(--white);
+}
+
+.techniques__sound:focus-visible {
+  outline: 2px solid var(--gold-2);
+  outline-offset: 2px;
+}
+
+.techniques__frame:has(.techniques__sound) .techniques__live {
+  left: auto;
+  right: calc(0.45rem + var(--safe-r));
 }
 
 .techniques__frame:has(.techniques__dock) .techniques__chrome,

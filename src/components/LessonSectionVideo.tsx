@@ -27,6 +27,10 @@ type Props = {
   onOpenTree?: (treeId: string) => void;
   onPickTree?: (treeId: string | null) => void;
   treeLibraryTo?: string;
+  /** Focus layout opens the clip immediately. The stacked cards still wait for a tap. */
+  startOpen?: boolean;
+  /** Draw Start / Stop / Fullscreen under the picture instead of on it. */
+  dockBelow?: boolean;
 };
 
 /**
@@ -47,15 +51,20 @@ export function LessonSectionVideo({
   onOpenTree,
   onPickTree,
   treeLibraryTo,
+  startOpen = false,
+  dockBelow = false,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => Boolean(startOpen && clipUrl));
 
   useEffect(() => {
     if (!clipUrl) setOpen(false);
-  }, [clipUrl]);
+    else if (startOpen) setOpen(true);
+  }, [clipUrl, startOpen]);
 
   const player =
-    open && clipUrl ? <LessonInlinePlayer src={clipUrl} label={label} durationMs={loopMs} /> : null;
+    open && clipUrl ? (
+      <LessonInlinePlayer src={clipUrl} label={label} durationMs={loopMs} dockBelow={dockBelow} />
+    ) : null;
 
   return (
     <LessonMediaRail
@@ -87,14 +96,22 @@ function LessonInlinePlayer({
   src,
   label,
   durationMs,
+  dockBelow = false,
 }: {
   src: string;
   label: string;
   durationMs?: number;
+  dockBelow?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const fallbackRef = useRef(false);
   const [playing, setPlaying] = useState(true);
+  const [muted, setMuted] = useState(true);
+  const [heardSrc, setHeardSrc] = useState(src);
+  if (heardSrc !== src) {
+    setHeardSrc(src);
+    setMuted(true);
+  }
   const [fullscreen, setFullscreen] = useState(false);
   const [supported, setSupported] = useState(false);
   const [left, setLeft] = useState(durationMs ?? 0);
@@ -192,16 +209,19 @@ function LessonInlinePlayer({
           src={src}
           label={label}
           playing={playing}
-          muted={false}
-          unlockSound
-          fullscreen={false}
+          muted={muted}
+          unlockSound={!muted}
+          fullscreen={fullscreen}
+          onToggleFullscreen={() => void toggleFullscreen()}
+          onToggleMute={() => setMuted((current) => !current)}
           durationMs={timed ? durationMs : undefined}
           onDurationEnd={timed ? () => setPlaying(false) : undefined}
           onRemaining={timed ? setLeft : undefined}
-          dock={dock}
+          dock={dockBelow ? undefined : dock}
           overlay={overlay}
         />
       </div>
+      {dockBelow && !fullscreen ? dock : null}
     </div>
   );
 }
