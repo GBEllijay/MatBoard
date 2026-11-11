@@ -394,6 +394,7 @@ type StartBody = {
   uploadId?: string;
   id?: string;
   parts?: { partNumber?: number; etag?: string }[];
+  required?: boolean;
 };
 
 function isPurpose(value: string): value is CloudMediaPurpose {
@@ -409,17 +410,59 @@ function isPurpose(value: string): value is CloudMediaPurpose {
   );
 }
 
-/** Owner may write approved only. Coach and Instructors may write pending only. */
-function refuseGalleryWrite(actor: Actor, key: string): Response | null {
+/**
+ * License-level Cloud approval. No row, a missing database, or a read
+ * failure means approval is required, which is today's Cloud behavior.
+ */
+export async function licenseGalleryApprovalRequired(env: GymCloudEnv, licenseId: string): Promise<boolean> {
+  const db = env.ENTITLEMENTS_DB;
+  if (!db) return true;
+  try {
+    const row = await db
+      .prepare(`SELECT required FROM gallery_approval WHERE license_id = ? LIMIT 1`)
+      .bind(licenseId)
+      .first<{ required: number | boolean | null }>();
+    if (!row) return true;
+    return row.required !== 0 && row.required !== false;
+  } catch {
+    return true;
+  }
+}
+
+async function writeLicenseGalleryApproval(
+  env: GymCloudEnv,
+  licenseId: string,
+  required: boolean,
+  now: Date,
+): Promise<'ok' | 'missing'> {
+  const db = env.ENTITLEMENTS_DB;
+  if (!db) return 'missing';
+  try {
+    await db
+      .prepare(
+        `INSERT INTO gallery_approval (license_id, required, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(license_id) DO UPDATE SET required = excluded.required, updated_at = excluded.updated_at`,
+      )
+      .bind(licenseId, required ? 1 : 0, now.toISOString())
+      .run();
+    return 'ok';
+  } catch {
+    return 'missing';
+  }
+}
+
+/** Owner may write approved only. Seats may write the lane the license setting allows. */
+async function refuseGalleryWrite(env: GymCloudEnv, actor: Actor, key: string): Promise<Response | null> {
   const parsed = parseGalleryCloudPath(relativePath(actor.licenseId, key));
   if (!parsed) return null;
-  const lane = galleryUploadLane({ kind: actor.kind, preset: actor.preset });
+  const approvalRequired = await licenseGalleryApprovalRequired(env, actor.licenseId);
+  const lane = galleryUploadLane({ kind: actor.kind, preset: actor.preset, approvalRequired });
   if (lane !== parsed.lane) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
   return null;
 }
 
-function refuseFolderWrite(actor: Actor, key: string): Response | null {
-  const gallery = refuseGalleryWrite(actor, key);
+async function refuseFolderWrite(env: GymCloudEnv, actor: Actor, key: string): Promise<Response | null> {
+  const gallery = await refuseGalleryWrite(env, actor, key);
   if (gallery) return gallery;
   const relative = relativePath(actor.licenseId, key);
   const instructor = parseInstructorCloudPath(relative);
@@ -582,20 +625,26 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
           ...(actor.dailyDrop ? { dailyVideoDrop: true, dailyVideoPlay: true, maxUploadBytes: maxUpload } : {}),
         });
       }
-      const [licenseUsedBytes, bucketUsedBytes] = await Promise.all([
+      const [licenseUsedBytes, bucketUsedBytes, galleryApprovalRequired] = await Promise.all([
         bytesUnder(bucket, `groups/${actor.licenseId}/`),
         bytesUnder(bucket, ''),
+        licenseGalleryApprovalRequired(env, actor.licenseId),
       ]);
       return json(200, {
         ok: true,
         cloud: true,
         canUpload: actor.upload,
         replayUpload: actor.replayUpload,
+        galleryApprovalRequired,
         licenseUsedBytes,
         bucketUsedBytes,
         capBytes: cap,
         maxUploadBytes: maxUpload,
       });
+    }
+    if (op === 'gallery-approval') {
+      const required = await licenseGalleryApprovalRequired(env, actor.licenseId);
+      return json(200, { ok: true, required });
     }
     if (op === 'pending') {
       if (actor.kind !== 'owner' && actor.replayUpload !== 'pending') return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
@@ -715,7 +764,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (!key) return json(400, { ok: false, error: 'That file is not in this license.' });
     const refused = laneRefused(key);
     if (refused) return refused;
-    const folderRefused = refuseFolderWrite(actor, key);
+    const folderRefused = await refuseFolderWrite(env, actor, key);
     if (folderRefused) return folderRefused;
     const op = url.searchParams.get('op');
     const bytes = new Uint8Array(await request.arrayBuffer());
@@ -793,6 +842,19 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     return json(200, { ok: true, status, ...(approvedPath ? { path: approvedPath } : {}) });
   }
 
+  if (body.action === 'gallery-approval') {
+    if (actor.kind !== 'owner') return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+    if (typeof body.required !== 'boolean') return json(400, { ok: false, error: 'Choose whether approval is required.' });
+    const written = await writeLicenseGalleryApproval(env, actor.licenseId, body.required, stamp);
+    if (written !== 'ok') {
+      return json(503, {
+        ok: false,
+        error: 'Gallery approval storage is not set up yet. Apply migrations/0007_gallery_approval.sql.',
+      });
+    }
+    return json(200, { ok: true, required: body.required });
+  }
+
   if (body.action === 'gallery-approve' || body.action === 'gallery-reject') {
     if (!galleryDecisionAllowed({ kind: actor.kind, preset: actor.preset })) {
       return json(403, { ok: false, error: 'Only the owner or an Instructors seat can approve or reject.' });
@@ -857,7 +919,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (!key || !body.uploadId) return json(400, { ok: false, error: 'That upload is already closed.' });
     const refused = laneRefused(key);
     if (refused) return refused;
-    const folderRefused = refuseFolderWrite(actor, key);
+    const folderRefused = await refuseFolderWrite(env, actor, key);
     if (folderRefused) return folderRefused;
     await bucket.resumeMultipartUpload(key, body.uploadId).abort();
     return json(200, { ok: true });
@@ -870,7 +932,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     }
     const refused = laneRefused(key);
     if (refused) return refused;
-    const folderRefused = refuseFolderWrite(actor, key);
+    const folderRefused = await refuseFolderWrite(env, actor, key);
     if (folderRefused) return folderRefused;
     const parts = body.parts
       .map((part) => ({ partNumber: Number(part.partNumber), etag: typeof part.etag === 'string' ? part.etag : '' }))
@@ -927,7 +989,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     return json(403, { ok: false, error: actor.replayUpload === 'direct' ? 'Save replays to lesson media.' : CLOUD_ROLE_MESSAGE });
   }
   if (purpose === 'gallery') {
-    const lane = galleryUploadLane({ kind: actor.kind, preset: actor.preset });
+    const approvalRequired = await licenseGalleryApprovalRequired(env, actor.licenseId);
+    const lane = galleryUploadLane({ kind: actor.kind, preset: actor.preset, approvalRequired });
     if (!lane) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
     const galleryPath = galleryCloudPath(lane, dateKey, fileName);
     const galleryKey = galleryPath ? cloudObjectKey(actor.licenseId, galleryPath) : null;

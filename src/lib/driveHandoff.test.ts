@@ -167,6 +167,8 @@ test('a missing invite stays on the connect guide instead of the owner lock', ()
   }
   assert.match(accept, /pullInviteHandoff/);
   assert.match(notes, /publishReviewToGym/);
+  assert.match(notes, /checkReviewHandoff/);
+  assert.match(notes, /reviewHandoffCheckNote/);
   assert.match(review, /checkReviewHandoff/);
   assert.match(review, /publishReviewToGym/);
   const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');

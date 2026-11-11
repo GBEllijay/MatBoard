@@ -287,12 +287,20 @@ export type GalleryCloudLane = 'pending' | 'approved' | 'rejected';
 
 /**
  * Owner photos go straight to approved. Coach and Instructors seats land in
- * pending so the owner or an Instructors seat can approve them. Assistant
- * coaches and program directors do not upload class photos.
+ * pending when Cloud approval is on (the default), or approved when the owner
+ * has turned that gym-wide setting off. The client cannot choose the lane.
+ * Assistant coaches and program directors do not upload class photos.
  */
-export function galleryUploadLane(input: { kind: 'owner' | 'seat'; preset?: string | null }): 'pending' | 'approved' | null {
+export function galleryUploadLane(input: {
+  kind: 'owner' | 'seat';
+  preset?: string | null;
+  /** License-level Cloud setting. Omit or true keeps today's pending-for-seats rule. */
+  approvalRequired?: boolean;
+}): 'pending' | 'approved' | null {
   if (input.kind === 'owner') return 'approved';
-  if (input.preset === 'coach' || input.preset === 'instructors') return 'pending';
+  if (input.preset === 'coach' || input.preset === 'instructors') {
+    return input.approvalRequired === false ? 'approved' : 'pending';
+  }
   return null;
 }
 
@@ -394,6 +402,51 @@ export async function advantageCloudReady(input?: { token?: string; fetcher?: Cl
     return body.cloud === true;
   } catch {
     return false;
+  }
+}
+
+
+/** The gym-wide Cloud approval setting. Missing or unread is treated as on. */
+export async function fetchCloudGalleryApproval(input?: {
+  token?: string;
+  fetcher?: CloudFetcher;
+}): Promise<{ ok: true; required: boolean } | { ok: false }> {
+  const token = input?.token ?? readCloudBearer();
+  if (!token) return { ok: false };
+  const fetcher = input?.fetcher ?? fetch;
+  try {
+    const response = await fetcher(cloudUrl('/api/gym/cloud?op=gallery-approval'), {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return { ok: false };
+    const body = (await response.json()) as { required?: unknown };
+    return { ok: true, required: body.required !== false };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** Owner only. Seats are refused by the server. */
+export async function saveCloudGalleryApproval(
+  required: boolean,
+  input?: { token?: string; fetcher?: CloudFetcher },
+): Promise<{ ok: true; required: boolean } | { ok: false; error: string; status?: number }> {
+  const token = input?.token ?? readCloudBearer();
+  if (!token) return { ok: false, error: CLOUD_SIGN_IN_MESSAGE };
+  const fetcher = input?.fetcher ?? fetch;
+  try {
+    const response = await fetcher(cloudUrl('/api/gym/cloud'), {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'gallery-approval', required }),
+    });
+    if (!response.ok) {
+      return { ok: false, error: await readError(response, 'Advantage Cloud could not save that setting.'), status: response.status };
+    }
+    const body = (await response.json()) as { required?: unknown };
+    return { ok: true, required: body.required !== false };
+  } catch {
+    return { ok: false, error: 'Advantage Cloud could not save that setting.' };
   }
 }
 
@@ -588,6 +641,8 @@ export type CloudStatusBody = {
   ok: true;
   cloud: boolean;
   canUpload?: boolean;
+  /** License-level Cloud approval. Default true when the owner has never saved a choice. */
+  galleryApprovalRequired?: boolean;
   /** Program director: may put a video in today's daily videos, nothing else. */
   dailyVideoDrop?: boolean;
   /** Program director: may list and play today's daily videos, nothing else. */
@@ -627,7 +682,7 @@ export async function uploadAdvantageCloudFile(input: {
   mime: string;
   token?: string;
   fetcher?: CloudFetcher;
-  /** Gallery lane. The server still picks approved for the owner and pending for seats. */
+  /** Ignored for the object path. The server picks the lane from the license setting and the actor role. */
   lane?: 'pending' | 'approved';
   studentId?: string;
   onProgress?: (sent: number, total: number) => void;
