@@ -12,12 +12,15 @@ import { ASSESSMENT_STORAGE_KEY } from '../lib/studentAssessment.ts';
 import { readFileSync } from 'node:fs';
 import { EMPTY_JOURNAL, INDEX_CARDS_STORAGE_KEY, NEUTRAL_NOTE } from '../lib/indexCards.ts';
 import { GLOSSARY_ADDITIONS_KEY } from '../lib/glossaryAdditions.ts';
-import { CAMERA_Z, MESH_RADIUS, NEAR_GAP, projectFit } from '../preview/crystallineSweeps/labels.ts';
-import { D8_STAGE_DEFAULT, D8_STAGE_HEIGHT_KEY, d8StageMax } from './LiveD8.tsx';
+import { CAMERA_Z, LIVE_ZOOM_MAX, MESH_RADIUS, NEAR_GAP, projectFit } from '../preview/crystallineSweeps/labels.ts';
+import { D8_FACE_CAP, D8_STAGE_DEFAULT, D8_STAGE_HEIGHT_KEY, d8FaceGrids, d8StageMax } from './LiveD8.tsx';
+import { D8GridPreview, d8GridSampleFile } from './D8GridPreview.tsx';
 import { IndexTermText } from './IndexTermLink.tsx';
 import { IndexCardProvider } from './IndexCardHost.tsx';
 import { LiveD8 } from './LiveD8.tsx';
-import { resetIndexCardStoreForTests } from './store.ts';
+import { commitIndexCards, enterIndexCardPreview, getIndexCardFile, indexCardPreviewActive, leaveIndexCardPreview, resetIndexCardStoreForTests } from './store.ts';
+import type { IndexCardFile, IndexFaceId } from '../lib/indexCards.ts';
+import { FACES } from '../preview/d8Subfactors/model.ts';
 
 const dom = new Window({ url: 'http://localhost/student?student=1' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -310,7 +313,11 @@ test('pressing zoom in many times keeps the diamond visible and the face centere
   assert.equal(stage.hasAttribute('hidden'), false);
   assert.ok(stage.querySelector('canvas'));
   const zoom = Number(stage.getAttribute('data-zoom'));
-  assert.ok(zoom >= 1 && zoom <= 1.45, String(zoom));
+  // Still clamped. The unmeasured test stage uses the small fallback; the measured ceiling is checked in model.test.ts.
+  assert.ok(zoom >= 1 && zoom <= LIVE_ZOOM_MAX, String(zoom));
+  // A deep zoom keeps the face readout; it does not swap to the drill list.
+  assert.equal(host.querySelector('[data-testid="drill-view"]'), null);
+  assert.ok(host.querySelector('[data-testid="face-pyramid"]'));
   const anchor: [number, number, number] = [0.42, -0.18, 1.1];
   const placed = projectFit(anchor, anchor, zoom, 960, 630);
   assert.ok(Math.abs(placed.x - 480) < 0.5);
@@ -322,6 +329,162 @@ test('pressing zoom in many times keeps the diamond visible and the face centere
   assert.equal(host.querySelector('.topo-stage')?.hasAttribute('hidden'), false);
   act(() => root.unmount());
   host.remove();
+});
+
+function extraCards(faceId: IndexFaceId, count: number, start = 0): IndexCardFile['cards'] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `extra.${faceId}.${start + index + 1}`,
+    faceId,
+    name: `Extra ${faceId} ${start + index + 1}`,
+    rating: 3 as const,
+    addedAt: start + index + 1,
+    tree: null,
+  }));
+}
+
+function tilesOn(host: HTMLElement, faceId: string): number {
+  return host.querySelectorAll(`[data-technique-face="${faceId}"]`).length;
+}
+
+test('each face grows from 9 to 16 to 25 tiles as cards are added, and stays 5x5 past 25', () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  const { root, host } = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  for (const face of FACES) assert.equal(tilesOn(host, face.id), 9, face.id);
+  // Six built-in lines + 3 = 9: still 3x3.
+  act(() => {
+    commitIndexCards({ version: 1, cards: extraCards('passing', 3) });
+  });
+  assert.equal(tilesOn(host, 'passing'), 9);
+  // + 4 = 10: 4x4.
+  act(() => {
+    commitIndexCards({ version: 1, cards: extraCards('passing', 4) });
+  });
+  assert.equal(tilesOn(host, 'passing'), 16);
+  assert.equal(tilesOn(host, 'sweeps'), 9);
+  // + 10 = 16: still 4x4, every tile named.
+  act(() => {
+    commitIndexCards({ version: 1, cards: extraCards('passing', 10) });
+  });
+  assert.equal(tilesOn(host, 'passing'), 16);
+  assert.equal(host.querySelectorAll('[data-technique-face="passing"][data-technique-label]:not([data-technique-label=""])').length, 16);
+  // + 11 = 17: 5x5.
+  act(() => {
+    commitIndexCards({ version: 1, cards: extraCards('passing', 11) });
+  });
+  assert.equal(tilesOn(host, 'passing'), 25);
+  // + 24 = 30: stays 5x5, 25 drawn, +5 more.
+  act(() => {
+    commitIndexCards({ version: 1, cards: extraCards('passing', 24) });
+  });
+  assert.equal(tilesOn(host, 'passing'), D8_FACE_CAP);
+  assert.equal(host.querySelectorAll('[data-technique-face="passing"]:not([data-technique-label=""])').length, 25);
+  focusFace(host, 'passing');
+  assert.match(host.textContent ?? '', /\+5 more/);
+  const pyramid = host.querySelector('[data-testid="face-pyramid"]') as HTMLElement;
+  assert.equal(pyramid.getAttribute('data-grid'), '5');
+  assert.equal(pyramid.querySelectorAll('.d8-live-pyramid-row').length, 5);
+  assert.equal(pyramid.querySelectorAll('[data-slot]').length, 25);
+  // Every card, including the five not drawn, stays in the list.
+  assert.equal(host.querySelectorAll('[data-list-card]').length, 30);
+  // Other faces were not touched.
+  assert.equal(tilesOn(host, 'sweeps'), 9);
+  assert.equal(tilesOn(host, 'mindset'), 9);
+  act(() => root.unmount());
+  host.remove();
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+});
+
+test('a 3x3 face keeps its placed pyramid, a 4x4 face lays out in rows', () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  commitIndexCards({ version: 1, cards: extraCards('sweeps', 5) });
+  const { root, host } = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  focusFace(host, 'guard-control');
+  let pyramid = host.querySelector('[data-testid="face-pyramid"]') as HTMLElement;
+  assert.equal(pyramid.getAttribute('data-grid'), '3');
+  assert.equal(pyramid.querySelectorAll('.d8-live-pyramid-row').length, 0);
+  const placed = pyramid.querySelector('[data-slot]') as HTMLElement;
+  assert.match(placed.getAttribute('style') ?? '', /left:/);
+  focusFace(host, 'sweeps');
+  pyramid = host.querySelector('[data-testid="face-pyramid"]') as HTMLElement;
+  assert.equal(pyramid.getAttribute('data-grid'), '4');
+  const rows = [...pyramid.querySelectorAll('.d8-live-pyramid-row')];
+  assert.deepEqual(rows.map((row) => row.querySelectorAll('[data-slot]').length), [1, 3, 5, 7]);
+  assert.equal(pyramid.querySelectorAll('.d8sf-term').length, 11);
+  assert.equal(pyramid.querySelectorAll('[data-empty-slot]').length, 5);
+  act(() => root.unmount());
+  host.remove();
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+});
+
+test('d8FaceGrids follows each face card count', () => {
+  const grid = (counts: Partial<Record<IndexFaceId, number>>) => {
+    const cards = FACES.flatMap((face) =>
+      Array.from({ length: counts[face.id as IndexFaceId] ?? 6 }, (_, index) => ({
+        id: `${face.id}.${index}`,
+        faceId: face.id as IndexFaceId,
+        faceLabel: face.label,
+        name: `${face.id} ${index}`,
+        tile: `${face.id} ${index}`,
+        rating: 3 as const,
+        touched: false,
+        addedAt: 0,
+        custom: true,
+        video: null,
+        tree: null,
+      })),
+    );
+    return d8FaceGrids(cards);
+  };
+  assert.deepEqual(grid({}), FACES.map(() => 3));
+  const index = (id: string) => FACES.findIndex((face) => face.id === id);
+  const mixed = grid({ passing: 10, sweeps: 17, submissions: 40, mindset: 9 });
+  assert.equal(mixed[index('passing')], 4);
+  assert.equal(mixed[index('sweeps')], 5);
+  assert.equal(mixed[index('submissions')], 5);
+  assert.equal(mixed[index('mindset')], 3);
+});
+
+test('the grid preview shows sample cards in memory and never writes the saved file', () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  const saved = JSON.stringify({ version: 1, cards: extraCards('mindset', 1) });
+  localStorage.setItem(INDEX_CARDS_STORAGE_KEY, saved);
+  const { root, host } = mount(
+    <IndexCardProvider>
+      <D8GridPreview />
+    </IndexCardProvider>,
+  );
+  assert.equal(indexCardPreviewActive(), true);
+  assert.equal(tilesOn(host, 'takedowns'), 9);
+  assert.equal(tilesOn(host, 'passing'), 16);
+  assert.equal(tilesOn(host, 'sweeps'), 25);
+  assert.equal(tilesOn(host, 'submissions'), 25);
+  assert.equal(tilesOn(host, 'mindset'), 9);
+  act(() => {
+    commitIndexCards({ version: 1, cards: [...d8GridSampleFile().cards, ...extraCards('guard-control', 1)] });
+  });
+  assert.equal(localStorage.getItem(INDEX_CARDS_STORAGE_KEY), saved);
+  act(() => root.unmount());
+  host.remove();
+  assert.equal(indexCardPreviewActive(), false);
+  assert.deepEqual(getIndexCardFile().cards.map((card) => card.id), ['extra.mindset.1']);
+  enterIndexCardPreview({ version: 1, cards: [] });
+  leaveIndexCardPreview();
+  assert.equal(localStorage.getItem(INDEX_CARDS_STORAGE_KEY), saved);
+  localStorage.clear();
+  resetIndexCardStoreForTests();
 });
 
 test('an unlisted move asks for a face, saves on it, and lands in the additions pool', () => {

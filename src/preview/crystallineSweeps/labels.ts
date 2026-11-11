@@ -97,8 +97,15 @@ export const DIAMOND_FOV = (19 * Math.PI) / 180;
 export const MESH_RADIUS = 1.55;
 /** Closest a projected point may come. Stops the near plane from clipping or inverting. */
 export const NEAR_GAP = 1.6;
-/** Limb diameter may reach this fraction of the stage's shorter side. */
-export const DIAMOND_FILL = 1.12;
+/**
+ * Limb diameter may reach this multiple of the stage's shorter side.
+ * Past 1 the diamond overfills the stage, but the camera stays anchored on the
+ * focused face (or the diamond's center), so the mesh never leaves the frame.
+ * Raised from 1.12 so a 4×4 or 5×5 face can be zoomed until its names read clearly.
+ */
+export const DIAMOND_FILL = 3;
+/** Hard ceiling for the live diamond's zoom on any stage size. Was 1.45. */
+export const LIVE_ZOOM_MAX = 2.6;
 
 export type CameraPoint = [number, number, number];
 
@@ -108,8 +115,10 @@ export function diamondHeightFraction(radius = MESH_RADIUS): number {
 }
 
 /**
- * Highest zoom that lets the diamond fill or slightly exceed the stage.
- * Never high enough for the body to leave the frame, and never below the resting view.
+ * Highest zoom for the live diamond. The diamond may overfill the stage up to
+ * DIAMOND_FILL × its shorter side, never past LIVE_ZOOM_MAX, and never below the resting view.
+ * The anchored camera keeps the focused face (or the diamond's center) in the middle,
+ * so the body cannot leave the frame.
  */
 export function diamondZoomCap(width: number, height: number, radius = MESH_RADIUS): number {
   const h = Math.max(height, 1);
@@ -118,7 +127,7 @@ export function diamondZoomCap(width: number, height: number, radius = MESH_RADI
   const diameterAtRest = diamondHeightFraction(radius) * h;
   const fillZoom = (shorter * DIAMOND_FILL) / Math.max(diameterAtRest, 1e-6);
   if (!Number.isFinite(fillZoom)) return 1.25;
-  return Math.min(1.45, Math.max(REST_ZOOM, fillZoom));
+  return Math.min(LIVE_ZOOM_MAX, Math.max(REST_ZOOM, fillZoom));
 }
 
 /** Clamp used by the live diamond's +, −, pinch, and wheel. */

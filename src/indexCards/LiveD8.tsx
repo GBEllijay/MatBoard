@@ -3,11 +3,11 @@
  * Tapping a blank tile, or an empty pyramid slot, starts a new card on that face.
  * Zoom, pause, reset, and the factor buttons stay the stage's own controls.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { TopoStage } from '../preview/crystallineSweeps/TopoStage.tsx';
-import { ZOOM_LIST } from '../preview/d8Subfactors/cards.ts';
+import { LIVE_ZOOM_MAX } from '../preview/crystallineSweeps/labels.ts';
 import { FACES } from '../preview/d8Subfactors/model.ts';
-import { buildSubfactorTopo, faceSlots, showOnDiamond } from '../preview/d8Subfactors/topoModel.ts';
+import { FACE_GRID_MAX, buildSubfactorTopo, faceGridSize, faceSlots, faceTileCap, showOnDiamond } from '../preview/d8Subfactors/topoModel.ts';
 import {
   INDEX_FACE_IDS,
   faceScoreExact,
@@ -35,7 +35,18 @@ import '../preview/crystallineSweeps/crystallineSweeps.css';
 import '../preview/d8Subfactors/d8Subfactors.css';
 import './liveD8.css';
 
-const DIAMOND_CAP = 9;
+/**
+ * Most cards one face can draw: a 5×5 split, 25 tiles.
+ * Each face grows on its own: up to 9 cards is 3×3, 10–16 is 4×4, 17–25 is 5×5.
+ * Past 25 the face stays 5×5 with its 25 strongest cards (rating, then newest),
+ * shows "+N more", and every card stays in the list under the diamond.
+ */
+export const D8_FACE_CAP = FACE_GRID_MAX * FACE_GRID_MAX;
+/**
+ * The face list only replaces the face readout past this zoom. It sits above the
+ * live zoom ceiling, so a deeper zoom keeps the readout, as it has since the clamp landed.
+ */
+const LIVE_LIST_ZOOM = LIVE_ZOOM_MAX + 1;
 export const D8_STAGE_HEIGHT_KEY = 'matboard.student.d8StageHeight.v1';
 /** About 1.5× the old 420px stage. */
 export const D8_STAGE_DEFAULT = 630;
@@ -106,7 +117,7 @@ export function LiveD8() {
   );
   const face = focus >= 0 ? FACES[focus] : null;
   const faceId = face && isLiveFace(face.id) ? face.id : null;
-  const drilled = Boolean(faceId && zoom >= ZOOM_LIST && !holdDiamond);
+  const drilled = Boolean(faceId && zoom >= LIVE_LIST_ZOOM && !holdDiamond);
   const expanded = stageHeight >= d8StageMax() - 8;
 
   const rememberHeight = (next: number) => {
@@ -120,7 +131,7 @@ export function LiveD8() {
   };
 
   useEffect(() => {
-    if (zoom < ZOOM_LIST && holdDiamond) setHoldDiamond(false);
+    if (zoom < LIVE_LIST_ZOOM && holdDiamond) setHoldDiamond(false);
   }, [zoom, holdDiamond]);
 
   const goDiamond = () => {
@@ -209,12 +220,24 @@ function isLiveFace(id: string): id is IndexFaceId {
   return FACES.some((face) => face.id === id);
 }
 
+/** Rows on each face, in FACES order, from how many cards that face has. */
+export function d8FaceGrids(cards: readonly LiveCard[]): number[] {
+  return FACES.map((face) => (isLiveFace(face.id) ? faceGridSize(cards.filter((card) => card.faceId === face.id).length) : faceGridSize(0)));
+}
+
 function useMesh(cards: readonly LiveCard[]) {
   const modelRef = useRef<ReturnType<typeof buildSubfactorTopo> | null>(null);
-  if (!modelRef.current) modelRef.current = buildSubfactorTopo(FACES, () => null);
+  const gridKey = useRef('');
+  const grids = d8FaceGrids(cards);
+  const nextGridKey = grids.join(',');
+  // A face that crosses 9 or 16 cards gets a finer split. The mesh is rebuilt only then.
+  if (!modelRef.current || gridKey.current !== nextGridKey) {
+    modelRef.current = buildSubfactorTopo(FACES, () => null, (faceIndex) => grids[faceIndex] ?? faceGridSize(0));
+    gridKey.current = nextGridKey;
+  }
   const model = modelRef.current;
   const meshKey = useRef('');
-  const signature = cards.map((card) => `${card.faceId}:${card.id}:${card.rating}:${card.tile}`).join('|');
+  const signature = `${nextGridKey}#${cards.map((card) => `${card.faceId}:${card.id}:${card.rating}:${card.tile}`).join('|')}`;
   if (meshKey.current !== signature) {
     meshKey.current = signature;
     FACES.forEach((face, index) => {
@@ -233,11 +256,11 @@ function useMesh(cards: readonly LiveCard[]) {
 function strongest(cards: readonly LiveCard[]): LiveCard[] {
   return [...cards]
     .sort((left, right) => right.rating - left.rating || right.addedAt - left.addedAt || left.name.localeCompare(right.name))
-    .slice(0, DIAMOND_CAP);
+    .slice(0, faceTileCap(cards.length));
 }
 
 function moreLabel(count: number): string | null {
-  const extra = count - DIAMOND_CAP;
+  const extra = count - D8_FACE_CAP;
   return extra > 0 ? `+${extra} more` : null;
 }
 
@@ -378,41 +401,76 @@ function FaceReadout({
             </span>
           </p>
         ) : null}
-        <div
-          className="d8sf-pyramid"
-          data-testid="face-pyramid"
-          role="group"
-          aria-label={`${label} slots`}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) startDraft(faceId);
-          }}
-        >
-          {slots.map((slot) => {
-            const card = slot.moveId ? byId.get(slot.moveId) : null;
-            return (
-              <div key={slot.tileIndex} className="d8sf-slot" data-slot={slot.tileIndex} style={{ left: `${slot.x}%`, top: `${slot.y}%` }}>
-                {card ? (
-                  <IndexTermLink name={card.name} className="d8sf-term" />
-                ) : (
-                  <button
-                    type="button"
-                    className="d8sf-empty"
-                    data-empty-slot={slot.tileIndex}
-                    aria-label="Add"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      startDraft(faceId);
-                    }}
-                  >
-                    + Add
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <FacePyramid faceId={faceId} label={label} slots={slots} byId={byId} />
         <CardList faceId={faceId} cards={cards} />
       </section>
+    </div>
+  );
+}
+
+function FacePyramid({
+  faceId,
+  label,
+  slots,
+  byId,
+}: {
+  faceId: IndexFaceId;
+  label: string;
+  slots: ReturnType<typeof faceSlots>;
+  byId: ReadonlyMap<string, LiveCard>;
+}) {
+  const grid = slots[0]?.grid ?? 3;
+  const slotNode = (slot: (typeof slots)[number], style?: { left: string; top: string }) => {
+    const card = slot.moveId ? byId.get(slot.moveId) : null;
+    return (
+      <div key={slot.tileIndex} className="d8sf-slot" data-slot={slot.tileIndex} style={style}>
+        {card ? (
+          <IndexTermLink name={card.name} className="d8sf-term" />
+        ) : (
+          <button
+            type="button"
+            className="d8sf-empty"
+            data-empty-slot={slot.tileIndex}
+            aria-label="Add"
+            onClick={(event) => {
+              event.stopPropagation();
+              startDraft(faceId);
+            }}
+          >
+            + Add
+          </button>
+        )}
+      </div>
+    );
+  };
+  const onBlank = (event: MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) startDraft(faceId);
+  };
+  if (grid <= 3) {
+    return (
+      <div className="d8sf-pyramid" data-testid="face-pyramid" data-grid={grid} role="group" aria-label={`${label} slots`} onClick={onBlank}>
+        {slots.map((slot) => slotNode(slot, { left: `${slot.x}%`, top: `${slot.y}%` }))}
+      </div>
+    );
+  }
+  // 4×4 and 5×5: one centered row per mesh row so names wrap instead of piling up.
+  const rows = Array.from({ length: grid }, (_, row) =>
+    slots.filter((slot) => slot.row === row).sort((left, right) => left.x - right.x || left.tileIndex - right.tileIndex),
+  );
+  return (
+    <div
+      className="d8sf-pyramid d8-live-pyramid-rows"
+      data-testid="face-pyramid"
+      data-grid={grid}
+      role="group"
+      aria-label={`${label} slots`}
+      onClick={onBlank}
+    >
+      {rows.map((row, index) => (
+        <div key={index} className="d8-live-pyramid-row" data-row={index} onClick={onBlank}>
+          {row.map((slot) => slotNode(slot))}
+        </div>
+      ))}
     </div>
   );
 }

@@ -33,10 +33,34 @@ export function applySubfactorScore(model: TopoModel, id: string, score: ReliefS
   tile.apex = mid.map((value, axis) => value + normal[axis] * offset) as Vec;
 }
 
-/** One octahedron. Each face carries exactly the moves it is given. Heights come from scoreFor. */
+/** Smallest split a face uses: 3×3, nine tiles. */
+export const FACE_GRID_MIN = 3;
+/** Largest split a face uses: 5×5, twenty-five tiles. More cards do not add a sixth row. */
+export const FACE_GRID_MAX = 5;
+
+/**
+ * Rows per face for a card count. Up to 9 cards is 3×3 (9 tiles), 10–16 is 4×4 (16),
+ * 17 or more is 5×5 (25). Past 25 the grid stays 5×5 and the strongest 25 are drawn.
+ */
+export function faceGridSize(count: number): number {
+  const safe = Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+  return Math.min(FACE_GRID_MAX, Math.max(FACE_GRID_MIN, Math.ceil(Math.sqrt(safe))));
+}
+
+/** Tiles a face can show for a card count: 9, 16, or 25. */
+export function faceTileCap(count: number): number {
+  const n = faceGridSize(count);
+  return n * n;
+}
+
+/**
+ * One octahedron. Each face carries exactly the moves it is given. Heights come from scoreFor.
+ * `gridFor` may set the rows on one face (3 to 5). Without it, a face splits just enough for its moves.
+ */
 export function buildSubfactorTopo(
   faces: readonly FaceModel[],
   scoreFor: (id: string) => ReliefScore | null,
+  gridFor?: (faceIndex: number) => number,
 ): TopoModel {
   const topoFaces = faces.map((face) => ({
     id: face.id,
@@ -82,7 +106,11 @@ export function buildSubfactorTopo(
   faceCorners.forEach((corners, faceIndex) => {
     const face = topoFaces[faceIndex];
     const count = face?.moves.length ?? 0;
-    const n = Math.max(1, Math.ceil(Math.sqrt(count)));
+    const asked = gridFor?.(faceIndex);
+    const n =
+      asked != null && Number.isFinite(asked)
+        ? Math.min(FACE_GRID_MAX, Math.max(1, Math.round(asked)))
+        : Math.max(1, Math.ceil(Math.sqrt(count)));
     const [a, b, c] = corners.map((index) => vertices[index]);
     const pointAt = (i: number, j: number) => {
       const left = lerp(a, b, i / n);
@@ -153,6 +181,10 @@ export type FaceSlot = {
   x: number;
   /** Percent down the face. */
   y: number;
+  /** Row from the apex, 0 first. */
+  row: number;
+  /** Rows on this face: 3, 4, or 5 on the live diamond. */
+  grid: number;
 };
 
 /** Flat map of one face. Empty corners stay on the far tiles. Filled lines stay near the middle. */
@@ -164,8 +196,12 @@ export function faceSlots(model: TopoModel, faceIndex: number): FaceSlot[] {
   const ac = sub(c, a);
   const along = dot(ac, u);
   const v = norm(sub(ac, [u[0] * along, u[1] * along, u[2] * along]));
-  const raw = model.tiles
-    .filter((tile) => tile.faceIndex === faceIndex)
+  const onFace = model.tiles.filter((tile) => tile.faceIndex === faceIndex);
+  const grid = Math.max(1, Math.round(Math.sqrt(onFace.length)));
+  // The faces are equilateral, so depth along the apex altitude gives the row.
+  const altitude = sub([(b[0] + c[0]) / 2, (b[1] + c[1]) / 2, (b[2] + c[2]) / 2], a);
+  const altitudeSq = dot(altitude, altitude) || 1;
+  const raw = onFace
     .map((tile) => {
       const mid: Vec = [
         (tile.tri[0].p[0] + tile.tri[1].p[0] + tile.tri[2].p[0]) / 3,
@@ -173,7 +209,9 @@ export function faceSlots(model: TopoModel, faceIndex: number): FaceSlot[] {
         (tile.tri[0].p[2] + tile.tri[1].p[2] + tile.tri[2].p[2]) / 3,
       ];
       const rel = sub(mid, a);
-      return { tile, x: dot(rel, u), y: dot(rel, v) };
+      const depth = dot(rel, altitude) / altitudeSq;
+      const row = Math.min(grid - 1, Math.max(0, Math.floor(depth * grid + 1e-6)));
+      return { tile, x: dot(rel, u), y: dot(rel, v), row };
     });
   if (!raw.length) return [];
   const minX = Math.min(...raw.map((item) => item.x));
@@ -188,6 +226,8 @@ export function faceSlots(model: TopoModel, faceIndex: number): FaceSlot[] {
     label: item.tile.move?.name ?? null,
     x: 16 + ((item.x - minX) / spanX) * 68,
     y: 14 + ((maxY - item.y) / spanY) * 72,
+    row: item.row,
+    grid,
   }));
 }
 
@@ -195,8 +235,8 @@ const tileMidpoint = (tile: TopoModel['tiles'][number]): Vec =>
   [0, 1, 2].map((axis) => (tile.tri[0].p[axis] + tile.tri[1].p[axis] + tile.tri[2].p[axis]) / 3) as Vec;
 
 /**
- * Paint at most nine cards onto the face's existing triangles.
- * The mesh stays a 3×3. Extra cards are not given a new row.
+ * Paint cards onto the face's existing triangles, at most one per tile.
+ * The mesh is not resized here. Extra cards are not given a new row.
  * `shown` should already be the strongest cards, closest tiles first.
  */
 export function showOnDiamond(
@@ -216,7 +256,7 @@ export function showOnDiamond(
     const rightDistance = Math.hypot(rightMid[0] - centroid[0], rightMid[1] - centroid[1], rightMid[2] - centroid[2]);
     return leftDistance - rightDistance || left.index - right.index;
   });
-  const capped = shown.slice(0, Math.min(9, ranked.length));
+  const capped = shown.slice(0, ranked.length);
   const moves: TopoMove[] = capped.map((card) => ({
     id: card.id,
     name: card.name,
