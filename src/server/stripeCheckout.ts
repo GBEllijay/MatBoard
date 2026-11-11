@@ -9,7 +9,14 @@ import {
   PRO_MONTHLY_PRICE_CENTS,
 } from '../lib/productPrices.ts';
 import { normalizeEmail } from './entitlements.ts';
-import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import {
+  API_PRODUCT_COACH,
+  API_PRODUCT_EXTRA_PROFILE,
+  API_PRODUCT_ID,
+  API_PRODUCT_MEDIA,
+  API_PRODUCT_PRO,
+  API_PRODUCT_STUDENT,
+} from './routes.ts';
 import type { BillingEventKind } from './subscriptionAccess.ts';
 import { cloudEditionForPriceIds } from './proPrices.ts';
 import { readCurrentPeriodEnd, readPriceIds } from './stripeSubscription.ts';
@@ -44,6 +51,15 @@ export type StripeRuntimeEnv = {
   STRIPE_PRICE_MEDIA_CLOUD_MONTHLY?: string;
   /** Optional. Not used by Checkout. Future half-off price for Media Cloud. */
   STRIPE_PRICE_MEDIA_CLOUD_MONTHLY_DISCOUNT?: string;
+  /** Extra Student profile, one-time $5.99. The first profile stays free. */
+  STRIPE_PRICE_EXTRA_PROFILE?: string;
+  /**
+   * Coupon id for academy Student Edition half-off codes.
+   * Pro mints one promotion code (100 uses). Instructor Edition mints one (25).
+   * The coupon's percent_off is stored with the code, so a replacement coupon
+   * can use a different percent.
+   */
+  STRIPE_COUPON_ACADEMY_HALF_OFF?: string;
   STRIPE_SUCCESS_URL?: string;
   STRIPE_CANCEL_URL?: string;
 };
@@ -417,6 +433,38 @@ export async function lookupAllowlistedHalfOffPromotion(
   }
 }
 
+/**
+ * One promotion code on the academy coupon. The coupon stays in Stripe.
+ * percent_off is read from the coupon so a replacement coupon can change it.
+ */
+export async function createAcademyPromotionCode(
+  secret: string,
+  input: { couponId: string; code: string; maxRedemptions: number },
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ id: string; code: string; percentOff: number | null; couponId: string }> {
+  const coupon = (await stripeRequest(
+    secret,
+    `/v1/coupons/${encodeURIComponent(input.couponId)}`,
+    { method: 'GET' },
+    fetchImpl,
+  )) as { id?: string; percent_off?: number | null };
+  const percentOff = typeof coupon.percent_off === 'number' ? coupon.percent_off : null;
+  const params = new URLSearchParams();
+  params.set('coupon', input.couponId);
+  params.set('code', input.code);
+  params.set('max_redemptions', String(input.maxRedemptions));
+  const created = (await stripeRequest(
+    secret,
+    '/v1/promotion_codes',
+    { method: 'POST', body: params.toString() },
+    fetchImpl,
+  )) as { id?: string; code?: string };
+  if (typeof created.id !== 'string' || !created.id.startsWith('promo_') || typeof created.code !== 'string' || !created.code) {
+    throw new Error('Stripe did not return a promotion code.');
+  }
+  return { id: created.id, code: created.code, percentOff, couponId: typeof coupon.id === 'string' ? coupon.id : input.couponId };
+}
+
 export async function createCheckoutSession(
   secret: string,
   fields: URLSearchParams,
@@ -534,7 +582,8 @@ export type CloudSubscriptionSync = {
 
 export type StripeEntitlementDecision =
   | { action: 'record'; purchase: CheckoutPurchase }
-  | { action: 'record-student'; purchase: CheckoutPurchase }
+  | { action: 'record-student'; purchase: CheckoutPurchase; promotionCodeId?: string }
+  | { action: 'record-extra-profile'; purchase: CheckoutPurchase; accountId: string }
   | { action: 'record-coach'; purchase: CheckoutPurchase; cloud?: boolean; subscriptionId?: string }
   | { action: 'record-media'; purchase: CheckoutPurchase; cloud?: boolean; subscriptionId?: string }
   | { action: 'record-pro'; purchase: CheckoutPurchase; cloud?: boolean; subscriptionId?: string }
@@ -559,6 +608,33 @@ function readMetaCloud(row: Record<string, unknown>): boolean {
   const metadata = row.metadata;
   if (!metadata || typeof metadata !== 'object') return false;
   return (metadata as { cloud?: unknown }).cloud === '1';
+}
+
+function readMetaAccount(row: Record<string, unknown>): string {
+  const metadata = row.metadata;
+  if (!metadata || typeof metadata !== 'object') return '';
+  const id = (metadata as { account_id?: unknown }).account_id;
+  return typeof id === 'string' ? id.trim() : '';
+}
+
+/** Promotion code id on a Checkout session, when Stripe included discounts. */
+export function promotionCodeIdFromSession(row: Record<string, unknown>): string {
+  const raw = row.discounts;
+  const list = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data)
+      ? ((raw as { data: unknown[] }).data)
+      : [];
+  for (const item of list) {
+    if (!item || typeof item !== 'object') continue;
+    const promo = (item as { promotion_code?: unknown }).promotion_code;
+    if (typeof promo === 'string' && promo.startsWith('promo_')) return promo;
+    if (promo && typeof promo === 'object' && typeof (promo as { id?: unknown }).id === 'string') {
+      const id = (promo as { id: string }).id;
+      if (id.startsWith('promo_')) return id;
+    }
+  }
+  return '';
 }
 
 function readMetaProduct(row: Record<string, unknown>): string {
@@ -678,6 +754,7 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
     if (
       product !== API_PRODUCT_ID &&
       product !== API_PRODUCT_STUDENT &&
+      product !== API_PRODUCT_EXTRA_PROFILE &&
       product !== API_PRODUCT_COACH &&
       product !== API_PRODUCT_MEDIA &&
       product !== API_PRODUCT_PRO
@@ -692,7 +769,13 @@ function checkoutDecision(row: Record<string, unknown>): StripeEntitlementDecisi
       amountTotal: money(row, 'amount_total'),
       currency: currencyOf(row),
     };
-    if (product === API_PRODUCT_STUDENT) return { action: 'record-student', purchase };
+    if (product === API_PRODUCT_STUDENT) {
+      const promotionCodeId = promotionCodeIdFromSession(row);
+      return { action: 'record-student', purchase, ...(promotionCodeId ? { promotionCodeId } : {}) };
+    }
+    if (product === API_PRODUCT_EXTRA_PROFILE) {
+      return { action: 'record-extra-profile', purchase, accountId: readMetaAccount(row) };
+    }
     if (product === API_PRODUCT_COACH) return { action: 'record-coach', purchase };
     if (product === API_PRODUCT_MEDIA) return { action: 'record-media', purchase };
     if (product === API_PRODUCT_PRO) return { action: 'record-pro', purchase };

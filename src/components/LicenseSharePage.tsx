@@ -30,7 +30,7 @@ import { readOneDriveBinding } from '../lib/oneDrive';
 import { COACH_UNLIMITED_PATH, PRODUCTS_PATH } from '../lib/productNames';
 import { qrDataUrl } from '../lib/qr';
 import { licenseIdFromStoredToken } from '../lib/studentInboxClient';
-import { StudentLicenseOwnerPanel, StudentLicenseSeatShow } from './StudentLicenseShare';
+import { AcademyHalfOffShare, StudentLicenseOwnerPanel, StudentLicenseSeatShow } from './StudentLicenseShare';
 
 function origin(): string {
   return typeof window === 'undefined' ? '' : window.location.origin;
@@ -269,6 +269,7 @@ export function InstructorSharePage() {
   return (
     <ShareShell kind="instructor">
       <InstructorShareBody />
+      <AcademyHalfOffShare />
     </ShareShell>
   );
 }
@@ -287,6 +288,7 @@ export function StudentSharePage() {
         <>
           <StudentShareBody />
           {door.proUnlocked ? <StudentLicenseOwnerPanel /> : null}
+          {!door.proUnlocked && coachUnlocked ? <AcademyHalfOffShare /> : null}
         </>
       )}
     </ShareShell>

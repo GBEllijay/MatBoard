@@ -3,6 +3,11 @@ import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 /** One-time Advantage Student Edition list price. Checkout product `student`. The public buy page does not sell it. */
 export const STUDENT_LIST_PRICE_CENTS = 1999;
 
+/** One extra Student profile. The first profile on the phone is free. Checkout product `extra-profile`. */
+export const EXTRA_PROFILE_LIST_PRICE_CENTS = 599;
+
+export const EXTRA_PROFILE_PRICE_LABEL = '$5.99';
+
 /** One-time Advantage Coach list price. Checkout exists; the public home does not sell it. */
 export const COACH_LIST_PRICE_CENTS = 2999;
 

@@ -590,7 +590,9 @@ test('base Pro restores Pro doors and never Cloud', async () => {
   );
   const licenseId = String(paid.body.licenseId);
   assert.deepEqual((await grantRows(db, licenseId)).map((row) => [row.product, row.source]), [['advantage-pro', 'stripe_payment']]);
-  assert.equal(await readHalfOffCode(db, licenseId), null);
+  const half = await readHalfOffCode(db, licenseId);
+  assert.equal(half?.maxUses, 100);
+  assert.equal(half?.promoId ?? null, null);
   const asked = await requestCode(db, 'base@gym.test', at, '203.0.113.40');
   const claims = await claimsFrom(
     (await verifyCode(db, pair.secret, asked.body.challengeId ?? '', codeFrom(asked.sender.sent[0]?.text ?? ''), at, 'base-phone')).body.token ?? '',

@@ -7,14 +7,18 @@ import {
   type StudentEntitlement,
   type WhiteEntitlement,
 } from './entitlements.ts';
+import { ensureAccountByEmail } from './accountId.ts';
 import { recordPurchase } from './purchaseRecords.ts';
-import { ensureHalfOffCode } from './proBundle.ts';
+import { ensureHalfOffCode, mintHalfOffCode, noteHalfOffRedemption, readHalfOffCode } from './proBundle.ts';
+import { recordExtraProfileSlot } from './profileSlots.ts';
 import { lookupCheckoutSessionId, revokeOneTimePurchase } from './refundRevoke.ts';
 import { applySubscriptionSnapshot } from './subscriptionSync.ts';
 import { applyCloudSnapshot, cloudEditionForSnapshot, recordCloudGrant } from './cloudSubscription.ts';
 import { canceledSnapshot, fetchStripeSubscription, type StripeSubscriptionSnapshot } from './stripeSubscription.ts';
 import { isHalfOffCheckoutFlag } from '../lib/halfOff.ts';
-import { API_PRODUCT_COACH, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import { API_PRODUCT_COACH, API_PRODUCT_EXTRA_PROFILE, API_PRODUCT_ID, API_PRODUCT_MEDIA, API_PRODUCT_PRO, API_PRODUCT_STUDENT } from './routes.ts';
+import { EXTRA_PROFILE_LIST_PRICE_CENTS } from '../lib/productPrices.ts';
+import { HALF_OFF_MAX_USES, INSTRUCTOR_HALF_OFF_MAX_USES } from '../lib/proBundleMath.ts';
 import {
   createUpgradeCoupon,
   creditBeatsHalfOff,
@@ -29,6 +33,7 @@ import {
   EXPECTED_ONE_TIME_CENTS,
   checkoutFormFields,
   checkoutReturnUrls,
+  createAcademyPromotionCode,
   createCheckoutSession,
   findPromotionCodeId,
   lookupAllowlistedHalfOffPromotion,
@@ -67,6 +72,57 @@ function stripeFailure(error: unknown): Response {
   return json(http, { error: message || 'Stripe request failed.' });
 }
 
+const ACCOUNT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function extraProfileReturnUrls(requestUrl: string): { successUrl: string; cancelUrl: string } | { error: string } {
+  let origin: string;
+  try {
+    origin = new URL(requestUrl).origin;
+  } catch {
+    return { error: 'Could not determine the site origin for Checkout return URLs.' };
+  }
+  return {
+    successUrl: `${origin}/student/profile?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancelUrl: `${origin}/student/profile?checkout=cancel`,
+  };
+}
+
+/** One-time $5.99 slot. Not a tier, and not an Advantage Cloud add-on. */
+async function startExtraProfileCheckout(
+  request: Request,
+  env: StripeRuntimeEnv,
+  fetchImpl: typeof fetch,
+  body: object,
+): Promise<Response> {
+  const secret = env.STRIPE_SECRET_KEY?.trim() ?? '';
+  const priceId = env.STRIPE_PRICE_EXTRA_PROFILE?.trim() ?? '';
+  if (!secret.startsWith('sk_') || !priceId.startsWith('price_')) {
+    return json(503, { error: 'Stripe is not configured. Set STRIPE_SECRET_KEY and STRIPE_PRICE_EXTRA_PROFILE.' });
+  }
+  const urls = extraProfileReturnUrls(request.url);
+  if ('error' in urls) return json(503, { error: urls.error });
+  const hinted = (body as { accountId?: unknown }).accountId;
+  const accountId = typeof hinted === 'string' && ACCOUNT_ID.test(hinted.trim()) ? hinted.trim().toLowerCase() : '';
+  try {
+    const price = await fetchOneTimePrice(secret, priceId, fetchImpl);
+    if (price.unitAmount !== EXTRA_PROFILE_LIST_PRICE_CENTS || price.currency.toLowerCase() !== 'usd') {
+      return json(503, { error: 'Extra profile checkout is not configured. No charge was made.' });
+    }
+    const fields = checkoutFormFields({
+      priceIds: [priceId],
+      mode: 'payment',
+      productId: API_PRODUCT_EXTRA_PROFILE,
+      successUrl: urls.successUrl,
+      cancelUrl: urls.cancelUrl,
+    });
+    if (accountId) fields.set('metadata[account_id]', accountId);
+    const session = await createCheckoutSession(secret, fields, fetchImpl);
+    return json(200, { url: session.url, id: session.id });
+  } catch (error) {
+    return stripeFailure(error);
+  }
+}
+
 export async function handleCheckout(
   request: Request,
   env: StripeRuntimeEnv,
@@ -86,6 +142,9 @@ export async function handleCheckout(
     }
   }
   if (!body || typeof body !== 'object' || Array.isArray(body)) return json(400, { error: 'Checkout body must be a JSON object.' });
+  if ((body as { product?: unknown }).product === 'extra-profile') {
+    return startExtraProfileCheckout(request, env, fetchImpl, body);
+  }
   const promoField = (body as { promotionCode?: unknown }).promotionCode;
   if (promoField !== undefined && promoField !== null && typeof promoField !== 'string') {
     return json(400, { error: 'Promo code must be text.' });
@@ -202,6 +261,55 @@ export type WebhookExtras = {
   /** When set, subscription events are re-read from Stripe before they are stored. */
   fetchImpl?: typeof fetch;
 };
+
+/**
+ * One Student Edition promotion code per academy license.
+ * Pro: 100 redemptions. Instructor Edition: 25. A Pro seat is not a license
+ * and does not get a code. Without the coupon env, a local code is stored
+ * so dev and fixtures still have a row. No charge is made for free seats.
+ * Returns a 500 response when Stripe was configured and the code could not be created.
+ */
+async function attachAcademyHalfOff(
+  extras: WebhookExtras,
+  env: StripeRuntimeEnv,
+  licenseId: string | null,
+  edition: 'pro' | 'coach',
+  now: Date,
+): Promise<Response | null> {
+  if (!extras.db || !licenseId) return null;
+  const existing = await readHalfOffCode(extras.db, licenseId);
+  if (existing) return null;
+  const maxUses = edition === 'pro' ? HALF_OFF_MAX_USES : INSTRUCTOR_HALF_OFF_MAX_USES;
+  const couponId = env.STRIPE_COUPON_ACADEMY_HALF_OFF?.trim() ?? '';
+  const secret = env.STRIPE_SECRET_KEY?.trim() ?? '';
+  let code: string | undefined;
+  let promoId: string | null = null;
+  let percentOff: number | null = null;
+  let storedCoupon = couponId || null;
+  if (couponId && secret.startsWith('sk_') && extras.fetchImpl) {
+    try {
+      const created = await createAcademyPromotionCode(
+        secret,
+        { couponId, code: mintHalfOffCode(), maxRedemptions: maxUses },
+        extras.fetchImpl,
+      );
+      code = created.code;
+      promoId = created.id;
+      percentOff = created.percentOff;
+      storedCoupon = created.couponId;
+    } catch {
+      return json(500, { error: 'Could not create the academy half-off code. Stripe will retry.' });
+    }
+  }
+  await ensureHalfOffCode(extras.db, licenseId, now, {
+    maxUses,
+    code,
+    couponId: storedCoupon,
+    percentOff,
+    promoId,
+  });
+  return null;
+}
 
 async function rememberEvent(extras: WebhookExtras, eventId: string, stamp: string): Promise<void> {
   if (!eventId || !extras.db) return;
@@ -383,6 +491,7 @@ export async function handleWebhook(
         sessionId: stored.sessionId,
         now: now(),
       });
+      if (extras.db && parsed.promotionCodeId) await noteHalfOffRedemption(extras.db, parsed.promotionCodeId);
       if (eventId && extras.db) {
         await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
       }
@@ -444,10 +553,31 @@ export async function handleWebhook(
         });
       }
     }
+    const halfOffFailed = await attachAcademyHalfOff(extras, env, licenseId, 'coach', now());
+    if (halfOffFailed) return halfOffFailed;
     if (eventId && extras.db) {
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }
     return json(200, { received: true, sessionId: stored.sessionId, ...(parsed.cloud ? { cloud: true } : {}) });
+  }
+  if (parsed.action === 'record-extra-profile') {
+    if (!extras.db) return json(500, { error: 'Entitlement storage is not configured. Bind ENTITLEMENTS_DB.' });
+    const account = await ensureAccountByEmail(extras.db, {
+      email: parsed.purchase.email,
+      pepper: extras.pepper,
+      now: now(),
+      accountId: parsed.accountId,
+    });
+    if (!account) return json(500, { error: 'Extra profile purchase has no account email. Stripe will retry.' });
+    const slots = await recordExtraProfileSlot(extras.db, {
+      accountId: account.accountId,
+      sessionId: parsed.purchase.sessionId,
+      now: now(),
+    });
+    if (eventId) {
+      await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
+    }
+    return json(200, { received: true, extraProfileSlots: slots });
   }
   if (parsed.action === 'record-pro') {
     if (parsed.cloud && !extras.db) {
@@ -471,7 +601,6 @@ export async function handleWebhook(
         subscriptionId: parsed.subscriptionId,
         now: now(),
       });
-      await ensureHalfOffCode(extras.db, licenseId, now());
       cloudRecorded = true;
       if (store.saveCloud && !(store.findCloudBySubscriptionId && (await store.findCloudBySubscriptionId(parsed.subscriptionId)))) {
         await store.saveCloud({
@@ -485,6 +614,8 @@ export async function handleWebhook(
         });
       }
     }
+    const halfOffFailed = await attachAcademyHalfOff(extras, env, licenseId, 'pro', now());
+    if (halfOffFailed) return halfOffFailed;
     if (eventId && extras.db) {
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }
@@ -557,7 +688,8 @@ export async function handleWebhook(
       status: 'active',
       now: now(),
     });
-    if (extras.db && licenseId) await ensureHalfOffCode(extras.db, licenseId, now());
+    const halfOffFailed = await attachAcademyHalfOff(extras, env, licenseId, 'pro', now());
+    if (halfOffFailed) return halfOffFailed;
     if (eventId && extras.db) {
       await extras.db.prepare(`INSERT OR IGNORE INTO stripe_events (event_id, received_at) VALUES (?, ?)`).bind(eventId, stamp).run();
     }

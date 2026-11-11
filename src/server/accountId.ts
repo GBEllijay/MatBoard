@@ -199,6 +199,34 @@ async function linkSeats(db: D1Database, licenseId: string, accountId: string): 
 }
 
 /**
+ * The account for this email, created once when the address is new.
+ * A hinted account id wins when that row exists, so a checkout return
+ * stays on the account the phone already restored.
+ * Does not insert a license.
+ */
+export async function ensureAccountByEmail(
+  db: D1Database,
+  input: { email?: string | null; pepper?: string; now: Date; accountId?: string | null },
+): Promise<AccountLink | null> {
+  const email = accountEmail(input.email);
+  const hash = await emailHash(email, input.pepper);
+  const hinted = typeof input.accountId === 'string' ? input.accountId.trim().toLowerCase() : '';
+  if (hinted) {
+    const hintedAccount = await accountById(db, hinted);
+    if (hintedAccount) {
+      if (email) await claimEmail(db, hintedAccount.id, email, hash, input.now, false);
+      const account = await accountById(db, hintedAccount.id);
+      return { accountId: hintedAccount.id, email: account?.email ?? hintedAccount.email };
+    }
+  }
+  if (!email && !hash) return null;
+  const existing = await accountByEmail(db, email, hash);
+  if (existing) return { accountId: existing.id, email: existing.email };
+  const id = await insertAccount(db, { email, hash, now: input.now });
+  return { accountId: id, email: email || null };
+}
+
+/**
  * Link this existing license to one account id.
  * Does not insert a license, does not change a license id, and does not move
  * a license that already has a different account id.

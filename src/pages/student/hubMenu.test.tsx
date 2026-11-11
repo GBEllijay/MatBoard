@@ -26,7 +26,7 @@ import { DRIVE_BINDING_KEY } from '../../lib/googleDrive.ts';
 import { BackupMenu, ClearStudentMenu } from './BackupMenu.tsx';
 import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from './StudentMenus.tsx';
 import { StudentProfileSwitcher } from './StudentProfileSwitcher.tsx';
-import { ADD_PROFILE_LABEL, readActiveStudentProfile, readStudentProfiles } from '../../lib/studentProfiles.ts';
+import { ADD_PROFILE_LABEL, EXTRA_PROFILE_FIXTURE_KEY, readActiveStudentProfile, readStudentProfiles } from '../../lib/studentProfiles.ts';
 import { WhitePage } from '../White.tsx';
 
 const dom = new Window({ url: 'http://localhost/student?student=1' });
@@ -551,6 +551,7 @@ test('Lock White uses the hub text button and leaves roster and journal in place
 
 test('a profile can be added and switched from the hub, then deleted after confirmation', () => {
   localStorage.clear();
+  localStorage.setItem(EXTRA_PROFILE_FIXTURE_KEY, '1');
   let reloads = 0;
   Object.defineProperty(view.location, 'reload', {
     configurable: true,
@@ -597,6 +598,21 @@ test('a profile can be added and switched from the hub, then deleted after confi
   click(page.host, 'Delete Sam');
   assert.equal(readStudentProfiles(localStorage).profiles.some((profile) => profile.name === 'Sam'), false);
   assert.equal(readActiveStudentProfile(localStorage).name, 'My profile');
+  unmount(page);
+  localStorage.clear();
+});
+
+test('adding a second profile offers the $5.99 checkout unless the fixture is on', () => {
+  localStorage.clear();
+  const page = mount(<StudentProfileSwitcher />, '/student/profile');
+  const add = [...page.host.querySelectorAll('button')].find((node) => node.textContent?.includes('$5.99'));
+  assert.ok(add);
+  act(() => {
+    add.click();
+  });
+  assert.match(page.host.textContent ?? '', /Continue to checkout — \$5\.99/);
+  assert.equal(page.host.querySelector('input[aria-label="Profile name"]'), null);
+  assert.equal(readStudentProfiles(localStorage).profiles.length, 1);
   unmount(page);
   localStorage.clear();
 });

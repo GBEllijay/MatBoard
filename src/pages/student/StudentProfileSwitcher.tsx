@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { readAccountReference, rememberAccountReference } from '../../lib/accountReference';
 import { notifyStudentJournal } from '../../lib/studentDemo';
+import { EXTRA_PROFILE_PRICE_LABEL } from '../../lib/productPrices';
 import { forgetProfilePortraitMirror, portraitFromFile } from '../../lib/profilePortrait';
 import { clearFilmBlobs } from '../../lib/studentFilm';
 import {
@@ -8,10 +10,14 @@ import {
   addStudentProfile,
   deleteStudentProfile,
   ensureStudentProfiles,
+  extraProfileFixtureOn,
+  extraProfileNeedsPurchase,
+  readExtraProfileSlots,
   readStudentProfiles,
   renameStudentProfile,
   setStudentProfilePortrait,
   switchStudentProfile,
+  writeExtraProfileSlots,
   type StudentProfileRecord,
   type StudentProfileRegistry,
 } from '../../lib/studentProfiles';
@@ -25,6 +31,30 @@ function reloadStudentEdition(): void {
   }
 }
 
+function fixtureActive(): boolean {
+  if (extraProfileFixtureOn(localStorage)) return true;
+  try {
+    return Boolean(import.meta.env?.DEV) && new URLSearchParams(window.location.search).get('fixture') === 'profiles';
+  } catch {
+    return false;
+  }
+}
+
+function needsPurchase(registry: StudentProfileRegistry): boolean {
+  return extraProfileNeedsPurchase(registry.profiles.length, readExtraProfileSlots(localStorage), fixtureActive());
+}
+
+async function confirmExtraProfile(sessionId: string): Promise<{ slots: number; accountId?: string } | null> {
+  const response = await fetch('/api/checkout-confirm', {
+    method: 'POST',
+    headers: { accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify({ sessionId }),
+  });
+  const body = (await response.json()) as { ok?: boolean; extraProfileSlots?: number; accountId?: string };
+  if (!response.ok || body.ok !== true || typeof body.extraProfileSlots !== 'number') return null;
+  return { slots: body.extraProfileSlots, accountId: body.accountId };
+}
+
 function initial(name: string): string {
   const letter = name.trim().charAt(0);
   return letter ? letter.toUpperCase() : '?';
@@ -33,26 +63,66 @@ function initial(name: string): string {
 /** Switch, add, rename, and delete family profiles on this phone. */
 export function StudentProfileSwitcher({ detail = false }: { detail?: boolean }) {
   const [registry, setRegistry] = useState<StudentProfileRegistry>(() => readStudentProfiles(localStorage));
-  const [panel, setPanel] = useState<'closed' | 'add' | 'rename' | 'delete'>('closed');
+  const [panel, setPanel] = useState<'closed' | 'add' | 'pay' | 'rename' | 'delete'>('closed');
   const [renameId, setRenameId] = useState('');
   const [deleteId, setDeleteId] = useState('');
   const [name, setName] = useState('');
   const [portrait, setPortrait] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const refresh = () => setRegistry(readStudentProfiles(localStorage));
 
   useEffect(() => {
     ensureStudentProfiles(localStorage);
     refresh();
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id') ?? '';
+    if (params.get('checkout') !== 'success' || !sessionId.startsWith('cs_')) return;
+    let alive = true;
+    void confirmExtraProfile(sessionId).then((result) => {
+      if (!alive || !result) return;
+      writeExtraProfileSlots(localStorage, result.slots);
+      if (result.accountId) rememberAccountReference(result.accountId);
+      setError('');
+      setPanel('add');
+      refresh();
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const openAdd = () => {
-    setPanel('add');
     setName('');
     setPortrait('');
     setError('');
     refresh();
+    const current = readStudentProfiles(localStorage);
+    setPanel(needsPurchase(current) ? 'pay' : 'add');
+  };
+
+  const pay = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const accountId = readAccountReference();
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { accept: 'application/json', 'content-type': 'application/json' },
+        body: JSON.stringify({ product: 'extra-profile', ...(accountId ? { accountId } : {}) }),
+      });
+      const body = (await response.json()) as { url?: string; error?: string };
+      if (!response.ok || typeof body.url !== 'string') {
+        setError(body.error || 'Checkout did not open. No charge was made.');
+        setBusy(false);
+        return;
+      }
+      window.location.assign(body.url);
+    } catch {
+      setError('Checkout did not open. No charge was made.');
+      setBusy(false);
+    }
   };
 
   const onPortrait = async (file: File | undefined) => {
@@ -160,8 +230,23 @@ export function StudentProfileSwitcher({ detail = false }: { detail?: boolean })
       </ul>
       {panel === 'closed' ? (
         <button type="button" className="s-profiles__add" data-testid="student-profile-add" onClick={openAdd}>
-          {ADD_PROFILE_LABEL}
+          {needsPurchase(registry) ? `Add a profile — ${EXTRA_PROFILE_PRICE_LABEL}` : ADD_PROFILE_LABEL}
         </button>
+      ) : null}
+      {panel === 'pay' ? (
+        <div className="s-profiles__panel" role="region" aria-label="Buy an extra profile">
+          <h3>Extra profile — {EXTRA_PROFILE_PRICE_LABEL}</h3>
+          <p>The first profile is free. Each extra profile is {EXTRA_PROFILE_PRICE_LABEL} once. Switching profiles stays free.</p>
+          <div className="s-profiles__actions">
+            <button type="button" className="s-profiles__save" onClick={() => void pay()} disabled={busy}>
+              {busy ? 'Opening checkout…' : `Continue to checkout — ${EXTRA_PROFILE_PRICE_LABEL}`}
+            </button>
+            <button type="button" onClick={() => setPanel('closed')}>
+              Cancel
+            </button>
+          </div>
+          {error ? <p className="s-profiles__error" role="alert">{error}</p> : null}
+        </div>
       ) : null}
       {panel === 'add' ? (
         <div className="s-profiles__panel" role="region" aria-label={ADD_PROFILE_LABEL}>

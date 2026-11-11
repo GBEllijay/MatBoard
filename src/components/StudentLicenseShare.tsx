@@ -17,7 +17,7 @@ import {
   halfOffPoolNote,
   studentLicenseClaimUrl,
 } from '../lib/studentLicensePool';
-import { SHARE_OWNER_ONLY } from '../lib/licenseShare';
+import { SHARE_OWNER_ONLY, copyShareLink } from '../lib/licenseShare';
 import { qrDataUrl } from '../lib/qr';
 
 function origin(): string {
@@ -48,6 +48,36 @@ function LicenseQr({ link, caption }: { link: string; caption: string }) {
       </figcaption>
     </figure>
   );
+}
+
+function HalfOffShare({ halfOff }: { halfOff: HalfOffPointer }) {
+  const [copied, setCopied] = useState(false);
+  const share = async () => setCopied(await copyShareLink(halfOff.code));
+  const percent = typeof halfOff.percentOff === 'number' ? `${halfOff.percentOff}% off Student Edition. ` : '';
+  return (
+    <div className="student-license__halfoff" data-academy-half-off="code">
+      <p>{halfOffPoolNote(halfOff.usesLeft, halfOff.maxUses)}</p>
+      <p>
+        {percent}
+        {halfOff.usesLeft} uses left.
+      </p>
+      <LicenseQr link={halfOff.code} caption="Student Edition half-off code" />
+      <label>
+        Half-off code
+        <input readOnly value={halfOff.code} aria-label="Half-off code" onFocus={(event) => event.currentTarget.select()} />
+      </label>
+      <button type="button" className="btn" onClick={() => void share()}>
+        {copied ? 'Copied' : 'Share'}
+      </button>
+    </div>
+  );
+}
+
+/** Pro owner and Instructor Edition owner. Renders nothing until a code is stored. */
+export function AcademyHalfOffShare() {
+  const { halfOff } = useLicenseList();
+  if (!halfOff?.code) return null;
+  return <HalfOffShare halfOff={halfOff} />;
 }
 
 function useLicenseList() {
@@ -165,15 +195,7 @@ export function StudentLicenseOwnerPanel() {
       {left === 0 ? (
         <p role="status">{STUDENT_LICENSE_EMPTY}</p>
       ) : null}
-      {left === 0 && halfOff ? (
-        <div className="student-license__halfoff">
-          <p>{halfOffPoolNote(halfOff.usesLeft)}</p>
-          <label>
-            100-use half-off code
-            <input readOnly value={halfOff.code} aria-label="100-use half-off code" onFocus={(event) => event.currentTarget.select()} />
-          </label>
-        </div>
-      ) : null}
+      {halfOff?.code ? <HalfOffShare halfOff={halfOff} /> : null}
       {error ? <p role="alert">{error}</p> : null}
       {note ? <p role="status">{note}</p> : null}
       <button type="button" className="btn" onClick={() => void issue()} disabled={busy || left === 0}>
