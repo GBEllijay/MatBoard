@@ -98,7 +98,7 @@ export const COACH_LINKS: readonly MenuLink[] = [
 
 export const BACKUP_LINKS: readonly MenuLink[] = [
   { label: 'Print progress report', note: 'PDF of rank, journal, and competition', to: '/student/print/progress' },
-  { label: 'Print self-assessment', note: 'PDF of the seven areas', to: '/student/print/assessment' },
+  { label: 'Print self-assessment', note: 'PDF of the eight areas', to: '/student/print/assessment' },
   { label: 'Connections', note: 'Academy folder, personal drive, and backup', to: '/student/connections' },
 ];
 

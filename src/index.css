@@ -11462,6 +11462,15 @@ input.roster-pick__name:focus,
   accent-color: var(--gold-2);
 }
 
+.cloud-media__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-weight: 500;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
 .cloud-media__actions {
   display: flex;
   flex-wrap: wrap;

@@ -31,6 +31,7 @@
 
 import { publishLessonToDrive, publishTrainingVideos, readDriveBinding } from './googleDrive.ts';
 import { replayForDrive } from './replayAnalysis.ts';
+import { TRAINING_CLOUD_ACTION, TRAINING_CLOUD_LEAD, TRAINING_CLOUD_WARNING } from './storageCopy.ts';
 import type { DriveLessonDocument, TrainingVideoUpload, TrainingVideoUploadResult } from './googleDrive.ts';
 import {
   clampDriveFileId,
@@ -332,6 +333,8 @@ export function trainingClipHandoff(input: {
   driveConnected: boolean;
   /** Live seat allowed into Daily Training Videos. */
   seatedAuthorized?: boolean;
+  /** Advantage Cloud answered as on for this license. Wording only. */
+  cloudOn?: boolean;
 }): TrainingClipHandoff {
   const seated = Boolean(input.seatedAuthorized);
   const share = input.proSuite || seated;
@@ -342,6 +345,9 @@ export function trainingClipHandoff(input: {
       action: '',
       warning: 'Clips stay on this device. Nothing is uploaded.',
     };
+  }
+  if (input.cloudOn && !input.driveConnected) {
+    return { share: true, lead: TRAINING_CLOUD_LEAD, action: TRAINING_CLOUD_ACTION, warning: TRAINING_CLOUD_WARNING };
   }
   const warning = input.driveConnected
     ? 'Until this day is saved, these clips stay on this device only and are not shared with the owner or other instructors yet. This phone keeps a copy for offline play.'
@@ -373,6 +379,7 @@ export function trainingClipStayCopy(input: {
   proSuite: boolean;
   driveConnected: boolean;
   seatedAuthorized?: boolean;
+  cloudOn?: boolean;
 }): string {
   const handoff = trainingClipHandoff(input);
   if (!handoff.share) return handoff.warning;

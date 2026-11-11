@@ -5,6 +5,7 @@ import { readOneDriveBinding, subscribeOneDriveBinding } from '../lib/oneDrive';
 import { readCloudLapse } from '../lib/cloudLapse';
 import { mediaConductAccepted } from '../lib/mediaConduct';
 import { proPlusCloudUnlocked, subscribeProPlusCloud } from '../lib/proPlusCloud';
+import { useAdvantageCloudOn } from './useAdvantageCloudOn';
 
 function snapshotHome(cloudBound: boolean): GymHomeId {
   const conduct = typeof localStorage === 'undefined' || mediaConductAccepted(localStorage);
@@ -22,6 +23,7 @@ function snapshotHome(cloudBound: boolean): GymHomeId {
 /** One sentence naming the gallery the slideshow is using. */
 export function PlayingFromLine() {
   const [cloudBound, setCloudBound] = useState(false);
+  const cloudOn = useAdvantageCloudOn();
   const home = useSyncExternalStore(
     (listener) => {
       const stopDrive = subscribeDriveBinding(listener);
@@ -45,5 +47,5 @@ export function PlayingFromLine() {
       cancel = true;
     };
   }, []);
-  return <p className="playing-from">{playingFromCopy(home)}</p>;
+  return <p className="playing-from">{playingFromCopy(home, cloudOn)}</p>;
 }

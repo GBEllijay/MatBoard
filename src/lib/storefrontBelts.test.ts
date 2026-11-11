@@ -110,7 +110,7 @@ test('every tier except Pro and Pro Plus Cloud is priced one-time; Pro is $99.99
       null,
       null,
       null,
-      'Requires gym setup with a third-party drive (Google Drive, OneDrive, or Dropbox). Advantage does not host it.',
+      'Requires gym setup with a third-party drive (Google Drive or OneDrive). Advantage does not host it.',
       'Requires your own Google Drive or OneDrive. Advantage does not host it.',
       null,
     ],

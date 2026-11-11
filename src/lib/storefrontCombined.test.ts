@@ -53,7 +53,7 @@ test('combined ladder strings and prices are final', () => {
   assert.equal(byId['pro-cloud'].title, 'Advantage Pro + Cloud');
   assert.equal(byId['pro-cloud'].cardPrice, '$5.99/month');
   assert.equal(byId['pro-cloud'].to, '/editions/pro-cloud');
-  assert.equal(byId.coach.detail, 'Requires gym setup with a third-party drive (Google Drive, OneDrive, or Dropbox). Advantage does not host it.');
+  assert.equal(byId.coach.detail, 'Requires gym setup with a third-party drive (Google Drive or OneDrive). Advantage does not host it.');
   for (const r of STOREFRONT_BELT_LADDER) {
     if (r.id !== 'pro' && r.id !== 'pro-cloud') assert.match(r.cardPrice ?? '', /one-time$/);
   }

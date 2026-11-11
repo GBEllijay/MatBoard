@@ -19,6 +19,8 @@ import { readDriveBinding, requestDriveToken, subscribeDriveBinding } from '../l
 import { readOneDriveBinding, readOneDriveSession } from '../lib/oneDrive';
 import { COACH_UNLIMITED_PATH } from '../lib/productNames';
 import { qrDataUrl } from '../lib/qr';
+import { academyNoFolderCopy } from '../lib/storageCopy';
+import { useAdvantageCloudOn } from './useAdvantageCloudOn';
 
 type Row = {
   pathway: AcademyPathway;
@@ -52,6 +54,7 @@ export function AcademyPathwayPanel() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [driveTick, setDriveTick] = useState(0);
+  const cloudOn = useAdvantageCloudOn();
 
   const reload = useCallback(() => {
     const gymName = readGymName();
@@ -154,7 +157,7 @@ export function AcademyPathwayPanel() {
       </p>
       {rows.length === 0 ? (
         <p>
-          {ACADEMY_NO_FOLDER}{' '}
+          {academyNoFolderCopy(cloudOn, ACADEMY_NO_FOLDER)}{' '}
           <Link to={COACH_UNLIMITED_PATH}>Connect the folder</Link>
         </p>
       ) : null}

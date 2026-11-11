@@ -53,6 +53,8 @@ import {
 } from '../lib/googleDrive';
 import { PHOTOS_CONNECTED, photosOwnerFacingError } from '../lib/googlePhotos';
 import { addDriveMediaFiles } from '../lib/photoStore';
+import { connectAccountNote, connectWithBody } from '../lib/storageCopy';
+import { useAdvantageCloudOn } from './useAdvantageCloudOn';
 import {
   clearOneDriveResumeFlag,
   loadMicrosoftClientId,
@@ -110,6 +112,7 @@ export function DriveConnectCard({
   changeFolderOnOpen?: boolean;
 }) {
   const location = useLocation();
+  const cloudOn = useAdvantageCloudOn();
   const owned = ownedGoogleClientId();
   const ownedMicrosoft = ownedMicrosoftClientId();
   const [devAppId, setDevAppId] = useState(() => (import.meta.env.DEV && !owned ? googleClientId() : ''));
@@ -372,8 +375,8 @@ export function DriveConnectCard({
     <article className="plan-card">
       <p className="plan-card__kicker">{connected ? connected.displayName : CONNECT_WITH_KICKER}</p>
       <strong>{binding ? binding.folderName : CONNECT_WITH_TITLE}</strong>
-      {binding ? <span>{connectedDetail(binding)}</span> : <span>{CONNECT_WITH_BODY}</span>}
-      <p className="drive-connect__note">{CONNECT_ACCOUNT_NOTE}</p>
+      {binding ? <span>{connectedDetail(binding)}</span> : <span>{connectWithBody(cloudOn, CONNECT_WITH_BODY)}</span>}
+      <p className="drive-connect__note">{connectAccountNote(cloudOn, CONNECT_ACCOUNT_NOTE)}</p>
       {import.meta.env.DEV && (!owned || !ownedMicrosoft) ? (
         <details className="drive-connect__advanced">
           <summary>Advanced</summary>

@@ -123,7 +123,7 @@ export function ReviewInboxPage() {
           <p className="plan-card__kicker">Review inbox</p>
           <h1>Sunday review</h1>
           <p>
-            <Link to="/coach-unlimited">Back to Coach Unlimited</Link>
+            <Link to="/coach-unlimited">Back to Instructor Edition</Link>
           </p>
           <DriveHandoffCheck on={handoffChecked} onClick={checkFolder} />
           {driveConnected ? null : <DriveHandoffGuide />}
