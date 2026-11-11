@@ -334,3 +334,59 @@ function SwapProbe() {
     </>
   );
 }
+
+function installNoFullscreenApi() {
+  fullscreenNode = null;
+  installVideo();
+  const proto = view.HTMLElement.prototype as HTMLElement & {
+    requestFullscreen?: unknown;
+    webkitRequestFullscreen?: unknown;
+  };
+  delete proto.requestFullscreen;
+  delete proto.webkitRequestFullscreen;
+  Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, get: () => false });
+  Object.defineProperty(document, 'webkitFullscreenEnabled', { configurable: true, get: () => false });
+  Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => null });
+  Object.defineProperty(document, 'webkitFullscreenElement', { configurable: true, get: () => null });
+}
+
+test('iPhone with no Fullscreen API: Fullscreen sits in the bar while the clip plays and opens the cover', async () => {
+  installNoFullscreenApi();
+  const { host, root } = mount(<PlanProbe clipUrl="https://example.com/warm.mp4" />);
+  await click(buttonNamed(host, 'Play Warm-up'));
+  const dock = host.querySelector('[data-player-dock]') as HTMLElement;
+  assert.ok(dock);
+  assert.equal(buttonNamed(dock, 'Stop').disabled, false);
+  assert.ok(buttonNamed(dock, 'Start'));
+  const go = buttonNamed(dock, 'Fullscreen');
+  assert.ok(buttonNamed(host, 'Unmute'));
+
+  await click(go);
+  const player = host.querySelector('[data-lesson-player]') as HTMLElement;
+  assert.match(player.className, /lesson-player--fill/);
+  assert.equal(player.querySelectorAll('button').length, 0);
+
+  await act(async () => {
+    (player.querySelector('.techniques__frame') as HTMLElement).click();
+  });
+  assert.doesNotMatch(player.className, /lesson-player--fill/);
+  assert.ok(buttonNamed(host.querySelector('[data-player-dock]') as HTMLElement, 'Fullscreen'));
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test('every player bar shows Fullscreen without waiting on the Fullscreen API', () => {
+  const page = readFileSync('src/pages/Techniques.tsx', 'utf8');
+  const lesson = readFileSync('src/components/LessonSectionVideo.tsx', 'utf8');
+  const camera = readFileSync('src/components/CameraWindow.tsx', 'utf8');
+  const dock = page.slice(page.indexOf('const playerDock ='), page.indexOf('const coachFocus'));
+  assert.match(dock, /showFullscreen\n/);
+  assert.doesNotMatch(dock, /fs\.supported/);
+  assert.match(dock, /setStage\(true\)/);
+  assert.doesNotMatch(lesson, /showFullscreen=\{supported/);
+  const bar = camera.slice(camera.indexOf('camera-window__controls'), camera.indexOf('<LoopClip'));
+  assert.match(bar, /data-camera-fullscreen/);
+  assert.match(bar, />\s*Fullscreen\s*</);
+  assert.doesNotMatch(bar, /fs\.supported/);
+});

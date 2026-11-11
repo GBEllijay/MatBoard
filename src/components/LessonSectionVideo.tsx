@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { exitPageFullscreen, fullscreenElement, fullscreenSupported, requestElementFullscreen } from '../lib/fullscreen';
+import { exitPageFullscreen, fullscreenElement, requestElementFullscreen } from '../lib/fullscreen';
 import { formatMmSs } from '../lib/format';
 import { ClipDock } from './ClipDock';
 import { LessonMediaRail } from './LessonMediaRail';
@@ -113,13 +113,8 @@ function LessonInlinePlayer({
     setMuted(true);
   }
   const [fullscreen, setFullscreen] = useState(false);
-  const [supported, setSupported] = useState(false);
   const [left, setLeft] = useState(durationMs ?? 0);
   const timed = durationMs != null && durationMs > 0;
-
-  useEffect(() => {
-    setSupported(fullscreenSupported());
-  }, []);
 
   useEffect(() => {
     setLeft(durationMs ?? 0);
@@ -178,7 +173,7 @@ function LessonInlinePlayer({
       playing={playing}
       canStart={!playing}
       fullscreen={fullscreen}
-      showFullscreen={supported || fullscreen}
+      showFullscreen
       onStart={() => setPlaying(true)}
       onStop={() => setPlaying(false)}
       onToggleFullscreen={() => void toggleFullscreen()}
