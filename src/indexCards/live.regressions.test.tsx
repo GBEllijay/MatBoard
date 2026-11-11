@@ -17,6 +17,8 @@ import { D8_FACE_CAP, D8_STAGE_DEFAULT, D8_STAGE_HEIGHT_KEY, d8FaceGrids, d8Stag
 import { D8GridPreview, d8GridSampleFile } from './D8GridPreview.tsx';
 import { IndexTermText } from './IndexTermLink.tsx';
 import { IndexCardProvider } from './IndexCardHost.tsx';
+import { GlossaryField } from '../glossary/GlossaryField.tsx';
+import { useState } from 'react';
 import { LiveD8 } from './LiveD8.tsx';
 import { commitIndexCards, enterIndexCardPreview, getIndexCardFile, indexCardPreviewActive, leaveIndexCardPreview, resetIndexCardStoreForTests } from './store.ts';
 import type { IndexCardFile, IndexFaceId } from '../lib/indexCards.ts';
@@ -37,6 +39,7 @@ installGlobal('localStorage', view.localStorage);
 installGlobal('sessionStorage', view.sessionStorage);
 installGlobal('HTMLElement', view.HTMLElement);
 installGlobal('HTMLInputElement', view.HTMLInputElement);
+installGlobal('HTMLTextAreaElement', view.HTMLTextAreaElement);
 installGlobal('HTMLFormElement', view.HTMLFormElement);
 installGlobal('SVGElement', view.SVGElement);
 installGlobal('Element', view.Element);
@@ -556,6 +559,76 @@ test('a built-in move can be renamed and moved, and reset back to the glossary',
   card = mounted.host.querySelector('[data-testid="live-index-card"]');
   assert.equal(card?.querySelector('h2')?.textContent, 'Kimura');
   assert.equal(card?.getAttribute('data-face'), 'submissions');
+  act(() => mounted.root.unmount());
+  mounted.host.remove();
+});
+
+function NotesField() {
+  const [value, setValue] = useState('');
+  return <GlossaryField label="Drill notes" ariaLabel="Drill notes" value={value} onChange={setValue} testId="journal-notes" />;
+}
+
+async function typeNotes(area: HTMLTextAreaElement, value: string) {
+  const proto = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+  proto?.set?.call(area, value);
+  area.setSelectionRange(value.length, value.length);
+  act(() => {
+    const key = Object.keys(area).find((name) => name.startsWith('__reactProps'));
+    const props = key ? (area as unknown as Record<string, { onChange?: (event: unknown) => void }>)[key] : null;
+    props?.onChange?.({ target: area, currentTarget: area });
+  });
+  await act(async () => {
+    await new Promise((done) => setTimeout(done, 450));
+  });
+}
+
+test('journal notes suggest glossary names, insert the canonical one, and tag the shared card', async () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  const mounted = mount(
+    <IndexCardProvider>
+      <NotesField />
+    </IndexCardProvider>,
+  );
+  const area = mounted.host.querySelector('textarea[aria-label="Drill notes"]') as HTMLTextAreaElement;
+  assert.ok(area);
+  assert.equal(area.getAttribute('autocorrect'), 'on');
+  await typeNotes(area, 'ki');
+  assert.equal(mounted.host.querySelector('[data-testid="glossary-suggestions"]'), null);
+
+  await typeNotes(area, 'worked a kimmura');
+  const chips = [...mounted.host.querySelectorAll('[data-testid="glossary-suggestions"] [role="option"]')];
+  assert.equal(chips[0]?.querySelector('span')?.textContent, 'Kimura');
+  click(chips[0]);
+  assert.equal((mounted.host.querySelector('textarea') as HTMLTextAreaElement).value, 'worked a Kimura');
+  const prompt = mounted.host.querySelector('[data-testid="glossary-tag-prompt"]');
+  assert.match(prompt?.textContent ?? '', /Tag and open/);
+  click(prompt?.querySelector('[data-testid="glossary-tag-confirm"]'));
+  let card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  assert.equal(card?.getAttribute('data-term'), 'sub.kimura');
+  assert.equal(localStorage.getItem(INDEX_CARDS_STORAGE_KEY), null, 'opening a built-in card writes nothing');
+  click(card?.querySelector('header button'));
+
+  await typeNotes(area, 'worked a kimura then a berimbolo');
+  const bolo = [...mounted.host.querySelectorAll('[data-testid="glossary-suggestions"] [role="option"]')].find((node) => node.querySelector('span')?.textContent === 'Berimbolo');
+  click(bolo);
+  const create = mounted.host.querySelector('[data-testid="glossary-tag-prompt"]');
+  assert.match(create?.textContent ?? '', /Tag and create/);
+  click(create?.querySelector('[data-testid="glossary-tag-confirm"]'));
+  card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  assert.equal(card?.getAttribute('data-term'), 'term.berimbolo');
+  assert.equal(card?.getAttribute('data-face'), 'guard-control');
+  const saved = JSON.parse(localStorage.getItem(INDEX_CARDS_STORAGE_KEY) ?? '{"cards":[]}') as IndexCardFile;
+  assert.equal(saved.cards.filter((row) => row.id === 'term.berimbolo').length, 1);
+  click(card?.querySelector('header button'));
+
+  await typeNotes(area, 'berimbolo');
+  click([...mounted.host.querySelectorAll('[data-testid="glossary-suggestions"] [role="option"]')].find((node) => node.querySelector('span')?.textContent === 'Berimbolo'));
+  assert.match(mounted.host.querySelector('[data-testid="glossary-tag-prompt"]')?.textContent ?? '', /Tag and open/);
+  click(mounted.host.querySelector('[data-testid="glossary-tag-confirm"]'));
+  const again = JSON.parse(localStorage.getItem(INDEX_CARDS_STORAGE_KEY) ?? '{"cards":[]}') as IndexCardFile;
+  assert.equal(again.cards.filter((row) => row.id === 'term.berimbolo').length, 1);
+  assert.equal(localStorage.getItem(GLOSSARY_ADDITIONS_KEY), null, 'a glossary move on its own face is not an addition');
   act(() => mounted.root.unmount());
   mounted.host.remove();
 });
