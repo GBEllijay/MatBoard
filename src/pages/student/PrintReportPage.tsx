@@ -4,8 +4,9 @@ import { headerVisibility, readProfileMarks } from '../../lib/profileMarks';
 import { readProfilePortrait } from '../../lib/profilePortrait';
 import { reportHeaderArt } from '../../lib/pdfRaster';
 import { readStudentGymLogo } from '../../lib/studentGymMark';
-import { RadarChart } from '../../components/RadarChart';
-import { ASSESSMENT_AREAS, assessmentAverage, loadAssessments, type AssessmentState } from '../../lib/studentAssessment';
+import { StaticDiamond } from '../../components/StaticDiamond';
+import { shapeAxesFromLegacy } from '../../lib/shapeAxes';
+import { assessmentAverage, loadAssessments, type AssessmentState } from '../../lib/studentAssessment';
 import { loadFilms, type StudentFilm } from '../../lib/studentFilm';
 import { pdfBlob } from '../../lib/simplePdf';
 import { assessmentReportPdf, beltArtDraws, progressReportPdf, REPORT_BELT_HEIGHT, REPORT_CONTENT_WIDTH } from '../../lib/reportPdf';
@@ -163,19 +164,9 @@ function AssessmentSheet({
           <>
             <div className="report-checkin">
               <p className="report-date">{latest.date}</p>
-              <div className="report-layout">
-                <RadarChart
-                  title="Shape"
-                  series={
-                    previous
-                      ? [
-                          { name: `Previous ${previous.date}`, scores: previous.scores, tone: 'opponent' },
-                          { name: 'This check-in', scores: latest.scores, tone: 'me' },
-                        ]
-                      : [{ name: 'This check-in', scores: latest.scores, tone: 'me' }]
-                  }
-                />
-                <ScoreBars scores={latest.scores} />
+              <div className="report-layout report-layout--diamond">
+                <StaticDiamond scores={latest.scores} />
+                <ScoreBars scores={latest.scores} previous={previous?.scores ?? null} previousDate={previous?.date ?? null} />
               </div>
               <section className="report-note" aria-label="Notes">
                 <h2>Notes</h2>
@@ -192,7 +183,7 @@ function AssessmentSheet({
                         {entry.date} · average {assessmentAverage(entry.scores).toFixed(1)}
                       </strong>
                     </p>
-                    <p>{ASSESSMENT_AREAS.map((area) => `${area.label} ${entry.scores[area.id]}`).join(', ')}</p>
+                    <p>{shapeAxesFromLegacy(entry.scores).map((axis) => `${axis.label} ${axis.value ?? 'not rated'}`).join(', ')}</p>
                     {entry.note.trim() ? <p>{entry.note.trim()}</p> : null}
                   </div>
                 ))}
@@ -205,16 +196,30 @@ function AssessmentSheet({
   );
 }
 
-function ScoreBars({ scores }: { scores: AssessmentState['entries'][number]['scores'] }) {
+function ScoreBars({
+  scores,
+  previous,
+  previousDate,
+}: {
+  scores: AssessmentState['entries'][number]['scores'];
+  previous: AssessmentState['entries'][number]['scores'] | null;
+  previousDate: string | null;
+}) {
+  const prior = previous ? shapeAxesFromLegacy(previous) : null;
   return (
     <ol className="report-bars" aria-label="Area scores">
-      {ASSESSMENT_AREAS.map((area) => (
-        <li key={area.id}>
-          <span>{area.label}</span>
+      {shapeAxesFromLegacy(scores).map((axis, index) => (
+        <li key={axis.id} data-area={axis.id}>
+          <span>{axis.label}</span>
           <span className="report-bar" aria-hidden="true">
-            <span style={{ width: `${(scores[area.id] / 5) * 100}%` }} />
+            <span style={{ width: `${((axis.value ?? 0) / 5) * 100}%` }} />
           </span>
-          <span>{scores[area.id]}</span>
+          <span>
+            {axis.value ?? 'Not rated'}
+            {prior?.[index]?.value != null && previousDate ? (
+              <small className="report-bar__prior"> (was {prior[index]!.value} on {previousDate})</small>
+            ) : null}
+          </span>
         </li>
       ))}
     </ol>

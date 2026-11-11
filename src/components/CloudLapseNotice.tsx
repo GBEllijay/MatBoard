@@ -4,6 +4,7 @@ import {
   LAPSE_DOWNLOADED,
   LAPSE_PAUSED,
   LAPSE_REMOVED,
+  LAPSE_WHY,
   downloadButtonLabel,
   gymFolderDownloadText,
   readCloudLapse,
@@ -40,6 +41,7 @@ export function CloudLapseNotice() {
   return (
     <section aria-label="Advantage Cloud status">
       <p>{LAPSE_PAUSED}</p>
+      <p data-cloud-lapse-why="">{LAPSE_WHY}</p>
       <p>{LAPSE_CONNECT}</p>
       {phase.phase === 'download' ? (
         <button type="button" className="btn" onClick={download}>

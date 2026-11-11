@@ -17,6 +17,7 @@ import {
 } from '../lib/advantageCloudMedia';
 import { isDailyPhoto, uploadDailyMediaFile } from '../lib/dailyOwnerUpload';
 import { MEDIA_LIBRARY_ACCEPT } from '../lib/mediaPicker';
+import { CLOUD_STUDENT_LICENSE_HINT } from '../lib/storageCopy';
 import { useCurrentSeat } from './SeatSessionBar';
 
 type Purpose = 'daily-video' | 'lesson';
@@ -273,7 +274,11 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
             value={studentLicenseId}
             onChange={(event) => setStudentLicenseId(event.target.value)}
             autoComplete="off"
+            aria-describedby={`cloud-student-hint-${purpose}`}
           />
+          <small id={`cloud-student-hint-${purpose}`} className="cloud-media__hint" data-student-license-hint="">
+            {CLOUD_STUDENT_LICENSE_HINT}
+          </small>
         </label>
       ) : null}
       {canUpload ? (
