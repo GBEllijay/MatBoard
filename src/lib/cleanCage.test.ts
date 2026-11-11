@@ -138,5 +138,8 @@ test('the profile radar and the opponent spider share one cage component', () =>
   assert.match(cage, /export function CageFigure/);
   assert.match(cage, /export function ScoutCage/);
   assert.equal(scout.includes('RadarChart'), false);
-  assert.match(scout, />\s*Spider\s*</);
+  assert.match(scout, /useState<'cage' \| 'diamond'>\('cage'\)/);
+  assert.match(scout, /aria-label=\{`Cage for \$\{card\.name\}`\}/);
+  assert.match(scout, /Eight areas inside the cage\. Me in blue, opponent in orange\./);
+  assert.equal(/>\s*Spider\s*</.test(scout), false);
 });
