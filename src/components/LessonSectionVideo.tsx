@@ -95,6 +95,12 @@ function LessonInlinePlayer({
   const rootRef = useRef<HTMLDivElement>(null);
   const fallbackRef = useRef(false);
   const [playing, setPlaying] = useState(true);
+  const [muted, setMuted] = useState(true);
+  const [heardSrc, setHeardSrc] = useState(src);
+  if (heardSrc !== src) {
+    setHeardSrc(src);
+    setMuted(true);
+  }
   const [fullscreen, setFullscreen] = useState(false);
   const [supported, setSupported] = useState(false);
   const [left, setLeft] = useState(durationMs ?? 0);
@@ -192,9 +198,11 @@ function LessonInlinePlayer({
           src={src}
           label={label}
           playing={playing}
-          muted={false}
-          unlockSound
-          fullscreen={false}
+          muted={muted}
+          unlockSound={!muted}
+          fullscreen={fullscreen}
+          onToggleFullscreen={() => void toggleFullscreen()}
+          onToggleMute={() => setMuted((current) => !current)}
           durationMs={timed ? durationMs : undefined}
           onDurationEnd={timed ? () => setPlaying(false) : undefined}
           onRemaining={timed ? setLeft : undefined}

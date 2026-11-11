@@ -49,7 +49,7 @@ import {
 } from '../lib/lessonLinks';
 import type { DriveBrowseMedia } from '../lib/driveMediaPicker';
 import { VIDEO_CAPTURE, VIDEO_PICKER_ACCEPT, VIDEO_RECORD_ACCEPT } from '../lib/mediaPicker';
-import { DEFAULT_MUTE_VIDEO, getSaverPrefs, setSaverMuteVideo } from '../lib/photoStore';
+import { DEFAULT_MUTE_VIDEO } from '../lib/photoStore';
 import { safeTimerReturn } from '../lib/timerReturn';
 import { techniquesPageEyebrow } from '../lib/productNames';
 import {
@@ -278,9 +278,6 @@ export function TechniquesPage() {
       .catch(() => {
         if (!cancelled) setPickerNote('Could not open clips on this device.');
       });
-    void getSaverPrefs().then((prefs) => {
-      if (!cancelled) setMuteVideo(prefs.muteVideo);
-    });
     return () => {
       cancelled = true;
     };
@@ -308,6 +305,13 @@ export function TechniquesPage() {
   const selectedSrc = selectedClip ? urlById[selectedClip.id] : undefined;
   const pickedCard = curriculumCards.find((card) => card.blockId === curriculumPick) ?? null;
   const pickedSrc = pickedCard?.clipId ? urlById[pickedCard.clipId] : undefined;
+  const clipOnScreen = `${pickedCard?.clipId ?? ''}|${selected?.clipId ?? ''}`;
+  const [heardClip, setHeardClip] = useState(clipOnScreen);
+  if (heardClip !== clipOnScreen) {
+    setHeardClip(clipOnScreen);
+    setMuteVideo(true);
+    setUnlockSound(false);
+  }
   const canStart = pickedCard
     ? Boolean(pickedCard.clipId && pickedSrc && !playingCurriculum)
     : Boolean(selected?.clipId && selectedSrc && !playing);
@@ -342,8 +346,8 @@ export function TechniquesPage() {
 
   const commitMute = (next: boolean) => {
     setMuteVideo(next);
-    void setSaverMuteVideo(next);
     if (!next) setUnlockSound(true);
+    else setUnlockSound(false);
   };
 
   const commitDrill = (slotId: string, nextSec: number) => {
@@ -415,7 +419,8 @@ export function TechniquesPage() {
     const ready = Boolean(card.clipId && src) || !card.clipId;
     if (card.clipId && src && !launchStarted.current) {
       launchStarted.current = true;
-      if (!muteVideo) setUnlockSound(true);
+      setMuteVideo(true);
+      setUnlockSound(false);
       setPlaying(false);
       setCurriculumRemaining(card.durationMs);
       setPlayingCurriculum(true);
@@ -435,7 +440,7 @@ export function TechniquesPage() {
       block: 'nearest',
       behavior: 'smooth',
     });
-  }, [curriculumCards, launchKey, muteVideo, setSearchParams, urlById]);
+  }, [curriculumCards, launchKey, setSearchParams, urlById]);
 
   useEffect(() => {
     if (!plan) return;
@@ -484,7 +489,8 @@ export function TechniquesPage() {
     const waitingForClip = Boolean(focus.play && slot.clipId && !src);
     if (focus.play && slot.clipId && src && !launchStarted.current) {
       launchStarted.current = true;
-      if (!muteVideo) setUnlockSound(true);
+      setMuteVideo(true);
+      setUnlockSound(false);
       if (isTimedSlot(slot)) {
         setRemainingMs((ms) => remainingOnStart(ms, secondsToMs(secondsFor(plan, slot))));
       }
@@ -496,7 +502,7 @@ export function TechniquesPage() {
     return () => {
       cancelled = true;
     };
-  }, [plan, urlById, launchKey, muteVideo, setSearchParams]);
+  }, [plan, urlById, launchKey, setSearchParams]);
 
   const openDrivePick = () => {
     setAddOpen(false);
