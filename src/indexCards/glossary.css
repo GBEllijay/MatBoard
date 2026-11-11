@@ -107,9 +107,20 @@
 .gl-unsorted {
   margin-top: 12px;
   padding: 10px 12px;
-  border: 1px solid #2a3a60;
+  border: 1px solid rgba(28, 20, 14, 0.16);
   border-radius: 12px;
-  background: #10192c;
+  background: rgba(255, 252, 245, 0.72);
+  color: var(--d8-ink, #1c140e);
+}
+
+.gl-additions .gl-note,
+.gl-unsorted .gl-note {
+  color: #3a3128;
+}
+
+.gl-unsorted h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
 }
 
 .gl-additions summary {
@@ -136,9 +147,57 @@
 }
 
 .gl-unsorted select {
-  min-height: 40px;
-  border: 1px solid #2a7f90;
-  border-radius: 6px;
-  background: #071324;
-  color: #e7f8fb;
+  min-height: 44px;
+  border: 2px solid #1c140e;
+  border-radius: 10px;
+  background: #fff;
+  color: #1c140e;
+}
+
+/* Cream index-card sheet: same ink, paper, and blue as the rating buttons. */
+.d8-live-sheet .gl-face-chip {
+  border-radius: 999px;
+  font-size: 14px;
+}
+
+.d8-live-sheet .gl-face-chip[aria-pressed='true'] {
+  background: #004eba;
+  border-color: #004eba;
+  color: #fff;
+  box-shadow: none;
+}
+
+.d8-live-sheet .gl-suggest button {
+  border-radius: 12px;
+  font-weight: 650;
+}
+
+.d8-live-sheet .gl-suggest small {
+  color: #5c5148;
+  font-weight: 600;
+}
+
+.d8-live-sheet .gl-tag,
+.d8-live-sheet .d8sf-index > .gl-note {
+  color: #3a3128;
+}
+
+.d8-live-sheet .gl-tag .gl-note {
+  color: #3a3128;
+}
+
+.d8-live-sheet .gl-tag strong {
+  color: #004eba;
+}
+
+.d8-live-sheet .d8sf-add .gl-note {
+  color: #d9e4ee;
+}
+
+.d8-live-sheet .d8sf-add .gl-note[data-tone='new'] {
+  color: #ffd36a;
+}
+
+.d8-live-sheet .d8sf-add .d8sf-kicker {
+  color: #c9d3e0;
 }

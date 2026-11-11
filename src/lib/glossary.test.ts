@@ -89,6 +89,7 @@ test('typeahead matches headwords before aliases and offers the student their ow
   const kim = searchGlossary('kim');
   assert.equal(kim[0]?.name, 'Kimura');
   assert.equal(kim[0]?.faceId, 'submissions');
+  assert.equal(searchGlossary('arm')[0]?.name, 'Armbar', 'the shorter headword comes first');
   assert.equal(searchGlossary('').length, 0);
   assert.ok(searchGlossary('rnc').length <= 6);
   const mine = searchGlossary('zom', [{ name: 'Zombie sweep', faceId: 'sweeps' }]);

@@ -139,7 +139,7 @@ export function searchGlossary(raw: string, extra: readonly ExtraName[] = [], li
     hits.push({ suggestion: { name: row.name, faceId: row.faceId, term: null, matched: null, source: 'mine' }, score: score + 0.25, order: GLOSSARY.length + index });
   });
   return hits
-    .sort((left, right) => left.score - right.score || left.order - right.order)
+    .sort((left, right) => left.score - right.score || left.suggestion.name.length - right.suggestion.name.length || left.order - right.order)
     .slice(0, limit)
     .map((hit) => hit.suggestion);
 }

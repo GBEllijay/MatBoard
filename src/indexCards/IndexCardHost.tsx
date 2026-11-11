@@ -207,6 +207,10 @@ export function IndexCardHost() {
                   ? `In the glossary under ${GLOSSARY_FACE_LABELS[draftKnown.faceId]}.`
                   : `The glossary lists this under ${GLOSSARY_FACE_LABELS[draftKnown.faceId]}. It goes on ${GLOSSARY_FACE_LABELS[faceId]} on your D8 — your choice.`}
               </p>
+            ) : draftNew && suggestions.length > 0 ? (
+              <p className="gl-note" data-testid="draft-match-note">
+                Pick a match, or keep typing to add your own move.
+              </p>
             ) : draftNew ? (
               <p className="gl-note" data-tone="new" role="status" data-testid="draft-new-note">
                 {faceId
