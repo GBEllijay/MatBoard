@@ -15,6 +15,7 @@ import { cardDate, initialsOf } from '../../lib/rosterCard';
 import { METHOD_LABELS, competitionRecord, latestWeighIn, opponentsFaced, tournamentsIcs, upcomingTournaments } from '../../lib/competitionCard';
 import { DEFAULT_CARD_LOOK, type CardLook } from '../../lib/cardLook';
 import { RankBelt } from './RankBelt';
+import { ScoutedByStudent } from './ScoutedByStudent';
 import { CardRadar } from './CoachClipboardCard';
 import { todayIso } from './fileSave';
 import './coachClipboard.css';
@@ -266,6 +267,7 @@ export function CompetitionCard({
           ) : (
             <p className="comp-card__quiet">No opponents faced yet.</p>
           )}
+          <ScoutedByStudent studentId={student.linkedStudentId} studentName={student.name} />
         </Section>
 
         {history.length ? (

@@ -1180,3 +1180,78 @@ test('a new assessment keeps its scores and note, and Save assessment stays a su
   assert.equal(document.querySelector('form.clipboard--form'), null);
   unmount(m);
 });
+
+test('Competition card: approved opponent cards sit beside opponents faced and open onto Me vs them', async () => {
+  const { applyStudentCoachUpdate, receiveStudentCoachUpdate } = await import('../../lib/coachProgressFile.ts');
+  localStorage.clear();
+  resetRoster();
+  const card = addStudent({ name: 'Maya Alvarez', belt: 'purple', division: 'Adult', gym: 'Ellijay Academy', lastPromotion: '', lastPromotionDetail: '', note: '', photo: '' });
+  assert.ok(card);
+  assert.ok(linkRosterCard(card.id, 'stu-alex'));
+  const file = {
+    schemaVersion: 1,
+    kind: 'student-coach-update',
+    updateId: 'scu-scout-1',
+    studentId: 'stu-alex',
+    sentAt: 100,
+    since: 0,
+    profile: { displayName: 'Alex Kim', gymName: 'North Side', startedOn: '', trainingStyle: 'gi' },
+    assessments: [{ id: 'as-self', date: '2026-11-02', note: '', scores: { guard: 4, passing: 3, sweeps: 2, takedowns: 3, escapes: 3, submissions: 4, conditioning: 3, mindset: 5 } }],
+    scouting: {
+      studentName: 'Alex Kim',
+      cards: [
+        {
+          id: 'scout-jordan',
+          name: 'Jordan Hale',
+          gym: 'Checkmat',
+          group: 'open',
+          style: 'pressure passer',
+          weightClass: 'Middle',
+          belt: 'Purple',
+          ratings: { guard: 2, passing: 4, sweeps: 5, takedowns: 3, escapes: 3, submissions: 4, conditioning: 2, mindset: 4 },
+          strengths: 'top pressure',
+          weaknesses: 'open guard',
+          record: { wins: 2, losses: 1, draws: 0, line: '2-1-0' },
+          notes: 'likes closed guard',
+        },
+      ],
+    },
+  };
+  assert.equal(receiveStudentCoachUpdate(localStorage, file), 'pending');
+  const applied = applyStudentCoachUpdate(localStorage, file.updateId, { students: getRoster().students, update: updateStudent }, { actor: 'coach', approveRank: false });
+  assert.equal(applied.ok, true);
+  let m = mount(compCard(fresh(card.id)));
+  const section = document.querySelector('[data-testid="comp-scouting"]');
+  assert.match(section?.textContent ?? '', /Riley Thompson/);
+  assert.match(section?.textContent ?? '', /Scouted by Alex Kim/);
+  assert.match(section?.textContent ?? '', /Jordan Hale/);
+  const details = document.querySelector('[data-testid="comp-scout-card"]') as HTMLDetailsElement;
+  assert.equal(details.open, false);
+  const cage = details.querySelector('[data-testid="scout-cage"] svg');
+  assert.match(cage?.getAttribute('aria-label') ?? '', /Me versus Jordan Hale/);
+  assert.match(cage?.getAttribute('aria-label') ?? '', /Sweeps 2/);
+  assert.match(cage?.getAttribute('aria-label') ?? '', /Sweeps 5/);
+  assert.match(details.textContent ?? '', /top pressure/);
+  assert.match(details.textContent ?? '', /likes closed guard/);
+  unmount(m);
+
+  const again = {
+    ...file,
+    updateId: 'scu-scout-2',
+    sentAt: 200,
+    scouting: {
+      studentName: 'Alex Kim',
+      cards: [{ ...file.scouting.cards[0], notes: 'switched to knee cut', ratings: { ...file.scouting.cards[0].ratings, sweeps: 1 } }],
+    },
+  };
+  assert.equal(receiveStudentCoachUpdate(localStorage, again), 'pending');
+  applyStudentCoachUpdate(localStorage, again.updateId, { students: getRoster().students, update: updateStudent }, { actor: 'coach', approveRank: false });
+  m = mount(compCard(fresh(card.id)));
+  const cards = [...document.querySelectorAll('[data-testid="comp-scout-card"]')];
+  assert.equal(cards.length, 1);
+  assert.match(cards[0].textContent ?? '', /switched to knee cut/);
+  assert.doesNotMatch(cards[0].textContent ?? '', /likes closed guard/);
+  const nextCage = cards[0].querySelector('[data-testid="scout-cage"] svg');
+  assert.match(nextCage?.getAttribute('aria-label') ?? '', /Sweeps 1/);
+  unmount(m);
+});
