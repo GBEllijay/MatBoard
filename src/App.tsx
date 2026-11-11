@@ -52,6 +52,7 @@ import { TERM_CARD_PATH, TermCardPreviewPage } from './preview/termCard/TermCard
 import { INDEX_CARD_PATH, IndexCardPreviewPage } from './preview/indexCard/IndexCardPreview';
 import { CRYSTAL_PREVIEW_PATH, CrystallineSweepsPreview } from './preview/crystallineSweeps/CrystallineSweepsPreview';
 import { D8_SUBFACTORS_PATH, D8SubfactorsPreview } from './preview/d8Subfactors/D8SubfactorsPreview';
+import { D8_GRID_PREVIEW_PATH, D8GridPreview } from './indexCards/D8GridPreview';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
 import { ConnectCoachPreviewPage } from './preview/proHome/ConnectCoachPreview';
 import { InstructorCardsPreviewPage } from './preview/proHome/InstructorCardsPreview';
@@ -782,6 +783,7 @@ export default function App() {
       <Route path={CRYSTAL_PREVIEW_PATH} element={<CrystallineSweepsPreview />} />
       {/* Isolated sub-factor diamond. Direct link only. It does not write a check-in. */}
       <Route path={D8_SUBFACTORS_PATH} element={<D8SubfactorsPreview />} />
+      <Route path={D8_GRID_PREVIEW_PATH} element={<D8GridPreview />} />
       <Route path="/preview/student-ancestry" element={<StudentAncestryPreview />} />
       <Route path="/preview/student-hours" element={<StudentHoursPreview />} />
       <Route path="/student/*" element={<StudentEditionPage />} />

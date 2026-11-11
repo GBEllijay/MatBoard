@@ -21,6 +21,8 @@ export type OpenState = null | { kind: 'card'; id: string } | { kind: 'draft'; f
 
 let snapshot: IndexCardFile | null = null;
 let openState: OpenState = null;
+/** True while a preview page shows sample cards. Nothing is written to this phone then. */
+let memoryOnly = false;
 const fileListeners = new Set<() => void>();
 const openListeners = new Set<() => void>();
 
@@ -50,6 +52,11 @@ function emitOpen() {
 }
 
 export function commitIndexCards(file: IndexCardFile): IndexCardFile {
+  if (memoryOnly) {
+    snapshot = file;
+    emitFile();
+    return snapshot;
+  }
   beginAppStudentSave();
   try {
     snapshot = writeIndexCards(storage(), file);
@@ -78,7 +85,33 @@ export function closeIndexCard(): void {
   emitOpen();
 }
 
+/**
+ * Show sample cards in memory only, for a preview page. Saves stay in memory too.
+ * Call leaveIndexCardPreview when the page closes; the saved file on this phone is read again.
+ */
+export function enterIndexCardPreview(file: IndexCardFile): void {
+  memoryOnly = true;
+  snapshot = file;
+  openState = null;
+  emitFile();
+  emitOpen();
+}
+
+export function leaveIndexCardPreview(): void {
+  if (!memoryOnly) return;
+  memoryOnly = false;
+  snapshot = null;
+  openState = null;
+  emitFile();
+  emitOpen();
+}
+
+export function indexCardPreviewActive(): boolean {
+  return memoryOnly;
+}
+
 export function resetIndexCardStoreForTests(): void {
+  memoryOnly = false;
   snapshot = null;
   openState = null;
   emitFile();
