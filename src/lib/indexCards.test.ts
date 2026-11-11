@@ -10,7 +10,10 @@ import {
   aliasesFor,
   assembleCards,
   emptyIndexCards,
+  faceAverage,
+  faceAverageExact,
   faceScore,
+  faceScoreExact,
   journalMentions,
   loadIndexCards,
   mentionsPhrase,
@@ -63,6 +66,21 @@ test('untouched lines are 3 and the face averages every line', () => {
   assert.equal(next.find((card) => card.id === 'sweep.scissor')?.rating, 3);
   assert.equal(faceScore(next, 'sweeps'), 4);
   assert.equal(faceScore(next, 'guard-control'), 3);
+});
+
+test('face average keeps the rounded score and a separate one-decimal mean', () => {
+  assert.equal(faceAverage([5, 3, 2]), 3);
+  assert.equal(faceAverageExact([5, 3, 2]), 3.3);
+  assert.equal(faceAverage([5, 3]), 4);
+  assert.equal(faceAverageExact([5, 3]), 4);
+  assert.equal(faceAverageExact([1, 2]), 1.5);
+  assert.equal(faceAverageExact([]), 3);
+  const cards = assembleCards(catalog, emptyIndexCards());
+  const rated = assembleCards(catalog, withRating(catalog, emptyIndexCards(), 'sweep.hip-bump', 5));
+  assert.equal(faceScore(cards, 'sweeps'), 3);
+  assert.equal(faceScoreExact(cards, 'sweeps'), 3);
+  assert.equal(faceScore(rated, 'sweeps'), 4);
+  assert.equal(faceScoreExact(rated, 'sweeps'), 4);
 });
 
 test('the real D8 catalog gives every face, including Mindset, a neutral 3', () => {

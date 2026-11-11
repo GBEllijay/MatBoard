@@ -25,6 +25,7 @@ import { useStudentFile, useStudentPath } from '../pages/student/chrome.tsx';
 import { catalogLines, closeIndexCard, commitIndexCards, getIndexCardFile, useLiveCards, useOpenState } from './store.ts';
 import '../preview/d8Subfactors/d8Subfactors.css';
 import './indexTerm.css';
+import './liveD8.css';
 
 const SCORES = [1, 2, 3, 4, 5] as const;
 
@@ -46,6 +47,7 @@ export function IndexCardHost() {
   const [draftName, setDraftName] = useState('');
   const [draftRating, setDraftRating] = useState<AssessmentScore>(NEUTRAL_RATING);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState(0);
   const draftFace = open?.kind === 'draft' ? open.faceId : '';
 
   useEffect(() => {
@@ -54,6 +56,12 @@ export function IndexCardHost() {
     setDraftRating(NEUTRAL_RATING);
     setDraftError(null);
   }, [draftFace]);
+
+  useEffect(() => {
+    if (!savedAt) return;
+    const timer = window.setTimeout(() => setSavedAt(0), 2000);
+    return () => window.clearTimeout(timer);
+  }, [savedAt]);
 
   useEffect(() => {
     if (!open) return;
@@ -87,7 +95,7 @@ export function IndexCardHost() {
 
   return (
     <div
-      className="d8sf-sheet"
+      className="d8sf-sheet d8-live-sheet"
       role="dialog"
       aria-modal="true"
       aria-label={card ? `${card.name} index card` : `${faceLabel} new card`}
@@ -211,6 +219,7 @@ export function IndexCardHost() {
                     return;
                   }
                   commitIndexCards(withRating(catalogLines(), getIndexCardFile(), card.id, value));
+                  setSavedAt(Date.now());
                 }}
               >
                 {value}
@@ -218,6 +227,9 @@ export function IndexCardHost() {
             ))}
           </div>
           <p className="d8sf-index-hint">{ratingNote(rating)}</p>
+          <p className="d8-rate-saved" data-testid="rating-saved" data-on={savedAt ? 'true' : 'false'} aria-live="polite">
+            {savedAt ? 'Saved' : ''}
+          </p>
         </section>
       </article>
     </div>

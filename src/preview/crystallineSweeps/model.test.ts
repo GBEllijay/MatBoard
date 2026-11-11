@@ -34,15 +34,24 @@ import {
   tileVertices,
 } from './geometry.ts';
 import { FIT_PAD, VIEW_SIZE, defaultCamera, labelTier, projectLayout } from './project.ts';
-import { TOPO_H, TOPO_LEVEL, buildTopo, demoLevel, reliefScale, tileTone, toneForName } from './topo.ts';
+import { TOPO_H, TOPO_LEVEL, buildTopo, demoLevel, reliefScale, tileTone, tileToneFor, toneForName } from './topo.ts';
 import { EXAMPLE_OPPONENT_FACTORS, EXAMPLE_OPPONENT_SWEEPS, EXAMPLE_SELF_FACTORS, EXAMPLE_SELF_SWEEPS, exampleCompare, factorComparisons } from './overlay.ts';
 import {
+  CAMERA_Z,
   FOCUS_FRAME_ZOOM,
+  LABEL_EDGE,
+  MESH_RADIUS,
+  NEAR_GAP,
   REST_ZOOM,
   ZOOM_STEP,
+  clampLiveZoom,
   crystalLabelState,
+  diamondZoomCap,
   drillAfterZoom,
   faceShowsTechniqueLabels,
+  labelFontPx,
+  placeDiamondLabels,
+  projectFit,
   tileShowsTechniqueLabel,
   zoomAfterClosingDrill,
   zoomPastRest,
@@ -623,4 +632,86 @@ test('default zoom hides technique names; zoom-in or a face drill shows one face
   const drilledMindset = crystalLabelState({ ...rest, drilledFace: topo.faces.findIndex((face) => face.id === 'mindset') });
   assert.equal(tileShowsTechniqueLabel(drilledMindset, drilledMindset.face, false, false), false);
   assert.equal(faceShowsTechniqueLabels(drilledMindset, drilledMindset.face, 0, false), false);
+});
+
+test('repeated plus-zoom stays on the face, in front of the mesh, and inside the stage', () => {
+  const width = 960;
+  const height = 630;
+  let zoom = REST_ZOOM;
+  for (let step = 0; step < 12; step += 1) zoom = clampLiveZoom(zoom * ZOOM_STEP, width, height);
+  const cap = diamondZoomCap(width, height);
+  assert.ok(zoom <= cap + 1e-9);
+  assert.ok(zoom < 1.8);
+  assert.ok(zoom <= 1.45);
+  assert.equal(clampLiveZoom(Number.POSITIVE_INFINITY, width, height), REST_ZOOM);
+  assert.equal(clampLiveZoom(Number.NaN, width, height), REST_ZOOM);
+  assert.ok(CAMERA_Z > MESH_RADIUS + NEAR_GAP);
+  const anchor: [number, number, number] = [0.42, -0.18, 1.1];
+  const centered = projectFit(anchor, anchor, zoom, width, height);
+  assert.ok(Math.abs(centered.x - width / 2) < 0.01);
+  assert.ok(Math.abs(centered.y - height / 2) < 0.01);
+  assert.ok(centered.depth > NEAR_GAP);
+  const limb = projectFit([MESH_RADIUS, 0, 0], [0, 0, 0], cap, width, height);
+  const diameter = Math.abs(limb.x - width / 2) * 2;
+  assert.ok(diameter <= Math.min(width, height) * 1.2, String(diameter));
+  assert.ok(diameter >= Math.min(width, height) * 0.9, String(diameter));
+  const behind = projectFit([1, 0, CAMERA_Z + 0.5], [0, 0, 0], 1, width, height);
+  assert.equal(behind.depth, NEAR_GAP);
+  assert.ok(behind.x > width / 2);
+  assert.ok(Number.isFinite(behind.x) && Number.isFinite(behind.y));
+});
+
+test('edge-on labels hide, and a face name wins a collision', () => {
+  assert.ok(LABEL_EDGE > 0.2);
+  assert.equal(labelFontPx(200), 12);
+  assert.equal(labelFontPx(1000), 18);
+  assert.ok(labelFontPx(500) >= 13 && labelFontPx(500) <= 15);
+  const placed = placeDiamondLabels(
+    [
+      { id: 'back', kind: 'face', x: 10, y: 10, w: 80, h: 18, facing: -0.4 },
+      { id: 'edge', kind: 'technique', x: 10, y: 40, w: 80, h: 18, facing: 0.2 },
+      { id: 'face', kind: 'face', x: 40, y: 80, w: 90, h: 22, facing: 0.8 },
+      { id: 'move', kind: 'technique', x: 42, y: 82, w: 90, h: 22, facing: 0.75 },
+      { id: 'other', kind: 'face', x: 220, y: 20, w: 70, h: 18, facing: 0.6 },
+    ],
+    { width: 400, height: 300 },
+  );
+  const byId = new Map(placed.map((label) => [label.id, label]));
+  assert.equal(byId.get('back')?.hidden, true);
+  assert.equal(byId.get('edge')?.hidden, true);
+  assert.equal(byId.get('face')?.hidden, false);
+  assert.equal(byId.get('other')?.hidden, false);
+  const face = byId.get('face');
+  const move = byId.get('move');
+  assert.ok(face && move);
+  if (!move.hidden) {
+    const gap = 6;
+    const still = face.x < move.x + move.w + gap && face.x + face.w + gap > move.x && face.y < move.y + move.h + gap && face.y + face.h + gap > move.y;
+    assert.equal(still, false);
+  }
+  const crowded = placeDiamondLabels(
+    [
+      { id: 'face', kind: 'face', x: 0, y: 0, w: 80, h: 20, facing: 0.9 },
+      { id: 'move', kind: 'technique', x: 0, y: 0, w: 80, h: 20, facing: 0.9 },
+    ],
+    { width: 80, height: 20 },
+  );
+  assert.equal(crowded.find((label) => label.id === 'face')?.hidden, false);
+  assert.equal(crowded.find((label) => label.id === 'move')?.hidden, true);
+  const off = placeDiamondLabels([{ id: 'gone', kind: 'face', x: 900, y: 10, w: 40, h: 16, facing: 0.9 }], { width: 200, height: 200 });
+  assert.equal(off[0]?.hidden, true);
+});
+
+test('a custom index card takes its face color, and a catalog id keeps its prefix', () => {
+  assert.equal(tileTone('sub.americana'), 'submission');
+  assert.equal(tileToneFor('term.straight-ankle-lock', 'submissions'), 'submission');
+  assert.equal(tileToneFor('term.elbow-escape', 'escapes-defense'), 'defense');
+  assert.equal(tileToneFor('term.knee-cut', 'passing'), 'pass');
+  assert.equal(tileToneFor('term.hip-bump', 'sweeps'), 'pass');
+  assert.equal(tileToneFor('term.mount-retention', 'guard-control'), 'position');
+  assert.equal(tileToneFor('term.mindset-note', 'mindset'), 'position');
+  assert.equal(tileToneFor('term.straight-ankle-lock'), 'position');
+  assert.equal(tileToneFor('sub.americana', 'submissions'), 'submission');
+  assert.equal(tileToneFor('pass.knee-slice', 'passing'), 'pass');
+  assert.equal(tileToneFor('added.submissions.12', 'submissions'), 'position');
 });

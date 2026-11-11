@@ -8,13 +8,47 @@ import { TopoStage } from '../preview/crystallineSweeps/TopoStage.tsx';
 import { ZOOM_LIST } from '../preview/d8Subfactors/cards.ts';
 import { FACES } from '../preview/d8Subfactors/model.ts';
 import { buildSubfactorTopo, faceSlots, showOnDiamond } from '../preview/d8Subfactors/topoModel.ts';
-import { faceScore, type IndexFaceId, type LiveCard } from '../lib/indexCards.ts';
+import { faceScoreExact, type IndexFaceId, type LiveCard } from '../lib/indexCards.ts';
 import { IndexTermLink } from './IndexTermLink.tsx';
 import { openTerm, startDraft, useLiveCards } from './store.ts';
 import '../preview/crystallineSweeps/crystallineSweeps.css';
 import '../preview/d8Subfactors/d8Subfactors.css';
+import './liveD8.css';
 
 const DIAMOND_CAP = 9;
+export const D8_STAGE_HEIGHT_KEY = 'matboard.student.d8StageHeight.v1';
+/** About 1.5× the old 420px stage. */
+export const D8_STAGE_DEFAULT = 630;
+export const D8_STAGE_MIN = 260;
+
+export function d8StageMax(viewport?: number): number {
+  const view = viewport ?? (typeof window === 'undefined' ? 900 : window.innerHeight);
+  const safe = view >= 320 ? view : 900;
+  return Math.max(D8_STAGE_MIN, Math.round(safe * 0.92));
+}
+
+export function clampD8StageHeight(value: number, viewport?: number): number {
+  if (!Number.isFinite(value)) return Math.min(d8StageMax(viewport), D8_STAGE_DEFAULT);
+  return Math.min(d8StageMax(viewport), Math.max(D8_STAGE_MIN, Math.round(value)));
+}
+
+export function readD8StageHeight(storage: Pick<Storage, 'getItem'>, viewport?: number): number {
+  const raw = Number(storage.getItem(D8_STAGE_HEIGHT_KEY));
+  if (!Number.isFinite(raw) || raw <= 0) return Math.min(d8StageMax(viewport), D8_STAGE_DEFAULT);
+  return clampD8StageHeight(raw, viewport);
+}
+
+function writeD8StageHeight(height: number) {
+  try {
+    localStorage.setItem(D8_STAGE_HEIGHT_KEY, String(height));
+  } catch {
+    /* private mode */
+  }
+}
+
+function faceScoreLine(cards: readonly LiveCard[], faceId: IndexFaceId): string {
+  return `Face score ${faceScoreExact(cards, faceId).toFixed(1)} / 5`;
+}
 
 export function SheetD8Thumb({ onExpand }: { onExpand: () => void }) {
   const cards = useLiveCards();
@@ -47,9 +81,23 @@ export function LiveD8() {
   const [zoom, setZoom] = useState(1);
   const [holdDiamond, setHoldDiamond] = useState(false);
   const [zoomCommand, setZoomCommand] = useState<{ zoom: number; id: number } | null>(null);
+  const [stageHeight, setStageHeight] = useState(() =>
+    readD8StageHeight(typeof localStorage === 'undefined' ? { getItem: () => null } : localStorage),
+  );
   const face = focus >= 0 ? FACES[focus] : null;
   const faceId = face && isLiveFace(face.id) ? face.id : null;
   const drilled = Boolean(faceId && zoom >= ZOOM_LIST && !holdDiamond);
+  const expanded = stageHeight >= d8StageMax() - 8;
+
+  const rememberHeight = (next: number) => {
+    const height = clampD8StageHeight(next);
+    setStageHeight(height);
+    writeD8StageHeight(height);
+  };
+
+  const resizeFrom = (startY: number, startHeight: number) => (event: PointerEvent) => {
+    rememberHeight(startHeight + (event.clientY - startY));
+  };
 
   useEffect(() => {
     if (zoom < ZOOM_LIST && holdDiamond) setHoldDiamond(false);
@@ -61,7 +109,13 @@ export function LiveD8() {
   };
 
   return (
-    <div className="crystal d8sf" data-testid="live-d8">
+    <div
+      className="d8-live d8sf"
+      data-testid="live-d8"
+      data-stage-height={stageHeight}
+      style={{ ['--d8-stage-h' as string]: `${stageHeight}px` }}
+    >
+      <div className="d8-live-diamond">
       <TopoStage
         model={model}
         style="pyramid"
@@ -73,7 +127,8 @@ export function LiveD8() {
         drillPath={[]}
         relief={1}
         hue={1}
-        meshHidden={drilled}
+        fitZoom
+        separateLabels
         zoomCommand={zoomCommand}
         onZoom={setZoom}
         onEmptyTile={(tileIndex) => {
@@ -94,6 +149,31 @@ export function LiveD8() {
         }}
         onDrill={() => undefined}
       />
+      <button
+        type="button"
+        className="d8-live-grip"
+        data-testid="d8-resize"
+        aria-label="Resize diamond"
+        onPointerDown={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const startY = event.clientY;
+          const startHeight = stageHeight;
+          const move = resizeFrom(startY, startHeight);
+          const up = () => {
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+          };
+          window.addEventListener('pointermove', move);
+          window.addEventListener('pointerup', up);
+        }}
+      />
+      </div>
+      <div className="d8-live-tools">
+        <button type="button" data-testid="d8-fit" onClick={() => rememberHeight(expanded ? D8_STAGE_DEFAULT : d8StageMax())}>
+          {expanded ? 'Fit' : 'Expand'}
+        </button>
+      </div>
       {drilled && faceId ? (
         <FaceList faceId={faceId} cards={cards} onBack={goDiamond} />
       ) : face && faceId ? (
@@ -146,11 +226,11 @@ function FaceScores({ cards }: { cards: readonly LiveCard[] }) {
     <div className="crystal-readout">
       <section aria-label="Eight faces">
         <h2>Eight faces</h2>
-        <p>Tap a face, or use the factor buttons. Each score is the rounded average of every line. A line you have not rated stays at 3.</p>
+        <p>Tap a face, or use the factor buttons. Each score is the average of every line. A line you have not rated stays at 3.</p>
         <ul className="d8sf-face-scores">
           {FACES.map((face) => {
             if (!isLiveFace(face.id)) return null;
-            const score = faceScore(cards, face.id);
+            const score = faceScoreExact(cards, face.id).toFixed(1);
             const extra = moreLabel(cards.filter((card) => card.faceId === face.id).length);
             return (
               <li key={face.id}>
@@ -186,9 +266,9 @@ function FaceReadout({
       <section aria-label={`${label} sub-factors`}>
         <h2>{label}</h2>
         <p data-testid="face-score" aria-live="polite">
-          Face score {faceScore(cards, faceId)} / 5
+          {faceScoreLine(cards, faceId)}
         </p>
-        <p>Rounded average of every line on this face.</p>
+        <p>Average of every line on this face. A line you have not rated stays at 3.</p>
         {extra ? (
           <p>
             <span className="d8sf-badge" data-more={faceId}>
@@ -216,13 +296,13 @@ function FaceReadout({
                     type="button"
                     className="d8sf-empty"
                     data-empty-slot={slot.tileIndex}
-                    aria-label="Empty slot"
+                    aria-label="Add"
                     onClick={(event) => {
                       event.stopPropagation();
                       startDraft(faceId);
                     }}
                   >
-                    Empty
+                    + Add
                   </button>
                 )}
               </div>
@@ -242,7 +322,7 @@ function FaceList({ faceId, cards, onBack }: { faceId: IndexFaceId; cards: reado
       <button type="button" data-testid="drill-back" onClick={onBack}>
         Back
       </button>
-      <p data-testid="face-score">Face score {faceScore(cards, faceId)} / 5</p>
+      <p data-testid="face-score">{faceScoreLine(cards, faceId)}</p>
       <CardList faceId={faceId} cards={cards.filter((card) => card.faceId === faceId)} heading={face?.label ?? faceId} />
     </div>
   );
