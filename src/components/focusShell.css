@@ -1,0 +1,331 @@
+/* Direction B. The mat stays on the page. Panels use a scrim so type stays readable. */
+
+.focus-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.75rem;
+  width: min(100%, 112rem);
+  margin-inline: auto;
+  padding: 0.35rem calc(0.85rem + var(--safe-r)) calc(1.2rem + var(--safe-b)) calc(0.85rem + var(--safe-l));
+  color: var(--ink);
+}
+
+.focus-shell__bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-left: 3.1rem;
+}
+
+.focus-shell__eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.focus-shell__title {
+  margin: 0;
+  font-size: clamp(1.45rem, 4vw, 2.2rem);
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.focus-shell__more {
+  position: relative;
+  flex: none;
+}
+
+.focus-shell__more-btn {
+  min-height: 44px;
+}
+
+.focus-shell__more-panel {
+  position: absolute;
+  z-index: 7;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  display: grid;
+  gap: 0.55rem;
+  width: min(22rem, calc(100vw - 1.5rem));
+  padding: 0.75rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(8, 14, 28, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.focus-shell__body {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.focus-shell__player,
+.focus-shell__summary,
+.focus-shell__drawer {
+  padding: 0.75rem;
+  border-radius: 20px;
+  background: rgba(8, 14, 28, 0.62);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+
+.focus-shell__drawer {
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+}
+
+.focus-shell__player .techniques__slot,
+.focus-shell__player .notes__video {
+  width: 100%;
+  min-height: min(42vh, 18rem);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.focus-shell__player .notes__video-name {
+  display: none;
+}
+
+.focus-shell__player .techniques__frame,
+.focus-shell__player .lesson-player .techniques__frame {
+  min-height: min(42vh, 18rem);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.focus-shell__player .techniques__loop,
+.focus-shell__player .techniques__live,
+.focus-shell__player .techniques__clock--done {
+  color: #fff;
+}
+
+.focus-shell__player .techniques__clock--play,
+.focus-shell__player .techniques__clock--done {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.focus-shell__step {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 14px;
+  background: rgba(8, 14, 28, 0.62);
+}
+
+.focus-shell__step-label {
+  margin: 0;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.focus-shell__arrow {
+  min-width: 48px;
+  min-height: 48px;
+  padding-inline: 0.7rem;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+/* Stays on screen while the plan scrolls, and stays mounted as techniques change. */
+.focus-shell__hide {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  margin-inline: -0.75rem;
+  padding: 0.45rem 0.75rem;
+  background: rgba(8, 14, 28, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+.focus-shell__hide .notes__screen {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.focus-shell__summary {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.focus-shell__summary-title {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
+.focus-shell__summary-text {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.focus-shell__summary-text:not(:only-of-type) {
+  -webkit-line-clamp: unset;
+}
+
+.focus-shell__more-notes {
+  justify-self: start;
+  min-height: 44px;
+}
+
+.focus-shell__tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.focus-shell__tab {
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.focus-shell__tab--on {
+  background: var(--permission-on);
+  border-color: transparent;
+  color: #fff;
+}
+
+.focus-shell__panel {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.focus-outline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.focus-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.5rem;
+  width: 100%;
+  padding: 0.7rem 0.75rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 14, 28, 0.45);
+  color: var(--ink);
+  text-align: left;
+}
+
+.focus-row--now {
+  border-color: var(--permission-on);
+  box-shadow: inset 3px 0 0 var(--permission-on);
+}
+
+.focus-row__title {
+  font-weight: 800;
+}
+
+.focus-row__time,
+.focus-row__chip {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.focus-row__now {
+  justify-self: end;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--permission-on);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.focus-row__notes {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.focus-shell__plate {
+  display: grid;
+  place-items: center;
+  min-height: min(42vh, 18rem);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.45);
+  font-weight: 800;
+}
+
+.focus-shell .notes__add,
+.focus-shell .techniques__add {
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  border-color: transparent;
+}
+
+.focus-shell .open-drive,
+.focus-shell .open-drive-wrap {
+  width: auto;
+}
+
+@media (min-width: 1100px) {
+  .focus-shell__body {
+    grid-template-columns: minmax(0, 1.45fr) minmax(22rem, 0.8fr);
+    grid-template-areas:
+      'player drawer'
+      'step drawer'
+      'hide drawer'
+      'summary drawer';
+    align-items: start;
+  }
+
+  .focus-shell__player { grid-area: player; }
+  .focus-shell__step { grid-area: step; }
+  .focus-shell__hide { grid-area: hide; }
+  .focus-shell__summary { grid-area: summary; }
+
+  .focus-shell__drawer {
+    grid-area: drawer;
+    position: sticky;
+    top: 0.5rem;
+    max-height: calc(100dvh - 1rem);
+    overflow: auto;
+  }
+
+  .focus-shell__title,
+  .focus-shell__summary-title,
+  .focus-shell__step-label,
+  .focus-row__title {
+    font-size: 24px;
+  }
+
+  .focus-shell__summary-text,
+  .focus-row__notes,
+  .focus-shell__panel {
+    font-size: 24px;
+  }
+
+  .focus-shell__player .techniques__frame,
+  .focus-shell__player .lesson-player .techniques__frame,
+  .focus-shell__player .techniques__slot,
+  .focus-shell__player .notes__video,
+  .focus-shell__plate {
+    min-height: min(48vh, 28rem);
+  }
+}

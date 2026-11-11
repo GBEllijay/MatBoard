@@ -7,6 +7,8 @@ import { DriveMediaPicker } from '../components/DriveMediaPicker';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { Sheet } from '../components/Sheet';
 import { ClipDock } from '../components/ClipDock';
+import { FocusShell } from '../components/FocusShell';
+import { LessonCoverProvider, LessonScreenHide } from '../components/LessonScreenCover';
 import { LoopClip } from '../components/LoopClip';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -42,6 +44,8 @@ import {
   trainingClipStayCopy,
   trainingDriveConnectHint,
 } from '../lib/lessonDrive';
+import { lessonBlockCopy } from '../lib/focusLayout';
+import { lessonBlocks } from '../lib/lessonTemplates';
 import {
   lessonFocusStatus,
   parseLessonVideoFocus,
@@ -119,6 +123,26 @@ async function loadSharedCurriculumCards(clips: readonly TechniqueClip[]): Promi
     if (row) byId.set(row.id, row);
   }
   return { cards, clips: [...byId.values()] };
+}
+
+function lessonCopyForSlot(
+  plan: TrainingNotesPlan | null,
+  slot: VideoSlot | null,
+  techniqueOrdinal: number,
+): { title: string; notes: string } {
+  if (!plan || !slot) return { title: '', notes: '' };
+  const blocks = lessonBlocks(plan);
+  if (slot.kind === 'warmup') {
+    const block = blocks.find((item) => item.kind === 'warmup');
+    return block ? lessonBlockCopy(plan, block) : { title: 'Warm-up', notes: plan.warmupNote };
+  }
+  if (slot.kind === 'cooldown') {
+    const block = blocks.find((item) => item.kind === 'cooldown');
+    return block ? lessonBlockCopy(plan, block) : { title: 'Cool down', notes: plan.cooldownNote };
+  }
+  const block = blocks.filter((item) => item.kind === 'technique')[techniqueOrdinal];
+  if (!block) return { title: '', notes: '' };
+  return lessonBlockCopy(plan, block);
 }
 
 function classLessonPlan(dateKey: string, planId: string | null): TrainingNotesPlan | null {
@@ -262,7 +286,11 @@ export function TechniquesPage() {
     void loadTechniqueBoardForDate(boardDate)
       .then(async (board) => {
         if (cancelled) return;
-        const found = classLessonPlan(boardDate, lessonPlanIdRef.current);
+        const found =
+          classLessonPlan(boardDate, lessonPlanIdRef.current) ??
+          (new URLSearchParams(window.location.search).get('from') === 'coach'
+            ? (plansOnDay(loadTrainingArchive(boardDate), boardDate)[0] ?? null)
+            : null);
         lessonPlanRef.current = found;
         setLessonPlan(found);
         const overlay = lessonPlanVideoOverlay(boardDate, lessonPlanIdRef.current);
@@ -768,6 +796,270 @@ export function TechniquesPage() {
       />
     ) : null;
 
+  const coachFocus = searchParams.get('from') === 'coach';
+  const focusSlots = [warmup, ...techniques, cooldown].filter((slot): slot is VideoSlot => slot != null);
+  const focusIndex = Math.max(
+    0,
+    focusSlots.findIndex((slot) => slot.slotId === plan?.selectedSlotId),
+  );
+  const focusSlot = focusSlots[focusIndex] ?? null;
+  const focusOrdinal = focusSlot?.kind === 'technique' ? techniques.findIndex((slot) => slot.slotId === focusSlot.slotId) + 1 : 0;
+  const focusCopy = lessonCopyForSlot(lessonPlan, focusSlot, Math.max(0, focusOrdinal - 1));
+  const focusName =
+    focusCopy.title ||
+    (focusSlot ? slotTitle(focusSlot, Math.max(0, focusOrdinal - 1)) : 'Daily Training Videos');
+
+  const renderFocusSlot = (slot: VideoSlot, parts: 'player' | 'controls') => {
+    if (!plan) return null;
+    const index = techniques.findIndex((item) => item.slotId === slot.slotId);
+    const loopSec = secondsFor(plan, slot);
+    const timedEnds = slot.kind === 'warmup' || slot.kind === 'cooldown';
+    return (
+      <SlotCard
+        key={`${parts}-${slot.slotId}`}
+        parts={parts}
+        slot={slot}
+        title={slotTitle(slot, Math.max(0, index))}
+        fromLesson={lessonFocus?.slotId === slot.slotId}
+        selected={plan.selectedSlotId === slot.slotId}
+        playing={playing && plan.selectedSlotId === slot.slotId}
+        src={slot.clipId ? urlById[slot.clipId] : undefined}
+        muted={muteVideo}
+        unlockSound={unlockSound}
+        canAdd={canAssignClip(plan, slot.slotId)}
+        loopSec={slot.kind === 'technique' ? loopSec : undefined}
+        remainingMs={plan.selectedSlotId === slot.slotId ? remainingMs : secondsToMs(loopSec)}
+        customOpen={customSlotId === slot.slotId || (slot.kind === 'technique' && !isDrillPreset(loopSec))}
+        timersLocked={playing}
+        timedLoopMs={timedEnds && lessonPlan ? loopSecondsForSlot(slot, slot.kind === 'warmup' ? lessonPlan.warmupExpected : lessonPlan.cooldownExpected) * 1000 : undefined}
+        onSelect={() => selectCard(slot.slotId)}
+        onAdd={() => openChooser(slot)}
+        onRemove={() => void removeClip(slot.slotId)}
+        onDrill={
+          slot.kind === 'technique'
+            ? (seconds) => {
+                setCustomSlotId((current) => (current === slot.slotId ? null : current));
+                commitDrill(slot.slotId, seconds);
+              }
+            : undefined
+        }
+        onCustom={
+          slot.kind === 'technique'
+            ? () => {
+                setCustomSlotId(slot.slotId);
+                selectCard(slot.slotId);
+              }
+            : undefined
+        }
+        onNudge={slot.kind === 'technique' ? (delta) => commitDrill(slot.slotId, loopSec + delta) : undefined}
+        fullscreen={immersive}
+        onToggleFullscreen={() => void togglePlaybackFullscreen()}
+        onStop={stopDrill}
+        onToggleMute={() => commitMute(!muteVideo)}
+      />
+    );
+  };
+
+  if (coachFocus) {
+    const stepLabel = focusSlot
+      ? focusSlot.kind === 'technique'
+        ? `Technique ${focusOrdinal} of ${techniques.length}`
+        : focusSlot.kind === 'warmup'
+          ? 'Warm-up'
+          : 'Cool down'
+      : 'Class';
+    return (
+      <main
+        className={`techniques techniques--focus${playback ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}${stage ? ' techniques--fill' : ''}`}
+      >
+        <PlayExitMark to={backPath ?? exitPath} onExit={exitBoard} />
+        <LessonCoverProvider>
+          <FocusShell
+            eyebrow={eyebrow}
+            title="Training videos"
+            more={
+              <>
+                <SeatSessionBar />
+                {seat ? <p>{`Seated as ${seatRole}.`}</p> : null}
+                {handoff.lead ? <p>{handoff.lead}</p> : null}
+                <p>{handoff.warning}</p>
+                <OpenMyDrive
+                  openLabel={shareDay ? TRAINING_DRIVE_OPEN_LABEL : undefined}
+                  connectLabel={shareDay ? TRAINING_DRIVE_CONNECT_LABEL : undefined}
+                  connectTitle={shareDay ? TRAINING_DRIVE_CONNECT_TITLE : undefined}
+                  connectHint={shareDay ? trainingDriveConnectHint(seatedAuthorized) : undefined}
+                />
+                <AdvantageCloudPanel purpose="daily-video" dateKey={boardDate} />
+              </>
+            }
+            player={
+              <>
+                {pickedCard ? (
+                  <CurriculumClipCard
+                    card={pickedCard}
+                    selected
+                    playing={playingCurriculum}
+                    src={pickedSrc}
+                    remainingMs={curriculumRemaining}
+                    muted={muteVideo}
+                    unlockSound={unlockSound}
+                    fullscreen={immersive}
+                    onSelect={() => {
+                      setPlaying(false);
+                      setPlayingCurriculum(false);
+                    }}
+                    onAdd={() => openCurriculumChooser(pickedCard)}
+                    onRemove={() => void removeCurriculumClip(pickedCard)}
+                    onDurationEnd={() => {
+                      setPlayingCurriculum(false);
+                      setCurriculumRemaining(0);
+                    }}
+                    onRemaining={setCurriculumRemaining}
+                    onToggleFullscreen={() => void togglePlaybackFullscreen()}
+                    onStop={stopDrill}
+                    onToggleMute={() => commitMute(!muteVideo)}
+                  />
+                ) : focusSlot ? (
+                  renderFocusSlot(focusSlot, 'player')
+                ) : (
+                  <div className="focus-shell__plate">Opening today&apos;s videos</div>
+                )}
+                {playerDock(
+                  Boolean(pickedCard || focusSlot),
+                  pickedCard ? playingCurriculum : Boolean(playing && focusSlot && plan?.selectedSlotId === focusSlot.slotId),
+                )}
+              </>
+            }
+            stepLabel={stepLabel}
+            onPrev={() => {
+              const next = focusSlots[focusIndex - 1];
+              if (next) selectCard(next.slotId);
+            }}
+            onNext={() => {
+              const next = focusSlots[focusIndex + 1];
+              if (next) selectCard(next.slotId);
+            }}
+            prevDisabled={focusIndex <= 0}
+            nextDisabled={focusIndex < 0 || focusIndex >= focusSlots.length - 1}
+            summaryTitle={pickedCard ? pickedCard.title : focusName}
+            summaryText={pickedCard ? '' : focusCopy.notes}
+            hide={<LessonScreenHide />}
+            tabs={[
+              {
+                id: 'clips',
+                label: 'Clips',
+                panel: (
+                  <ol className="focus-outline">
+                    {focusSlots.map((slot) => {
+                      const ordinal = slot.kind === 'technique' ? techniques.findIndex((item) => item.slotId === slot.slotId) + 1 : 0;
+                      const copy = lessonCopyForSlot(lessonPlan, slot, Math.max(0, ordinal - 1));
+                      const name = copy.title || slotTitle(slot, Math.max(0, ordinal - 1));
+                      const now = !pickedCard && slot.slotId === focusSlot?.slotId;
+                      const seconds = plan ? secondsFor(plan, slot) : 0;
+                      return (
+                        <li key={slot.slotId}>
+                          <button
+                            type="button"
+                            className={now ? 'focus-row focus-row--now' : 'focus-row'}
+                            onClick={() => selectCard(slot.slotId)}
+                          >
+                            <span className="focus-row__title">{slot.kind === 'technique' ? `${ordinal}. ${name}` : name}</span>
+                            {seconds > 0 ? <span className="focus-row__time">{formatMss(seconds)}</span> : null}
+                            {now ? <span className="focus-row__now">Now</span> : null}
+                          </button>
+                        </li>
+                      );
+                    })}
+                    {curriculumCards.map((card) => (
+                      <li key={card.blockId}>
+                        <button
+                          type="button"
+                          className={curriculumPick === card.blockId ? 'focus-row focus-row--now' : 'focus-row'}
+                          onClick={() => {
+                            setCurriculumPick(card.blockId);
+                            setPlaying(false);
+                            setPlayingCurriculum(false);
+                            setCurriculumRemaining(card.durationMs);
+                          }}
+                        >
+                          <span className="focus-row__title">{card.title}</span>
+                          <span className="focus-row__time">{formatMmSs(card.durationMs)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                ),
+              },
+              {
+                id: 'notes',
+                label: 'Notes',
+                panel: (
+                  <div className="focus-shell__summary">
+                    <h2 className="focus-shell__summary-title">{focusName}</h2>
+                    <p>{focusCopy.notes.trim() || 'No notes for this section yet.'}</p>
+                  </div>
+                ),
+              },
+              {
+                id: 'details',
+                label: 'Details',
+                panel: (
+                  <>
+                    {pickerNote ? <p role="status">{pickerNote}</p> : null}
+                    {driveNotice.text ? <p role="status">{driveNotice.text}</p> : null}
+                    <p>{count === 1 ? '1 clip' : `${count} clips`}</p>
+                    {focusSlot ? renderFocusSlot(focusSlot, 'controls') : null}
+                    <button type="button" className="btn" disabled={!plan || atSlotMax} onClick={addTechnique}>
+                      Add another
+                    </button>
+                  </>
+                ),
+              },
+            ]}
+          />
+          <TvTip onFullscreen={() => void requestPlaybackFullscreen()} />
+          <VideoSourceSheet
+            open={addOpen}
+            title={replacing ? 'Replace video' : 'Add video'}
+            recordInputId="techniques-video-record"
+            libraryInputId="techniques-video-library"
+            stay={stayCopy}
+            driveOpenLabel={shareDay ? TRAINING_DRIVE_OPEN_LABEL : undefined}
+            driveConnectLabel={shareDay ? TRAINING_DRIVE_CONNECT_LABEL : undefined}
+            driveConnectTitle={shareDay ? TRAINING_DRIVE_CONNECT_TITLE : undefined}
+            driveConnectHint={shareDay ? trainingDriveConnectHint(seatedAuthorized) : undefined}
+            onPickDrive={openDrivePick}
+            onClose={() => setAddOpen(false)}
+          />
+          <DriveMediaPicker
+            open={drivePickOpen}
+            kind="video"
+            onClose={() => setDrivePickOpen(false)}
+            onDone={(files) => {
+              void importDriveVideos(files);
+            }}
+          />
+          <Sheet open={driveConnectOpen && !driveBinding} title="Connect with" onClose={() => setDriveConnectOpen(false)} stacked>
+            <DriveConnectCard />
+          </Sheet>
+          <DeviceMediaInput
+            id="techniques-video-record"
+            inputRef={recordRef}
+            accept={VIDEO_RECORD_ACCEPT}
+            capture={VIDEO_CAPTURE}
+            onFiles={onFiles}
+          />
+          <DeviceMediaInput
+            id="techniques-video-library"
+            inputRef={libraryRef}
+            accept={VIDEO_PICKER_ACCEPT}
+            onFiles={onFiles}
+          />
+        </LessonCoverProvider>
+      </main>
+    );
+  }
+
   return (
     <main
       className={`techniques${playback ? ' techniques--play' : ''}${fs.className ? ` ${fs.className}` : ''}${stage ? ' techniques--fill' : ''}`}
@@ -1158,6 +1450,7 @@ function SlotCard({
   onToggleFullscreen,
   onStop,
   onToggleMute,
+  parts = 'all',
 }: {
   slot: VideoSlot;
   title: string;
@@ -1186,6 +1479,8 @@ function SlotCard({
   onToggleFullscreen?: () => void;
   onStop?: () => void;
   onToggleMute?: () => void;
+  /** `player` is the focus stage. `controls` is the Details tab. `all` is the stacked card. */
+  parts?: 'all' | 'player' | 'controls';
 }) {
   const filled = Boolean(slot.clipId && src);
   const timed = isTimedSlot(slot);
@@ -1205,19 +1500,8 @@ function SlotCard({
     .filter(Boolean)
     .join(' ');
 
-  return (
-    <section
-      id={`techniques-slot-${slot.slotId}`}
-      className={cardClass}
-      aria-labelledby={`techniques-heading-${slot.slotId}`}
-      aria-current={selected ? 'true' : undefined}
-      onClick={(event) => {
-        const target = event.target as HTMLElement | null;
-        if (target?.closest('button, a, input, label')) return;
-        onSelect();
-      }}
-    >
-      <h2 id={`techniques-heading-${slot.slotId}`}>{title}</h2>
+  const stage = parts === 'player';
+  const playerNode = (
       <div className="techniques__player" data-player="">
       {playing && filled && src ? (
         <LoopClip
@@ -1230,7 +1514,7 @@ function SlotCard({
           durationMs={showTimedLoop ? timedLoopMs : undefined}
           onDurationEnd={showTimedLoop ? onStop : undefined}
           onRemaining={showTimedLoop ? setTimedLeft : undefined}
-          dock={dock}
+          dock={stage ? undefined : dock}
           onToggleFullscreen={onToggleFullscreen}
           onStop={onStop}
           onToggleMute={onToggleMute}
@@ -1280,8 +1564,11 @@ function SlotCard({
           + Add video
         </button>
       )}
-      {playing && filled && src ? null : dock}
+      {stage || (playing && filled && src) ? null : dock}
       </div>
+  );
+  const controlsNode = (
+    <>
       {filled ? (
         <div className="techniques__slot-actions">
           <button type="button" className="btn" onClick={onAdd}>
@@ -1349,6 +1636,31 @@ function SlotCard({
           ) : null}
         </div>
       ) : null}
+    </>
+  );
+  if (parts === 'player') {
+    return (
+      <div className={`techniques__stage${playing ? ' techniques__card--playing' : ''}`} id={`techniques-slot-${slot.slotId}`}>
+        {playerNode}
+      </div>
+    );
+  }
+  if (parts === 'controls') return <div className="techniques__controls">{controlsNode}</div>;
+  return (
+    <section
+      id={`techniques-slot-${slot.slotId}`}
+      className={cardClass}
+      aria-labelledby={`techniques-heading-${slot.slotId}`}
+      aria-current={selected ? 'true' : undefined}
+      onClick={(event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest('button, a, input, label')) return;
+        onSelect();
+      }}
+    >
+      <h2 id={`techniques-heading-${slot.slotId}`}>{title}</h2>
+      {playerNode}
+      {controlsNode}
     </section>
   );
 }
