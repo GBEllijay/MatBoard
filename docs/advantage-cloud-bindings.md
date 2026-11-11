@@ -33,11 +33,13 @@ Class photos and short clips use the same private `GYM_MEDIA` bucket. The object
 `groups/<license>/gallery/<lane>/<YYYY-MM-DD>/<file>`
 
 - `<lane>` is `pending`, `approved`, or `rejected` (`GALLERY_KEY` in `src/lib/advantageCloudMedia.ts`).
-- The server picks the lane on upload by role, not by the switch on a device (`galleryUploadLane`). The gym owner's uploads go to `approved`. Coach and Instructors seat uploads go to `pending`. Assistant coach and program director seats do not upload class photos.
+- The server picks the lane on upload (`galleryUploadLane`) from the actor's role and the license-level Cloud approval setting. The gym owner's uploads go to `approved`. When Cloud approval is on (the default), Coach and Instructors seat uploads go to `pending`. When the owner turns that setting off, those seat uploads go to `approved`. Assistant coach and program director seats do not upload class photos. The client cannot choose the lane; a supplied `lane` is ignored.
+- The Cloud approval setting is stored on the license in D1 table `gallery_approval` (`advantage-entitlements`). If no row exists, approval is required. Apply `migrations/0007_gallery_approval.sql` once, by hand, before relying on this in production: `npx wrangler d1 execute advantage-entitlements --remote --file=migrations/0007_gallery_approval.sql`. Do not create another database.
+- Only the license owner can change the setting (`POST /api/gym/cloud`, `action: "gallery-approval"`). Seats receive 403. Owner and seats can read it from `GET /api/gym/cloud?op=status` (`galleryApprovalRequired`) or `GET /api/gym/cloud?op=gallery-approval`.
 - Approve or reject (`POST /api/gym/cloud`, `gallery-approve` / `gallery-reject`, in `src/server/gymCloud.ts`) copies the file from `pending` to `approved` or `rejected` under the same date and name, then deletes the `pending` copy. Only the owner or an Instructors seat can decide (`galleryDecisionAllowed`).
 - The slideshow and Media Console play only `approved`.
 - Review Inbox (`/review`) lists `pending` in the gallery review queue (`src/components/GalleryReviewQueue.tsx`). The owner's Gallery approval section on `/pro-plus-cloud` links there as "Pending photos (N)".
-- The "Require approval" switch is saved per device (`matboard.gym.galleryApproval.v1`). It decides the lane only for the phone and Google Drive/OneDrive gallery. For an Advantage Pro Plus Cloud owner who never saved a choice, it starts on. A saved choice, on or off, is kept.
+- The "Require approval" switch on `/pro-plus-cloud` loads and saves the server setting for the owner, and is read-only for seats. A separate per-device switch (`matboard.gym.galleryApproval.v1`) still decides the lane only for the phone and Google Drive/OneDrive gallery. For an Advantage Pro Plus Cloud owner who never saved a local choice, that local switch starts on. A saved local choice, on or off, is kept.
 - Tests: `src/server/gymCloudGallery.test.ts`. There is no separate `gymCloudGallery` server module. The handler lives in `src/server/gymCloud.ts`.
 
 ## Safety steps for the owner

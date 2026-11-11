@@ -136,6 +136,12 @@ test('an owner with Cloud on puts a daily photo in gallery/approved and does not
   assert.equal(galleryUploadLane({ kind: 'seat', preset: 'coach' }), 'pending');
   assert.equal(galleryUploadLane({ kind: 'seat', preset: 'instructors' }), 'pending');
   assert.equal(galleryUploadLane({ kind: 'seat', preset: 'assistant-coach' }), null);
+  assert.equal(galleryUploadLane({ kind: 'owner', approvalRequired: false }), 'approved');
+  assert.equal(galleryUploadLane({ kind: 'seat', preset: 'coach', approvalRequired: true }), 'pending');
+  assert.equal(galleryUploadLane({ kind: 'seat', preset: 'coach', approvalRequired: false }), 'approved');
+  assert.equal(galleryUploadLane({ kind: 'seat', preset: 'instructors', approvalRequired: false }), 'approved');
+  assert.equal(galleryUploadLane({ kind: 'seat', preset: 'assistant-coach', approvalRequired: false }), null);
+  assert.equal(galleryUploadLane({ kind: 'seat', preset: 'program-director', approvalRequired: false }), null);
   const secret = await signingSecret();
   const bucket = new MemoryBucket();
   const env: GymCloudEnv = { GYM_MEDIA: bucket, ENTITLEMENT_SIGNING_KEY: secret, ENTITLEMENT_KEY_ID: 'k1' };

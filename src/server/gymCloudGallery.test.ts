@@ -4,6 +4,7 @@ import { type PrivateJwk } from '../lib/entitlementToken.ts';
 import { STUDENT_CLOUD_REFUSED, STUDENT_LICENSE_PRESET } from '../lib/studentLicensePool.ts';
 import type { D1Database } from './d1.ts';
 import { handleGymCloud, streamFrom, type GymCloudEnv, type GymMediaBucket, type R2MultipartUpload } from './gymCloud.ts';
+import { sqliteD1 } from './sqliteD1.ts';
 import { issueToken } from './tokenIssue.ts';
 
 const now = new Date('2026-11-10T18:00:00.000Z');
@@ -264,4 +265,152 @@ test('gallery role matrix: owner approved, staff pending, approve and reject, re
   assert.equal(full.status, 409);
   assert.match(await full.text(), /Advantage Cloud is full/);
   assert.equal(bucket.objects.has('groups/lic-owner1/gallery/approved/2026-11-10/full.jpg'), false);
+});
+
+async function seedCloudGym() {
+  const db = sqliteD1();
+  const stamp = now.toISOString();
+  const licenseId = 'lic-owner1';
+  await db.prepare(`INSERT INTO licenses (id, created_at) VALUES (?, ?)`).bind(licenseId, stamp).run();
+  await db
+    .prepare(
+      `INSERT INTO grants (id, license_id, product, source, source_ref, status, created_at)
+       VALUES ('g-pro', ?, 'advantage-pro', 'code', 'code:gallery-approval', 'active', ?)`,
+    )
+    .bind(licenseId, stamp)
+    .run();
+  for (const [id, preset] of [
+    ['seat-coach', 'coach'],
+    ['seat-instructors', 'instructors'],
+    ['seat-assistant', 'assistant-coach'],
+    ['seat-director', 'program-director'],
+  ] as const) {
+    await db
+      .prepare(`INSERT INTO seats (id, gym_license_id, preset, status, created_at) VALUES (?, ?, ?, 'claimed', ?)`)
+      .bind(id, licenseId, preset, stamp)
+      .run();
+  }
+  return db;
+}
+
+test('the owner can toggle Cloud gallery approval; seats cannot; uploads follow the saved setting', async () => {
+  const signing = await secret();
+  const bucket = new MemoryBucket();
+  const db = await seedCloudGym();
+  const env: GymCloudEnv = {
+    GYM_MEDIA: bucket,
+    ENTITLEMENT_SIGNING_KEY: signing,
+    ENTITLEMENT_KEY_ID: 'k1',
+    ENTITLEMENTS_DB: db,
+  };
+  const seat = (preset: string, sid: string) =>
+    token(signing, {
+      licenseId: 'lic-owner1',
+      grants: ['pro'],
+      tier: 'seat',
+      src: 'seat',
+      deviceId: `device-${sid}`,
+      now,
+      kind: 'seat',
+      gym: 'lic-owner1',
+      sid,
+      preset,
+    });
+  const owner = await token(signing, {
+    licenseId: 'lic-owner1',
+    grants: ['white', 'student', 'coach', 'pro'],
+    tier: 'pro',
+    src: 'code',
+    deviceId: 'device-owner',
+    now,
+    kind: 'code',
+  });
+  const coach = await seat('coach', 'seat-coach');
+  const instructors = await seat('instructors', 'seat-instructors');
+  const assistant = await seat('assistant-coach', 'seat-assistant');
+  const director = await seat('program-director', 'seat-director');
+
+  const defaultRead = await call(env, '/api/gym/cloud?op=gallery-approval', {}, owner);
+  assert.equal(defaultRead.status, 200);
+  assert.deepEqual(await defaultRead.json(), { ok: true, required: true });
+  const status = await call(env, '/api/gym/cloud?op=status', {}, owner);
+  assert.equal(((await status.json()) as { galleryApprovalRequired?: boolean }).galleryApprovalRequired, true);
+
+  const defaultCoach = await start(env, coach, 'default-coach.jpg');
+  assert.equal(defaultCoach.status, 200);
+  assert.equal(((await defaultCoach.json()) as { path: string }).path, 'gallery/pending/2026-11-10/default-coach.jpg');
+
+  const seatToggle = await call(
+    env,
+    '/api/gym/cloud',
+    { method: 'POST', body: JSON.stringify({ action: 'gallery-approval', required: false }) },
+    coach,
+  );
+  assert.equal(seatToggle.status, 403);
+  const instructorsToggle = await call(
+    env,
+    '/api/gym/cloud',
+    { method: 'POST', body: JSON.stringify({ action: 'gallery-approval', required: false }) },
+    instructors,
+  );
+  assert.equal(instructorsToggle.status, 403);
+  const stillOn = await call(env, '/api/gym/cloud?op=gallery-approval', {}, coach);
+  assert.deepEqual(await stillOn.json(), { ok: true, required: true });
+
+  const ownerOff = await call(
+    env,
+    '/api/gym/cloud',
+    { method: 'POST', body: JSON.stringify({ action: 'gallery-approval', required: false }) },
+    owner,
+  );
+  assert.equal(ownerOff.status, 200);
+  assert.deepEqual(await ownerOff.json(), { ok: true, required: false });
+  const seatRead = await call(env, '/api/gym/cloud?op=gallery-approval', {}, instructors);
+  assert.deepEqual(await seatRead.json(), { ok: true, required: false });
+
+  const coachApproved = await start(env, coach, 'coach-open.jpg');
+  assert.equal(coachApproved.status, 200);
+  const coachOpened = (await coachApproved.json()) as { path: string; key: string };
+  assert.equal(coachOpened.path, 'gallery/approved/2026-11-10/coach-open.jpg');
+  assert.equal((await putPhoto(env, coach, coachOpened.key)).status, 200);
+  assert.equal(bucket.objects.has('groups/lic-owner1/gallery/approved/2026-11-10/coach-open.jpg'), true);
+  assert.equal((await putPhoto(env, coach, coachOpened.key.replace('approved', 'pending'))).status, 403);
+
+  const instructorApproved = await start(env, instructors, 'instructor-open.jpg');
+  assert.equal(instructorApproved.status, 200);
+  assert.equal(((await instructorApproved.json()) as { path: string }).path, 'gallery/approved/2026-11-10/instructor-open.jpg');
+
+  // A client-supplied pending lane is ignored when approval is off.
+  const ignoredLane = await call(
+    env,
+    '/api/gym/cloud',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'start',
+        purpose: 'gallery',
+        dateKey: '2026-11-10',
+        fileName: 'ignored-lane.jpg',
+        size: 4,
+        mime: 'image/jpeg',
+        lane: 'pending',
+      }),
+    },
+    coach,
+  );
+  assert.equal(((await ignoredLane.json()) as { path: string }).path, 'gallery/approved/2026-11-10/ignored-lane.jpg');
+
+  assert.equal((await start(env, assistant, 'nope.jpg')).status, 403);
+  assert.equal((await start(env, director, 'nope.jpg')).status, 403);
+
+  const ownerOn = await call(
+    env,
+    '/api/gym/cloud',
+    { method: 'POST', body: JSON.stringify({ action: 'gallery-approval', required: true }) },
+    owner,
+  );
+  assert.equal(ownerOn.status, 200);
+  assert.deepEqual(await ownerOn.json(), { ok: true, required: true });
+  const pendingAgain = await start(env, coach, 'coach-closed.jpg');
+  assert.equal(((await pendingAgain.json()) as { path: string }).path, 'gallery/pending/2026-11-10/coach-closed.jpg');
 });

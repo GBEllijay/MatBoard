@@ -46,7 +46,7 @@ export const CLASS_PHOTO_PROMOTIONS_FAILED =
   'Saved on this phone. Google Drive could not take this file.';
 export const CLASS_PHOTO_CLOUD_UPLOADED = 'Uploaded to Advantage Cloud.';
 export const CLASS_PHOTO_CLOUD_FAILED = 'Saved on this phone. Advantage Cloud could not take this file.';
-export const CLASS_PHOTO_CLOUD_STAY = `${GALLERY_ROUTE_NOTE} Uploaded to Advantage Cloud. The owner's photos are Approved. Coach and Instructors photos are Pending until the owner or an Instructors seat approves them.`;
+export const CLASS_PHOTO_CLOUD_STAY = `${GALLERY_ROUTE_NOTE} Uploaded to Advantage Cloud. The owner's photos are Approved. When Cloud approval is on, Coach and Instructors photos are Pending until the owner or an Instructors seat approves them. When the owner turns Cloud approval off, those photos go straight to the gallery.`;
 export const CLASS_PHOTO_PROMOTIONS_SKIPPED =
   'That file is not a photo or video. Take photo, Record, or pick a photo or video from the gallery.';
 
@@ -99,8 +99,8 @@ export function classPhotoResultNote(input: {
 export const CLASS_PHOTO_APPROVAL_ON =
   'Approval is on: new photos and clips wait as Pending until the owner or a named approver approves them in Review Inbox.';
 export const CLASS_PHOTO_APPROVAL_OFF = 'Approval is off: new photos and clips go straight to the gallery.';
-/** Advantage Cloud decides the lane on the server by role, whatever the switch on this device says. */
-export const CLASS_PHOTO_CLOUD_RULE = 'On Advantage Cloud this rule applies whether or not the approval switch is on.';
+/** Cloud lane follows the owner's gym-wide setting, not this phone's local switch. */
+export const CLASS_PHOTO_CLOUD_RULE = 'The owner sets Cloud approval on Advantage Pro Plus Cloud. That gym-wide setting, not the switch on this phone, decides whether instructor Cloud uploads wait. The switch on this phone still only governs photos that stay here or go to Google Drive or OneDrive.';
 
 /**
  * `approvalRequired` is the gallery approval switch as this device reads it.

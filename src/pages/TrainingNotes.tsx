@@ -70,10 +70,10 @@ import {
 } from '../lib/lessonRestore';
 import { listClassPhotoPromotions } from '../lib/classPhotoPromotions';
 import {
-  DRIVE_HANDOFF_EMPTY,
   DRIVE_HANDOFF_SAVED,
+  checkReviewHandoff,
   publishReviewToGym,
-  pullReviewHandoff,
+  reviewHandoffCheckNote,
 } from '../lib/driveHandoff';
 import {
   DISTRIBUTE_BUTTON,
@@ -2011,14 +2011,10 @@ export function TrainingNotesPage() {
             <DriveHandoffCheck
               on={handoffChecked}
               onClick={() => {
-                void pullReviewHandoff().then((result) => {
-                  if (result === 'connect') {
-                    setHandoffChecked(false);
-                    setHandoffNote('');
-                    return;
-                  }
-                  setHandoffChecked(true);
-                  setHandoffNote(result === 'saved' ? DRIVE_HANDOFF_SAVED : DRIVE_HANDOFF_EMPTY);
+                setHandoffNote('Checking the gym folder…');
+                void checkReviewHandoff().then((result) => {
+                  setHandoffChecked(result.status === 'saved' || result.status === 'empty');
+                  setHandoffNote(reviewHandoffCheckNote(result));
                 });
               }}
             />
