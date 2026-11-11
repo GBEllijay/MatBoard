@@ -78,6 +78,8 @@ import { highlightParts, techniqueLineHits, videosForTechnique } from '../lib/jo
 import { IndexTermText } from '../indexCards/IndexTermLink';
 import { pageLabel, paginateJournal } from '../lib/journalPages';
 import { TechniqueLines, blankTechniqueLines, techniqueLinesFrom } from './student/TechniqueLines';
+import { GlossaryField } from '../glossary/GlossaryField';
+import { hiddenGlossaryTerms } from '../lib/glossaryMatch';
 import { EMPTY_EXTRAS, MatTimeField, SessionExtras, extrasDraft, extrasFromCard, matTimeLine, type SessionExtrasValue } from './student/MatTime';
 import type { JournalSession } from '../lib/progress/types';
 
@@ -351,6 +353,7 @@ function JournalToday() {
   const [notes, setNotes] = useState('');
   const [stopDoing, setStopDoing] = useState('');
   const [error, setError] = useState('');
+  const hiddenTerms = hiddenGlossaryTerms(report);
   const [savedId, setSavedId] = useState('');
   const [savedToast, setSavedToast] = useState(false);
 
@@ -435,13 +438,18 @@ function JournalToday() {
               <span className="ink__label">{JOURNAL_ROLLS_LABEL}</span>
               <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_ROLLS_LABEL} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
             </label>
-            <label className="ink journal-note">
-              <span className="ink__label">{JOURNAL_NOTES_LABEL}</span>
-              <span className="student-quiet" aria-hidden="true">
-                What you drilled and what to remember.
-              </span>
-              <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_NOTES_LABEL} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
-            </label>
+            <GlossaryField
+              className="ink journal-note"
+              label={JOURNAL_NOTES_LABEL}
+              hint="What you drilled and what to remember."
+              ariaLabel={JOURNAL_NOTES_LABEL}
+              rows={3}
+              value={notes}
+              onChange={setNotes}
+              blockedIds={hiddenTerms.ids}
+              blockedNames={hiddenTerms.names}
+              testId="journal-notes"
+            />
             <label className="ink ink--wobble journal-note">
               <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
               <span className="student-quiet" aria-hidden="true">
@@ -903,6 +911,7 @@ function JournalEditor({
   const [notes, setNotes] = useState(card.notes);
   const [stopDoing, setStopDoing] = useState(card.stopDoing ?? '');
   const [error, setError] = useState('');
+  const hiddenTerms = hiddenGlossaryTerms(report);
 
   return (
     <form
@@ -945,13 +954,17 @@ function JournalEditor({
           <span className="ink__label">{JOURNAL_ROLLS_LABEL}</span>
           <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_ROLLS_LABEL}`} rows={2} value={rolls} onChange={(event) => setRolls(event.target.value)} />
         </label>
-        <label className="ink journal-note">
-          <span className="ink__label">{JOURNAL_NOTES_LABEL}</span>
-          <span className="student-quiet" aria-hidden="true">
-            What you drilled and what to remember.
-          </span>
-          <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_NOTES_LABEL}`} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} />
-        </label>
+        <GlossaryField
+          className="ink journal-note"
+          label={JOURNAL_NOTES_LABEL}
+          hint="What you drilled and what to remember."
+          ariaLabel={`Edit ${JOURNAL_NOTES_LABEL}`}
+          rows={3}
+          value={notes}
+          onChange={setNotes}
+          blockedIds={hiddenTerms.ids}
+          blockedNames={hiddenTerms.names}
+        />
         <label className="ink ink--wobble journal-note">
           <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
           <span className="student-quiet" aria-hidden="true">
