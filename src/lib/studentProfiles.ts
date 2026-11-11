@@ -2,8 +2,13 @@
  * Family profiles on one Student Edition device.
  * The original single-profile keys stay the default profile: nothing is moved
  * or deleted when the registry is created. Other profiles use a suffix.
- * Adding a profile is open. A purchase check is not wired.
+ * The first profile is free. Each profile after that needs a purchased slot
+ * unless the dev fixture key is set. Switching profiles does not buy a slot.
+ * addStudentProfile itself stays open so tests can still create profiles.
  */
+
+export const EXTRA_PROFILE_FIXTURE_KEY = 'matboard.studentEdition.extraProfiles.fixture';
+export const EXTRA_PROFILE_SLOTS_KEY = 'matboard.studentEdition.extraProfileSlots.v1';
 
 export const DEFAULT_STUDENT_PROFILE_ID = 'default';
 export const DEFAULT_STUDENT_PROFILE_NAME = 'My profile';
@@ -222,12 +227,44 @@ function writeRegistry(storage: StudentKeyStore, registry: StudentProfileRegistr
   storage.setItem(STUDENT_PROFILES_KEY, JSON.stringify(registry));
 }
 
+export function extraProfileFixtureOn(storage: Pick<StudentKeyStore, 'getItem'> | null | undefined): boolean {
+  if (!storage) return false;
+  try {
+    return storage.getItem(EXTRA_PROFILE_FIXTURE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function readExtraProfileSlots(storage: Pick<StudentKeyStore, 'getItem'> | null | undefined): number {
+  if (!storage) return 0;
+  try {
+    const value = Number(storage.getItem(EXTRA_PROFILE_SLOTS_KEY));
+    if (!Number.isFinite(value) || value < 0) return 0;
+    return Math.floor(value);
+  } catch {
+    return 0;
+  }
+}
+
+export function writeExtraProfileSlots(storage: StudentKeyStore, slots: number): void {
+  const count = Number.isFinite(slots) ? Math.max(0, Math.floor(slots)) : 0;
+  storage.setItem(EXTRA_PROFILE_SLOTS_KEY, String(count));
+}
+
+/** True when the next profile needs the $5.99 checkout. The fixture path stays free. */
+export function extraProfileNeedsPurchase(profileCount: number, purchasedSlots: number, fixture: boolean): boolean {
+  if (fixture) return false;
+  const extras = Math.max(0, Math.floor(profileCount) - 1);
+  const slots = Number.isFinite(purchasedSlots) ? Math.max(0, Math.floor(purchasedSlots)) : 0;
+  return extras >= slots;
+}
+
 export function addStudentProfile(
   storage: StudentKeyStore,
   input: { name: string; portrait?: string | null },
 ): AddStudentProfileResult {
   const registry = ensureStudentProfiles(storage);
-  // TODO: a future purchase check would go here before creating another profile.
   if (registry.profiles.length >= MAX_PROFILES) return { ok: false, reason: 'full' };
   const name = cleanStudentProfileName(input.name);
   if (!name) return { ok: false, reason: 'name' };

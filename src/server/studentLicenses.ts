@@ -120,7 +120,12 @@ async function seatIsActive(db: D1Database, licenseId: string, seatId: string): 
   return row.status === 'claimed' || row.status === 'active';
 }
 
-async function readCaller(claims: EntitlementClaims, db: D1Database, allowSeat: boolean): Promise<Caller | Response> {
+async function readCaller(
+  claims: EntitlementClaims,
+  db: D1Database,
+  allowSeat: boolean,
+  allowCoachOwner = false,
+): Promise<Caller | Response> {
   if (claims.subs?.state === 'locked') return json(403, { ok: false, error: STUDENT_LICENSE_OWNER_ONLY });
   const seat = claims.src === 'seat' || claims.tier === 'seat';
   if (seat) {
@@ -132,7 +137,13 @@ async function readCaller(claims: EntitlementClaims, db: D1Database, allowSeat: 
     }
     return { role: 'seat', licenseId: gym };
   }
-  if (!claims.grants.includes('pro')) return json(403, { ok: false, error: STUDENT_LICENSE_OWNER_ONLY });
+  if (!claims.grants.includes('pro')) {
+    // Instructor Edition owns its own half-off code. It does not own Pro's free pool.
+    if (allowCoachOwner && claims.grants.includes('coach') && claims.sub && claims.src !== 'seat' && claims.tier !== 'seat') {
+      return { role: 'owner', licenseId: claims.sub };
+    }
+    return json(403, { ok: false, error: STUDENT_LICENSE_OWNER_ONLY });
+  }
   if (!claims.sub) return json(403, { ok: false, error: STUDENT_LICENSE_OWNER_ONLY });
   return { role: 'owner', licenseId: claims.sub };
 }
@@ -271,6 +282,7 @@ async function halfOffForOwner(db: D1Database, licenseId: string): Promise<{ cod
     code: row.code,
     maxUses: row.maxUses,
     usesLeft: Math.max(0, row.maxUses - row.instructorUses - row.studentUses),
+    ...(typeof row.percentOff === 'number' ? { percentOff: row.percentOff } : {}),
   };
 }
 
@@ -329,8 +341,12 @@ export async function handleStudentLicenseList(
   const verified = await verifyCaller(body.token, env);
   if (verified instanceof Response) return verified;
   try {
-    const caller = await readCaller(verified, db, true);
+    const caller = await readCaller(verified, db, true, true);
     if (caller instanceof Response) return caller;
+    if (caller.role === 'owner' && !verified.grants.includes('pro')) {
+      const halfOff = await halfOffForOwner(db, caller.licenseId);
+      return json(200, { ok: true, role: 'owner', left: 0, cap: 0, claims: [], halfOff });
+    }
     const rows = await db
       .prepare(
         `SELECT code, license_id AS licenseId, status, claimed_device AS claimedDevice, created_at AS createdAt

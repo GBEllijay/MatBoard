@@ -2,7 +2,10 @@
 
 export const FREE_INSTRUCTOR_SEATS = 5;
 export const FREE_STUDENT_LICENSES = 5;
+/** Student Edition promotion code minted for one Pro academy. */
 export const HALF_OFF_MAX_USES = 100;
+/** Student Edition promotion code minted for one Instructor Edition license. */
+export const INSTRUCTOR_HALF_OFF_MAX_USES = 25;
 export const BUNDLE_CEILING = 105;
 
 export function instructorSeatAllowance(instructorUses = 0): number {

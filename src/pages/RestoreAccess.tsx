@@ -11,6 +11,7 @@ import { clearEntitlementToken, entitlementSnapshot, readDeviceId } from '../lib
 import { acceptRestoredToken } from '../lib/restoreAccept';
 import { clearRestoreChallenge, readRestoreChallenge, saveRestoreChallenge } from '../lib/restoreChallenge';
 import { fetchTurnstileSiteKey, loadTurnstile, type TurnstileApi } from '../lib/turnstile';
+import { writeExtraProfileSlots } from '../lib/studentProfiles';
 import { isWhiteRestoreEmail, restoreWhiteByEmail } from '../lib/whiteUnlock';
 
 type PersonCheck = 'loading' | 'waiting' | 'ready' | 'error' | 'off';
@@ -173,7 +174,14 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
           publicJwk,
         }),
       });
-      const body = (await response.json()) as { ok?: boolean; token?: string; error?: string; grants?: string[]; accountId?: string };
+      const body = (await response.json()) as {
+        ok?: boolean;
+        token?: string;
+        error?: string;
+        grants?: string[];
+        accountId?: string;
+        extraProfileSlots?: number;
+      };
       if (!response.ok || !body.ok || !body.token) {
         setError(body.error || "That code didn't work.");
         setPending(false);
@@ -183,6 +191,7 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
         rememberAccountReference(body.accountId);
         setAccountReference(body.accountId);
       }
+      if (typeof body.extraProfileSlots === 'number') writeExtraProfileSlots(localStorage, body.extraProfileSlots);
       const accepted = await acceptRestoredToken(body.token);
       if (accepted) {
         clearRestoreChallenge();

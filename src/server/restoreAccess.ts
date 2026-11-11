@@ -1,6 +1,7 @@
 import { thumbprintJwk, verifyToken, type PublicJwk } from '../lib/entitlementToken.ts';
 import type { Door } from '../lib/entitlementToken.ts';
 import { ensureAccountForLicense, licenseForVerifiedEmail, primaryLicenseForAccount } from './accountId.ts';
+import { countExtraProfileSlots } from './profileSlots.ts';
 import { keyedHash, normalizeEmail } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
 import type { EmailSender } from './emailSender.ts';
@@ -232,6 +233,7 @@ export async function handleRestoreVerify(
   const deviceId = typeof body.deviceId === 'string' && body.deviceId.trim() ? body.deviceId.trim().slice(0, 80) : crypto.randomUUID();
   const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
   const accountId = linked?.accountId ?? account?.id ?? '';
+  const extraProfileSlots = accountId ? await countExtraProfileSlots(db, accountId) : 0;
   if (!material) {
     return json(200, {
       ok: true,
@@ -240,6 +242,7 @@ export async function handleRestoreVerify(
       grants: doors,
       deviceId,
       ...(accountId ? { accountId } : {}),
+      ...(extraProfileSlots ? { extraProfileSlots } : {}),
       warning: 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY.',
     });
   }
@@ -292,6 +295,7 @@ export async function handleRestoreVerify(
     token,
     deviceId,
     ...(accountId ? { accountId } : {}),
+    ...(extraProfileSlots ? { extraProfileSlots } : {}),
     ...(studentClaim?.studentPass ? { studentPass: studentClaim.studentPass } : {}),
   });
 }

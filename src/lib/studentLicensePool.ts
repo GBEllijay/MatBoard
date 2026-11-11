@@ -48,9 +48,10 @@ export function freeStudentLicenseTicker(occupied: number): string {
   return `${left} of ${FREE_STUDENT_LICENSES} free Student licenses left`;
 }
 
-export function halfOffPoolNote(usesLeft: number): string {
+export function halfOffPoolNote(usesLeft: number, maxUses = 100): string {
   const left = Math.max(0, Math.floor(Number.isFinite(usesLeft) ? usesLeft : 0));
-  return `The 100-use half-off code still has ${left} uses. A student can enter it at Student Edition checkout.`;
+  const max = Math.max(0, Math.floor(Number.isFinite(maxUses) ? maxUses : 0));
+  return `The ${max}-use half-off code still has ${left} uses. A student can enter it at Student Edition checkout.`;
 }
 
 export function studentLicenseSourceRef(code: string): string {

@@ -16,7 +16,7 @@ export type StudentLicenseRow = {
   code?: string;
 };
 
-export type HalfOffPointer = { code: string; usesLeft: number; maxUses: number };
+export type HalfOffPointer = { code: string; usesLeft: number; maxUses: number; percentOff?: number | null };
 
 export type StudentLicenseList = {
   ok: true;

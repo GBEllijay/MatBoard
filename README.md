@@ -112,7 +112,9 @@ Use the Stripe test-mode toggle. Then:
    | `STRIPE_SECRET_KEY` | **Secret** (encrypt) | All paid Checkout |
    | `STRIPE_WEBHOOK_SECRET` | **Secret** (encrypt) | Webhook signature for White and Pro |
    | `STRIPE_PRICE_WHITE` | Server variable (not public) | White one-time price |
-   | `STRIPE_PRICE_STUDENT` | Server variable (not public) | Student Edition one-time price |
+   | `STRIPE_PRICE_STUDENT` | Server variable (not public) | Student Edition one-time price. Checkout keeps `allow_promotion_codes` so an academy half-off code can be entered |
+   | `STRIPE_PRICE_EXTRA_PROFILE` | Server variable (not public) | Extra Student profile, one-time $5.99. The first profile is free. Profile switcher checkout |
+   | `STRIPE_COUPON_ACADEMY_HALF_OFF` | Server variable (not public) | Coupon id for academy Student Edition half-off. Pro mints one code (100 uses) per academy. Instructor Edition mints one (25 uses) per license. The coupon's percent is stored with the code |
    | `STRIPE_PRICE_COACH` | Server variable (not public) | Legacy Coach one-time price ($29.99). Not sold by Checkout anymore; old purchases still grant coach |
    | `STRIPE_PRICE_INSTRUCTOR` | Server variable (not public) | Instructor Edition ($49.99) one-time price. Required for coach Checkout (503 when empty; must be 4999 USD in Stripe) |
    | `STRIPE_PRICE_MEDIA` | Server variable (not public) | Media Edition ($29.99) one-time price |
@@ -138,6 +140,10 @@ Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
 4. Stripe returns to `/buy?checkout=success&session_id=cs_test_...`. Cancel returns to `/buy?checkout=cancel` and does not charge.
 5. Deliver the webhook (`stripe listen --forward-to localhost:5173/api/stripe/webhook`, or the Dashboard endpoint). The buy page confirms the session with Stripe. A made-up `session_id` does not unlock.
 6. The purchase row is in `.data/white-entitlements.json` locally. `GET /api/entitlement` stays generic.
+
+An extra Student profile is a **one-time $5.99 USD** product (`mode=payment`, `STRIPE_PRICE_EXTRA_PROFILE`). The first profile on the phone is free. The profile switcher sends `POST /api/checkout` with `{ "product": "extra-profile" }`. The webhook stores one slot per paid session on the account id (`migrations/0006_profile_slots.sql`, applied by hand). Restore returns that count. Switching profiles is not a charge. Dev and tests can set `matboard.studentEdition.extraProfiles.fixture` to `1`, or open `?fixture=profiles` on the dev server, and add a profile without Checkout. That key is not `OWNER_TEST_SECRET`.
+
+`STRIPE_COUPON_ACADEMY_HALF_OFF` is the coupon id for Academy Half Off Student Edition. A paid Pro checkout creates one Stripe promotion code for that academy (`max_redemptions` 100). A paid Instructor Edition checkout creates one for that license (`max_redemptions` 25). The row is `half_off_codes`, with the account id, the coupon id, and the coupon's percent. Pro's five free instructor seats and five free Student licenses stay app-issued and are not Checkout line items. A Pro seat does not get its own code. The owner sees the code, a Share button, a QR, and the uses left on the existing license share pages. Student Edition Checkout still sends `allow_promotion_codes=true` unless a discount is already attached. Apply `migrations/0006_profile_slots.sql` by hand before those rows can be stored.
 
 Student Edition is a **one-time $19.99 USD** product (`mode=payment`, `STRIPE_PRICE_STUDENT`). Instructor Edition (checkout product `coach`) is a **one-time $49.99 USD** product (`mode=payment`, `STRIPE_PRICE_INSTRUCTOR`); Checkout returns 503 if that env is empty or its Stripe price is not 4999 USD, so it never charges the legacy $29.99 `STRIPE_PRICE_COACH`. Instructor (and legacy Coach) purchases and the alpha-coach code open Coach Unlimited; Pro still does. Pro is **one Checkout session** with two line items: one-time **$99.99 USD** (`STRIPE_PRICE_PRO`) plus **$5.99 USD per month** (`STRIPE_PRICE_PRO_MONTHLY`). Stripe mixed carts use `mode=subscription`. `STRIPE_PRICE_PRO_MONTHLY_DISCOUNT` is optional and is not sent to Checkout. It is reserved for a future discount price id. Do not put a price id in source.
 
