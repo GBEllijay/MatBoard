@@ -137,7 +137,7 @@ test('Sunday review opens the inbox and the coach can submit', async ({ page }) 
   await expect(card.getByText('Changes requested')).toBeVisible();
   await expect(card.getByRole('status')).toHaveText('Show the knee cut.');
   expect(await fillColor(changes)).toBe('rgb(0, 78, 186)');
-  await page.getByRole('link', { name: 'Back to Coach Unlimited' }).click();
+  await page.getByRole('link', { name: 'Back to Instructor Edition' }).click();
   await page.getByRole('link', { name: /Alex · GB1 5:00 PM · .+ · Draft/ }).click();
   await expect(page.getByLabel('Note to the coach')).toHaveValue('Show the knee cut.');
   await page.getByRole('link', { name: /Alex · GB1 5:00 PM · Changes requested/ }).click();
@@ -147,7 +147,7 @@ test('Sunday review opens the inbox and the coach can submit', async ({ page }) 
   await page.getByRole('button', { name: 'Approve for the gallery' }).click();
   await expect(page.getByText('That photo is in the Gallery on this device.')).toBeVisible();
   await shot(page, 'review-inbox-desktop');
-  await page.getByRole('link', { name: 'Back to Coach Unlimited' }).click();
+  await page.getByRole('link', { name: 'Back to Instructor Edition' }).click();
   await expect(page).toHaveURL(/\/coach-unlimited/);
 
   await page.setViewportSize({ width: 390, height: 844 });
