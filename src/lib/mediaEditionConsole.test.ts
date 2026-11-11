@@ -159,7 +159,7 @@ test('one Media hub: /media serves Media pass, Pro and owner; /console sends Med
   const route = app.slice(app.indexOf('function MediaEditionRoute()'));
   assert.match(
     route.slice(0, 280),
-    /return <MediaEditionGate open=\{paidDoorAgrees\('media-console', mediaConsoleDoorOpen\(door\)\)\} \/>;/,
+    /return <MediaEditionGate open=\{paidDoorAgrees\('media-console', mediaEditionDoorOpen\(door\)\)\} \/>;/,
   );
   const entry = app.slice(app.indexOf('function MediaConsoleEntryRoute()'));
   assert.match(entry, /paidDoorAgrees\('media-console', mediaConsoleDoorOpen\(door\)\)/);

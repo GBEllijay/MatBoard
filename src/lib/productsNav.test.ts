@@ -53,7 +53,7 @@ test('/products cards follow the belt ladder order: White, Student, Media, Instr
   const order = [
     at('<strong>Advantage White</strong>'),
     at('<StudentHomeCard'),
-    at('<MediaHomeCard open={mediaUnlocked} />'),
+    at('<MediaHomeCard open={mediaEditionDoorOpen(door)} />'),
     at('<strong>{INSTRUCTOR_HOME_TITLE}</strong>'),
     at('<ProHomeCopy />'),
   ];
@@ -87,8 +87,9 @@ test('Media card: locked is display-only purple $29.99 linking to /media; open r
   const card = home.slice(home.indexOf('function MediaHomeCard'), home.indexOf('function ProPlusCloudCard'));
   assert.match(card, /mode-card mode-card--media mode-card--locked/);
   assert.match(card, /<BeltRail kind="purple" \/>/);
-  // Open (media door): "Open Media Edition" goes to /media. Locked Learn more opens the same preview.
-  assert.match(home, /const mediaUnlocked = useMediaUnlocked\(\);/);
+  // Open (mediaEditionDoorOpen, same as /media): "Open Media Edition" goes to /media. Locked Learn more opens the same preview.
+  assert.match(home, /<MediaHomeCard open=\{mediaEditionDoorOpen\(door\)\} \/>/);
+  assert.doesNotMatch(home, /useMediaUnlocked/);
   assert.match(card, />\s*Open Media Edition\s*</);
   assert.match(card, /<LearnMoreLink tier="media" \/>/);
   assert.match(card, /to=\{TIER_BUY_PATHS\.media\}/);

@@ -16,7 +16,6 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
-import { useMediaUnlocked } from '../hooks/useMediaUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { studentDemoMode, studentEditionEntitled, studentEditionOpen } from '../lib/studentEdition';
 import {
@@ -38,6 +37,7 @@ import {
   coachDoorOpen,
   homeConsoleLabel,
   coachUnlimitedDoorOpen,
+  mediaEditionDoorOpen,
   proConsoleEntryOpen,
 } from '../lib/productNames';
 import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
@@ -67,7 +67,6 @@ export function HomePage() {
   const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
   const studentUnlocked = useStudentEditionUnlocked();
-  const mediaUnlocked = useMediaUnlocked();
   const seat = useCurrentSeat();
   const seated = purchasePromptsHidden(seat);
   const coachOpen = coachDoorOpen(proUnlocked, coachUnlocked, seated);
@@ -149,8 +148,8 @@ export function HomePage() {
 
           <StudentHomeCard open={studentOpen} demo={studentDemo} to={studentTo} />
 
-          {/* A live seat hides purchase prompts elsewhere. It must not shut Media when a higher tier or the owner pass already opened that door. A seat token never opens the door. */}
-          <MediaHomeCard open={mediaUnlocked} />
+          {/* Same rule as /media: the Media door, or a live seat that grants Media Console. A seat without that preset does not shut a Media door that is already open. */}
+          <MediaHomeCard open={mediaEditionDoorOpen(door)} />
 
           {coachOpen ? (
             <article className="mode-card mode-card--coach">
@@ -292,7 +291,8 @@ function StudentHomeCard({
 }
 
 /**
- * Advantage Media Edition on /products. Open reads the Media door (useMediaUnlocked).
+ * Advantage Media Edition on /products. Open reads mediaEditionDoorOpen, the same
+ * rule as the /media route: the Media door, or a live seat that grants Media Console.
  * Locked shows the price, the alpha line, and Learn more, which opens the Media preview.
  * Unlocked shows only the Open button (no Learn more).
  * There is no Media product in Stripe, so there is no buy button.
