@@ -45,6 +45,8 @@ import {
   REST_ZOOM,
   ZOOM_STEP,
   clampLiveZoom,
+  DIAMOND_FILL,
+  LIVE_ZOOM_MAX,
   crystalLabelState,
   diamondZoomCap,
   drillAfterZoom,
@@ -641,8 +643,14 @@ test('repeated plus-zoom stays on the face, in front of the mesh, and inside the
   for (let step = 0; step < 12; step += 1) zoom = clampLiveZoom(zoom * ZOOM_STEP, width, height);
   const cap = diamondZoomCap(width, height);
   assert.ok(zoom <= cap + 1e-9);
-  assert.ok(zoom < 1.8);
-  assert.ok(zoom <= 1.45);
+  // Bigger zoom than the old 1.45 ceiling, still capped.
+  assert.ok(zoom > 1.45, String(zoom));
+  assert.ok(zoom <= LIVE_ZOOM_MAX);
+  assert.equal(LIVE_ZOOM_MAX, 2.6);
+  // A phone-width stage now zooms too (it was stuck at 1).
+  assert.ok(diamondZoomCap(390, 630) > 2, String(diamondZoomCap(390, 630)));
+  assert.equal(clampLiveZoom(99, 390, 630), diamondZoomCap(390, 630));
+  assert.equal(clampLiveZoom(99, 4, 4), 1.25);
   assert.equal(clampLiveZoom(Number.POSITIVE_INFINITY, width, height), REST_ZOOM);
   assert.equal(clampLiveZoom(Number.NaN, width, height), REST_ZOOM);
   assert.ok(CAMERA_Z > MESH_RADIUS + NEAR_GAP);
@@ -653,8 +661,11 @@ test('repeated plus-zoom stays on the face, in front of the mesh, and inside the
   assert.ok(centered.depth > NEAR_GAP);
   const limb = projectFit([MESH_RADIUS, 0, 0], [0, 0, 0], cap, width, height);
   const diameter = Math.abs(limb.x - width / 2) * 2;
-  assert.ok(diameter <= Math.min(width, height) * 1.2, String(diameter));
+  assert.ok(diameter <= Math.min(width, height) * DIAMOND_FILL + 1, String(diameter));
   assert.ok(diameter >= Math.min(width, height) * 0.9, String(diameter));
+  // At the ceiling, the focused face center still lands on the stage center.
+  const deep = projectFit(anchor, anchor, cap, width, height);
+  assert.ok(Math.abs(deep.x - width / 2) < 0.01 && Math.abs(deep.y - height / 2) < 0.01);
   const behind = projectFit([1, 0, CAMERA_Z + 0.5], [0, 0, 0], 1, width, height);
   assert.equal(behind.depth, NEAR_GAP);
   assert.ok(behind.x > width / 2);
