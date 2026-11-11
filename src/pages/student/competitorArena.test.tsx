@@ -324,18 +324,13 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
     'At a disadvantage: Passing, Submissions, Mindset',
   ]);
   const overlay = labeled(host, 'Me versus Sam');
-  assert.equal(overlay.getAttribute('data-graph'), 'diamond');
-  assert.equal(labeled(host, 'Diamond for Sam').getAttribute('aria-pressed'), 'true');
-  assert.equal(labeled(host, 'Spider for Sam').getAttribute('aria-pressed'), 'false');
-  assert.ok(overlay.querySelector('.archive-diamond canvas'));
-  assert.equal(overlay.querySelector('[data-comparison]')?.getAttribute('data-comparison'), 'on');
-  assert.equal(overlay.querySelector('[data-comparison]')?.getAttribute('data-self-passing'), '1');
-  assert.equal(overlay.querySelectorAll('.cage-series').length, 0);
-  act(() => {
-    labeled(host, 'Spider for Sam').click();
-  });
-  assert.equal(overlay.getAttribute('data-graph'), 'spider');
-  assert.equal(labeled(host, 'Spider for Sam').textContent?.trim(), 'Spider');
+  const graphButtons = [...overlay.querySelectorAll('.archive-graph button')].map((button) => button.textContent?.trim());
+  assert.deepEqual(graphButtons, ['Cage', 'Diamond']);
+  assert.equal(overlay.getAttribute('data-graph'), 'cage');
+  assert.equal(labeled(host, 'Cage for Sam').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Diamond for Sam').getAttribute('aria-pressed'), 'false');
+  assert.equal(labeled(host, 'Cage for Sam').textContent?.trim(), 'Cage');
+  assert.match(overlay.textContent ?? '', /Eight areas inside the cage\. Me in blue, opponent in orange\./);
   assert.equal(overlay.querySelector('polygon.oct-cage')?.getAttribute('points')?.trim().split(/\s+/).length, 8);
   assert.equal(overlay.querySelectorAll('line.cage-spoke').length, 8);
   assert.equal(overlay.querySelectorAll('.cage-post').length, 8);
@@ -357,6 +352,17 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
   assert.equal((overlay.querySelector('svg')?.getAttribute('aria-label') ?? '').includes('Sweeps 0'), false);
   assert.match(overlay.textContent ?? '', /Me/);
   assert.match(overlay.textContent ?? '', /Opponent/);
+  act(() => {
+    labeled(host, 'Diamond for Sam').click();
+  });
+  assert.equal(overlay.getAttribute('data-graph'), 'diamond');
+  assert.equal(labeled(host, 'Diamond for Sam').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Cage for Sam').getAttribute('aria-pressed'), 'false');
+  assert.ok(overlay.querySelector('.archive-diamond canvas'));
+  assert.equal(overlay.querySelector('[data-comparison]')?.getAttribute('data-comparison'), 'on');
+  assert.equal(overlay.querySelector('[data-comparison]')?.getAttribute('data-self-passing'), '1');
+  assert.equal(overlay.querySelectorAll('.cage-series').length, 0);
+  assert.match(overlay.textContent ?? '', /Eight areas on one shape\. Peaks are stronger\. Dips need work\./);
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.textContent?.includes('Do your self-assessment')),
     false,
@@ -412,25 +418,32 @@ test('opponent ratings persist, an old card still opens, and me versus them uses
   const legacy = mount(<ScoutingPage />, '/student/scouting?student=1');
   assert.equal(labeled(legacy.host, 'Riley Guard/Control 1').getAttribute('aria-pressed'), 'false');
   assert.equal(labeled(legacy.host, 'Riley Sweeps 1').getAttribute('aria-pressed'), 'false');
-  assert.equal(labeled(legacy.host, 'Diamond for Riley').getAttribute('aria-pressed'), 'true');
-  assert.equal(legacy.host.querySelector('[data-graph]')?.getAttribute('data-graph'), 'diamond');
-  assert.ok(legacy.host.querySelector('.archive-diamond canvas'));
+  const legacyButtons = [...legacy.host.querySelectorAll('.archive-graph button')].map((button) => button.textContent?.trim());
+  assert.deepEqual(legacyButtons, ['Cage', 'Diamond']);
+  assert.equal(labeled(legacy.host, 'Cage for Riley').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(legacy.host, 'Diamond for Riley').getAttribute('aria-pressed'), 'false');
+  assert.equal(legacy.host.querySelector('[data-graph]')?.getAttribute('data-graph'), 'cage');
+  assert.match(legacy.host.textContent ?? '', /Eight areas inside the cage\./);
+  assert.equal((legacy.host.textContent ?? '').includes('Me in blue, opponent in orange.'), false);
+  assert.match(legacy.host.textContent ?? '', /Rate this opponent to see their shape/);
+  assert.equal(legacy.host.querySelectorAll('.cage-series').length, 0);
+  assert.equal(legacy.host.querySelectorAll('.oct-dot').length, 0);
+  assert.equal(legacy.host.querySelector('polygon.oct-cage')?.getAttribute('points')?.trim().split(/\s+/).length, 8);
   assert.equal(legacy.host.querySelectorAll('polygon.assess-chart__shape').length, 0);
+  assert.deepEqual(
+    [...legacy.host.querySelectorAll('.oct-label__name')].map((node) => node.textContent),
+    ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset'],
+  );
   assert.equal(
     control(legacy.host, 'a', 'Do your self-assessment').getAttribute('href'),
     '/student/self-assessment?from=scouting&student=1',
   );
   act(() => {
-    labeled(legacy.host, 'Spider for Riley').click();
+    labeled(legacy.host, 'Diamond for Riley').click();
   });
-  assert.match(legacy.host.textContent ?? '', /Rate this opponent to see their shape/);
-  assert.equal(legacy.host.querySelectorAll('.cage-series').length, 0);
-  assert.equal(legacy.host.querySelectorAll('.oct-dot').length, 0);
-  assert.equal(legacy.host.querySelector('polygon.oct-cage')?.getAttribute('points')?.trim().split(/\s+/).length, 8);
-  assert.deepEqual(
-    [...legacy.host.querySelectorAll('.oct-label__name')].map((node) => node.textContent),
-    ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset'],
-  );
+  assert.equal(legacy.host.querySelector('[data-graph]')?.getAttribute('data-graph'), 'diamond');
+  assert.ok(legacy.host.querySelector('.archive-diamond canvas'));
+  assert.match(legacy.host.textContent ?? '', /Eight areas on one shape\. Peaks are stronger\. Dips need work\./);
   unmount(legacy);
 });
 

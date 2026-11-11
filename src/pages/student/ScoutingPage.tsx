@@ -611,7 +611,7 @@ function OpponentTracker({
     }
     node.focus();
   }, [focus]);
-  const [graph, setGraph] = useState<'diamond' | 'spider'>('diamond');
+  const [graph, setGraph] = useState<'cage' | 'diamond'>('cage');
   const theirs = isCompleteRatings(card.ratings) ? card.ratings : null;
   const rows = compareToOpponent(selfScores, card.ratings);
   const groups = matchupLabels(rows);
@@ -621,6 +621,10 @@ function OpponentTracker({
     [selfScores, card.ratings],
   );
   const comparing = Object.keys(factors.self).length + Object.keys(factors.opponent).length > 0;
+  const cageHelp =
+    selfScores && theirs
+      ? 'Eight areas inside the cage. Me in blue, opponent in orange.'
+      : 'Eight areas inside the cage.';
 
   return (
     <section className="scout-tracker" aria-label={`Opponent card for ${card.name}`}>
@@ -680,6 +684,15 @@ function OpponentTracker({
         <div className="archive-graph" role="group" aria-label={`Graph for ${card.name}`}>
           <button
             type="button"
+            className={graph === 'cage' ? 'student-choice is-on' : 'student-choice'}
+            aria-pressed={graph === 'cage'}
+            aria-label={`Cage for ${card.name}`}
+            onClick={() => setGraph('cage')}
+          >
+            Cage
+          </button>
+          <button
+            type="button"
             className={graph === 'diamond' ? 'student-choice is-on' : 'student-choice'}
             aria-pressed={graph === 'diamond'}
             aria-label={`Diamond for ${card.name}`}
@@ -687,18 +700,9 @@ function OpponentTracker({
           >
             Diamond
           </button>
-          <button
-            type="button"
-            className={graph === 'spider' ? 'student-choice is-on' : 'student-choice'}
-            aria-pressed={graph === 'spider'}
-            aria-label={`Spider for ${card.name}`}
-            onClick={() => setGraph('spider')}
-          >
-            Spider
-          </button>
         </div>
         <p className="archive-help">
-          {graph === 'diamond' ? 'Eight areas on one shape. Peaks are stronger. Dips need work.' : 'The same areas as a spider graph.'}
+          {graph === 'diamond' ? 'Eight areas on one shape. Peaks are stronger. Dips need work.' : cageHelp}
         </p>
         {graph === 'diamond' ? (
           <div className="archive-diamond">
