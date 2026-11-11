@@ -793,11 +793,14 @@ export function TechniquesPage() {
         playing={playingThis}
         canStart={canStart}
         fullscreen={immersive}
-        showFullscreen={fs.supported || stage || immersive}
+        showFullscreen
         onStart={startDrill}
         onStop={stopDrill}
         onToggleFullscreen={() => {
+          const willPlay = playback || canStart;
           if (!playback && canStart) startDrill();
+          // iPhone has no Fullscreen API: the fixed stage cover is the full screen.
+          if (!immersive && willPlay) setStage(true);
           void togglePlaybackFullscreen();
         }}
       />

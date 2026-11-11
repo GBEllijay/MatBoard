@@ -270,6 +270,25 @@ export function TodaysVideosPlayer({
         <button type="button" className={`btn btn--ghost${muted ? ' preset--on' : ''}`} aria-pressed={muted} onClick={onToggleMute}>
           Mute clips
         </button>
+        {clip ? (
+          <button
+            type="button"
+            className="btn btn--ghost"
+            data-camera-fullscreen=""
+            onClick={() => {
+              if (!playing) {
+                setRemainingMs(loopSec ? loopSec * 1000 : 0);
+                setUnlockSound(!muted);
+                setPlaying(true);
+              }
+              // iPhone has no Fullscreen API: the fixed stage cover is the full screen.
+              if (!immersive) setStage(true);
+              void toggleFullscreen();
+            }}
+          >
+            Fullscreen
+          </button>
+        ) : null}
       </div>
 
       {clip ? (
