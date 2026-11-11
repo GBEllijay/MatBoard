@@ -405,7 +405,8 @@ export const DIAMOND_BLOCK_HEIGHT = DIAMOND_CAPTION + DIAMOND_R * 2 + 10;
 
 /** Solid blend of white paper and a color. The PDF writer has only two opacity levels. */
 function mixPaper(color: Rgb, amount: number): Rgb {
-  return color.map((channel) => Math.round((1 - amount + channel * amount) * 1000) / 1000) as Rgb;
+  const mix = (channel: number) => Math.round((1 - amount + channel * amount) * 1000) / 1000;
+  return [mix(color[0]), mix(color[1]), mix(color[2])];
 }
 
 function pdfPoint(point: { x: number; y: number }): { x: number; y: number } {
