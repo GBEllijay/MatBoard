@@ -100,6 +100,29 @@ export function tileTone(id: string): TileTone {
   return 'position';
 }
 
+const FACE_TONE: Record<string, TileTone> = {
+  submissions: 'submission',
+  'escapes-defense': 'defense',
+  passing: 'pass',
+  sweeps: 'pass',
+  'guard-control': 'position',
+  takedowns: 'position',
+  conditioning: 'position',
+  mindset: 'position',
+};
+
+/**
+ * Live index cards are `term.*` and take the color of their face.
+ * Catalog and preview rows keep the id prefix (`sub.`, `escape.`, `pass.`, `sweep.`).
+ */
+export function tileToneFor(id: string, faceId?: string): TileTone {
+  if (id.startsWith('term.')) {
+    if (faceId && FACE_TONE[faceId]) return FACE_TONE[faceId];
+    return 'position';
+  }
+  return tileTone(id);
+}
+
 const TONE_ALIASES: Record<string, string> = {
   Armbar: 'Armbar from guard',
   'Triangle choke': 'Triangle',

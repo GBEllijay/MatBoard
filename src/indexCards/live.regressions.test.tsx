@@ -9,7 +9,10 @@ import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { STUDENT_EDITION_STORAGE_KEY, addJournalEntry, blankStudentReport, saveStudentReport } from '../lib/studentEdition.ts';
 import { ASSESSMENT_STORAGE_KEY } from '../lib/studentAssessment.ts';
+import { readFileSync } from 'node:fs';
 import { EMPTY_JOURNAL, INDEX_CARDS_STORAGE_KEY, NEUTRAL_NOTE } from '../lib/indexCards.ts';
+import { CAMERA_Z, MESH_RADIUS, NEAR_GAP, projectFit } from '../preview/crystallineSweeps/labels.ts';
+import { D8_STAGE_DEFAULT, D8_STAGE_HEIGHT_KEY, d8StageMax } from './LiveD8.tsx';
 import { IndexTermText } from './IndexTermLink.tsx';
 import { IndexCardProvider } from './IndexCardHost.tsx';
 import { LiveD8 } from './LiveD8.tsx';
@@ -192,4 +195,130 @@ test('a blank face slot creates a card, and a rating is still there after reload
   assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY), 'kept-check-in');
   act(() => mounted.root.unmount());
   mounted.host.remove();
+});
+
+test('a rating lights the pressed number and says Saved', async () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  const css = readFileSync('src/indexCards/liveD8.css', 'utf8');
+  assert.match(css, /\.d8-live-sheet \.d8sf-rate\[aria-pressed='true'\]/);
+  assert.match(css, /background:\s*#004eba/);
+  assert.match(css, /color:\s*#fff/);
+  assert.match(css, /animation:\s*d8-saved-fade 2s/);
+  const { root, host } = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  focusFace(host, 'sweeps');
+  click([...host.querySelectorAll('[data-term-link]')].find((node) => node.textContent === 'Hip bump sweep'));
+  const card = host.querySelector('[data-testid="live-index-card"]');
+  const five = card?.querySelector('[aria-label="Hip bump sweep 5"]') as HTMLButtonElement;
+  const three = card?.querySelector('[aria-label="Hip bump sweep 3"]') as HTMLButtonElement;
+  assert.equal(three.getAttribute('aria-pressed'), 'true');
+  assert.equal(five.getAttribute('aria-pressed'), 'false');
+  click(five);
+  assert.equal(five.getAttribute('aria-pressed'), 'true');
+  assert.equal(three.getAttribute('aria-pressed'), 'false');
+  const saved = host.querySelector('[data-testid="rating-saved"]');
+  assert.equal(saved?.getAttribute('aria-live'), 'polite');
+  assert.equal(saved?.textContent, 'Saved');
+  assert.equal(saved?.getAttribute('data-on'), 'true');
+  await act(async () => {
+    await new Promise((resolve) => window.setTimeout(resolve, 2200));
+  });
+  assert.equal(host.querySelector('[data-testid="rating-saved"]')?.textContent, '');
+  act(() => root.unmount());
+  host.remove();
+});
+
+test('the face score shows one decimal and the unrated line stays at 3', () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  const { root, host } = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  focusFace(host, 'sweeps');
+  assert.match(host.querySelector('[data-testid="face-score"]')?.textContent ?? '', /Face score \d\.\d \/ 5/);
+  assert.match(host.textContent ?? '', /Average of every line on this face\. A line you have not rated stays at 3\./);
+  click([...host.querySelectorAll('[data-term-link]')].find((node) => node.textContent === 'Hip bump sweep'));
+  click(host.querySelector('[aria-label="Hip bump sweep 5"]'));
+  click(host.querySelector('[data-testid="live-index-card"] header button'));
+  assert.match(host.querySelector('[data-testid="face-score"]')?.textContent ?? '', /Face score \d\.\d \/ 5/);
+  assert.equal(host.querySelector('[data-empty-slot]')?.textContent, '+ Add');
+  act(() => root.unmount());
+  host.remove();
+});
+
+test('the diamond height is remembered, and Expand and the grip change it', () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  localStorage.setItem(D8_STAGE_HEIGHT_KEY, '480');
+  let mounted = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  const heightOf = () => mounted.host.querySelector('[data-testid="live-d8"]')?.getAttribute('data-stage-height');
+  assert.equal(heightOf(), '480');
+  click(mounted.host.querySelector('[data-testid="d8-fit"]'));
+  const expanded = d8StageMax(window.innerHeight);
+  assert.equal(heightOf(), String(expanded));
+  assert.equal(localStorage.getItem(D8_STAGE_HEIGHT_KEY), String(expanded));
+  const grip = mounted.host.querySelector('[data-testid="d8-resize"]') as HTMLElement;
+  act(() => {
+    grip.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientY: 100, pointerId: 7 }));
+  });
+  act(() => {
+    window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientY: 40, pointerId: 7 }));
+  });
+  act(() => {
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientY: 40, pointerId: 7 }));
+  });
+  const dragged = Number(heightOf());
+  assert.ok(dragged < expanded, String(dragged));
+  assert.equal(localStorage.getItem(D8_STAGE_HEIGHT_KEY), String(dragged));
+  act(() => mounted.root.unmount());
+  mounted.host.remove();
+  resetIndexCardStoreForTests();
+  mounted = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  assert.equal(mounted.host.querySelector('[data-testid="live-d8"]')?.getAttribute('data-stage-height'), String(dragged));
+  assert.ok(D8_STAGE_DEFAULT > 420);
+  act(() => mounted.root.unmount());
+  mounted.host.remove();
+});
+
+test('pressing zoom in many times keeps the diamond visible and the face centered', () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  const { root, host } = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  focusFace(host, 'submissions');
+  const plus = host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement;
+  for (let step = 0; step < 8; step += 1) click(plus);
+  const stage = host.querySelector('.topo-stage') as HTMLElement;
+  assert.equal(stage.hasAttribute('hidden'), false);
+  assert.ok(stage.querySelector('canvas'));
+  const zoom = Number(stage.getAttribute('data-zoom'));
+  assert.ok(zoom >= 1 && zoom <= 1.45, String(zoom));
+  const anchor: [number, number, number] = [0.42, -0.18, 1.1];
+  const placed = projectFit(anchor, anchor, zoom, 960, 630);
+  assert.ok(Math.abs(placed.x - 480) < 0.5);
+  assert.ok(Math.abs(placed.y - 315) < 0.5);
+  assert.ok(placed.depth > 1.5);
+  assert.ok(CAMERA_Z > MESH_RADIUS + NEAR_GAP);
+  click([...host.querySelectorAll('button')].find((node) => node.textContent?.trim() === 'Reset view'));
+  assert.equal(host.querySelector('.topo-stage')?.getAttribute('data-zoom'), '1');
+  assert.equal(host.querySelector('.topo-stage')?.hasAttribute('hidden'), false);
+  act(() => root.unmount());
+  host.remove();
 });
