@@ -19,6 +19,7 @@ import {
 } from '../lib/cardSync';
 import type { Student } from '../lib/rosterStore';
 import { applyStudentPhotoFlag, parseStudentPhotoFlag } from '../lib/studentPhotoFlag';
+import { CARD_SHARE_CHECK_FAILED, cardShareCheckNote } from '../lib/cardShareCheck';
 
 function useTick(): number {
   const [tick, setTick] = useState(0);
@@ -69,6 +70,8 @@ export function CoachStudentNotices({ student, roster }: { student: Student; ros
 export function PendingCardShares({ roster, title = 'Student cards waiting' }: { roster: readonly Student[]; title?: string }) {
   useTick();
   const [status, setStatus] = useState('');
+  const [checkNote, setCheckNote] = useState('');
+  const [checking, setChecking] = useState(false);
   const [mergeInto, setMergeInto] = useState<Record<string, string>>({});
   const [, setTick] = useState(0);
   const shares = getPendingCardShares();
@@ -130,13 +133,28 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
       <button
         type="button"
         className="btn btn--ghost"
+        disabled={checking}
         onClick={async () => {
-          const result = await refreshCardShares();
-          setStatus(result.ok ? `${result.pending} waiting.` : 'Could not reach Advantage Cloud.');
+          const before = shares.length;
+          setChecking(true);
+          setCheckNote('Checking for student cards…');
+          try {
+            const result = await refreshCardShares();
+            setCheckNote(result.ok ? cardShareCheckNote(result.pending, before) : CARD_SHARE_CHECK_FAILED);
+          } catch {
+            setCheckNote(CARD_SHARE_CHECK_FAILED);
+          } finally {
+            setChecking(false);
+          }
         }}
       >
         Check for student cards
       </button>
+      {checkNote ? (
+        <p role="status" data-card-share-check="">
+          {checkNote}
+        </p>
+      ) : null}
       <label>
         Import a student file
         <input

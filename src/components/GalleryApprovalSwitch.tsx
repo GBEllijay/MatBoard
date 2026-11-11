@@ -2,16 +2,16 @@ import { useEffect, useState } from 'react';
 import {
   REQUIRE_APPROVAL_LABEL,
   canSetGalleryApproval,
-  readGalleryApproval,
   writeGalleryApproval,
   type GalleryApprovalSettings,
 } from '../lib/galleryApproval';
+import { readGalleryApprovalHere } from '../lib/galleryApprovalDefault';
 import { listInstructorSeats, type InstructorSeat } from '../lib/instructorSeats';
 
 type Viewer = { role: 'owner' | 'seat' | 'student'; presetId?: string | null };
 
 function load(): GalleryApprovalSettings {
-  return readGalleryApproval(typeof localStorage === 'undefined' ? null : localStorage);
+  return readGalleryApprovalHere(typeof localStorage === 'undefined' ? null : localStorage);
 }
 
 /** The gallery switch, plus the people the owner names as approvers. Hidden when this person cannot set it. */

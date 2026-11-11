@@ -20,7 +20,8 @@
  */
 
 import { gymActorForCloud } from './advantageCloudMedia.ts';
-import { galleryHoldExpired, playsInGallery, readGalleryApproval } from './galleryApproval.ts';
+import { galleryHoldExpired, playsInGallery } from './galleryApproval.ts';
+import { readGalleryApprovalHere } from './galleryApprovalDefault.ts';
 import { shrinkPhotoForStore } from './imageShrink.ts';
 import { publishGymFile } from './gymPublish.ts';
 import { GALLERY_ROUTE_NOTE, type GymActor } from './gymTree.ts';
@@ -94,8 +95,21 @@ export function classPhotoResultNote(input: {
   return CLASS_PHOTO_PROMOTIONS_SAVED_DRIVE;
 }
 
-export function classPhotoStayCopy(cloudOn: boolean): string {
-  return cloudOn ? CLASS_PHOTO_CLOUD_STAY : CLASS_PHOTO_PROMOTIONS_STAY;
+/** Device and Drive gallery: what the approval switch on this device does right now. */
+export const CLASS_PHOTO_APPROVAL_ON =
+  'Approval is on: new photos and clips wait as Pending until the owner or a named approver approves them in Review Inbox.';
+export const CLASS_PHOTO_APPROVAL_OFF = 'Approval is off: new photos and clips go straight to the gallery.';
+/** Advantage Cloud decides the lane on the server by role, whatever the switch on this device says. */
+export const CLASS_PHOTO_CLOUD_RULE = 'On Advantage Cloud this rule applies whether or not the approval switch is on.';
+
+/**
+ * `approvalRequired` is the gallery approval switch as this device reads it.
+ * Omit it to keep the older copy.
+ */
+export function classPhotoStayCopy(cloudOn: boolean, approvalRequired?: boolean): string {
+  if (cloudOn) return approvalRequired === undefined ? CLASS_PHOTO_CLOUD_STAY : `${CLASS_PHOTO_CLOUD_STAY} ${CLASS_PHOTO_CLOUD_RULE}`;
+  if (approvalRequired === undefined) return CLASS_PHOTO_PROMOTIONS_STAY;
+  return `${CLASS_PHOTO_PROMOTIONS_STAY} ${approvalRequired ? CLASS_PHOTO_APPROVAL_ON : CLASS_PHOTO_APPROVAL_OFF}`;
 }
 
 function classPhotoActor(): GymActor {
@@ -293,7 +307,7 @@ export async function addClassPhotoPromotionFiles(
   if (!saved.length) {
     return { saved: 0, uploaded: 0, failed: 0, skipped, needsDrive: false, cloud: false, lane: null };
   }
-  const approvalRequired = readGalleryApproval(typeof localStorage === 'undefined' ? null : localStorage).required;
+  const approvalRequired = readGalleryApprovalHere(typeof localStorage === 'undefined' ? null : localStorage).required;
   let uploaded = 0;
   let failed = 0;
   let needsDrive = true;

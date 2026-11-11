@@ -38,7 +38,8 @@ import {
 import { mediaConsoleDriveActions, mediaConsoleGalleryLead } from '../lib/gymHome';
 import { readGymLogo, subscribeGymLogo } from '../lib/gymLogo';
 import { isProgramDirectorSeat, seatPermissionAllows } from '../lib/instructorSeats';
-import { APPROVAL_WAITING, readGalleryApproval } from '../lib/galleryApproval';
+import { APPROVAL_WAITING } from '../lib/galleryApproval';
+import { readGalleryApprovalHere } from '../lib/galleryApprovalDefault';
 import { addClassPhotoPromotionFiles } from '../lib/classPhotoPromotions';
 import { gymActorForCloud, loadAdvantageCloudHome } from '../lib/advantageCloudMedia';
 import { CAMERA_PARAM, cameraDailyVideosAllowed, cameraModeRequested, cameraPhotoAllowed } from '../lib/pdCamera';
@@ -713,7 +714,7 @@ export function ScreensaverPage() {
     if (
       folderId === 'gallery' &&
       isProgramDirectorSeat(seat) &&
-      readGalleryApproval(typeof localStorage === 'undefined' ? null : localStorage).required
+      readGalleryApprovalHere(typeof localStorage === 'undefined' ? null : localStorage).required
     ) {
       savingRef.current = true;
       setPickerNote('');

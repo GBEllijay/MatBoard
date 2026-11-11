@@ -112,7 +112,7 @@ test('Media Console offers Gallery or today\'s videos only to that seat and keep
   assert.match(saver, /stay=\{sendingDaily \? DAILY_VIDEO_STAY : undefined\}/);
   assert.match(saver, /await onDailyFiles\(\[\.\.\.files\], dailyHome\)/);
   // A PD with gallery approval on goes through the existing pending lane.
-  assert.match(saver, /isProgramDirectorSeat\(seat\) &&\s+readGalleryApproval\(/);
+  assert.match(saver, /isProgramDirectorSeat\(seat\) &&\s+readGalleryApproval(Here)?\(/);
   assert.match(saver, /addClassPhotoPromotionFiles\(localDateKey\(\), matched\)/);
   // Camera capture inputs are unchanged.
   assert.match(saver, /saver-photo-capture/);

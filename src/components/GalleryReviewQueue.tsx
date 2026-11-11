@@ -4,8 +4,8 @@ import { CLOUD_MEDIA_EVENT, galleryDecisionAllowed, notifyCloudMedia } from '../
 import {
   APPROVAL_WAITING,
   canApproveGallery,
-  readGalleryApproval,
 } from '../lib/galleryApproval';
+import { readGalleryApprovalHere } from '../lib/galleryApprovalDefault';
 import {
   classPhotoLane,
   listPendingClassPhotos,
@@ -25,7 +25,7 @@ export function GalleryReviewQueue() {
   const [rows, setRows] = useState<ClassPhotoPromotionItem[]>([]);
   const [cloudRows, setCloudRows] = useState<CloudGalleryFile[]>([]);
   const [note, setNote] = useState('');
-  const settings = readGalleryApproval(typeof localStorage === 'undefined' ? null : localStorage);
+  const settings = readGalleryApprovalHere(typeof localStorage === 'undefined' ? null : localStorage);
   const allowed = canApproveGallery({
     role: seat ? 'seat' : 'owner',
     seatId: seat?.id,

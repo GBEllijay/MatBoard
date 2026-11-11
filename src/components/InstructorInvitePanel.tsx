@@ -33,6 +33,7 @@ import {
 } from '../lib/instructorSeats';
 import { issueSeatWithServer, syncLegacySeats } from '../lib/seatClient';
 import { GalleryApprovalSwitch } from './GalleryApprovalSwitch';
+import { GalleryPendingLink } from './GalleryPendingNotice';
 import { qrDataUrl } from '../lib/qr';
 
 type IssuedLink = {
@@ -210,6 +211,7 @@ export function InstructorInvitePanel() {
         <div className="invite-form">
           <p className="invite-form__kicker">Owner only · Soft beta</p>
           <GalleryApprovalSwitch viewer={{ role: 'owner' }} />
+          <GalleryPendingLink />
           <strong>Generate instructor invite</strong>
           <span className="invite-form__note">
             Pro includes 5 free instructor seats and 5 free Student Edition licenses.

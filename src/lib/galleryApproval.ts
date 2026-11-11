@@ -14,6 +14,14 @@ export const APPROVAL_WAITING = 'Photos and videos are waiting for approval.';
 
 export const APPROVAL_DAY_LINK = 'Open Review Inbox';
 
+/** Review Inbox, where GalleryReviewQueue shows pending photos and clips. */
+export const GALLERY_REVIEW_PATH = '/review';
+
+/** Link under the owner's gallery approval switch. `null` while the count loads. */
+export function pendingPhotosLabel(count: number | null): string {
+  return count == null ? 'Pending photos' : `Pending photos (${count})`;
+}
+
 /** Rejected and still-unapproved items are removed after this long. Approved items stay. */
 export const GALLERY_HOLD_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -29,11 +37,15 @@ type MemoryStore = {
   setItem?: (key: string, value: string) => void;
 };
 
-export function readGalleryApproval(storage: MemoryStore | null | undefined): GalleryApprovalSettings {
+/**
+ * `defaultRequired` applies only when nothing was ever saved on this device.
+ * A saved choice, on or off, always wins.
+ */
+export function readGalleryApproval(storage: MemoryStore | null | undefined, defaultRequired = false): GalleryApprovalSettings {
   if (!storage) return EMPTY;
   try {
     const raw = storage.getItem(GALLERY_APPROVAL_KEY);
-    if (!raw) return EMPTY;
+    if (!raw) return defaultRequired ? { required: true, approverSeatIds: [] } : EMPTY;
     const parsed = JSON.parse(raw) as Partial<GalleryApprovalSettings>;
     const ids = Array.isArray(parsed.approverSeatIds)
       ? parsed.approverSeatIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0).slice(0, 40)
