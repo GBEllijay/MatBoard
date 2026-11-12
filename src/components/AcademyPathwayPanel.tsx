@@ -21,6 +21,7 @@ import { COACH_UNLIMITED_PATH } from '../lib/productNames';
 import { qrDataUrl } from '../lib/qr';
 import { academyNoFolderCopy } from '../lib/storageCopy';
 import { useAdvantageCloudOn } from './useAdvantageCloudOn';
+import { CoachConnectQrPanel } from './CoachConnectQrPanel';
 
 type Row = {
   pathway: AcademyPathway;
@@ -55,6 +56,8 @@ export function AcademyPathwayPanel() {
   const [error, setError] = useState('');
   const [driveTick, setDriveTick] = useState(0);
   const cloudOn = useAdvantageCloudOn();
+  // With Advantage Cloud the academy-wide coach connect QR leads; the folder pathway is second.
+  const [coachCloud, setCoachCloud] = useState(false);
 
   const reload = useCallback(() => {
     const gymName = readGymName();
@@ -147,9 +150,26 @@ export function AcademyPathwayPanel() {
     setStatus('OneDrive created an edit link. Students still use Connect to my academy. They do not pay.');
   };
 
+  const folderSecondary = coachCloud;
   return (
+    <>
+    {/* Same academy-wide code as Binders. Hidden when the academy has no Cloud. */}
+    <section
+      className="academy-pathway academy-pathway--cloud"
+      aria-label="Connect to my academy on Advantage Cloud"
+      hidden={!coachCloud}
+    >
+      {coachCloud ? <h2>Connect to my academy</h2> : null}
+      <CoachConnectQrPanel hideWithoutCloud onCloud={setCoachCloud} />
+    </section>
+    {folderSecondary && rows.length === 0 ? (
+      <p className="academy-pathway__secondary">
+        Prefer a Google Drive or OneDrive folder too? <Link to={COACH_UNLIMITED_PATH}>Connect the folder</Link>
+      </p>
+    ) : null}
+    {folderSecondary && rows.length === 0 ? null : (
     <section className="academy-pathway" aria-label="Academy folder pathway">
-      <h2>Connect to my academy</h2>
+      {folderSecondary ? <h3>Academy folder pathway (optional)</h3> : <h2>Connect to my academy</h2>}
       <p>
         Send students a pathway into the academy folder connected on this browser. They open Connect to my academy,
         sign in to that drive, and can upload and download there. {ACADEMY_FREE_NOTE} Set the folder up before you
@@ -210,5 +230,7 @@ export function AcademyPathwayPanel() {
       {status ? <p role="status">{status}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
     </section>
+    )}
+    </>
   );
 }

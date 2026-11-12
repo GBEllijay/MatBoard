@@ -47,6 +47,8 @@ import {
   REMOVE_OLD_GYM_LABEL,
   removePreviousGym,
 } from '../../lib/academyMembership';
+import { acceptCoachConnect, parseCoachConnectInput, COACH_CONNECT_PARAM } from '../../lib/coachConnect';
+import { readAcademyLicense } from '../../lib/studentInboxClient';
 import { subscribeGoogleDriveDisconnect } from '../../lib/driveSession';
 import { driveAccountEmail, driveSignInFailureCopy, requestDriveConsent } from '../../lib/googleDrive';
 import { dismissOneDriveResume, oneDriveSignInFailureCopy } from '../../lib/oneDrive';
@@ -145,7 +147,28 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
     [],
   );
 
+  const useCoachLink = async (invite: string) => {
+    setBusy(true);
+    setError('');
+    setPathway(null);
+    const result = await acceptCoachConnect(invite);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setTick((n) => n + 1);
+    setStatus(
+      `Connected to ${result.gymName || 'your academy'} on Advantage Cloud. No Drive folder needed. Send your card so your coach can assess you.`,
+    );
+  };
+
   const useLink = (value: string) => {
+    const coachInvite = parseCoachConnectInput(value);
+    if (coachInvite) {
+      void useCoachLink(coachInvite);
+      return;
+    }
     const parsed = parseAcademyInput(value);
     if (!parsed) {
       setPathway(null);
@@ -236,6 +259,8 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
   useEffect(() => {
     const fromQuery = params.get('academy');
     if (fromQuery) useLink(fromQuery);
+    const coachQuery = params.get(COACH_CONNECT_PARAM);
+    if (coachQuery) useLink(coachQuery);
     if (typeof window !== 'undefined' && window.location.hash === '#rescan') setScanSignal((n) => n + 1);
     let intent: string | null = null;
     try {
@@ -277,7 +302,13 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
 
   const membership = readMembership(localStorage);
   const previousGym = membership.previous ?? null;
-  const gymName = linked ? linked.gymName || membership.current?.name || linked.folderName : '';
+  // Connected on Advantage Cloud only (coach connect QR or a Student license claim): no folder on this phone.
+  const cloudOnly = !linked && Boolean(membership.current) && Boolean(readAcademyLicense(localStorage));
+  const gymName = linked
+    ? linked.gymName || membership.current?.name || linked.folderName
+    : cloudOnly
+      ? membership.current?.name || 'your academy'
+      : '';
   const since = sinceLabel(membership.current?.since ?? 0);
   const logo = linked ? readStudentGymLogo(localStorage) : null;
 
@@ -357,11 +388,38 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
           setScanSignal((n) => n + 1);
         }}
       />
+      {cloudOnly ? (
+        <div className="am-card am-cloud" aria-label="Advantage Cloud academy">
+          <span className="am-tag am-tag--on">● Connected on Advantage Cloud</span>
+          <div className="am-gym">
+            <div className="am-crest" aria-hidden="true">
+              {initials(gymName)}
+            </div>
+            <div>
+              <h2>{gymName}</h2>
+              <div className="am-kv">
+                {since ? `Connected since ${since} · ` : ''}Advantage Cloud · no folder needed
+              </div>
+            </div>
+          </div>
+          <p>Your card goes to your coach on Advantage Cloud. Your coach can send back assessments and promotions.</p>
+          <ShareCardWithCoach
+            withPhoto={false}
+            label={SEND_ID_LABEL}
+            buttonClassName={PRIMARY}
+            note="One tap: your coach gets your student ID, name, and belt to link your roster card."
+          />
+          <ShareCardWithCoach buttonClassName={BTN} />
+          <button type="button" className={DANGER} onClick={() => setSheet({ kind: 'leave', step: 'confirm' })}>
+            {LEAVE_ACADEMY_LABEL}
+          </button>
+        </div>
+      ) : null}
       {!linked ? (
         <div className="am-grid">
           <div className="am-card" id="rescan">
-            <span className="am-tag">Not connected</span>
-            <h2>Link your journal to your gym</h2>
+            <span className="am-tag">{cloudOnly ? 'Gym folder (optional)' : 'Not connected'}</span>
+            <h2>{cloudOnly ? 'Scan another academy QR' : 'Link your journal to your gym'}</h2>
             <p>Your coach shares a QR or invite link. Connecting lets your coach see your belt progress and send you notes. {ACADEMY_FREE_NOTE}</p>
             <ol className="am-steps">
               <li>

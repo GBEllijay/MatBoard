@@ -105,7 +105,6 @@ export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
           <ProfileCard />
             </>
           )}
-          <StudentProfileSwitcher />
           <Link className="s-tile s-journal" to={to('/student/training')} aria-label={TRAINING_GROUP_LABEL}>
             <JournalDecor />
             <span className="s-tile__text">
@@ -171,6 +170,7 @@ export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
               {`Last backup: ${stamp}`}
             </span>
           </Link>
+          <StudentProfileSwitcher />
           <Link className="s-ghost" to={to('/student/faq')} aria-label="FAQ">
             <RowIcon label="FAQ" />
             <span className="s-ghost__label">FAQ</span>
