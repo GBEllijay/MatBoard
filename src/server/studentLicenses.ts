@@ -169,7 +169,7 @@ async function readCode(db: D1Database, code: string): Promise<CodeRow | null> {
     .first<CodeRow>();
 }
 
-async function gymHasCloud(db: D1Database, licenseId: string, now: Date): Promise<boolean> {
+export async function gymHasCloud(db: D1Database, licenseId: string, now: Date): Promise<boolean> {
   if (licenseId === 'owner-test') return true;
   try {
     const grants = await grantsForLicense(db, licenseId, now);
