@@ -620,6 +620,17 @@ export function mediaConsoleDoorOpen(input: ProSurfaceInput): boolean {
 }
 
 /**
+ * Media Edition on /products and the /media hub.
+ * Open when the Media door is open (a Media pass, or Instructor/Pro which include it),
+ * or when a live seat grants Media Console (same seated rule as mediaConsoleDoorOpen).
+ * A seat token never opens the Media door itself. A seat without a media preset does
+ * not shut a Media door that is already open, so the card and the /media route stay aligned.
+ */
+export function mediaEditionDoorOpen(input: ProSurfaceInput): boolean {
+  return Boolean(input.mediaUnlocked) || mediaConsoleDoorOpen(input);
+}
+
+/**
  * Closed Pro and media doors.
  * A signed-in seat never sees the purchase lock or Coming soon.
  * An unseated visitor still does.
