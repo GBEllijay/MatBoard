@@ -12211,6 +12211,36 @@ html.lesson-cover-open body {
   flex-basis: 100%;
 }
 
+.notes__video-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.notes__video-actions .btn {
+  min-height: 48px;
+}
+
+.notes__video-actions.notes__confirm {
+  grid-template-columns: 1fr 1fr;
+}
+
+.notes__video-actions.notes__confirm p {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.notes__media:has(.notes__video-actions) {
+  width: 100%;
+  max-width: 16rem;
+}
+
+.notes__media:has(.lesson-player):has(.notes__video-actions) {
+  max-width: none;
+}
+
 .notes__video-name {
   margin: 0.2rem 0 0;
   font-size: 0.85rem;

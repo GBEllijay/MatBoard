@@ -938,6 +938,7 @@ export function TechniquesPage() {
                   Boolean(pickedCard || focusSlot),
                   pickedCard ? playingCurriculum : Boolean(playing && focusSlot && plan?.selectedSlotId === focusSlot.slotId),
                 )}
+                {immersive || stage || pickedCard || !focusSlot ? null : renderFocusSlot(focusSlot, 'controls')}
               </>
             }
             stepLabel={stepLabel}

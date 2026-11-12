@@ -212,6 +212,10 @@ test('daily videos keep start and fullscreen on the player, and fullscreen clear
   assert.match(notes, /if \(!offer\.show \|\| offer\.clipUrl\) return;/);
   assert.match(notes, /lessonClipLoopMs/);
   assert.match(notes, /lessonVideoHref/);
+  assert.match(notes, /detachPlanVideo/);
+  assert.match(notes, /canEditVideos/);
+  assert.match(notes, /openVideoBoard/);
+  assert.match(page, /renderFocusSlot\(focusSlot, 'controls'\)/);
 
   const dockRule = css.slice(css.indexOf('.techniques__frame .techniques__dock {'));
   const dockBlock = dockRule.slice(0, dockRule.indexOf('}'));
@@ -390,3 +394,119 @@ test('every player bar shows Fullscreen without waiting on the Fullscreen API', 
   assert.match(bar, />\s*Fullscreen\s*</);
   assert.doesNotMatch(bar, /fs\.supported/);
 });
+
+function EditProbe({
+  clipUrl,
+  canEdit = true,
+  onRemove,
+}: {
+  clipUrl?: string;
+  canEdit?: boolean;
+  onRemove?: () => void;
+}) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (
+    <>
+      <output data-path="">{`${location.pathname}${location.search}`}</output>
+      <LessonSectionVideo
+        showVideo
+        label="Warm-up"
+        clipUrl={clipUrl}
+        mediaName={clipUrl ? 'Warm.mp4' : ''}
+        loopMs={clipUrl ? 8 * 60 * 1000 : undefined}
+        onOpenBoard={() => navigate('/techniques?focus=1&section=warmup')}
+        canEditVideos={canEdit && Boolean(clipUrl)}
+        onReplace={canEdit && clipUrl ? () => navigate('/techniques?focus=1&section=warmup') : undefined}
+        onRemove={canEdit && clipUrl ? onRemove : undefined}
+      />
+    </>
+  );
+}
+
+test('an editable lesson clip shows Replace and Remove outside the player bar', async () => {
+  installFullscreen();
+  let removed = 0;
+  const { host, root } = mount(
+    <EditProbe clipUrl="https://example.com/warm.mp4" onRemove={() => { removed += 1; }} />,
+  );
+  assert.ok(host.querySelector('.notes__video-actions'));
+  assert.equal(host.querySelector('[data-player-dock]'), null);
+  assert.equal(host.querySelector('[data-path]')?.textContent, '/notes?from=coach');
+
+  await click(buttonNamed(host, 'Play Warm-up'));
+  const player = host.querySelector('[data-lesson-player]');
+  const actions = host.querySelector('.notes__video-actions');
+  assert.ok(player);
+  assert.ok(actions);
+  assert.equal(player.contains(actions), false);
+  assert.equal(host.querySelector('[data-player-dock]')?.contains(buttonNamed(host, 'Replace')), false);
+  assert.equal(host.querySelector('[data-path]')?.textContent, '/notes?from=coach');
+
+  await click(buttonNamed(host, 'Replace'));
+  assert.equal(host.querySelector('[data-path]')?.textContent, '/techniques?focus=1&section=warmup');
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test('remove asks for confirmation and only then detaches the clip', async () => {
+  installFullscreen();
+  let removed = 0;
+  const { host, root } = mount(
+    <EditProbe clipUrl="https://example.com/warm.mp4" onRemove={() => { removed += 1; }} />,
+  );
+  await click(buttonNamed(host, 'Remove'));
+  assert.equal(removed, 0);
+  assert.match(host.textContent ?? '', /Remove this video from this lesson plan/);
+  await click(buttonNamed(host, 'Cancel'));
+  assert.equal(removed, 0);
+  assert.ok(buttonNamed(host, 'Replace'));
+
+  await click(buttonNamed(host, 'Remove'));
+  await click(buttonNamed(host, 'Remove'));
+  assert.equal(removed, 1);
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test('view-only lesson clips hide Replace and Remove', async () => {
+  installFullscreen();
+  const { host, root } = mount(<EditProbe clipUrl="https://example.com/warm.mp4" canEdit={false} />);
+  assert.equal(
+    [...host.querySelectorAll('button')].some((button) => /Replace|Remove/.test(button.textContent ?? '')),
+    false,
+  );
+  await click(buttonNamed(host, 'Play Warm-up'));
+  assert.equal(
+    [...host.querySelectorAll('button')].some((button) => /Replace|Remove/.test(button.textContent ?? '')),
+    false,
+  );
+  assert.ok(host.querySelector('[data-player-dock]'));
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test('fullscreen still hides every control, including Replace and Remove', async () => {
+  installFullscreen();
+  const { host, root } = mount(<EditProbe clipUrl="https://example.com/warm.mp4" onRemove={() => undefined} />);
+  await click(buttonNamed(host, 'Play Warm-up'));
+  await click(buttonNamed(host, 'Fullscreen'));
+  const player = host.querySelector('[data-lesson-player]') as HTMLElement;
+  assert.equal(player.querySelector('[data-player-dock]'), null);
+  assert.equal(player.querySelectorAll('button').length, 0);
+  assert.equal((player.querySelector('video') as HTMLVideoElement).controls, false);
+  await act(async () => {
+    (player.querySelector('.techniques__frame') as HTMLElement).click();
+  });
+  assert.ok(buttonNamed(host, 'Replace'));
+  assert.ok(buttonNamed(host, 'Remove'));
+  await act(async () => {
+    root.unmount();
+  });
+});
+

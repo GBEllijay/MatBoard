@@ -31,6 +31,10 @@ type Props = {
   startOpen?: boolean;
   /** Draw Start / Stop / Fullscreen under the picture instead of on it. */
   dockBelow?: boolean;
+  /** Today's editor can replace or detach this plan's clip. */
+  canEditVideos?: boolean;
+  onReplace?: () => void;
+  onRemove?: () => void;
 };
 
 /**
@@ -53,6 +57,9 @@ export function LessonSectionVideo({
   treeLibraryTo,
   startOpen = false,
   dockBelow = false,
+  canEditVideos = false,
+  onReplace,
+  onRemove,
 }: Props) {
   const [open, setOpen] = useState(() => Boolean(startOpen && clipUrl));
 
@@ -88,6 +95,9 @@ export function LessonSectionVideo({
       onOpenTree={onOpenTree}
       onPickTree={onPickTree}
       treeLibraryTo={treeLibraryTo}
+      canEditVideos={canEditVideos}
+      onReplace={onReplace}
+      onRemove={onRemove}
     />
   );
 }
