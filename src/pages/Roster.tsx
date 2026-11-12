@@ -1,5 +1,6 @@
 import { CoachSyncSheet } from '../components/CoachSyncSheet';
 import { PendingCardShares } from '../components/CoachStudentInbox';
+import { AssessmentsWaiting } from '../components/AssessmentsWaiting';
 import { syncActorFromToken, syncSendGate } from '../lib/coachSync';
 import { readStoredEntitlementToken } from '../lib/studentInboxClient';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
@@ -628,7 +629,14 @@ export function RosterPage() {
           }
         }}
       />
-      {studentRoster ? <PendingCardShares roster={roster.students} title="New student cards" /> : <GuestArchive />}
+      {studentRoster ? (
+        <>
+          <PendingCardShares roster={roster.students} title="New student cards" />
+          <AssessmentsWaiting roster={roster.students} />
+        </>
+      ) : (
+        <GuestArchive />
+      )}
       <LinkStudentSheet key={linkTarget?.id ?? 'link'} student={linkTarget} onClose={() => setLinkTarget(null)} />
       <SendRankUpdateSheet
         key={sendTarget?.id ?? 'send'}

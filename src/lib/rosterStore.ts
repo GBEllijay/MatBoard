@@ -3,6 +3,7 @@
  * Game plans and Competition Ready checklists live on this same save, keyed by competitor id.
  */
 
+import { isInstructorId } from './instructorIdentity.ts';
 import { clipCompetitorPhoto } from './competitorPhoto.ts';
 import { blankCompetitorPatch } from './competitorCarryOver.ts';
 import {
@@ -91,6 +92,12 @@ export type Student = {
    * The same name on the other roster is still a separate card.
    */
   linkedStudentId?: string;
+  /**
+   * Instructor this student is assigned to: a seat id, or 'owner' (instructorIdentity.ts).
+   * Set from the coach connect code the student scanned when their card share is accepted.
+   * Filled only when blank; only the owner reassigns. Never set on a guest card.
+   */
+  assignedInstructorId?: string;
   /**
    * Guest archive id. Set when this competitor card was placed from Guest competitors.
    * A guest is not an Advantage student and is never sent a message.
@@ -609,10 +616,12 @@ export function normalizeStudent(raw: unknown): Student | null {
   const card: Student = row.rosterList === 'student' ? { ...student, rosterList: 'student' } : student;
   const linked = typeof row.linkedStudentId === 'string' ? row.linkedStudentId.trim() : '';
   if (isStableStudentId(linked)) card.linkedStudentId = linked;
+  if (isInstructorId(row.assignedInstructorId)) card.assignedInstructorId = row.assignedInstructorId;
   const guestId = typeof row.guestId === 'string' ? row.guestId.trim() : '';
   if (isStableStudentId(guestId) || /^guest-[A-Za-z0-9._-]{1,74}$/.test(guestId)) card.guestId = guestId;
   const stripes = clipStripes(row.stripes);
   if (stripes !== undefined) card.stripes = stripes;
+  if (card.guestId) delete card.assignedInstructorId;
   copySyncSettings(row, card);
   copyArchive(row, card);
   return card;
@@ -986,6 +995,7 @@ function preserveRosterCard(current: Student, next: Student, draft: Partial<Stud
   const card: Student = current.rosterList === 'student' ? { ...next, rosterList: 'student' } : { ...next };
   if (current.linkedStudentId) card.linkedStudentId = current.linkedStudentId;
   if (current.guestId) card.guestId = current.guestId;
+  if (current.assignedInstructorId) card.assignedInstructorId = current.assignedInstructorId;
   const stripes = draft.stripes !== undefined ? clipStripes(draft.stripes) : current.stripes;
   if (stripes !== undefined) card.stripes = stripes;
   copySyncSettings(current, card);
@@ -1093,6 +1103,21 @@ export function tagGuestCard(id: string, guestId: string): Student | null {
   if (!current || current.rosterList === 'student') return null;
   const next = { ...current, guestId };
   delete next.linkedStudentId;
+  commit(state.students.map((row) => (row.id === id ? next : row)));
+  return next;
+}
+
+/**
+ * Assign this card to an instructor. Fills a blank assignment; only the owner
+ * (`reassign: true`) may change one that is already set. Guests are never assigned.
+ */
+export function setAssignedInstructor(id: string, instructorId: string, options: { reassign?: boolean } = {}): Student | null {
+  if (!isInstructorId(instructorId)) return null;
+  const current = state.students.find((row) => row.id === id);
+  if (!current || current.guestId) return null;
+  if (current.assignedInstructorId === instructorId) return current;
+  if (current.assignedInstructorId && !options.reassign) return current;
+  const next = { ...current, assignedInstructorId: instructorId };
   commit(state.students.map((row) => (row.id === id ? next : row)));
   return next;
 }

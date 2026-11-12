@@ -26,6 +26,7 @@ import { readTournamentRegistration } from '../lib/studentEvents.ts';
 import { freeStudentGrantClosed } from './studentLicenses.ts';
 import { STUDENT_LICENSE_REVOKED_MESSAGE, studentCloudPathAllowed } from '../lib/studentLicensePool.ts';
 import { signingMaterial } from './tokenIssue.ts';
+import { readCoachConnectVia } from './coachConnect.ts';
 import type { D1Database } from './d1.ts';
 
 export const INBOX_PACKET_KINDS = [
@@ -501,6 +502,12 @@ export async function handleStudentInbox(
         return json(400, { ok: false, error: 'That is not a student card share.' });
       }
       if (!cardShareReadyToSend(share)) return json(400, { ok: false, error: 'A parent must approve this first.' });
+      // Who showed the code: only a signed coach connect code for this license counts.
+      // A phone-written viaInstructorId is dropped, and the code itself is never stored.
+      const { via, viaInstructorId: _unchecked, ...rest } = share;
+      void _unchecked;
+      const checkedVia = via ? await readCoachConnectVia(via, keys, license) : null;
+      const stored = checkedVia ? { ...rest, viaInstructorId: checkedVia } : rest;
       const key = cardShareKey(license, share.shareId);
       if (!(await bucket.get(key))) {
         const listed = await bucket.list({ prefix: `groups/${license}/card-shares/` });
@@ -508,8 +515,8 @@ export async function handleStudentInbox(
           return json(429, { ok: false, error: 'Too many student cards are waiting for the coach.' });
         }
       }
-      await bucket.put(key, JSON.stringify(share), { httpMetadata: { contentType: 'application/json' } });
-      return json(200, { ok: true, shareId: share.shareId, stage: 'pending' });
+      await bucket.put(key, JSON.stringify(stored), { httpMetadata: { contentType: 'application/json' } });
+      return json(200, { ok: true, shareId: share.shareId, stage: 'pending', viaInstructorId: checkedVia });
     }
 
     if (body.action === 'event-submit') {

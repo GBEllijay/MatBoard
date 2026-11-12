@@ -10,9 +10,13 @@
  * Instructor: Connect to my academy reads ?coach=…, acceptCoachConnect checks
  * it with the server, and joinCloudAcademy saves the gym's license id so her
  * card shares go to the owner's Advantage Cloud inbox.
+ * The code says who showed it (`via`, signed by the server). The phone keeps the
+ * signed code (saveCoachVia) so a card share and Send to my instructor reach
+ * that instructor.
  */
 import { joinCloudAcademy, type AcademyMembership } from './academyMembership.ts';
 import { readStoredEntitlementToken } from './studentInboxClient.ts';
+import { saveCoachVia } from './instructorAssessmentClient.ts';
 
 export const COACH_CONNECT_PARAM = 'coach';
 export const COACH_CONNECT_LINK_KEY = 'matboard.coachConnect.link.v1';
@@ -117,7 +121,9 @@ export async function issueCoachConnect(
 export async function acceptCoachConnect(
   invite: string,
   options: { fetchImpl?: typeof fetch; storage?: Store } = {},
-): Promise<{ ok: true; gym: string; gymName: string; membership: AcademyMembership } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; gym: string; gymName: string; membership: AcademyMembership; viaInstructorId: string | null } | { ok: false; error: string }
+> {
   const storage = options.storage ?? localStorage;
   try {
     const { status, body } = await postJson({ action: 'accept', invite }, options.fetchImpl ?? fetch);
@@ -127,7 +133,10 @@ export async function acceptCoachConnect(
     const gymName = typeof body.gymName === 'string' ? body.gymName : '';
     const membership = joinCloudAcademy(storage as Parameters<typeof joinCloudAcademy>[0], { license: body.gym, gymName });
     if (!membership) return { ok: false, error: 'This coach connect link is not valid.' };
-    return { ok: true, gym: body.gym, gymName, membership };
+    // Who showed the code. The signed code is kept as proof for card shares and Send to my instructor.
+    const viaInstructorId = typeof body.viaInstructorId === 'string' ? body.viaInstructorId : null;
+    saveCoachVia(storage, { gym: body.gym, gymName, viaInstructorId, proof: invite });
+    return { ok: true, gym: body.gym, gymName, membership, viaInstructorId };
   } catch {
     return { ok: false, error: 'Could not reach Advantage Cloud. Try again when you are online.' };
   }

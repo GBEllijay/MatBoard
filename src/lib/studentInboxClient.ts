@@ -243,7 +243,7 @@ function inboxPassPayload(pass: string): { gym?: unknown; studentId?: unknown } 
   }
 }
 
-function inboxPassLicense(pass: string): string | null {
+export function inboxPassLicense(pass: string): string | null {
   const gym = inboxPassPayload(pass)?.gym;
   return typeof gym === 'string' && LICENSE_RE.test(gym) ? gym : null;
 }

@@ -11,6 +11,7 @@
  * has Pro, Plus Cloud, or a gym Drive. With the parent gate on (minor), the
  * parent PIN approves it before it can send.
  */
+import { readCoachVia } from './instructorAssessmentClient.ts';
 import { loadAcademyLink } from './academyPathway.ts';
 import { parentGateOn, readParentGate } from './parentGate.ts';
 import type { StudentProgressReport } from './progress/types.ts';
@@ -127,7 +128,9 @@ export async function sendStudentCardShare(
   if (!cardShareReadyToSend(share)) return { ok: false, reason: 'awaiting-parent' };
   const license = readAcademyLicense(storage);
   if (license) {
-    const result = await submitStudentCardShare(license, share, fetchImpl);
+    // The scanned coach connect code rides along so the server can tell who showed it.
+    const via = readCoachVia(storage, license);
+    const result = await submitStudentCardShare(license, via ? { ...share, via: via.proof } : share, fetchImpl);
     if (result.ok) return { ok: true, via: 'cloud' };
     if (result.reason === 'refused') return { ok: false, reason: 'refused' };
   }

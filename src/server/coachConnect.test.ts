@@ -145,7 +145,9 @@ test('accept checks the signature and the current key', async () => {
 
   const ok = await connect(secret, { action: 'accept', invite });
   assert.equal(ok.status, 200);
-  assert.deepEqual(await ok.json(), { ok: true, gym: LICENSE, gymName: 'Advantage BJJ' });
+  assert.deepEqual(await ok.json(), { ok: true, gym: LICENSE, gymName: 'Advantage BJJ', viaInstructorId: 'owner' }, 'an owner-issued code says the owner showed it');
+  const forgedVia = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(invite.split('.')[1], 'base64url').toString()), via: 'seat-someone' })).toString('base64url');
+  assert.equal((await connect(secret, { action: 'accept', invite: `${invite.split('.')[0]}.${forgedVia}.${invite.split('.')[2]}` })).status, 400, 'via is inside the signature');
 
   const [head, payload, sig] = invite.split('.');
   const realKey = JSON.parse(Buffer.from(payload, 'base64url').toString()).key;

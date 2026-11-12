@@ -3,6 +3,7 @@
  * stay in the request body. Nothing here writes them to a log.
  */
 
+import { keepStudentSideToken, wouldDowngradePass } from './passDowngrade.ts';
 import { joinCloudAcademy } from './academyMembership.ts';
 import { acceptServerToken, readDeviceId } from './entitlement.ts';
 import { ENTITLEMENT_TOKEN_KEY } from './entitlement.ts';
@@ -141,13 +142,23 @@ export async function claimStudentLicense(
   }
 }
 
-/** Save the pass on this browser and connect the gym. The home-screen app still uses Restore. */
+/**
+ * Save the pass on this browser and connect the gym. The home-screen app still uses Restore.
+ * A higher pass already here (Instructor seat, Instructor or Pro license, owner) is never
+ * replaced: it already opens Student Edition. The Student pass is kept beside it instead
+ * (passDowngrade.ts), and the academy join and student inbox pass still save.
+ */
 export async function applyClaimedStudentLicense(
   result: StudentLicenseClaimResult,
   gymName: string,
+  storage: Storage = localStorage,
 ): Promise<boolean> {
   applyServerGrant({ grants: result.grants });
-  joinCloudAcademy(localStorage, { license: result.gymId, gymName });
-  if (result.studentPass) saveInboxPass(localStorage, result.studentPass);
+  joinCloudAcademy(storage, { license: result.gymId, gymName });
+  if (result.studentPass) saveInboxPass(storage, result.studentPass);
+  if (wouldDowngradePass(readToken(), result.token)) {
+    keepStudentSideToken(storage, result.token);
+    return true;
+  }
   return acceptServerToken(result.token);
 }

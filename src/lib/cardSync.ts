@@ -79,12 +79,16 @@ import {
   addStudent,
   getRoster,
   linkRosterCard,
+  setAssignedInstructor,
   setCardSyncSettings,
   subscribeRoster,
   updateStudent,
   type Student,
 } from './rosterStore.ts';
 import type { StudentCardShare } from './studentCardShare.ts';
+import { readCloudBearer } from './advantageCloudMedia.ts';
+import { submitGymRoster } from './gymRosterClient.ts';
+import { buildRosterBackup } from './rosterBackup.ts';
 import type { TournamentRegistrationEvent } from './studentEvents.ts';
 import {
   coachCardShareRequest,
@@ -343,7 +347,12 @@ export async function sendCardSync(
   return result;
 }
 
-export type CardSendOptions = Parameters<typeof sendCardSync>[2] & { gym?: CoachGymBrand; now?: number };
+export type CardSendOptions = Parameters<typeof sendCardSync>[2] & {
+  gym?: CoachGymBrand;
+  now?: number;
+  /** Called with the built packet before it is sent, so a caller can keep its updateId. */
+  onBuilt?: (packet: SyncPacket) => void;
+};
 export type CardBuildRefused = { mode: 'invalid'; error: string };
 
 function today(now: number): string {
@@ -390,6 +399,7 @@ export async function sendCoachAssessment(
     now,
   });
   if (!built.ok) return { mode: 'invalid', error: built.error };
+  options.onBuilt?.(built.packet);
   return sendCardSync(studentId, built.packet, options);
 }
 
@@ -522,11 +532,51 @@ async function markShareDecided(share: StudentCardShare | undefined, deps: { fet
  * into an existing card (`{mode:'merge', cardId}`). Merge fills only empty
  * coach fields. The photo goes to head-coach photo review, never onto the card.
  */
+export type CardShareMasterPush = 'applied' | 'pending' | 'skipped' | 'failed';
+
+export type CardShareAcceptResult =
+  | (Extract<CardShareAccept, { ok: true }> & { assignedInstructorId: string | null; master: CardShareMasterPush })
+  | Extract<CardShareAccept, { ok: false }>;
+
+/** One student card to the academy master roster: the owner applies at once, a seat goes to the head coach (or trust mode). */
+async function pushCardToMaster(card: Student, deps: { fetchImpl?: typeof fetch; token?: string | null }): Promise<CardShareMasterPush> {
+  const token = deps.token ?? readCloudBearer();
+  if (!token || !card.linkedStudentId || card.guestId) return 'skipped';
+  const backup = buildRosterBackup(
+    {
+      roster: { version: 1, students: [{ ...card, checkedIn: false }], ready: {}, gamePlans: {}, competitionPlans: {} },
+      cardFile: { cards: {} },
+      privateNotes: {},
+      inbox: [],
+    },
+    { scope: 'shared' },
+  );
+  const sent = await submitGymRoster(backup, deps.fetchImpl ?? fetch, token);
+  if (!sent.ok) return 'failed';
+  return sent.data.applied ? 'applied' : 'pending';
+}
+
+/**
+ * Accept a card share as a new Student Roster card (`{mode:'new'}`) or merge
+ * into an existing card (`{mode:'merge', cardId}`). Merge fills only empty
+ * coach fields. The photo goes to head-coach photo review, never onto the card.
+ *
+ * The code the student scanned says who showed it (share.viaInstructorId, checked by
+ * the server). That fills a blank assignedInstructorId on the card; it never moves a
+ * student who is already assigned. The card then goes to the academy master roster
+ * under the same linkedStudentId, so attendance keeps one person key.
+ */
 export async function acceptCardShare(
   shareId: string,
   target: { mode: 'new' } | { mode: 'merge'; cardId: string },
-  deps: { actor?: SyncActor; storage?: MemoryStore | null; fetchImpl?: typeof fetch; token?: string | null } = {},
-): Promise<CardShareAccept> {
+  deps: {
+    actor?: SyncActor;
+    storage?: MemoryStore | null;
+    fetchImpl?: typeof fetch;
+    token?: string | null;
+    pushMaster?: (card: Student) => Promise<CardShareMasterPush>;
+  } = {},
+): Promise<CardShareAcceptResult> {
   const storage = deps.storage === undefined ? defaultStorage() : deps.storage;
   if (!storage) return { ok: false, reason: 'not-pending' };
   const share = pendingCardShares(storage).find((row) => row.shareId === shareId);
@@ -536,8 +586,17 @@ export async function acceptCardShare(
     update: updateStudent,
     link: linkRosterCard,
   });
-  if (result.ok) await markShareDecided(share, deps);
-  return result;
+  if (!result.ok) return result;
+  await markShareDecided(share, deps);
+  let card = result.card;
+  if (share?.viaInstructorId) card = setAssignedInstructor(card.id, share.viaInstructorId) ?? card;
+  let master: CardShareMasterPush = 'skipped';
+  try {
+    master = await (deps.pushMaster ?? ((row: Student) => pushCardToMaster(row, deps)))(card);
+  } catch {
+    master = 'failed';
+  }
+  return { ...result, card, assignedInstructorId: card.assignedInstructorId ?? null, master };
 }
 
 export async function declineCardShare(

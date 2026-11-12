@@ -1,3 +1,5 @@
+import { keepStudentSideToken, wouldDowngradePass } from './passDowngrade.ts';
+import { readStoredEntitlementToken } from './studentInboxClient.ts';
 import { appVersionHeaders } from './appCapability.ts';
 import { checkoutNonceHash, currentCheckoutNonce } from './checkoutNonce.ts';
 import { devicePublicJwk } from './deviceKey.ts';
@@ -62,7 +64,9 @@ export async function redeemAccessCode(code: string, email = ''): Promise<Redeem
     };
     if (!response.ok || !body.ok) return { ok: false, error: body.error || "That code didn't work." };
     if (body.accountId) rememberAccountReference(body.accountId);
-    if (body.token) await acceptServerToken(body.token);
+    // A lower code (e.g. Student) never replaces a seat or a higher pass on this phone. It is kept beside it.
+    if (body.token && wouldDowngradePass(readStoredEntitlementToken(), body.token)) keepStudentSideToken(localStorage, body.token);
+    else if (body.token) await acceptServerToken(body.token);
     if (!applyServerGrant(body) && !body.token) return { ok: false, error: "That code didn't work." };
     // Reopen every door the code implies that a Lock button closed here (tierImplications.ts).
     clearRelocksFor(Array.isArray(body.grants) ? body.grants.filter((door) => typeof door === 'string') : []);
