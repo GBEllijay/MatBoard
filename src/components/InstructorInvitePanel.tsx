@@ -35,6 +35,7 @@ import { issueSeatWithServer, syncLegacySeats } from '../lib/seatClient';
 import { GalleryApprovalSwitch } from './GalleryApprovalSwitch';
 import { GalleryPendingLink } from './GalleryPendingNotice';
 import { qrDataUrl } from '../lib/qr';
+import { CoachConnectQrPanel } from './CoachConnectQrPanel';
 
 type IssuedLink = {
   email: string;
@@ -308,6 +309,8 @@ export function InstructorInvitePanel() {
           </button>
           </div>
       </form>
+
+      <CoachConnectQrPanel />
 
       <section className="binder-list" aria-labelledby={`${formId}-seats`}>
         <div className="binder-list__head">
