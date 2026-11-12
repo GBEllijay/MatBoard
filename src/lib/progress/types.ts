@@ -175,6 +175,17 @@ export type MatchResult = (typeof MATCH_RESULTS)[number];
 export const MATCH_METHODS = ['points', 'sub', 'advantage', 'dq'] as const;
 export type MatchMethod = '' | (typeof MATCH_METHODS)[number];
 
+/** Overall tournament place, including a quick result with no match list. */
+export const COMPETITION_PLACES = ['gold', 'silver', 'bronze', 'participated', 'dnp'] as const;
+export type CompetitionPlace = (typeof COMPETITION_PLACES)[number];
+export const COMPETITION_PLACE_LABELS: Record<CompetitionPlace, string> = {
+  gold: 'Gold',
+  silver: 'Silver',
+  bronze: 'Bronze',
+  participated: 'Participated',
+  dnp: 'Did not place',
+};
+
 export const CALENDAR_KINDS = ['class', 'training', 'promotion', 'note', 'other'] as const;
 export type CalendarKind = (typeof CALENDAR_KINDS)[number];
 
@@ -720,10 +731,32 @@ export type CompetitionResult = {
   id: string;
   tournamentId: string;
   tournamentName: string;
+  /**
+   * Combined class line, or the original free-text value from an older file.
+   * New entries also store the four picker fields below. The original text
+   * is kept so nothing is lost.
+   */
   division: string;
   matches: CompetitionMatch[];
   bracket: BracketNote[];
   bracketPhoto: boolean;
+  /** Event day, YYYY-MM-DD. Omitted on older results. */
+  date?: string;
+  /** Optional note. Omitted on older results or when left blank. */
+  note?: string;
+  /** Explicit place. Set on a quick result; optional on a full entry. Omitted on older files. */
+  place?: CompetitionPlace;
+  /** True when this was saved as a quick result with no match list. Omitted on full or older entries. */
+  quick?: boolean;
+  /**
+   * Age division, competition division, weight class, and belt at the event.
+   * Each is independent and is never inferred from the student's current belt.
+   * Omitted on older files until a clear parse fills them, or the student edits.
+   */
+  ageDivision?: string;
+  competitionDivision?: string;
+  weightClass?: string;
+  belt?: string;
 };
 
 /**

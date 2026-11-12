@@ -11,6 +11,7 @@ import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { PRODUCTS_PATH, STUDENT_EDITION_NAME } from '../lib/productNames';
+import { resultClassLine } from '../lib/divisionFields';
 import { matchingGameTags, matchingResults, gameLetter } from '../lib/progress/competition.ts';
 import { PROGRESS_NAME_MAX, type CompetitionResult, type MatchMethod, type MatchResult } from '../lib/progress/types.ts';
 import { isIsoDate } from '../lib/studentTools';
@@ -515,7 +516,7 @@ function resultSearchLine(result: CompetitionResult): string {
     })
     .join('; ');
   const names = result.bracket.map((note) => note.name.trim()).filter(Boolean).join(', ');
-  return `${result.division ? ` · ${result.division}` : ''}${matches ? ` · ${matches}` : ''}${names ? ` · ${names}` : ''}`;
+  return `${resultClassLine(result) ? ` · ${resultClassLine(result)}` : ''}${matches ? ` · ${matches}` : ''}${names ? ` · ${names}` : ''}`;
 }
 
 function JournalList() {
