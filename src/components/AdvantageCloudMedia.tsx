@@ -248,9 +248,10 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
       file: new Blob([planJson], { type: 'application/json' }),
       fileName: `${dateKey}.json`,
       mime: 'application/json',
+      planTarget: 'mine',
     });
     setBusy(false);
-    setNote(result.ok ? 'Lesson plan saved to Advantage Cloud.' : result.message);
+    setNote(result.ok ? 'Saved to your plan in Advantage Cloud. The gym template was not changed.' : result.message);
   };
 
   const canDeleteFile = (file: CloudFileRow) => canManage && (isDailyVideoCloudPath(file.path) || Boolean(parseGalleryCloudPath(file.path)));
@@ -334,7 +335,7 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
           </label>
           {purpose === 'lesson' ? (
             <button type="button" className="btn" disabled={busy || !planJson} onClick={() => void savePlan()}>
-              Save this lesson plan
+              Save my plan to Cloud
             </button>
           ) : null}
         </div>
@@ -349,6 +350,7 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
           {files.map((file) => (
             <li key={file.path} className="cloud-media__file" data-cloud-file={file.path} data-cloud-lane={file.lane ?? 'approved'}>
               <span>
+                {file.lessonPlan === 'template' ? 'Gym template · ' : file.lessonPlan === 'mine' ? 'My plan · ' : ''}
                 {file.name}
                 {file.lane === 'pending' ? ' · Waiting for approval' : file.lane === 'rejected' ? ' · Rejected' : ''}
               </span>

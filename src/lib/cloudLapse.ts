@@ -94,6 +94,7 @@ export function gymFolderDownloadText(): string {
     'videos/daily/',
     'lessons/current/',
     'lessons/archive/',
+    'lessons/instructors/',
     'students/',
     'instructors/',
     'handoff/invites/',

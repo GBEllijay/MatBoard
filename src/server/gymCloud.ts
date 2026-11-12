@@ -59,6 +59,16 @@ import {
   type CloudMediaPurpose,
 } from '../lib/advantageCloudMedia.ts';
 import { isCloudFingerprint, sha256Hex } from '../lib/cloudFingerprint.ts';
+import {
+  instructorLessonAccess,
+  instructorLessonPath,
+  isTemplateLessonPath,
+  lessonInstructorId,
+  lessonPlanTargetOf,
+  lessonTemplateWriteAllowed,
+  parseInstructorLessonPath,
+  templateLessonPath,
+} from '../lib/lessonPlanCopies.ts';
 import { laneFromMarkers, mediaKindOf, sortForGallery, type ApprovalLane, type ApprovalSource } from '../lib/approvalLanes.ts';
 import {
   DEFAULT_VIDEO_CLEANUP_DAYS,
@@ -458,17 +468,25 @@ async function listFiles(
     cursor = listed.cursor;
   }
   if (prefix.plan) {
-    const planKey = cloudObjectKey(actor.licenseId, prefix.plan);
-    if (planKey) {
+    // This instructor's own copy first, then the gym template. Other instructors' copies stay out.
+    const instructorId = lessonInstructorId(actor);
+    const minePath = instructorId ? instructorLessonPath(instructorId, dateKey) : null;
+    const rows: { path: string; lessonPlan: 'mine' | 'template' }[] = [
+      ...(minePath ? [{ path: minePath, lessonPlan: 'mine' as const }] : []),
+      { path: prefix.plan, lessonPlan: 'template' },
+    ];
+    for (const row of rows.reverse()) {
+      const planKey = cloudObjectKey(actor.licenseId, row.path);
+      if (!planKey) continue;
       const plan = await bucket.head(planKey);
-      if (plan) {
-        files.unshift({
-          name: prefix.plan.split('/').pop() ?? prefix.plan,
-          path: prefix.plan,
-          size: plan.size,
-          mime: plan.httpMetadata?.contentType || 'application/json',
-        });
-      }
+      if (!plan) continue;
+      files.unshift({
+        name: row.path.split('/').pop() ?? row.path,
+        path: row.path,
+        size: plan.size,
+        mime: plan.httpMetadata?.contentType || 'application/json',
+        lessonPlan: row.lessonPlan,
+      });
     }
   }
   return files;
@@ -708,6 +726,8 @@ type StartBody = {
   days?: unknown;
   /** Content fingerprint for dedup (src/lib/cloudFingerprint.ts). */
   fingerprint?: string;
+  /** Lesson plan JSON: `mine` (default) or `template` (owner / Coach). */
+  planTarget?: string;
 };
 
 function isPurpose(value: string): value is CloudMediaPurpose {
@@ -790,12 +810,35 @@ async function refuseDailyWrite(env: GymCloudEnv, actor: Actor, key: string): Pr
   return null;
 }
 
+const LESSON_TEMPLATE_REFUSED = 'Only the owner or a Coach seat can update the gym template. Your edits save to your own plan.';
+
+async function readLessonJson(bucket: GymMediaBucket, key: string | null): Promise<{ exists: boolean; plan: unknown | null }> {
+  if (!key) return { exists: false, plan: null };
+  const object = await bucket.get(key);
+  if (!object) return { exists: false, plan: null };
+  // Lesson plans are small text. A huge or broken file is reported as present but unreadable.
+  if (object.size > 512_000) return { exists: true, plan: null };
+  try {
+    return { exists: true, plan: JSON.parse(await new Response(object.body).text()) as unknown };
+  } catch {
+    return { exists: true, plan: null };
+  }
+}
+
 async function refuseFolderWrite(env: GymCloudEnv, actor: Actor, key: string): Promise<Response | null> {
   const gallery = await refuseGalleryWrite(env, actor, key);
   if (gallery) return gallery;
   const daily = await refuseDailyWrite(env, actor, key);
   if (daily) return daily;
   const relative = relativePath(actor.licenseId, key);
+  // The gym template is never overwritten by an instructor's edit. Only the owner or a Coach seat replaces it.
+  if (isTemplateLessonPath(relative) && !lessonTemplateWriteAllowed(actor)) {
+    return json(403, { ok: false, error: LESSON_TEMPLATE_REFUSED });
+  }
+  const lessonCopy = parseInstructorLessonPath(relative);
+  if (lessonCopy && !instructorLessonAccess(actor, lessonCopy.instructorId, 'write')) {
+    return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+  }
   const instructor = parseInstructorCloudPath(relative);
   if (instructor) {
     const allowed = instructorFolderAccess({
@@ -1133,6 +1176,36 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       }
       const files = await listInstructor(bucket, actor, kind, date, actor.kind === 'owner' ? requestedSeat : actor.seatId);
       return json(200, { ok: true, files });
+    }
+    if (op === 'lesson-plan') {
+      if (!actor.read) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
+      const dateKey = url.searchParams.get('date') ?? '';
+      const instructorId = lessonInstructorId(actor);
+      const templatePath = templateLessonPath(dateKey);
+      const minePath = instructorId ? instructorLessonPath(instructorId, dateKey) : null;
+      if (!templatePath || !minePath || !instructorId) return json(400, { ok: false, error: 'Choose a real date.' });
+      const [template, mine] = await Promise.all([
+        readLessonJson(bucket, cloudObjectKey(actor.licenseId, templatePath)),
+        readLessonJson(bucket, cloudObjectKey(actor.licenseId, minePath)),
+      ]);
+      return json(200, {
+        ok: true,
+        instructorId,
+        canEditTemplate: actor.upload && lessonTemplateWriteAllowed(actor),
+        template: { path: templatePath, ...template },
+        mine: { path: minePath, ...mine },
+      });
+    }
+    if (op === 'file' && parseInstructorLessonPath(url.searchParams.get('path') ?? '')) {
+      const path = url.searchParams.get('path') ?? '';
+      const copy = parseInstructorLessonPath(path);
+      if (!actor.read || !copy || !instructorLessonAccess(actor, copy.instructorId, 'read')) {
+        return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+      }
+      const key = cloudObjectKey(actor.licenseId, path);
+      const object = key ? await bucket.get(key) : null;
+      if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
+      return fileResponse(object);
     }
     if (op === 'file') {
       const path = url.searchParams.get('path') ?? '';
@@ -1477,6 +1550,17 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     return actor.dailyDrop ? dropRefused() : json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
   }
 
+  if (body.action === 'lesson-reset') {
+    // Drops only the signed-in instructor's own copy. The gym template stays as it is.
+    const instructorId = lessonInstructorId(actor);
+    const dateKey = typeof body.dateKey === 'string' ? body.dateKey : '';
+    const minePath = instructorId ? instructorLessonPath(instructorId, dateKey) : null;
+    const key = minePath ? cloudObjectKey(actor.licenseId, minePath) : null;
+    if (!key || !instructorId) return json(400, { ok: false, error: 'Choose a real date.' });
+    await bucket.delete(key);
+    return json(200, { ok: true, path: minePath });
+  }
+
   if (body.action === 'delete-skin') {
     const id = typeof body.id === 'string' ? body.id : '';
     const imageKey = cloudObjectKey(actor.licenseId, `skins/${id}`);
@@ -1625,6 +1709,23 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       return json(200, { ok: true, mode: 'multipart', key: sentKey, path: sentPath, uploadId: upload.uploadId, partSize: CLOUD_CHUNK_BYTES });
     }
     return json(200, { ok: true, mode: 'single', key: sentKey, path: sentPath });
+  }
+  if (purpose === 'lesson') {
+    const target = lessonPlanTargetOf(body.planTarget);
+    if (target === 'template' && !lessonTemplateWriteAllowed(actor)) {
+      return json(403, { ok: false, error: LESSON_TEMPLATE_REFUSED });
+    }
+    const instructorId = lessonInstructorId(actor);
+    const lessonPath = target === 'template' ? templateLessonPath(dateKey) : instructorId ? instructorLessonPath(instructorId, dateKey) : null;
+    const lessonKey = lessonPath ? cloudObjectKey(actor.licenseId, lessonPath) : null;
+    if (!lessonPath || !lessonKey) return json(400, { ok: false, error: 'Choose a real date.' });
+    const lessonRoom = await roomFor(bucket, lessonKey, size, cap);
+    if (!lessonRoom.ok) return json(409, { ok: false, error: cloudFullMessage(lessonRoom.used, cap) });
+    if (size > CLOUD_CHUNK_BYTES) {
+      const upload = await bucket.createMultipartUpload(lessonKey, { httpMetadata: { contentType: mime } });
+      return json(200, { ok: true, mode: 'multipart', key: lessonKey, path: lessonPath, uploadId: upload.uploadId, partSize: CLOUD_CHUNK_BYTES, planTarget: target });
+    }
+    return json(200, { ok: true, mode: 'single', key: lessonKey, path: lessonPath, planTarget: target });
   }
   const relative =
     purpose === 'replay-pending'
