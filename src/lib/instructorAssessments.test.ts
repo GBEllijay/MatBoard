@@ -198,3 +198,20 @@ test('scanning a coach connect code keeps who showed it on this phone', async ()
   assert.equal(via?.viaInstructorId, 'seat-paige');
   assert.equal(via?.proof, CODE);
 });
+
+test('one instructor id helper: lesson plan copies and the assessment inbox use the same id', async () => {
+  const { instructorIdFor } = await import('./instructorIdentity.ts');
+  const { lessonInstructorId, LESSON_OWNER_INSTRUCTOR_ID } = await import('./lessonPlanCopies.ts');
+  assert.equal(LESSON_OWNER_INSTRUCTOR_ID, 'owner');
+  for (const actor of [
+    { kind: 'owner' as const },
+    { kind: 'seat' as const, seatId: '6f1c2a9e-1111-4bbb-8ccc-123456789abc' },
+    { kind: 'seat' as const, seatId: 'owner' },
+    { kind: 'seat' as const, seatId: '../x' },
+    { kind: 'seat' as const },
+  ]) {
+    assert.equal(lessonInstructorId(actor), instructorIdFor(actor));
+  }
+  assert.equal(lessonInstructorId({ kind: 'owner' }), 'owner');
+  assert.equal(lessonInstructorId({ kind: 'seat', seatId: 'owner' }), null);
+});

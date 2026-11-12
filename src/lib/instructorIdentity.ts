@@ -4,7 +4,8 @@
  *   seat     the seat id from the signed seat pass (claims.sid)
  *   owner    'owner' for the academy owner
  *
- * Same rule as per-instructor lesson plans (groups/{license}/lessons/instructors/{instructorId}/…),
+ * The one instructor id helper. Per-instructor lesson plans (lessonPlanCopies.ts lessonInstructorId,
+ * groups/{license}/lessons/instructors/{instructorId}/…) call instructorIdFor,
  * so an instructor's lesson copies and her assessment inbox
  * (groups/{license}/instructors/{instructorId}/assessments/…) use one id in separate folders.
  * Seat ids are UUIDs, so 'owner' never matches a seat.
