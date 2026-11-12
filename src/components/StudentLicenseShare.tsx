@@ -15,7 +15,7 @@ import {
   STUDENT_LICENSE_OWNER_ONLY,
   freeStudentLicenseTicker,
   halfOffPoolNote,
-  studentLicenseClaimUrl,
+  studentInviteJoinUrl,
 } from '../lib/studentLicensePool';
 import { SHARE_OWNER_ONLY, copyShareLink } from '../lib/licenseShare';
 import { qrDataUrl } from '../lib/qr';
@@ -24,7 +24,57 @@ function origin(): string {
   return typeof window === 'undefined' ? '' : window.location.origin;
 }
 
-function LicenseQr({ link, caption }: { link: string; caption: string }) {
+function downloadDataUrl(dataUrl: string, filename: string): void {
+  const anchor = document.createElement('a');
+  anchor.href = dataUrl;
+  anchor.download = filename;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
+function InviteActions({ link, qrSrc, label }: { link: string; qrSrc: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
+  const copy = async () => setCopied(await copyShareLink(link));
+  const share = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: label, text: label, url: link });
+        setShared(true);
+        return;
+      }
+    } catch {
+      /* fall through to copy */
+    }
+    setCopied(await copyShareLink(link));
+  };
+  return (
+    <div className="student-license__actions">
+      <label>
+        Invite link
+        <input readOnly value={link} aria-label="Invite link" onFocus={(event) => event.currentTarget.select()} />
+      </label>
+      <button type="button" className="btn" onClick={() => void copy()}>
+        {copied ? 'Copied' : 'Copy link'}
+      </button>
+      <button type="button" className="btn btn--ghost" onClick={() => void share()}>
+        {shared ? 'Shared' : 'Share'}
+      </button>
+      <button
+        type="button"
+        className="btn btn--ghost"
+        disabled={!qrSrc}
+        onClick={() => qrSrc && downloadDataUrl(qrSrc, 'student-edition-invite.png')}
+      >
+        Download QR PNG
+      </button>
+    </div>
+  );
+}
+
+function LicenseQr({ link, caption, actions = false }: { link: string; caption: string; actions?: boolean }) {
   const logo = resolveShareLogo(useGymLogo());
   const [src, setSrc] = useState('');
   useEffect(() => {
@@ -38,6 +88,7 @@ function LicenseQr({ link, caption }: { link: string; caption: string }) {
     };
   }, [link]);
   return (
+    <>
     <figure className="license-share__frame license-share__frame--student">
       <img className="license-share__logo" src={logo} alt="" width={56} height={56} />
       <div className="license-share__qr">
@@ -47,6 +98,8 @@ function LicenseQr({ link, caption }: { link: string; caption: string }) {
         <span className="license-share__cap">{caption}</span>
       </figcaption>
     </figure>
+    {actions ? <InviteActions link={link} qrSrc={src} label={caption} /> : null}
+    </>
   );
 }
 
@@ -114,12 +167,13 @@ function IssuedCode({
   onRevoke: (code: string) => void;
 }) {
   const gym = useGymName();
-  const link = row.code ? studentLicenseClaimUrl(origin(), row.code, gym) : '';
+  const token = row.invite || row.code || '';
+  const link = token ? studentInviteJoinUrl(origin(), token, gym) : '';
   const [confirm, setConfirm] = useState(false);
   return (
     <div className="student-license__row">
       <p>{row.status === 'claimed' ? 'Claimed' : row.status === 'revoked' ? 'Revoked' : 'Ready to scan'}</p>
-      {row.status === 'issued' && link ? <LicenseQr link={link} caption="Free Student license" /> : null}
+      {row.status === 'issued' && link ? <LicenseQr link={link} caption="Student Edition only" actions /> : null}
       {canRevoke && row.status !== 'revoked' && (row.code || row.claimed) ? (
         confirm ? (
           <div className="student-license__confirm">
@@ -189,8 +243,9 @@ export function StudentLicenseOwnerPanel() {
         {left === null ? 'Checking free Student licenses…' : freeStudentLicenseTicker(occupiedFromLeft(left))}
       </p>
       <p className="student-license__note">
-        One scan uses one license from your Pro pool. The student enters an email so the home screen app can restore
-        this Student Edition.
+        One scan uses one of your 5 free Student Edition licenses. The link is single-use and does not expire until it
+        is claimed or you revoke it. It opens Student Edition only, and never an instructor seat. The student enters an
+        email so the home screen app can restore this Student Edition.
       </p>
       {left === 0 ? (
         <p role="status">{STUDENT_LICENSE_EMPTY}</p>

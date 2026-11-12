@@ -36,6 +36,7 @@ import { GalleryApprovalSwitch } from './GalleryApprovalSwitch';
 import { GalleryPendingLink } from './GalleryPendingNotice';
 import { qrDataUrl } from '../lib/qr';
 import { CoachConnectQrPanel } from './CoachConnectQrPanel';
+import { StudentLicenseOwnerPanel } from './StudentLicenseShare';
 
 type IssuedLink = {
   email: string;
@@ -309,6 +310,8 @@ export function InstructorInvitePanel() {
           </button>
           </div>
       </form>
+
+      <StudentLicenseOwnerPanel />
 
       <CoachConnectQrPanel />
 
