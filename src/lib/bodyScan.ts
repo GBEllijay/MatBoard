@@ -1,6 +1,7 @@
 /**
- * Private body scan: injury marks from journal cards, grouped by fixed body zone,
- * with a recovery trend. Never leaves the device (no coach file, card share, or export).
+ * Private body scan: injury marks from journal cards and from the injury list,
+ * grouped by fixed body zone, with a recovery trend. Never leaves the device
+ * (no coach file, card share, or export). Adding from the list does not create a journal card.
  *
  * Rules
  * - A zone's newest mark starts its clock. A new mark on the same zone resets it to Hurt (red).
@@ -9,7 +10,8 @@
  * - Healed zones glow green for 14 days (from markedOn, or from the day 28 drift), then drop off
  *   the scan; the marks stay in the journal and in history.
  */
-import type { JournalEntry } from './progress/types.ts';
+import type { InjurySource, JournalEntry, StandaloneInjury, StudentProgressReport } from './progress/types.ts';
+import { INJURY_SOURCES, PROGRESS_NAME_MAX } from './progress/types.ts';
 
 export const BODY_ZONES = [
   { id: 'neck', label: 'Neck', side: 'front' },
@@ -32,6 +34,9 @@ export type BodyZone = (typeof BODY_ZONES)[number]['id'];
 export type InjuryStatus = 'hurt' | 'healing' | 'healed';
 export const INJURY_STATUSES: readonly InjuryStatus[] = ['hurt', 'healing', 'healed'];
 export const STATUS_LABEL: Record<InjuryStatus, string> = { hurt: 'Hurt', healing: 'Healing', healed: 'Healed' };
+export { INJURY_SOURCES };
+export type { InjurySource, StandaloneInjury };
+export const INJURY_SOURCE_LABEL: Record<InjurySource, string> = { training: 'In class', outside: 'Outside of training' };
 export const HEAL_DAYS = 28;
 export const HEALED_GLOW_DAYS = 14;
 export const BODY_SCAN_KEY = 'advantage.student.bodyScan.v1';
@@ -72,13 +77,17 @@ export function zoneFromText(text: string): BodyZone | '' {
 
 export type InjuryMark = {
   entryId: string;
-  /** The journal card's date. */
+  /** The journal card's date, or the date entered on a list injury. */
   date: string;
   area: string;
   note: string;
   zone: BodyZone | '';
   status: InjuryStatus | null;
   markedOn: string;
+  /** True when this mark came from a journal card. */
+  fromJournal: boolean;
+  /** How it happened. Absent on older journal marks. */
+  source?: InjurySource;
 };
 
 export type ZoneScan = {
@@ -100,15 +109,52 @@ function days(from: string, to: string): number {
   return Number.isFinite(a) && Number.isFinite(b) ? Math.round((b - a) / 86_400_000) : 0;
 }
 
-export function injuryMarks(journal: readonly JournalEntry[]): InjuryMark[] {
-  return journal
-    .filter((e) => e.injury)
-    .map((e) => {
-      const inj = e.injury!;
-      const zone = inj.zone && isBodyZone(inj.zone) ? inj.zone : zoneFromText(`${inj.area} ${inj.zone ?? ''}`);
-      return { entryId: e.id, date: e.date, area: inj.area, note: inj.note, zone, status: inj.status ?? null, markedOn: inj.markedOn ?? '' };
-    })
-    .sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));
+function markZone(area: string, zone?: string): BodyZone | '' {
+  return zone && isBodyZone(zone) ? zone : zoneFromText(`${area} ${zone ?? ''}`);
+}
+
+function markFromJournal(e: JournalEntry): InjuryMark {
+  const inj = e.injury!;
+  return {
+    entryId: e.id,
+    date: e.date,
+    area: inj.area,
+    note: inj.note,
+    zone: markZone(inj.area, inj.zone),
+    status: inj.status ?? null,
+    markedOn: inj.markedOn ?? '',
+    fromJournal: true,
+  };
+}
+
+function markFromList(inj: StandaloneInjury): InjuryMark {
+  return {
+    entryId: inj.id,
+    date: inj.date,
+    area: inj.area,
+    note: inj.note,
+    zone: markZone(inj.area, inj.zone),
+    status: inj.status ?? null,
+    markedOn: inj.markedOn ?? '',
+    fromJournal: false,
+    ...(inj.source ? { source: inj.source } : {}),
+  };
+}
+
+function sortMarks(marks: InjuryMark[]): InjuryMark[] {
+  return marks.sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));
+}
+
+/** Journal marks, plus optional injuries added from the list. Existing journal-only callers stay unchanged. */
+export function injuryMarks(journal: readonly JournalEntry[], extras: readonly StandaloneInjury[] = []): InjuryMark[] {
+  return sortMarks([
+    ...journal.filter((e) => e.injury).map(markFromJournal),
+    ...extras.map(markFromList),
+  ]);
+}
+
+export function reportInjuryMarks(report: Pick<StudentProgressReport, 'journal' | 'injuries'>): InjuryMark[] {
+  return injuryMarks(report.journal, report.injuries ?? []);
 }
 
 /** Red (0) → amber (0.5) → green (1). */
@@ -160,8 +206,8 @@ export function zoneTrend(marks: readonly InjuryMark[], today: string): Omit<Zon
 
 export type BodyScanView = { zones: ZoneScan[]; other: ZoneScan[] };
 
-export function bodyScan(journal: readonly JournalEntry[], today: string): BodyScanView {
-  const marks = injuryMarks(journal);
+export function bodyScan(journal: readonly JournalEntry[], today: string, extras: readonly StandaloneInjury[] = []): BodyScanView {
+  const marks = injuryMarks(journal, extras);
   const byZone = new Map<string, InjuryMark[]>();
   const other: ZoneScan[] = [];
   for (const mark of marks) {
@@ -183,13 +229,69 @@ export function bodyScan(journal: readonly JournalEntry[], today: string): BodyS
 }
 
 /** All marks for a zone (newest first), including ones that dropped off the scan. */
-export function zoneMarks(journal: readonly JournalEntry[], zone: string): InjuryMark[] {
-  return injuryMarks(journal).filter((m) => (zone === 'other' ? !m.zone : m.zone === zone));
+export function zoneMarks(journal: readonly JournalEntry[], zone: string, extras: readonly StandaloneInjury[] = []): InjuryMark[] {
+  return injuryMarks(journal, extras).filter((m) => (zone === 'other' ? !m.zone : m.zone === zone));
 }
 
-/** Set a mark's status; stamps markedOn. Returns a new journal. */
+export function reportZoneMarks(report: Pick<StudentProgressReport, 'journal' | 'injuries'>, zone: string): InjuryMark[] {
+  return zoneMarks(report.journal, zone, report.injuries ?? []);
+}
+
+/** Set a journal mark's status; stamps markedOn. Returns a new journal. */
 export function setInjuryStatus(journal: readonly JournalEntry[], entryId: string, status: InjuryStatus, today: string): JournalEntry[] {
   return journal.map((e) => (e.id === entryId && e.injury ? { ...e, injury: { ...e.injury, status, markedOn: today } } : e));
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export type InjuryDraft = {
+  date: string;
+  area: string;
+  note?: string;
+  zone?: string;
+  status?: InjuryStatus;
+  source?: InjurySource;
+};
+
+function newInjuryId(now: number): string {
+  return `inj.${now.toString(36)}.${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Add an injury on the list. Does not create a journal card. */
+export function addInjury(report: StudentProgressReport, draft: InjuryDraft, now = Date.now()): StudentProgressReport {
+  if (!DATE_RE.test(draft.date)) throw new Error('Date must be YYYY-MM-DD.');
+  const zone = draft.zone && isBodyZone(draft.zone) ? draft.zone : undefined;
+  const area = draft.area.trim().slice(0, PROGRESS_NAME_MAX) || (zone ? zoneLabel(zone) : '');
+  if (!area) throw new Error('Choose a body area or zone.');
+  const status: InjuryStatus = draft.status && INJURY_STATUSES.includes(draft.status) ? draft.status : 'hurt';
+  const source: InjurySource = draft.source === 'training' ? 'training' : 'outside';
+  const record: StandaloneInjury = {
+    id: newInjuryId(now),
+    date: draft.date,
+    area,
+    note: (draft.note ?? '').trim().slice(0, PROGRESS_NAME_MAX * 4),
+    status,
+    markedOn: draft.date,
+    source,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (zone) record.zone = zone;
+  return { ...report, updatedAt: now, injuries: [...(report.injuries ?? []), record] };
+}
+
+/** Set status on a journal mark or a list injury. Journal cards stay as they are when the id is a list injury. */
+export function setReportInjuryStatus(report: StudentProgressReport, entryId: string, status: InjuryStatus, today: string, now = Date.now()): StudentProgressReport {
+  if (report.journal.some((e) => e.id === entryId && e.injury)) {
+    return { ...report, updatedAt: now, journal: setInjuryStatus(report.journal, entryId, status, today) };
+  }
+  const list = report.injuries ?? [];
+  if (!list.some((row) => row.id === entryId)) return report;
+  return {
+    ...report,
+    updatedAt: now,
+    injuries: list.map((row) => (row.id === entryId ? { ...row, status, markedOn: today, updatedAt: now } : row)),
+  };
 }
 
 export function trendLine(scan: ZoneScan): string {

@@ -78,3 +78,13 @@
 .bs-dot { fill: transparent; stroke: #5fd8ff; stroke-opacity: 0.35; }
 .bs-zone--selected .bs-pulse { stroke: #fff; stroke-width: 2; }
 @media (prefers-reduced-motion: reduce) { .bs-sweep, .bs-pulse { animation: none; } .bs-sweep { display: none; } }
+
+.bs-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bs-form { display: grid; gap: 10px; }
+.bs-form .ink { display: grid; gap: 4px; color: inherit; }
+.bs-form .ink__label { font-size: 13px; font-weight: 700; }
+.bs-form .ink__input, .bs-sheet input, .bs-sheet select {
+  width: 100%; min-height: 44px; box-sizing: border-box; border-radius: 8px;
+  background: rgba(8, 20, 40, 0.85); color: #c9f8ff; border: 1px solid rgba(95, 216, 255, 0.4);
+  padding: 8px 10px; font: inherit;
+}

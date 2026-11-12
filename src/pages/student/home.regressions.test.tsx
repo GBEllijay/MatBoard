@@ -696,3 +696,77 @@ test('shape toggle defaults to the diamond and can switch to the radar', () => {
   assert.ok(q(shape, '[data-testid="sheet-diamond"]'));
   unmount(m);
 });
+
+
+function pickSelect(select: HTMLSelectElement, value: string) {
+  const proto = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+  proto?.set?.call(select, value);
+  act(() => {
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
+
+test('add injury from the list: saves without a journal card, shows with journal marks, healing toggle reloads', () => {
+  const r = seedNamed([{ date: daysAgo(2), injury: { area: 'Right wrist', note: 'from class', zone: 'wristR' } }]);
+  const journalCount = r.journal.length;
+  const journalNote = r.journal[0].injury?.note;
+  localStorage.setItem(BODY_SCAN_KEY, 'on');
+  const m = mount(<StudentEditionPage />, '/student?student=1');
+  click(q(m.host, '[data-testid="injury-add-open"]')!);
+  const form = q(document.body, '[data-testid="injury-add"]')!;
+  assert.ok(form);
+  assert.equal(control(form, 'button', 'Outside of training').getAttribute('aria-pressed'), 'true');
+  typeInto(field(form, 'What was injured') as HTMLInputElement, 'Left knee');
+  pickSelect(labeled(form, 'Body zone') as HTMLSelectElement, 'kneeL');
+  typeInto(field(form, 'Note (optional)') as HTMLInputElement, 'car accident');
+  click(q(form, '[data-testid="injury-add-save"]')!);
+  assert.equal(q(document.body, '[data-testid="injury-add"]'), null);
+  assert.match(q(m.host, '[data-testid="injury-status-open"]')!.textContent ?? '', /Injury status \(2\)/);
+
+  const loaded = loadStudentReport(localStorage);
+  assert.equal(loaded.journal.length, journalCount);
+  assert.equal(loaded.journal[0].injury?.note, journalNote);
+  assert.equal(loaded.journal[0].injury?.area, 'Right wrist');
+  assert.equal(loaded.injuries?.length, 1);
+  assert.equal(loaded.injuries?.[0].area, 'Left knee');
+  assert.equal(loaded.injuries?.[0].note, 'car accident');
+  assert.equal(loaded.injuries?.[0].source, 'outside');
+  assert.equal(loaded.injuries?.[0].zone, 'kneeL');
+  assert.equal(loaded.injuries?.[0].status, 'hurt');
+
+  const knee = q(m.host, '[data-testid="body-figure-front"] [data-zone="kneeL"] [role="button"]')!;
+  act(() => { knee.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+  const peek = q(m.host, '[data-testid="body-peek"]')!;
+  const listRow = q(peek, '[data-testid="body-peek-row"][data-source="list"]')!;
+  assert.match(listRow.textContent ?? '', /car accident/);
+  assert.match(listRow.textContent ?? '', /Outside of training/);
+  assert.equal(q(listRow, '[data-testid="open-journal-entry"]'), null);
+  click(control(listRow, 'button', 'Healing'));
+  unmount(m);
+
+  const after = loadStudentReport(localStorage);
+  assert.equal(after.injuries?.[0].status, 'healing');
+  assert.equal(after.journal.length, journalCount);
+  assert.equal(after.journal[0].injury?.note, journalNote);
+  assert.equal(after.journal[0].injury?.status, undefined);
+
+  const m2 = mount(<StudentEditionPage />, '/student?student=1');
+  const wrist = q(m2.host, '[data-testid="body-figure-front"] [data-zone="wristR"] [role="button"]')!;
+  act(() => { wrist.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+  const journalRow = q(m2.host, '[data-testid="body-peek-row"][data-source="journal"]')!;
+  assert.match(journalRow.textContent ?? '', /from class/);
+  assert.ok(q(journalRow, '[data-testid="open-journal-entry"]'));
+  assert.equal(control(journalRow, 'button', 'Hurt').getAttribute('aria-pressed'), 'true');
+  unmount(m2);
+});
+
+test('privacy: a list-added injury never reaches the coach file or the card share', () => {
+  const r = seedNamed([{ date: daysAgo(2), injury: { area: 'Right wrist', note: 'class-note', zone: 'wristR' } }]);
+  const next = { ...r, injuries: [{ id: 'inj.secret', date: daysAgo(1), area: 'Left knee', note: 'wreck-note', zone: 'kneeL', status: 'hurt' as const, markedOn: daysAgo(1), source: 'outside' as const, createdAt: 20, updatedAt: 20 }] };
+  saveStudentReport(localStorage, next);
+  const file = buildCoachUpdateFile(loadStudentReport(localStorage), { storage: localStorage, assessments: [] });
+  for (const word of ['wreck-note', 'class-note', 'kneeL', 'Left knee', 'inj.secret']) assert.equal(file.json.includes(word), false, word);
+  const share = createStudentCardShare({ studentId: r.studentId, gym: { gymDrive: true, plusCloud: true }, card: { name: 'Sam', belt: 'blue' }, parentRequired: false, now: 1 });
+  const json = JSON.stringify(share);
+  for (const word of ['wreck-note', 'injury']) assert.equal(json.includes(word), false, word);
+});
