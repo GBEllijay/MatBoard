@@ -20267,3 +20267,38 @@ a.plan-pick {
 .cloud-queue__size, .cloud-queue__status { font-size: 0.8rem; opacity: 0.85; font-variant-numeric: tabular-nums; }
 .cloud-queue__row--error .cloud-queue__status { opacity: 1; }
 .cloud-queue__action { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(127, 127, 127, 0.5); background: transparent; color: inherit; font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+
+/* Lesson plan source: gym template vs this instructor's own copy. */
+.lesson-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+.lesson-source__label {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid currentColor;
+}
+.lesson-source__label--template {
+  color: #8a6d1f;
+  background: #fbf3dc;
+}
+.lesson-source__label--mine {
+  color: #1f5f8a;
+  background: #e3f0fa;
+}
+.lesson-source__hint {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+.lesson-source__note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+}
