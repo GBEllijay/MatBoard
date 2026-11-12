@@ -20,7 +20,11 @@ export { FREE_STUDENT_LICENSES };
 export const STUDENT_LICENSE_PRESET = 'student-license';
 export const STUDENT_LICENSE_SOURCE_PREFIX = 'student-code:';
 
-export const STUDENT_LICENSE_GIVE = 'Give a free Student license';
+export const STUDENT_LICENSE_GIVE = 'Invite a student (Student Edition only)';
+export const STUDENT_INVITE_TYP = 'student-invite';
+export const STUDENT_JOIN_PATH = '/join/student';
+export const STUDENT_CLAIM_KEPT_HIGHER =
+  'This phone already has a higher license, so Student Edition was not installed over it. You are still linked to the academy.';
 export const STUDENT_LICENSE_EMPTY = 'No free Student licenses left.';
 export const STUDENT_LICENSE_REVOKED_MESSAGE =
   'This free Student license was revoked. Ask your coach for a new code.';
@@ -62,12 +66,47 @@ export function isStudentLicenseCode(value: string): boolean {
   return CODE_RE.test(value);
 }
 
-/** Claim page on this origin. The gym name is a label, not the secret. */
+/** Hex claim code, or a compact signed student-invite token. */
+export function isStudentInviteValue(value: string): boolean {
+  const trimmed = value.trim();
+  if (isStudentLicenseCode(trimmed)) return true;
+  return /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(trimmed);
+}
+
+/**
+ * Public join page. Prefer the signed invite token in ?code=.
+ * The gym name is a label, not the secret.
+ */
+export function studentInviteJoinUrl(origin: string, inviteOrCode: string, gymName = ''): string {
+  const params = new URLSearchParams({ code: inviteOrCode });
+  const name = gymName.trim().slice(0, 80);
+  if (name) params.set('gym', name);
+  return `${origin.replace(/\/$/, '')}${STUDENT_JOIN_PATH}?${params.toString()}`;
+}
+
+/** Older claim path. Still accepted for hex codes issued before the join page. */
 export function studentLicenseClaimUrl(origin: string, code: string, gymName = ''): string {
   const base = `${origin.replace(/\/$/, '')}/student/claim/${code}`;
   const name = gymName.trim().slice(0, 80);
   if (!name) return base;
   return `${base}?gym=${encodeURIComponent(name)}`;
+}
+
+/**
+ * True when this phone already holds a seat, Pro, Instructor, Media, or a
+ * paid White pass. A free Student claim must not replace that token.
+ */
+export function studentClaimWouldDowngrade(
+  claims: { src?: string; tier?: string; grants?: readonly string[] } | null | undefined,
+): boolean {
+  if (!claims) return false;
+  if (claims.src === 'seat' || claims.tier === 'seat') return true;
+  const grants = claims.grants ?? [];
+  if (grants.includes('pro') || grants.includes('coach') || grants.includes('media')) return true;
+  if (claims.tier === 'pro' || claims.tier === 'coach' || claims.tier === 'media') return true;
+  if (claims.tier === 'white') return true;
+  if (grants.includes('white') && claims.src !== 'free' && claims.tier !== 'student') return true;
+  return false;
 }
 
 const STUDENT_PREFIXES = ['inbox/', 'photos/pending/', 'photos/approved/', 'events/'] as const;
