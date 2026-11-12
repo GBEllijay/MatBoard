@@ -898,8 +898,10 @@ test('a program director can only drop a video into today\'s daily videos, and a
   if (notVideo.status === 200) {
     assert.notEqual(bucket.objects.get('groups/lic-code/videos/daily/2026-11-03/x.mp4')?.type, 'text/html');
   } else {
-    assert.equal(notVideo.status, 400);
+    // 403: with approval on, a PD write without `start` has no pending marker and is refused.
+    assert.ok([400, 403].includes(notVideo.status), String(notVideo.status));
   }
+  assert.equal(bucket.objects.has('groups/lic-code/videos/daily/2026-11-03/x.mp4'), false);
 
   // A revoked PD seat is refused before anything else.
   const revokedEnv: GymCloudEnv = {

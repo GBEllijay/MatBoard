@@ -36,6 +36,8 @@ export type GymPublishResult = {
   home: GymPublishHome;
   remoteId: string | null;
   failed: boolean;
+  /** Why a copy failed, in words the page can show. */
+  message?: string;
 };
 
 async function oneDriveParent(token: string, rootId: string, segments: readonly string[]): Promise<string> {
@@ -88,7 +90,7 @@ async function publishGalleryToCloud(
     lane,
   });
   if (!result.ok) {
-    return { route: { ...route, lane }, home: 'advantage-cloud', remoteId: null, failed: true };
+    return { route: { ...route, lane }, home: 'advantage-cloud', remoteId: null, failed: true, message: result.message };
   }
   const parsed = parseGalleryCloudPath(result.path);
   notifyCloudMedia();
@@ -116,6 +118,8 @@ export async function publishGymFile(input: {
   /** Tests pass the signed-in token and the Cloud function. The page uses the saved sign-in. */
   cloudToken?: string;
   cloudFetcher?: typeof fetch;
+  /** Gallery copies of files that came from Google Photos or Drive: Advantage Cloud only, never back to Drive. */
+  cloudOnly?: boolean;
 }): Promise<GymPublishResult> {
   const route = routeUpload({
     purpose: input.purpose,
@@ -129,9 +133,16 @@ export async function publishGymFile(input: {
   });
   if (!route.ok) return { route, home: 'phone', remoteId: null, failed: false };
   if (route.purpose === 'gallery') {
-    const cloud = await publishGalleryToCloud(input, route);
+    let cloud: GymPublishResult | null;
+    try {
+      cloud = await publishGalleryToCloud(input, route);
+    } catch {
+      // A dropped connection used to throw past the page, which swallowed it.
+      cloud = { route, home: 'advantage-cloud', remoteId: null, failed: true, message: 'Advantage Cloud could not be reached.' };
+    }
     if (cloud) return cloud;
   }
+  if (input.cloudOnly) return { route, home: 'phone', remoteId: null, failed: false };
   if (typeof window === 'undefined') return { route, home: 'phone', remoteId: null, failed: false };
 
   const driveId = input.target?.provider === 'googleDrive' ? input.target.folderId : input.target ? '' : readDriveBinding()?.folderId ?? '';

@@ -75,6 +75,8 @@ import {
 } from '../lib/driveMediaPicker';
 import { formatMss, secondsToMs } from '../lib/format';
 import { publishGymFile } from '../lib/gymPublish';
+import { cloudCopyLine, copyFilesToCloudGallery } from '../lib/galleryCloudCopy';
+import { CloudGallerySection } from '../components/CloudGallerySection';
 import { PlayingFromLine } from '../components/PlayingFromLine';
 import { GALLERY_LINK_DONE, galleryItemShows, nextClassFromDays } from '../lib/gallerySchedule';
 import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
@@ -165,6 +167,8 @@ export function ScreensaverPage() {
   const [muteVideo, setMuteVideo] = useState(DEFAULT_MUTE_VIDEO);
   const [pickerNote, setPickerNote] = useState('');
   const [batchStatus, setBatchStatus] = useState<BatchNotice | null>(null);
+  /** Result of the Advantage Cloud copy for gallery picks. Null when Cloud is not in play. */
+  const [cloudCopy, setCloudCopy] = useState<{ tone: 'saved' | 'error'; text: string } | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [addKind, setAddKind] = useState<MediaSourceKind>('photo');
   const [videoDest, setVideoDest] = useState<VideoDestination>('gallery');
@@ -550,6 +554,7 @@ export function ScreensaverPage() {
       }
       setBatchStatus(null);
       setPickerNote('');
+      if (folderId === 'gallery') await copyGalleryToCloud(files.map((row) => row.file), true);
       await refresh();
       setPlaying(true);
       setOpenSection(folderId);
@@ -584,6 +589,7 @@ export function ScreensaverPage() {
         showBatchError(folderId, 'Sign in to Google Drive again to pick those files.');
         return;
       }
+      const driveSaved: File[] = [];
       const result = await runDriveImport({
         items: picked,
         chunkSize: driveImportChunkSize(drivePickKind),
@@ -595,7 +601,11 @@ export function ScreensaverPage() {
             driveFileId: item.id,
           };
         },
-        save: (files, report) => addDriveMediaFiles([...files], folderId, { onProgress: report }),
+        save: async (files, report) => {
+          const added = await addDriveMediaFiles([...files], folderId, { onProgress: report });
+          if (folderId === 'gallery' && added) driveSaved.push(...files.map((row) => row.file));
+          return added;
+        },
         onLabel: (text) => setBatchStatus({ tone: 'progress', text }),
       });
       if (!result.ok) {
@@ -617,6 +627,7 @@ export function ScreensaverPage() {
         }
         return;
       }
+      if (driveSaved.length) await copyGalleryToCloud(driveSaved, true);
       const note = driveImportOutcomeNote(result.outcome);
       if (note) {
         showBatchError(folderId, note);
@@ -659,6 +670,13 @@ export function ScreensaverPage() {
     setBatchStatus({ tone: 'error', text });
     setOpenSection(folderId);
     setOptions(true);
+  };
+
+  /** Copy gallery picks to Advantage Cloud and say what happened. */
+  const copyGalleryToCloud = async (files: readonly File[], cloudOnly: boolean) => {
+    if (!files.length) return;
+    const summary = await copyFilesToCloudGallery(files, { dateKey: localDateKey(), cloudOnly });
+    setCloudCopy(summary ? cloudCopyLine(summary) : null);
   };
 
   const onFiles = async (files: readonly File[]) => {
@@ -767,7 +785,9 @@ export function ScreensaverPage() {
       }
       if (added) {
         const purpose = folderId === 'gallery' ? 'gallery' : folderId === 'shop' ? 'pro-shop' : folderId === 'events' ? 'events' : '';
-        if (purpose) {
+        if (purpose === 'gallery') {
+          await copyGalleryToCloud(matched, false);
+        } else if (purpose) {
           const dateKey = localDateKey();
           for (const file of matched) {
             await publishGymFile({
@@ -1047,6 +1067,12 @@ export function ScreensaverPage() {
           <PlayingFromLine />
           <p>{emptyCopy}</p>
           {cloudCustomer ? <AdvantageCloudHome /> : null}
+          {galleryPage && cloudCopy ? (
+            <p className={`saver-cloud-copy${cloudCopy.tone === 'error' ? ' saver-cloud-copy--error' : ''}`} data-cloud-copy={cloudCopy.tone}>
+              {cloudCopy.text}
+            </p>
+          ) : null}
+          {galleryPage && !options ? <CloudGallerySection /> : null}
           {focusConfig.ready && focusEmpty && focusCanUpload ? (
             <>
               <button type="button" className="btn" onClick={() => openAdd(focusFolder, 'photo')}>
@@ -1116,6 +1142,15 @@ export function ScreensaverPage() {
         {pickerNote ? (
           <p className="saver-folder__empty" role="status" ref={scrollPickerNote}>
             {pickerNote}
+          </p>
+        ) : null}
+        {cloudCopy ? (
+          <p
+            className={`saver-cloud-copy${cloudCopy.tone === 'error' ? ' saver-cloud-copy--error' : ''}`}
+            role={cloudCopy.tone === 'error' ? 'alert' : 'status'}
+            data-cloud-copy={cloudCopy.tone}
+          >
+            {cloudCopy.text}
           </p>
         ) : null}
 
@@ -1288,6 +1323,7 @@ export function ScreensaverPage() {
             );
           })}
         </div>
+        {galleryPage ? <CloudGallerySection /> : null}
 
         <section className="saver-settings">
           <h3 className="saver-settings__title">Settings</h3>

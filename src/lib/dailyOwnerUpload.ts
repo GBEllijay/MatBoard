@@ -7,7 +7,13 @@
  * A Cloud save refreshes the usage counter.
  */
 
-import { CLOUD_SAVED_MESSAGE, gymActorForCloud, notifyCloudMedia, uploadAdvantageCloudFile } from './advantageCloudMedia.ts';
+import {
+  CLOUD_SAVED_MESSAGE,
+  CLOUD_SENT_FOR_APPROVAL,
+  gymActorForCloud,
+  notifyCloudMedia,
+  uploadAdvantageCloudFile,
+} from './advantageCloudMedia.ts';
 import { publishGymFile } from './gymPublish.ts';
 import { readCurrentSeat } from './instructorSeats.ts';
 import { localDateKey } from './trainingNotesStore.ts';
@@ -85,5 +91,6 @@ export async function uploadDailyMediaFile(
     fileName: file.name,
     mime: file.type || 'video/mp4',
   });
-  return { ok: result.ok, message: result.ok ? CLOUD_SAVED_MESSAGE : result.message, cloud: result.ok };
+  if (!result.ok) return { ok: false, message: result.message, cloud: false };
+  return { ok: true, message: result.lane === 'pending' ? CLOUD_SENT_FOR_APPROVAL : CLOUD_SAVED_MESSAGE, cloud: true };
 }

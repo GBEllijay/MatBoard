@@ -120,6 +120,9 @@ function isVideo(file: File): boolean {
   return /\.(mp4|mov|m4v|webm|3gp|mkv)$/i.test(file.name);
 }
 
+/** Added when a seat's daily video lands in the Advantage Cloud approval lane. */
+export const DAILY_VIDEO_WAITING_NOTE = 'They wait for approval in Review Inbox before anyone can play them.';
+
 export async function sendToDailyVideos(input: {
   files: readonly File[];
   dateKey: string;
@@ -135,6 +138,7 @@ export async function sendToDailyVideos(input: {
   const skipped = input.files.length - videos.length;
   let sent = 0;
   let failed = 0;
+  let waiting = 0;
   let error = '';
   for (let index = 0; index < videos.length; index += 1) {
     const file = videos[index];
@@ -143,8 +147,10 @@ export async function sendToDailyVideos(input: {
     const fileName = dailyVideoFileName(file.name, Date.now() + index);
     if (input.home === 'advantage-cloud') {
       const result = await cloudUpload({ purpose: 'daily-video', dateKey: input.dateKey, file, fileName, mime });
-      if (result.ok) sent += 1;
-      else {
+      if (result.ok) {
+        sent += 1;
+        if (result.lane === 'pending') waiting += 1;
+      } else {
         failed += 1;
         error = result.message;
       }
@@ -167,6 +173,6 @@ export async function sendToDailyVideos(input: {
     sent,
     failed,
     skipped,
-    message: dailyVideoSentCopy({ sent, failed, skipped, home: input.home, error }),
+    message: `${dailyVideoSentCopy({ sent, failed, skipped, home: input.home, error })}${waiting ? ` ${DAILY_VIDEO_WAITING_NOTE}` : ''}`,
   };
 }

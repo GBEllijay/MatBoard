@@ -34,6 +34,9 @@ import {
   isCustomSkinImagePath,
   isCustomSkinMetaPath,
   isDailyVideoCloudPath,
+  dailyVideoMarkerKey,
+  dailyVideoUploadLane,
+  parseDailyVideoMarkerPath,
   galleryCloudPath,
   galleryDecisionAllowed,
   galleryDecisionPath,
@@ -54,6 +57,7 @@ import {
   type CloudFileRow,
   type CloudMediaPurpose,
 } from '../lib/advantageCloudMedia.ts';
+import { laneFromMarkers, mediaKindOf, sortForGallery, type ApprovalLane, type ApprovalSource } from '../lib/approvalLanes.ts';
 import { STUDENT_CLOUD_REFUSED, STUDENT_LICENSE_PRESET } from '../lib/studentLicensePool.ts';
 import { verifyToken, type EntitlementClaims } from '../lib/entitlementToken.ts';
 import type { D1Database } from './d1.ts';
@@ -81,7 +85,8 @@ export type GymMediaObject = {
 
 export type GymMediaBucket = {
   head(key: string): Promise<{ size: number; httpMetadata?: R2HttpMetadata } | null>;
-  get(key: string): Promise<GymMediaObject | null>;
+  /** `range` reads part of an object, so a large approval copy never holds the whole file. */
+  get(key: string, options?: { range?: { offset: number; length: number } }): Promise<GymMediaObject | null>;
   put(key: string, value: ArrayBuffer | Uint8Array, options?: { httpMetadata?: R2HttpMetadata }): Promise<unknown>;
   delete(key: string): Promise<void>;
   list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{
@@ -280,10 +285,17 @@ function ownedKey(actor: Actor, raw: string): string | null {
   return key;
 }
 
-async function listFiles(bucket: GymMediaBucket, actor: Actor, purpose: 'daily-video' | 'lesson', dateKey: string): Promise<CloudFileRow[] | Response> {
+async function listFiles(
+  bucket: GymMediaBucket,
+  actor: Actor,
+  purpose: 'daily-video' | 'lesson',
+  dateKey: string,
+  includeUnapproved = false,
+): Promise<CloudFileRow[] | Response> {
   const prefix = cloudListPrefix(purpose, dateKey);
   if (!prefix) return json(400, { ok: false, error: 'Choose a real date.' });
   const files: CloudFileRow[] = [];
+  const lanes = purpose === 'daily-video' ? await dailyLaneSets(bucket, actor.licenseId, dateKey) : null;
   const mediaKeyPrefix = `groups/${actor.licenseId}/${prefix.media}`;
   let cursor: string | undefined;
   for (let page = 0; page < 20; page += 1) {
@@ -293,11 +305,15 @@ async function listFiles(bucket: GymMediaBucket, actor: Actor, purpose: 'daily-v
         ? object.key.slice(`groups/${actor.licenseId}/`.length)
         : '';
       if (!cloudObjectKey(actor.licenseId, relative)) continue;
+      const lane = lanes && isDailyVideoCloudPath(relative) ? laneOfDaily(lanes, relative) : null;
+      // Pending and rejected daily videos stay out of every list except an approver's review.
+      if (lane && lane !== 'approved' && !includeUnapproved) continue;
       files.push({
         name: relative.split('/').pop() ?? relative,
         path: relative,
         size: object.size,
         mime: object.httpMetadata?.contentType || 'application/octet-stream',
+        ...(lane ? { lane } : {}),
       });
     }
     if (!listed.truncated || !listed.cursor) break;
@@ -318,6 +334,161 @@ async function listFiles(bucket: GymMediaBucket, actor: Actor, purpose: 'daily-v
     }
   }
   return files;
+}
+
+type DailyLaneSets = { pending: Set<string>; rejected: Set<string> };
+
+/** Video paths that have a pending or rejected marker. One list call per lane. */
+async function dailyLaneSets(bucket: GymMediaBucket, licenseId: string, dateKey: string): Promise<DailyLaneSets> {
+  const sets: DailyLaneSets = { pending: new Set(), rejected: new Set() };
+  const base = `groups/${licenseId}/`;
+  for (const lane of ['pending', 'rejected'] as const) {
+    let cursor: string | undefined;
+    const prefix = `${base}pending/daily/${lane}/${dateKey ? `${dateKey}/` : ''}`;
+    for (let page = 0; page < 20; page += 1) {
+      const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+      for (const object of listed.objects) {
+        const parsed = parseDailyVideoMarkerPath(object.key.slice(base.length));
+        if (parsed && parsed.lane === lane) sets[lane].add(parsed.videoPath);
+      }
+      if (!listed.truncated || !listed.cursor) break;
+      cursor = listed.cursor;
+    }
+  }
+  return sets;
+}
+
+function laneOfDaily(sets: DailyLaneSets, videoPath: string): ApprovalLane {
+  return laneFromMarkers({ pending: sets.pending.has(videoPath), rejected: sets.rejected.has(videoPath) });
+}
+
+/** One video's lane. No marker is approved, which covers every legacy upload. */
+async function dailyVideoLane(bucket: GymMediaBucket, licenseId: string, videoPath: string): Promise<ApprovalLane> {
+  const pendingKey = dailyVideoMarkerKey(licenseId, videoPath, 'pending');
+  const rejectedKey = dailyVideoMarkerKey(licenseId, videoPath, 'rejected');
+  if (!pendingKey || !rejectedKey) return 'approved';
+  const [pending, rejected] = await Promise.all([bucket.head(pendingKey), bucket.head(rejectedKey)]);
+  return laneFromMarkers({ pending: Boolean(pending), rejected: Boolean(rejected) });
+}
+
+/** A pending marker whose upload never finished. Called after abort or a refused complete. */
+async function dropOrphanDailyMarker(bucket: GymMediaBucket, licenseId: string, key: string): Promise<void> {
+  const relative = relativePath(licenseId, key);
+  if (!isDailyVideoCloudPath(relative)) return;
+  const markerKey = dailyVideoMarkerKey(licenseId, relative, 'pending');
+  if (!markerKey) return;
+  if (await bucket.head(key)) return;
+  await bucket.delete(markerKey);
+}
+
+/** Copies at most this many bytes in one read. Larger files copy part by part. */
+const BUFFERED_COPY_MAX = 2 * CLOUD_CHUNK_BYTES;
+
+/**
+ * Server-side copy inside the bucket. Small files are read once. Larger files
+ * use ranged reads into a multipart upload, so a 100 MB video never sits in
+ * Worker memory (the old approve path read the whole file and could hit the
+ * 128 MB Worker limit).
+ */
+export async function copyGymObject(
+  bucket: GymMediaBucket,
+  sourceKey: string,
+  targetKey: string,
+  size: number,
+  contentType: string,
+): Promise<boolean> {
+  if (size <= BUFFERED_COPY_MAX) {
+    const object = await bucket.get(sourceKey);
+    if (!object) return false;
+    const bytes = new Uint8Array(await new Response(object.body).arrayBuffer());
+    await bucket.put(targetKey, bytes, { httpMetadata: { contentType } });
+    return true;
+  }
+  const upload = await bucket.createMultipartUpload(targetKey, { httpMetadata: { contentType } });
+  try {
+    const parts: R2UploadedPart[] = [];
+    let partNumber = 1;
+    for (let offset = 0; offset < size; offset += CLOUD_CHUNK_BYTES) {
+      const length = Math.min(CLOUD_CHUNK_BYTES, size - offset);
+      const piece = await bucket.get(sourceKey, { range: { offset, length } });
+      if (!piece) throw new Error('missing source');
+      const bytes = new Uint8Array(await new Response(piece.body).arrayBuffer());
+      parts.push(await upload.uploadPart(partNumber, bytes));
+      partNumber += 1;
+    }
+    await upload.complete(parts);
+    return true;
+  } catch {
+    await upload.abort().catch(() => undefined);
+    return false;
+  }
+}
+
+export type ApprovedMediaRow = CloudFileRow & {
+  source: ApprovalSource;
+  lane: 'approved';
+  dateKey: string;
+  kind: 'photo' | 'video';
+};
+
+/** Most approved items one gallery list returns, newest day first. */
+const APPROVED_MEDIA_LIMIT = 500;
+
+/**
+ * Everything approved for display: gallery/approved/ plus daily videos with no
+ * pending or rejected marker (legacy daily videos included). Pending and
+ * rejected files never appear here.
+ */
+async function listApprovedMedia(bucket: GymMediaBucket, actor: Actor): Promise<ApprovedMediaRow[]> {
+  const rows: ApprovedMediaRow[] = [];
+  for (const file of await listGallery(bucket, actor, 'approved', '')) {
+    const parsed = parseGalleryCloudPath(file.path);
+    if (!parsed) continue;
+    rows.push({ ...file, source: 'gallery', lane: 'approved', dateKey: parsed.dateKey, kind: mediaKindOf(file.mime, file.name) });
+  }
+  const lanes = await dailyLaneSets(bucket, actor.licenseId, '');
+  const base = `groups/${actor.licenseId}/`;
+  let cursor: string | undefined;
+  for (let page = 0; page < 20; page += 1) {
+    const listed = await bucket.list({ prefix: `${base}videos/daily/`, cursor, limit: 1000 });
+    for (const object of listed.objects) {
+      const relative = relativePath(actor.licenseId, object.key);
+      if (!isDailyVideoCloudPath(relative) || laneOfDaily(lanes, relative) !== 'approved') continue;
+      const [, , dateKey = '', name = relative] = relative.split('/');
+      const mime = object.httpMetadata?.contentType || 'application/octet-stream';
+      rows.push({ name, path: relative, size: object.size, mime, source: 'daily-video', lane: 'approved', dateKey, kind: mediaKindOf(mime, name) });
+    }
+    if (!listed.truncated || !listed.cursor) break;
+    cursor = listed.cursor;
+  }
+  return sortForGallery(rows).slice(0, APPROVED_MEDIA_LIMIT);
+}
+
+/** Daily videos waiting for approval, every day. Markers with no finished upload are skipped. */
+async function listDailyReview(bucket: GymMediaBucket, actor: Actor): Promise<(CloudFileRow & { dateKey: string; lane: 'pending' })[]> {
+  const base = `groups/${actor.licenseId}/`;
+  const rows: (CloudFileRow & { dateKey: string; lane: 'pending' })[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < 20; page += 1) {
+    const listed = await bucket.list({ prefix: `${base}pending/daily/pending/`, cursor, limit: 1000 });
+    for (const marker of listed.objects) {
+      const parsed = parseDailyVideoMarkerPath(marker.key.slice(base.length));
+      if (!parsed || parsed.lane !== 'pending') continue;
+      const video = await bucket.head(`${base}${parsed.videoPath}`);
+      if (!video) continue;
+      rows.push({
+        name: parsed.name,
+        path: parsed.videoPath,
+        size: video.size,
+        mime: video.httpMetadata?.contentType || 'video/mp4',
+        dateKey: parsed.dateKey,
+        lane: 'pending',
+      });
+    }
+    if (!listed.truncated || !listed.cursor) break;
+    cursor = listed.cursor;
+  }
+  return sortForGallery(rows);
 }
 
 async function listGallery(
@@ -461,9 +632,27 @@ async function refuseGalleryWrite(env: GymCloudEnv, actor: Actor, key: string): 
   return null;
 }
 
+/**
+ * A seat whose daily video must wait may only write bytes after `start`
+ * left a pending marker. Without this, a direct op=put would skip review.
+ */
+async function refuseDailyWrite(env: GymCloudEnv, actor: Actor, key: string): Promise<Response | null> {
+  const relative = relativePath(actor.licenseId, key);
+  if (!isDailyVideoCloudPath(relative) || actor.kind === 'owner') return null;
+  const lane = dailyVideoUploadLane({ kind: actor.kind, approvalRequired: await licenseGalleryApprovalRequired(env, actor.licenseId) });
+  if (lane === 'approved') return null;
+  const markerKey = dailyVideoMarkerKey(actor.licenseId, relative, 'pending');
+  if (!markerKey || !env.GYM_MEDIA || !(await env.GYM_MEDIA.head(markerKey))) {
+    return json(403, { ok: false, error: 'Start that upload again so it can wait for approval.' });
+  }
+  return null;
+}
+
 async function refuseFolderWrite(env: GymCloudEnv, actor: Actor, key: string): Promise<Response | null> {
   const gallery = await refuseGalleryWrite(env, actor, key);
   if (gallery) return gallery;
+  const daily = await refuseDailyWrite(env, actor, key);
+  if (daily) return daily;
   const relative = relativePath(actor.licenseId, key);
   const instructor = parseInstructorCloudPath(relative);
   if (instructor) {
@@ -692,6 +881,17 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
         return fileResponse(object);
       }
     }
+    // The display gallery: approved class photos and approved daily videos, every day.
+    if (op === 'list' && url.searchParams.get('purpose') === 'approved-media') {
+      if (!actor.read && !actor.dailyDrop) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
+      return json(200, { ok: true, items: await listApprovedMedia(bucket, actor) });
+    }
+    if (op === 'list' && url.searchParams.get('purpose') === 'daily-review') {
+      if (!actor.read || !galleryDecisionAllowed({ kind: actor.kind, preset: actor.preset })) {
+        return json(403, { ok: false, error: 'Only the owner or an Instructors seat can approve or reject.' });
+      }
+      return json(200, { ok: true, files: await listDailyReview(bucket, actor) });
+    }
     // Program director Camera window: list and play today's videos only. Lessons, skins, and other paths stay closed.
     if (!actor.read && actor.dailyDrop && (op === 'list' || op === 'file')) {
       if (op === 'list') {
@@ -703,8 +903,13 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
         return json(200, { ok: true, files: files.filter((file) => isDailyVideoCloudPath(file.path)) });
       }
       const path = url.searchParams.get('path') ?? '';
-      const key = isDailyVideoCloudPath(path) ? cloudObjectKey(actor.licenseId, path) : null;
+      // Approved daily videos and approved class photos. Pending work stays closed.
+      const approvedGallery = parseGalleryCloudPath(path)?.lane === 'approved';
+      const key = isDailyVideoCloudPath(path) || approvedGallery ? cloudObjectKey(actor.licenseId, path) : null;
       if (!key) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
+      if (!approvedGallery && (await dailyVideoLane(bucket, actor.licenseId, path)) !== 'approved') {
+        return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
+      }
       const object = await bucket.get(key);
       if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
       return fileResponse(object);
@@ -722,13 +927,24 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     }
     if (op === 'list') {
       const purpose = url.searchParams.get('purpose') === 'lesson' ? 'lesson' : 'daily-video';
-      const files = await listFiles(bucket, actor, purpose, url.searchParams.get('date') ?? '');
+      // Approvers may ask for pending and rejected rows too, each tagged with its lane.
+      const includeUnapproved =
+        url.searchParams.get('lanes') === 'all' && galleryDecisionAllowed({ kind: actor.kind, preset: actor.preset });
+      const files = await listFiles(bucket, actor, purpose, url.searchParams.get('date') ?? '', includeUnapproved);
       if (files instanceof Response) return files;
       return json(200, { ok: true, files });
     }
     if (op === 'file') {
-      const key = ownedKey(actor, cloudObjectKey(actor.licenseId, url.searchParams.get('path') ?? '') ?? '');
+      const path = url.searchParams.get('path') ?? '';
+      const key = ownedKey(actor, cloudObjectKey(actor.licenseId, path) ?? '');
       if (!key) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
+      if (
+        isDailyVideoCloudPath(path) &&
+        !galleryDecisionAllowed({ kind: actor.kind, preset: actor.preset }) &&
+        (await dailyVideoLane(bucket, actor.licenseId, path)) !== 'approved'
+      ) {
+        return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
+      }
       const object = await bucket.get(key);
       if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
       return fileResponse(object);
@@ -822,17 +1038,17 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const statusPath = pendingStatusPath(path);
     const statusKey = statusPath ? cloudObjectKey(actor.licenseId, statusPath) : null;
     if (!pendingKey || !statusKey) return json(400, { ok: false, error: 'That clip is not waiting for approval.' });
-    const object = await bucket.get(pendingKey);
+    const object = await bucket.head(pendingKey);
     if (!object) return json(404, { ok: false, error: 'That clip is not waiting for approval.' });
     let approvedPath: string | null = null;
     if (body.action === 'approve') {
       approvedPath = approvedReplayPath(path);
       const targetKey = approvedPath ? cloudObjectKey(actor.licenseId, approvedPath) : null;
       if (!approvedPath || !targetKey) return json(400, { ok: false, error: 'That clip cannot be approved.' });
-      const bytes = new Uint8Array(await new Response(object.body).arrayBuffer());
-      const room = await roomFor(bucket, targetKey, bytes.byteLength, cap);
+      const room = await roomFor(bucket, targetKey, object.size, cap);
       if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.bucketUsed, cap) });
-      await bucket.put(targetKey, bytes, { httpMetadata: { contentType: object.httpMetadata?.contentType || 'video/mp4' } });
+      const copied = await copyGymObject(bucket, pendingKey, targetKey, object.size, object.httpMetadata?.contentType || 'video/mp4');
+      if (!copied) return json(500, { ok: false, error: 'That clip could not be approved. Try again.' });
     }
     // Never deletes the pending object: the decision is a small marker beside it.
     const status: PendingReplayStatus = body.action === 'approve' ? 'approved' : 'declined';
@@ -865,15 +1081,37 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const sourceKey = parseGalleryCloudPath(path)?.lane === 'pending' ? cloudObjectKey(actor.licenseId, path) : null;
     const targetKey = targetPath ? cloudObjectKey(actor.licenseId, targetPath) : null;
     if (!sourceKey || !targetKey || !targetPath) return json(400, { ok: false, error: 'That photo is not waiting for approval.' });
-    const object = await bucket.get(sourceKey);
+    const object = await bucket.head(sourceKey);
     if (!object) return json(404, { ok: false, error: 'That photo is not waiting for approval.' });
-    const bytes = new Uint8Array(await new Response(object.body).arrayBuffer());
     const [bucketUsed, existing] = await Promise.all([bytesUnder(bucket, ''), bucket.head(targetKey)]);
-    const next = bucketUsed - object.size - (existing?.size ?? 0) + bytes.byteLength;
+    const next = bucketUsed - object.size - (existing?.size ?? 0) + object.size;
     if (next > cap) return json(409, { ok: false, error: cloudFullMessage(bucketUsed, cap) });
-    await bucket.put(targetKey, bytes, { httpMetadata: { contentType: object.httpMetadata?.contentType || 'image/jpeg' } });
+    // Copy first, delete second: a failed copy leaves the pending file where it was.
+    const copied = await copyGymObject(bucket, sourceKey, targetKey, object.size, object.httpMetadata?.contentType || 'image/jpeg');
+    if (!copied) return json(500, { ok: false, error: 'That did not save. Try again.' });
     await bucket.delete(sourceKey);
     return json(200, { ok: true, lane, path: targetPath });
+  }
+
+  if (body.action === 'daily-approve' || body.action === 'daily-reject') {
+    if (!galleryDecisionAllowed({ kind: actor.kind, preset: actor.preset })) {
+      return json(403, { ok: false, error: 'Only the owner or an Instructors seat can approve or reject.' });
+    }
+    const path = typeof body.key === 'string' ? body.key : '';
+    const videoKey = isDailyVideoCloudPath(path) ? cloudObjectKey(actor.licenseId, path) : null;
+    const pendingKey = videoKey ? dailyVideoMarkerKey(actor.licenseId, path, 'pending') : null;
+    const rejectedKey = videoKey ? dailyVideoMarkerKey(actor.licenseId, path, 'rejected') : null;
+    if (!videoKey || !pendingKey || !rejectedKey) return json(400, { ok: false, error: 'That video is not waiting for approval.' });
+    const [video, marker] = await Promise.all([bucket.head(videoKey), bucket.head(pendingKey)]);
+    if (!video || !marker) return json(404, { ok: false, error: 'That video is not waiting for approval.' });
+    // The video never moves. Approving removes the pending marker; rejecting swaps it for a rejected one.
+    if (body.action === 'daily-reject') {
+      await bucket.put(rejectedKey, new TextEncoder().encode(JSON.stringify({ lane: 'rejected', at: stamp.toISOString() })), {
+        httpMetadata: { contentType: 'application/json' },
+      });
+    }
+    await bucket.delete(pendingKey);
+    return json(200, { ok: true, lane: body.action === 'daily-approve' ? 'approved' : 'rejected', path });
   }
 
   if (body.action === 'send-to-student') {
@@ -885,18 +1123,21 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       return json(400, { ok: false, error: 'Send a daily video or a lesson video.' });
     }
     const sourceKey = cloudObjectKey(actor.licenseId, sourcePath);
+    if (isDailyVideoCloudPath(sourcePath) && (await dailyVideoLane(bucket, actor.licenseId, sourcePath)) !== 'approved') {
+      return json(409, { ok: false, error: 'That video is waiting for approval.' });
+    }
     const studentId = typeof body.studentId === 'string' ? body.studentId : '';
     const dateKey = typeof body.dateKey === 'string' && body.dateKey ? body.dateKey : sourcePath.split('/').at(-2) ?? '';
     const fileName = sourcePath.split('/').pop() ?? '';
     const targetPath = fromInstructorCloudPath(studentId, dateKey, fileName);
     const targetKey = sourceKey && targetPath ? cloudObjectKey(actor.licenseId, targetPath) : null;
     if (!sourceKey || !targetKey || !targetPath) return json(400, { ok: false, error: 'Choose one student and a real date.' });
-    const object = await bucket.get(sourceKey);
+    const object = await bucket.head(sourceKey);
     if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
-    const bytes = new Uint8Array(await new Response(object.body).arrayBuffer());
-    const room = await roomFor(bucket, targetKey, bytes.byteLength, cap);
+    const room = await roomFor(bucket, targetKey, object.size, cap);
     if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.bucketUsed, cap) });
-    await bucket.put(targetKey, bytes, { httpMetadata: { contentType: object.httpMetadata?.contentType || 'application/octet-stream' } });
+    const copied = await copyGymObject(bucket, sourceKey, targetKey, object.size, object.httpMetadata?.contentType || 'application/octet-stream');
+    if (!copied) return json(500, { ok: false, error: 'That did not send. Try again.' });
     return json(200, { ok: true, path: targetPath });
   }
 
@@ -922,6 +1163,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const folderRefused = await refuseFolderWrite(env, actor, key);
     if (folderRefused) return folderRefused;
     await bucket.resumeMultipartUpload(key, body.uploadId).abort();
+    await dropOrphanDailyMarker(bucket, actor.licenseId, key);
     return json(200, { ok: true });
   }
 
@@ -949,11 +1191,13 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const size = saved?.size ?? 0;
     if (size > maxUpload) {
       await bucket.delete(key);
+      await dropOrphanDailyMarker(bucket, actor.licenseId, key);
       return json(413, { ok: false, error: cloudTooLargeMessage(maxUpload) });
     }
     const bucketUsed = await bytesUnder(bucket, '');
     if (bucketUsed > cap) {
       await bucket.delete(key);
+      await dropOrphanDailyMarker(bucket, actor.licenseId, key);
       return json(409, { ok: false, error: cloudFullMessage(Math.max(0, bucketUsed - size), cap) });
     }
     return json(200, { ok: true });
@@ -1006,9 +1250,10 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
         path: galleryPath,
         uploadId: upload.uploadId,
         partSize: CLOUD_CHUNK_BYTES,
+        lane,
       });
     }
-    return json(200, { ok: true, mode: 'single', key: galleryKey, path: galleryPath });
+    return json(200, { ok: true, mode: 'single', key: galleryKey, path: galleryPath, lane });
   }
   if (purpose === 'instructor-video' || purpose === 'instructor-photo') {
     const kind = purpose === 'instructor-video' ? 'videos' : 'photos';
@@ -1057,14 +1302,36 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   const key = cloudObjectKey(actor.licenseId, relative.path);
   if (!key) return json(400, { ok: false, error: 'That file name cannot be saved.' });
   // A program director cannot see the folder, so never let a drop replace a coach's video.
-  if (dropOnly && purpose === 'daily-video' && (await bucket.head(key))) {
+  const dailyLane =
+    purpose === 'daily-video'
+      ? dailyVideoUploadLane({ kind: actor.kind, approvalRequired: await licenseGalleryApprovalRequired(env, actor.licenseId) })
+      : null;
+  // A pending upload must never replace a video that is already showing.
+  if ((dropOnly || dailyLane === 'pending') && purpose === 'daily-video' && (await bucket.head(key))) {
     return json(409, { ok: false, error: "A video with that name is already in today's videos. Rename it and send again." });
   }
   const room = await roomFor(bucket, key, size, cap);
   if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.bucketUsed, cap) });
+  if (dailyLane) {
+    const pendingMarker = dailyVideoMarkerKey(actor.licenseId, relative.path, 'pending');
+    const rejectedMarker = dailyVideoMarkerKey(actor.licenseId, relative.path, 'rejected');
+    if (!pendingMarker || !rejectedMarker) return json(400, { ok: false, error: 'That file name cannot be saved.' });
+    if (dailyLane === 'pending') {
+      // The marker is written before any bytes, so the video is hidden from its first byte.
+      await bucket.put(
+        pendingMarker,
+        new TextEncoder().encode(JSON.stringify({ lane: 'pending', seat: actor.seatId, at: stamp.toISOString() })),
+        { httpMetadata: { contentType: 'application/json' } },
+      );
+    } else {
+      // The owner (or a seat with approval off) re-sending a name is approved as sent.
+      await Promise.all([bucket.delete(pendingMarker), bucket.delete(rejectedMarker)]);
+    }
+  }
+  const laneField = dailyLane ? { lane: dailyLane } : {};
   const plan = size > CLOUD_CHUNK_BYTES ? 'multipart' : 'single';
   if (plan === 'single') {
-    return json(200, { ok: true, mode: 'single', key, path: relative.path });
+    return json(200, { ok: true, mode: 'single', key, path: relative.path, ...laneField });
   }
   const upload = await bucket.createMultipartUpload(key, { httpMetadata: { contentType: mime } });
   return json(200, {
@@ -1074,5 +1341,6 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     path: relative.path,
     uploadId: upload.uploadId,
     partSize: CLOUD_CHUNK_BYTES,
+    ...laneField,
   });
 }
