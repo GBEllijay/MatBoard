@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { signJson, verifyToken, type PrivateJwk, type PublicJwk } from '../lib/entitlementToken.ts';
+import { readSignedJson, signJson, verifyToken, type PrivateJwk, type PublicJwk } from '../lib/entitlementToken.ts';
 import { STUDENT_CLOUD_REFUSED, STUDENT_LICENSE_REVOKED_MESSAGE, studentCloudPathAllowed } from '../lib/studentLicensePool.ts';
 import { memoryEmailSender } from './emailSender.ts';
 import { handleGymCloud, type GymMediaBucket } from './gymCloud.ts';
@@ -522,4 +522,48 @@ test('restore of another purchase is unchanged, and a student pass cannot read c
     () => NOW,
   );
   assert.equal(plainRead.status, 200);
+});
+
+test('signed student-invite links claim Student Edition only, and a sixth issue is refused', async () => {
+  const pair = await keys();
+  const db = sqliteD1();
+  const gym = 'gym-license-signed';
+  const token = await ownerToken(pair.secret, gym);
+  const first = await issue(db, pair.secret, token);
+  assert.equal(first.status, 200);
+  assert.equal(first.body.left, 4);
+  const invite = (first.body as { invite?: string }).invite ?? '';
+  assert.match(invite, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  const payload = (await readSignedJson(invite, [{ kid: 'k1', jwk: pair.publicJwk }])) as {
+    typ?: string;
+    code?: string;
+    gym?: string;
+  };
+  assert.equal(payload?.typ, 'student-invite');
+  assert.equal(payload?.code, first.body.code);
+  assert.equal(payload?.gym, gym);
+
+  const claimed = await claim(db, pair.secret, invite, 'phone-signed', 'signed@gym.test');
+  assert.equal(claimed.status, 200, String(claimed.body.error));
+  const pass = await verifyToken(claimed.body.token ?? '', [{ kid: 'k1', jwk: pair.publicJwk }]);
+  assert.equal(pass?.tier, 'student');
+  assert.equal(pass?.grants.includes('student'), true);
+  assert.equal(pass?.grants.includes('pro'), false);
+  assert.equal(pass?.grants.includes('coach'), false);
+  assert.equal(claimed.body.gymId, gym);
+
+  const occupied = await db
+    .prepare(`SELECT COUNT(*) AS total FROM student_codes WHERE license_id = ? AND status IN ('issued', 'claimed')`)
+    .bind(gym)
+    .first<{ total: number }>();
+  assert.equal(Number(occupied?.total), 1);
+
+  for (let index = 0; index < 4; index += 1) {
+    const next = await issue(db, pair.secret, token);
+    assert.equal(next.status, 200, String(next.body.error));
+  }
+  const sixth = await issue(db, pair.secret, token);
+  assert.equal(sixth.status, 409);
+  assert.equal(sixth.body.left, 0);
+  assert.equal(sixth.body.error, 'No free Student licenses left.');
 });

@@ -20181,6 +20181,23 @@ a.plan-pick {
   min-height: 2.75rem;
 }
 
+.student-license__actions {
+  display: grid;
+  gap: 0.55rem;
+  width: min(22rem, 100%);
+}
+
+.student-license-claim__qr {
+  margin: 0.4rem 0 0.8rem;
+}
+
+.student-license-claim__qr img {
+  width: 240px;
+  height: 240px;
+  background: #fff;
+  border-radius: 12px;
+}
+
 .student-license-claim {
   padding: 1rem 0 2rem;
 }
