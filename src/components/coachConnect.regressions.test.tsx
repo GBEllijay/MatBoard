@@ -44,7 +44,11 @@ const INVITE = 'eyJhbGciOiJFUzI1NiJ9.eyJ0eXAiOiJjb2FjaC1jb25uZWN0In0.c2lnbmF0dXJ
 const NEW_INVITE = 'eyJhbGciOiJFUzI1NiJ9.eyJ0eXAiOiJjb2FjaC1jb25uZWN0IiwibmV3Ijp0cnVlfQ.bmV3c2ln';
 const calls: { url: string; body: Record<string, unknown>; auth: string | null }[] = [];
 function fakeFetch(reply: (body: Record<string, unknown>) => { status: number; body: unknown }) {
-  installGlobal('fetch', async (url: string, init: RequestInit) => {
+  installGlobal('fetch', async (url: string, init: RequestInit = {}) => {
+    if (url !== '/api/gym/coach-connect') {
+      // Cloud status and anything else the page asks: answer "off" so only the coach connect call decides.
+      return new Response(JSON.stringify({ ok: false }), { status: 404, headers: { 'content-type': 'application/json' } });
+    }
     const body = JSON.parse(String(init.body)) as Record<string, unknown>;
     const headers = new Headers(init.headers);
     calls.push({ url, body, auth: headers.get('authorization') });
@@ -104,8 +108,15 @@ test('with Advantage Cloud and no Drive folder the owner shows, keeps, and can r
   applyOwnerTestGrant({ grants: ['pro', 'coach', 'media', 'student', 'white'], expiresAt: '2099-01-01T00:00:00.000Z', tier: 'all' });
   localStorage.setItem(ENTITLEMENT_TOKEN_KEY, 'owner.token.value');
   assert.equal(localStorage.getItem(ACADEMY_BINDING_KEY), null);
-  fakeFetch(() => ({ status: 200, body: { ok: true, invite: INVITE, gym: 'gymowner01', gymName: 'Advantage BJJ' } }));
+  fakeFetch((body) =>
+    body.action === 'current'
+      ? { status: 404, body: { ok: false, reason: 'none' } }
+      : { status: 200, body: { ok: true, invite: INVITE, gym: 'gymowner01', gymName: 'Advantage BJJ' } },
+  );
   const page = mount(<CoachConnectQrPanel />, '/instructors');
+  await settle();
+  assert.equal(calls[0]?.body.action, 'current', 'looks for a code made on another device first');
+  calls.length = 0;
   assert.ok(buttons(page.host).includes(COACH_CONNECT_CREATE));
   await click(button(page.host, COACH_CONNECT_CREATE));
   assert.equal(calls[0]?.url, '/api/gym/coach-connect');
@@ -139,9 +150,14 @@ test('with Advantage Cloud and no Drive folder the owner shows, keeps, and can r
   assert.equal((again.host.querySelector('input[readonly]') as HTMLInputElement).value, coachConnectUrl(NEW_INVITE, 'https://advantagebjjtimer.com'));
   unmount(again);
 
-  fakeFetch(() => ({ status: 403, body: { ok: false, error: 'The coach connect QR needs Advantage Cloud on this gym.' } }));
+  fakeFetch((body) =>
+    body.action === 'current'
+      ? { status: 404, body: { ok: false, reason: 'none' } }
+      : { status: 403, body: { ok: false, error: 'The coach connect QR needs Advantage Cloud on this gym.' } },
+  );
   localStorage.removeItem(COACH_CONNECT_LINK_KEY);
   const refused = mount(<CoachConnectQrPanel />, '/instructors');
+  await settle();
   await click(button(refused.host, COACH_CONNECT_CREATE));
   assert.match(refused.host.textContent ?? '', /needs Advantage Cloud on this gym/);
   assert.equal(refused.host.querySelector('img'), null);
@@ -183,4 +199,97 @@ test('a replaced (rotated) coach link changes nothing on the phone', async () =>
   assert.equal(readAcademyLicense(localStorage), '');
   assert.equal(readMembership(localStorage).current, null);
   unmount(page);
+});
+
+/* ---------------- Instructor Edition › Connect to my academy (/coach-unlimited/academy) ---------------- */
+
+const { AcademyPathwayPanel } = await import('./AcademyPathwayPanel.tsx');
+const { acceptServerToken, discardEntitlementPass, setEntitlementConfigForTests } = await import('../lib/entitlement.ts');
+const { issueToken } = await import('../server/tokenIssue.ts');
+
+async function signInAsSeat(): Promise<void> {
+  const key = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const priv = (await crypto.subtle.exportKey('jwk', key.privateKey)) as { x: string; y: string; d: string };
+  const jwk = { kty: 'EC' as const, crv: 'P-256' as const, x: priv.x, y: priv.y };
+  setEntitlementConfigForTests({ keys: [{ kid: 'k1', jwk }], signing: true });
+  const token = await issueToken(JSON.stringify({ ...jwk, d: priv.d }), {
+    licenseId: 'gymowner01', grants: ['white', 'student', 'coach', 'pro'], tier: 'seat', src: 'seat', kind: 'seat',
+    deviceId: 'device-seat', now: new Date(), subs: { state: 'active', cloud: true }, gym: 'gymowner01', sid: 'seat-paige', preset: 'coach',
+  });
+  assert.ok(token);
+  assert.equal(await acceptServerToken(token as string), true);
+}
+
+test('the Instructor Edition Connect to my academy button routes to the panel that now carries the coach connect QR', () => {
+  const app = readFileSync('src/App.tsx', 'utf8');
+  assert.match(app, /path="\/coach-unlimited\/academy"[\s\S]{0,120}<PaidAcademyPathwayPage \/>/);
+  const hub = readFileSync('src/pages/CoachUnlimited.tsx', 'utf8');
+  assert.match(hub, /to="\/coach-unlimited\/academy"[\s\S]{0,60}Connect to my academy/);
+  assert.match(hub, /export function AcademyPathwayPage[\s\S]{0,400}<AcademyPathwayPanel \/>/);
+  const panel = readFileSync('src/components/AcademyPathwayPanel.tsx', 'utf8');
+  assert.match(panel, /<CoachConnectQrPanel hideWithoutCloud onCloud=\{setCoachCloud\} \/>/);
+});
+
+test('owner with Cloud and no folder: the coach connect QR leads, Replace is there, the Drive pathway is a secondary link', async () => {
+  localStorage.clear();
+  calls.length = 0;
+  applyOwnerTestGrant({ grants: ['pro', 'coach', 'media', 'student', 'white'], expiresAt: '2099-01-01T00:00:00.000Z', tier: 'all' });
+  localStorage.setItem(ENTITLEMENT_TOKEN_KEY, 'owner.token.value');
+  fakeFetch(() => ({ status: 200, body: { ok: true, invite: INVITE, gym: 'gymowner01', gymName: 'Advantage BJJ', owner: true } }));
+  const page = mount(<AcademyPathwayPanel />, '/coach-unlimited/academy');
+  await settle();
+  const text = page.host.textContent ?? '';
+  assert.equal(page.host.querySelectorAll('h2').length, 1);
+  assert.ok(page.host.querySelector('img[alt="Coach connect QR"]'));
+  assert.equal((page.host.querySelector('input[readonly]') as HTMLInputElement).value, coachConnectUrl(INVITE, 'https://advantagebjjtimer.com'));
+  assert.ok(buttons(page.host).includes('Copy coach connect link'));
+  assert.ok(buttons(page.host).includes(COACH_CONNECT_ROTATE));
+  assert.doesNotMatch(text, /none is connected/);
+  assert.match(text, /Prefer a Google Drive or OneDrive folder too\? Connect the folder/);
+  unmount(page);
+  clearOwnerTestGrant();
+});
+
+test('non-owner instructor seat: the same QR and Copy link, no Replace, no Show button', async () => {
+  localStorage.clear();
+  clearOwnerTestGrant();
+  calls.length = 0;
+  await signInAsSeat();
+  fakeFetch(() => ({ status: 200, body: { ok: true, invite: INVITE, gym: 'gymowner01', gymName: 'Advantage BJJ', owner: false } }));
+  const page = mount(<AcademyPathwayPanel />, '/coach-unlimited/academy');
+  await settle();
+  assert.equal(calls[0]?.body.action, 'current');
+  assert.equal(calls.some((call) => call.body.action === 'issue' || call.body.action === 'rotate'), false);
+  assert.ok(page.host.querySelector('img[alt="Coach connect QR"]'));
+  assert.equal((page.host.querySelector('input[readonly]') as HTMLInputElement).value, coachConnectUrl(INVITE, 'https://advantagebjjtimer.com'));
+  assert.ok(buttons(page.host).includes('Copy coach connect link'));
+  assert.equal(buttons(page.host).includes(COACH_CONNECT_ROTATE), false);
+  assert.equal(buttons(page.host).includes(COACH_CONNECT_CREATE), false);
+  assert.match(page.host.textContent ?? '', /until the owner replaces it/);
+  assert.match(page.host.textContent ?? '', /Advantage BJJ · Academy-wide/);
+  unmount(page);
+
+  // Owner has not shown it yet: the seat is told to ask, still no Show or Replace.
+  fakeFetch(() => ({ status: 404, body: { ok: false, reason: 'none', error: 'not yet' } }));
+  const waiting = mount(<AcademyPathwayPanel />, '/coach-unlimited/academy');
+  await settle();
+  assert.match(waiting.host.textContent ?? '', /has not shown the coach connect QR yet/);
+  assert.equal(buttons(waiting.host).includes(COACH_CONNECT_CREATE), false);
+  unmount(waiting);
+});
+
+test('academy without Cloud: no coach connect QR, the Drive folder pathway card stays as before', async () => {
+  localStorage.clear();
+  clearOwnerTestGrant();
+  await signInAsSeat();
+  fakeFetch(() => ({ status: 403, body: { ok: false, reason: 'no-cloud', error: 'needs Cloud' } }));
+  const page = mount(<AcademyPathwayPanel />, '/coach-unlimited/academy');
+  await settle();
+  assert.equal(page.host.querySelector('img[alt="Coach connect QR"]'), null);
+  assert.equal(page.host.querySelectorAll('h2').length, 1);
+  assert.match(page.host.textContent ?? '', /Send students a pathway into the academy folder/);
+  assert.match(page.host.textContent ?? '', /Connect the folder/);
+  unmount(page);
+  discardEntitlementPass();
+  setEntitlementConfigForTests(null);
 });

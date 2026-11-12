@@ -63,15 +63,35 @@ async function objectText(object: InboxObject): Promise<string> {
   return new Response(object.body).text();
 }
 
-async function readCurrentKey(bucket: InboxBucket, license: string): Promise<string | null> {
+async function readCurrent(bucket: InboxBucket, license: string): Promise<{ key: string; name: string } | null> {
   const stored = await bucket.get(coachConnectKeyPath(license));
   if (!stored) return null;
   try {
-    const row = JSON.parse(await objectText(stored)) as { key?: unknown };
-    return typeof row.key === 'string' && KEY_RE.test(row.key) ? row.key : null;
+    const row = JSON.parse(await objectText(stored)) as { key?: unknown; name?: unknown };
+    return typeof row.key === 'string' && KEY_RE.test(row.key) ? { key: row.key, name: clipName(row.name) } : null;
   } catch {
     return null;
   }
+}
+
+async function readCurrentKey(bucket: InboxBucket, license: string): Promise<string | null> {
+  return (await readCurrent(bucket, license))?.key ?? null;
+}
+
+/**
+ * An instructor seat on this gym, not locked, whose academy has Advantage Cloud.
+ * Seats only read the current code. They never make or replace it.
+ */
+export async function seatSeesCloudCode(
+  claims: EntitlementClaims | null,
+  db: D1Database | null,
+  now: Date,
+): Promise<boolean> {
+  if (!claims || (claims.src !== 'seat' && claims.tier !== 'seat')) return false;
+  if (claims.subs?.state === 'locked') return false;
+  if (typeof claims.gym !== 'string' || !LICENSE_RE.test(claims.gym)) return false;
+  if (claims.subs?.cloud === true) return true;
+  return db ? gymHasCloud(db, claims.gym, now) : false;
 }
 
 function newKey(): string {
@@ -133,11 +153,32 @@ export async function handleCoachConnect(
     return json(400, { ok: false, error: 'The request was not JSON.' });
   }
   const stamp = now();
-
-  if (body.action === 'issue' || body.action === 'rotate') {
+  const bearer = async () => {
     const auth = request.headers.get('authorization') ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : typeof body.token === 'string' ? body.token : '';
-    const claims = token ? await verifyToken(token, keys) : null;
+    return token ? verifyToken(token, keys) : null;
+  };
+
+  if (body.action === 'current') {
+    // Instructor Edition: a seat shows the same academy-wide code. Read only.
+    const claims = await bearer();
+    if (!claims) return json(401, { ok: false, error: 'This device needs to restore access.' });
+    const db = env.ENTITLEMENTS_DB ?? null;
+    const isSeat = claims.src === 'seat' || claims.tier === 'seat';
+    const license = isSeat ? claims.gym ?? '' : claims.sub;
+    const allowed = isSeat ? await seatSeesCloudCode(claims, db, stamp) : await ownerHasCloud(claims, db, stamp);
+    if (!allowed) return json(403, { ok: false, reason: 'no-cloud', error: 'The coach connect QR needs Advantage Cloud on this gym.' });
+    const current = await readCurrent(bucket, license);
+    if (!current) {
+      return json(404, { ok: false, reason: 'none', error: 'The gym owner has not shown the coach connect QR yet.' });
+    }
+    const claim: CoachConnectClaim = { typ: 'coach-connect', v: 1, gym: license, name: current.name, key: current.key };
+    const invite = await signJson(material.kid, claim, material.privateJwk);
+    return json(200, { ok: true, invite, gym: license, gymName: current.name, owner: !isSeat });
+  }
+
+  if (body.action === 'issue' || body.action === 'rotate') {
+    const claims = await bearer();
     if (!claims) return json(401, { ok: false, error: 'This device needs to restore access.' });
     if (claims.src === 'seat' || claims.tier === 'seat') {
       return json(403, { ok: false, error: 'Only the gym owner can make a coach connect QR.' });
@@ -146,15 +187,18 @@ export async function handleCoachConnect(
       return json(403, { ok: false, error: 'The coach connect QR needs Advantage Cloud on this gym.' });
     }
     // Issue shows the gym's one current code (made on first use). Rotate retires it.
-    let key = body.action === 'rotate' ? null : await readCurrentKey(bucket, claims.sub);
+    const before = await readCurrent(bucket, claims.sub);
+    const name = clipName(body.gymName) || before?.name || '';
+    let key = body.action === 'rotate' ? null : before?.key ?? null;
     const rotated = !key;
-    if (!key) {
-      key = newKey();
-      await bucket.put(coachConnectKeyPath(claims.sub), JSON.stringify({ key, at: stamp.getTime() }), {
+    if (!key) key = newKey();
+    if (rotated || name !== before?.name) {
+      // The name rides along so instructor seats show the same code and gym name.
+      await bucket.put(coachConnectKeyPath(claims.sub), JSON.stringify({ key, name, at: stamp.getTime() }), {
         httpMetadata: { contentType: 'application/json' },
       });
     }
-    const claim: CoachConnectClaim = { typ: 'coach-connect', v: 1, gym: claims.sub, name: clipName(body.gymName), key };
+    const claim: CoachConnectClaim = { typ: 'coach-connect', v: 1, gym: claims.sub, name, key };
     const invite = await signJson(material.kid, claim, material.privateJwk);
     return json(200, { ok: true, invite, gym: claim.gym, gymName: claim.name, rotated });
   }

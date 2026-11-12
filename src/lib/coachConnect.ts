@@ -132,3 +132,38 @@ export async function acceptCoachConnect(
     return { ok: false, error: 'Could not reach Advantage Cloud. Try again when you are online.' };
   }
 }
+
+export type CurrentCoachConnect =
+  | { ok: true; saved: SavedCoachConnect }
+  | { ok: false; reason: 'none' | 'no-cloud' | 'signed-out' | 'error'; error: string };
+
+/**
+ * Instructor Edition: the academy's current coach connect link, read only.
+ * A seat never makes or replaces it. 'none' means the owner has not shown it yet.
+ */
+export async function fetchCurrentCoachConnect(
+  input: { origin: string },
+  options: { fetchImpl?: typeof fetch; storage?: Pick<Store, 'getItem'>; token?: string } = {},
+): Promise<CurrentCoachConnect> {
+  const token = options.token ?? readStoredEntitlementToken(options.storage ?? localStorage);
+  if (!token) return { ok: false, reason: 'signed-out', error: 'Restore access on this device first.' };
+  try {
+    const { status, body } = await postJson({ action: 'current' }, options.fetchImpl ?? fetch, token);
+    if (status === 200 && body.ok === true && typeof body.invite === 'string') {
+      return {
+        ok: true,
+        saved: {
+          link: coachConnectUrl(body.invite, input.origin),
+          gymName: typeof body.gymName === 'string' ? body.gymName : '',
+          savedAt: Date.now(),
+        },
+      };
+    }
+    const error = typeof body.error === 'string' ? body.error : 'Could not load the coach connect QR.';
+    if (body.reason === 'none') return { ok: false, reason: 'none', error };
+    if (body.reason === 'no-cloud' || status === 403) return { ok: false, reason: 'no-cloud', error };
+    return { ok: false, reason: 'error', error };
+  } catch {
+    return { ok: false, reason: 'error', error: 'Could not reach Advantage Cloud.' };
+  }
+}

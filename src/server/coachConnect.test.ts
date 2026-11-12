@@ -214,3 +214,47 @@ test('her card reaches the owner on Cloud; assessment and promotion come back; c
     'coach-rank-update:promo-paige',
   ]);
 });
+
+test('Instructor Edition: a seat on this gym reads the same academy-wide code, never makes or replaces it', async () => {
+  sharedBucket = memoryBucket();
+  const bucket = sharedBucket as ReturnType<typeof memoryBucket>;
+  const secret = await secretKey();
+  const owner = await pass(secret, { tier: 'pro', src: 'code', kind: 'pro' });
+  const seatCloud = await pass(secret, {
+    tier: 'seat', src: 'seat', kind: 'seat', preset: 'coach', gym: LICENSE, sid: 'seat-paige', subs: { state: 'active', cloud: true },
+  });
+  const seatNoCloud = await pass(secret, { tier: 'seat', src: 'seat', kind: 'seat', preset: 'coach', gym: LICENSE, sid: 'seat-x' });
+  const lockedSeat = await pass(secret, {
+    tier: 'seat', src: 'seat', kind: 'seat', preset: 'coach', gym: LICENSE, sid: 'seat-y', subs: { state: 'locked', cloud: true },
+  });
+  const keyOf = (invite: string) => JSON.parse(Buffer.from(invite.split('.')[1], 'base64url').toString()).key as string;
+
+  const before = await connect(secret, { action: 'current' }, seatCloud);
+  assert.equal(before.status, 404, 'nothing until the owner shows it');
+  assert.equal(((await before.json()) as { reason: string }).reason, 'none');
+  assert.equal(bucket.objects.size, 0, 'a seat read made no code');
+
+  const ownerInvite = ((await (await connect(secret, { action: 'issue', gymName: 'Advantage BJJ' }, owner)).json()) as { invite: string }).invite;
+  const seatRead = await connect(secret, { action: 'current', gymName: 'Wrong Name' }, seatCloud);
+  assert.equal(seatRead.status, 200);
+  const seatBody = (await seatRead.json()) as { invite: string; gymName: string; owner: boolean };
+  assert.equal(keyOf(seatBody.invite), keyOf(ownerInvite), 'same code as Binders');
+  assert.equal(seatBody.gymName, 'Advantage BJJ', 'owner-set gym name');
+  assert.equal(seatBody.owner, false);
+  assert.equal((await connect(secret, { action: 'accept', invite: seatBody.invite })).status, 200);
+
+  assert.equal((await connect(secret, { action: 'current' }, seatNoCloud)).status, 403, 'academy without Cloud');
+  assert.equal((await connect(secret, { action: 'current' }, lockedSeat)).status, 403);
+  assert.equal((await connect(secret, { action: 'rotate' }, seatCloud)).status, 403, 'seat cannot replace');
+  assert.equal((await connect(secret, { action: 'issue' }, seatCloud)).status, 403, 'seat cannot make');
+  const ownerCurrent = (await (await connect(secret, { action: 'current' }, owner)).json()) as { invite: string; owner: boolean };
+  assert.equal(keyOf(ownerCurrent.invite), keyOf(ownerInvite));
+  assert.equal(ownerCurrent.owner, true);
+
+  // After the owner replaces it, the seat shows the new code and the old one is refused.
+  const rotated = ((await (await connect(secret, { action: 'rotate' }, owner)).json()) as { invite: string }).invite;
+  const seatAfter = (await (await connect(secret, { action: 'current' }, seatCloud)).json()) as { invite: string; gymName: string };
+  assert.equal(keyOf(seatAfter.invite), keyOf(rotated));
+  assert.equal(seatAfter.gymName, 'Advantage BJJ', 'name kept across Replace');
+  assert.equal((await connect(secret, { action: 'accept', invite: seatBody.invite })).status, 400);
+});
