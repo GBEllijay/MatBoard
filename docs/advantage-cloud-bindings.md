@@ -15,7 +15,7 @@ Do not create a second D1 database. Seats and licenses already use `advantage-en
 
 Daily videos and lesson-plan media upload through `/api/gym/cloud`. The browser does not get a public bucket URL. Set these Pages variables if you want a cap other than the default:
 
-- `GYM_MEDIA_CAP_BYTES` — total bytes in the bucket before an upload is refused. Default `8000000000` (8 GB).
+- `GYM_MEDIA_LICENSE_CAP_BYTES` — bytes one license (gym) may store under `groups/{licenseId}/` before an upload is refused. Default `100000000000` (100 GB). The owner sees a warning to delete old videos at half the cap, 50 GB by default. The old bucket-wide `GYM_MEDIA_CAP_BYTES` is no longer read.
 - `GYM_MEDIA_MAX_UPLOAD_BYTES` — largest one file. Default `512000000` (512 MB).
 
 Videos larger than 8 MB are sent in parts. Each part except the last is 8 MB.

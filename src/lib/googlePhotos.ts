@@ -23,8 +23,14 @@ export const PHOTOS_SCOPES = 'https://www.googleapis.com/auth/photospicker.media
 
 export const PHOTOS_LIBRARY_ID = 'library';
 export const PHOTOS_LIBRARY_NAME = 'Google Photos';
-/** Google’s picker accepts at most 2000. Keep a batch this phone can store. */
-export const PHOTOS_PICK_MAX = '50';
+/**
+ * Google's Picker API maximum per session (PickingConfig.maxItemCount; higher
+ * values are coerced to 2000). Media Console opens, saves, and queues picks a
+ * few at a time, so a big pick never sits in memory at once.
+ */
+export const PHOTOS_PICK_MAX = '2000';
+/** mediaItems.list returns at most 100 per page. */
+export const PHOTOS_LIST_PAGE_SIZE = 100;
 
 export const PHOTOS_SETUP_NEEDED =
   'Google Photos is not available on this build yet — contact Advantage.';
@@ -32,11 +38,11 @@ export const PHOTOS_SIGN_IN_FAILED =
   'Google did not finish sign-in. Try again, or ask whoever set up Advantage to allow this website.';
 export const PHOTOS_SIGN_IN_AGAIN = 'Sign in to Google Photos again to pick those files.';
 export const PHOTOS_CHOOSE_LIBRARY =
-  'Confirm this Google Photos library. Pick albums and photos from Media Console. Search for a collection there. Advantage does not host the files.';
+  'Confirm this Google Photos library. Pick albums and photos from Media Console. Search for a collection there. Gallery picks upload to this gym\'s Advantage Cloud when Cloud is on. Without it, Advantage does not host the files.';
 export const PHOTOS_LESSON_STAYS =
   'Lesson plans stay in the gym Google Drive or OneDrive folder. Google Photos is for picking photos and videos the gym already owns.';
 export const PHOTOS_CONNECTED =
-  'This Google Photos library is connected. In Media Console, Pick from Google Photos opens it. Search for an album or collection there. Advantage does not host the photos or videos.';
+  'This Google Photos library is connected. In Media Console, Pick from Google Photos opens it. Search for an album or collection there. Gallery picks upload to this gym\'s Advantage Cloud when Cloud is on. Without it, Advantage does not host the photos or videos.';
 export const PHOTOS_PICK_LABEL = 'Pick from Google Photos';
 export const PHOTOS_WITH_DRIVE_STAY =
   'Pick from gallery is this phone. Pick from Google Photos uses the connected library, including albums. Google Drive is an additional source. Advantage does not host those files.';
@@ -500,8 +506,9 @@ export async function listPickedPhotos(
 ): Promise<PhotosPickedItem[]> {
   const items: PhotosPickedItem[] = [];
   let pageToken = '';
-  for (let page = 0; page < 3; page += 1) {
-    const params = new URLSearchParams({ sessionId, pageSize: '100' });
+  const pages = Math.ceil(Number(PHOTOS_PICK_MAX) / PHOTOS_LIST_PAGE_SIZE);
+  for (let page = 0; page < pages; page += 1) {
+    const params = new URLSearchParams({ sessionId, pageSize: String(PHOTOS_LIST_PAGE_SIZE) });
     if (pageToken) params.set('pageToken', pageToken);
     const data = await photosJson<{ mediaItems?: unknown; nextPageToken?: string }>(
       token,

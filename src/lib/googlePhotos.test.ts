@@ -27,7 +27,7 @@ import {
 test('Google Photos uses the Picker scope and does not request the removed Library scope', () => {
   assert.equal(PHOTOS_SCOPES, 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly');
   assert.doesNotMatch(PHOTOS_SCOPES, /photoslibrary/);
-  assert.equal(PHOTOS_PICK_MAX, '50');
+  assert.equal(PHOTOS_PICK_MAX, '2000');
   assert.equal(PHOTOS_LIBRARY_ID, 'library');
   assert.match(PHOTOS_CHOOSE_LIBRARY, /Media Console/);
   assert.match(PHOTOS_CHOOSE_LIBRARY, /does not host/);
@@ -114,7 +114,7 @@ test('picker session create, list, and download call the Photos Picker API', asy
     });
     if (url.endsWith('/v1/sessions') && init?.method === 'POST') {
       const body = JSON.parse(String(init.body)) as { pickingConfig?: { maxItemCount?: string } };
-      assert.equal(body.pickingConfig?.maxItemCount, '50');
+      assert.equal(body.pickingConfig?.maxItemCount, '2000');
       return Response.json({
         id: 'sess-1',
         pickerUri: 'https://photos.google.com/picker/session/sess-1',

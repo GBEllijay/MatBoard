@@ -10,10 +10,10 @@ pages_build_output_dir = "dist"
 binding = "GYM_MEDIA"
 bucket_name = "advantage-gym-media"
 
-# Optional. Total bytes in the bucket before an upload is refused.
-# Default 8000000000 (8 GB), under the 10 GB R2 free tier.
+# Optional. Bytes one gym (license) may store before an upload is refused.
+# Default 100000000000 (100 GB) per license.
 # [vars]
-# GYM_MEDIA_CAP_BYTES = "8000000000"
+# GYM_MEDIA_LICENSE_CAP_BYTES = "100000000000"  # per gym (license); soft warning at 50 GB
 # Largest one file, in bytes. Default 512000000.
 # GYM_MEDIA_MAX_UPLOAD_BYTES = "512000000"
 
