@@ -235,7 +235,10 @@ export function demoStudentPacket(): string {
     },
     2,
   );
-  return exportProgressPacket(withCard);
+  // A fixed id: the demo file is rebuilt on every read until something is saved,
+  // so a random id made a tapped demo card open as "not on this device".
+  const stable = { ...withCard, journal: withCard.journal.map((entry, index) => ({ ...entry, id: `card.demo.${index + 1}` })) };
+  return exportProgressPacket(stable);
 }
 
 export function blankStudentReport(now = Date.now()): StudentProgressReport {

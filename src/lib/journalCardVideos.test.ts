@@ -170,3 +170,13 @@ test('row labels name the term and where the video lives', async () => {
   assert.equal(cardVideoLabel({ ...base, id: 'a', source: 'link', url: 'https://www.youtube.com/watch?v=1' }), 'Kimura · Link · youtube.com');
   assert.equal(cardVideoLabel({ ...base, id: 'b', source: 'phone', fileName: 'k.mp4' }), 'Kimura · On this phone · k.mp4');
 });
+
+test('the public demo journal card keeps the same id on every read, so it opens', async () => {
+  const { demoStudentPacket } = await import('./studentEdition.ts');
+  const first = parseProgressPacket(demoStudentPacket());
+  const second = parseProgressPacket(demoStudentPacket());
+  assert.ok(first.ok && second.ok);
+  if (!first.ok || !second.ok || first.value.kind !== 'student-progress-report' || second.value.kind !== 'student-progress-report') return;
+  assert.equal(first.value.journal[0].id, 'card.demo.1');
+  assert.equal(second.value.journal[0].id, first.value.journal[0].id);
+});
