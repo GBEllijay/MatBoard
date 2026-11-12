@@ -53,8 +53,8 @@ class MemoryBucket implements GymMediaBucket {
     const bytes = value instanceof Uint8Array ? new Uint8Array(value) : new Uint8Array(value);
     this.objects.set(key, { bytes, type: options?.httpMetadata?.contentType || 'application/octet-stream' });
   }
-  async delete(key: string) {
-    this.objects.delete(key);
+  async delete(keys: string | string[]) {
+    for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key);
   }
   async list(options?: { prefix?: string }) {
     const prefix = options?.prefix ?? '';

@@ -20216,5 +20216,14 @@ a.plan-pick {
 .cloud-gallery__player { position: fixed; inset: 0; z-index: 80; background: #000; color: #fff; display: grid; grid-template-rows: 1fr auto; place-items: center; }
 .cloud-gallery__player img, .cloud-gallery__player video { max-width: 100vw; max-height: calc(100vh - 72px); object-fit: contain; }
 .cloud-gallery__controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; padding: 12px; }
+
+.cloud-gallery__tile { display: grid; gap: 4px; }
+.cloud-gallery__delete { justify-self: stretch; font-size: 0.8rem; }
+.cloud-cleanup { margin: 12px 0; display: grid; gap: 8px; }
+.cloud-cleanup__hint { margin: 0; opacity: 0.85; font-size: 0.9rem; }
+.cloud-cleanup__days { display: flex; gap: 8px; align-items: center; }
+.cloud-cleanup__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.9rem; }
+.cloud-delete-confirm { display: grid; gap: 8px; padding: 12px; border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 10px; background: #fffdf7; }
+.cloud-delete-confirm__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .saver-cloud-copy { margin: 8px 0; font-size: 0.9rem; }
 .saver-cloud-copy--error { color: #b42318; font-weight: 600; }
