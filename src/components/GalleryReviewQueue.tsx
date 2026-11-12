@@ -12,18 +12,21 @@ import {
   setClassPhotoLane,
   type ClassPhotoPromotionItem,
 } from '../lib/classPhotoPromotions';
-import { decideCloudGallery, listCloudGallery, type CloudGalleryFile } from '../lib/galleryCloud';
+import { advantageCloudLaneStore } from '../lib/advantageCloudLanes';
+import type { ApprovalItem } from '../lib/approvalLanes';
 import { publishGymFile } from '../lib/gymPublish';
 import { addFolderFiles } from '../lib/photoStore';
 
 /**
- * Pending class photos and short clips. Approve and Reject are absent
- * unless the owner, or a person the owner named, is looking.
+ * Pending class photos, short clips, and Advantage Cloud daily videos.
+ * Approve and Reject are absent unless the owner, or a person the owner
+ * named (Cloud: an Instructors seat), is looking.
  */
 export function GalleryReviewQueue() {
   const seat = useCurrentSeat();
   const [rows, setRows] = useState<ClassPhotoPromotionItem[]>([]);
-  const [cloudRows, setCloudRows] = useState<CloudGalleryFile[]>([]);
+  const [cloudRows, setCloudRows] = useState<ApprovalItem[]>([]);
+  const [preview, setPreview] = useState<{ path: string; url: string; kind: 'photo' | 'video' } | null>(null);
   const [note, setNote] = useState('');
   const settings = readGalleryApprovalHere(typeof localStorage === 'undefined' ? null : localStorage);
   const allowed = canApproveGallery({
@@ -37,7 +40,10 @@ export function GalleryReviewQueue() {
     void listPendingClassPhotos()
       .then((items) => setRows(items.filter((item) => classPhotoLane(item) === 'pending')))
       .catch(() => setRows([]));
-    void listCloudGallery({ lane: 'pending' }).then((files) => setCloudRows(files ?? []));
+    void advantageCloudLaneStore()
+      .list({ lane: 'pending' })
+      .then((items) => setCloudRows(items ?? []))
+      .catch(() => setCloudRows([]));
   };
 
   useEffect(() => {
@@ -47,18 +53,36 @@ export function GalleryReviewQueue() {
     return () => window.removeEventListener(CLOUD_MEDIA_EVENT, onCloud);
   }, []);
 
-  const decideCloud = async (file: CloudGalleryFile, action: 'gallery-approve' | 'gallery-reject') => {
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview.url);
+    };
+  }, [preview]);
+
+  const decideCloud = async (item: ApprovalItem, decision: 'approve' | 'reject') => {
     if (!cloudAllowed) return;
-    const result = await decideCloudGallery({ path: file.path, action });
+    const result = await advantageCloudLaneStore().decide(item, decision);
     setNote(
       result.ok
-        ? action === 'gallery-approve'
-          ? 'Approved. It is in the gallery on Advantage Cloud.'
+        ? decision === 'approve'
+          ? item.source === 'daily-video'
+            ? "Approved. It shows in today's videos and the Advantage Cloud gallery."
+            : 'Approved. It is in the gallery on Advantage Cloud.'
           : 'Rejected. It will not play.'
         : result.message,
     );
     if (result.ok) notifyCloudMedia();
+    if (preview?.path === item.path) setPreview(null);
     reload();
+  };
+
+  const showPreview = async (item: ApprovalItem) => {
+    const blob = await advantageCloudLaneStore().open(item);
+    if (!blob) {
+      setNote('That file could not be opened from Advantage Cloud.');
+      return;
+    }
+    setPreview({ path: item.path, url: URL.createObjectURL(blob), kind: item.kind });
   };
 
   const showLocal = settings.required && rows.length > 0;
@@ -90,18 +114,22 @@ export function GalleryReviewQueue() {
       <h2>Gallery</h2>
       <p role="status">{APPROVAL_WAITING}</p>
       {cloudRows.length ? (
-        <ul aria-label="Advantage Cloud photos waiting for approval">
+        <ul aria-label="Advantage Cloud photos and videos waiting for approval">
           {cloudRows.map((file) => (
-            <li key={file.path} data-cloud-pending={file.path}>
+            <li key={`${file.source}:${file.path}`} data-cloud-pending={file.path} data-cloud-source={file.source}>
               <span>
-                {file.dateKey} · {file.name} · Pending
+                {file.dateKey} · {file.source === 'daily-video' ? 'Daily video' : file.kind === 'video' ? 'Gallery clip' : 'Gallery photo'} ·{' '}
+                {file.name} · Pending
               </span>
               {cloudAllowed ? (
                 <>
-                  <button type="button" onClick={() => void decideCloud(file, 'gallery-approve')}>
+                  <button type="button" onClick={() => void showPreview(file)}>
+                    Preview
+                  </button>
+                  <button type="button" onClick={() => void decideCloud(file, 'approve')}>
                     Approve
                   </button>
-                  <button type="button" onClick={() => void decideCloud(file, 'gallery-reject')}>
+                  <button type="button" onClick={() => void decideCloud(file, 'reject')}>
                     Reject
                   </button>
                 </>
@@ -130,6 +158,18 @@ export function GalleryReviewQueue() {
             </li>
           ))}
         </ul>
+      ) : null}
+      {preview ? (
+        <div className="gallery-review__preview" data-cloud-preview={preview.path}>
+          {preview.kind === 'photo' ? (
+            <img src={preview.url} alt="Waiting for approval" style={{ maxWidth: '100%' }} />
+          ) : (
+            <video src={preview.url} controls playsInline style={{ maxWidth: '100%' }} />
+          )}
+          <button type="button" className="btn btn--ghost" onClick={() => setPreview(null)}>
+            Close preview
+          </button>
+        </div>
       ) : null}
       {note ? <p role="status">{note}</p> : null}
     </section>

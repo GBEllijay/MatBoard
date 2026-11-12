@@ -4,6 +4,7 @@
  * Google Drive, OneDrive, and this phone stay the default until a coach picks Cloud.
  */
 
+import { canDecideApproval, uploadLaneFor, type ApprovalLane } from './approvalLanes.ts';
 import { cloudPathScope } from './cloudDataOwnership.ts';
 import { lessonMediaPath, lessonWeekId, routeUpload, isCalendarDateKey, safePathSegment, type GymActor } from './gymTree.ts';
 
@@ -28,6 +29,8 @@ export const CLOUD_CHUNK_BYTES = 8 * 1024 * 1024;
 export const CLOUD_SIGN_IN_MESSAGE = 'Sign in on this device to use Advantage Cloud.';
 export const CLOUD_ROLE_MESSAGE = 'Assistant coaches can play and download these files. A coach uploads them.';
 export const CLOUD_SAVED_MESSAGE = 'Saved to Advantage Cloud. This phone keeps a copy.';
+export const CLOUD_SENT_FOR_APPROVAL =
+  'Sent to Advantage Cloud for approval. It shows after the owner or an Instructors seat approves it in Review Inbox.';
 export const CLOUD_DAILY_DROP_ONLY =
   "A program director can send videos to today's daily videos. Lesson plans and other Cloud files stay with the coaches.";
 export const CLOUD_UNAVAILABLE_MESSAGE = 'Advantage Cloud is not on this license.';
@@ -306,8 +309,51 @@ export function galleryUploadLane(input: {
 
 /** Owner, or an Instructors seat. A coach cannot approve their own upload. */
 export function galleryDecisionAllowed(input: { kind: 'owner' | 'seat'; preset?: string | null }): boolean {
-  if (input.kind === 'owner') return true;
-  return input.preset === 'instructors';
+  return canDecideApproval(input);
+}
+
+/**
+ * Daily videos use the same rule as class photos: the owner is approved, and
+ * a seat that may upload daily videos (Coach, Instructors, program director)
+ * lands in pending while the license approval switch is on.
+ */
+export function dailyVideoUploadLane(input: { kind: 'owner' | 'seat'; approvalRequired?: boolean }): 'pending' | 'approved' {
+  return uploadLaneFor(input);
+}
+
+const DAILY_MARKER = /^pending\/daily\/(pending|rejected)\/(\d{4}-\d{2}-\d{2})\/([A-Za-z0-9._-]{1,80})$/;
+
+/**
+ * Decision marker beside a daily video. The video bytes never move:
+ * `videos/daily/{date}/{file}` stays the one copy. A pending or rejected
+ * marker hides it; no marker (every video uploaded before lanes) is approved.
+ * Built only by the server. `cloudObjectKey` refuses these paths, so a
+ * browser cannot write or delete a marker through op=put.
+ */
+export function dailyVideoMarkerPath(videoPath: string, lane: 'pending' | 'rejected'): string | null {
+  if (!DAILY_KEY.test(videoPath)) return null;
+  const [, , dateKey, name] = videoPath.split('/');
+  if (!dateKey || !name) return null;
+  const path = `pending/daily/${lane}/${dateKey}/${name}`;
+  return DAILY_MARKER.test(path) ? path : null;
+}
+
+export function parseDailyVideoMarkerPath(
+  path: string,
+): { lane: 'pending' | 'rejected'; dateKey: string; name: string; videoPath: string } | null {
+  const match = DAILY_MARKER.exec(path);
+  if (!match) return null;
+  const lane = match[1] === 'rejected' ? 'rejected' : 'pending';
+  const videoPath = `videos/daily/${match[2]}/${match[3]}`;
+  if (!DAILY_KEY.test(videoPath)) return null;
+  return { lane, dateKey: match[2], name: match[3], videoPath };
+}
+
+/** `groups/{license}/pending/daily/...` for a marker. Null for anything else. */
+export function dailyVideoMarkerKey(licenseId: string, videoPath: string, lane: 'pending' | 'rejected'): string | null {
+  if (!LICENSE_ID.test(licenseId)) return null;
+  const path = dailyVideoMarkerPath(videoPath, lane);
+  return path ? `groups/${licenseId}/${path}` : null;
 }
 
 export function galleryCloudPath(lane: GalleryCloudLane, dateKey: string, fileName: string): string | null {
@@ -509,6 +555,8 @@ export type CloudFileRow = {
   path: string;
   size: number;
   mime: string;
+  /** Daily videos and gallery items. Missing means approved (older servers). */
+  lane?: ApprovalLane;
 };
 
 export type CloudHomeView =
@@ -654,7 +702,7 @@ export type CloudStatusBody = {
   replayUpload?: ReplayCloudUpload;
 };
 
-export type CloudUploadResult = { ok: true; path: string } | { ok: false; message: string };
+export type CloudUploadResult = { ok: true; path: string; lane?: 'pending' | 'approved' } | { ok: false; message: string };
 
 type CloudFetcher = typeof fetch;
 
@@ -712,8 +760,11 @@ export async function uploadAdvantageCloudFile(input: {
     path?: string;
     uploadId?: string;
     partSize?: number;
+    lane?: string;
   };
   if (!opened.key || !opened.path) return { ok: false, message: 'Advantage Cloud could not take that file.' };
+  const lane: { lane?: 'pending' | 'approved' } =
+    opened.lane === 'pending' || opened.lane === 'approved' ? { lane: opened.lane } : {};
   if (opened.mode === 'multipart') {
     const partSize = opened.partSize && opened.partSize > 0 ? opened.partSize : CLOUD_CHUNK_BYTES;
     const parts: { partNumber: number; etag: string }[] = [];
@@ -746,7 +797,7 @@ export async function uploadAdvantageCloudFile(input: {
     });
     if (!done.ok) return { ok: false, message: await readError(done, 'Advantage Cloud could not finish that file.') };
     notifyCloudMedia();
-    return { ok: true, path: opened.path };
+    return { ok: true, path: opened.path, ...lane };
   }
   const put = await fetcher(cloudUrl(`/api/gym/cloud?op=put&key=${encodeURIComponent(opened.key)}`), {
     method: 'PUT',
@@ -756,7 +807,7 @@ export async function uploadAdvantageCloudFile(input: {
   if (!put.ok) return { ok: false, message: await readError(put, 'Advantage Cloud could not take that file.') };
   input.onProgress?.(input.file.size, input.file.size);
   notifyCloudMedia();
-  return { ok: true, path: opened.path };
+  return { ok: true, path: opened.path, ...lane };
 }
 
 let lessonTimer: ReturnType<typeof setTimeout> | null = null;

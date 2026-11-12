@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   CLOUD_MEDIA_EVENT,
   CLOUD_SAVED_MESSAGE,
+  CLOUD_SENT_FOR_APPROVAL,
   cloudUsageLine,
   notifyCloudMedia,
   readCloudBearer,
@@ -91,7 +92,9 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
         }
         setStatus(body);
         setCloudUploadReady(Boolean(body.canUpload));
-        const listed = await fetch(`/api/gym/cloud?op=list&purpose=${purpose}&date=${encodeURIComponent(dateKey)}`, { headers });
+        // Approvers also get pending and rejected daily videos, tagged with their lane.
+        const lanes = purpose === 'daily-video' ? '&lanes=all' : '';
+        const listed = await fetch(`/api/gym/cloud?op=list&purpose=${purpose}&date=${encodeURIComponent(dateKey)}${lanes}`, { headers });
         const listBody = await readJson<{ files?: CloudFileRow[] }>(listed);
         if (!cancelled) setFiles(listed.ok && listBody?.files ? listBody.files : []);
       } catch {
@@ -193,7 +196,7 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
         break;
       }
       cloudWrote = true;
-      notes.push(CLOUD_SAVED_MESSAGE);
+      notes.push(result.lane === 'pending' ? CLOUD_SENT_FOR_APPROVAL : CLOUD_SAVED_MESSAGE);
     }
     setBusy(false);
     setNote(notes.join(' ') || (cloudWrote ? CLOUD_SAVED_MESSAGE : 'Could not read Cloud usage.'));
@@ -312,8 +315,11 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
       {files.length ? (
         <ul className="cloud-media__files">
           {files.map((file) => (
-            <li key={file.path} className="cloud-media__file" data-cloud-file={file.path}>
-              <span>{file.name}</span>
+            <li key={file.path} className="cloud-media__file" data-cloud-file={file.path} data-cloud-lane={file.lane ?? 'approved'}>
+              <span>
+                {file.name}
+                {file.lane === 'pending' ? ' · Waiting for approval' : file.lane === 'rejected' ? ' · Rejected' : ''}
+              </span>
               {file.mime.startsWith('image/') || file.mime.startsWith('video/') || file.mime === 'application/octet-stream' ? (
                 <button type="button" className="btn" onClick={() => void play(file)}>
                   Play
@@ -322,7 +328,7 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
               <button type="button" className="btn btn--ghost" onClick={() => void download(file)}>
                 Download
               </button>
-              {canUpload && (file.mime.startsWith('video/') || file.mime === 'application/octet-stream') ? (
+              {canUpload && (file.lane ?? 'approved') === 'approved' && (file.mime.startsWith('video/') || file.mime === 'application/octet-stream') ? (
                 <button type="button" className="btn" disabled={busy} onClick={() => void sendToStudent(file)}>
                   Send to student
                 </button>
