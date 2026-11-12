@@ -41,7 +41,7 @@ import { isProgramDirectorSeat, seatPermissionAllows } from '../lib/instructorSe
 import { APPROVAL_WAITING } from '../lib/galleryApproval';
 import { readGalleryApprovalHere } from '../lib/galleryApprovalDefault';
 import { addClassPhotoPromotionFiles } from '../lib/classPhotoPromotions';
-import { gymActorForCloud, loadAdvantageCloudHome } from '../lib/advantageCloudMedia';
+import { advantageCloudReady, gymActorForCloud, loadAdvantageCloudHome } from '../lib/advantageCloudMedia';
 import { CAMERA_PARAM, cameraDailyVideosAllowed, cameraModeRequested, cameraPhotoAllowed } from '../lib/pdCamera';
 import { readOneDriveBinding, readOneDriveSession } from '../lib/oneDrive';
 import {
@@ -64,6 +64,7 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import {
   PICK_FROM_DRIVE_LABEL,
+  chunkDriveImport,
   driveImportChunkSize,
   driveImportOutcomeNote,
   driveImportProgressLabel,
@@ -76,6 +77,11 @@ import {
 import { formatMss, secondsToMs } from '../lib/format';
 import { publishGymFile } from '../lib/gymPublish';
 import { cloudCopyLine, copyFilesToCloudGallery } from '../lib/galleryCloudCopy';
+import { cloudUploadQueue, galleryQueueInputs } from '../lib/cloudUploadQueueInstance';
+import { CloudUploadQueuePanel } from '../components/CloudUploadQueuePanel';
+
+/** Google Photos imports wait while this many Cloud uploads are unfinished. */
+const PHOTOS_QUEUE_AHEAD = 24;
 import { CloudGallerySection } from '../components/CloudGallerySection';
 import { PlayingFromLine } from '../components/PlayingFromLine';
 import { GALLERY_LINK_DONE, galleryItemShows, nextClassFromDays } from '../lib/gallerySchedule';
@@ -519,42 +525,53 @@ export function ScreensaverPage() {
         showBatchError(folderId, PHOTOS_SIGN_IN_AGAIN);
         return;
       }
-      const files: { file: File; driveFileId: string }[] = [];
-      for (let index = 0; index < picked.length; index += 1) {
-        const item = picked[index];
-        if (!item || !item.videoReady) continue;
-        setBatchStatus({ tone: 'progress', text: photosImportProgressLabel(index, picked.length) });
-        try {
-          const blob = await downloadPhotosFile(token, item);
-          const type = item.mime || blob.type || 'application/octet-stream';
-          files.push({
-            file: new File([blob], item.name || 'Google Photos file', { type }),
-            driveFileId: item.id,
-          });
-        } catch {
-          /* One file can fail. The rest still import. */
+      // Up to 2000 picks: open, save, and queue a few at a time so the phone never holds the whole batch.
+      const cloudOn = folderId === 'gallery' && (await advantageCloudReady());
+      const chunkSize = picked.some((item) => item.kind === 'video') ? 3 : 8;
+      let opened = 0;
+      let added = 0;
+      let cursor = 0;
+      for (const chunk of chunkDriveImport(picked, chunkSize)) {
+        const files: { file: File; driveFileId: string }[] = [];
+        for (const item of chunk) {
+          setBatchStatus({ tone: 'progress', text: photosImportProgressLabel(cursor, picked.length) });
+          cursor += 1;
+          if (!item || !item.videoReady) continue;
+          try {
+            const blob = await downloadPhotosFile(token, item);
+            const type = item.mime || blob.type || 'application/octet-stream';
+            files.push({
+              file: new File([blob], item.name || 'Google Photos file', { type }),
+              driveFileId: item.id,
+            });
+          } catch {
+            /* One file can fail. The rest still import. */
+          }
+        }
+        if (!files.length) continue;
+        opened += files.length;
+        added += await addDriveMediaFiles(files, folderId, {
+          onProgress: (progress) => {
+            setBatchStatus({ tone: 'progress', text: folderSaveProgressLabel(progress) });
+          },
+        });
+        if (cloudOn) {
+          setCloudCopy(null);
+          cloudUploadQueue.add(galleryQueueInputs(files.map((row) => row.file), localDateKey()));
+          // Let the queue drain a little before opening more files.
+          await cloudUploadQueue.whenBelow(PHOTOS_QUEUE_AHEAD);
         }
       }
-      if (!files.length) {
+      if (!opened) {
         showBatchError(folderId, 'Those Google Photos files could not be opened. Nothing was saved.');
         return;
       }
-      setBatchStatus({
-        tone: 'progress',
-        text: folderSaveProgressLabel({ done: 0, total: files.length, phase: 'shrink' }),
-      });
-      const added = await addDriveMediaFiles(files, folderId, {
-        onProgress: (progress) => {
-          setBatchStatus({ tone: 'progress', text: folderSaveProgressLabel(progress) });
-        },
-      });
-      if (!added) {
+      if (!added && !cloudOn) {
         showBatchError(folderId, 'Those files are already in this folder, or this folder does not use that kind.');
         return;
       }
       setBatchStatus(null);
       setPickerNote('');
-      if (folderId === 'gallery') await copyGalleryToCloud(files.map((row) => row.file), true);
       await refresh();
       setPlaying(true);
       setOpenSection(folderId);
@@ -672,9 +689,19 @@ export function ScreensaverPage() {
     setOptions(true);
   };
 
-  /** Copy gallery picks to Advantage Cloud and say what happened. */
+  /**
+   * Copy gallery picks to Advantage Cloud and say what happened.
+   * With Cloud on, files join the upload queue (per-file progress, retry,
+   * cancel, skip what is already uploaded) and this returns right away.
+   * Without Cloud, Drive or OneDrive copies run exactly as before.
+   */
   const copyGalleryToCloud = async (files: readonly File[], cloudOnly: boolean) => {
     if (!files.length) return;
+    if (await advantageCloudReady()) {
+      setCloudCopy(null);
+      cloudUploadQueue.add(galleryQueueInputs(files, localDateKey()));
+      return;
+    }
     const summary = await copyFilesToCloudGallery(files, { dateKey: localDateKey(), cloudOnly });
     setCloudCopy(summary ? cloudCopyLine(summary) : null);
   };
@@ -1066,12 +1093,13 @@ export function ScreensaverPage() {
           <h1>{hubTitle}</h1>
           <PlayingFromLine />
           <p>{emptyCopy}</p>
-          {cloudCustomer ? <AdvantageCloudHome /> : null}
+          {cloudCustomer ? <AdvantageCloudHome showQueue={!options} /> : null}
           {galleryPage && cloudCopy ? (
             <p className={`saver-cloud-copy${cloudCopy.tone === 'error' ? ' saver-cloud-copy--error' : ''}`} data-cloud-copy={cloudCopy.tone}>
               {cloudCopy.text}
             </p>
           ) : null}
+          {galleryPage && !options && !cloudCustomer ? <CloudUploadQueuePanel /> : null}
           {galleryPage && !options ? <CloudGallerySection /> : null}
           {focusConfig.ready && focusEmpty && focusCanUpload ? (
             <>
@@ -1153,6 +1181,7 @@ export function ScreensaverPage() {
             {cloudCopy.text}
           </p>
         ) : null}
+        <CloudUploadQueuePanel />
 
         <div className="saver-folders">
           {FOLDERS.filter((folder) => {

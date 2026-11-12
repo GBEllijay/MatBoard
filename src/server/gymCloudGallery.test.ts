@@ -259,7 +259,7 @@ test('gallery role matrix: owner approved, staff pending, approve and reject, re
   assert.equal(revoked.status, 403);
   assert.match(await revoked.text(), /not active/);
 
-  const fullEnv: GymCloudEnv = { ...env, GYM_MEDIA_CAP_BYTES: '4' };
+  const fullEnv: GymCloudEnv = { ...env, GYM_MEDIA_LICENSE_CAP_BYTES: '4' };
   bucket.objects.set('groups/lic-owner1/videos/daily/2026-11-10/keep.mp4', { bytes: Uint8Array.from([9, 9, 9, 9]), type: 'video/mp4' });
   const full = await start(fullEnv, owner, 'full.jpg');
   assert.equal(full.status, 409);

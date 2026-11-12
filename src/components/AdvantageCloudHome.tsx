@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { refreshEntitlement } from '../lib/entitlementRefresh';
 import {
+  advantageCloudReady,
   CLOUD_MEDIA_EVENT,
   CLOUD_ROLE_HOME,
   cloudHomeStatusLine,
@@ -14,6 +15,8 @@ import { CLOUD_DAILY_MEDIA_LABEL, dailyMediaDateKey, uploadDailyMediaFile } from
 import { MEDIA_LIBRARY_ACCEPT } from '../lib/mediaPicker';
 import { ADVANTAGE_CLOUD_DRIVE_NOTE, ADVANTAGE_CLOUD_HEADING, UNLIMITED_LESSON_PATH } from '../lib/productNames';
 import { Sheet } from './Sheet';
+import { CloudUploadQueuePanel } from './CloudUploadQueuePanel';
+import { cloudUploadQueue, dailyQueueInputs } from '../lib/cloudUploadQueueInstance';
 
 /** Live status. `?fixture=cloud` is a dev-server sample. Production replaces DEV and drops it. */
 async function loadCloudUsage(): Promise<CloudHomeView> {
@@ -52,15 +55,33 @@ function useAdvantageCloudHome() {
 
   useEffect(() => {
     check(false);
-    const onCloud = () => check(false, true);
+    // A bulk upload fires this once per file. Read usage once the burst settles.
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onCloud = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        check(false, true);
+      }, 1500);
+    };
     window.addEventListener(CLOUD_MEDIA_EVENT, onCloud);
-    return () => window.removeEventListener(CLOUD_MEDIA_EVENT, onCloud);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener(CLOUD_MEDIA_EVENT, onCloud);
+    };
   }, []);
 
   const uploadDaily = async (list: FileList | null) => {
     if (!list?.length) return;
+    const files = [...list];
+    // Cloud on: the queue shows each file, retries, and skips what is already uploaded.
+    if (await advantageCloudReady()) {
+      setNote('');
+      cloudUploadQueue.add(dailyQueueInputs(files, dailyMediaDateKey()));
+      return;
+    }
     const notes: string[] = [];
-    for (const file of list) {
+    for (const file of files) {
       const result = await uploadDailyMediaFile(file, dailyMediaDateKey());
       notes.push(result.message);
     }
@@ -89,11 +110,13 @@ function CloudHomeBody({
   note,
   onCheck,
   onUpload,
+  showQueue = true,
 }: {
   view: CloudHomeView | null;
   note: string;
   onCheck: () => void;
   onUpload: (list: FileList | null) => void;
+  showQueue?: boolean;
 }) {
   return (
     <div className="cloud-usage-detail" data-cloud-block="advantage-cloud">
@@ -122,6 +145,7 @@ function CloudHomeBody({
           Upload lesson-plan media
         </Link>
       </div>
+      {showQueue ? <CloudUploadQueuePanel /> : null}
     </div>
   );
 }
@@ -158,13 +182,13 @@ export function CloudUsageMetric() {
 }
 
 /** Live Advantage Cloud status. The media empty state still uses this cream card. */
-export function AdvantageCloudHome() {
+export function AdvantageCloudHome({ showQueue = true }: { showQueue?: boolean } = {}) {
   const { view, note, check, uploadDaily } = useAdvantageCloudHome();
 
   return (
     <section className="cloud-home" aria-label={ADVANTAGE_CLOUD_HEADING}>
       <h2>{ADVANTAGE_CLOUD_HEADING}</h2>
-      <CloudHomeBody view={view} note={note} onCheck={() => check(true)} onUpload={(list) => void uploadDaily(list)} />
+      <CloudHomeBody view={view} note={note} onCheck={() => check(true)} onUpload={(list) => void uploadDaily(list)} showQueue={showQueue} />
     </section>
   );
 }

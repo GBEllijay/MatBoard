@@ -117,10 +117,8 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
 
   const canUpload = Boolean(status.canUpload);
   const usage =
-    typeof status.licenseUsedBytes === 'number' &&
-    typeof status.bucketUsedBytes === 'number' &&
-    typeof status.capBytes === 'number'
-      ? cloudUsageLine(status.licenseUsedBytes, status.bucketUsedBytes, status.capBytes)
+    typeof status.licenseUsedBytes === 'number' && typeof status.capBytes === 'number'
+      ? cloudUsageLine(status.licenseUsedBytes, status.capBytes)
       : 'Could not read Cloud usage.';
   const accept = purpose === 'daily-video' ? MEDIA_LIBRARY_ACCEPT : 'video/*,image/*';
 

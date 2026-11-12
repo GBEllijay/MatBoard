@@ -44,7 +44,7 @@ export function mediaConsoleGalleryLead(input: { cloudEntitled: boolean; driveCo
   const drive = input.driveConnected
     ? ' Import from Google Drive copies files onto this phone. The folder that is already connected stays connected.'
     : '';
-  return `Add photos and Add videos stay on this phone. Advantage Cloud is this gym's storage when the status below says it is ready.${drive} Optional import copies files from Google Photos onto this phone. It does not replace Advantage Cloud. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.`;
+  return `Add photos and Add videos keep a copy on this phone and upload to this gym's Advantage Cloud when the status below says it is ready. Each file shows its progress; anything already uploaded is skipped.${drive} Optional import copies files from Google Photos onto this phone. It does not replace Advantage Cloud. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.`;
 }
 
 /** `cloudOn`: Advantage Cloud answered as on for this license, but this screen is not playing from it. */
