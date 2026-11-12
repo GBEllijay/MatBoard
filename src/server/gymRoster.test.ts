@@ -37,9 +37,10 @@ class MemoryBucket implements GymMediaBucket {
   }
 
   deletes = 0;
-  async delete(key: string) {
-    this.deletes += 1;
-    this.objects.delete(key);
+  async delete(keys: string | string[]) {
+    const list = Array.isArray(keys) ? keys : [keys];
+    this.deletes += list.length;
+    for (const key of list) this.objects.delete(key);
   }
 
   async list(options?: { prefix?: string; cursor?: string; limit?: number }) {

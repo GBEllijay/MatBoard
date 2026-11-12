@@ -14,6 +14,8 @@ import {
 } from '../lib/classPhotoPromotions';
 import { advantageCloudLaneStore } from '../lib/advantageCloudLanes';
 import type { ApprovalItem } from '../lib/approvalLanes';
+import { CLOUD_REJECT_DELETE_CONFIRM, CLOUD_REJECT_DELETED_MESSAGE } from '../lib/cloudVideoCleanup';
+import { CloudDeleteConfirm } from './CloudDeleteConfirm';
 import { publishGymFile } from '../lib/gymPublish';
 import { addFolderFiles } from '../lib/photoStore';
 
@@ -28,6 +30,8 @@ export function GalleryReviewQueue() {
   const [cloudRows, setCloudRows] = useState<ApprovalItem[]>([]);
   const [preview, setPreview] = useState<{ path: string; url: string; kind: 'photo' | 'video' } | null>(null);
   const [note, setNote] = useState('');
+  const [pendingReject, setPendingReject] = useState<ApprovalItem | null>(null);
+  const [rejectBusy, setRejectBusy] = useState(false);
   const settings = readGalleryApprovalHere(typeof localStorage === 'undefined' ? null : localStorage);
   const allowed = canApproveGallery({
     role: seat ? 'seat' : 'owner',
@@ -61,14 +65,21 @@ export function GalleryReviewQueue() {
 
   const decideCloud = async (item: ApprovalItem, decision: 'approve' | 'reject') => {
     if (!cloudAllowed) return;
+    if (decision === 'reject' && pendingReject?.path !== item.path) {
+      setPendingReject(item);
+      return;
+    }
+    setRejectBusy(true);
     const result = await advantageCloudLaneStore().decide(item, decision);
+    setRejectBusy(false);
+    setPendingReject(null);
     setNote(
       result.ok
         ? decision === 'approve'
           ? item.source === 'daily-video'
             ? "Approved. It shows in today's videos and the Advantage Cloud gallery."
             : 'Approved. It is in the gallery on Advantage Cloud.'
-          : 'Rejected. It will not play.'
+          : CLOUD_REJECT_DELETED_MESSAGE
         : result.message,
     );
     if (result.ok) notifyCloudMedia();
@@ -137,6 +148,16 @@ export function GalleryReviewQueue() {
             </li>
           ))}
         </ul>
+      ) : null}
+      {pendingReject ? (
+        <CloudDeleteConfirm
+          title="Reject and delete"
+          body={CLOUD_REJECT_DELETE_CONFIRM}
+          confirmLabel="Reject and delete"
+          busy={rejectBusy}
+          onCancel={() => setPendingReject(null)}
+          onConfirm={() => void decideCloud(pendingReject, 'reject')}
+        />
       ) : null}
       {showLocal ? (
         <ul>
