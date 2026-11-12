@@ -238,7 +238,7 @@ test('instructor folders and from-instructor sends follow the seat and the stude
   assert.equal(revokedStart.status, 403);
   assert.match(await revokedStart.text(), /not active/);
 
-  const fullEnv: GymCloudEnv = { ...env, GYM_MEDIA_CAP_BYTES: '8' };
+  const fullEnv: GymCloudEnv = { ...env, GYM_MEDIA_LICENSE_CAP_BYTES: '8' };
   const fullSend = await call(
     fullEnv,
     '/api/gym/cloud',

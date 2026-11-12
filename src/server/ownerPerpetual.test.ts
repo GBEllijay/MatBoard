@@ -96,7 +96,7 @@ function redeem(code: string, deviceId: string): Request {
 
 test('an owner code is one academy with no end, and an expired pass refreshes onto it', async () => {
   resetRateLimitsForTests();
-  assert.equal(DEFAULT_CLOUD_CAP_BYTES, 8_000_000_000);
+  assert.equal(DEFAULT_CLOUD_CAP_BYTES, 100_000_000_000);
   const signing = await signingSecret();
   const material = signingMaterial(signing, 'k1');
   assert.ok(material);

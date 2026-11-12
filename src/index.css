@@ -13303,7 +13303,7 @@ html.lesson-cover-open body {
   width: auto;
   flex: 0 0 auto;
   min-width: 5.5rem;
-  max-width: 8rem;
+  max-width: 9.5rem;
   min-height: 48px;
   margin: 0 0 0 auto;
   padding: 0.2rem 0.75rem;
@@ -20227,3 +20227,26 @@ a.plan-pick {
 .cloud-delete-confirm__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .saver-cloud-copy { margin: 8px 0; font-size: 0.9rem; }
 .saver-cloud-copy--error { color: #b42318; font-weight: 600; }
+
+/* Advantage Cloud upload queue (Media Console gallery and the Cloud home card). */
+.cloud-queue { margin: 12px 0; padding: 12px; display: grid; gap: 8px; border: 1px solid rgba(127, 127, 127, 0.35); border-radius: 18px; background: rgba(127, 127, 127, 0.06); }
+.cloud-queue__head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; justify-content: space-between; }
+.cloud-queue__summary { margin: 0; font-weight: 600; line-height: 1.4; }
+.cloud-queue__bytes { font-size: 0.85rem; opacity: 0.8; font-variant-numeric: tabular-nums; }
+.cloud-queue__bar { height: 6px; border-radius: 999px; background: rgba(127, 127, 127, 0.25); overflow: hidden; }
+.cloud-queue__bar > span { display: block; height: 100%; border-radius: inherit; background: var(--logo-blue); transition: width 0.25s ease; }
+.cloud-queue__bar--total { height: 8px; }
+.cloud-queue__bar--total > span { background: var(--gold); }
+.cloud-queue__warning { margin: 0; padding: 8px 10px; border-radius: 10px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.5); font-size: 0.9rem; font-weight: 600; line-height: 1.4; }
+.cloud-queue__actions { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.cloud-queue__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 50vh; overflow-y: auto; }
+.cloud-queue__row { display: grid; gap: 4px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(127, 127, 127, 0.3); }
+.cloud-queue__row--done .cloud-queue__bar > span { background: var(--points); }
+.cloud-queue__row--skip .cloud-queue__bar > span { background: var(--muted); }
+.cloud-queue__row--error { border-color: rgba(180, 35, 24, 0.6); }
+.cloud-queue__row--error .cloud-queue__status { color: #b42318; font-weight: 600; }
+.cloud-queue__line { display: flex; gap: 8px; align-items: center; justify-content: space-between; min-width: 0; }
+.cloud-queue__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; font-weight: 600; }
+.cloud-queue__size, .cloud-queue__status { font-size: 0.8rem; opacity: 0.85; font-variant-numeric: tabular-nums; }
+.cloud-queue__row--error .cloud-queue__status { opacity: 1; }
+.cloud-queue__action { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(127, 127, 127, 0.5); background: transparent; color: inherit; font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }

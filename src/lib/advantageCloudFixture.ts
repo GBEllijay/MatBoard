@@ -6,7 +6,6 @@ export function fixtureCloudHome(): CloudHomeView {
     phase: 'ready',
     canUpload: true,
     licenseUsedBytes: 96_000_000,
-    bucketUsedBytes: 397_000_000,
-    capBytes: 8_000_000_000,
+    capBytes: 100_000_000_000,
   };
 }

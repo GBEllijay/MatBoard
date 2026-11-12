@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cloudUsageLine, formatCloudBytes } from '../lib/advantageCloudMedia';
 import {
   CLOUD_CLEANUP_EMPTY,
+  CLOUD_CLEANUP_OPEN_EVENT,
+  cloudCleanupRequested,
   CLOUD_CLEANUP_READ_ERROR,
   DEFAULT_VIDEO_CLEANUP_DAYS,
   VIDEO_CLEANUP_DAYS,
@@ -26,7 +28,18 @@ type Props = {
 
 export function CloudVideoCleanup({ list = listOldCloudVideos, remove = deleteCloudMediaInBatches }: Props) {
   const [days, setDays] = useState<VideoCleanupDays>(DEFAULT_VIDEO_CLEANUP_DAYS);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => typeof window !== 'undefined' && cloudCleanupRequested(window.location.search));
+  const sectionRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener(CLOUD_CLEANUP_OPEN_EVENT, show);
+    return () => window.removeEventListener(CLOUD_CLEANUP_OPEN_EVENT, show);
+  }, []);
+
+  useEffect(() => {
+    if (open && cloudCleanupRequested(window.location.search)) sectionRef.current?.scrollIntoView?.({ block: 'start' });
+  }, [open]);
   const [result, setResult] = useState<OldCloudVideoList | null | { error: string }>(null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -68,10 +81,8 @@ export function CloudVideoCleanup({ list = listOldCloudVideos, remove = deleteCl
       return;
     }
     const usage =
-      typeof deleted.licenseUsedBytes === 'number' &&
-      typeof deleted.bucketUsedBytes === 'number' &&
-      typeof deleted.capBytes === 'number'
-        ? ` ${cloudUsageLine(deleted.licenseUsedBytes, deleted.bucketUsedBytes, deleted.capBytes)}`
+      typeof deleted.licenseUsedBytes === 'number' && typeof deleted.capBytes === 'number'
+        ? ` ${cloudUsageLine(deleted.licenseUsedBytes, deleted.capBytes)}`
         : '';
     setNote(`Deleted ${deleted.deleted} ${deleted.deleted === 1 ? 'video' : 'videos'}.${usage}`);
     const refreshed = await list({ days });
@@ -79,9 +90,12 @@ export function CloudVideoCleanup({ list = listOldCloudVideos, remove = deleteCl
   };
 
   return (
-    <section className="cloud-cleanup" aria-label={CLOUD_CLEANUP_TITLE} data-cloud-cleanup="open">
+    <section ref={sectionRef} className="cloud-cleanup" aria-label={CLOUD_CLEANUP_TITLE} data-cloud-cleanup="open">
       <h3>{CLOUD_CLEANUP_TITLE}</h3>
       <p className="cloud-cleanup__hint">{CLOUD_CLEANUP_HINT}</p>
+      {ready && typeof ready.licenseUsedBytes === 'number' && typeof ready.capBytes === 'number' ? (
+        <p data-cloud-cleanup-usage="">{cloudUsageLine(ready.licenseUsedBytes, ready.capBytes)}</p>
+      ) : null}
       <label className="cloud-cleanup__days">
         Older than
         <select

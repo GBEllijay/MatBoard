@@ -97,3 +97,26 @@ test('client delete and old-video list use the cloud route, and the batch helper
   assert.equal((JSON.parse(posted[1]!.body!) as { keys: string[] }).keys.length, 100);
   assert.equal((JSON.parse(posted[2]!.body!) as { keys: string[] }).keys.length, 1);
 });
+
+test('soft-limit link: CLOUD_CLEANUP_ROUTE opens the cleanup panel in the Media gallery', async () => {
+  const { CLOUD_CLEANUP_ROUTE } = await import('./advantageCloudMedia.ts');
+  const { cloudCleanupRequested } = await import('./cloudVideoCleanup.ts');
+  assert.ok(CLOUD_CLEANUP_ROUTE);
+  const url = new URL(CLOUD_CLEANUP_ROUTE, 'https://advantagebjjtimer.com');
+  assert.equal(url.pathname, '/slideshow');
+  assert.equal(url.searchParams.get('folder'), 'gallery');
+  assert.equal(cloudCleanupRequested(url.search), true);
+  assert.equal(cloudCleanupRequested('?folder=gallery'), false);
+});
+
+test('old-videos list carries the per-gym usage numbers from the server', async () => {
+  const { listOldCloudVideos } = await import('./cloudVideoCleanup.ts');
+  const fetcher = (async () =>
+    new Response(JSON.stringify({ ok: true, days: 90, cutoff: '2026-08-14', count: 0, totalBytes: 0, items: [], truncated: false, licenseUsedBytes: 1234, capBytes: 100_000_000_000 }), {
+      status: 200,
+    })) as unknown as typeof fetch;
+  const listed = await listOldCloudVideos({ days: 90, token: 't', fetcher });
+  assert.ok(listed && !('error' in listed));
+  assert.equal(listed.licenseUsedBytes, 1234);
+  assert.equal(listed.capBytes, 100_000_000_000);
+});

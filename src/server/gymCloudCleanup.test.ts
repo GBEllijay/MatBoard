@@ -393,7 +393,7 @@ test('delete-media batch is capped, frees markers and leftover chunked uploads, 
   assert.equal(bucket.uploads.size, 0);
   assert.equal(body.licenseUsedBytes, 0);
   assert.equal(body.bucketUsedBytes, 0);
-  assert.equal(body.capBytes, 8_000_000_000);
+  assert.equal(body.capBytes, 100_000_000_000);
   // One batch delete call (keys fit well under 1,000).
   assert.ok(bucket.deletedBatches.some((batch) => batch.length >= 2));
 });

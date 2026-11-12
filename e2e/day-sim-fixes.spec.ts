@@ -245,7 +245,9 @@ test('lesson title saves, reopens from Classes, and reaches the review list', as
   await page.getByLabel('Coach name').fill('Justin');
   await page.getByLabel('Class designation').fill('GB1');
   await page.getByLabel('Lesson title').fill('Guard passing');
-  await page.getByLabel('Class time').fill('5:00 PM');
+  await page.getByRole('button', { name: 'Class time, —' }).click();
+  await page.getByRole('option', { name: '5:00 PM', exact: true }).click();
+  await page.getByRole('button', { name: 'Done' }).click();
   const designationBox = await page.getByLabel('Class designation').boundingBox();
   const titleBox = await page.getByLabel('Lesson title').boundingBox();
   expect(designationBox && titleBox).toBeTruthy();

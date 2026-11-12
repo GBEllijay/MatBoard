@@ -330,10 +330,10 @@ test('an explicit tree link is saved on the drill and junk ids are dropped', () 
   assert.equal(cleaned.techniques[0].treeId, undefined);
 });
 
-test('lesson plan fields ship with no placeholder hints except class time, and GB1 is not suggested', () => {
+test('lesson plan fields ship with no placeholder hints, and GB1 is not suggested', () => {
   const source = readFileSync(new URL('../pages/TrainingNotes.tsx', import.meta.url), 'utf8');
   const placeholders = [...source.matchAll(/placeholder="([^"]*)"/g)].map((match) => match[1]);
-  assert.deepEqual(placeholders, ['5:00 PM']);
+  assert.deepEqual(placeholders, []);
   assert.doesNotMatch(source, /GB1/i);
   assert.doesNotMatch(source, /<datalist[\s\S]*GB1/i);
   assert.doesNotMatch(source, /<option[^>]*>\s*GB1\s*</i);

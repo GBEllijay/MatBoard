@@ -40,7 +40,19 @@ export type OldCloudVideoList = {
   totalBytes: number;
   items: OldCloudVideo[];
   truncated: boolean;
+  /** This gym's whole Cloud usage, the same per-license measure as op=status (PR 517). */
+  licenseUsedBytes?: number;
+  capBytes?: number;
 };
+
+/** Window event the soft-limit link fires so an already-mounted cleanup panel opens. */
+export const CLOUD_CLEANUP_OPEN_EVENT = 'matboard-cloud-cleanup-open';
+/** Query flag on CLOUD_CLEANUP_ROUTE that opens the cleanup panel on arrival. */
+export const CLOUD_CLEANUP_QUERY = 'cleanup';
+
+export function cloudCleanupRequested(search: string): boolean {
+  return new URLSearchParams(search).get(CLOUD_CLEANUP_QUERY) === 'old-videos';
+}
 
 export type CloudDeleteResult =
   | { ok: true; deleted: number; licenseUsedBytes?: number; bucketUsedBytes?: number; capBytes?: number }
@@ -106,6 +118,8 @@ export async function listOldCloudVideos(input: {
       totalBytes: typeof body.totalBytes === 'number' && Number.isFinite(body.totalBytes) ? body.totalBytes : items.reduce((sum, item) => sum + item.size, 0),
       items,
       truncated: body.truncated === true,
+      ...(typeof body.licenseUsedBytes === 'number' && Number.isFinite(body.licenseUsedBytes) ? { licenseUsedBytes: body.licenseUsedBytes } : {}),
+      ...(typeof body.capBytes === 'number' && Number.isFinite(body.capBytes) ? { capBytes: body.capBytes } : {}),
     };
   } catch {
     return { error: CLOUD_CLEANUP_READ_ERROR };

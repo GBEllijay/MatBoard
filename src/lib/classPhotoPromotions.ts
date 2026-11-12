@@ -37,7 +37,7 @@ export const CLASS_PHOTO_PROMOTIONS_LABEL = "Today's class photo / promotions";
 export const CLASS_PHOTO_PROMOTIONS_ADD = 'Add photo or video';
 export const CLASS_PHOTO_PROMOTIONS_LEAD =
   'A class photo or a short clip. Take photo, Record, or Pick from gallery.';
-export const CLASS_PHOTO_PROMOTIONS_STAY = `${GALLERY_ROUTE_NOTE} Photos and clips stay on this phone. When Google Drive or OneDrive is connected, the copy goes in the gallery folder there. Advantage does not host them.`;
+export const CLASS_PHOTO_PROMOTIONS_STAY = `${GALLERY_ROUTE_NOTE} Photos and clips stay on this phone. With Advantage Cloud on, they upload to this gym's Advantage Cloud. Without Cloud, when Google Drive or OneDrive is connected, the copy goes in the gallery folder there, and Advantage does not host them.`;
 export const CLASS_PHOTO_PROMOTIONS_SAVED_DRIVE =
   'Saved in the gallery folder. A copy stays on this phone.';
 export const CLASS_PHOTO_PROMOTIONS_SAVED_PHONE =

@@ -377,6 +377,9 @@ test('a lesson and video saved to Drive load back into the Daily Lesson Plan', a
 
   await page.goto('/notes?plan=unlimited');
   await expect(page.getByText('KneeCut.mp4')).toBeVisible();
+  await page.getByRole('button', { name: 'Class time, —' }).click();
+  await page.getByRole('option', { name: '5:00 PM', exact: true }).click();
+  await page.getByRole('button', { name: 'Done' }).click();
   await page.evaluate(() => {
     const setValue = (id: string, value: string) => {
       const el = document.getElementById(id);
@@ -390,7 +393,6 @@ test('a lesson and video saved to Drive load back into the Daily Lesson Plan', a
     setValue('notes-coach', 'Justin');
     setValue('notes-class', 'GB1');
     setValue('notes-lesson-title', 'Guard passing');
-    setValue('notes-class-time', '5:00 PM');
     setValue('notes-intro', 'Start standing');
     const heading = [...document.querySelectorAll('h2')].find((node) => node.textContent === 'Technique / Drill 1');
     const block = heading?.closest('.notes__block');

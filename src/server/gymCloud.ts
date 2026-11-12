@@ -12,6 +12,7 @@ import {
   CLOUD_SIGN_IN_MESSAGE,
   CLOUD_UNAVAILABLE_MESSAGE,
   cloudCapBytes,
+  cloudSoftLimitBytes,
   cloudDailyVideoDrop,
   cloudFullMessage,
   cloudListPrefix,
@@ -57,6 +58,7 @@ import {
   type CloudFileRow,
   type CloudMediaPurpose,
 } from '../lib/advantageCloudMedia.ts';
+import { isCloudFingerprint, sha256Hex } from '../lib/cloudFingerprint.ts';
 import { laneFromMarkers, mediaKindOf, sortForGallery, type ApprovalLane, type ApprovalSource } from '../lib/approvalLanes.ts';
 import {
   DEFAULT_VIDEO_CLEANUP_DAYS,
@@ -115,7 +117,8 @@ export type GymMediaBucket = {
 
 export type GymCloudEnv = {
   GYM_MEDIA?: GymMediaBucket;
-  GYM_MEDIA_CAP_BYTES?: string;
+  /** Per-license hard limit in bytes. Default CLOUD_LICENSE_HARD_LIMIT_BYTES (100 GB). */
+  GYM_MEDIA_LICENSE_CAP_BYTES?: string;
   GYM_MEDIA_MAX_UPLOAD_BYTES?: string;
   ENTITLEMENT_SIGNING_KEY?: string;
   ENTITLEMENT_KEY_ID?: string;
@@ -267,11 +270,131 @@ async function bytesUnder(bucket: GymMediaBucket, prefix: string): Promise<numbe
   return total;
 }
 
-async function roomFor(bucket: GymMediaBucket, key: string, size: number, cap: number): Promise<{ ok: true; bucketUsed: number } | { ok: false; bucketUsed: number }> {
-  const [bucketUsed, existing] = await Promise.all([bytesUnder(bucket, ''), bucket.head(key)]);
-  const next = bucketUsed - (existing?.size ?? 0) + size;
-  if (next > cap) return { ok: false, bucketUsed };
-  return { ok: true, bucketUsed };
+/** `groups/{licenseId}/` for a key inside one license. Every license key has this shape. */
+export function licensePrefixOf(key: string): string {
+  const match = /^groups\/([^/]+)\//.exec(key);
+  return match ? `groups/${match[1]}/` : key;
+}
+
+/**
+ * Per-license quota. Only this gym's keys count, so one busy gym never fills
+ * another gym's Cloud, and a status read no longer lists the whole bucket.
+ */
+export async function roomFor(bucket: GymMediaBucket, key: string, size: number, cap: number): Promise<{ ok: boolean; used: number }> {
+  const [used, existing] = await Promise.all([bytesUnder(bucket, licensePrefixOf(key)), bucket.head(key)]);
+  const next = used - (existing?.size ?? 0) + size;
+  return { ok: next <= cap, used };
+}
+
+/** Dedup markers: groups/{licenseId}/hashes/{fingerprint}.json -> { path }. */
+function fingerprintKey(licenseId: string, fingerprint: string): string | null {
+  if (!isCloudFingerprint(fingerprint)) return null;
+  return `groups/${licenseId}/hashes/${fingerprint}.json`;
+}
+
+/** Reverse index: groups/{licenseId}/hashes/paths/{path}.json -> { fingerprint }, so a delete finds its marker. */
+function fingerprintPathKey(licenseId: string, relative: string): string {
+  return `groups/${licenseId}/hashes/paths/${relative}.json`;
+}
+
+async function readJsonField(bucket: GymMediaBucket, key: string, field: string): Promise<string> {
+  const object = await bucket.get(key);
+  if (!object) return '';
+  try {
+    const parsed = JSON.parse(await new Response(object.body).text()) as Record<string, unknown>;
+    return typeof parsed[field] === 'string' ? (parsed[field] as string) : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Dedup marker keys to remove with a delete, so the same file can be sent again
+ * and the marker bytes stop counting toward this gym's usage. Only markers that
+ * still point at one of the deleted paths are removed.
+ */
+export async function fingerprintKeysForDelete(bucket: GymMediaBucket, licenseId: string, keys: string[]): Promise<string[]> {
+  const prefix = `groups/${licenseId}/`;
+  const deleted = new Set(keys.filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length)));
+  const found = await Promise.all(
+    [...deleted].filter(dedupPath).map(async (relative) => {
+      const reverseKey = fingerprintPathKey(licenseId, relative);
+      const fingerprint = await readJsonField(bucket, reverseKey, 'fingerprint');
+      if (!fingerprint) return (await bucket.head(reverseKey)) ? [reverseKey] : [];
+      const markerKey = fingerprintKey(licenseId, fingerprint);
+      if (!markerKey) return [reverseKey];
+      const recorded = await readJsonField(bucket, markerKey, 'path');
+      return recorded && deleted.has(recorded) ? [reverseKey, markerKey] : [reverseKey];
+    }),
+  );
+  return [...new Set(found.flat())];
+}
+
+/** Delete media keys plus their dedup markers. Every delete path (per-item, reject, cleanup) goes through here. */
+async function deleteMediaKeys(bucket: GymMediaBucket, licenseId: string, keys: string[]): Promise<void> {
+  const markers = await fingerprintKeysForDelete(bucket, licenseId, keys);
+  await deleteKeyList(bucket, [...keys, ...markers.filter((key) => !keys.includes(key))]);
+}
+
+function dedupPath(relative: string): boolean {
+  return isDailyVideoCloudPath(relative) || parseGalleryCloudPath(relative) !== null;
+}
+
+/**
+ * A file this gym already has, by fingerprint. A gallery photo approved since
+ * upload moved from pending/ to approved/, so both are checked. A rejected or
+ * deleted file is not a duplicate: sending it again is allowed.
+ */
+export async function findCloudDuplicate(
+  bucket: GymMediaBucket,
+  licenseId: string,
+  fingerprint: string,
+): Promise<{ path: string; lane?: 'pending' | 'approved' } | null> {
+  const markerKey = fingerprintKey(licenseId, fingerprint);
+  if (!markerKey) return null;
+  const marker = await bucket.get(markerKey);
+  if (!marker) return null;
+  let recorded = '';
+  try {
+    const parsed = JSON.parse(await new Response(marker.body).text()) as { path?: unknown };
+    recorded = typeof parsed.path === 'string' ? parsed.path : '';
+  } catch {
+    return null;
+  }
+  if (!dedupPath(recorded)) return null;
+  const candidates = [recorded];
+  const approved = galleryDecisionPath(recorded, 'approved');
+  if (approved) candidates.push(approved);
+  for (const path of candidates) {
+    const key = cloudObjectKey(licenseId, path);
+    if (!key || !(await bucket.head(key))) continue;
+    const gallery = parseGalleryCloudPath(path);
+    if (gallery) {
+      if (gallery.lane === 'rejected') continue;
+      return { path, lane: gallery.lane };
+    }
+    const lane = await dailyVideoLane(bucket, licenseId, path);
+    if (lane === 'rejected') continue;
+    return { path, lane };
+  }
+  // No live copy (e.g. deleted before deletes cleaned up markers): drop the stale marker so it stops counting.
+  await bucket.delete([markerKey, fingerprintPathKey(licenseId, recorded)]);
+  return null;
+}
+
+async function recordFingerprint(bucket: GymMediaBucket, key: string, fingerprint: string, size: number): Promise<void> {
+  const prefix = licensePrefixOf(key);
+  const licenseId = prefix.slice('groups/'.length, -1);
+  const relative = key.slice(prefix.length);
+  const markerKey = fingerprintKey(licenseId, fingerprint);
+  if (!markerKey || !dedupPath(relative)) return;
+  const at = new Date().toISOString();
+  await bucket.put(markerKey, new TextEncoder().encode(JSON.stringify({ path: relative, size, at })), {
+    httpMetadata: { contentType: 'application/json' },
+  });
+  await bucket.put(fingerprintPathKey(licenseId, relative), new TextEncoder().encode(JSON.stringify({ fingerprint, at })), {
+    httpMetadata: { contentType: 'application/json' },
+  });
 }
 
 export function streamFrom(bytes: Uint8Array): ReadableStream {
@@ -583,6 +706,8 @@ type StartBody = {
   parts?: { partNumber?: number; etag?: string }[];
   required?: boolean;
   days?: unknown;
+  /** Content fingerprint for dedup (src/lib/cloudFingerprint.ts). */
+  fingerprint?: string;
 };
 
 function isPurpose(value: string): value is CloudMediaPurpose {
@@ -940,7 +1065,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   const actor = await readActor(request, env, stamp);
   if (actor instanceof Response) return actor;
   const url = new URL(request.url);
-  const cap = cloudCapBytes(env.GYM_MEDIA_CAP_BYTES);
+  const cap = cloudCapBytes(env.GYM_MEDIA_LICENSE_CAP_BYTES);
   const maxUpload = cloudMaxUploadBytes(env.GYM_MEDIA_MAX_UPLOAD_BYTES);
 
   if (request.method === 'GET') {
@@ -957,9 +1082,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
           ...(actor.dailyDrop ? { dailyVideoDrop: true, dailyVideoPlay: true, maxUploadBytes: maxUpload } : {}),
         });
       }
-      const [licenseUsedBytes, bucketUsedBytes, galleryApprovalRequired] = await Promise.all([
+      const [licenseUsedBytes, galleryApprovalRequired] = await Promise.all([
         bytesUnder(bucket, `groups/${actor.licenseId}/`),
-        bytesUnder(bucket, ''),
         licenseGalleryApprovalRequired(env, actor.licenseId),
       ]);
       return json(200, {
@@ -969,8 +1093,10 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
         replayUpload: actor.replayUpload,
         galleryApprovalRequired,
         licenseUsedBytes,
-        bucketUsedBytes,
+        // Older builds still read this field. The quota is per license now.
+        bucketUsedBytes: licenseUsedBytes,
         capBytes: cap,
+        softLimitBytes: cloudSoftLimitBytes(cap),
         maxUploadBytes: maxUpload,
       });
     }
@@ -1045,8 +1171,11 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       }
       const days = parseVideoCleanupDays(rawDays, DEFAULT_VIDEO_CLEANUP_DAYS);
       const cutoff = videoCleanupCutoffDate(days, stamp);
-      const listed = await listOldVideos(bucket, actor, cutoff);
-      return json(200, { ok: true, days, cutoff, ...listed });
+      const [listed, licenseUsedBytes] = await Promise.all([
+        listOldVideos(bucket, actor, cutoff),
+        bytesUnder(bucket, `groups/${actor.licenseId}/`),
+      ]);
+      return json(200, { ok: true, days, cutoff, ...listed, licenseUsedBytes, capBytes: cap, softLimitBytes: cloudSoftLimitBytes(cap) });
     }
     // Program director Camera window: list and play today's videos only. Lessons, skins, and other paths stay closed.
     if (!actor.read && actor.dailyDrop && (op === 'list' || op === 'file')) {
@@ -1172,8 +1301,13 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       return json(413, { ok: false, error: 'That skin name is too large.' });
     }
     const room = await roomFor(bucket, key, bytes.byteLength, cap);
-    if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.bucketUsed, cap) });
+    if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.used, cap) });
     await bucket.put(key, bytes, { httpMetadata: { contentType: mime } });
+    const fingerprint = url.searchParams.get('fingerprint') ?? '';
+    // A single PUT holds every byte, so the server checks the fingerprint before it records it.
+    if (isCloudFingerprint(fingerprint) && fingerprint === `v1-full-${await sha256Hex(bytes)}`) {
+      await recordFingerprint(bucket, key, fingerprint, bytes.byteLength);
+    }
     return json(200, { ok: true });
   }
 
@@ -1202,7 +1336,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       const targetKey = approvedPath ? cloudObjectKey(actor.licenseId, approvedPath) : null;
       if (!approvedPath || !targetKey) return json(400, { ok: false, error: 'That clip cannot be approved.' });
       const room = await roomFor(bucket, targetKey, object.size, cap);
-      if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.bucketUsed, cap) });
+      if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.used, cap) });
       const copied = await copyGymObject(bucket, pendingKey, targetKey, object.size, object.httpMetadata?.contentType || 'video/mp4');
       if (!copied) return json(500, { ok: false, error: 'That clip could not be approved. Try again.' });
     }
@@ -1238,15 +1372,15 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (!object) return json(404, { ok: false, error: 'That photo is not waiting for approval.' });
     if (body.action === 'gallery-reject') {
       // Reject deletes the pending file instead of parking a hidden copy.
-      await deleteKeyList(bucket, companionKeysForDelete(actor.licenseId, path));
+      await deleteMediaKeys(bucket, actor.licenseId, companionKeysForDelete(actor.licenseId, path));
       return json(200, { ok: true, lane: 'rejected', deleted: true, path });
     }
     const targetPath = galleryDecisionPath(path, 'approved');
     const targetKey = targetPath ? cloudObjectKey(actor.licenseId, targetPath) : null;
     if (!targetKey || !targetPath) return json(400, { ok: false, error: 'That photo is not waiting for approval.' });
-    const [bucketUsed, existing] = await Promise.all([bytesUnder(bucket, ''), bucket.head(targetKey)]);
-    const next = bucketUsed - object.size - (existing?.size ?? 0) + object.size;
-    if (next > cap) return json(409, { ok: false, error: cloudFullMessage(bucketUsed, cap) });
+    const [licenseUsed, existing] = await Promise.all([bytesUnder(bucket, `groups/${actor.licenseId}/`), bucket.head(targetKey)]);
+    const next = licenseUsed - object.size - (existing?.size ?? 0) + object.size;
+    if (next > cap) return json(409, { ok: false, error: cloudFullMessage(licenseUsed, cap) });
     // Copy first, delete second: a failed copy leaves the pending file where it was.
     const copied = await copyGymObject(bucket, sourceKey, targetKey, object.size, object.httpMetadata?.contentType || 'image/jpeg');
     if (!copied) return json(500, { ok: false, error: 'That did not save. Try again.' });
@@ -1266,7 +1400,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (!video || !marker) return json(404, { ok: false, error: 'That video is not waiting for approval.' });
     if (body.action === 'daily-reject') {
       // Reject deletes the video and its pending marker, instead of hiding a kept copy.
-      await deleteKeyList(bucket, companionKeysForDelete(actor.licenseId, path));
+      await deleteMediaKeys(bucket, actor.licenseId, companionKeysForDelete(actor.licenseId, path));
       return json(200, { ok: true, lane: 'rejected', deleted: true, path });
     }
     // The video never moves. Approving removes the pending marker.
@@ -1298,12 +1432,18 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
         if (!keys.includes(key)) keys.push(key);
       }
     }
-    await deleteKeyList(bucket, keys);
-    const [licenseUsedBytes, bucketUsedBytes] = await Promise.all([
-      bytesUnder(bucket, `groups/${actor.licenseId}/`),
-      bytesUnder(bucket, ''),
-    ]);
-    return json(200, { ok: true, deleted: paths.length, licenseUsedBytes, bucketUsedBytes, capBytes: cap });
+    await deleteMediaKeys(bucket, actor.licenseId, keys);
+    // Same per-gym measure as op=status (PR 517): everything under groups/{licenseId}/.
+    const licenseUsedBytes = await bytesUnder(bucket, `groups/${actor.licenseId}/`);
+    return json(200, {
+      ok: true,
+      deleted: paths.length,
+      licenseUsedBytes,
+      // Older builds still read this field. The quota is per license now.
+      bucketUsedBytes: licenseUsedBytes,
+      capBytes: cap,
+      softLimitBytes: cloudSoftLimitBytes(cap),
+    });
   }
 
   if (body.action === 'send-to-student') {
@@ -1327,7 +1467,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const object = await bucket.head(sourceKey);
     if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
     const room = await roomFor(bucket, targetKey, object.size, cap);
-    if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.bucketUsed, cap) });
+    if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.used, cap) });
     const copied = await copyGymObject(bucket, sourceKey, targetKey, object.size, object.httpMetadata?.contentType || 'application/octet-stream');
     if (!copied) return json(500, { ok: false, error: 'That did not send. Try again.' });
     return json(200, { ok: true, path: targetPath });
@@ -1386,12 +1526,14 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       await dropOrphanDailyMarker(bucket, actor.licenseId, key);
       return json(413, { ok: false, error: cloudTooLargeMessage(maxUpload) });
     }
-    const bucketUsed = await bytesUnder(bucket, '');
-    if (bucketUsed > cap) {
+    const licenseUsed = await bytesUnder(bucket, `groups/${actor.licenseId}/`);
+    if (licenseUsed > cap) {
       await bucket.delete(key);
       await dropOrphanDailyMarker(bucket, actor.licenseId, key);
-      return json(409, { ok: false, error: cloudFullMessage(Math.max(0, bucketUsed - size), cap) });
+      return json(409, { ok: false, error: cloudFullMessage(Math.max(0, licenseUsed - size), cap) });
     }
+    // Multipart bytes are not re-read to check the fingerprint; it only ever skips this gym's own files.
+    if (isCloudFingerprint(body.fingerprint)) await recordFingerprint(bucket, key, body.fingerprint, size);
     return json(200, { ok: true });
   }
 
@@ -1421,6 +1563,11 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
           : 'That file type cannot go in the lesson plan.';
     return json(400, { ok: false, error });
   }
+  // Already in this gym's Cloud: answer with the existing path and send no bytes.
+  if ((purpose === 'gallery' || purpose === 'daily-video') && isCloudFingerprint(body.fingerprint)) {
+    const duplicate = await findCloudDuplicate(bucket, actor.licenseId, body.fingerprint);
+    if (duplicate) return json(200, { ok: true, mode: 'duplicate', path: duplicate.path, ...(duplicate.lane ? { lane: duplicate.lane } : {}) });
+  }
   if (purpose === 'replay-pending' && actor.replayUpload !== 'pending') {
     return json(403, { ok: false, error: actor.replayUpload === 'direct' ? 'Save replays to lesson media.' : CLOUD_ROLE_MESSAGE });
   }
@@ -1432,7 +1579,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const galleryKey = galleryPath ? cloudObjectKey(actor.licenseId, galleryPath) : null;
     if (!galleryPath || !galleryKey) return json(400, { ok: false, error: 'That file name cannot be saved.' });
     const galleryRoom = await roomFor(bucket, galleryKey, size, cap);
-    if (!galleryRoom.ok) return json(409, { ok: false, error: cloudFullMessage(galleryRoom.bucketUsed, cap) });
+    if (!galleryRoom.ok) return json(409, { ok: false, error: cloudFullMessage(galleryRoom.used, cap) });
     if (size > CLOUD_CHUNK_BYTES) {
       const upload = await bucket.createMultipartUpload(galleryKey, { httpMetadata: { contentType: mime } });
       return json(200, {
@@ -1456,7 +1603,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const instructorKey = instructorPath ? cloudObjectKey(actor.licenseId, instructorPath) : null;
     if (!instructorPath || !instructorKey) return json(400, { ok: false, error: 'That file name cannot be saved.' });
     const instructorRoom = await roomFor(bucket, instructorKey, size, cap);
-    if (!instructorRoom.ok) return json(409, { ok: false, error: cloudFullMessage(instructorRoom.bucketUsed, cap) });
+    if (!instructorRoom.ok) return json(409, { ok: false, error: cloudFullMessage(instructorRoom.used, cap) });
     if (size > CLOUD_CHUNK_BYTES) {
       const upload = await bucket.createMultipartUpload(instructorKey, { httpMetadata: { contentType: mime } });
       return json(200, { ok: true, mode: 'multipart', key: instructorKey, path: instructorPath, uploadId: upload.uploadId, partSize: CLOUD_CHUNK_BYTES });
@@ -1472,7 +1619,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const sentKey = sentPath ? cloudObjectKey(actor.licenseId, sentPath) : null;
     if (!sentPath || !sentKey) return json(400, { ok: false, error: 'Choose one student and a real date.' });
     const sentRoom = await roomFor(bucket, sentKey, size, cap);
-    if (!sentRoom.ok) return json(409, { ok: false, error: cloudFullMessage(sentRoom.bucketUsed, cap) });
+    if (!sentRoom.ok) return json(409, { ok: false, error: cloudFullMessage(sentRoom.used, cap) });
     if (size > CLOUD_CHUNK_BYTES) {
       const upload = await bucket.createMultipartUpload(sentKey, { httpMetadata: { contentType: mime } });
       return json(200, { ok: true, mode: 'multipart', key: sentKey, path: sentPath, uploadId: upload.uploadId, partSize: CLOUD_CHUNK_BYTES });
@@ -1503,7 +1650,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     return json(409, { ok: false, error: "A video with that name is already in today's videos. Rename it and send again." });
   }
   const room = await roomFor(bucket, key, size, cap);
-  if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.bucketUsed, cap) });
+  if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.used, cap) });
   if (dailyLane) {
     const pendingMarker = dailyVideoMarkerKey(actor.licenseId, relative.path, 'pending');
     const rejectedMarker = dailyVideoMarkerKey(actor.licenseId, relative.path, 'rejected');
