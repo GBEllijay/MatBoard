@@ -19,7 +19,7 @@ import { impliedDoors } from './tierImplications.ts';
 
 export const STUDENT_SIDE_TOKEN_KEY = 'matboard.studentEdition.studentLicenseToken.v1';
 
-type Payload = { src?: unknown; tier?: unknown; grants?: unknown; subs?: { state?: unknown } | null; preset?: unknown };
+export type Payload = { src?: unknown; tier?: unknown; grants?: unknown; subs?: { state?: unknown } | null; preset?: unknown };
 
 function payloadOf(token: string | null | undefined): Payload | null {
   const part = (token ?? '').trim().split('.')[1];
@@ -43,14 +43,19 @@ function doors(row: Payload): Set<string> {
   return open;
 }
 
+/** What a free Student license or Student code carries. */
+export const STUDENT_CLAIM_PAYLOAD: Payload = { src: 'student-license', tier: 'student', grants: ['student'] };
+
 /**
- * True when `incoming` would take something away from the pass already here:
- * the current pass is a live seat, an owner pass, or opens a door the incoming one does not.
- * A locked or unreadable current pass is not protected (a restore or refresh replaces it as before).
+ * THE no-downgrade rule, on decoded pass claims. Used by the Student license claim
+ * (studentLicenseClient.ts), code redeem (codeRedeemClient.ts), and the claim page
+ * (studentLicensePool.ts studentClaimWouldDowngrade).
+ *
+ * True when `next` would take something away from `here`: `here` is a live seat or an
+ * owner pass, or opens a door (tierImplications.ts ladder) that `next` does not.
+ * A locked current pass is not protected (a restore or refresh replaces it as before).
  */
-export function wouldDowngradePass(current: string | null | undefined, incoming: string | null | undefined): boolean {
-  const here = payloadOf(current);
-  const next = payloadOf(incoming);
+export function claimsWouldDowngrade(here: Payload | null | undefined, next: Payload | null | undefined): boolean {
   if (!here || !next) return false;
   if (here.subs?.state === 'locked') return false;
   if (isSeat(here) && !isSeat(next)) return true;
@@ -58,6 +63,11 @@ export function wouldDowngradePass(current: string | null | undefined, incoming:
   const theirs = doors(next);
   for (const door of mine) if (!theirs.has(door)) return true;
   return false;
+}
+
+/** Same rule on raw pass tokens. An unreadable current pass is not protected. */
+export function wouldDowngradePass(current: string | null | undefined, incoming: string | null | undefined): boolean {
+  return claimsWouldDowngrade(payloadOf(current), payloadOf(incoming));
 }
 
 /** Keep the Student pass beside the higher one. */

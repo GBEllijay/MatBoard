@@ -25,7 +25,7 @@
  *
  * Results (`/student/results`):
  * Tracked tournament (Not on my list and each shared tournament),
- * Result tournament name, Result division, Add result.
+ * Result tournament name, Result age division, Add result.
  * Match date, Opponent, Win, Loss, Draw, Points, Sub, Advantage, DQ, Match notes, Add match.
  * Remove match. Bracket round, Bracket name, Add bracket line, Remove bracket line.
  * Bracket photo, Attach bracket photo, Remove bracket photo.
@@ -413,13 +413,17 @@ test('results controls still pick a tournament and record a match, bracket, and 
   const picker = labeled(host, 'Tracked tournament') as HTMLSelectElement;
   assert.deepEqual([...picker.options].map((option) => option.text), ['Not on my list', 'City Open']);
   labeled(host, 'Result tournament name');
-  labeled(host, 'Result division');
+  labeled(host, 'Result age division');
+  labeled(host, 'Result competition division');
+  labeled(host, 'Result weight class');
+  labeled(host, 'Result belt rank');
   assert.ok(control(host, 'button', 'Add result').classList.contains('ink-btn--save'));
   const city = [...picker.options].find((option) => option.text === 'City Open');
   assert.equal(city?.value, 'meet-city');
   chooseSelect(picker, city?.value ?? '');
   assert.equal((labeled(host, 'Result tournament name') as HTMLInputElement).value, 'City Open');
-  assert.equal((labeled(host, 'Result division') as HTMLInputElement).value, 'Adult · Feather');
+  assert.equal((labeled(host, 'Result age division') as HTMLSelectElement).value, 'Adult');
+  assert.equal((labeled(host, 'Result weight class') as HTMLSelectElement).value, 'Feather');
   click(control(host, 'button', 'Add result'));
   assert.ok(host.textContent?.includes('City Open'));
 

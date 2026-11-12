@@ -28,7 +28,9 @@ URL.createObjectURL = () => `blob:test-${(urlSeq += 1)}`;
 URL.revokeObjectURL = () => undefined;
 
 const { CloudGallerySection, CLOUD_GALLERY_EMPTY } = await import('./CloudGallerySection.tsx');
+const { CloudVideoCleanup, CLOUD_CLEANUP_TITLE } = await import('./CloudVideoCleanup.tsx');
 const { advantageCloudLaneStore, listApprovedCloudMedia, CLOUD_GALLERY_READ_ERROR } = await import('../lib/advantageCloudLanes.ts');
+const { CLOUD_CLEANUP_EMPTY } = await import('../lib/cloudVideoCleanup.ts');
 const { cloudCopyLine, copyFilesToCloudGallery } = await import('../lib/galleryCloudCopy.ts');
 type ApprovalItem = import('../lib/approvalLanes.ts').ApprovalItem;
 type ApprovalLaneStore = import('../lib/approvalLanes.ts').ApprovalLaneStore;
@@ -239,4 +241,96 @@ test('Gallery page wiring: every gallery import path copies to Cloud and the old
   const review = readFileSync('src/components/GalleryReviewQueue.tsx', 'utf8');
   assert.match(review, /advantageCloudLaneStore\(\)/);
   assert.match(review, /Daily video/);
+});
+
+test('Delete on a Cloud gallery video waits for confirm, then removes the file; non-managers see no Delete', async () => {
+  const hidden = mount(<CloudGallerySection load={async () => [video, photo]} store={fakeStore([])} canManage={false} />);
+  await flush();
+  assert.equal(hidden.host.querySelector('[data-cloud-delete]'), null);
+  assert.equal(hidden.host.querySelector('[data-cloud-cleanup]'), null);
+  act(() => hidden.root.unmount());
+
+  const removed: string[][] = [];
+  const { root, host } = mount(
+    <CloudGallerySection
+      load={async () => [video, photo]}
+      store={fakeStore([])}
+      canManage
+      remove={async ({ paths }) => {
+        removed.push(paths);
+        return { ok: true, deleted: paths.length, licenseUsedBytes: 0, bucketUsedBytes: 0, capBytes: 8_000_000_000 };
+      }}
+    />,
+  );
+  await flush();
+  const del = host.querySelector(`[data-cloud-delete="${video.path}"]`) as HTMLButtonElement;
+  assert.ok(del);
+  await act(async () => del.click());
+  await flush();
+  assert.equal(removed.length, 0, 'no delete until confirm');
+  assert.match(host.querySelector('[data-cloud-delete-confirm]')?.textContent ?? '', /Delete this video from Advantage Cloud/);
+  const cancel = [...host.querySelectorAll('[data-cloud-delete-confirm] button')].find((node) => node.textContent === 'Cancel') as HTMLButtonElement;
+  await act(async () => cancel.click());
+  await flush();
+  assert.equal(host.querySelector('[data-cloud-delete-confirm]'), null);
+  await act(async () => (host.querySelector(`[data-cloud-delete="${video.path}"]`) as HTMLButtonElement).click());
+  await flush();
+  await act(async () => (host.querySelector('[data-cloud-delete-go]') as HTMLButtonElement).click());
+  await flush();
+  assert.deepEqual(removed, [[video.path]]);
+  assert.equal(host.querySelector(`[data-cloud-gallery-item="${video.path}"]`), null);
+  assert.ok(host.querySelector(`[data-cloud-gallery-item="${photo.path}"]`));
+  act(() => root.unmount());
+});
+
+test('cleanup lists videos for the chosen cutoff and only deletes after confirm', async () => {
+  const calls: { days?: number; paths?: string[] }[] = [];
+  const itemsFor = (days: number) =>
+    days >= 90
+      ? [
+          { name: 'old.mp4', path: 'videos/daily/2026-05-01/old.mp4', size: 4_000_000, mime: 'video/mp4', dateKey: '2026-05-01', source: 'daily-video' as const, kind: 'video' as const, lane: 'approved' as const },
+        ]
+      : [];
+  const { root, host } = mount(
+    <CloudVideoCleanup
+      list={async ({ days }) => {
+        calls.push({ days });
+        const items = itemsFor(days);
+        return { days: days === 30 || days === 60 || days === 90 || days === 180 ? days : 90, cutoff: '2026-08-14', count: items.length, totalBytes: items.reduce((sum, item) => sum + item.size, 0), items, truncated: false };
+      }}
+      remove={async ({ paths }) => {
+        calls.push({ paths });
+        return { ok: true, deleted: paths.length, licenseUsedBytes: 1, bucketUsedBytes: 2, capBytes: 8_000_000_000 };
+      }}
+    />,
+  );
+  await flush();
+  assert.match(host.textContent ?? '', new RegExp(CLOUD_CLEANUP_TITLE));
+  await act(async () => (host.querySelector('[data-cloud-cleanup-open]') as HTMLButtonElement).click());
+  await flush();
+  assert.equal((host.querySelector('[data-cloud-cleanup-days]') as HTMLSelectElement).value, '90');
+  assert.match(host.querySelector('[data-cloud-cleanup-summary]')?.textContent ?? '', /1 video · 4 MB/);
+  assert.ok(host.querySelector('[data-cloud-cleanup-item="videos/daily/2026-05-01/old.mp4"]'));
+  await act(async () => {
+    const select = host.querySelector('[data-cloud-cleanup-days]') as HTMLSelectElement;
+    select.value = '30';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await flush();
+  assert.equal(host.querySelector('[data-cloud-cleanup-empty]')?.textContent, CLOUD_CLEANUP_EMPTY(30));
+  await act(async () => {
+    const select = host.querySelector('[data-cloud-cleanup-days]') as HTMLSelectElement;
+    select.value = '90';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await flush();
+  await act(async () => (host.querySelector('[data-cloud-cleanup-delete]') as HTMLButtonElement).click());
+  await flush();
+  assert.equal(calls.some((call) => call.paths), false, 'no delete until confirm');
+  assert.match(host.querySelector('[data-cloud-delete-confirm]')?.textContent ?? '', /Permanently delete 1 video/);
+  await act(async () => (host.querySelector('[data-cloud-delete-go]') as HTMLButtonElement).click());
+  await flush();
+  assert.deepEqual(calls.filter((call) => call.paths).map((call) => call.paths), [['videos/daily/2026-05-01/old.mp4']]);
+  assert.match(host.querySelector('[data-cloud-cleanup-note]')?.textContent ?? '', /Deleted 1 video/);
+  act(() => root.unmount());
 });

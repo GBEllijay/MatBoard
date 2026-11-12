@@ -2,7 +2,7 @@
  * One approve-then-display model for academy media, whatever holds the bytes.
  *
  *   upload ──► pending ──► approved  (shown in the gallery, on the TV, to staff)
- *                     └──► rejected  (kept, never shown)
+ *                     └──► rejected  (deleted from Advantage Cloud; folder stores may still keep a rejected copy)
  *
  * The owner's own uploads skip pending. Coach, Instructors, and program
  * director seats land in pending while the license-level approval switch

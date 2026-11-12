@@ -7,7 +7,7 @@
 import { beltModeOf, mergeBeltBooks, readBeltBook } from '../beltBook.ts';
 import { migrateQualityToNote, qualityStage } from '../sessionQuality.ts';
 import { coachGymLogoFits, readTravelingGym, softenOversizedGymLogo } from '../coachGymFit.ts';
-import { splitCombinedDivision } from '../divisionFields.ts';
+import { parseResultClass, resultClassLine, splitCombinedDivision } from '../divisionFields.ts';
 import { fundamentalLevelOf, isFundamentalLevel } from '../fundamentals.ts';
 import { highDatesForCount } from '../blackBeltDegrees.ts';
 import { dedupeRankHistory, expandLineage, stripeDateText } from '../studentRank.ts';
@@ -44,6 +44,7 @@ import {
   PROGRESS_LEVELS_MAX,
   RANK_EXPORT_BUDGET,
   RANK_PHOTO_MAX_CHARS,
+  COMPETITION_PLACES,
   MATCH_METHODS,
   MATCH_RESULTS,
   PROGRESS_BRACKET_NOTES_MAX,
@@ -1109,6 +1110,22 @@ function mergeCompetition(report: StudentProgressReport, incoming: StudentProgre
       conflicts,
     );
     current.division = preferText(current.division, result.division, `Result ${result.id} division was kept.`, conflicts);
+    current.date = preferText(current.date ?? '', result.date ?? '', `Result ${result.id} date was kept.`, conflicts) || undefined;
+    current.note = preferText(current.note ?? '', result.note ?? '', `Result ${result.id} note was kept.`, conflicts) || undefined;
+    current.ageDivision = preferText(current.ageDivision ?? '', result.ageDivision ?? '', `Result ${result.id} age division was kept.`, conflicts) || undefined;
+    current.competitionDivision = preferText(
+      current.competitionDivision ?? '',
+      result.competitionDivision ?? '',
+      `Result ${result.id} competition division was kept.`,
+      conflicts,
+    ) || undefined;
+    current.weightClass = preferText(current.weightClass ?? '', result.weightClass ?? '', `Result ${result.id} weight class was kept.`, conflicts) || undefined;
+    current.belt = preferText(current.belt ?? '', result.belt ?? '', `Result ${result.id} belt was kept.`, conflicts) || undefined;
+    if (!current.place && result.place) current.place = result.place;
+    else if (current.place && result.place && current.place !== result.place) {
+      conflicts.push(`Result ${result.id} place was kept.`);
+    }
+    if (result.quick) current.quick = true;
     if (current.tournamentId !== result.tournamentId) conflicts.push(`Result ${result.id} tournament link was kept.`);
     if (current.bracketPhoto !== result.bracketPhoto && !current.bracketPhoto && result.bracketPhoto) {
       current.bracketPhoto = true;
@@ -2065,15 +2082,51 @@ function readResult(value: unknown, index: number, errors: string[]): Competitio
     errors.push(`${label} must be an object.`);
     return { id: '', tournamentId: '', tournamentName: '', division: '', matches: [], bracket: [], bracketPhoto: false };
   }
-  return {
+  const division = readString(record.division, `${label} division`, PROGRESS_NAME_MAX, errors);
+  const result: CompetitionResult = {
     id: readId(record.id, `${label} id`, errors),
     tournamentId: readOptionalId(record.tournamentId, `${label} tournament id`, errors),
     tournamentName: readString(record.tournamentName, `${label} tournament`, PROGRESS_NAME_MAX, errors),
-    division: readString(record.division, `${label} division`, PROGRESS_NAME_MAX, errors),
+    division,
     matches: readMatches(record.matches, label, errors),
     bracket: readBracket(record.bracket, label, errors),
     bracketPhoto: readFlag(record.bracketPhoto, `${label} bracket photo`, errors),
   };
+  const date = readOptionalDay(record.date);
+  if (date) result.date = date;
+  const note = readString(record.note, `${label} note`, PROGRESS_NOTE_MAX, errors).trim();
+  if (note) result.note = note;
+  const place = readChoice(record.place, `${label} place`, COMPETITION_PLACES, errors);
+  if (place) result.place = place;
+  if (record.quick === true) result.quick = true;
+  else if (record.quick != null && record.quick !== false) {
+    errors.push(`${label} quick flag must be true or false.`);
+  }
+  const hasClassKeys = ['ageDivision', 'competitionDivision', 'weightClass', 'belt'].some((key) =>
+    Object.prototype.hasOwnProperty.call(record, key),
+  );
+  if (hasClassKeys) {
+    const ageDivision = readString(record.ageDivision, `${label} age division`, PROGRESS_NAME_MAX, errors).trim();
+    const competitionDivision = readString(
+      record.competitionDivision,
+      `${label} competition division`,
+      PROGRESS_NAME_MAX,
+      errors,
+    ).trim();
+    const weightClass = readString(record.weightClass, `${label} weight class`, PROGRESS_NAME_MAX, errors).trim();
+    const belt = readString(record.belt, `${label} belt`, PROGRESS_NAME_MAX, errors).trim();
+    if (ageDivision) result.ageDivision = ageDivision;
+    if (competitionDivision) result.competitionDivision = competitionDivision;
+    if (weightClass) result.weightClass = weightClass;
+    if (belt) result.belt = belt;
+  } else {
+    const parsed = parseResultClass(division);
+    if (parsed.ageDivision) result.ageDivision = parsed.ageDivision;
+    if (parsed.competitionDivision) result.competitionDivision = parsed.competitionDivision;
+    if (parsed.weightClass) result.weightClass = parsed.weightClass;
+    if (parsed.belt) result.belt = parsed.belt;
+  }
+  return result;
 }
 
 function readMatches(value: unknown, label: string, errors: string[]): CompetitionMatch[] {
@@ -2827,7 +2880,7 @@ function writeReportRows(lines: string[], packet: StudentProgressReport): void {
       '',
       packet.studentId,
       '',
-      result.division,
+      resultClassLine(result),
       result.tournamentName,
       '',
       '',

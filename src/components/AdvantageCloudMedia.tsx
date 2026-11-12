@@ -4,7 +4,10 @@ import {
   CLOUD_SAVED_MESSAGE,
   CLOUD_SENT_FOR_APPROVAL,
   cloudUsageLine,
+  galleryDecisionAllowed,
+  isDailyVideoCloudPath,
   notifyCloudMedia,
+  parseGalleryCloudPath,
   readCloudBearer,
   readCloudMediaHome,
   setCloudUploadReady,
@@ -16,10 +19,18 @@ import {
   type CloudStatusBody,
   type PendingReplayRow,
 } from '../lib/advantageCloudMedia';
+import {
+  CLOUD_DELETE_CONFIRM_PHOTO,
+  CLOUD_DELETE_CONFIRM_VIDEO,
+  CLOUD_DELETE_DONE,
+  deleteCloudMedia,
+} from '../lib/cloudVideoCleanup';
 import { isDailyPhoto, uploadDailyMediaFile } from '../lib/dailyOwnerUpload';
 import { MEDIA_LIBRARY_ACCEPT } from '../lib/mediaPicker';
 import { CLOUD_STUDENT_LICENSE_HINT } from '../lib/storageCopy';
 import { useCurrentSeat } from './SeatSessionBar';
+import { CloudDeleteConfirm } from './CloudDeleteConfirm';
+import { CloudVideoCleanup } from './CloudVideoCleanup';
 
 type Purpose = 'daily-video' | 'lesson';
 
@@ -51,7 +62,9 @@ function authHeaders(): HeadersInit | null {
  * Renders nothing unless this signed-in license has Plus Cloud.
  */
 export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) {
-  const ownerSession = useCurrentSeat() === null;
+  const seat = useCurrentSeat();
+  const ownerSession = seat === null;
+  const canManage = galleryDecisionAllowed({ kind: seat ? 'seat' : 'owner', preset: seat?.presetId });
   const [status, setStatus] = useState<CloudStatusBody | null>(null);
   const [files, setFiles] = useState<CloudFileRow[]>([]);
   const [home, setHome] = useState<CloudMediaHome>('device');
@@ -59,6 +72,8 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
   const [busy, setBusy] = useState(false);
   const [player, setPlayer] = useState<Player | null>(null);
   const [studentLicenseId, setStudentLicenseId] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<CloudFileRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     setHome(readCloudMediaHome(typeof localStorage === 'undefined' ? null : localStorage));
@@ -238,6 +253,25 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
     setNote(result.ok ? 'Lesson plan saved to Advantage Cloud.' : result.message);
   };
 
+  const canDeleteFile = (file: CloudFileRow) => canManage && (isDailyVideoCloudPath(file.path) || Boolean(parseGalleryCloudPath(file.path)));
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleteBusy(true);
+    const result = await deleteCloudMedia({ paths: [pendingDelete.path] });
+    setDeleteBusy(false);
+    if (!result.ok) {
+      setNote(result.message);
+      return;
+    }
+    setPendingDelete(null);
+    setNote(CLOUD_DELETE_DONE);
+    if (typeof result.licenseUsedBytes === 'number' && typeof result.bucketUsedBytes === 'number' && typeof result.capBytes === 'number') {
+      setStatus((current) => (current ? { ...current, licenseUsedBytes: result.licenseUsedBytes, bucketUsedBytes: result.bucketUsedBytes, capBytes: result.capBytes } : current));
+    }
+    notifyCloudMedia();
+  };
+
   return (
     <section className="cloud-media" aria-label="Advantage Cloud" data-cloud-panel={purpose}>
       <h2>Advantage Cloud</h2>
@@ -331,12 +365,27 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
                   Send to student
                 </button>
               ) : null}
+              {canDeleteFile(file) ? (
+                <button type="button" className="btn btn--ghost" data-cloud-delete={file.path} disabled={busy || deleteBusy} onClick={() => setPendingDelete(file)}>
+                  Delete
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
       ) : (
         <p className="cloud-media__empty">No Advantage Cloud files for this day yet.</p>
       )}
+      {pendingDelete ? (
+        <CloudDeleteConfirm
+          title="Delete from Advantage Cloud"
+          body={pendingDelete.mime.startsWith('image/') ? CLOUD_DELETE_CONFIRM_PHOTO : CLOUD_DELETE_CONFIRM_VIDEO}
+          busy={deleteBusy}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void confirmDelete()}
+        />
+      ) : null}
+      {canManage && purpose === 'daily-video' ? <CloudVideoCleanup /> : null}
       {player?.kind === 'video' ? <video className="cloud-media__player" src={player.url} controls playsInline /> : null}
       {player?.kind === 'image' ? <img className="cloud-media__player" src={player.url} alt={player.name} /> : null}
       {purpose === 'lesson' ? <PendingReplayApprovals owner={ownerSession} /> : null}

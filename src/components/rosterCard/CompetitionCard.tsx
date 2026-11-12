@@ -5,6 +5,7 @@
  * and the game plan use the same stores as Competitor Management.
  */
 import { useState, type ReactNode } from 'react';
+import { resultClassLine } from '../../lib/divisionFields';
 import { Link } from 'react-router-dom';
 import { READY_ITEMS, linkedRosterStudent, type Student } from '../../lib/rosterStore';
 import { followedCompetitorPhoto } from '../../lib/competitorCarryOver';
@@ -259,7 +260,7 @@ export function CompetitionCard({
                 <li key={result.id} className="comp-card__result">
                   <span className="comp-card__event">
                     <b>{result.tournamentName}</b>
-                    {result.division}
+                    {resultClassLine(result)}
                   </span>
                   <span className="comp-card__matches">
                     {result.matches.map((match) => `${match.result === 'win' ? 'W' : match.result === 'loss' ? 'L' : 'D'} ${match.opponent}${match.method ? ` · ${METHOD_LABELS[match.method]}` : ''}`).join(', ') || 'No matches noted'}

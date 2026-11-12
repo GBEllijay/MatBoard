@@ -13,6 +13,8 @@
  * /api/gym/inbox serves only the pass's own student id, and a revoked grant closes it.
  */
 
+import { STUDENT_CLAIM_PAYLOAD, claimsWouldDowngrade } from './passDowngrade.ts';
+
 import { FREE_STUDENT_LICENSES } from './proBundleMath.ts';
 
 export { FREE_STUDENT_LICENSES };
@@ -20,7 +22,11 @@ export { FREE_STUDENT_LICENSES };
 export const STUDENT_LICENSE_PRESET = 'student-license';
 export const STUDENT_LICENSE_SOURCE_PREFIX = 'student-code:';
 
-export const STUDENT_LICENSE_GIVE = 'Give a free Student license';
+export const STUDENT_LICENSE_GIVE = 'Invite a student (Student Edition only)';
+export const STUDENT_INVITE_TYP = 'student-invite';
+export const STUDENT_JOIN_PATH = '/join/student';
+export const STUDENT_CLAIM_KEPT_HIGHER =
+  'This phone already has a higher license, so Student Edition was not installed over it. You are still linked to the academy.';
 export const STUDENT_LICENSE_EMPTY = 'No free Student licenses left.';
 export const STUDENT_LICENSE_REVOKED_MESSAGE =
   'This free Student license was revoked. Ask your coach for a new code.';
@@ -62,12 +68,43 @@ export function isStudentLicenseCode(value: string): boolean {
   return CODE_RE.test(value);
 }
 
-/** Claim page on this origin. The gym name is a label, not the secret. */
+/** Hex claim code, or a compact signed student-invite token. */
+export function isStudentInviteValue(value: string): boolean {
+  const trimmed = value.trim();
+  if (isStudentLicenseCode(trimmed)) return true;
+  return /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(trimmed);
+}
+
+/**
+ * Public join page. Prefer the signed invite token in ?code=.
+ * The gym name is a label, not the secret.
+ */
+export function studentInviteJoinUrl(origin: string, inviteOrCode: string, gymName = ''): string {
+  const params = new URLSearchParams({ code: inviteOrCode });
+  const name = gymName.trim().slice(0, 80);
+  if (name) params.set('gym', name);
+  return `${origin.replace(/\/$/, '')}${STUDENT_JOIN_PATH}?${params.toString()}`;
+}
+
+/** Older claim path. Still accepted for hex codes issued before the join page. */
 export function studentLicenseClaimUrl(origin: string, code: string, gymName = ''): string {
   const base = `${origin.replace(/\/$/, '')}/student/claim/${code}`;
   const name = gymName.trim().slice(0, 80);
   if (!name) return base;
   return `${base}?gym=${encodeURIComponent(name)}`;
+}
+
+/**
+ * True when this phone already holds a seat, an owner pass, or a Media, Instructor
+ * or Pro pass. A free Student claim must not replace that token.
+ * Same rule as every other no-downgrade check (passDowngrade.ts claimsWouldDowngrade):
+ * White sits below Student on the ladder, so a White pass is not protected; the
+ * Student pass opens White too.
+ */
+export function studentClaimWouldDowngrade(
+  claims: { src?: string; tier?: string; grants?: readonly string[]; subs?: { state?: unknown } | null } | null | undefined,
+): boolean {
+  return claimsWouldDowngrade(claims, STUDENT_CLAIM_PAYLOAD);
 }
 
 const STUDENT_PREFIXES = ['inbox/', 'photos/pending/', 'photos/approved/', 'events/'] as const;

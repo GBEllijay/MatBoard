@@ -62,8 +62,8 @@ class MemoryBucket implements GymMediaBucket {
     this.objects.set(key, { bytes, type: options?.httpMetadata?.contentType || 'application/octet-stream' });
   }
 
-  async delete(key: string) {
-    this.objects.delete(key);
+  async delete(keys: string | string[]) {
+    for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key);
   }
 
   async list(options?: { prefix?: string; cursor?: string; limit?: number }) {
@@ -334,7 +334,7 @@ test('owner daily videos go straight to approved; a seat video waits, hidden, un
   assert.equal((await post(env, owner, { action: 'daily-approve', key: theirs.path })).status, 404);
 });
 
-test('reject hides a seat daily video and keeps its bytes; a pending upload cannot replace a showing video', async () => {
+test('reject deletes a seat daily video and its pending marker; a pending upload cannot replace a showing video', async () => {
   const { bucket, env, owner, coach, director } = await setup();
   assert.equal((await uploadDaily(env, owner, 'same-name.mp4')).status, 200);
   const clash = await uploadDaily(env, coach, 'same-name.mp4');
@@ -346,14 +346,12 @@ test('reject hides a seat daily video and keeps its bytes; a pending upload cann
   assert.equal(sent.lane, 'pending');
   const rejected = await post(env, owner, { action: 'daily-reject', key: sent.path });
   assert.equal(rejected.status, 200);
-  assert.equal(bucket.objects.has(`${BASE}pending/daily/rejected/2026-11-12/pd-drop.mp4`), true);
+  assert.equal(((await rejected.json()) as { deleted?: boolean }).deleted, true);
+  assert.equal(bucket.objects.has(`${BASE}pending/daily/rejected/2026-11-12/pd-drop.mp4`), false);
   assert.equal(bucket.objects.has(`${BASE}pending/daily/pending/2026-11-12/pd-drop.mp4`), false);
-  assert.equal(bucket.objects.has(`${BASE}videos/daily/2026-11-12/pd-drop.mp4`), true);
+  assert.equal(bucket.objects.has(`${BASE}videos/daily/2026-11-12/pd-drop.mp4`), false);
   assert.deepEqual((await listDaily(env, owner)).map((file) => file.path), ['videos/daily/2026-11-12/same-name.mp4']);
-  assert.equal(
-    (await listDaily(env, owner, '&lanes=all')).find((file) => file.path === sent.path)?.lane,
-    'rejected',
-  );
+  assert.equal((await listDaily(env, owner, '&lanes=all')).some((file) => file.path === sent.path), false);
   assert.equal((await approvedMedia(env, owner)).some((item) => item.path === sent.path), false);
   // The program director's camera window never plays it.
   assert.equal(await fileStatus(env, director, sent.path!), 404);

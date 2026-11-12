@@ -147,7 +147,7 @@ test('claiming a Student license on a phone with an Instructor seat keeps the se
     'Gym',
     localStorage as unknown as Storage,
   );
-  assert.equal(ok, true);
+  assert.deepEqual(ok, { applied: false, keptHigher: true });
   assert.equal(localStorage.getItem(ENTITLEMENT_TOKEN_KEY), seatPass, 'the seat pass is never overwritten');
   assert.equal(localStorage.getItem(STUDENT_SIDE_TOKEN_KEY), studentPass);
   assert.equal(localStorage.getItem(INBOX_PASS_KEY), inbox, 'her one student identity still gets its inbox pass');

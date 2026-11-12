@@ -31,8 +31,9 @@ class MemoryBucket implements GymMediaBucket {
     this.objects.set(key, { bytes, type: options?.httpMetadata?.contentType || 'application/octet-stream' });
   }
 
-  async delete(key: string) {
-    this.objects.delete(key);
+  async delete(keys: string | string[]) {
+    // R2 takes one key or a batch of up to 1,000.
+    for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key);
   }
 
   async list(options?: { prefix?: string; cursor?: string; limit?: number }) {
@@ -292,4 +293,131 @@ test('dedup ignores a malformed fingerprint and other purposes', async () => {
   const { env, owner } = await setup();
   const bad = await start(env, owner, 'x.jpg', { fingerprint: '../../etc' });
   assert.equal(((await bad.json()) as { mode: string }).mode, 'single');
+});
+
+// --- PR 515 deletes x PR 517 quota and dedup markers ---
+
+const BASE = 'groups/lic-owner1/';
+
+async function usage(env: GymCloudEnv, bearer: string): Promise<number> {
+  const body = (await (await call(env, '/api/gym/cloud?op=status', {}, bearer)).json()) as { licenseUsedBytes: number };
+  return body.licenseUsedBytes;
+}
+
+const postBody = (env: GymCloudEnv, bearer: string, body: Record<string, unknown>) =>
+  call(env, '/api/gym/cloud', { method: 'POST', body: JSON.stringify(body) }, bearer);
+
+test('per-item delete lowers per-gym usage and removes the dedup marker so the file can be sent again', async () => {
+  const { bucket, env, owner } = await setup();
+  const print = await JPEG_PRINT();
+  const opened = (await (await start(env, owner, 'class.jpg', { fingerprint: print })).json()) as { key: string; path: string };
+  assert.equal((await putPhoto(env, owner, opened.key, print)).status, 200);
+  assert.equal(bucket.objects.has(`${BASE}hashes/${print}.json`), true);
+  assert.equal(bucket.objects.has(`${BASE}hashes/paths/${opened.path}.json`), true);
+  const before = await usage(env, owner);
+  assert.ok(before > 4);
+
+  const removed = await postBody(env, owner, { action: 'delete-media', key: opened.path });
+  assert.equal(removed.status, 200);
+  const body = (await removed.json()) as { licenseUsedBytes: number; bucketUsedBytes: number; capBytes: number };
+  assert.equal(body.licenseUsedBytes, 0);
+  assert.equal(body.bucketUsedBytes, body.licenseUsedBytes);
+  assert.equal(await usage(env, owner), body.licenseUsedBytes);
+  assert.equal(bucket.objects.has(`${BASE}hashes/${print}.json`), false);
+  assert.equal(bucket.objects.has(`${BASE}hashes/paths/${opened.path}.json`), false);
+
+  const again = (await (await start(env, owner, 'class.jpg', { fingerprint: print })).json()) as { mode: string };
+  assert.equal(again.mode, 'single');
+});
+
+test('approved-then-deleted gallery photo still finds its marker recorded under the pending path', async () => {
+  const { bucket, env, owner, coach } = await setup();
+  const print = await JPEG_PRINT();
+  const opened = (await (await start(env, coach, 'coach.jpg', { fingerprint: print })).json()) as { key: string; path: string };
+  assert.equal(opened.path, 'gallery/pending/2026-11-10/coach.jpg');
+  assert.equal((await putPhoto(env, coach, opened.key, print)).status, 200);
+  assert.equal((await postBody(env, owner, { action: 'gallery-approve', key: opened.path })).status, 200);
+  const removed = await postBody(env, owner, { action: 'delete-media', key: 'gallery/approved/2026-11-10/coach.jpg' });
+  assert.equal(removed.status, 200);
+  assert.equal(bucket.objects.has(`${BASE}hashes/${print}.json`), false);
+  assert.equal(await usage(env, owner), 0);
+});
+
+test('Review Inbox reject lowers usage and removes the dedup marker', async () => {
+  const { bucket, env, owner, coach } = await setup();
+  const print = await JPEG_PRINT();
+  const opened = (await (await start(env, coach, 'coach.jpg', { fingerprint: print })).json()) as { key: string; path: string };
+  assert.equal((await putPhoto(env, coach, opened.key, print)).status, 200);
+  const before = await usage(env, owner);
+  const reject = await postBody(env, owner, { action: 'gallery-reject', key: opened.path });
+  assert.equal(reject.status, 200);
+  assert.ok((await usage(env, owner)) < before);
+  assert.equal(await usage(env, owner), 0);
+  assert.equal(bucket.objects.has(`${BASE}hashes/${print}.json`), false);
+  assert.equal(bucket.objects.has(`${BASE}hashes/paths/${opened.path}.json`), false);
+});
+
+test('bulk cleanup: old-videos total matches the per-gym status measure, and deleting drops usage and markers', async () => {
+  const { bucket, env, owner } = await setup();
+  const enc = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
+  const prints = [`v1-full-${'a'.repeat(64)}`, `v1-full-${'b'.repeat(64)}`];
+  const paths = ['videos/daily/2026-07-01/a.mp4', 'videos/daily/2026-07-02/b.mp4'];
+  paths.forEach((path, i) => {
+    bucket.objects.set(`${BASE}${path}`, { bytes: new Uint8Array(1000 * (i + 1)), type: 'video/mp4' });
+    bucket.objects.set(`${BASE}hashes/${prints[i]}.json`, { bytes: enc({ path }), type: 'application/json' });
+    bucket.objects.set(`${BASE}hashes/paths/${path}.json`, { bytes: enc({ fingerprint: prints[i] }), type: 'application/json' });
+  });
+  // A recent video and another gym's file stay put and never count against this gym.
+  bucket.objects.set(`${BASE}videos/daily/2026-11-09/new.mp4`, { bytes: new Uint8Array(500), type: 'video/mp4' });
+  bucket.objects.set('groups/other-gym/videos/daily/2026-07-01/a.mp4', { bytes: new Uint8Array(9999), type: 'video/mp4' });
+
+  const listed = (await (await call(env, '/api/gym/cloud?op=list&purpose=old-videos&days=90', {}, owner)).json()) as {
+    items: { path: string }[];
+    totalBytes: number;
+    licenseUsedBytes: number;
+    capBytes: number;
+  };
+  assert.deepEqual(listed.items.map((item) => item.path).sort(), paths);
+  assert.equal(listed.totalBytes, 3000);
+  const statusBefore = await usage(env, owner);
+  assert.equal(listed.licenseUsedBytes, statusBefore);
+  assert.equal(listed.capBytes, CLOUD_LICENSE_HARD_LIMIT_BYTES);
+
+  const removed = (await (await postBody(env, owner, { action: 'delete-media', keys: listed.items.map((item) => item.path) })).json()) as {
+    licenseUsedBytes: number;
+  };
+  const statusAfter = await usage(env, owner);
+  assert.equal(removed.licenseUsedBytes, statusAfter);
+  assert.equal(statusAfter, 500);
+  assert.ok(statusBefore - statusAfter >= listed.totalBytes);
+  for (const [i, path] of paths.entries()) {
+    assert.equal(bucket.objects.has(`${BASE}hashes/${prints[i]}.json`), false);
+    assert.equal(bucket.objects.has(`${BASE}hashes/paths/${path}.json`), false);
+  }
+  assert.equal(bucket.objects.has('groups/other-gym/videos/daily/2026-07-01/a.mp4'), true);
+});
+
+test('a delete leaves a marker that was re-pointed at a newer copy', async () => {
+  const { bucket, env, owner } = await setup();
+  const enc = (value: unknown) => new TextEncoder().encode(JSON.stringify(value));
+  const print = `v1-full-${'c'.repeat(64)}`;
+  bucket.objects.set(`${BASE}videos/daily/2026-07-01/old.mp4`, { bytes: new Uint8Array(10), type: 'video/mp4' });
+  bucket.objects.set(`${BASE}videos/daily/2026-11-09/new.mp4`, { bytes: new Uint8Array(10), type: 'video/mp4' });
+  bucket.objects.set(`${BASE}hashes/paths/videos/daily/2026-07-01/old.mp4.json`, { bytes: enc({ fingerprint: print }), type: 'application/json' });
+  bucket.objects.set(`${BASE}hashes/${print}.json`, { bytes: enc({ path: 'videos/daily/2026-11-09/new.mp4' }), type: 'application/json' });
+  assert.equal((await postBody(env, owner, { action: 'delete-media', key: 'videos/daily/2026-07-01/old.mp4' })).status, 200);
+  assert.equal(bucket.objects.has(`${BASE}hashes/${print}.json`), true);
+  assert.equal(bucket.objects.has(`${BASE}hashes/paths/videos/daily/2026-07-01/old.mp4.json`), false);
+});
+
+test('a stale marker from before delete cleanup (no reverse key) is dropped on the next start', async () => {
+  const { bucket, env, owner } = await setup();
+  const print = await JPEG_PRINT();
+  bucket.objects.set(`${BASE}hashes/${print}.json`, {
+    bytes: new TextEncoder().encode(JSON.stringify({ path: 'gallery/approved/2026-11-01/gone.jpg' })),
+    type: 'application/json',
+  });
+  const again = (await (await start(env, owner, 'gone.jpg', { fingerprint: print })).json()) as { mode: string };
+  assert.equal(again.mode, 'single');
+  assert.equal(bucket.objects.has(`${BASE}hashes/${print}.json`), false);
 });
