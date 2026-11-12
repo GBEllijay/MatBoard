@@ -3,12 +3,12 @@
  * stay in the request body. Nothing here writes them to a log.
  */
 
+import { keepStudentSideToken, wouldDowngradePass } from './passDowngrade.ts';
 import { joinCloudAcademy } from './academyMembership.ts';
-import { acceptServerToken, entitlementSnapshot, readDeviceId } from './entitlement.ts';
+import { acceptServerToken, readDeviceId } from './entitlement.ts';
 import { ENTITLEMENT_TOKEN_KEY } from './entitlement.ts';
-import { saveInboxPass } from './studentInboxClient.ts';
+import { readStoredEntitlementToken, saveInboxPass } from './studentInboxClient.ts';
 import { applyServerGrant } from './serverGrant.ts';
-import { studentClaimWouldDowngrade } from './studentLicensePool.ts';
 
 export type StudentLicenseRow = {
   status: string;
@@ -153,17 +153,23 @@ export type AppliedStudentLicense = { applied: boolean; keptHigher: boolean };
 
 /**
  * Save the pass on this browser and connect the gym, the way a coach-connect
- * scan links a student to the academy. A higher seat or license already on
- * this phone is never replaced.
+ * scan links a student to the academy. The home-screen app still uses Restore.
+ *
+ * One no-downgrade rule (passDowngrade.ts, shared with code redeem): a higher pass
+ * already here (Instructor seat, Media / Instructor / Pro license, owner) is never
+ * replaced, because it already opens Student Edition. The Student pass is kept
+ * beside it instead, and the academy join and student inbox pass still save.
  */
 export async function applyClaimedStudentLicense(
   result: StudentLicenseClaimResult,
   gymName: string,
+  storage: Storage = localStorage,
 ): Promise<AppliedStudentLicense> {
   applyServerGrant({ grants: result.grants });
-  joinCloudAcademy(localStorage, { license: result.gymId, gymName });
-  if (result.studentPass) saveInboxPass(localStorage, result.studentPass);
-  if (studentClaimWouldDowngrade(entitlementSnapshot().claims)) {
+  joinCloudAcademy(storage, { license: result.gymId, gymName });
+  if (result.studentPass) saveInboxPass(storage, result.studentPass);
+  if (wouldDowngradePass(readStoredEntitlementToken(storage), result.token)) {
+    keepStudentSideToken(storage, result.token);
     return { applied: false, keptHigher: true };
   }
   const applied = await acceptServerToken(result.token);

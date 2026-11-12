@@ -16,6 +16,7 @@ import {
   refreshCardNotices,
   refreshCardShares,
   subscribeCardSync,
+  type CardShareMasterPush,
 } from '../lib/cardSync';
 import type { Student } from '../lib/rosterStore';
 import { applyStudentPhotoFlag, parseStudentPhotoFlag } from '../lib/studentPhotoFlag';
@@ -66,6 +67,14 @@ export function CoachStudentNotices({ student, roster }: { student: Student; ros
   );
 }
 
+/** What happened to the academy master roster copy after an accept. */
+export function masterNote(master: CardShareMasterPush): string {
+  if (master === 'applied') return ' Also on the academy roster.';
+  if (master === 'pending') return ' Sent to the head coach for the academy roster.';
+  if (master === 'failed') return ' The academy roster copy did not save. Sync the roster later.';
+  return '';
+}
+
 /** Student card shares from QR sign-ups, waiting for an Instructor or Coach seat. */
 export function PendingCardShares({ roster, title = 'Student cards waiting' }: { roster: readonly Student[]; title?: string }) {
   useTick();
@@ -87,13 +96,14 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
             {share.card.stripes ? ` · ${share.card.stripes} stripes` : ''}
             {share.card.gym ? ` · ${share.card.gym}` : ''}
             {share.photo ? ' · photo pending head coach' : ''}
+            {share.viaInstructorId ? ` · scanned ${share.viaInstructorId === 'owner' ? "the owner's" : 'an instructor'} code` : ''}
           </p>
           <button
             type="button"
             className="btn"
             onClick={async () => {
               const result = await acceptCardShare(share.shareId, { mode: 'new' });
-              setStatus(result.ok ? 'Added to Student Roster.' : 'Only an Instructor or Coach seat can accept.');
+              setStatus(result.ok ? `Added to Student Roster.${masterNote(result.master)}` : 'Only an Instructor or Coach seat can accept.');
             }}
           >
             Accept as new card
@@ -116,7 +126,7 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
             disabled={!mergeInto[share.shareId]}
             onClick={async () => {
               const result = await acceptCardShare(share.shareId, { mode: 'merge', cardId: mergeInto[share.shareId] });
-              setStatus(result.ok ? 'Merged. Coach fields were kept.' : `Could not merge (${result.reason}).`);
+              setStatus(result.ok ? `Merged. Coach fields were kept.${masterNote(result.master)}` : `Could not merge (${result.reason}).`);
             }}
           >
             Merge

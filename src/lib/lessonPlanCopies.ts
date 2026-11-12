@@ -4,17 +4,19 @@
  *   groups/{license}/lessons/current/{week}/{date}.json                       the gym template
  *   groups/{license}/lessons/instructors/{instructorId}/{week}/{date}.json    one instructor's plan
  *
- * `instructorId` is the seat id for a seat and `owner` for the academy owner.
+ * `instructorId` is the seat id for a seat and `owner` for the academy owner, from the one
+ * instructor id helper (instructorIdentity.ts) that the assessment inbox uses too.
  * An instructor's edits always land in their own copy. The template changes only when
  * the owner (or a Coach seat) picks "Update template".
  */
 
 import { isCalendarDateKey, lessonWeekId } from './gymTree.ts';
+import { INSTRUCTOR_ID_RE, OWNER_INSTRUCTOR_ID, instructorIdFor } from './instructorIdentity.ts';
 
-/** The owner's own plan folder. Seat ids are UUIDs, so this never matches a seat. */
-export const LESSON_OWNER_INSTRUCTOR_ID = 'owner';
+/** The owner's own plan folder. Seat ids are UUIDs, so this never matches a seat. Same id as instructorIdentity.ts. */
+export const LESSON_OWNER_INSTRUCTOR_ID = OWNER_INSTRUCTOR_ID;
 
-const INSTRUCTOR_SEGMENT = /^[A-Za-z0-9_-]{1,80}$/;
+const INSTRUCTOR_SEGMENT = INSTRUCTOR_ID_RE;
 export const LESSON_TEMPLATE_KEY = /^lessons\/current\/\d{4}-W\d{2}\/\d{4}-\d{2}-\d{2}\.json$/;
 export const INSTRUCTOR_LESSON_KEY = /^lessons\/instructors\/[A-Za-z0-9_-]{1,80}\/\d{4}-W\d{2}\/\d{4}-\d{2}-\d{2}\.json$/;
 
@@ -23,12 +25,9 @@ export type LessonPlanSource = 'mine' | 'template';
 
 type LessonActor = { kind: 'owner' | 'seat'; seatId?: string; preset?: string | null };
 
-/** Folder id for whoever is signed in, or null for a seat with no id. */
+/** Folder id for whoever is signed in, or null for a seat with no id. One rule: instructorIdentity.ts instructorIdFor. */
 export function lessonInstructorId(actor: LessonActor): string | null {
-  if (actor.kind === 'owner') return LESSON_OWNER_INSTRUCTOR_ID;
-  const seat = actor.seatId ?? '';
-  if (!INSTRUCTOR_SEGMENT.test(seat) || seat === LESSON_OWNER_INSTRUCTOR_ID) return null;
-  return seat;
+  return instructorIdFor(actor);
 }
 
 export function templateLessonPath(dateKey: string): string | null {

@@ -96,7 +96,10 @@ test('a student claim does not overwrite a higher seat or license already on the
   assert.equal(studentClaimWouldDowngrade({ src: 'stripe', tier: 'pro', grants: ['pro', 'coach', 'student'] }), true);
   assert.equal(studentClaimWouldDowngrade({ src: 'stripe', tier: 'coach', grants: ['coach', 'student'] }), true);
   assert.equal(studentClaimWouldDowngrade({ src: 'stripe', tier: 'media', grants: ['media'] }), true);
-  assert.equal(studentClaimWouldDowngrade({ src: 'stripe', tier: 'white', grants: ['white'] }), true);
+  // One no-downgrade rule (passDowngrade.ts): White < Student on the ladder, so a Student claim keeps White open.
+  assert.equal(studentClaimWouldDowngrade({ src: 'stripe', tier: 'white', grants: ['white'] }), false);
+  assert.equal(studentClaimWouldDowngrade({ src: 'owner', tier: 'owner', grants: ['pro'] }), true);
+  assert.equal(studentClaimWouldDowngrade({ src: 'seat', tier: 'seat', grants: [], subs: { state: 'locked' } }), false);
 });
 
 test('the Pro invite panel and public join page are wired to Student Edition only', () => {

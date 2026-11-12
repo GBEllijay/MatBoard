@@ -9,6 +9,12 @@ import { subscribeStudentJournal } from '../../lib/studentDemo';
 import { fundamentalsBoard, todayIso } from '../../lib/studentEdition';
 import { useScrollToHash } from './chrome';
 import {
+  SEND_TO_INSTRUCTOR_LABEL,
+  readAssessmentSends,
+  sendAssessmentToInstructor,
+} from '../../lib/instructorAssessmentClient';
+import { readActiveStudentProfileId } from '../../lib/studentProfiles';
+import {
   ASSESSMENT_FORM_AREAS,
   MINDSET_GOALS,
   assessmentAverage,
@@ -291,6 +297,8 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
         </button>
       </form>
 
+      <SendToInstructor entry={savedOnDate} studentName={report.profile.displayName} />
+
       <div className="assess-history">
         <h3 className="ink__label">History</h3>
         {entries.length === 0 ? <p className="student-quiet">No check-ins yet.</p> : null}
@@ -318,6 +326,47 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
         </ul>
       </div>
     </section>
+  );
+}
+
+/**
+ * Send to my instructor: the saved check-in for this date goes to the instructor whose
+ * coach connect code this phone scanned (or the gym owner). Only the eight scores,
+ * the date and the note go. The check-in on this phone does not change.
+ */
+export function SendToInstructor({ entry, studentName }: { entry: AssessmentEntry | undefined; studentName: string }) {
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ text: string; error?: boolean } | null>(null);
+  const sent = entry ? readAssessmentSends(localStorage)[entry.id] : undefined;
+  return (
+    <div className="assess-send" data-send-to-instructor="">
+      <button
+        type="button"
+        className="ink-btn"
+        disabled={!entry || busy}
+        onClick={async () => {
+          if (!entry) return;
+          setBusy(true);
+          setStatus(null);
+          const result = await sendAssessmentToInstructor(localStorage, {
+            entry,
+            profileId: readActiveStudentProfileId(),
+            studentName,
+          });
+          setBusy(false);
+          setStatus(
+            result.ok
+              ? { text: result.duplicate ? 'Already with your instructor.' : `Sent to your instructor for ${entry.date}. Their answer shows in From your coach.` }
+              : { text: result.error, error: true },
+          );
+        }}
+      >
+        {busy ? 'Sending…' : SEND_TO_INSTRUCTOR_LABEL}
+      </button>
+      {!entry ? <p className="student-quiet">Save this day first, then send it.</p> : null}
+      {sent && !status ? <p className="student-quiet">{`Sent ${new Date(sent.sentAt).toLocaleDateString()}. Their answer shows in From your coach.`}</p> : null}
+      {status ? <p role={status.error ? 'alert' : 'status'}>{status.text}</p> : null}
+    </div>
   );
 }
 

@@ -159,7 +159,10 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
     }
     setTick((n) => n + 1);
     setStatus(
-      `Connected to ${result.gymName || 'your academy'} on Advantage Cloud. No Drive folder needed. Send your card so your coach can assess you.`,
+      `Connected to ${result.gymName || 'your academy'} on Advantage Cloud. No Drive folder needed. Send your card so your coach can assess you.` +
+        (result.viaInstructorId && result.viaInstructorId !== 'owner'
+          ? ' This code came from your instructor, so your card and Send to my instructor go to them.'
+          : ''),
     );
   };
 

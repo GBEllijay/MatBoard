@@ -13,6 +13,8 @@
  * /api/gym/inbox serves only the pass's own student id, and a revoked grant closes it.
  */
 
+import { STUDENT_CLAIM_PAYLOAD, claimsWouldDowngrade } from './passDowngrade.ts';
+
 import { FREE_STUDENT_LICENSES } from './proBundleMath.ts';
 
 export { FREE_STUDENT_LICENSES };
@@ -93,20 +95,16 @@ export function studentLicenseClaimUrl(origin: string, code: string, gymName = '
 }
 
 /**
- * True when this phone already holds a seat, Pro, Instructor, Media, or a
- * paid White pass. A free Student claim must not replace that token.
+ * True when this phone already holds a seat, an owner pass, or a Media, Instructor
+ * or Pro pass. A free Student claim must not replace that token.
+ * Same rule as every other no-downgrade check (passDowngrade.ts claimsWouldDowngrade):
+ * White sits below Student on the ladder, so a White pass is not protected; the
+ * Student pass opens White too.
  */
 export function studentClaimWouldDowngrade(
-  claims: { src?: string; tier?: string; grants?: readonly string[] } | null | undefined,
+  claims: { src?: string; tier?: string; grants?: readonly string[]; subs?: { state?: unknown } | null } | null | undefined,
 ): boolean {
-  if (!claims) return false;
-  if (claims.src === 'seat' || claims.tier === 'seat') return true;
-  const grants = claims.grants ?? [];
-  if (grants.includes('pro') || grants.includes('coach') || grants.includes('media')) return true;
-  if (claims.tier === 'pro' || claims.tier === 'coach' || claims.tier === 'media') return true;
-  if (claims.tier === 'white') return true;
-  if (grants.includes('white') && claims.src !== 'free' && claims.tier !== 'student') return true;
-  return false;
+  return claimsWouldDowngrade(claims, STUDENT_CLAIM_PAYLOAD);
 }
 
 const STUDENT_PREFIXES = ['inbox/', 'photos/pending/', 'photos/approved/', 'events/'] as const;
