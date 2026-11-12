@@ -743,3 +743,93 @@ test('a new class plan starts with no video and an existing plan keeps its own',
   assert.equal(reloaded?.videos?.[0]?.name, 'VideoA.mp4');
   assert.equal(reloaded?.classDesignation, 'GB1');
 });
+
+test('remove detaches a video only from this plan, and a copied plan stays independent', async () => {
+  storage.clear();
+  const { detachPlanVideo, lessonPlansReferencingClip, replacePlanVideo, writeLessonPlanVideos } = await import(
+    './planVideos.ts'
+  );
+  const classA = emptyPlan();
+  classA.classDesignation = 'Class A';
+  classA.intro = 'Gi fundamentals.';
+  classA.videos = [
+    {
+      section: 'warmup',
+      index: null,
+      localClipId: 'clip-warm',
+      driveFileId: null,
+      url: null,
+      name: 'Warm.mp4',
+      mime: 'video/mp4',
+    },
+    {
+      section: 'technique',
+      index: 0,
+      localClipId: 'clip-armbar',
+      driveFileId: 'drive-armbar',
+      url: null,
+      name: 'Armbar.mp4',
+      mime: 'video/mp4',
+    },
+    {
+      section: 'technique',
+      index: 1,
+      localClipId: 'clip-sweep',
+      driveFileId: null,
+      url: null,
+      name: 'Sweep.mp4',
+      mime: 'video/mp4',
+    },
+  ];
+  saveDay(TODAY, classA, TODAY);
+
+  const classB = copyPlan(classA);
+  classB.classDesignation = 'Class B';
+  assert.notEqual(classB.id, classA.id);
+  assert.ok(classB.videos);
+  assert.notEqual(classB.videos, classA.videos);
+  classB.videos[1].name = 'Should not appear on A';
+  assert.equal(classA.videos[1].name, 'Armbar.mp4');
+  classB.videos[1].name = 'Armbar.mp4';
+  saveDay(TODAY, classB, TODAY);
+
+  const removed = detachPlanVideo(classB.videos, 'technique', 0);
+  assert.equal(removed.some((row) => row.localClipId === 'clip-armbar'), false);
+  assert.equal(removed.find((row) => row.section === 'warmup')?.localClipId, 'clip-warm');
+  assert.equal(removed.find((row) => row.section === 'technique' && row.index === 1)?.localClipId, 'clip-sweep');
+  writeLessonPlanVideos(TODAY, classB.id, removed, TODAY);
+
+  const afterRemove = plansOnDay(loadTrainingArchive(TODAY), TODAY);
+  const savedA = afterRemove.find((plan) => plan.id === classA.id);
+  const savedB = afterRemove.find((plan) => plan.id === classB.id);
+  assert.equal(savedA?.videos?.length, 3);
+  assert.equal(savedA?.videos?.[1]?.localClipId, 'clip-armbar');
+  assert.equal(savedA?.videos?.[1]?.name, 'Armbar.mp4');
+  assert.equal(savedB?.videos?.some((row) => row.localClipId === 'clip-armbar'), false);
+  assert.equal(savedB?.videos?.find((row) => row.section === 'warmup')?.localClipId, 'clip-warm');
+  assert.equal(savedB?.videos?.find((row) => row.index === 1)?.localClipId, 'clip-sweep');
+  assert.equal(lessonPlansReferencingClip('clip-armbar', TODAY), true);
+  assert.equal(lessonPlansReferencingClip('clip-sweep', TODAY), true);
+
+  const swapped = replacePlanVideo(savedB?.videos, {
+    section: 'technique',
+    index: 1,
+    localClipId: 'clip-pass',
+    driveFileId: null,
+    url: null,
+    name: 'Pass.mp4',
+    mime: 'video/mp4',
+  });
+  writeLessonPlanVideos(TODAY, classB.id, swapped, TODAY);
+  const afterReplace = plansOnDay(loadTrainingArchive(TODAY), TODAY);
+  assert.equal(afterReplace.find((plan) => plan.id === classA.id)?.videos?.[2]?.localClipId, 'clip-sweep');
+  assert.equal(
+    afterReplace.find((plan) => plan.id === classB.id)?.videos?.find((row) => row.index === 1)?.localClipId,
+    'clip-pass',
+  );
+  assert.equal(
+    afterReplace.find((plan) => plan.id === classB.id)?.videos?.find((row) => row.index === 1)?.name,
+    'Pass.mp4',
+  );
+  assert.equal(lessonPlansReferencingClip('clip-sweep', TODAY), true);
+});

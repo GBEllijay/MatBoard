@@ -130,6 +130,7 @@ import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { listPhotos } from '../lib/photoStore';
 import {
   adoptPlanVideos,
+  detachPlanVideo,
   lessonMediaFromPlanVideos,
   planVideoRefFor,
   planVideoRefsFromVideoPlan,
@@ -631,9 +632,9 @@ export function TrainingNotesPage() {
     setRemoveBlockKey(null);
   };
 
-  const openVideo = (ref: LessonSlotRef) => {
+  const openVideoBoard = (ref: LessonSlotRef) => {
     const offer = videoOffer(dayVideos, shownVideos, ref);
-    if (!offer.show || offer.clipUrl) return;
+    if (!offer.show) return;
     navigate(
       lessonVideoHref({
         section: ref.role,
@@ -644,6 +645,22 @@ export function TrainingNotesPage() {
         classId: plan.id,
       }),
     );
+  };
+
+  const openVideo = (ref: LessonSlotRef) => {
+    const offer = videoOffer(dayVideos, shownVideos, ref);
+    // A filled clip plays on the plan. Replace is the path back to Daily Training Videos.
+    if (!offer.show || offer.clipUrl) return;
+    openVideoBoard(ref);
+  };
+
+  const removePlanClip = (ref: LessonSlotRef) => {
+    if (!editingToday) return;
+    const current = shownVideos ?? plan.videos ?? [];
+    commit({
+      ...plan,
+      videos: detachPlanVideo(current, ref.role, ref.role === 'technique' ? ref.index : undefined),
+    });
   };
 
   const galleryCount = galleryToday.status === 'ready' ? galleryToday.videos.length : 0;
@@ -728,6 +745,9 @@ export function TrainingNotesPage() {
             ? (treeId) => patchTechnique(tech.id, treeId ? { treeId } : { treeId: undefined })
             : undefined
         }
+        canEditVideos={Boolean(editingToday && offer.clipUrl)}
+        onReplace={editingToday && offer.clipUrl ? () => openVideoBoard(ref) : undefined}
+        onRemove={editingToday && offer.clipUrl ? () => removePlanClip(ref) : undefined}
       />
     );
   };

@@ -158,3 +158,42 @@ export function planVideoRefFor(
     ) ?? null
   );
 }
+
+function videoRefMatches(
+  row: PlanVideoRef,
+  section: PlanVideoRef['section'],
+  index?: number,
+): boolean {
+  return section === 'technique'
+    ? row.section === 'technique' && row.index === (index ?? 0)
+    : row.section === section;
+}
+
+/**
+ * Drop one slot's video from a plan's list.
+ * Other slots stay. An empty list still belongs to that plan and does not
+ * follow the day's shared board. Clip bytes are not deleted.
+ */
+export function detachPlanVideo(
+  refs: readonly PlanVideoRef[] | undefined,
+  section: PlanVideoRef['section'],
+  index?: number,
+): PlanVideoRef[] {
+  return (refs ?? []).filter((row) => !videoRefMatches(row, section, index)).map((row) => ({ ...row }));
+}
+
+/** Swap one slot's video on a plan's list. Other slots stay. Clip bytes are not deleted. */
+export function replacePlanVideo(
+  refs: readonly PlanVideoRef[] | undefined,
+  next: PlanVideoRef,
+): PlanVideoRef[] {
+  const index = next.section === 'technique' ? (next.index ?? 0) : undefined;
+  let found = false;
+  const list = (refs ?? []).map((row) => {
+    if (!videoRefMatches(row, next.section, index)) return { ...row };
+    found = true;
+    return { ...next };
+  });
+  if (!found) list.push({ ...next });
+  return list;
+}
