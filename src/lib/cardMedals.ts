@@ -2,13 +2,16 @@
  * Medals on the student card: the three most recent podium finishes from the
  * Results the student records (competition.results). These are the student's
  * own record, usable with no coach, and they are not academy-certified.
- * The results model has no
- * explicit place field, so the place is read from the recorded matches:
+ * An explicit place (Gold, Silver, Bronze) on a quick or full result is used
+ * as-is. When there is no place field, the place is read from the recorded
+ * matches:
  * - every recorded match a win → gold (1st);
  * - one loss, and it is the last match recorded, after at least one win →
  *   bronze (3rd) when that match or the last bracket round says "semi", otherwise silver (2nd).
  * Anything else is not a podium the record can show, so it gets no medal.
+ * The belt shown is the one stored on that result, never the student's current belt.
  */
+import { resultClassLine } from './divisionFields.ts';
 import type { CompetitionMatch, CompetitionResult, StudentCompetition } from './progress/types.ts';
 
 export type MedalKind = 'gold' | 'silver' | 'bronze';
@@ -22,12 +25,17 @@ export type CardMedal = {
   resultId: string;
   name: string;
   division: string;
+  /** Belt recorded on this result. Empty when the entry has no belt. */
+  belt: string;
   /** YYYY-MM-DD, or empty when nothing recorded a date. */
   date: string;
   matches: CompetitionMatch[];
+  quick: boolean;
 };
 
 export function medalOf(result: CompetitionResult): MedalKind | null {
+  if (result.place === 'gold' || result.place === 'silver' || result.place === 'bronze') return result.place;
+  if (result.place === 'participated' || result.place === 'dnp') return null;
   const matches = result.matches;
   if (!matches.length) return null;
   const wins = matches.filter((m) => m.result === 'win').length;
@@ -42,6 +50,7 @@ export function medalOf(result: CompetitionResult): MedalKind | null {
 }
 
 function resultDate(result: CompetitionResult, competition: Pick<StudentCompetition, 'tournaments'>): string {
+  if (result.date) return result.date;
   const dates = result.matches.map((m) => m.date ?? '').filter(Boolean).sort();
   if (dates.length) return dates[dates.length - 1];
   return competition.tournaments.find((t) => t.id && t.id === result.tournamentId)?.date ?? '';
@@ -59,8 +68,10 @@ export function recentMedals(competition: Pick<StudentCompetition, 'results' | '
     place: MEDAL_PLACE[kind],
     resultId: result.id,
     name: result.tournamentName,
-    division: result.division,
+    division: resultClassLine(result),
+    belt: (result.belt ?? '').trim(),
     date,
     matches: result.matches,
+    quick: result.quick === true,
   }));
 }

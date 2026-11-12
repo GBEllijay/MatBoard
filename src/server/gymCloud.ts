@@ -70,6 +70,16 @@ import {
   templateLessonPath,
 } from '../lib/lessonPlanCopies.ts';
 import { laneFromMarkers, mediaKindOf, sortForGallery, type ApprovalLane, type ApprovalSource } from '../lib/approvalLanes.ts';
+import {
+  DEFAULT_VIDEO_CLEANUP_DAYS,
+  MEDIA_DELETE_BATCH_MAX,
+  OLD_VIDEO_LIST_MAX,
+  isOnOrBeforeDateKey,
+  isVideoCleanupDays,
+  parseVideoCleanupDays,
+  videoCleanupCutoffDate,
+  type OldCloudVideo,
+} from '../lib/cloudVideoCleanup.ts';
 import { STUDENT_CLOUD_REFUSED, STUDENT_LICENSE_PRESET } from '../lib/studentLicensePool.ts';
 import { verifyToken, type EntitlementClaims } from '../lib/entitlementToken.ts';
 import type { D1Database } from './d1.ts';
@@ -100,7 +110,8 @@ export type GymMediaBucket = {
   /** `range` reads part of an object, so a large approval copy never holds the whole file. */
   get(key: string, options?: { range?: { offset: number; length: number } }): Promise<GymMediaObject | null>;
   put(key: string, value: ArrayBuffer | Uint8Array, options?: { httpMetadata?: R2HttpMetadata }): Promise<unknown>;
-  delete(key: string): Promise<void>;
+  /** One key, or up to 1,000 keys, matching R2's batch delete. */
+  delete(keys: string | string[]): Promise<void>;
   list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{
     objects: { key: string; size: number; httpMetadata?: R2HttpMetadata }[];
     truncated: boolean;
@@ -108,6 +119,10 @@ export type GymMediaBucket = {
   }>;
   createMultipartUpload(key: string, options?: { httpMetadata?: R2HttpMetadata }): Promise<R2MultipartUpload>;
   resumeMultipartUpload(key: string, uploadId: string): R2MultipartUpload;
+  /** Present on the real R2 binding. Used to abort leftover chunked uploads. */
+  listMultipartUploads?(options?: { prefix?: string; limit?: number }): Promise<{
+    uploads: { key: string; uploadId: string }[];
+  }>;
 };
 
 export type GymCloudEnv = {
@@ -287,6 +302,50 @@ function fingerprintKey(licenseId: string, fingerprint: string): string | null {
   return `groups/${licenseId}/hashes/${fingerprint}.json`;
 }
 
+/** Reverse index: groups/{licenseId}/hashes/paths/{path}.json -> { fingerprint }, so a delete finds its marker. */
+function fingerprintPathKey(licenseId: string, relative: string): string {
+  return `groups/${licenseId}/hashes/paths/${relative}.json`;
+}
+
+async function readJsonField(bucket: GymMediaBucket, key: string, field: string): Promise<string> {
+  const object = await bucket.get(key);
+  if (!object) return '';
+  try {
+    const parsed = JSON.parse(await new Response(object.body).text()) as Record<string, unknown>;
+    return typeof parsed[field] === 'string' ? (parsed[field] as string) : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Dedup marker keys to remove with a delete, so the same file can be sent again
+ * and the marker bytes stop counting toward this gym's usage. Only markers that
+ * still point at one of the deleted paths are removed.
+ */
+export async function fingerprintKeysForDelete(bucket: GymMediaBucket, licenseId: string, keys: string[]): Promise<string[]> {
+  const prefix = `groups/${licenseId}/`;
+  const deleted = new Set(keys.filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length)));
+  const found = await Promise.all(
+    [...deleted].filter(dedupPath).map(async (relative) => {
+      const reverseKey = fingerprintPathKey(licenseId, relative);
+      const fingerprint = await readJsonField(bucket, reverseKey, 'fingerprint');
+      if (!fingerprint) return (await bucket.head(reverseKey)) ? [reverseKey] : [];
+      const markerKey = fingerprintKey(licenseId, fingerprint);
+      if (!markerKey) return [reverseKey];
+      const recorded = await readJsonField(bucket, markerKey, 'path');
+      return recorded && deleted.has(recorded) ? [reverseKey, markerKey] : [reverseKey];
+    }),
+  );
+  return [...new Set(found.flat())];
+}
+
+/** Delete media keys plus their dedup markers. Every delete path (per-item, reject, cleanup) goes through here. */
+async function deleteMediaKeys(bucket: GymMediaBucket, licenseId: string, keys: string[]): Promise<void> {
+  const markers = await fingerprintKeysForDelete(bucket, licenseId, keys);
+  await deleteKeyList(bucket, [...keys, ...markers.filter((key) => !keys.includes(key))]);
+}
+
 function dedupPath(relative: string): boolean {
   return isDailyVideoCloudPath(relative) || parseGalleryCloudPath(relative) !== null;
 }
@@ -328,6 +387,8 @@ export async function findCloudDuplicate(
     if (lane === 'rejected') continue;
     return { path, lane };
   }
+  // No live copy (e.g. deleted before deletes cleaned up markers): drop the stale marker so it stops counting.
+  await bucket.delete([markerKey, fingerprintPathKey(licenseId, recorded)]);
   return null;
 }
 
@@ -337,7 +398,11 @@ async function recordFingerprint(bucket: GymMediaBucket, key: string, fingerprin
   const relative = key.slice(prefix.length);
   const markerKey = fingerprintKey(licenseId, fingerprint);
   if (!markerKey || !dedupPath(relative)) return;
-  await bucket.put(markerKey, new TextEncoder().encode(JSON.stringify({ path: relative, size, at: new Date().toISOString() })), {
+  const at = new Date().toISOString();
+  await bucket.put(markerKey, new TextEncoder().encode(JSON.stringify({ path: relative, size, at })), {
+    httpMetadata: { contentType: 'application/json' },
+  });
+  await bucket.put(fingerprintPathKey(licenseId, relative), new TextEncoder().encode(JSON.stringify({ fingerprint, at })), {
     httpMetadata: { contentType: 'application/json' },
   });
 }
@@ -652,11 +717,13 @@ type StartBody = {
   size?: number;
   mime?: string;
   key?: string;
+  keys?: unknown;
   studentId?: string;
   uploadId?: string;
   id?: string;
   parts?: { partNumber?: number; etag?: string }[];
   required?: boolean;
+  days?: unknown;
   /** Content fingerprint for dedup (src/lib/cloudFingerprint.ts). */
   fingerprint?: string;
   /** Lesson plan JSON: `mine` (default) or `template` (owner / Coach). */
@@ -908,6 +975,132 @@ async function listCustomSkins(bucket: GymMediaBucket, licenseId: string): Promi
   return skins;
 }
 
+/** A class photo or daily video the owner (or an Instructors seat) may delete. */
+export function deletableCloudMediaPath(path: string): { source: 'gallery' | 'daily-video'; dateKey: string; name: string } | null {
+  if (isDailyVideoCloudPath(path)) {
+    const parts = path.split('/');
+    return { source: 'daily-video', dateKey: parts[2] ?? '', name: parts[3] ?? '' };
+  }
+  const gallery = parseGalleryCloudPath(path);
+  if (gallery) return { source: 'gallery', dateKey: gallery.dateKey, name: gallery.name };
+  return null;
+}
+
+function mediaObjectKey(licenseId: string, path: string): string | null {
+  return deletableCloudMediaPath(path) ? cloudObjectKey(licenseId, path) : null;
+}
+
+/** The file plus daily-video markers, or every gallery lane copy of the same name. */
+export function companionKeysForDelete(licenseId: string, path: string): string[] {
+  const parsed = deletableCloudMediaPath(path);
+  if (!parsed) return [];
+  const keys: string[] = [];
+  const add = (key: string | null) => {
+    if (key && !keys.includes(key)) keys.push(key);
+  };
+  if (parsed.source === 'daily-video') {
+    add(cloudObjectKey(licenseId, path));
+    add(dailyVideoMarkerKey(licenseId, path, 'pending'));
+    add(dailyVideoMarkerKey(licenseId, path, 'rejected'));
+    return keys;
+  }
+  for (const lane of ['pending', 'approved', 'rejected'] as const) {
+    const sibling = galleryCloudPath(lane, parsed.dateKey, parsed.name);
+    add(sibling ? cloudObjectKey(licenseId, sibling) : null);
+  }
+  return keys;
+}
+
+async function abortLeftoverUploads(bucket: GymMediaBucket, keys: string[]): Promise<void> {
+  if (!bucket.listMultipartUploads || keys.length === 0) return;
+  const wanted = new Set(keys);
+  const prefixes = new Set(keys.map((key) => key.slice(0, key.lastIndexOf('/') + 1) || key));
+  for (const prefix of prefixes) {
+    const listed = await bucket.listMultipartUploads({ prefix, limit: 1000 });
+    for (const upload of listed.uploads) {
+      if (!wanted.has(upload.key)) continue;
+      try {
+        await bucket.resumeMultipartUpload(upload.key, upload.uploadId).abort();
+      } catch {
+        // The upload may already have been completed or aborted.
+      }
+    }
+  }
+}
+
+async function deleteKeyList(bucket: GymMediaBucket, keys: string[]): Promise<void> {
+  if (!keys.length) return;
+  for (let offset = 0; offset < keys.length; offset += 1000) {
+    await bucket.delete(keys.slice(offset, offset + 1000));
+  }
+  await abortLeftoverUploads(bucket, keys);
+}
+
+async function listOldVideos(bucket: GymMediaBucket, actor: Actor, cutoff: string): Promise<{ items: OldCloudVideo[]; count: number; totalBytes: number; truncated: boolean }> {
+  const base = `groups/${actor.licenseId}/`;
+  const matched: OldCloudVideo[] = [];
+  const take = (row: OldCloudVideo) => {
+    matched.push(row);
+  };
+
+  const lanes = await dailyLaneSets(bucket, actor.licenseId, '');
+  let cursor: string | undefined;
+  for (let page = 0; page < 20; page += 1) {
+    const listed = await bucket.list({ prefix: `${base}videos/daily/`, cursor, limit: 1000 });
+    for (const object of listed.objects) {
+      const relative = object.key.startsWith(base) ? object.key.slice(base.length) : '';
+      if (!isDailyVideoCloudPath(relative) || !cloudObjectKey(actor.licenseId, relative)) continue;
+      const dateKey = relative.split('/')[2] ?? '';
+      if (!isOnOrBeforeDateKey(dateKey, cutoff)) continue;
+      const lane = laneOfDaily(lanes, relative);
+      if (lane === 'pending') continue;
+      take({
+        name: relative.split('/').pop() ?? relative,
+        path: relative,
+        size: object.size,
+        mime: object.httpMetadata?.contentType || 'video/mp4',
+        dateKey,
+        source: 'daily-video',
+        kind: 'video',
+        lane: lane === 'rejected' ? 'rejected' : 'approved',
+      });
+    }
+    if (!listed.truncated || !listed.cursor) break;
+    cursor = listed.cursor;
+  }
+
+  for (const folder of ['approved', 'rejected'] as const) {
+    cursor = undefined;
+    for (let page = 0; page < 20; page += 1) {
+      const listed = await bucket.list({ prefix: `${base}gallery/${folder}/`, cursor, limit: 1000 });
+      for (const object of listed.objects) {
+        const relative = object.key.startsWith(base) ? object.key.slice(base.length) : '';
+        const parsed = parseGalleryCloudPath(relative);
+        if (!parsed || !cloudObjectKey(actor.licenseId, relative)) continue;
+        if (!isOnOrBeforeDateKey(parsed.dateKey, cutoff)) continue;
+        if (mediaKindOf(object.httpMetadata?.contentType || '', parsed.name) !== 'video') continue;
+        take({
+          name: parsed.name,
+          path: relative,
+          size: object.size,
+          mime: object.httpMetadata?.contentType || 'video/mp4',
+          dateKey: parsed.dateKey,
+          source: 'gallery',
+          kind: 'video',
+          lane: folder,
+        });
+      }
+      if (!listed.truncated || !listed.cursor) break;
+      cursor = listed.cursor;
+    }
+  }
+
+  matched.sort((a, b) => (a.dateKey === b.dateKey ? a.name.localeCompare(b.name) : a.dateKey.localeCompare(b.dateKey)));
+  const truncated = matched.length > OLD_VIDEO_LIST_MAX;
+  const totalBytes = matched.reduce((sum, item) => sum + item.size, 0);
+  return { items: matched.slice(0, OLD_VIDEO_LIST_MAX), count: matched.length, totalBytes, truncated };
+}
+
 export async function handleGymCloud(request: Request, env: GymCloudEnv, now: () => Date = () => new Date()): Promise<Response> {
   const bucket = env.GYM_MEDIA;
   if (!bucket) return json(503, { ok: false, reason: 'unbound', error: 'Advantage Cloud is not connected.' });
@@ -1040,6 +1233,22 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
         return json(403, { ok: false, error: 'Only the owner or an Instructors seat can approve or reject.' });
       }
       return json(200, { ok: true, files: await listDailyReview(bucket, actor) });
+    }
+    if (op === 'list' && url.searchParams.get('purpose') === 'old-videos') {
+      if (!actor.read || !galleryDecisionAllowed({ kind: actor.kind, preset: actor.preset })) {
+        return json(403, { ok: false, error: 'Only the owner or an Instructors seat can delete Cloud photos and videos.' });
+      }
+      const rawDays = url.searchParams.get('days');
+      if (rawDays !== null && rawDays !== '' && !isVideoCleanupDays(Number(rawDays))) {
+        return json(400, { ok: false, error: 'Choose 30, 60, 90, or 180 days.' });
+      }
+      const days = parseVideoCleanupDays(rawDays, DEFAULT_VIDEO_CLEANUP_DAYS);
+      const cutoff = videoCleanupCutoffDate(days, stamp);
+      const [listed, licenseUsedBytes] = await Promise.all([
+        listOldVideos(bucket, actor, cutoff),
+        bytesUnder(bucket, `groups/${actor.licenseId}/`),
+      ]);
+      return json(200, { ok: true, days, cutoff, ...listed, licenseUsedBytes, capBytes: cap, softLimitBytes: cloudSoftLimitBytes(cap) });
     }
     // Program director Camera window: list and play today's videos only. Lessons, skins, and other paths stay closed.
     if (!actor.read && actor.dailyDrop && (op === 'list' || op === 'file')) {
@@ -1230,13 +1439,18 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       return json(403, { ok: false, error: 'Only the owner or an Instructors seat can approve or reject.' });
     }
     const path = typeof body.key === 'string' ? body.key : '';
-    const lane = body.action === 'gallery-approve' ? 'approved' : 'rejected';
-    const targetPath = galleryDecisionPath(path, lane);
     const sourceKey = parseGalleryCloudPath(path)?.lane === 'pending' ? cloudObjectKey(actor.licenseId, path) : null;
-    const targetKey = targetPath ? cloudObjectKey(actor.licenseId, targetPath) : null;
-    if (!sourceKey || !targetKey || !targetPath) return json(400, { ok: false, error: 'That photo is not waiting for approval.' });
+    if (!sourceKey) return json(400, { ok: false, error: 'That photo is not waiting for approval.' });
     const object = await bucket.head(sourceKey);
     if (!object) return json(404, { ok: false, error: 'That photo is not waiting for approval.' });
+    if (body.action === 'gallery-reject') {
+      // Reject deletes the pending file instead of parking a hidden copy.
+      await deleteMediaKeys(bucket, actor.licenseId, companionKeysForDelete(actor.licenseId, path));
+      return json(200, { ok: true, lane: 'rejected', deleted: true, path });
+    }
+    const targetPath = galleryDecisionPath(path, 'approved');
+    const targetKey = targetPath ? cloudObjectKey(actor.licenseId, targetPath) : null;
+    if (!targetKey || !targetPath) return json(400, { ok: false, error: 'That photo is not waiting for approval.' });
     const [licenseUsed, existing] = await Promise.all([bytesUnder(bucket, `groups/${actor.licenseId}/`), bucket.head(targetKey)]);
     const next = licenseUsed - object.size - (existing?.size ?? 0) + object.size;
     if (next > cap) return json(409, { ok: false, error: cloudFullMessage(licenseUsed, cap) });
@@ -1244,7 +1458,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const copied = await copyGymObject(bucket, sourceKey, targetKey, object.size, object.httpMetadata?.contentType || 'image/jpeg');
     if (!copied) return json(500, { ok: false, error: 'That did not save. Try again.' });
     await bucket.delete(sourceKey);
-    return json(200, { ok: true, lane, path: targetPath });
+    return json(200, { ok: true, lane: 'approved', path: targetPath });
   }
 
   if (body.action === 'daily-approve' || body.action === 'daily-reject') {
@@ -1254,18 +1468,55 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const path = typeof body.key === 'string' ? body.key : '';
     const videoKey = isDailyVideoCloudPath(path) ? cloudObjectKey(actor.licenseId, path) : null;
     const pendingKey = videoKey ? dailyVideoMarkerKey(actor.licenseId, path, 'pending') : null;
-    const rejectedKey = videoKey ? dailyVideoMarkerKey(actor.licenseId, path, 'rejected') : null;
-    if (!videoKey || !pendingKey || !rejectedKey) return json(400, { ok: false, error: 'That video is not waiting for approval.' });
+    if (!videoKey || !pendingKey) return json(400, { ok: false, error: 'That video is not waiting for approval.' });
     const [video, marker] = await Promise.all([bucket.head(videoKey), bucket.head(pendingKey)]);
     if (!video || !marker) return json(404, { ok: false, error: 'That video is not waiting for approval.' });
-    // The video never moves. Approving removes the pending marker; rejecting swaps it for a rejected one.
     if (body.action === 'daily-reject') {
-      await bucket.put(rejectedKey, new TextEncoder().encode(JSON.stringify({ lane: 'rejected', at: stamp.toISOString() })), {
-        httpMetadata: { contentType: 'application/json' },
-      });
+      // Reject deletes the video and its pending marker, instead of hiding a kept copy.
+      await deleteMediaKeys(bucket, actor.licenseId, companionKeysForDelete(actor.licenseId, path));
+      return json(200, { ok: true, lane: 'rejected', deleted: true, path });
     }
+    // The video never moves. Approving removes the pending marker.
     await bucket.delete(pendingKey);
-    return json(200, { ok: true, lane: body.action === 'daily-approve' ? 'approved' : 'rejected', path });
+    return json(200, { ok: true, lane: 'approved', path });
+  }
+
+  if (body.action === 'delete-media') {
+    if (!actor.read || !galleryDecisionAllowed({ kind: actor.kind, preset: actor.preset })) {
+      return json(403, { ok: false, error: 'Only the owner or an Instructors seat can delete Cloud photos and videos.' });
+    }
+    const rawKeys = Array.isArray(body.keys) ? body.keys : typeof body.key === 'string' ? [body.key] : [];
+    if (!rawKeys.length) return json(400, { ok: false, error: 'Choose a file to delete.' });
+    if (rawKeys.length > MEDIA_DELETE_BATCH_MAX) {
+      return json(400, { ok: false, error: `Delete up to ${MEDIA_DELETE_BATCH_MAX} files at a time.` });
+    }
+    const paths: string[] = [];
+    const keys: string[] = [];
+    for (const raw of rawKeys) {
+      if (typeof raw !== 'string') return json(400, { ok: false, error: 'That file is not in this license.' });
+      // Accept a license-relative path, or a full groups/{license}/ key for this license only.
+      const prefix = `groups/${actor.licenseId}/`;
+      const relative = raw.startsWith(prefix) ? raw.slice(prefix.length) : raw;
+      if (!mediaObjectKey(actor.licenseId, relative)) {
+        return json(400, { ok: false, error: 'That file is not in this license.' });
+      }
+      paths.push(relative);
+      for (const key of companionKeysForDelete(actor.licenseId, relative)) {
+        if (!keys.includes(key)) keys.push(key);
+      }
+    }
+    await deleteMediaKeys(bucket, actor.licenseId, keys);
+    // Same per-gym measure as op=status (PR 517): everything under groups/{licenseId}/.
+    const licenseUsedBytes = await bytesUnder(bucket, `groups/${actor.licenseId}/`);
+    return json(200, {
+      ok: true,
+      deleted: paths.length,
+      licenseUsedBytes,
+      // Older builds still read this field. The quota is per license now.
+      bucketUsedBytes: licenseUsedBytes,
+      capBytes: cap,
+      softLimitBytes: cloudSoftLimitBytes(cap),
+    });
   }
 
   if (body.action === 'send-to-student') {

@@ -2,11 +2,12 @@
  * Advantage Cloud as an ApprovalLaneStore.
  *
  * Gallery: gallery/{pending|approved|rejected}/{date}/{file}. Approving copies
- * the file to approved/ on the server and removes the pending copy.
+ * the file to approved/ on the server and removes the pending copy. Rejecting
+ * deletes the pending file.
  * Daily videos: the file stays at videos/daily/{date}/{file}. The server keeps
- * a tiny pending/rejected marker beside it; approving removes the marker, so
- * no video bytes are copied. Daily videos with no marker (everything uploaded
- * before lanes existed) are approved.
+ * a tiny pending marker beside it; approving removes the marker, so no video
+ * bytes are copied. Rejecting deletes the video and its marker. Daily videos
+ * with no marker (everything uploaded before lanes existed) are approved.
  */
 
 import {

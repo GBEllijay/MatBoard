@@ -204,10 +204,14 @@ export function MatchLogSheet({ medal, onClose }: { medal: CardMedal; onClose: (
         <MedalGraphic kind={medal.kind} size={44} />
         <div>
           <h3>{medal.name}</h3>
-          <p>{[medal.division, `${MEDAL_LABEL[medal.kind]}, ${medal.place}`, medal.date].filter(Boolean).join(' · ')}</p>
+          <p>{[medal.division, medal.belt, `${MEDAL_LABEL[medal.kind]}, ${medal.place}`, medal.date].filter(Boolean).join(' · ')}</p>
         </div>
       </div>
-      <p className="match-log__k">{`${medal.matches.length} ${medal.matches.length === 1 ? 'match' : 'matches'} · ${wins} ${wins === 1 ? 'win' : 'wins'}`}</p>
+      <p className="match-log__k">
+        {medal.quick && medal.matches.length === 0
+          ? `Quick result · ${MEDAL_LABEL[medal.kind]}`
+          : `${medal.matches.length} ${medal.matches.length === 1 ? 'match' : 'matches'} · ${wins} ${wins === 1 ? 'win' : 'wins'}`}
+      </p>
       <ol className="match-log__list">
         {medal.matches.map((m) => (
           <li key={m.id} className="match-log__row" data-testid="match-log-row">
@@ -239,10 +243,10 @@ export function CardMedals({ report, to, rail = false }: { report: StudentProgre
         <ul className="card-medals__strip">
           {medals.map((m) => (
             <li key={m.resultId}>
-              <button type="button" className="card-medal" data-testid="card-medal" data-kind={m.kind} aria-label={`${MEDAL_LABEL[m.kind]}, ${m.place}, ${m.name}. Open match log`} onClick={() => setOpen(m.resultId)}>
+              <button type="button" className="card-medal" data-testid="card-medal" data-kind={m.kind} data-belt={m.belt || undefined} aria-label={`${MEDAL_LABEL[m.kind]}, ${m.place}, ${m.name}${m.belt ? `, ${m.belt}` : ''}. Open match log`} onClick={() => setOpen(m.resultId)}>
                 <MedalGraphic kind={m.kind} />
                 <b>{m.name}</b>
-                <span>{m.place}</span>
+                <span>{[m.place, m.belt].filter(Boolean).join(' · ')}</span>
               </button>
               <PodiumPhotoRow studentId={report.studentId} resultId={m.resultId} label={m.name} />
             </li>

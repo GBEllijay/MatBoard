@@ -45,6 +45,7 @@ import { preservesAppHomeQuery } from './lib/submenuNav';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { StudentEditionPage } from './pages/StudentEdition';
+import { StudentJoinPage } from './pages/student/StudentLicenseClaim';
 import { IndexCardProvider } from './indexCards/IndexCardHost';
 import { Journal2036Page } from './preview/journal2036/Journal2036Page';
 import { AssessmentRadarPreviewPage } from './preview/assessmentRadar/AssessmentRadarPreview';
@@ -469,6 +470,7 @@ export default function App() {
       <Route path={MEDIA_EDITION_PATH} element={<MediaEditionRoute />} />
       <Route path={MEDIA_EDITION_OLD_PATH} element={<Navigate to={MEDIA_EDITION_PATH} replace />} />
       <Route path="/restore" element={<RestoreAccessPage />} />
+      <Route path="/join/student" element={<StudentJoinPage />} />
       {/* Public tier buy pages (display + alpha line). The gated /buy/student, /buy/coach and /buy/pro checkouts are unchanged. */}
       <Route path="/editions/student" element={<BuyStudentEditionPage />} />
       <Route path="/editions/instructor" element={<BuyInstructorEditionPage />} />

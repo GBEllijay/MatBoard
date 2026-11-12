@@ -8,6 +8,7 @@ import {
   readCloudBearer,
   type CloudStatusBody,
 } from '../lib/advantageCloudMedia';
+import { CLOUD_CLEANUP_OPEN_EVENT } from '../lib/cloudVideoCleanup';
 import { cloudUploadQueue } from '../lib/cloudUploadQueueInstance';
 import {
   queueItemFinished,
@@ -110,7 +111,9 @@ export function CloudUploadQueuePanel() {
           {CLOUD_CLEANUP_ROUTE ? (
             <>
               {' '}
-              <Link to={CLOUD_CLEANUP_ROUTE}>Clean up old videos</Link>
+              <Link to={CLOUD_CLEANUP_ROUTE} data-cloud-cleanup-link="" onClick={() => window.dispatchEvent(new Event(CLOUD_CLEANUP_OPEN_EVENT))}>
+                Clean up old videos
+              </Link>
             </>
           ) : null}
         </p>

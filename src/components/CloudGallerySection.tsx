@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { CLOUD_MEDIA_EVENT } from '../lib/advantageCloudMedia';
+import { CLOUD_MEDIA_EVENT, galleryDecisionAllowed } from '../lib/advantageCloudMedia';
 import { advantageCloudLaneStore, listApprovedCloudMedia } from '../lib/advantageCloudLanes';
+import {
+  CLOUD_DELETE_CONFIRM_PHOTO,
+  CLOUD_DELETE_CONFIRM_VIDEO,
+  CLOUD_DELETE_DONE,
+  CLOUD_DELETE_FAILED,
+  deleteCloudMedia,
+} from '../lib/cloudVideoCleanup';
 import type { ApprovalItem, ApprovalLaneStore } from '../lib/approvalLanes';
+import { useCurrentSeat } from './SeatSessionBar';
+import { CloudDeleteConfirm } from './CloudDeleteConfirm';
+import { CloudVideoCleanup } from './CloudVideoCleanup';
 
 /** Seconds a photo stays up when the Cloud gallery plays as a slideshow. */
 export const CLOUD_SLIDE_PHOTO_SEC = 8;
@@ -17,6 +27,9 @@ type Props = {
   /** Tests pass a fake list and store. The page uses the signed-in Cloud. */
   load?: typeof listApprovedCloudMedia;
   store?: ApprovalLaneStore;
+  /** Owner or Instructors seat. Tests can set this so Delete stays hidden. */
+  canManage?: boolean;
+  remove?: typeof deleteCloudMedia;
 };
 
 /**
@@ -25,7 +38,9 @@ type Props = {
  * reach this list: the server filters them. Renders nothing when this device
  * is not on Advantage Cloud.
  */
-export function CloudGallerySection({ load = listApprovedCloudMedia, store }: Props) {
+export function CloudGallerySection({ load = listApprovedCloudMedia, store, canManage, remove = deleteCloudMedia }: Props) {
+  const seat = useCurrentSeat();
+  const manage = canManage ?? galleryDecisionAllowed({ kind: seat ? 'seat' : 'owner', preset: seat?.presetId });
   const storeRef = useRef<ApprovalLaneStore>(store ?? advantageCloudLaneStore());
   const [items, setItems] = useState<ApprovalItem[] | null>(null);
   const [hidden, setHidden] = useState(false);
@@ -34,6 +49,9 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store }: Pr
   const [playing, setPlaying] = useState<number | null>(null);
   const [slideUrl, setSlideUrl] = useState<string>('');
   const [slideNote, setSlideNote] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<ApprovalItem | null>(null);
+  const [deleteNote, setDeleteNote] = useState('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const urls = useRef<string[]>([]);
 
   useEffect(() => {
@@ -139,6 +157,21 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store }: Pr
   const videos = items?.filter((item) => item.source === 'daily-video') ?? [];
   const indexOf = (item: ApprovalItem) => items?.indexOf(item) ?? 0;
 
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleteBusy(true);
+    const result = await remove({ paths: [pendingDelete.path] });
+    setDeleteBusy(false);
+    if (!result.ok) {
+      setDeleteNote(result.message || CLOUD_DELETE_FAILED);
+      return;
+    }
+    setDeleteNote(CLOUD_DELETE_DONE);
+    setPendingDelete(null);
+    if (playing !== null && items && items[playing]?.path === pendingDelete.path) setPlaying(null);
+    setItems((current) => current?.filter((item) => item.path !== pendingDelete.path) ?? current);
+  };
+
   const tile = (item: ApprovalItem) => (
     <li key={`${item.source}:${item.path}`} className="cloud-gallery__tile" data-cloud-gallery-item={item.path} data-cloud-source={item.source}>
       <button type="button" className="cloud-gallery__open" onClick={() => setPlaying(indexOf(item))} aria-label={`Play ${item.name}`}>
@@ -152,6 +185,19 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store }: Pr
         <span className="cloud-gallery__name">{item.name}</span>
         <span className="cloud-gallery__date">{item.dateKey}</span>
       </button>
+      {manage ? (
+        <button
+          type="button"
+          className="btn btn--ghost cloud-gallery__delete"
+          data-cloud-delete={item.path}
+          onClick={() => {
+            setDeleteNote('');
+            setPendingDelete(item);
+          }}
+        >
+          Delete
+        </button>
+      ) : null}
     </li>
   );
 
@@ -186,6 +232,21 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store }: Pr
             {videos.map(tile)}
           </ul>
         </>
+      ) : null}
+      {manage ? <CloudVideoCleanup /> : null}
+      {pendingDelete ? (
+        <CloudDeleteConfirm
+          title="Delete from Advantage Cloud"
+          body={pendingDelete.kind === 'photo' ? CLOUD_DELETE_CONFIRM_PHOTO : CLOUD_DELETE_CONFIRM_VIDEO}
+          busy={deleteBusy}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void confirmDelete()}
+        />
+      ) : null}
+      {deleteNote ? (
+        <p role="status" data-cloud-delete-note="">
+          {deleteNote}
+        </p>
       ) : null}
       {current ? (
         <div className="cloud-gallery__player" role="dialog" aria-label="Advantage Cloud slideshow" data-cloud-slide={current.path}>

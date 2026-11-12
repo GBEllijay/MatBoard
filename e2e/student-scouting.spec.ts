@@ -4,7 +4,9 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/student/results?student=1');
   await page.getByLabel('Result tournament name').fill('Spring Open');
-  await page.getByLabel('Result division').fill('Adult Blue Middle');
+  await page.getByLabel('Result age division').selectOption('Adult');
+  await page.getByLabel('Result belt rank').selectOption('Blue');
+  await page.getByLabel('Result weight class').selectOption('Middle');
   await page.getByRole('button', { name: 'Add result', exact: true }).click();
   await page.getByLabel('Opponent for Spring Open').fill('Sam');
   await page.getByRole('group', { name: 'Result for Spring Open' }).getByRole('button', { name: 'Win', exact: true }).click();

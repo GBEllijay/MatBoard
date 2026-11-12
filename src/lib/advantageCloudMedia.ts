@@ -28,8 +28,8 @@ export const CLOUD_LICENSE_HARD_LIMIT_BYTES = 100_000_000_000;
 /** Hard limit per license. Override with GYM_MEDIA_LICENSE_CAP_BYTES (bytes). */
 export const DEFAULT_CLOUD_CAP_BYTES = CLOUD_LICENSE_HARD_LIMIT_BYTES;
 
-/** Where the owner deletes old Cloud videos. Null until that screen ships on main. */
-export const CLOUD_CLEANUP_ROUTE: string | null = null;
+/** Where the owner deletes old Cloud videos: the Media gallery, with the cleanup panel opened. */
+export const CLOUD_CLEANUP_ROUTE: string | null = '/slideshow?folder=gallery&cleanup=old-videos';
 
 /** One phone video. Override with GYM_MEDIA_MAX_UPLOAD_BYTES (bytes). */
 export const DEFAULT_MAX_UPLOAD_BYTES = 512_000_000;

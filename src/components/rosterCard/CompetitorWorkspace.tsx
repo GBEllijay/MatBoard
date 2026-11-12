@@ -3,6 +3,7 @@
  * Game plan notes read and write the one roster game plan (A/B/C plus Home focus).
  */
 import { useEffect, useState } from 'react';
+import { resultClassLine } from '../../lib/divisionFields';
 import { Link } from 'react-router-dom';
 import { useRosterState } from '../../hooks/useStores';
 import { competitionRecord, upcomingTournaments } from '../../lib/competitionCard';
@@ -159,7 +160,7 @@ export function CompetitorWorkspace({ competitorId }: { competitorId: string }) 
             {plan.results.map((result) => (
               <li key={result.id}>
                 {result.tournamentName}
-                {result.division ? ` · ${result.division}` : ''}
+                {resultClassLine(result) ? ` · ${resultClassLine(result)}` : ''}
               </li>
             ))}
           </ul>
