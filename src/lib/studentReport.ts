@@ -4,7 +4,7 @@
  * one and vanish on the other.
  */
 
-import { tournamentClassLine } from './divisionFields.ts';
+import { resultClassLine, tournamentClassLine } from './divisionFields.ts';
 import { competitionOf } from './progress/competition.ts';
 import { checklistLevelLine, fundamentalLevelOf, proficiencySummary } from './fundamentals.ts';
 import { ageIllegalTechniques } from './studentBenchmarks.ts';
@@ -396,7 +396,7 @@ function competitionBlock(report: StudentProgressReport): ReportBlock {
   const draws = matches.filter((match) => match.result === 'draw').length;
   if (competition.results.length) lines.push(matchRecordLine(wins, losses, draws));
   for (const result of competition.results) {
-    const heading = [result.tournamentName || 'Matches', result.division].filter(Boolean).join(' — ');
+    const heading = [result.tournamentName || 'Matches', resultClassLine(result)].filter(Boolean).join(' — ');
     lines.push(heading);
     if (!result.matches.length) lines.push('  None yet');
     for (const match of result.matches) lines.push(`  ${matchLine(match)}`);

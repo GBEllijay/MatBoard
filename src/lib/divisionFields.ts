@@ -407,3 +407,251 @@ export function fieldSuggestions(kind: FieldKind, used: readonly string[], query
   }
   return out.slice(0, limit);
 }
+
+/** Picker lists for a recorded competition result. Independent of each other. */
+export const AGE_DIVISIONS = [
+  'Adult',
+  'Master 1',
+  'Master 2',
+  'Master 3',
+  'Master 4',
+  'Master 5',
+  'Master 6',
+  'Master 7',
+  'Juvenile',
+  'Juvenile 1',
+  'Juvenile 2',
+  'Mighty Mite 1',
+  'Mighty Mite 2',
+  'Mighty Mite 3',
+  'Pee Wee 1',
+  'Pee Wee 2',
+  'Pee Wee 3',
+  'Junior 1',
+  'Junior 2',
+  'Junior 3',
+  'Teen 1',
+  'Teen 2',
+  'Teen 3',
+  'Kids',
+] as const;
+
+export const COMPETITION_DIVISIONS = [
+  'Gi',
+  'No-Gi',
+  'Gi · Weight',
+  'No-Gi · Weight',
+  'Absolute / Open',
+  'Gi · Absolute / Open',
+  'No-Gi · Absolute / Open',
+] as const;
+
+export const WEIGHT_CLASSES = [
+  'Rooster',
+  'Light Feather',
+  'Feather',
+  'Light',
+  'Middle',
+  'Medium Heavy',
+  'Heavy',
+  'Super Heavy',
+  'Ultra Heavy',
+  'Open Class',
+] as const;
+
+export const COMPETITION_BELTS = [
+  'White',
+  'Blue',
+  'Purple',
+  'Brown',
+  'Black',
+  'Grey',
+  'Grey/White',
+  'Grey/Black',
+  'Yellow',
+  'Yellow/White',
+  'Yellow/Black',
+  'Orange',
+  'Orange/White',
+  'Orange/Black',
+  'Green',
+  'Green/White',
+  'Green/Black',
+] as const;
+
+export type ResultClassFields = {
+  ageDivision: string;
+  competitionDivision: string;
+  weightClass: string;
+  belt: string;
+};
+
+export const EMPTY_RESULT_CLASS: ResultClassFields = {
+  ageDivision: '',
+  competitionDivision: '',
+  weightClass: '',
+  belt: '',
+};
+
+type ClassCategory = keyof ResultClassFields;
+
+type ClassTerm = {
+  category: ClassCategory;
+  value: string;
+  pattern: RegExp;
+};
+
+function classTerm(category: ClassCategory, value: string, source: string): ClassTerm {
+  return { category, value, pattern: new RegExp(source, 'i') };
+}
+
+function word(value: string): string {
+  return value
+    .split(/[\s/]+/)
+    .map((part) => escapeRegExp(part))
+    .join('[\\s/-]+');
+}
+
+/** Longer phrases first so "Light Feather" is not read as "Light" or "Feather". */
+const CLASS_TERMS: ClassTerm[] = [
+  classTerm('competitionDivision', 'No-Gi · Absolute / Open', String.raw`no[\s-]?gi\s*[·.]?\s*absolute(?:\s*/?\s*open)?`),
+  classTerm('competitionDivision', 'Gi · Absolute / Open', String.raw`gi\s*[·.]?\s*absolute(?:\s*/?\s*open)?`),
+  classTerm('competitionDivision', 'No-Gi · Weight', String.raw`no[\s-]?gi\s*[·.]?\s*weight`),
+  classTerm('competitionDivision', 'Gi · Weight', String.raw`gi\s*[·.]?\s*weight`),
+  classTerm('competitionDivision', 'Absolute / Open', String.raw`absolute(?:\s*/?\s*open)?`),
+  classTerm('competitionDivision', 'No-Gi', String.raw`no[\s-]?gi`),
+  classTerm('ageDivision', 'Mighty Mite 1', word('Mighty Mite 1')),
+  classTerm('ageDivision', 'Mighty Mite 2', word('Mighty Mite 2')),
+  classTerm('ageDivision', 'Mighty Mite 3', word('Mighty Mite 3')),
+  classTerm('ageDivision', 'Pee Wee 1', word('Pee Wee 1')),
+  classTerm('ageDivision', 'Pee Wee 2', word('Pee Wee 2')),
+  classTerm('ageDivision', 'Pee Wee 3', word('Pee Wee 3')),
+  classTerm('ageDivision', 'Junior 1', word('Junior 1')),
+  classTerm('ageDivision', 'Junior 2', word('Junior 2')),
+  classTerm('ageDivision', 'Junior 3', word('Junior 3')),
+  classTerm('ageDivision', 'Teen 1', word('Teen 1')),
+  classTerm('ageDivision', 'Teen 2', word('Teen 2')),
+  classTerm('ageDivision', 'Teen 3', word('Teen 3')),
+  classTerm('ageDivision', 'Juvenile 1', word('Juvenile 1')),
+  classTerm('ageDivision', 'Juvenile 2', word('Juvenile 2')),
+  classTerm('ageDivision', 'Master 1', word('Master 1')),
+  classTerm('ageDivision', 'Master 2', word('Master 2')),
+  classTerm('ageDivision', 'Master 3', word('Master 3')),
+  classTerm('ageDivision', 'Master 4', word('Master 4')),
+  classTerm('ageDivision', 'Master 5', word('Master 5')),
+  classTerm('ageDivision', 'Master 6', word('Master 6')),
+  classTerm('ageDivision', 'Master 7', word('Master 7')),
+  classTerm('weightClass', 'Light Feather', word('Light Feather')),
+  classTerm('weightClass', 'Medium Heavy', word('Medium Heavy')),
+  classTerm('weightClass', 'Super Heavy', word('Super Heavy')),
+  classTerm('weightClass', 'Ultra Heavy', word('Ultra Heavy')),
+  classTerm('weightClass', 'Open Class', String.raw`open[\s-]+(?:class|weight)`),
+  classTerm('belt', 'Grey/White', word('Grey/White')),
+  classTerm('belt', 'Grey/Black', word('Grey/Black')),
+  classTerm('belt', 'Yellow/White', word('Yellow/White')),
+  classTerm('belt', 'Yellow/Black', word('Yellow/Black')),
+  classTerm('belt', 'Orange/White', word('Orange/White')),
+  classTerm('belt', 'Orange/Black', word('Orange/Black')),
+  classTerm('belt', 'Green/White', word('Green/White')),
+  classTerm('belt', 'Green/Black', word('Green/Black')),
+  classTerm('ageDivision', 'Juvenile', String.raw`\bjuvenile\b`),
+  classTerm('ageDivision', 'Adult', String.raw`\badult\b`),
+  classTerm('ageDivision', 'Kids', String.raw`\bkids?\b`),
+  classTerm('weightClass', 'Rooster', String.raw`\brooster\b`),
+  classTerm('weightClass', 'Feather', String.raw`\bfeather\b`),
+  classTerm('weightClass', 'Light', String.raw`\blight\b`),
+  classTerm('weightClass', 'Middle', String.raw`\bmiddle\b`),
+  classTerm('weightClass', 'Heavy', String.raw`\bheavy\b`),
+  classTerm('belt', 'White', String.raw`\bwhite\b`),
+  classTerm('belt', 'Blue', String.raw`\bblue\b`),
+  classTerm('belt', 'Purple', String.raw`\bpurple\b`),
+  classTerm('belt', 'Brown', String.raw`\bbrown\b`),
+  classTerm('belt', 'Black', String.raw`\bblack\b`),
+  classTerm('belt', 'Grey', String.raw`\bgrey\b|\bgray\b`),
+  classTerm('belt', 'Yellow', String.raw`\byellow\b`),
+  classTerm('belt', 'Orange', String.raw`\borange\b`),
+  classTerm('belt', 'Green', String.raw`\bgreen\b`),
+  classTerm('competitionDivision', 'Gi', String.raw`\bgi\b`),
+];
+
+function normalizeClassText(value: string): string {
+  return value
+    .replace(/[–—]/g, '-')
+    .replace(/[|_]+/g, ' ')
+    .replace(/\s*,\s*/g, ' ')
+    .replace(/\s+\/\s+/g, ' ')
+    .replace(/[·]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Best-effort split of an older combined class line into the four pickers.
+ * Only fills a field when that part is clear. Leftover words, or two values
+ * in the same field, leave every field blank so the original text stays the
+ * source of truth. Belt is never defaulted to Black or to a current rank.
+ */
+export function parseResultClass(value: string): ResultClassFields {
+  const text = normalizeClassText(value);
+  if (!text) return { ...EMPTY_RESULT_CLASS };
+  const taken: { start: number; end: number; category: ClassCategory; value: string }[] = [];
+  const covered = new Array<boolean>(text.length).fill(false);
+  const tryTerm = (term: ClassTerm) => {
+    const pattern = new RegExp(term.pattern.source, 'ig');
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text))) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (start > 0 && /\S/.test(text[start - 1] ?? '') && !/[\s/-]/.test(text[start - 1] ?? '')) continue;
+      if (end < text.length && /\S/.test(text[end] ?? '') && !/[\s/-]/.test(text[end] ?? '')) continue;
+      let overlap = false;
+      for (let i = start; i < end; i += 1) {
+        if (covered[i]) {
+          overlap = true;
+          break;
+        }
+      }
+      if (overlap) continue;
+      for (let i = start; i < end; i += 1) covered[i] = true;
+      taken.push({ start, end, category: term.category, value: term.value });
+    }
+  };
+  for (const term of CLASS_TERMS) tryTerm(term);
+
+  const leftover = text
+    .split('')
+    .map((ch, index) => (covered[index] ? ' ' : ch))
+    .join('')
+    .replace(/[-/]+/g, ' ')
+    .replace(/\b(?:and|vs|versus)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (leftover) return { ...EMPTY_RESULT_CLASS };
+
+  const fields: ResultClassFields = { ...EMPTY_RESULT_CLASS };
+  const seen = new Map<ClassCategory, string>();
+  for (const hit of taken) {
+    const current = seen.get(hit.category);
+    if (current && current !== hit.value) return { ...EMPTY_RESULT_CLASS };
+    seen.set(hit.category, hit.value);
+    fields[hit.category] = hit.value;
+  }
+  return fields;
+}
+
+export function resultClassLine(
+  result: Partial<ResultClassFields> & { division?: string },
+): string {
+  const parts = [result.ageDivision, result.competitionDivision, result.weightClass, result.belt]
+    .map((part) => (part ?? '').trim())
+    .filter(Boolean);
+  if (parts.length) return parts.join(' · ');
+  return (result.division ?? '').trim();
+}
+
+export function pickerOptions(options: readonly string[], current = ''): string[] {
+  const value = current.trim();
+  if (!value) return [...options];
+  if (options.some((option) => option === value)) return [...options];
+  return [value, ...options];
+}

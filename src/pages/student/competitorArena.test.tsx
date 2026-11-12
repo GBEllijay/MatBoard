@@ -216,8 +216,13 @@ test('weight, results, and scouting keep their controls on the same skin', () =>
   assert.equal(results.host.querySelector('h1')?.textContent, 'Results');
   labeled(results.host, 'Tracked tournament');
   labeled(results.host, 'Result tournament name');
-  labeled(results.host, 'Result division');
+  labeled(results.host, 'Result age division');
+  labeled(results.host, 'Result competition division');
+  labeled(results.host, 'Result weight class');
+  labeled(results.host, 'Result belt rank');
+  labeled(results.host, 'Result date');
   control(results.host, 'button', 'Add result');
+  control(results.host, 'button', 'Quick result');
   unmount(results);
 
   const scouting = mount(<ScoutingPage />, '/student/scouting');

@@ -5,7 +5,9 @@
 
 import { cleanOptionalLink, competitionOf, emptyCompetition } from './progress/competition.ts';
 import { eventTargetsTournament, shareTournaments } from './sharedTournaments.ts';
+import { resultClassLine } from './divisionFields.ts';
 import {
+  COMPETITION_PLACES,
   PROGRESS_BRACKET_NOTES_MAX,
   PROGRESS_MATCHES_MAX,
   PROGRESS_NAME_MAX,
@@ -16,6 +18,8 @@ import {
   PROGRESS_TOURNAMENTS_MAX,
   PROGRESS_WEIGH_INS_MAX,
   PROGRESS_WEIGHT_MAX,
+  type CompetitionMatch,
+  type CompetitionPlace,
   type CompetitionResult,
   type GameTag,
   type MatchMethod,
@@ -319,24 +323,129 @@ export function blankCompetition(): StudentCompetition {
 export type ResultDraft = {
   tournamentId: string;
   tournamentName: string;
-  division: string;
+  division?: string;
+  date?: string;
+  note?: string;
+  place?: CompetitionPlace | '';
+  quick?: boolean;
+  ageDivision?: string;
+  competitionDivision?: string;
+  weightClass?: string;
+  belt?: string;
 };
+
+export type ResultMatchDraft = {
+  id?: string;
+  opponent: string;
+  result: MatchResult;
+  method: MatchMethod;
+  note: string;
+  date?: string;
+};
+
+
+function optionalPlace(value: string | undefined): CompetitionPlace | undefined {
+  const place = (value ?? '').trim();
+  if (!place) return undefined;
+  if (!(COMPETITION_PLACES as readonly string[]).includes(place)) {
+    throw new Error('Choose Gold, Silver, Bronze, Participated, or Did not place.');
+  }
+  return place as CompetitionPlace;
+}
+
+function classPatch(draft: ResultDraft): Pick<
+  CompetitionResult,
+  'division' | 'ageDivision' | 'competitionDivision' | 'weightClass' | 'belt' | 'date' | 'note' | 'place' | 'quick'
+> {
+  const ageDivision = clip(draft.ageDivision ?? '', PROGRESS_NAME_MAX);
+  const competitionDivision = clip(draft.competitionDivision ?? '', PROGRESS_NAME_MAX);
+  const weightClass = clip(draft.weightClass ?? '', PROGRESS_NAME_MAX);
+  const belt = clip(draft.belt ?? '', PROGRESS_NAME_MAX);
+  const built = resultClassLine({ ageDivision, competitionDivision, weightClass, belt });
+  const division = clip(draft.division ?? '', PROGRESS_NAME_MAX) || built;
+  const date = optionalDate(draft.date ?? '', 'Result date');
+  const note = clip(draft.note ?? '', PROGRESS_NOTE_MAX);
+  const place = optionalPlace(draft.place);
+  const patch: ReturnType<typeof classPatch> = { division };
+  if (date) patch.date = date;
+  if (note) patch.note = note;
+  if (place) patch.place = place;
+  if (draft.quick) patch.quick = true;
+  if (ageDivision) patch.ageDivision = ageDivision;
+  if (competitionDivision) patch.competitionDivision = competitionDivision;
+  if (weightClass) patch.weightClass = weightClass;
+  if (belt) patch.belt = belt;
+  return patch;
+}
+
+function matchesFromDraft(drafts: readonly ResultMatchDraft[] | undefined, now: number): CompetitionMatch[] | undefined {
+  if (!drafts) return undefined;
+  return drafts.map((draft, index) => {
+    const opponent = clip(draft.opponent, PROGRESS_NAME_MAX);
+    if (!opponent) throw new Error('Add an opponent.');
+    const date = optionalDate(draft.date ?? '', 'Match date');
+    const id = (draft.id ?? '').trim() || newId('match', now + index);
+    return {
+      id,
+      opponent,
+      result: draft.result,
+      method: draft.method,
+      note: clip(draft.note, PROGRESS_NOTE_MAX),
+      ...(date ? { date } : {}),
+    };
+  });
+}
 
 export function addCompetitionResult(report: StudentProgressReport, draft: ResultDraft, now = Date.now()): StudentProgressReport {
   const competition = competitionOf(report);
   if (competition.results.length >= PROGRESS_RESULTS_MAX) throw new Error('The results list is full.');
   const tournamentName = clip(draft.tournamentName, PROGRESS_NAME_MAX);
   if (!tournamentName) throw new Error('Choose a tournament or type its name.');
+  if (draft.quick && !optionalPlace(draft.place)) throw new Error('Choose a result, such as Gold, Silver, or Bronze.');
+  const fields = classPatch(draft);
   const result: CompetitionResult = {
     id: newId('result', now),
     tournamentId: clip(draft.tournamentId, PROGRESS_NAME_MAX),
     tournamentName,
-    division: clip(draft.division, PROGRESS_NAME_MAX),
     matches: [],
     bracket: [],
     bracketPhoto: false,
+    ...fields,
   };
   return withCompetition(report, { ...competition, results: [...competition.results, result] }, now);
+}
+
+export function updateCompetitionResult(
+  report: StudentProgressReport,
+  id: string,
+  draft: ResultDraft & { matches?: readonly ResultMatchDraft[] },
+  now = Date.now(),
+): StudentProgressReport {
+  const tournamentName = clip(draft.tournamentName, PROGRESS_NAME_MAX);
+  if (!tournamentName) throw new Error('Choose a tournament or type its name.');
+  if (draft.quick && !optionalPlace(draft.place)) throw new Error('Choose a result, such as Gold, Silver, or Bronze.');
+  const fields = classPatch(draft);
+  const matches = matchesFromDraft(draft.matches, now);
+  return mapResult(report, id, now, (result) => {
+    const next: CompetitionResult = {
+      ...result,
+      tournamentId: clip(draft.tournamentId, PROGRESS_NAME_MAX),
+      tournamentName,
+      division: fields.division,
+      matches: matches ?? result.matches,
+    };
+    // Drop optional fields that were cleared, then re-apply what is set.
+    delete next.date;
+    delete next.note;
+    delete next.place;
+    delete next.quick;
+    delete next.ageDivision;
+    delete next.competitionDivision;
+    delete next.weightClass;
+    delete next.belt;
+    Object.assign(next, fields);
+    return next;
+  });
 }
 
 export function removeCompetitionResult(report: StudentProgressReport, id: string, now = Date.now()): StudentProgressReport {
