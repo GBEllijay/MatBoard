@@ -1,7 +1,8 @@
 /**
  * Private hologram body scan on the character sheet. Off by default; the switch is saved per device.
- * Zones come from journal injury marks (lib/bodyScan). Nothing here goes into the coach file,
- * card share, or exports.
+ * Zones come from journal injury marks and injuries added on this list (lib/bodyScan).
+ * Nothing here goes into the coach file, card share, or exports. Adding from the list
+ * does not create a journal card.
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -10,16 +11,21 @@ import {
   BODY_FRAME,
   BODY_ZONES,
   COLOR_MEANINGS,
+  INJURY_SOURCES,
+  INJURY_SOURCE_LABEL,
   INJURY_STATUSES,
   STATUS_LABEL,
+  addInjury,
   bodyScan,
   journalEntryHref,
   readBodyScanOn,
   saveBodyScanOn,
-  setInjuryStatus,
+  reportZoneMarks,
+  setReportInjuryStatus,
   trendLine,
   zoneLabel,
-  zoneMarks,
+  type InjurySource,
+  type InjuryStatus,
   zonePoint,
   bodyOutlinePath,
   type BodyZone,
@@ -175,7 +181,7 @@ function Sheet({ title, testId, onClose, children }: { title: string; testId: st
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
     if (e.key !== 'Tab' || !ref.current) return;
-    const items = [...ref.current.querySelectorAll<HTMLElement>('button, [href], [tabindex="0"]')];
+    const items = [...ref.current.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex="0"]')].filter((el) => !('disabled' in el && (el as HTMLButtonElement).disabled));
     if (!items.length) return;
     const first = items[0];
     const last = items[items.length - 1];
@@ -212,7 +218,7 @@ export function ColorHelp({ onClose }: { onClose: () => void }) {
 }
 
 function ZonePeek({ report, commit, zone, onClose, to }: { report: StudentProgressReport; commit: (next: StudentProgressReport) => void; zone: string; onClose: () => void; to: (path: string) => string }) {
-  const marks = zoneMarks(report.journal, zone);
+  const marks = reportZoneMarks(report, zone);
   const today = todayIso();
   return (
     <div className="bs-peek" role="dialog" aria-label={`${zone === 'other' ? 'Other' : zoneLabel(zone)} marks`} data-testid="body-peek" data-zone={zone}>
@@ -225,8 +231,8 @@ function ZonePeek({ report, commit, zone, onClose, to }: { report: StudentProgre
           {marks.map((mark) => {
             const current = mark.status ?? 'hurt';
             return (
-              <li key={mark.entryId} className="bs-peek__row" data-testid="body-peek-row" data-entry={mark.entryId}>
-                <p className="bs-peek__when"><b>{mark.date}</b>{mark.area ? ` · ${mark.area}` : ''}</p>
+              <li key={mark.entryId} className="bs-peek__row" data-testid="body-peek-row" data-entry={mark.entryId} data-source={mark.fromJournal ? 'journal' : 'list'}>
+                <p className="bs-peek__when"><b>{mark.date}</b>{mark.area ? ` · ${mark.area}` : ''}{mark.source ? ` · ${INJURY_SOURCE_LABEL[mark.source]}` : ''}</p>
                 {mark.note ? <p className="bs-small">{mark.note}</p> : null}
                 <div className="bs-chips" role="group" aria-label="Status">
                   {INJURY_STATUSES.map((s) => (
@@ -235,14 +241,14 @@ function ZonePeek({ report, commit, zone, onClose, to }: { report: StudentProgre
                       type="button"
                       className={`bs-chip bs-chip--${s}`}
                       aria-pressed={current === s}
-                      onClick={() => commit({ ...report, journal: setInjuryStatus(report.journal, mark.entryId, s, today) })}
+                      onClick={() => commit(setReportInjuryStatus(report, mark.entryId, s, today))}
                     >
                       {STATUS_LABEL[s]}
                     </button>
                   ))}
                 </div>
                 {mark.markedOn ? <p className="bs-small">Updated {mark.markedOn}</p> : null}
-                <Link className="ink-btn bs-btn" to={to(journalEntryHref(mark.entryId))} data-testid="open-journal-entry">Open journal entry</Link>
+                {mark.fromJournal ? <Link className="ink-btn bs-btn" to={to(journalEntryHref(mark.entryId))} data-testid="open-journal-entry">Open journal entry</Link> : <p className="bs-small">Added from the injury list. No journal card.</p>}
               </li>
             );
           })}
@@ -251,6 +257,79 @@ function ZonePeek({ report, commit, zone, onClose, to }: { report: StudentProgre
         <p className="bs-small">No marks here.</p>
       )}
     </div>
+  );
+}
+
+function AddInjurySheet({ report, commit, onClose }: { report: StudentProgressReport; commit: (next: StudentProgressReport) => void; onClose: () => void }) {
+  const today = todayIso();
+  const [date, setDate] = useState(today);
+  const [area, setArea] = useState('');
+  const [zone, setZone] = useState('');
+  const [note, setNote] = useState('');
+  const [source, setSource] = useState<InjurySource>('outside');
+  const [status, setStatus] = useState<InjuryStatus>('hurt');
+  const [error, setError] = useState('');
+  const save = () => {
+    try {
+      commit(addInjury(report, { date, area, note, zone: zone || undefined, status, source }));
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save.');
+    }
+  };
+  return (
+    <Sheet title="Add injury" testId="injury-add" onClose={onClose}>
+      <p className="bs-small">Add an injury even if it did not happen in class. This does not create a journal card.</p>
+      <div className="bs-form">
+        <label className="ink">
+          <span className="ink__label">What was injured</span>
+          <input className="ink__input" aria-label="Injury area" value={area} maxLength={80} autoFocus onChange={(e) => setArea(e.target.value)} />
+        </label>
+        <label className="ink">
+          <span className="ink__label">Body zone (optional)</span>
+          <select className="ink__input" aria-label="Body zone" value={zone} onChange={(e) => setZone(e.target.value)}>
+            <option value="">Pick a zone</option>
+            {BODY_ZONES.map((z) => (
+              <option key={z.id} value={z.id}>{z.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="ink">
+          <span className="ink__label">Date</span>
+          <input className="ink__input" type="date" aria-label="Injury date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </label>
+        <div className="bs-chips" role="group" aria-label="How it happened">
+          {INJURY_SOURCES.map((s) => (
+            <button key={s} type="button" className="bs-chip" aria-pressed={source === s} onClick={() => setSource(s)}>
+              {INJURY_SOURCE_LABEL[s]}
+            </button>
+          ))}
+        </div>
+        <label className="ink">
+          <span className="ink__label">Note (optional)</span>
+          <input className="ink__input" aria-label="Injury note" value={note} maxLength={320} onChange={(e) => setNote(e.target.value)} />
+        </label>
+        <div className="bs-chips" role="group" aria-label="Injury status">
+          {INJURY_STATUSES.map((s) => (
+            <button key={s} type="button" className={`bs-chip bs-chip--${s}`} aria-pressed={status === s} onClick={() => setStatus(s)}>
+              {STATUS_LABEL[s]}
+            </button>
+          ))}
+        </div>
+        {error ? <p className="bs-small" data-testid="injury-add-error" role="alert">{error}</p> : null}
+        <div className="bs-actions">
+          <button type="button" className="ink-btn bs-btn" data-testid="injury-add-save" onClick={save}>Save injury</button>
+        </div>
+      </div>
+    </Sheet>
+  );
+}
+
+function AddInjuryButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="ink-btn bs-btn" data-testid="injury-add-open" onClick={onClick}>
+      Add injury
+    </button>
   );
 }
 
@@ -273,6 +352,7 @@ export function BodyScanSection({
   const [peek, setPeek] = useState(focusZone);
   const [help, setHelp] = useState(false);
   const [list, setList] = useState(false);
+  const [add, setAdd] = useState(false);
   const shown = on || forceOpen;
   const toggle = (next: boolean) => {
     const s = store();
@@ -282,13 +362,18 @@ export function BodyScanSection({
   if (!shown) {
     return (
       <section className="bs bs--off" id="body-scan" aria-label="Body scan" data-testid="body-scan" data-on="false">
-        <BodyScanSwitch on={false} onChange={toggle} />
+        <div className="bs__hd">
+          <BodyScanSwitch on={false} onChange={toggle} />
+          <AddInjuryButton onClick={() => setAdd(true)} />
+        </div>
+        {add ? <AddInjurySheet report={report} commit={commit} onClose={() => setAdd(false)} /> : null}
       </section>
     );
   }
   const today = todayIso();
-  const scan = bodyScan(report.journal, today);
-  const status = bodyStatus(report.journal, today);
+  const extras = report.injuries ?? [];
+  const scan = bodyScan(report.journal, today, extras);
+  const status = bodyStatus(report.journal, today, extras);
   const flagged = [...scan.zones, ...scan.other];
   return (
     <section className="bs" id="body-scan" aria-label="Body scan" data-testid="body-scan" data-on="true" data-temporary={!on ? 'true' : undefined}>
@@ -302,15 +387,20 @@ export function BodyScanSection({
         <BodyFigure side="front" zones={scan.zones} selected={peek} onPick={setPeek} />
         <BodyFigure side="back" zones={scan.zones} selected={peek} onPick={setPeek} />
       </div>
-      {flagged.length ? (
-        <button type="button" className="ink-btn bs-btn bs-status-open" aria-haspopup="dialog" aria-expanded={list} data-testid="injury-status-open" onClick={() => setList(true)}>
-          {`Injury status (${flagged.length})`}
-        </button>
-      ) : (
-        <p className="bs-small" data-testid="body-scan-clear">No injury marks in the last few weeks.</p>
-      )}
+      <div className="bs-actions">
+        <AddInjuryButton onClick={() => setAdd(true)} />
+        {flagged.length ? (
+          <button type="button" className="ink-btn bs-btn bs-status-open" aria-haspopup="dialog" aria-expanded={list} data-testid="injury-status-open" onClick={() => setList(true)}>
+            {`Injury status (${flagged.length})`}
+          </button>
+        ) : (
+          <p className="bs-small" data-testid="body-scan-clear">No injury marks in the last few weeks.</p>
+        )}
+      </div>
+      {add ? <AddInjurySheet report={report} commit={commit} onClose={() => setAdd(false)} /> : null}
       {list ? (
         <Sheet title="Injury status" testId="injury-status" onClose={() => setList(false)}>
+          <AddInjuryButton onClick={() => { setList(false); setAdd(true); }} />
           <ul className="bs-legend" aria-label="Flagged areas" data-testid="body-zone-list">
             {flagged.map((z, i) => (
               <li key={`${z.zone}-${i}`} data-testid="body-legend-row" data-zone={z.zone || 'other'}>

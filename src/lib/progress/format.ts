@@ -37,6 +37,8 @@ import {
   PROGRESS_GOALS_MAX,
   PROGRESS_ID_MAX,
   PROGRESS_JOURNAL_MAX,
+  PROGRESS_INJURIES_MAX,
+  INJURY_SOURCES,
   JOURNAL_MINUTES_MAX,
   JOURNAL_SESSIONS,
   PROGRESS_LEVELS_MAX,
@@ -106,6 +108,7 @@ import {
   type GameTag,
   type JournalClip,
   type JournalEntry,
+  type StandaloneInjury,
   type ProgressBelt,
   type ProgressMerge,
   type HighDegreeDates,
@@ -281,6 +284,8 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     if (dismissedGoalPrompts) value.dismissedGoalPrompts = dismissedGoalPrompts;
     const clips = readClips(record.clips, errors);
     if (clips) value.clips = clips;
+    const injuries = readInjuries(record.injuries, errors);
+    if (injuries) value.injuries = injuries;
     value.competition = readCompetition(record, value.journal, errors);
     const rank = readRank(record.rank, value.profile.belt, errors);
     if (rank) value.rank = rank;
@@ -569,6 +574,7 @@ export function mergeStudentProgress(local: StudentProgressReport, incoming: Stu
   mergeChecklist(report, incoming, addedChecklist, conflicts);
   mergeGoals(report, incoming, conflicts);
   mergeJournal(report, incoming, addedJournal, appendedAmendments, conflicts);
+  mergeInjuries(report, incoming);
   mergeCalendar(report, incoming, conflicts);
   mergeClips(report, incoming, conflicts);
   mergeCompetition(report, incoming, conflicts);
@@ -872,6 +878,21 @@ function mergeJournal(
       }
     }
     current.updatedAt = Math.max(current.updatedAt, entry.updatedAt);
+  }
+}
+
+function mergeInjuries(report: StudentProgressReport, incoming: StudentProgressReport): void {
+  if (!incoming.injuries) return;
+  if (!report.injuries) {
+    report.injuries = incoming.injuries.map((row) => structuredClone(row));
+    return;
+  }
+  const byId = new Map(report.injuries.map((row) => [row.id, row]));
+  for (const row of incoming.injuries) {
+    if (byId.has(row.id)) continue;
+    const added = structuredClone(row);
+    report.injuries.push(added);
+    byId.set(row.id, added);
   }
 }
 
@@ -1706,13 +1727,11 @@ function readJournalEntry(value: unknown, index: number, errors: string[]): Jour
   if (quality) entry.quality = quality;
   const injury = asRecord(record.injury);
   if (injury) {
-    entry.injury = {
-      area: readOptionalText(injury.area, `${label} injury area`, PROGRESS_NAME_MAX, errors),
-      note: readOptionalText(injury.note, `${label} injury note`, PROGRESS_NAME_MAX * 4, errors),
-    };
-    if (typeof injury.zone === 'string' && /^[a-z][a-zA-Z]{1,30}$/.test(injury.zone)) entry.injury.zone = injury.zone;
-    if (injury.status === 'hurt' || injury.status === 'healing' || injury.status === 'healed') entry.injury.status = injury.status;
-    if (typeof injury.markedOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(injury.markedOn)) entry.injury.markedOn = injury.markedOn;
+    const fields = readInjuryFields(injury, `${label} injury`, errors);
+    entry.injury = { area: fields.area, note: fields.note };
+    if (fields.zone) entry.injury.zone = fields.zone;
+    if (fields.status) entry.injury.status = fields.status;
+    if (fields.markedOn) entry.injury.markedOn = fields.markedOn;
   }
   const hiatus = asRecord(record.hiatus);
   if (hiatus) {
@@ -1723,6 +1742,51 @@ function readJournalEntry(value: unknown, index: number, errors: string[]): Jour
     };
   }
   return entry;
+}
+
+function readInjuryFields(injury: Record<string, unknown>, label: string, errors: string[]): Pick<StandaloneInjury, 'area' | 'note'> & Partial<Pick<StandaloneInjury, 'zone' | 'status' | 'markedOn' | 'source'>> {
+  const fields: Pick<StandaloneInjury, 'area' | 'note'> & Partial<Pick<StandaloneInjury, 'zone' | 'status' | 'markedOn' | 'source'>> = {
+    area: readOptionalText(injury.area, `${label} area`, PROGRESS_NAME_MAX, errors),
+    note: readOptionalText(injury.note, `${label} note`, PROGRESS_NAME_MAX * 4, errors),
+  };
+  if (typeof injury.zone === 'string' && /^[a-z][a-zA-Z]{1,30}$/.test(injury.zone)) fields.zone = injury.zone;
+  if (injury.status === 'hurt' || injury.status === 'healing' || injury.status === 'healed') fields.status = injury.status;
+  if (typeof injury.markedOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(injury.markedOn)) fields.markedOn = injury.markedOn;
+  const source = readChoice(injury.source, `${label} source`, INJURY_SOURCES, errors);
+  if (source) fields.source = source;
+  return fields;
+}
+
+/** Omitted on older files. An empty list is kept as empty. */
+function readInjuries(value: unknown, errors: string[]): StandaloneInjury[] | undefined {
+  if (value === undefined) return undefined;
+  const rows = readList(value, 'Injuries', PROGRESS_INJURIES_MAX, errors);
+  const injuries = rows.map((row, index) => readStandaloneInjury(row, index, errors));
+  uniqueIds(injuries.map((row) => row.id), 'Injury', errors);
+  return injuries;
+}
+
+function readStandaloneInjury(value: unknown, index: number, errors: string[]): StandaloneInjury {
+  const record = asRecord(value);
+  const label = `Injury ${index + 1}`;
+  if (!record) {
+    errors.push(`${label} must be an object.`);
+    return { id: '', date: '', area: '', note: '', createdAt: 0, updatedAt: 0 };
+  }
+  const fields = readInjuryFields(record, label, errors);
+  const injury: StandaloneInjury = {
+    id: readId(record.id, `${label} id`, errors),
+    date: readDate(record.date, `${label} date`, errors, true),
+    area: fields.area,
+    note: fields.note,
+    createdAt: readTime(record.createdAt, `${label} createdAt`, errors),
+    updatedAt: readTime(record.updatedAt, `${label} updatedAt`, errors),
+  };
+  if (fields.zone) injury.zone = fields.zone;
+  if (fields.status) injury.status = fields.status;
+  if (fields.markedOn) injury.markedOn = fields.markedOn;
+  if (fields.source) injury.source = fields.source;
+  return injury;
 }
 
 /** Optional whole minutes, 1 to 720. Missing or 0 means untimed. */

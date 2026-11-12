@@ -4,7 +4,7 @@
  * white is survival and learning, blue/purple technique and game building,
  * brown/black refinement and leading, kids get simple words.
  */
-import type { JournalEntry } from './progress/types.ts';
+import type { JournalEntry, StandaloneInjury } from './progress/types.ts';
 
 export type QualityStage = 'white' | 'builder' | 'refiner' | 'kids';
 export type QualityScale = { prompt: string; labels: [string, string, string, string, string] };
@@ -75,12 +75,15 @@ function hiatusText(h: NonNullable<JournalEntry['hiatus']>): string {
   return `${h.reason === 'medical' ? 'Medical break' : 'Break'} · ${h.start}${h.end ? ` to ${h.end}` : ' · ongoing'}`;
 }
 
-/** Injury and break status, pulled from journal cards. Private to the student. */
-export function bodyStatus(journal: readonly JournalEntry[], today: string): BodyStatus {
+/** Injury and break status, pulled from journal cards and list-added injuries. Private to the student. */
+export function bodyStatus(journal: readonly JournalEntry[], today: string, extras: readonly StandaloneInjury[] = []): BodyStatus {
   const history: BodyStatus['history'] = [];
   for (const entry of journal) {
     if (entry.injury) history.push({ id: `${entry.id}-i`, kind: 'injury', text: `Injury · ${entry.injury.area || 'unspecified'}${entry.injury.note ? ` — ${entry.injury.note}` : ''}`, date: entry.date });
     if (entry.hiatus) history.push({ id: `${entry.id}-h`, kind: 'hiatus', text: hiatusText(entry.hiatus), date: entry.hiatus.start || entry.date });
+  }
+  for (const inj of extras) {
+    history.push({ id: `${inj.id}-i`, kind: 'injury', text: `Injury · ${inj.area || 'unspecified'}${inj.note ? ` — ${inj.note}` : ''}`, date: inj.date });
   }
   history.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   const breakNow = journal.find((e) => e.hiatus && (e.hiatus.start || e.date) <= today && (!e.hiatus.end || e.hiatus.end >= today));

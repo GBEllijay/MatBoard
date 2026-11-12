@@ -1,7 +1,7 @@
 /**
  * My report card: the student's own "character sheet". Read-only and derived:
  * belt, mat hours, week streak, game (self-assessment + accepted coach view),
- * session quality, injury/break status from journal cards, weight only when
+ * session quality, injury/break status from journal cards and the injury list, weight only when
  * tracked. Every section is labeled by source. Nothing here is sent anywhere.
  * Kept as its own page/component so it does not collide with ProfilePage or
  * CoachClipboardCard work.
@@ -35,7 +35,7 @@ export function ProfileReport({ report, storage, today }: { report: StudentProgr
   const total = matHoursTotal(report.journal);
   const streak = trainingStreak(report.journal, today, target);
   const howItWent = latestHowItWent(report.journal);
-  const status = bodyStatus(report.journal, today);
+  const status = bodyStatus(report.journal, today, report.injuries);
   const overlay = readCoachOverlay(storage);
   const coach = coachEntriesFromOverlay(overlay);
   const self = loadAssessments(storage).entries;

@@ -237,6 +237,8 @@ export const PROGRESS_EXAMPLE_MAX = 200;
 export const PROGRESS_EXAMPLES_MAX = 8;
 export const PROGRESS_JOURNAL_MAX = 500;
 export const PROGRESS_CLIPS_MAX = 200;
+/** Injuries added from the body-scan list, not from a journal card. Omitted on older files. */
+export const PROGRESS_INJURIES_MAX = 200;
 export const PROGRESS_CLIP_URL_MAX = 2000;
 export const PROGRESS_AMENDMENTS_MAX = 50;
 export const PROGRESS_CHECKLIST_MAX = 400;
@@ -553,6 +555,30 @@ export type JournalEntry = {
   hiatus?: { reason: 'medical' | 'other'; start: string; end: string };
 };
 
+/**
+ * An injury added from the injury list, not from a journal card.
+ * Stored on the student file next to `journal`. Omitted on older files.
+ * Private to the student: never copied into a coach file or card share.
+ */
+export const INJURY_SOURCES = ['training', 'outside'] as const;
+export type InjurySource = (typeof INJURY_SOURCES)[number];
+export type StandaloneInjury = {
+  id: string;
+  /** Day it happened (YYYY-MM-DD). */
+  date: string;
+  area: string;
+  note: string;
+  /** Optional fixed body zone (lib/bodyScan BODY_ZONES). */
+  zone?: string;
+  status?: 'hurt' | 'healing' | 'healed';
+  /** Day the status was last set (YYYY-MM-DD). */
+  markedOn?: string;
+  /** How it happened. Absent on older rows. Default when added from the list is `outside`. */
+  source?: InjurySource;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export const JOURNAL_SESSIONS = ['class', 'openMat', 'misc', 'other'] as const;
 /** Longest optional "what was it" text on an Other session. */
 export const JOURNAL_SESSION_OTHER_MAX = 80;
@@ -845,6 +871,12 @@ export type StudentProgressReport = PacketBase & {
   rubric: StudentRubric;
   checklist: StudentChecklistEntry[];
   journal: JournalEntry[];
+  /**
+   * Injuries added from the injury list, not from a journal card.
+   * Omitted on older files. An empty list means the list is present and empty.
+   * Private: never copied into a coach file or card share.
+   */
+  injuries?: StandaloneInjury[];
   calendar: CalendarEvent[];
   goals: StudentGoal[];
   /**
