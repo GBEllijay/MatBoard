@@ -15,6 +15,7 @@ import { asRecord } from '../plainValue.ts';
 import { readWorkingGraph } from '../workingTechniques.ts';
 import { readCoachAssessment, readCoachBeltProgress, readCoachNote } from './syncPackets.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
+import { mergeJournalCardVideos, readJournalCardVideos } from './cardVideos.ts';
 import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
 import { shareTournaments } from '../sharedTournaments.ts';
 import {
@@ -867,6 +868,8 @@ function mergeJournal(
     if (current.quality === undefined && entry.quality !== undefined) current.quality = entry.quality;
     if (current.injury === undefined && entry.injury) current.injury = structuredClone(entry.injury);
     if (current.hiatus === undefined && entry.hiatus) current.hiatus = structuredClone(entry.hiatus);
+    const videos = mergeJournalCardVideos(current.videos, entry.videos);
+    if (videos) current.videos = videos;
     for (const amendment of entry.amendments) {
       const prior = current.amendments.find((item) => item.id === amendment.id);
       if (!prior) {
@@ -1742,6 +1745,8 @@ function readJournalEntry(value: unknown, index: number, errors: string[]): Jour
   if (session === 'other' && typeof record.sessionOther === 'string' && record.sessionOther.trim()) entry.sessionOther = record.sessionOther.trim().slice(0, 80);
   const quality = readTargetLevel(record.quality, `${label} quality`, errors);
   if (quality) entry.quality = quality;
+  const videos = readJournalCardVideos(record.videos);
+  if (videos) entry.videos = videos;
   const injury = asRecord(record.injury);
   if (injury) {
     const fields = readInjuryFields(injury, `${label} injury`, errors);

@@ -34,6 +34,7 @@ import { RankPage } from './student/RankPage';
 import { ResultsPage } from './student/ResultsPage';
 import { ScoutingPage } from './student/ScoutingPage';
 import { JournalVideos } from './student/JournalVideos';
+import { JournalCardVideos } from './student/JournalCardVideos';
 import { VideoLibraryPage } from './student/VideoLibraryPage';
 import { WeightPage } from './student/WeightPage';
 import { CoachUpdateInbox } from '../components/CoachUpdateInbox';
@@ -620,6 +621,7 @@ function JournalList() {
                 {card.amendments.map((item) =>
                   item.body.trim() ? <span key={item.id}>{item.body.trim()}</span> : null,
                 )}
+                <CardVideoCount count={report.journal.find((row) => row.id === card.id)?.videos?.length ?? 0} />
               </Link>
               <div className="student-card__actions">
                 <Link className="ink-btn" to={to(`/student/cards/${card.id}?edit=1`)}>
@@ -654,6 +656,12 @@ function JournalList() {
       </div>
     </main>
   );
+}
+
+/** How many class videos a card has, on the list of cards. */
+function CardVideoCount({ count }: { count: number }) {
+  if (!count) return null;
+  return <span className="journal-card-videos__count">{count === 1 ? '1 class video' : `${count} class videos`}</span>;
 }
 
 function JournalCardPage({ id }: { id: string }) {
@@ -703,6 +711,7 @@ function JournalCardPage({ id }: { id: string }) {
           ) : (
             <>
               <CardBody card={card} query={params.get('q') ?? ''} />
+              <JournalCardVideos entryId={card.id} date={card.date} techniqueNames={card.techniques.map((row) => row.name)} />
               <JournalVideos entryId={card.id} date={card.date} techniques={card.techniques} />
             </>
           )}

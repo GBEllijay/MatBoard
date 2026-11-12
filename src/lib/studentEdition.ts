@@ -538,6 +538,7 @@ export function updateJournalEntry(
   const journal = report.journal.slice();
   journal[index] = {
     ...next,
+    ...(current.videos?.length ? { videos: current.videos } : {}),
     id: current.id,
     amendments: current.amendments,
     createdAt: current.createdAt,

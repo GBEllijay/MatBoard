@@ -564,6 +564,38 @@ export type JournalEntry = {
   };
   /** Marks a hiatus/break. Starts on `start` (the card date by default). Empty `end` means still on break. */
   hiatus?: { reason: 'medical' | 'other'; start: string; end: string };
+  /**
+   * Videos for this one class card, each tagged with the glossary term it shows.
+   * Absent on older cards: read as no videos. A phone video keeps only its id here;
+   * the bytes stay in this phone's film store (IndexedDB), never in this file or the cloud.
+   */
+  videos?: JournalCardVideo[];
+};
+
+/** Most videos one journal card keeps. */
+export const JOURNAL_CARD_VIDEOS_MAX = 20;
+
+/** The glossary term a card video shows. `id` is `gl.<key>` (core glossary), `mine.<key>` (the student's own move), or blank for a free name. */
+export type JournalVideoTerm = { id: string; name: string };
+
+/**
+ * One video on one journal card.
+ * `phone`: a file picked on this device; the bytes are in the local film store under `id`.
+ * `link`: an http(s) link (YouTube, Instagram, Drive, …) the student pasted.
+ */
+export type JournalCardVideo = {
+  id: string;
+  source: 'phone' | 'link';
+  /** Link videos only. */
+  url?: string;
+  /** Phone videos only: original file name, type, and size, for the label. */
+  fileName?: string;
+  mime?: string;
+  size?: number;
+  term: JournalVideoTerm;
+  note: string;
+  createdAt: number;
+  updatedAt: number;
 };
 
 /**
