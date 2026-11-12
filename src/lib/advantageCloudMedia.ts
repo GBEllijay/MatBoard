@@ -4,7 +4,9 @@
  * Google Drive, OneDrive, and this phone stay the default until a coach picks Cloud.
  */
 
+import { canDecideApproval, uploadLaneFor, type ApprovalLane } from './approvalLanes.ts';
 import { cloudPathScope } from './cloudDataOwnership.ts';
+import { fetchWithRetry, isCanceled, retryableStatus, type RetryOptions } from './cloudUploadRetry.ts';
 import { lessonMediaPath, lessonWeekId, routeUpload, isCalendarDateKey, safePathSegment, type GymActor } from './gymTree.ts';
 
 /** Same storage key as src/lib/entitlement.ts. Kept here so the server handler does not import the browser entitlement module. */
@@ -13,8 +15,20 @@ const ENTITLEMENT_TOKEN_KEY = 'advantage.entitlement.token';
 export const CLOUD_MEDIA_HOME_KEY = 'matboard.plusCloud.mediaHome.v1';
 export const CLOUD_MEDIA_EVENT = 'matboard-advantage-cloud';
 
-/** 8 GB, decimal, under R2's 10 GB free tier. Override with GYM_MEDIA_CAP_BYTES (bytes). */
-export const DEFAULT_CLOUD_CAP_BYTES = 8_000_000_000;
+/**
+ * Per-gym (per-license) Cloud limits, decimal bytes. Every key for a license
+ * lives under groups/{licenseId}/, so each gym is measured on its own.
+ * Over the soft limit, uploads still save but the owner is asked to delete
+ * old videos. At the hard limit an upload is refused.
+ */
+export const CLOUD_LICENSE_SOFT_LIMIT_BYTES = 50_000_000_000;
+export const CLOUD_LICENSE_HARD_LIMIT_BYTES = 100_000_000_000;
+
+/** Hard limit per license. Override with GYM_MEDIA_LICENSE_CAP_BYTES (bytes). */
+export const DEFAULT_CLOUD_CAP_BYTES = CLOUD_LICENSE_HARD_LIMIT_BYTES;
+
+/** Where the owner deletes old Cloud videos: the Media gallery, with the cleanup panel opened. */
+export const CLOUD_CLEANUP_ROUTE: string | null = '/slideshow?folder=gallery&cleanup=old-videos';
 
 /** One phone video. Override with GYM_MEDIA_MAX_UPLOAD_BYTES (bytes). */
 export const DEFAULT_MAX_UPLOAD_BYTES = 512_000_000;
@@ -28,6 +42,8 @@ export const CLOUD_CHUNK_BYTES = 8 * 1024 * 1024;
 export const CLOUD_SIGN_IN_MESSAGE = 'Sign in on this device to use Advantage Cloud.';
 export const CLOUD_ROLE_MESSAGE = 'Assistant coaches can play and download these files. A coach uploads them.';
 export const CLOUD_SAVED_MESSAGE = 'Saved to Advantage Cloud. This phone keeps a copy.';
+export const CLOUD_SENT_FOR_APPROVAL =
+  'Sent to Advantage Cloud for approval. It shows after the owner or an Instructors seat approves it in Review Inbox.';
 export const CLOUD_DAILY_DROP_ONLY =
   "A program director can send videos to today's daily videos. Lesson plans and other Cloud files stay with the coaches.";
 export const CLOUD_UNAVAILABLE_MESSAGE = 'Advantage Cloud is not on this license.';
@@ -205,12 +221,26 @@ function trimNumber(value: number): string {
   return fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed;
 }
 
-export function cloudUsageLine(licenseUsed: number, bucketUsed: number, cap: number): string {
-  return `This license is using ${formatCloudBytes(licenseUsed)}. Advantage Cloud is using ${formatCloudBytes(bucketUsed)} of ${formatCloudBytes(cap)}.`;
+/** Soft limit when the cap was lowered below it (tests, a small trial). */
+export function cloudSoftLimitBytes(cap: number): number {
+  return Math.min(CLOUD_LICENSE_SOFT_LIMIT_BYTES, Math.floor(cap / 2));
 }
 
-export function cloudFullMessage(bucketUsed: number, cap: number): string {
-  return `Advantage Cloud is full. This file was not saved. Advantage Cloud is using ${formatCloudBytes(bucketUsed)} of ${formatCloudBytes(cap)}. Remove older files, then try again.`;
+export function cloudOverSoftLimit(licenseUsed: number, cap: number): boolean {
+  return licenseUsed >= cloudSoftLimitBytes(cap);
+}
+
+export function cloudSoftLimitWarning(licenseUsed: number, cap: number): string {
+  return `This gym is using ${formatCloudBytes(licenseUsed)} of ${formatCloudBytes(cap)} in Advantage Cloud. Past ${formatCloudBytes(cloudSoftLimitBytes(cap))}, please delete old videos you no longer need. At ${formatCloudBytes(cap)} new uploads stop.`;
+}
+
+export function cloudUsageLine(licenseUsed: number, cap: number): string {
+  const line = `This gym is using ${formatCloudBytes(licenseUsed)} of ${formatCloudBytes(cap)} in Advantage Cloud.`;
+  return cloudOverSoftLimit(licenseUsed, cap) ? `${line} Please delete old videos you no longer need.` : line;
+}
+
+export function cloudFullMessage(licenseUsed: number, cap: number): string {
+  return `Advantage Cloud is full for this gym. This file was not saved. This gym is using ${formatCloudBytes(licenseUsed)} of ${formatCloudBytes(cap)}. Delete old videos, then try again.`;
 }
 
 export function cloudTooLargeMessage(maxBytes: number): string {
@@ -306,8 +336,51 @@ export function galleryUploadLane(input: {
 
 /** Owner, or an Instructors seat. A coach cannot approve their own upload. */
 export function galleryDecisionAllowed(input: { kind: 'owner' | 'seat'; preset?: string | null }): boolean {
-  if (input.kind === 'owner') return true;
-  return input.preset === 'instructors';
+  return canDecideApproval(input);
+}
+
+/**
+ * Daily videos use the same rule as class photos: the owner is approved, and
+ * a seat that may upload daily videos (Coach, Instructors, program director)
+ * lands in pending while the license approval switch is on.
+ */
+export function dailyVideoUploadLane(input: { kind: 'owner' | 'seat'; approvalRequired?: boolean }): 'pending' | 'approved' {
+  return uploadLaneFor(input);
+}
+
+const DAILY_MARKER = /^pending\/daily\/(pending|rejected)\/(\d{4}-\d{2}-\d{2})\/([A-Za-z0-9._-]{1,80})$/;
+
+/**
+ * Decision marker beside a daily video. The video bytes never move:
+ * `videos/daily/{date}/{file}` stays the one copy. A pending or rejected
+ * marker hides it; no marker (every video uploaded before lanes) is approved.
+ * Built only by the server. `cloudObjectKey` refuses these paths, so a
+ * browser cannot write or delete a marker through op=put.
+ */
+export function dailyVideoMarkerPath(videoPath: string, lane: 'pending' | 'rejected'): string | null {
+  if (!DAILY_KEY.test(videoPath)) return null;
+  const [, , dateKey, name] = videoPath.split('/');
+  if (!dateKey || !name) return null;
+  const path = `pending/daily/${lane}/${dateKey}/${name}`;
+  return DAILY_MARKER.test(path) ? path : null;
+}
+
+export function parseDailyVideoMarkerPath(
+  path: string,
+): { lane: 'pending' | 'rejected'; dateKey: string; name: string; videoPath: string } | null {
+  const match = DAILY_MARKER.exec(path);
+  if (!match) return null;
+  const lane = match[1] === 'rejected' ? 'rejected' : 'pending';
+  const videoPath = `videos/daily/${match[2]}/${match[3]}`;
+  if (!DAILY_KEY.test(videoPath)) return null;
+  return { lane, dateKey: match[2], name: match[3], videoPath };
+}
+
+/** `groups/{license}/pending/daily/...` for a marker. Null for anything else. */
+export function dailyVideoMarkerKey(licenseId: string, videoPath: string, lane: 'pending' | 'rejected'): string | null {
+  if (!LICENSE_ID.test(licenseId)) return null;
+  const path = dailyVideoMarkerPath(videoPath, lane);
+  return path ? `groups/${licenseId}/${path}` : null;
 }
 
 export function galleryCloudPath(lane: GalleryCloudLane, dateKey: string, fileName: string): string | null {
@@ -509,6 +582,8 @@ export type CloudFileRow = {
   path: string;
   size: number;
   mime: string;
+  /** Daily videos and gallery items. Missing means approved (older servers). */
+  lane?: ApprovalLane;
 };
 
 export type CloudHomeView =
@@ -520,7 +595,6 @@ export type CloudHomeView =
       phase: 'ready';
       canUpload: boolean;
       licenseUsedBytes: number;
-      bucketUsedBytes: number;
       capBytes: number;
     };
 
@@ -531,7 +605,7 @@ export function cloudHomeStatusLine(view: CloudHomeView | null): string {
   if (view.phase === 'error') return CLOUD_HOME_ERROR;
   if (view.phase === 'unavailable') return CLOUD_UNAVAILABLE_MESSAGE;
   if (view.phase === 'connected') return CLOUD_HOME_CONNECTED;
-  return cloudUsageLine(view.licenseUsedBytes, view.bucketUsedBytes, view.capBytes);
+  return cloudUsageLine(view.licenseUsedBytes, view.capBytes);
 }
 
 export type CloudUsageFigure = {
@@ -569,10 +643,10 @@ export function cloudUsageFigures(view: CloudHomeView | null): CloudUsageFigure[
     return [{ value: '—', unit: '', label }];
   }
   const license = splitCloudBytes(view.licenseUsedBytes);
-  const bucket = splitCloudBytes(view.bucketUsedBytes);
+  const cap = splitCloudBytes(view.capBytes);
   return [
-    { value: license.value, unit: license.unit, label: 'This license' },
-    { value: bucket.value, unit: bucket.unit, label: `of ${formatCloudBytes(view.capBytes)}` },
+    { value: license.value, unit: license.unit, label: 'This gym' },
+    { value: cap.value, unit: cap.unit, label: cloudOverSoftLimit(view.licenseUsedBytes, view.capBytes) ? 'Limit · delete old videos' : 'Limit' },
   ];
 }
 
@@ -613,14 +687,11 @@ export async function loadAdvantageCloudHome(fetcher: CloudFetcher = fetch): Pro
     const body = (await response.json()) as CloudStatusBody;
     if (!body.cloud) return { phase: 'unavailable' };
     const licenseUsedBytes = body.licenseUsedBytes;
-    const bucketUsedBytes = body.bucketUsedBytes;
     const capBytes = body.capBytes;
     if (
       typeof licenseUsedBytes !== 'number' ||
-      typeof bucketUsedBytes !== 'number' ||
       typeof capBytes !== 'number' ||
       !Number.isFinite(licenseUsedBytes) ||
-      !Number.isFinite(bucketUsedBytes) ||
       !Number.isFinite(capBytes)
     ) {
       return { phase: 'error' };
@@ -629,7 +700,6 @@ export async function loadAdvantageCloudHome(fetcher: CloudFetcher = fetch): Pro
       phase: 'ready',
       canUpload: Boolean(body.canUpload),
       licenseUsedBytes,
-      bucketUsedBytes,
       capBytes,
     };
   } catch {
@@ -648,13 +718,32 @@ export type CloudStatusBody = {
   /** Program director: may list and play today's daily videos, nothing else. */
   dailyVideoPlay?: boolean;
   licenseUsedBytes?: number;
+  /** Older builds read this. It now equals licenseUsedBytes; the whole bucket is no longer scanned. */
   bucketUsedBytes?: number;
+  /** Per-license hard limit. */
   capBytes?: number;
+  /** Per-license soft limit: past this the owner is asked to delete old videos. */
+  softLimitBytes?: number;
   maxUploadBytes?: number;
   replayUpload?: ReplayCloudUpload;
 };
 
-export type CloudUploadResult = { ok: true; path: string } | { ok: false; message: string };
+export type CloudUploadResult =
+  | { ok: true; path: string; lane?: 'pending' | 'approved'; duplicate?: boolean }
+  | { ok: false; message: string; retryable?: boolean; canceled?: boolean };
+
+/**
+ * Where a multipart upload got to. The queue keeps this between tries so a
+ * manual Retry resumes from the last good part instead of starting over.
+ */
+export type CloudUploadResume = {
+  key?: string;
+  path?: string;
+  uploadId?: string;
+  partSize?: number;
+  lane?: 'pending' | 'approved';
+  parts?: { partNumber: number; etag: string }[];
+};
 
 type CloudFetcher = typeof fetch;
 
@@ -674,6 +763,33 @@ async function readError(response: Response, fallback: string): Promise<string> 
   return fallback;
 }
 
+const CLOUD_UNREACHABLE = 'Advantage Cloud could not be reached. Check the connection, then retry.';
+
+async function failure(response: Response, fallback: string): Promise<CloudUploadResult> {
+  return { ok: false, message: await readError(response, fallback), retryable: retryableStatus(response.status) };
+}
+
+/** Abort the server-side multipart upload. Best effort: R2 also expires it after a week. */
+export async function abortAdvantageCloudUpload(input: {
+  key: string;
+  uploadId: string;
+  token?: string;
+  fetcher?: CloudFetcher;
+}): Promise<void> {
+  const token = input.token ?? readCloudBearer();
+  if (!token) return;
+  const fetcher = input.fetcher ?? fetch;
+  try {
+    await fetcher(cloudUrl('/api/gym/cloud'), {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'abort', key: input.key, uploadId: input.uploadId }),
+    });
+  } catch {
+    /* Expires on its own. */
+  }
+}
+
 export async function uploadAdvantageCloudFile(input: {
   purpose: CloudMediaPurpose;
   dateKey: string;
@@ -686,77 +802,136 @@ export async function uploadAdvantageCloudFile(input: {
   lane?: 'pending' | 'approved';
   studentId?: string;
   onProgress?: (sent: number, total: number) => void;
+  /** Content fingerprint (cloudFingerprint.ts). The server skips a file this gym already has. */
+  fingerprint?: string;
+  /** Cancel. A multipart upload is aborted on the server too. */
+  signal?: AbortSignal;
+  /** Per-request retry with backoff. Default: one try, as before. */
+  retry?: RetryOptions;
+  /** Kept between tries so a retry resumes a multipart upload. */
+  resume?: CloudUploadResume;
 }): Promise<CloudUploadResult> {
   const token = input.token ?? readCloudBearer();
   if (!token) return { ok: false, message: CLOUD_SIGN_IN_MESSAGE };
   const fetcher = input.fetcher ?? fetch;
   const headers = { authorization: `Bearer ${token}` };
-  const start = await fetcher(cloudUrl('/api/gym/cloud'), {
-    method: 'POST',
-    headers: { ...headers, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      action: 'start',
-      purpose: input.purpose,
-      dateKey: input.dateKey,
-      fileName: input.fileName,
-      size: input.file.size,
-      mime: input.mime,
-      ...(input.lane ? { lane: input.lane } : {}),
-      ...(input.studentId ? { studentId: input.studentId } : {}),
-    }),
-  });
-  if (!start.ok) return { ok: false, message: await readError(start, 'Advantage Cloud could not take that file.') };
-  const opened = (await start.json()) as {
-    mode?: string;
-    key?: string;
-    path?: string;
-    uploadId?: string;
-    partSize?: number;
-  };
-  if (!opened.key || !opened.path) return { ok: false, message: 'Advantage Cloud could not take that file.' };
-  if (opened.mode === 'multipart') {
-    const partSize = opened.partSize && opened.partSize > 0 ? opened.partSize : CLOUD_CHUNK_BYTES;
-    const parts: { partNumber: number; etag: string }[] = [];
-    let partNumber = 1;
-    for (let offset = 0; offset < input.file.size; offset += partSize) {
-      const chunk = input.file.slice(offset, Math.min(input.file.size, offset + partSize));
-      const put = await fetcher(
-        cloudUrl(
-          `/api/gym/cloud?op=part&key=${encodeURIComponent(opened.key)}&uploadId=${encodeURIComponent(opened.uploadId ?? '')}&partNumber=${partNumber}`,
-        ),
-        { method: 'PUT', headers, body: chunk },
-      );
-      if (!put.ok) return { ok: false, message: await readError(put, 'Advantage Cloud stopped during that upload.') };
-      const part = (await put.json()) as { etag?: string };
-      if (!part.etag) return { ok: false, message: 'Advantage Cloud stopped during that upload.' };
-      parts.push({ partNumber, etag: part.etag });
-      partNumber += 1;
-      input.onProgress?.(Math.min(input.file.size, offset + chunk.size), input.file.size);
+  const resume: CloudUploadResume = input.resume ?? {};
+  const send = (url: string, init: RequestInit) =>
+    fetchWithRetry(fetcher, cloudUrl(url), init, { ...input.retry, signal: input.signal });
+  const canceled = async (): Promise<CloudUploadResult> => {
+    if (resume.key && resume.uploadId) {
+      await abortAdvantageCloudUpload({ key: resume.key, uploadId: resume.uploadId, token, fetcher });
+      resume.uploadId = undefined;
+      resume.parts = [];
     }
-    const done = await fetcher(cloudUrl('/api/gym/cloud'), {
-      method: 'POST',
-      headers: { ...headers, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        action: 'complete',
-        key: opened.key,
-        uploadId: opened.uploadId,
-        parts,
-        size: input.file.size,
-      }),
+    return { ok: false, message: 'Canceled.', canceled: true };
+  };
+  try {
+    if (!resume.key || !resume.path || (resume.partSize && !resume.uploadId)) {
+      const start = await send('/api/gym/cloud', {
+        method: 'POST',
+        headers: { ...headers, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'start',
+          purpose: input.purpose,
+          dateKey: input.dateKey,
+          fileName: input.fileName,
+          size: input.file.size,
+          mime: input.mime,
+          ...(input.lane ? { lane: input.lane } : {}),
+          ...(input.studentId ? { studentId: input.studentId } : {}),
+          ...(input.fingerprint ? { fingerprint: input.fingerprint } : {}),
+        }),
+      });
+      if (!start.ok) return failure(start, 'Advantage Cloud could not take that file.');
+      const opened = (await start.json()) as {
+        mode?: string;
+        key?: string;
+        path?: string;
+        uploadId?: string;
+        partSize?: number;
+        lane?: string;
+      };
+      const openedLane = opened.lane === 'pending' || opened.lane === 'approved' ? opened.lane : undefined;
+      if (opened.mode === 'duplicate' && opened.path) {
+        input.onProgress?.(input.file.size, input.file.size);
+        return { ok: true, path: opened.path, duplicate: true, ...(openedLane ? { lane: openedLane } : {}) };
+      }
+      if (!opened.key || !opened.path) return { ok: false, message: 'Advantage Cloud could not take that file.' };
+      resume.key = opened.key;
+      resume.path = opened.path;
+      resume.lane = openedLane;
+      resume.parts = [];
+      if (opened.mode === 'multipart') {
+        resume.uploadId = opened.uploadId ?? '';
+        resume.partSize = opened.partSize && opened.partSize > 0 ? opened.partSize : CLOUD_CHUNK_BYTES;
+      } else {
+        resume.uploadId = undefined;
+        resume.partSize = undefined;
+      }
+    }
+    const key = resume.key as string;
+    const path = resume.path as string;
+    const lane: { lane?: 'pending' | 'approved' } = resume.lane ? { lane: resume.lane } : {};
+    const print = input.fingerprint ? `&fingerprint=${encodeURIComponent(input.fingerprint)}` : '';
+    if (resume.uploadId && resume.partSize) {
+      const partSize = resume.partSize;
+      const parts = resume.parts ?? (resume.parts = []);
+      const done = new Set(parts.map((part) => part.partNumber));
+      let partNumber = 1;
+      for (let offset = 0; offset < input.file.size; offset += partSize) {
+        const end = Math.min(input.file.size, offset + partSize);
+        if (!done.has(partNumber)) {
+          const chunk = input.file.slice(offset, end);
+          const put = await send(
+            `/api/gym/cloud?op=part&key=${encodeURIComponent(key)}&uploadId=${encodeURIComponent(resume.uploadId)}&partNumber=${partNumber}`,
+            { method: 'PUT', headers, body: chunk },
+          );
+          if (!put.ok) return failure(put, 'Advantage Cloud stopped during that upload.');
+          const part = (await put.json()) as { etag?: string };
+          if (!part.etag) return { ok: false, message: 'Advantage Cloud stopped during that upload.', retryable: true };
+          parts.push({ partNumber, etag: part.etag });
+        }
+        partNumber += 1;
+        input.onProgress?.(end, input.file.size);
+      }
+      const finished = await send('/api/gym/cloud', {
+        method: 'POST',
+        headers: { ...headers, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'complete',
+          key,
+          uploadId: resume.uploadId,
+          parts: [...parts].sort((a, b) => a.partNumber - b.partNumber),
+          size: input.file.size,
+          ...(input.fingerprint ? { fingerprint: input.fingerprint } : {}),
+        }),
+      });
+      if (!finished.ok) {
+        // A refused complete (full, too large) closes the upload on the server. Start fresh next time.
+        if (!retryableStatus(finished.status)) {
+          resume.key = undefined;
+          resume.uploadId = undefined;
+          resume.parts = [];
+        }
+        return failure(finished, 'Advantage Cloud could not finish that file.');
+      }
+      notifyCloudMedia();
+      return { ok: true, path, ...lane };
+    }
+    const put = await send(`/api/gym/cloud?op=put&key=${encodeURIComponent(key)}${print}`, {
+      method: 'PUT',
+      headers: { ...headers, 'content-type': input.mime || 'application/octet-stream' },
+      body: input.file,
     });
-    if (!done.ok) return { ok: false, message: await readError(done, 'Advantage Cloud could not finish that file.') };
+    if (!put.ok) return failure(put, 'Advantage Cloud could not take that file.');
+    input.onProgress?.(input.file.size, input.file.size);
     notifyCloudMedia();
-    return { ok: true, path: opened.path };
+    return { ok: true, path, ...lane };
+  } catch (error) {
+    if (isCanceled(error, input.signal)) return canceled();
+    return { ok: false, message: CLOUD_UNREACHABLE, retryable: true };
   }
-  const put = await fetcher(cloudUrl(`/api/gym/cloud?op=put&key=${encodeURIComponent(opened.key)}`), {
-    method: 'PUT',
-    headers: { ...headers, 'content-type': input.mime || 'application/octet-stream' },
-    body: input.file,
-  });
-  if (!put.ok) return { ok: false, message: await readError(put, 'Advantage Cloud could not take that file.') };
-  input.onProgress?.(input.file.size, input.file.size);
-  notifyCloudMedia();
-  return { ok: true, path: opened.path };
 }
 
 let lessonTimer: ReturnType<typeof setTimeout> | null = null;

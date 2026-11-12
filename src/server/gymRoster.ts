@@ -96,8 +96,9 @@ async function writeJson(env: GymCloudEnv, key: string, value: unknown, max: num
   const bytes = new TextEncoder().encode(JSON.stringify(value));
   if (bytes.byteLength > max) return json(413, { ok: false, error: 'That roster is too large for Advantage Cloud.' });
   const bucket = env.GYM_MEDIA!;
-  const cap = cloudCapBytes(env.GYM_MEDIA_CAP_BYTES);
-  const [used, existing] = await Promise.all([gymBytesUnder(bucket, ''), bucket.head(key)]);
+  const cap = cloudCapBytes(env.GYM_MEDIA_LICENSE_CAP_BYTES);
+  const license = /^groups\/[^/]+\//.exec(key)?.[0] ?? key;
+  const [used, existing] = await Promise.all([gymBytesUnder(bucket, license), bucket.head(key)]);
   if (used - (existing?.size ?? 0) + bytes.byteLength > cap) {
     return json(409, { ok: false, error: 'Advantage Cloud is full.' });
   }

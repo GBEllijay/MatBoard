@@ -112,6 +112,15 @@ test('the hub is five groups and has no Menu card', () => {
   unmount(hub);
 });
 
+test('the hub Profiles card sits below Backup & Print and above FAQ', () => {
+  const hub = mount(<StudentHub />, '/student?student=1');
+  const switcher = hub.host.querySelector('[data-testid="student-profile-switcher"]');
+  assert.ok(switcher);
+  assert.match(switcher?.previousElementSibling?.getAttribute('aria-label') ?? '', /^Backup & Print/);
+  assert.equal(switcher?.nextElementSibling?.getAttribute('aria-label'), 'FAQ');
+  unmount(hub);
+});
+
 test('the hub header shows a profile photo that stays on this phone', () => {
   const portrait = 'data:image/jpeg;base64,AAAA';
   localStorage.setItem('matboard.studentPortrait.v1', JSON.stringify({ version: 1, dataUrl: portrait }));

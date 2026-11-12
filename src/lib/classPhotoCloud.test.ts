@@ -39,8 +39,8 @@ class MemoryBucket implements GymMediaBucket {
     this.objects.set(key, { bytes, type: options?.httpMetadata?.contentType || 'application/octet-stream' });
   }
 
-  async delete(key: string) {
-    this.objects.delete(key);
+  async delete(keys: string | string[]) {
+    for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key);
   }
 
   async list(options?: { prefix?: string; cursor?: string; limit?: number }) {
@@ -123,8 +123,11 @@ test('the photo copy switches to Advantage Cloud only when Cloud is on', () => {
   assert.match(notice, /cloudGalleryPendingCount/);
   assert.match(notice, /data-gallery-pending-badge/);
   const review = readFileSync(new URL('../components/GalleryReviewQueue.tsx', import.meta.url), 'utf8');
-  assert.match(review, /gallery-approve/);
-  assert.match(review, /gallery-reject/);
+  // Review Inbox decides through the shared lane store, which sends gallery-approve / gallery-reject.
+  assert.match(review, /advantageCloudLaneStore\(\)/);
+  const lanes = readFileSync(new URL('./advantageCloudLanes.ts', import.meta.url), 'utf8');
+  assert.match(lanes, /gallery-approve/);
+  assert.match(lanes, /gallery-reject/);
   const pro = readFileSync(new URL('../pages/Pro.tsx', import.meta.url), 'utf8');
   const plus = readFileSync(new URL('../pages/ProPlusCloud.tsx', import.meta.url), 'utf8');
   assert.match(pro, /GalleryPendingBadge/);

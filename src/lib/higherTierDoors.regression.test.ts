@@ -207,9 +207,9 @@ test('Lock Media still locks Media, Student, and White for someone who owns only
   assert.equal(doorOpen('pro'), false);
 });
 
-test('the home Media card follows the Media door and does not shut it for a seat', () => {
+test('the home Media card follows mediaEditionDoorOpen and does not shut it for a seat', () => {
   const home = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8');
-  assert.match(home, /<MediaHomeCard open=\{mediaUnlocked\} \/>/);
+  assert.match(home, /<MediaHomeCard open=\{mediaEditionDoorOpen\(door\)\} \/>/);
   assert.doesNotMatch(home, /mediaUnlocked && !seated/);
   assert.match(home, /purchasePromptsHidden\(seat\)/);
 });

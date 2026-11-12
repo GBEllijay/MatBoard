@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { PlanDateNav } from '../components/PlanDateNav';
+import { ClassTimeField } from '../components/ClassTimeField';
 import { ExpectedDurationField } from '../components/ExpectedDurationField';
 import { LessonMediaRail } from '../components/LessonMediaRail';
 import { ReviewSlotControls } from '../components/ReviewSlotControls';
@@ -66,7 +67,7 @@ import { exportCurriculumToDrive } from '../lib/curriculumDrive';
 import { techniquesPathForCurriculum } from '../lib/curriculumVideos';
 import { deleteUnusedTrainingClip, readTrainingClipBlob } from '../lib/techniqueStore';
 import { CONNECT_WITH_TITLE } from '../lib/cloudStorage';
-import { CLASS_DESIGNATION_MAX, CLASS_TIME_MAX, CLOSING_MAX, COACH_NAME_MAX, TECHNIQUE_NOTES_MAX, TECHNIQUE_TITLE_MAX, localDateKey, planDayStamp, planDayTitle, shiftDateKey } from '../lib/trainingNotesStore';
+import { CLASS_DESIGNATION_MAX, CLOSING_MAX, COACH_NAME_MAX, TECHNIQUE_NOTES_MAX, TECHNIQUE_TITLE_MAX, localDateKey, planDayStamp, planDayTitle, shiftDateKey } from '../lib/trainingNotesStore';
 import { techniqueTreeLaunchPath } from '../lib/lessonLinks';
 import { COACHING_TOOLS_PATH, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
@@ -566,18 +567,12 @@ export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boo
               onChange={(event) => commit({ ...plan, classDesignation: event.target.value })}
             />
           </label>
-          <label className="notes__field" htmlFor="curriculum-time">
-            Class time
-            <input
-              id="curriculum-time"
-              value={plan.classTime}
-              maxLength={CLASS_TIME_MAX}
-              placeholder="5:00 PM"
-              autoComplete="off"
-              readOnly={!editingToday}
-              onChange={(event) => commit({ ...plan, classTime: event.target.value })}
-            />
-          </label>
+          <ClassTimeField
+            id="curriculum-time"
+            value={plan.classTime}
+            readOnly={!editingToday}
+            onChange={(classTime) => commit({ ...plan, classTime })}
+          />
         </section>
 
         {plan.blocks.map((block, index) => (

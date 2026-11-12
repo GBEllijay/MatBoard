@@ -31,8 +31,8 @@ class MemoryBucket implements GymMediaBucket {
     this.objects.set(key, { bytes, type: options?.httpMetadata?.contentType || 'application/octet-stream' });
   }
 
-  async delete(key: string) {
-    this.objects.delete(key);
+  async delete(keys: string | string[]) {
+    for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key);
   }
 
   async list(options?: { prefix?: string; cursor?: string; limit?: number }) {
@@ -248,7 +248,8 @@ test('gallery role matrix: owner approved, staff pending, approve and reject, re
     owner,
   );
   assert.equal(rejected.status, 200);
-  assert.equal(bucket.objects.has('groups/lic-owner1/gallery/rejected/2026-11-10/instructor-class.jpg'), true);
+  assert.equal(((await rejected.json()) as { deleted?: boolean }).deleted, true);
+  assert.equal(bucket.objects.has('groups/lic-owner1/gallery/rejected/2026-11-10/instructor-class.jpg'), false);
   assert.equal(bucket.objects.has('groups/lic-owner1/gallery/pending/2026-11-10/instructor-class.jpg'), false);
 
   const pendingAfter = await call(env, '/api/gym/cloud?op=list&purpose=gallery&lane=pending', {}, owner);
@@ -259,7 +260,7 @@ test('gallery role matrix: owner approved, staff pending, approve and reject, re
   assert.equal(revoked.status, 403);
   assert.match(await revoked.text(), /not active/);
 
-  const fullEnv: GymCloudEnv = { ...env, GYM_MEDIA_CAP_BYTES: '4' };
+  const fullEnv: GymCloudEnv = { ...env, GYM_MEDIA_LICENSE_CAP_BYTES: '4' };
   bucket.objects.set('groups/lic-owner1/videos/daily/2026-11-10/keep.mp4', { bytes: Uint8Array.from([9, 9, 9, 9]), type: 'video/mp4' });
   const full = await start(fullEnv, owner, 'full.jpg');
   assert.equal(full.status, 409);

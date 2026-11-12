@@ -30,8 +30,8 @@ class MemoryBucket implements GymMediaBucket {
     this.objects.set(key, { bytes, type: options?.httpMetadata?.contentType || 'application/octet-stream' });
   }
 
-  async delete(key: string) {
-    this.objects.delete(key);
+  async delete(keys: string | string[]) {
+    for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key);
   }
 
   async list(options?: { prefix?: string; cursor?: string; limit?: number }) {
@@ -212,6 +212,15 @@ test('instructor folders and from-instructor sends follow the seat and the stude
   const studentSend = await send(student, 'stu-alex');
   assert.equal(studentSend.status, 403);
   assert.equal(((await studentSend.json()) as { error?: string }).error, STUDENT_CLOUD_REFUSED);
+  // A coach's daily video waits for approval (#cloud-media-approval), so it cannot be sent until approved.
+  assert.equal((await send(coach, 'stu-alex')).status, 409);
+  const approved = await call(
+    env,
+    '/api/gym/cloud',
+    { method: 'POST', body: JSON.stringify({ action: 'daily-approve', key: dailyOpened.path }) },
+    owner,
+  );
+  assert.equal(approved.status, 200);
   const sent = await send(coach, 'stu-alex');
   assert.equal(sent.status, 200);
   assert.equal(((await sent.json()) as { path: string }).path, 'students/stu-alex/from-instructor/2026-11-10/class.mp4');
@@ -229,7 +238,7 @@ test('instructor folders and from-instructor sends follow the seat and the stude
   assert.equal(revokedStart.status, 403);
   assert.match(await revokedStart.text(), /not active/);
 
-  const fullEnv: GymCloudEnv = { ...env, GYM_MEDIA_CAP_BYTES: '8' };
+  const fullEnv: GymCloudEnv = { ...env, GYM_MEDIA_LICENSE_CAP_BYTES: '8' };
   const fullSend = await call(
     fullEnv,
     '/api/gym/cloud',

@@ -154,7 +154,7 @@ test('Pro Plus Cloud page is the head instructor home', () => {
   assert.match(home, /<Sheet /);
   assert.doesNotMatch(home, /Coming soon/);
   const saver = readFileSync(new URL('../pages/Screensaver.tsx', import.meta.url), 'utf8');
-  assert.match(saver, /cloudCustomer \? <AdvantageCloudHome \/> : null/);
+  assert.match(saver, /cloudCustomer \? <AdvantageCloudHome showQueue=\{!options\} \/> : null/);
   const academy = readFileSync(new URL('../components/GymCharacterSheet.tsx', import.meta.url), 'utf8');
   assert.match(academy, /useProPlusCloudUnlocked/);
   assert.match(academy, /academyCloudTileVisible/);
