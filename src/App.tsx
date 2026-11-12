@@ -30,6 +30,7 @@ import {
   coachDoorOpen,
   coachUnlimitedDoorOpen,
   mediaConsoleDoorOpen,
+  mediaEditionDoorOpen,
   mediaFolderDoorOpen,
   ownerProHubOpen,
   proDoorOpen,
@@ -224,14 +225,15 @@ function MediaConsoleRoute({ children }: { children: ReactNode }) {
 
 /**
  * /media, the one Media Edition hub. A browser whose Media door is open (a Media
- * pass, Pro, or owner) and whose token can download the chunk gets the paid hub
- * menu. Everyone else sees the public $29.99 marketing page, never the paid
- * chunk and never a raw 401.
+ * pass, Instructor, Pro, or owner) or whose live seat grants Media Console, and
+ * whose token can download the chunk, gets the paid hub menu. Everyone else sees
+ * the public $29.99 marketing page, never the paid chunk and never a raw 401.
  * MediaEditionGate checks a saved pass first, so a refresh does not flash the marketing page.
+ * The /products Media card uses the same mediaEditionDoorOpen rule.
  */
 function MediaEditionRoute() {
   const door = useSeatDoor();
-  return <MediaEditionGate open={paidDoorAgrees('media-console', mediaConsoleDoorOpen(door))} />;
+  return <MediaEditionGate open={paidDoorAgrees('media-console', mediaEditionDoorOpen(door))} />;
 }
 
 /** Tournament suite and invite admin. A signed-in seat does not open these. */
