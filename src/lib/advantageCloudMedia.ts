@@ -8,6 +8,7 @@ import { canDecideApproval, uploadLaneFor, type ApprovalLane } from './approvalL
 import { cloudPathScope } from './cloudDataOwnership.ts';
 import { fetchWithRetry, isCanceled, retryableStatus, type RetryOptions } from './cloudUploadRetry.ts';
 import { lessonMediaPath, lessonWeekId, routeUpload, isCalendarDateKey, safePathSegment, type GymActor } from './gymTree.ts';
+import { INSTRUCTOR_LESSON_KEY, type LessonPlanSource, type LessonPlanTarget } from './lessonPlanCopies.ts';
 
 /** Same storage key as src/lib/entitlement.ts. Kept here so the server handler does not import the browser entitlement module. */
 const ENTITLEMENT_TOKEN_KEY = 'advantage.entitlement.token';
@@ -294,6 +295,7 @@ export function cloudObjectKey(licenseId: string, relativePath: string): string 
   if (
     !DAILY_KEY.test(relativePath) &&
     !LESSON_JSON_KEY.test(relativePath) &&
+    !INSTRUCTOR_LESSON_KEY.test(relativePath) &&
     !LESSON_MEDIA_KEY.test(relativePath) &&
     !SKIN_IMAGE_KEY.test(relativePath) &&
     !SKIN_META_KEY.test(relativePath) &&
@@ -584,6 +586,8 @@ export type CloudFileRow = {
   mime: string;
   /** Daily videos and gallery items. Missing means approved (older servers). */
   lane?: ApprovalLane;
+  /** Lesson plan JSON rows: the gym template or the signed-in instructor's own copy. */
+  lessonPlan?: LessonPlanSource;
 };
 
 export type CloudHomeView =
@@ -810,6 +814,8 @@ export async function uploadAdvantageCloudFile(input: {
   retry?: RetryOptions;
   /** Kept between tries so a retry resumes a multipart upload. */
   resume?: CloudUploadResume;
+  /** Lesson plan JSON only. Default `mine`: the instructor's own copy. `template` is owner / Coach only. */
+  planTarget?: LessonPlanTarget;
 }): Promise<CloudUploadResult> {
   const token = input.token ?? readCloudBearer();
   if (!token) return { ok: false, message: CLOUD_SIGN_IN_MESSAGE };
@@ -841,6 +847,7 @@ export async function uploadAdvantageCloudFile(input: {
           ...(input.lane ? { lane: input.lane } : {}),
           ...(input.studentId ? { studentId: input.studentId } : {}),
           ...(input.fingerprint ? { fingerprint: input.fingerprint } : {}),
+          ...(input.purpose === 'lesson' ? { planTarget: input.planTarget === 'template' ? 'template' : 'mine' } : {}),
         }),
       });
       if (!start.ok) return failure(start, 'Advantage Cloud could not take that file.');
@@ -937,7 +944,7 @@ export async function uploadAdvantageCloudFile(input: {
 let lessonTimer: ReturnType<typeof setTimeout> | null = null;
 let lessonPending: { dateKey: string; json: string } | null = null;
 
-/** Debounced lesson-plan text. No-ops unless this page confirmed Cloud uploads. */
+/** Debounced lesson-plan text, saved to the instructor's own copy. No-ops unless this page confirmed Cloud uploads. */
 export function scheduleCloudLessonSave(input: { dateKey: string; json: string; token?: string }): void {
   if (!cloudUploadSelected()) return;
   lessonPending = { dateKey: input.dateKey, json: input.json };
@@ -955,10 +962,82 @@ export function scheduleCloudLessonSave(input: { dateKey: string; json: string; 
       fileName: `${pending.dateKey}.json`,
       mime: 'application/json',
       token,
+      // Edits never touch the gym template. They go to this instructor's own copy.
+      planTarget: 'mine',
     }).then((result) => {
       if (result.ok) notifyCloudMedia();
     });
   }, 500);
+}
+
+export type CloudLessonPlanRead = {
+  ok: true;
+  instructorId: string;
+  canEditTemplate: boolean;
+  template: { path: string; exists: boolean; plan: unknown | null };
+  mine: { path: string; exists: boolean; plan: unknown | null };
+};
+
+/** The gym template and this instructor's own copy for one day. Null when Cloud cannot be read. */
+export async function fetchCloudLessonPlan(input: {
+  dateKey: string;
+  token?: string;
+  fetcher?: CloudFetcher;
+}): Promise<CloudLessonPlanRead | null> {
+  const token = input.token ?? readCloudBearer();
+  if (!token || !isCalendarDateKey(input.dateKey)) return null;
+  const fetcher = input.fetcher ?? fetch;
+  try {
+    const response = await fetcher(cloudUrl(`/api/gym/cloud?op=lesson-plan&date=${encodeURIComponent(input.dateKey)}`), {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as Partial<CloudLessonPlanRead> | null;
+    if (!body?.ok || !body.template || !body.mine || typeof body.instructorId !== 'string') return null;
+    return body as CloudLessonPlanRead;
+  } catch {
+    return null;
+  }
+}
+
+/** Owner / Coach: replace the gym template for one day with this plan. */
+export function saveCloudLessonTemplate(input: { dateKey: string; json: string; token?: string; fetcher?: CloudFetcher }): Promise<CloudUploadResult> {
+  return uploadAdvantageCloudFile({
+    purpose: 'lesson',
+    dateKey: input.dateKey,
+    file: new Blob([input.json], { type: 'application/json' }),
+    fileName: `${input.dateKey}.json`,
+    mime: 'application/json',
+    token: input.token,
+    fetcher: input.fetcher,
+    planTarget: 'template',
+  });
+}
+
+/** Drop this instructor's own copy for one day, so the gym template opens again. The template is never touched. */
+export async function resetMyCloudLessonPlan(input: {
+  dateKey: string;
+  token?: string;
+  fetcher?: CloudFetcher;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const token = input.token ?? readCloudBearer();
+  if (!token) return { ok: false, message: CLOUD_SIGN_IN_MESSAGE };
+  const fetcher = input.fetcher ?? fetch;
+  try {
+    const response = await fetcher(cloudUrl('/api/gym/cloud'), {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'lesson-reset', dateKey: input.dateKey }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      return { ok: false, message: body?.error || 'Advantage Cloud could not reset that plan.' };
+    }
+    notifyCloudMedia();
+    return { ok: true };
+  } catch {
+    return { ok: false, message: CLOUD_UNREACHABLE };
+  }
 }
 
 /**

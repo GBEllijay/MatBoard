@@ -379,6 +379,8 @@ test('a seated assistant can download and a coach can upload; a full license ref
         fileName: 'ignored.json',
         size: 4,
         mime: 'application/json',
+        // A Coach seat may update the gym template on purpose. Plain edits go to the seat's own copy.
+        planTarget: 'template',
       }),
     },
     coach,

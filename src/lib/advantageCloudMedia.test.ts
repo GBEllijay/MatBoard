@@ -225,7 +225,8 @@ test('Advantage Cloud is an added choice and does not replace Drive, OneDrive, o
   assert.match(panel, /Upload lesson media/);
   assert.match(panel, /Play/);
   assert.match(panel, /Download/);
-  assert.match(panel, /Save this lesson plan/);
+  assert.match(panel, /Save my plan to Cloud/);
+  assert.match(panel, /planTarget: 'mine'/);
   assert.doesNotMatch(panel, /Upgrade|locked|greyed|coming soon/i);
   assert.equal(CLOUD_SAVED_MESSAGE.includes('Advantage Cloud'), true);
 });

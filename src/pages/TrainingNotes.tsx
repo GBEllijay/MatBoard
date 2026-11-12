@@ -89,7 +89,17 @@ import {
   scheduleLessonDriveDraft,
   subscribeDriveNotice,
 } from '../lib/lessonDrive';
-import { cloudUploadSelected, scheduleCloudLessonSave } from '../lib/advantageCloudMedia';
+import {
+  CLOUD_MEDIA_EVENT,
+  cloudUploadSelected,
+  fetchCloudLessonPlan,
+  resetMyCloudLessonPlan,
+  saveCloudLessonTemplate,
+  scheduleCloudLessonSave,
+  type CloudLessonPlanRead,
+} from '../lib/advantageCloudMedia';
+import { decideLessonOpen, readLessonSource, writeLessonSource, type LessonPlanSource } from '../lib/lessonPlanCopies';
+import { LessonPlanSourceBar } from '../components/LessonPlanSourceBar';
 import { REVIEW_SUBMIT, REVIEW_SUBMITTED, REVIEW_VERSION_LEAD, listPlanVersions, submitForReview } from '../lib/reviewInbox';
 import {
   isLiveSeat,
@@ -166,6 +176,7 @@ import {
   type PlanVideoRef,
   searchLessonPlans,
   removeDayPlan,
+  sanitizePlan,
   saveDay,
   stampClassPlanVideos,
   shiftDateKey,
@@ -296,6 +307,12 @@ export function TrainingNotesPage() {
   const driveConnected = useDriveConnected();
   const driveNotice = useSyncExternalStore(subscribeDriveNotice, getDriveNotice, () => idleDriveNotice);
   const [treeArchive, setTreeArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
+  /** Cloud lesson plans for the open day: the gym template and this instructor's own copy. */
+  const [lessonCloudRead, setLessonCloudRead] = useState<CloudLessonPlanRead | null>(null);
+  const [planSource, setPlanSource] = useState<LessonPlanSource | null>(null);
+  const [sourceBusy, setSourceBusy] = useState(false);
+  const [sourceNote, setSourceNote] = useState('');
+  const [lessonCloudTick, setLessonCloudTick] = useState(0);
 
   useEffect(() => {
     const roll = () => {
@@ -514,9 +531,100 @@ export function TrainingNotesPage() {
       media,
     });
     if (saveToCloud) {
+      // Saves to this instructor's own copy. The gym template is never overwritten by an edit.
       scheduleCloudLessonSave({ dateKey: todayKey, json: JSON.stringify(lessonPlanForDrive(saved.plan)) });
     }
+    if (lessonCloudRead && lessonCloudRead.instructorId) {
+      writeLessonSource(localStorage, lessonCloudRead.instructorId, todayKey, 'mine');
+      setPlanSource('mine');
+    }
     return saved;
+  };
+
+  /**
+   * Cloud lesson plans: open this instructor's own copy, else the gym template.
+   * The plan is also kept on this phone (matboard.coach.trainingNotes.v1), so the board,
+   * casting, and the screensaver read the plan of whoever is teaching on this device.
+   */
+  useEffect(() => {
+    if (!unlimitedPlan || lessonBlocked) {
+      setLessonCloudRead(null);
+      setPlanSource(null);
+      return;
+    }
+    let cancelled = false;
+    const dateKey = viewKey;
+    void fetchCloudLessonPlan({ dateKey }).then((read) => {
+      if (cancelled) return;
+      setLessonCloudRead(read);
+      if (!read) {
+        setPlanSource(null);
+        return;
+      }
+      const localArchive = loadTrainingArchive(todayKey);
+      const localPlans = plansOnDay(localArchive, dateKey);
+      const parse = (value: unknown) => (value && typeof value === 'object' ? sanitizePlan(value).plan : null);
+      const decision = decideLessonOpen({
+        localHasContent: localPlans.some(planHasContent),
+        localSource: readLessonSource(localStorage, read.instructorId, dateKey),
+        mine: parse(read.mine.plan),
+        template: parse(read.template.plan),
+      });
+      setPlanSource(decision.source);
+      if (decision.action !== 'adopt') return;
+      const next = decision.plan;
+      if (dateKey === todayKey) {
+        // Keep the opened plan on this phone too. Not pushed back to Cloud until the instructor edits it.
+        for (const old of localPlans) if (old.id !== next.id) removeDayPlan(dateKey, old.id, todayKey);
+        const saved = saveDay(dateKey, next, todayKey);
+        writeLessonSource(localStorage, read.instructorId, dateKey, decision.source);
+        setArchive(saved.archive);
+        setPlan(saved.plan);
+      } else {
+        setPlan(next);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewKey, todayKey, unlimitedPlan, lessonBlocked, lessonCloudTick]);
+
+  useEffect(() => {
+    const onChange = () => setLessonCloudTick((tick) => tick + 1);
+    window.addEventListener(CLOUD_MEDIA_EVENT, onChange);
+    return () => window.removeEventListener(CLOUD_MEDIA_EVENT, onChange);
+  }, []);
+
+  const backToTemplate = async () => {
+    if (!editingToday || !lessonCloudRead?.template.plan) return;
+    setSourceBusy(true);
+    setSourceNote('');
+    const reset = await resetMyCloudLessonPlan({ dateKey: todayKey });
+    setSourceBusy(false);
+    if (!reset.ok) {
+      setSourceNote(reset.message);
+      return;
+    }
+    const template = sanitizePlan(lessonCloudRead.template.plan).plan;
+    for (const old of plansOnDay(loadTrainingArchive(todayKey), todayKey)) {
+      if (old.id !== template.id) removeDayPlan(todayKey, old.id, todayKey);
+    }
+    const saved = saveDay(todayKey, template, todayKey);
+    writeLessonSource(localStorage, lessonCloudRead.instructorId, todayKey, 'template');
+    setArchive(saved.archive);
+    setPlan(saved.plan);
+    setPlanSource('template');
+    setSourceNote('Back to the gym template. Your copy for today was removed.');
+  };
+
+  const updateTemplate = async () => {
+    if (!editingToday || !lessonCloudRead?.canEditTemplate || !planHasContent(plan)) return;
+    setSourceBusy(true);
+    setSourceNote('');
+    const result = await saveCloudLessonTemplate({ dateKey: todayKey, json: JSON.stringify(lessonPlanForDrive(plan)) });
+    setSourceBusy(false);
+    setSourceNote(result.ok ? 'Gym template updated. Instructors who have not edited today will see it.' : result.message);
   };
 
   const commit = (next: TrainingNotesPlan) => {
@@ -1320,6 +1428,19 @@ export function TrainingNotesPage() {
 
       {lessonBlocked ? null : (
       <div className="notes__plan">
+        {lessonCloudRead && planSource ? (
+          <LessonPlanSourceBar
+            source={planSource}
+            editable={editingToday}
+            templateExists={lessonCloudRead.template.exists}
+            canEditTemplate={lessonCloudRead.canEditTemplate}
+            planHasContent={planHasContent(plan)}
+            busy={sourceBusy}
+            note={sourceNote}
+            onBackToTemplate={() => void backToTemplate()}
+            onUpdateTemplate={() => void updateTemplate()}
+          />
+        ) : null}
         <AdvantageCloudPanel purpose="lesson" dateKey={viewKey} planJson={JSON.stringify(lessonPlanForDrive(plan))} />
         <LessonTemplatePicker
           template={activeLessonTemplate(plan)}
