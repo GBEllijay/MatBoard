@@ -28,7 +28,7 @@ export const COACH_NAME_MAX = 80;
 export const CLASS_DESIGNATION_MAX = 40;
 /** Optional title for this class, such as "Guard passing". Empty on older plans. */
 export const LESSON_TITLE_MAX = 80;
-/** Free-text class time, such as "5:00 PM". Not a clock widget. */
+/** Class time display string, such as "5:00 PM". Picked on the shared scroll wheel. */
 export const CLASS_TIME_MAX = 40;
 export const INTRO_MAX = 8_000;
 export const WARMUP_NOTE_MAX = 1_500;
@@ -100,7 +100,7 @@ export type TrainingNotesPlan = {
   classDesignation: string;
   /** Optional lesson title beside the class designation. Empty when unset. */
   lessonTitle: string;
-  /** Free-text class time under the coach name, such as "5:00 PM". */
+  /** Class time under the coach name, such as "5:00 PM". */
   classTime: string;
   intro: string;
   introExpected: string;

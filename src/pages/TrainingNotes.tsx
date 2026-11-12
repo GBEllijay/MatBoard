@@ -14,6 +14,7 @@ import { PlanDateNav } from '../components/PlanDateNav';
 import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
 import { AdvantageCloudPanel } from '../components/AdvantageCloudMedia';
+import { ClassTimeField } from '../components/ClassTimeField';
 import { ExpectedDurationField } from '../components/ExpectedDurationField';
 import { LessonSectionVideo } from '../components/LessonSectionVideo';
 import { OpenMyDrive } from '../components/OpenMyDrive';
@@ -140,7 +141,6 @@ import type { VideoPlan } from '../lib/techniqueLogic';
 import { loadTechniqueArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore';
 import {
   CLASS_DESIGNATION_MAX,
-  CLASS_TIME_MAX,
   LESSON_TITLE_MAX,
   CLOSING_MAX,
   COACH_NAME_MAX,
@@ -1244,18 +1244,12 @@ export function TrainingNotesPage() {
                         onChange={(event) => commit({ ...plan, lessonTitle: event.target.value })}
                       />
                     </label>
-                    <label className="notes__field" htmlFor="notes-class-time">
-                      Class time
-                      <input
-                        id="notes-class-time"
-                        value={plan.classTime}
-                        maxLength={CLASS_TIME_MAX}
-                        placeholder="5:00 PM"
-                        autoComplete="off"
-                        readOnly={!editingToday}
-                        onChange={(event) => commit({ ...plan, classTime: event.target.value })}
-                      />
-                    </label>
+                    <ClassTimeField
+                      id="notes-class-time"
+                      value={plan.classTime}
+                      readOnly={!editingToday}
+                      onChange={(classTime) => commit({ ...plan, classTime })}
+                    />
                     {summaryBlock ? focusEditor(summaryBlock, asideIndex >= 0 ? asideIndex : resolvedStep?.blockIndex ?? 0) : null}
                     {editingToday ? (
                       <div className="notes__add-row">
@@ -1734,18 +1728,12 @@ export function TrainingNotesPage() {
               />
             </label>
           </div>
-          <label className="notes__field" htmlFor="notes-class-time">
-            Class time
-            <input
-              id="notes-class-time"
-              value={plan.classTime}
-              maxLength={CLASS_TIME_MAX}
-              placeholder="5:00 PM"
-              autoComplete="off"
-              readOnly={!editingToday}
-              onChange={(event) => commit({ ...plan, classTime: event.target.value })}
-            />
-          </label>
+          <ClassTimeField
+            id="notes-class-time"
+            value={plan.classTime}
+            readOnly={!editingToday}
+            onChange={(classTime) => commit({ ...plan, classTime })}
+          />
         </section>
 
         {orderedBlocks.map((block, index) => {
