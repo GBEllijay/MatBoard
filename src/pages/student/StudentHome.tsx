@@ -52,7 +52,6 @@ export function StudentHome() {
           <StudentCardLayout
             home
             portrait={media.portrait}
-            logo={media.logo}
             to={to}
             bodyScan={<BodyScanSection key={zone} report={report} commit={commit} to={to} focusZone={zone} forceOpen={params.get('scan') === '1'} />}
           />
