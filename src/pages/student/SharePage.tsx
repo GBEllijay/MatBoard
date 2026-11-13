@@ -21,6 +21,8 @@ import {
   type CoachUpdateSection,
 } from '../../lib/coachProgressFile';
 import { loadAssessments } from '../../lib/studentAssessment';
+import { readCoachOverlay } from '../../lib/coachSync';
+import { AssessmentCompareD8, entriesFromScoreRows } from '../../components/AssessmentCompareD8';
 import { readStableStudentId } from '../../lib/studentIdentity';
 
 export const COACH_CARD_CLOUD_COPY =
@@ -174,6 +176,10 @@ export function SharePage() {
               />
               <span>Share my weight updates with my coach</span>
             </label>
+            <AssessmentCompareD8
+              coachEntries={entriesFromScoreRows(readCoachOverlay(localStorage).assessments)}
+              selfEntries={loadAssessments(localStorage).entries}
+            />
             <button type="button" className="ink-btn ink-btn--save" onClick={() => void send()}>
               {COACH_FILE_LABEL}
             </button>

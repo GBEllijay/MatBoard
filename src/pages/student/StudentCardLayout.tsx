@@ -6,9 +6,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApprovedOctagonRadar } from '../../preview/assessmentRadar/OctagonChart';
-import { LiveD8, SheetD8Thumb } from '../../indexCards/LiveD8';
+import { LiveD8, SheetD8Thumb, unratedLineNote } from '../../indexCards/LiveD8';
+import { faceBaselineFromScores, type FaceBaseline } from '../../lib/indexCards';
 import '../../preview/crystallineSweeps/crystallineSweeps.css';
-import { loadAssessments } from '../../lib/studentAssessment';
+import { displayedAssessmentScores, loadAssessments } from '../../lib/studentAssessment';
 import { shapeAxesFromLegacy, shapeAxisLabel, shapeAxisValues } from '../../lib/shapeAxes';
 import { matHoursSplit, matHoursTotal } from '../../lib/matHours';
 import { wornBeltPreview, type WornBeltPreview } from '../../lib/studentRank';
@@ -106,13 +107,17 @@ export function MatTimerButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** The student's D8. Untouched lines stay at 3. Expanding opens the same diamond with its cards. */
-function SheetDiamond() {
+/**
+ * The student's D8. Rated lines keep their rating. An unrated line takes the check-in
+ * score for its face (the baseline), or 3 with no check-in. Expanding opens the same
+ * diamond with its cards. The Profile card and the Self-assessment page both draw this.
+ */
+export function SheetDiamond({ baseline }: { baseline?: FaceBaseline | null }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="sheet-diamond" data-testid="sheet-diamond">
-      <p className="sheet-diamond__note">Your D8. A line you have not rated stays at 3.</p>
-      <SheetD8Thumb onExpand={() => setOpen(true)} />
+      <p className="sheet-diamond__note">{`Your D8. ${unratedLineNote(baseline)}`}</p>
+      <SheetD8Thumb onExpand={() => setOpen(true)} baseline={baseline} />
       <button type="button" className="sheet-diamond__expand" onClick={() => setOpen(true)}>
         Expand
       </button>
@@ -121,7 +126,7 @@ function SheetDiamond() {
           <button type="button" className="sheet-diamond-full__close" onClick={() => setOpen(false)}>
             Close
           </button>
-          <LiveD8 />
+          <LiveD8 baseline={baseline} />
         </div>
       ) : null}
     </div>
@@ -144,7 +149,7 @@ export function CardRadar({ to }: { to: (path: string) => string }) {
         </button>
       </div>
       {shape === 'diamond' ? (
-        <SheetDiamond />
+        <SheetDiamond baseline={latest ? faceBaselineFromScores(displayedAssessmentScores(latest)) : null} />
       ) : latest ? (
         <>
           <ApprovedOctagonRadar values={shapeAxisValues(latest.scores)} label={shapeAxisLabel(latest.scores)} />

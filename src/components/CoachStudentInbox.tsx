@@ -21,6 +21,8 @@ import {
 import type { Student } from '../lib/rosterStore';
 import { applyStudentPhotoFlag, parseStudentPhotoFlag } from '../lib/studentPhotoFlag';
 import { CARD_SHARE_CHECK_FAILED, cardShareCheckNote } from '../lib/cardShareCheck';
+import { readRosterCard } from '../lib/rosterCardStore';
+import { AssessmentCompareD8, entriesFromScoreRows } from './AssessmentCompareD8';
 
 function useTick(): number {
   const [tick, setTick] = useState(0);
@@ -222,6 +224,13 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
               {update.weight?.goalWeight ? ` · goal ${update.weight.goalWeight} ${update.weight.goalUnit || update.weight.unit}` : ''}
               {update.scouting?.cards.length ? ` · ${update.scouting.cards.length} opponent card(s)` : ''}
             </p>
+            {update.assessments?.length ? (
+              <AssessmentCompareD8
+                mode="compact"
+                coachEntries={card ? readRosterCard(card.id).coachAssessments : []}
+                selfEntries={entriesFromScoreRows(update.assessments)}
+              />
+            ) : null}
             {update.scouting?.cards.length ? (
               <ul aria-label="Opponent cards">
                 {update.scouting.cards.map((scout) => (
