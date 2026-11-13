@@ -102,6 +102,7 @@ import { PersonalGraphPreviewPage } from './pages/PersonalGraphPreview';
 import { TechniqueTreePreviewPage } from './pages/TechniqueTreePreview';
 import { TechniqueCloudPreview } from './preview/techniqueCloud/TechniqueCloudPreview';
 import { VideoLibraryPreview } from './preview/techniqueCloud/VideoLibraryPreview';
+import { OwnerGatedApprovalPreview, OwnerGatedJournalPreview, OwnerGatedQcPreview, OwnerGatedSendPreview } from './preview/ownerGated/OwnerGatedPreview';
 import { TechniquesPage } from './pages/Techniques';
 import { TermsPage } from './pages/Terms';
 import { RankingsPage } from './pages/Rankings';
@@ -795,6 +796,10 @@ export default function App() {
       <Route path="/preview/technique-tree" element={<TechniqueTreePreviewPage />} />
       <Route path="/preview/technique-cloud" element={<TechniqueCloudPreview />} />
       <Route path="/preview/video-library" element={<VideoLibraryPreview />} />
+      <Route path="/preview/owner-gated/send" element={<OwnerGatedSendPreview />} />
+      <Route path="/preview/owner-gated/approval" element={<OwnerGatedApprovalPreview />} />
+      <Route path="/preview/owner-gated/qc" element={<OwnerGatedQcPreview />} />
+      <Route path="/preview/owner-gated/journal" element={<OwnerGatedJournalPreview />} />
       {/* Public owner preview. The live working tree stays at /student/working. */}
       <Route path="/preview/personal-graph" element={<PersonalGraphPreviewPage />} />
       <Route path="/preview/lineage-card" element={<CompactLineageCard />} />

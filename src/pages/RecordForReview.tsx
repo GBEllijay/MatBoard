@@ -20,6 +20,10 @@ import { originCanStore } from '../lib/storageQuota';
 import { putFilmBlob } from '../lib/studentFilm';
 import { loadStudentReport, saveStudentReport } from '../lib/studentEdition';
 import { localDateKey } from '../lib/trainingNotesStore';
+import { OwnerGatedSend } from '../components/OwnerGatedSend';
+import { distributionApprovalRequired, isKidCard, type DistributionTarget } from '../lib/ownerGatedDistribution';
+import { getRoster } from '../lib/rosterStore';
+import { availableReplaySaveTargets } from '../lib/replaySave';
 
 function applyReplayPatch(current: ReplayBlock, patch: Partial<Omit<ReplayBlock, 'id'>>): ReplayBlock {
   const next: ReplayBlock = { ...current, ...patch, id: current.id };
@@ -82,6 +86,14 @@ export function RecordForReviewPage() {
     return result.message;
   };
 
+  const rosterTargets: DistributionTarget[] = getRoster().students.map((student) => ({
+    studentId: student.id,
+    name: student.name,
+    kidCard: isKidCard({ belt: student.belt }),
+    division: student.division || '',
+  }));
+  const saveTargets = availableReplaySaveTargets();
+
   return (
     <main className="notes">
       <PlayExitMark
@@ -115,6 +127,30 @@ export function RecordForReviewPage() {
             journalLibrary={{ onAdd: addToLibrary }}
             onChange={(patch) => setReplay((current) => applyReplayPatch(current, patch))}
           />
+          {rosterTargets.length ? (
+            <OwnerGatedSend
+              roster={rosterTargets}
+              storage={localStorage}
+              approvalRequired={distributionApprovalRequired(localStorage)}
+              title={replay.title || replay.indexLink?.name || 'Record for Review'}
+              lesson={replay.indexLink?.name || ''}
+              dateKey={localDateKey()}
+              media={
+                replay.clip
+                  ? {
+                      ref: replay.clip.localId || replay.id,
+                      fileName: replay.clip.name || 'review.mp4',
+                      mime: replay.clip.mime || 'video/mp4',
+                      size: replay.clip.size || 0,
+                    }
+                  : null
+              }
+              availableHomes={{
+                googleDrive: saveTargets.includes('google-drive'),
+                oneDrive: saveTargets.includes('onedrive'),
+              }}
+            />
+          ) : null}
           <ReviewJournalLibrary tick={libraryTick} />
         </>
       )}

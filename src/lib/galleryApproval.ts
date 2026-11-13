@@ -8,7 +8,7 @@
 export const GALLERY_APPROVAL_KEY = 'matboard.gym.galleryApproval.v1';
 
 export const REQUIRE_APPROVAL_LABEL =
-  'Require approval before photos and videos go to the gallery.';
+  'Require approval before photos and videos go to the gallery, and before Record for Review clips or notes reach students.';
 
 export const APPROVAL_WAITING = 'Photos and videos are waiting for approval.';
 

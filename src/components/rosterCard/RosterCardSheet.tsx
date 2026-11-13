@@ -22,6 +22,7 @@ import {
   setCardComms,
   subscribeCardSync,
   type CardBuildRefused,
+  type CardNoteSendResult,
   type CardSyncSendResult,
 } from '../../lib/cardSync';
 import { cardLookCode, readCardLook, subscribeCardLook } from '../../lib/cardLook';
@@ -71,9 +72,10 @@ function newId(prefix: string): string {
 }
 
 /** One reading of a cardSync send result for the status line. */
-export function sendResultText(result: CardSyncSendResult | CardBuildRefused, name: string, what: string): { text: string; error: boolean; file?: { name: string; json: string } } {
+export function sendResultText(result: CardSyncSendResult | CardNoteSendResult | CardBuildRefused, name: string, what: string): { text: string; error: boolean; file?: { name: string; json: string } } {
   if (result.mode === 'invalid') return { text: result.error, error: true };
   if (result.mode === 'blocked') return { text: result.reason, error: true };
+  if (result.mode === 'pending-approval') return { text: `Sent to the owner for approval before it reaches ${name}.`, error: false };
   if (result.mode === 'cloud') return { text: `Sent to ${name}. ${what} after they accept.`, error: false };
   if (result.mode === 'folder') return { text: `Saved to the gym folder for ${name}. ${what} after they accept.`, error: false };
   return { text: `${result.reason} ${name} imports the file and accepts it. ${what} after that.`, error: false, file: { name: result.name, json: result.json } };
@@ -170,7 +172,7 @@ export function RosterCardBody({
   const familyFlag = student.noPhotos === 'family';
 
   const say = (text: string, error = false) => setStatus({ text, error });
-  const report = (result: CardSyncSendResult | CardBuildRefused, what: string) => {
+  const report = (result: CardSyncSendResult | CardNoteSendResult | CardBuildRefused, what: string) => {
     const read = sendResultText(result, student.name, what);
     if (read.file) downloadJsonFile(read.file.name, read.file.json);
     say(read.text, read.error);

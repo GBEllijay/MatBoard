@@ -1,0 +1,177 @@
+/* Owner-gated distribution: send, approval, QC log, student receive. */
+.ogate {
+  min-height: 100dvh;
+  padding: calc(0.8rem + var(--safe-t)) 1rem calc(1.4rem + var(--safe-b));
+  color: var(--ink);
+}
+.ogate__shell {
+  max-width: 26rem;
+  margin: 0 auto;
+  display: grid;
+  gap: 0.9rem;
+}
+.ogate__banner {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  background: rgba(0, 78, 186, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+.ogate__kicker {
+  margin: 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--gold-2);
+}
+.ogate h1,
+.ogate h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+.ogate h2 { font-size: 1.05rem; }
+.ogate__quiet,
+.ogate p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.ogate__card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border-radius: var(--radius);
+  background: rgba(16, 19, 26, 0.88);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.ogate__thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 14px;
+  background: #0b1624;
+  display: block;
+}
+.ogate__meta {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ink);
+}
+.ogate__targets {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ogate__targets label,
+.ogate__switch {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  font-size: 0.95rem;
+}
+.ogate__pill {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(240, 194, 75, 0.18);
+  color: var(--gold-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+.ogate__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.ogate__actions button,
+.ogate__btn {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.65rem 1rem;
+  font: inherit;
+  font-weight: 650;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
+  box-shadow: var(--cta-shadow);
+}
+.ogate__actions button[disabled],
+.ogate__btn[disabled] {
+  opacity: 0.45;
+}
+.ogate__actions button.ogate__btn--ghost,
+.ogate__btn--ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  box-shadow: none;
+}
+.ogate__actions button.ogate__btn--danger,
+.ogate__btn--danger {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fecaca;
+  box-shadow: none;
+}
+.ogate__homes {
+  display: grid;
+  gap: 0.35rem;
+}
+.ogate__homes label { font-size: 0.92rem; }
+.ogate__homes label.is-blocked { color: var(--muted); }
+.ogate__note {
+  width: 100%;
+  min-height: 4.2rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #0b1624;
+  color: var(--ink);
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+}
+.ogate__status {
+  margin: 0;
+  color: var(--gold-2);
+  font-size: 0.9rem;
+}
+.ogate__log {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ogate__log li {
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  font-size: 0.88rem;
+}
+.ogate__log strong { display: block; }
+.ogate__library {
+  display: grid;
+  gap: 0.55rem;
+}
+.ogate__library article {
+  display: grid;
+  grid-template-columns: 5.4rem 1fr;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.45rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+}
+.ogate__library img {
+  width: 5.4rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: 8px;
+}

@@ -62,6 +62,12 @@ import {
   type SyncPacketKind,
 } from './coachSync.ts';
 import type { HandoffFolder } from './driveHandoff.ts';
+import {
+  distributionApprovalRequired,
+  isKidCard,
+  submitDistribution,
+  type MemoryStore as DistributionStore,
+} from './ownerGatedDistribution.ts';
 import type { CoachBenchmarkStatus, CoachGymBrand, StudentRank } from './progress/types.ts';
 import {
   acceptCardShare as acceptCardShareIn,
@@ -319,6 +325,7 @@ export function setCardParentPhotoApproval(studentId: string, on: boolean): bool
 }
 
 export type CardSyncSendResult = SyncDelivery | { mode: 'folder'; name: string } | { mode: 'blocked'; gate: 'unknown-card'; reason: string };
+export type CardNoteSendResult = CardSyncSendResult | { mode: 'pending-approval'; itemId: string };
 
 /**
  * The one send for a card. Checks the card gate (comms, guest, linked, seat),
@@ -352,6 +359,11 @@ export type CardSendOptions = Parameters<typeof sendCardSync>[2] & {
   now?: number;
   /** Called with the built packet before it is sent, so a caller can keep its updateId. */
   onBuilt?: (packet: SyncPacket) => void;
+  /** Writable store for the owner-gated note/review queue and QC log. */
+  distributionStore?: DistributionStore | null;
+  /** Override the owner approval switch for tests. */
+  approvalRequired?: boolean;
+  senderName?: string;
 };
 export type CardBuildRefused = { mode: 'invalid'; error: string };
 
@@ -408,7 +420,7 @@ export async function sendCoachNote(
   studentId: string,
   input: { note: string; journalDate?: string },
   options: CardSendOptions = {},
-): Promise<CardSyncSendResult | CardBuildRefused> {
+): Promise<CardNoteSendResult | CardBuildRefused> {
   const blocked = blockedBeforeBuild(studentId, options);
   if (blocked) return blocked;
   const now = options.now ?? Date.now();
@@ -421,6 +433,40 @@ export async function sendCoachNote(
     now,
   });
   if (!built.ok) return { mode: 'invalid', error: built.error };
+  const store =
+    options.distributionStore ??
+    (options.storage && typeof (options.storage as DistributionStore).setItem === 'function'
+      ? (options.storage as DistributionStore)
+      : typeof localStorage !== 'undefined'
+        ? localStorage
+        : null);
+  if (store) {
+    const roster = options.roster ?? getRoster().students;
+    const card = roster.find((row) => row.id === studentId || row.linkedStudentId === studentId);
+    const gated = submitDistribution(
+      {
+        kind: 'note',
+        title: input.note.trim().slice(0, 80) || 'Note',
+        note: input.note,
+        sentBy: { name: options.senderName ?? 'Instructor' },
+        dateKey: today(now),
+        targets: [
+          {
+            studentId: linkedIdFor(studentId, options) || studentId,
+            name: card?.name ?? 'Student',
+            kidCard: isKidCard({ belt: card?.belt }),
+            division: card?.division ?? '',
+          },
+        ],
+        now,
+      },
+      store,
+      distributionApprovalRequired(store, options.approvalRequired),
+    );
+    if ('item' in gated && !gated.delivered) {
+      return { mode: 'pending-approval', itemId: gated.item.id };
+    }
+  }
   return sendCardSync(studentId, built.packet, options);
 }
 

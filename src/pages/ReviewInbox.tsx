@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { DriveHandoffCheck, DriveHandoffGuide, useDriveConnected } from '../components/DriveHandoffGuide';
 import { GalleryReviewQueue } from '../components/GalleryReviewQueue';
+import { OwnerDistributionQcLog, OwnerDistributionQueue } from '../components/OwnerDistributionQueue';
+import { distributionApprovalRequired } from '../lib/ownerGatedDistribution';
+import { writeGalleryApproval } from '../lib/galleryApproval';
+import { readGalleryApprovalHere } from '../lib/galleryApprovalDefault';
 import { HomeMark } from '../components/HomeMark';
 import { PRODUCTS_PATH } from '../lib/productNames';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -41,6 +45,7 @@ export function ReviewInboxPage() {
   const [galleryNote, setGalleryNote] = useState('');
   const [handoffNote, setHandoffNote] = useState('');
   const [handoffChecked, setHandoffChecked] = useState(false);
+  const [approvalRequired, setApprovalRequired] = useState(() => distributionApprovalRequired(typeof localStorage === 'undefined' ? null : localStorage));
   const driveConnected = useDriveConnected();
   const revisions = useMemo(() => listLessonRevisions(), [tick]);
   const inbox = useMemo(() => latestReviewSubmissions(), [tick]);
@@ -125,6 +130,19 @@ export function ReviewInboxPage() {
           {driveConnected ? null : <DriveHandoffGuide />}
           {handoffNote ? <p role="status">{handoffNote}</p> : null}
           <GalleryReviewQueue />
+          {typeof localStorage !== 'undefined' ? (
+            <>
+              <OwnerDistributionQueue storage={localStorage} onChange={() => setTick((value) => value + 1)} />
+              <OwnerDistributionQcLog
+                storage={localStorage}
+                required={approvalRequired}
+                onToggle={(required) => {
+                  writeGalleryApproval(localStorage, { ...readGalleryApprovalHere(localStorage), required });
+                  setApprovalRequired(required);
+                }}
+              />
+            </>
+          ) : null}
           {inbox.length ? (
             <ul className="plan-card__revisions" aria-label="Submissions">
               {inbox.map((item) => (
