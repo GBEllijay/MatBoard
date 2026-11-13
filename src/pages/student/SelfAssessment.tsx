@@ -16,6 +16,8 @@ import {
   sendAssessmentToInstructor,
 } from '../../lib/instructorAssessmentClient';
 import { readActiveStudentProfileId } from '../../lib/studentProfiles';
+import { readCoachOverlay } from '../../lib/coachSync';
+import { AssessmentCompareD8, entriesFromScoreRows } from '../../components/AssessmentCompareD8';
 import {
   ASSESSMENT_FORM_AREAS,
   MINDSET_GOALS,
@@ -339,6 +341,10 @@ export function SendToInstructor({ entry, studentName }: { entry: AssessmentEntr
   const sent = entry ? readAssessmentSends(localStorage)[entry.id] : undefined;
   return (
     <div className="assess-send" data-send-to-instructor="">
+      <AssessmentCompareD8
+        coachEntries={entriesFromScoreRows(readCoachOverlay(localStorage).assessments)}
+        selfEntries={loadAssessments(localStorage).entries}
+      />
       <button
         type="button"
         className="ink-btn"
