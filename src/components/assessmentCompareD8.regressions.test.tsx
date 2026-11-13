@@ -23,6 +23,7 @@ import { blankStudentReport, saveStudentReport } from '../lib/studentEdition.ts'
 import { assignStudentId } from '../lib/studentIdentity.ts';
 import { updateRosterCard, readRosterCard } from '../lib/rosterCardStore.ts';
 import { SEND_TO_INSTRUCTOR_LABEL } from '../lib/instructorAssessmentClient.ts';
+import { ALERTS_ANNOUNCED_KEY, ALERTS_SEEN_KEY } from '../lib/studentAlerts.ts';
 
 const dom = new Window({ url: 'http://localhost/student' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -48,11 +49,14 @@ const OLD_SELF_SCORES = { guard: 2, passing: 2, sweeps: 2, takedowns: 2, escapes
 const selfLatest: AssessmentEntry = { id: 'self-new', date: '2026-11-12', note: 'latest self', scores: SELF_SCORES as never };
 const selfOlder: AssessmentEntry = { id: 'self-old', date: '2026-11-01', note: 'older self', scores: OLD_SELF_SCORES as never };
 
+// Alert bookkeeping (which arrivals were toasted / seen) is not student data.
+const ALERT_MARKER_KEYS = new Set([ALERTS_ANNOUNCED_KEY, ALERTS_SEEN_KEY]);
+
 function snapshot() {
   const out: Record<string, string> = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key) out[key] = localStorage.getItem(key) ?? '';
+    if (key && !ALERT_MARKER_KEYS.has(key)) out[key] = localStorage.getItem(key) ?? '';
   }
   return JSON.stringify(out);
 }
