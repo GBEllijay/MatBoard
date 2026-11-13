@@ -133,11 +133,11 @@ export type TrainingNotesPlan = {
   games?: GameBlock[];
   /** Video replay analysis cards. Text and a clip reference only; clip bytes stay on the device. */
   replays?: ReplayBlock[];
-  /** Record for Review on the Intro section. Absent when off with no clip. */
+  /** Legacy Record for Review on Intro. Still loaded and saved; the UI ignores it. */
   introReview?: ReviewSlot;
-  /** Record for Review on the Specific Training section. Absent when off with no clip. */
+  /** Legacy Record for Review on Specific Training. Still loaded and saved; the UI ignores it. */
   specificReview?: ReviewSlot;
-  /** Record for Review on the Closing (outro) section. Absent when off with no clip. */
+  /** Legacy Record for Review on Closing. Still loaded and saved; the UI ignores it. */
   closingReview?: ReviewSlot;
 };
 
@@ -562,7 +562,7 @@ export function copyPlan(source: TrainingNotesPlan): TrainingNotesPlan {
   return next;
 }
 
-/** Keep the Record for Review switch; drop the clip. Null when nothing is left. */
+/** Keep a leftover Record for Review flag; drop the clip. Null when nothing is left. */
 export function withoutReviewClip<T extends { recordReview?: boolean; replayClip?: unknown }>(slot: T | undefined): T | null {
   if (!slot) return null;
   const { replayClip: _clip, ...rest } = slot;

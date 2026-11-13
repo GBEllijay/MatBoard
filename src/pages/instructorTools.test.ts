@@ -22,7 +22,6 @@ test('Instructor tools keep the live routes and drop the left belt', () => {
       '/techniques?from=unlimited',
       '/technique-tree?from=unlimited',
       '/student-roster',
-      '/record-for-review?from=unlimited',
       '/match/control?from=unlimited',
       '/training/control?from=unlimited',
     ],
@@ -31,7 +30,6 @@ test('Instructor tools keep the live routes and drop the left belt', () => {
   assert.match(page, /'Daily Training Videos': 'video'/);
   assert.match(page, /\[TECHNIQUE_TREE_LABEL\]: 'tree'/);
   assert.match(page, /\[STUDENT_ROSTER_LABEL\]: 'roster'/);
-  assert.match(page, /'Record for Review': 'record'/);
   assert.match(page, /Scoreboard: 'board'/);
   assert.match(page, /'Round Timer': 'timer'/);
   assert.match(marks, /fill="#6ea8ff">5:00/);
