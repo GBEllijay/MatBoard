@@ -45,8 +45,13 @@ import {
   type TechniqueTreeDoc,
   type TreeChildKind,
 } from '../lib/techniqueTreeStore';
-import { ensureGlossaryBaseCards, type GlossaryBaseCatalog } from '../lib/glossaryBaseCards';
-import { GlossaryBaseCardsPanel } from './TechniqueTreeGlossary';
+import {
+  ensureGlossaryBaseCards,
+  linksFrom,
+  saveGlossaryBaseCatalog,
+  type GlossaryBaseCatalog,
+} from '../lib/glossaryBaseCards';
+import { GlossaryBaseCardsPanel, GlossaryLinkList, TreeConnectField } from './TechniqueTreeGlossary';
 
 export function TechniqueTreePage() {
   const navigate = useNavigate();
@@ -322,7 +327,13 @@ export function TechniqueTreePage() {
         </p>
       ) : null}
 
-      <GlossaryBaseCardsPanel catalog={glossaryCatalog} />
+      <GlossaryBaseCardsPanel
+        catalog={glossaryCatalog}
+        onCatalogChange={(next) => {
+          const saved = saveGlossaryBaseCatalog(next);
+          setGlossaryCatalog(saved.catalog);
+        }}
+      />
 
       <div className="tree__plan">
         {showLibrary ? (
@@ -471,6 +482,7 @@ export function TechniqueTreePage() {
             <TreeNodeView
               node={doc.root}
               doc={doc}
+              catalog={glossaryCatalog}
               confirmId={confirmId}
               focusId={focusId}
               pinnedId={requestedNodeId}
@@ -484,6 +496,10 @@ export function TechniqueTreePage() {
                 commit(removeNode(doc, id));
                 setConfirmId(null);
               }}
+              onCatalogChange={(next) => {
+                const saved = saveGlossaryBaseCatalog(next);
+                setGlossaryCatalog(saved.catalog);
+              }}
             />
           </ul>
         ) : null}
@@ -495,6 +511,7 @@ export function TechniqueTreePage() {
 function TreeNodeView({
   node,
   doc,
+  catalog,
   confirmId,
   focusId,
   pinnedId,
@@ -505,9 +522,11 @@ function TreeNodeView({
   onDelete,
   onCancelDelete,
   onConfirmDelete,
+  onCatalogChange,
 }: {
   node: TechniqueNode;
   doc: TechniqueTreeDoc;
+  catalog: GlossaryBaseCatalog;
   confirmId: string | null;
   focusId: string | null;
   pinnedId: string | null;
@@ -518,6 +537,7 @@ function TreeNodeView({
   onDelete: (node: TechniqueNode) => void;
   onCancelDelete: () => void;
   onConfirmDelete: (id: string) => void;
+  onCatalogChange: (catalog: GlossaryBaseCatalog) => void;
 }) {
   const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -594,6 +614,17 @@ function TreeNodeView({
           </p>
         ) : null}
 
+        <TreeConnectField
+          catalog={catalog}
+          from={{ type: 'tree', treeId: doc.id, nodeId: node.id, slotId: node.slotId, title: node.title }}
+          onCatalogChange={onCatalogChange}
+        />
+        <GlossaryLinkList
+          catalog={catalog}
+          links={linksFrom(catalog, { type: 'tree', treeId: doc.id, nodeId: node.id, slotId: node.slotId, title: node.title })}
+          onCatalogChange={onCatalogChange}
+        />
+
         <div className="tree-node__actions">
           <button type="button" className="btn" disabled={!canAdd} onClick={() => onAdd(node.id, 'branch')}>
             + Branch
@@ -631,6 +662,7 @@ function TreeNodeView({
               key={child.id}
               node={child}
               doc={doc}
+              catalog={catalog}
               confirmId={confirmId}
               focusId={focusId}
               pinnedId={pinnedId}
@@ -641,6 +673,7 @@ function TreeNodeView({
               onDelete={onDelete}
               onCancelDelete={onCancelDelete}
               onConfirmDelete={onConfirmDelete}
+              onCatalogChange={onCatalogChange}
             />
           ))}
         </ul>
