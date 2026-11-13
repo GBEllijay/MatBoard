@@ -130,20 +130,34 @@ test('share page controls still make a file, explain a coach file, and import on
   assert.ok(home);
   assert.match(home.getAttribute('href') ?? '', /student=1/);
 
-  assert.match(page.host.textContent ?? '', /This makes a file\. You send it yourself\./);
+  assert.match(page.host.textContent ?? '', /Share my card with my coach and your photos go to your coach through Advantage Cloud/);
+  assert.match(page.host.textContent ?? '', /New student cards on the coach's Student Roster/);
+  assert.match(page.host.textContent ?? '', /Belt and stripes wait for your coach to approve/);
+  assert.match(page.host.textContent ?? '', /This file is optional\. It stays on this phone until you send it/);
+  assert.match(page.host.textContent ?? '', /Import a student file, after accepting your card/);
+  assert.match(page.host.textContent ?? '', /What's in the file/);
   // Coach update file (changes since the last file) never carries photos or the journal.
   assert.match(page.host.textContent ?? '', /what changed since your last file/);
-  assert.match(page.host.textContent ?? '', /It never has promotion photos or any photo, your journal/);
+  assert.match(page.host.textContent ?? '', /The file never includes photos, your journal/);
+  assert.doesNotMatch(page.host.textContent ?? '', /This makes a file\. You send it yourself/);
+  assert.doesNotMatch(page.host.textContent ?? '', /Advantage does not host it/);
+  assert.doesNotMatch(page.host.textContent ?? '', /Your coach adds it to your card/);
+  const contents = page.host.querySelector('details.student-share-contents');
+  assert.ok(contents);
+  assert.equal(contents?.querySelector('summary')?.textContent, "What's in the file");
+  assert.equal((contents as HTMLDetailsElement).open, false);
   assert.match(page.host.textContent ?? '', /This takes a coach plan or coach feedback file/);
   assert.match(page.host.textContent ?? '', /It is not the progress file from Make a file for my coach/);
   assert.equal(page.host.querySelector('#import')?.tagName, 'SECTION');
 
   const email = page.host.querySelector('a[href^="mailto:"]') as HTMLAnchorElement;
-  assert.equal(email.textContent?.trim(), 'Email the file');
+  assert.equal(email.textContent?.trim(), 'Open email (attach the file yourself)');
+  assert.match(email.getAttribute('href') ?? '', /Import%20a%20student%20file/);
   assert.match(email.getAttribute('href') ?? '', /subject=Advantage%20progress%20report/);
   assert.equal(email.closest('[aria-label="Different action"]')?.getAttribute('aria-label'), 'Different action');
   assert.match(email.parentElement?.textContent ?? '', /Different action/);
   assert.match(email.parentElement?.textContent ?? '', /does not attach it/);
+  assert.match(email.parentElement?.textContent ?? '', /Make the file first, then attach it in your mail app/);
   const send = button(page.host, 'Make a file for my coach');
   assert.equal(send.closest('[aria-label="Different action"]'), null);
   assert.equal(send.classList.contains('ink-btn--save'), true);
@@ -168,6 +182,7 @@ test('share page controls still make a file, explain a coach file, and import on
   assert.equal('journal' in update, false);
   assert.doesNotMatch(updateText, /only on this phone/);
   assert.match(page.host.textContent ?? '', /Downloaded the file on this device/);
+  assert.match(page.host.textContent ?? '', /Your coach imports it on Student Roster with Import a student file/);
 
   const nav = view.navigator as Navigator & {
     share?: (data: ShareData) => Promise<void>;
