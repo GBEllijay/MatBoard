@@ -19,11 +19,17 @@
 .assess-compare *::after {
   box-sizing: border-box;
 }
+.assess-compare--full,
 .assess-compare--compact {
   border: 1px solid var(--ac-line);
   border-radius: 10px;
-  padding: 0 10px 0;
   background: #fff;
+}
+.assess-compare--full {
+  padding: 10px;
+}
+.assess-compare--compact {
+  padding: 0 10px 0;
 }
 .assess-compare__toggle {
   cursor: pointer;
