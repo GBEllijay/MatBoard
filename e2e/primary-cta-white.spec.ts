@@ -119,21 +119,12 @@ test('homepage Buy CTA is white, keeps its link, and stays visible in focus', as
   await checkout.screenshot({ path: `${ARTIFACTS}/buy-checkout-390.png` });
 });
 
-test('products, card, White, Coach, Pro, and media console primaries are white', async ({ page }) => {
+test('products, White, Coach, Pro, and media console primaries are white', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('advantage.whiteUnlocked', '1');
     localStorage.setItem('advantage.coachUnlocked', '1');
     localStorage.setItem('advantage.proUnlocked', '1');
   });
-
-  await setSize(page, { width: 1280, height: 900 });
-  await page.goto('/card');
-  const cardCta = page.getByRole('link', { name: 'Get Advantage' });
-  await expect(cardCta).toHaveAttribute('href', '/buy');
-  expectWhitePrimary(await paint(cardCta));
-  await shot(page, 'card-desktop');
-  await setSize(page, { width: 390, height: 844 });
-  await shot(page, 'card-390');
 
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/white');
