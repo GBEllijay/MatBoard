@@ -18,7 +18,7 @@ const R = 60;
 const OUTER = R / Math.cos(Math.PI / 5);
 const LABEL = 102;
 const WIDTH = (OUTER + LABEL) * 2;
-const HEAD = 32;
+const HEAD = 52;
 const FOOT = 32;
 const POLE = HEAD + OUTER * 2 + FOOT;
 const GAP = 12;
@@ -46,7 +46,7 @@ export function StaticD10({ scores }: { scores: InstructorD10Scores | null }) {
           const center = { x: cx, y: cy };
           return (
             <g key={side} data-d10-side={side}>
-              <text x={cx} y={cy - OUTER - 16} textAnchor="middle" className="report-diamond__caption">
+              <text x={cx} y={cy - OUTER - 40} textAnchor="middle" className="report-diamond__caption">
                 {side === 'front' ? 'Front' : 'Back (turned over)'}
               </text>
               {faces
