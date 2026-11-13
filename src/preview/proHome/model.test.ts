@@ -100,11 +100,12 @@ test('the instructor concept reuses the profile identity card and keeps the appr
   assert.match(page, /<CardMark mark=\{card\.mark\} \/>/);
 });
 
-test('instructor concept cards keep the seven live destinations and add no belt', () => {
+test('instructor concept cards keep the live destinations and add no belt', () => {
   const cards = instructorConceptCards();
   assert.deepEqual(cards.map((card) => card.to), COACH_UNLIMITED_TOOLS.map((tool) => tool.to));
-  assert.equal(cards.length, 7);
-  assert.equal(new Set(cards.map((card) => card.mark)).size, 7);
+  assert.equal(cards.length, 6);
+  assert.equal(new Set(cards.map((card) => card.mark)).size, 6);
+  assert.ok(!cards.some((card) => card.title === 'Record for Review'));
 });
 
 test('the Media preview keeps the three live subtitles and drops the belt rails', () => {

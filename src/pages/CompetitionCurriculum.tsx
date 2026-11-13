@@ -5,7 +5,6 @@ import { PlanDateNav } from '../components/PlanDateNav';
 import { ClassTimeField } from '../components/ClassTimeField';
 import { ExpectedDurationField } from '../components/ExpectedDurationField';
 import { LessonMediaRail } from '../components/LessonMediaRail';
-import { ReviewSlotControls } from '../components/ReviewSlotControls';
 import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { canCaptureReplay as replayCanCapture } from '../lib/instructorSeats';
@@ -29,7 +28,6 @@ import {
   CURRICULUM_SAVE_LINK,
   CURRICULUM_TIMINGS,
   CURRICULUM_TIMING_LABELS,
-  RECORD_FOR_REVIEW_LABEL,
   CURRICULUM_UNLOCK_LABEL,
   DESIGNATION_PLACEHOLDER,
   MAX_BLOCKS,
@@ -41,7 +39,6 @@ import {
   blockOffersClock,
   blockOffersExpected,
   blockOffersNotes,
-  blockOffersReviewToggle,
   blockOffersTree,
   blockWantsReplay,
   copyCurriculum,
@@ -645,20 +642,6 @@ export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boo
               onChange={(event) => commit({ ...plan, closing: event.target.value })}
             />
           </label>
-          {blockOffersReviewToggle('closing') ? (
-            <ReviewSlotControls
-              id={`${plan.id}-closing`}
-              heading="Closing"
-              slot={plan.closingReview}
-              dateKey={viewKey}
-              readOnly={!editingToday}
-              canCapture={canCaptureReplay}
-              onChange={(closingReview) => {
-                const { closingReview: _drop, ...rest } = plan;
-                commit(closingReview ? { ...rest, closingReview } : rest);
-              }}
-            />
-          ) : null}
         </section>
 
         {editingToday ? (
@@ -775,25 +758,6 @@ function CurriculumCard({
               </button>
             ))}
           </div>
-        ) : null}
-        {blockOffersReviewToggle(block.kind) && !(blockOffersClock(block.kind) && block.timing === 'replay') ? (
-          <button
-            type="button"
-            className={block.recordReview ? 'notes__break notes__break--on' : 'notes__break'}
-            role="switch"
-            data-record-review=""
-            aria-checked={block.recordReview === true}
-            aria-label={`${RECORD_FOR_REVIEW_LABEL} for ${heading}`}
-            disabled={readOnly}
-            onClick={() => onChange({ recordReview: !block.recordReview })}
-          >
-            <span className="notes__switch" aria-hidden="true" />
-            <span className="notes__break-copy">
-              <span className="notes__break-label">{RECORD_FOR_REVIEW_LABEL}</span>
-              {block.recordReview ? <span className="notes__break-hint">Record or pick a clip to review after</span> : null}
-            </span>
-            <span className="notes__break-state">{block.recordReview ? 'On' : 'Off'}</span>
-          </button>
         ) : null}
         {blockWantsReplay(block) ? (
           <ReplayAnalysisCard

@@ -1353,3 +1353,11 @@
   min-width: 44px;
 }
 .clipboard .belt-mark__name { font-size: 12px; }
+
+/* Assessment D8 (replaces the spider). Colors match the diamond layers. */
+.clipboard__d8 { width: 100%; min-width: 0; border-radius: 10px; background: #071018; overflow: hidden; }
+.clipboard__d8 .topo-stage { height: 240px; margin: 0; }
+.clipboard__as--diamond .clipboard__legend i.coach { background: #76eaff; }
+.clipboard__as--diamond .clipboard__legend i.self {
+  background: repeating-linear-gradient(90deg, #ffb05a 0 4px, transparent 4px 7px);
+}

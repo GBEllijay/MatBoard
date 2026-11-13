@@ -36,9 +36,12 @@ const STATUSES: readonly ReviewStatus[] = ['pending', 'approved', 'changes', 're
 export const REVIEW_SUBMIT = 'Submit for review';
 export const REVIEW_SUBMITTED =
   'Sent for review. Your instructor can approve it, ask for changes, or reject it.';
+export const REVIEW_SUBMITTED_OWNER =
+  "Approved. This is your plan, so it skipped review.";
 export const REVIEW_APPROVE = 'Approve';
 export const REVIEW_CHANGES = 'Request changes';
 export const REVIEW_REJECT = 'Reject';
+export const REVIEW_CHANGE_DECISION = 'Change decision';
 export const REVIEW_GALLERY = 'Approve for the gallery';
 export const REVIEW_GALLERY_DONE =
   'That photo is in the Gallery on this device. Advantage does not host it.';
@@ -253,6 +256,10 @@ export function versionChangeLines(earlier: TrainingNotesPlan | null, later: Tra
  * Each submit appends a proposed copy. An earlier version stays as it was.
  * Submitting the same text again returns the latest copy.
  */
+export function reviewSubmitMessage(status: ReviewStatus): string {
+  return status === 'approved' ? REVIEW_SUBMITTED_OWNER : REVIEW_SUBMITTED;
+}
+
 export function submitForReview(input: {
   revisionId: string;
   dateKey: string;
@@ -261,6 +268,11 @@ export function submitForReview(input: {
   photoId?: string;
   photoName?: string;
   submittedAt?: number;
+  /**
+   * Who is submitting this plan. The gym owner auto-approves their own plan
+   * and skips Waiting for review. A seated coach's plan stays pending.
+   */
+  actor?: 'owner' | 'seat';
 }): ReviewSubmission {
   const plan = lessonPlanForDrive(input.plan);
   const items = readAll();
@@ -291,7 +303,7 @@ export function submitForReview(input: {
     photoId,
     photoName,
     submittedAt,
-    status: 'pending',
+    status: input.actor === 'owner' ? 'approved' : 'pending',
     instructorNote: '',
     plan,
   };

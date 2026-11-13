@@ -33,7 +33,7 @@ export const PROPOSED_LINE: readonly ProposedStep[] = [
     name: 'Carlos Gracie Jr.',
     linkBelow: 'awarded black belt',
     detail:
-      'A 2024 interview page says Professor Fabio Costa was promoted to black belt by Master Carlos Gracie Jr. A Gracie Barra Georgia instructors page uses the longer name Fabio Ribeiro Costa Jr. This view does not treat that longer name as confirmed.',
+      'A 2024 interview page says Professor Fabio Costa was promoted to black belt by Master Carlos Gracie Jr.',
   },
   {
     name: 'Professor Fabio Costa',
@@ -47,5 +47,4 @@ export const PROPOSED_SOURCES = [
   'https://www.gracieuniversity.com/Pages/Public/about',
   'https://www.bjjheroes.com/bjj-fighters/carlos-carlinhos-gracie-jr',
   'https://www.thehomepagenetwork.com/jiu-jitsu-episode-1-meet-professor-fabio-costa/',
-  'https://graciebarra.com/georgia-ga/instructors/',
 ] as const;

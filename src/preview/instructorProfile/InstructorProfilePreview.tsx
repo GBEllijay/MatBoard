@@ -170,16 +170,12 @@ export function InstructorProfilePreviewPage() {
             <strong>3+</strong>
             <small>Sample minimum. This week {classes.filter((row) => weekDays(SAMPLE_WEEK_START).includes(row.date) && row.minutes > 0).length} logged.</small>
           </div>
-          <p data-testid="stripes-given">
-            <span>Stripes given</span>
-            <strong>{tallies.stripes}</strong>
-          </p>
-          <p data-testid="belts-given">
-            <span>Promotions given</span>
-            <strong>{tallies.belts}</strong>
+          <p data-testid="teaching-years">
+            <span>Length of time teaching</span>
+            <strong>{years} years</strong>
+            <small>c. {estimate.teachingAroundYear} to {PREVIEW_YEAR}. Official start {officialStart} is later.</small>
           </p>
         </div>
-        <p className="ip-quiet">Completed only. Pending and declined are not counted. A retry of the same promotion counts once. Fictional totals.</p>
       </section>
 
       <section className="ip-card" aria-label="Sample daily lesson plan" data-testid="lesson-plan">

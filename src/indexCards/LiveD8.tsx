@@ -11,8 +11,11 @@ import { FACE_GRID_MAX, buildSubfactorTopo, faceGridSize, faceSlots, faceTileCap
 import {
   INDEX_FACE_IDS,
   faceScoreExact,
+  hasFaceBaseline,
   unsortedCards,
   withCardEdit,
+  withFaceBaseline,
+  type FaceBaseline,
   type IndexFaceId,
   type LiveCard,
 } from '../lib/indexCards.ts';
@@ -81,8 +84,20 @@ function faceScoreLine(cards: readonly LiveCard[], faceId: IndexFaceId): string 
   return `Face score ${faceScoreExact(cards, faceId).toFixed(1)} / 5`;
 }
 
-export function SheetD8Thumb({ onExpand }: { onExpand: () => void }) {
-  const cards = useLiveCards();
+/** Unrated-line copy. With a check-in baseline, an unrated line takes that face's check-in score. */
+export function unratedLineNote(baseline?: FaceBaseline | null): string {
+  return hasFaceBaseline(baseline)
+    ? 'A line you have not rated takes your check-in score for that face, or 3.'
+    : 'A line you have not rated stays at 3.';
+}
+
+/** Index cards with the optional check-in baseline applied. Display only. */
+function useShownCards(baseline?: FaceBaseline | null): LiveCard[] {
+  return withFaceBaseline(useLiveCards(), baseline);
+}
+
+export function SheetD8Thumb({ onExpand, baseline }: { onExpand: () => void; baseline?: FaceBaseline | null }) {
+  const cards = useShownCards(baseline);
   const model = useMesh(cards);
   return (
     <TopoStage
@@ -105,8 +120,8 @@ export function SheetD8Thumb({ onExpand }: { onExpand: () => void }) {
   );
 }
 
-export function LiveD8() {
-  const cards = useLiveCards();
+export function LiveD8({ baseline }: { baseline?: FaceBaseline | null } = {}) {
+  const cards = useShownCards(baseline);
   const model = useMesh(cards);
   const [focus, setFocus] = useState(-1);
   const [zoom, setZoom] = useState(1);
@@ -208,9 +223,9 @@ export function LiveD8() {
       {drilled && faceId ? (
         <FaceList faceId={faceId} cards={cards} onBack={goDiamond} />
       ) : face && faceId ? (
-        <FaceReadout faceId={faceId} label={face.label} cards={cards.filter((card) => card.faceId === faceId)} slots={faceSlots(model, focus)} />
+        <FaceReadout faceId={faceId} label={face.label} cards={cards.filter((card) => card.faceId === faceId)} slots={faceSlots(model, focus)} unrated={unratedLineNote(baseline)} />
       ) : (
-        <FaceScores cards={cards} />
+        <FaceScores cards={cards} unrated={unratedLineNote(baseline)} />
       )}
     </div>
   );
@@ -264,12 +279,12 @@ function moreLabel(count: number): string | null {
   return extra > 0 ? `+${extra} more` : null;
 }
 
-function FaceScores({ cards }: { cards: readonly LiveCard[] }) {
+function FaceScores({ cards, unrated }: { cards: readonly LiveCard[]; unrated: string }) {
   return (
     <div className="crystal-readout">
       <section aria-label="Eight faces">
         <h2>Eight faces</h2>
-        <p>Tap a face, or use the factor buttons. Each score is the average of every line. A line you have not rated stays at 3.</p>
+        <p>Tap a face, or use the factor buttons. {`Each score is the average of every line. ${unrated}`}</p>
         <ul className="d8sf-face-scores">
           {FACES.map((face) => {
             if (!isLiveFace(face.id)) return null;
@@ -378,11 +393,13 @@ function FaceReadout({
   label,
   cards,
   slots,
+  unrated,
 }: {
   faceId: IndexFaceId;
   label: string;
   cards: readonly LiveCard[];
   slots: ReturnType<typeof faceSlots>;
+  unrated: string;
 }) {
   const byId = new Map(cards.map((card) => [card.id, card]));
   const extra = moreLabel(cards.length);
@@ -393,7 +410,7 @@ function FaceReadout({
         <p data-testid="face-score" aria-live="polite">
           {faceScoreLine(cards, faceId)}
         </p>
-        <p>Average of every line on this face. A line you have not rated stays at 3.</p>
+        <p>{`Average of every line on this face. ${unrated}`}</p>
         {extra ? (
           <p>
             <span className="d8sf-badge" data-more={faceId}>

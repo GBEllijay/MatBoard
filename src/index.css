@@ -1422,6 +1422,57 @@ button.mode-card__hit {
   min-height: 44px;
 }
 
+.review-status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 32px;
+  margin: 0;
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.review-status-badge--approved {
+  background: #16a34a;
+  color: #0e1726;
+}
+
+.review-status-badge--changes {
+  background: #d97706;
+  color: #0e1726;
+}
+
+.review-status-badge--rejected {
+  background: #b42318;
+  color: #fff;
+}
+
+.review-change-decision {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--gold-2);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.review-change-decision:focus-visible {
+  outline: 2px solid var(--logo-blue);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .home--pro .review-inbox__actions .review-decision--on,
 .notes .lesson-version--on,
 .home--pro .lesson-version--on,
@@ -19663,7 +19714,7 @@ a.plan-pick {
   margin-top: 0.8rem;
 }
 
-/* Replay recorder inside a Competition block (Record for replay / Record for Review). */
+/* Replay recorder inside a Competition block (Record for replay). */
 .replay-card--embedded {
   margin-top: 0.75rem;
   padding-top: 0.75rem;

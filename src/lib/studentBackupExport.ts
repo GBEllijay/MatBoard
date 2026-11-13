@@ -1,8 +1,9 @@
 /**
  * One Student Edition export at a time.
- * Back up my journal downloads the JSON file, the only file Merge and Replace
- * can restore. Spreadsheet and PDF buttons each download their own file.
- * A connected academy folder or personal drive receives that same one file.
+ * Download student packet writes one .advantage file. That file is what
+ * Merge and Replace restore. Spreadsheet and PDF buttons each download
+ * their own file. A connected folder receives the one file that was just saved.
+ * An older JSON backup is still accepted on import.
  */
 
 import { providerLabel, type StudentDriveLink } from './academyPathway.ts';
@@ -29,6 +30,9 @@ import { getFilmBlob, loadFilms, type StudentFilm } from './studentFilm.ts';
 import { loadScouting, type ScoutingCard } from './studentScouting.ts';
 import { loadCoachShelf, type CoachShelf } from './studentTools.ts';
 import { copyFilesToStudentDrive, type DriveCopyFile } from './studentDriveCopy.ts';
+import { PACKET_MIME } from './packets/core.ts';
+import { buildStudentPacket, type StudentPacketScope } from './packets/student.ts';
+import { noteStudentBackupBuilt } from './studentBackupStamp.ts';
 import type { StudentProgressReport } from './progress/types.ts';
 
 const JSON_DRIVE_NOTE = 'No academy folder or personal drive is connected.';
@@ -57,11 +61,14 @@ export type StudentExportResult =
 
 export type StudentExportOptions = {
   includeVideos: boolean;
+  /** Default is the open profile. `all` writes every family profile into the packet. */
+  scope?: StudentPacketScope;
   now?: Date;
   storage?: MemoryStore;
   download?: (filename: string, blob: Blob) => void;
   copyFiles?: (target: StudentDriveLink, files: readonly DriveCopyFile[]) => Promise<{ error: string }>;
   gather?: () => Promise<StudentExportSource>;
+  readFilmBlob?: (id: string, profileId: string) => Promise<Blob | null>;
 };
 
 function browserDownload(filename: string, blob: Blob) {
@@ -75,12 +82,53 @@ function browserDownload(filename: string, blob: Blob) {
   URL.revokeObjectURL(url);
 }
 
+async function runStudentPacketExport(
+  options: StudentExportOptions,
+  storage: MemoryStore,
+  download: (filename: string, blob: Blob) => void,
+  copyFiles: (target: StudentDriveLink, files: readonly DriveCopyFile[]) => Promise<{ error: string }>,
+): Promise<StudentExportResult> {
+  try {
+    const when = options.now ?? new Date();
+    const built = await buildStudentPacket({
+      storage,
+      scope: options.scope ?? 'active',
+      includeVideos: options.includeVideos,
+      now: when,
+      readFilmBlob: options.readFilmBlob ?? ((id, profileId) => getFilmBlob(id, profileId).catch(() => null)),
+    });
+    const bytes = new Blob([built.text], { type: PACKET_MIME });
+    download(built.filename, bytes);
+    noteStudentBackupBuilt(when, {
+      getItem: (key) => storage.getItem(key),
+      setItem: (key, value) => storage.setItem(key, value),
+      removeItem: (key) => storage.removeItem?.(key),
+    });
+    const targets = connectedBackupTargets(storage);
+    const lead = journalBackupConfirmation(built.filename, options.includeVideos);
+    if (!targets.length) return { ok: true, filename: built.filename, message: `${lead} ${JSON_DRIVE_NOTE}` };
+    const notes = [lead];
+    const file: DriveCopyFile = { name: built.filename, bytes, mime: PACKET_MIME };
+    for (const target of targets) {
+      const copied = await copyFiles(target, [file]);
+      if (copied.error) notes.push(`${providerLabel(target.provider)} did not take the copy. ${copied.error}`);
+      else notes.push(`Also saved in ${target.folderName} on ${providerLabel(target.provider)}.`);
+    }
+    return { ok: true, filename: built.filename, message: notes.join(' ') };
+  } catch (err) {
+    const detail = err instanceof Error && err.message ? err.message : 'Could not build the backup.';
+    return { ok: false, filename: '', message: journalBackupFailure(detail) };
+  }
+}
+
 function exportFile(
   kind: StudentExportKind,
   built: Awaited<ReturnType<typeof buildStudentBackup>>,
   names: ReturnType<typeof studentBackupNames>,
 ): DriveCopyFile {
   switch (kind) {
+    case 'packet':
+      throw new Error('The student packet is saved before this step.');
     case 'json':
       return { name: names.json, bytes: new Blob([built.json], { type: 'application/json' }), mime: 'application/json' };
     case 'csv':
@@ -130,6 +178,7 @@ export async function runStudentEditionExport(
   const storage = options.storage ?? localStorage;
   const download = options.download ?? browserDownload;
   const copyFiles = options.copyFiles ?? ((target, files) => copyFilesToStudentDrive(target, files));
+  if (kind === 'packet') return runStudentPacketExport(options, storage, download, copyFiles);
   try {
     const source = options.gather ? await options.gather() : await gatherFromThisPhone(options.includeVideos);
     const when = options.now ?? new Date();

@@ -19,6 +19,7 @@ const ICONS: Record<string, string> = {
   print: '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.2 2.4c-.8.3-1.2.9-1.2 1.6V14"/><circle cx="12" cy="17.5" r="0.8"/>',
+  personPlus: '<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 8v6M13 11h6"/>',
 };
 
 const ICON_FOR_LABEL: Record<string, keyof typeof ICONS> = {
@@ -42,6 +43,7 @@ const ICON_FOR_LABEL: Record<string, keyof typeof ICONS> = {
   Connections: 'link',
   'Backup & Print': 'save',
   FAQ: 'help',
+  'Add additional profiles': 'personPlus',
 };
 
 export function RowIcon({ label }: { label: string }) {

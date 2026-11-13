@@ -13,7 +13,7 @@ import {
   mergeStudentReports,
   STUDENT_BACKUP_KIND,
   STUDENT_BACKUP_VERSION,
-  JOURNAL_BACKUP_LABEL,
+  PACKET_EXPORT_LABEL,
   backupFileGuide,
   backupVideoTooLargeMessage,
   buildStudentBackup,
@@ -298,24 +298,25 @@ test('newline lineage migrates and both instructors survive backup and restore',
   assert.deepEqual(merged.rank?.lineage, ['Mestre Paulo Reis (mock)', 'Prof. Elena Duarte (mock)']);
 });
 
-test('each export names one file, and only the JSON backup restores the phone', () => {
+test('the student packet is the restore file, and the spreadsheet and PDFs stay separate', () => {
   const names = studentBackupNames('2026-10-24');
   const guide = backupFileGuide('2026-10-24');
   assert.deepEqual(
     guide.map((file) => file.name),
-    [names.json, names.csv, names.progressPdf, names.assessmentPdf],
+    [names.packet, names.csv, names.progressPdf, names.assessmentPdf],
   );
-  assert.equal(guide[0]?.title, JOURNAL_BACKUP_LABEL);
-  assert.equal(guide[0]?.detail, studentExportDetail('json', '2026-10-24'));
-  assert.match(guide[0]?.detail ?? '', /Downloads advantage-student-backup-2026-10-24\.json/);
+  assert.equal(guide[0]?.title, PACKET_EXPORT_LABEL);
+  assert.equal(guide[0]?.detail, studentExportDetail('packet', '2026-10-24'));
+  assert.match(guide[0]?.detail ?? '', /Downloads advantage-student-packet-2026-10-24\.advantage/);
   assert.match(guide[0]?.detail ?? '', /Merge or Replace/);
   assert.match(guide[1]?.detail ?? '', /Spreadsheet/);
   assert.match(guide[1]?.detail ?? '', /cannot restore/);
   assert.match(guide[2]?.detail ?? '', /printable/);
   assert.match(guide[3]?.detail ?? '', /self-assessment/);
+  assert.equal(studentExportDetail('json', '2026-10-24').includes(names.json), true);
   assert.match(videoFilesLine(false), /^Video files: off/);
   assert.match(videoFilesLine(true), /^Video files: on/);
-  assert.match(videoFilesLine(true), /JSON backup/);
+  assert.match(videoFilesLine(true), /student packet/);
   assert.match(journalBackupConfirmation('advantage-student-backup-2026-10-24.json', false), /Backup saved/);
   assert.match(journalBackupConfirmation('advantage-student-backup-2026-10-24.json', false), /not included/);
   assert.match(journalBackupConfirmation('advantage-student-backup-2026-10-24.json', true), /are included/);

@@ -219,7 +219,12 @@ const listeners = new Set<() => void>();
 /** Keys this module does not own, kept across a game-plan write. */
 let siblings: Record<string, unknown> = {};
 
-let state: RosterState = loadState();
+/**
+ * Starts empty and loads at the bottom of this file, after every constant the
+ * card reader uses is defined. Loading here threw for any card with a photo id
+ * or an archive date, and the whole roster read as blank.
+ */
+let state: RosterState = defaultRoster();
 
 let studentSeq = 0;
 
@@ -745,7 +750,13 @@ export function normalizeRoster(raw: unknown): RosterState {
   const seen = new Set<string>();
   const students: Student[] = [];
   for (const item of parsed.students) {
-    const next = normalizeStudent(item);
+    // One card that cannot be read is skipped. The rest of the roster still loads.
+    let next: Student | null = null;
+    try {
+      next = normalizeStudent(item);
+    } catch {
+      next = null;
+    }
     if (!next || seen.has(next.id)) continue;
     seen.add(next.id);
     students.push(next);
@@ -855,7 +866,21 @@ function loadState(): RosterState {
     return normalizeRoster(parsed);
   } catch {
     siblings = {};
+    keepUnreadable();
     return defaultRoster();
+  }
+}
+
+/** If the saved roster cannot be read at all, keep a copy before any save writes over it. */
+export const UNREADABLE_ROSTER_KEY = `${STORAGE_KEY}.unreadable`;
+
+function keepUnreadable(): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw && !localStorage.getItem(UNREADABLE_ROSTER_KEY)) localStorage.setItem(UNREADABLE_ROSTER_KEY, raw);
+  } catch {
+    /* storage is not available */
   }
 }
 
@@ -1405,3 +1430,6 @@ export function initRosterSync(): void {
     listeners.forEach((fn) => fn());
   });
 }
+
+// Load last, so every constant the card reader needs is defined first.
+state = loadState();

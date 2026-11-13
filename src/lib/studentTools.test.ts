@@ -38,7 +38,6 @@ import {
   goalPromptsForBelt,
   goalsForBelt,
   gymClassesOnDate,
-  isUntouchedLegacyBrown,
   journalDates,
   learnedCatalogIds,
   mergeOwnStudentFile,
@@ -56,9 +55,15 @@ import {
   updateGoal,
   withGoalPromptLinks,
   withStarterRubric,
+  STARTER_BENCHMARK_PROMPTS,
 } from './studentTools.ts';
 import { acceptCoachSyncUpdate, buildCoachBeltProgressUpdate, emptyCoachOverlay } from './coachSync.ts';
 import { emptyUpdateLedger } from './coachRankUpdate.ts';
+
+/** Tests about goal prompts start from a file with no personal goal seeds. */
+function withoutGoalSeeds<T extends { goals: unknown[] }>(report: T): T {
+  return { ...report, goals: [] };
+}
 
 function legacyCriterion(belt: string, slug: string, requirement: string, techniqueId: string, techniqueName: string): RubricCriterion {
   return {
@@ -514,10 +519,10 @@ test('completed fundamentals levels count toward belt progress', () => {
   assert.equal(checkpointFilled(guard, learnedCatalogIds(report)), true);
 });
 
-test('an edited legacy brown list stays, and an untouched one is replaced by the prompts', () => {
+test('a new file starts with three seed cards per adult belt, and a saved legacy brown list stays exactly as saved', () => {
   const fresh = withStarterRubric(blankStudentReport(10), 10);
-  assert.ok((beltLevel(fresh, 'brown')?.checkpoints.length ?? 0) > 0);
-  assert.equal(beltLevel(fresh, 'white')?.checkpoints[0]?.id, 'checkpoint.white.s1-positions');
+  assert.deepEqual(beltLevel(fresh, 'brown')?.checkpoints.map((row) => row.name), [...STARTER_BENCHMARK_PROMPTS]);
+  assert.deepEqual(beltLevel(fresh, 'white')?.checkpoints.map((row) => row.name), [...STARTER_BENCHMARK_PROMPTS]);
   const legacy = legacyAdultReport(10);
   const brown = beltLevel(legacy, 'brown');
   assert.ok(brown);
@@ -554,9 +559,9 @@ test('an edited legacy brown list stays, and an untouched one is replaced by the
       ],
     },
   ];
-  assert.equal(isUntouchedLegacyBrown(brown), true);
+  const saved = structuredClone(brown.checkpoints);
   const replaced = withStarterRubric(legacy, 20);
-  assert.equal(beltLevel(replaced, 'brown')?.checkpoints[0]?.id, 'checkpoint.brown.s1-game');
+  assert.deepEqual(beltLevel(replaced, 'brown')?.checkpoints, saved);
   assert.equal(beltLevel(replaced, 'white')?.checkpoints[0]?.id, 'checkpoint.white.guard');
 
   const marked = structuredClone(legacy);
@@ -570,7 +575,7 @@ test('an edited legacy brown list stays, and an untouched one is replaced by the
 });
 
 test('goals and higher-belt checkpoints do not change degree milestones', () => {
-  let report = setRankBelt(withStarterRubric(blankStudentReport(10), 10), 'black', 11);
+  let report = setRankBelt(withoutGoalSeeds(withStarterRubric(blankStudentReport(10), 10)), 'black', 11);
   report = setRankAwardedOn(report, '2010-01-02', 12);
   report = setRankTapeCount(report, 2, 13);
   report = addGoal(report, 'Teaching: lead a class', '', 14, 'black');
@@ -674,7 +679,7 @@ test('legacy progress files still load without checkpoint source or degree focus
 });
 
 test('dismissing a suggestion, then reloading, keeps it gone without adding a goal', () => {
-  let report = setRankBelt(withStarterRubric(blankStudentReport(40), 40), 'brown', 41);
+  let report = setRankBelt(withoutGoalSeeds(withStarterRubric(blankStudentReport(40), 40)), 'brown', 41);
   report = setRankAwardedOn(report, '2024-03-04', 42);
   report = setRankTapeCount(report, 1, 43);
   const before = structuredClone(report.rubric);
@@ -766,7 +771,7 @@ test('older files migrate an adopted suggestion and leave other belts and kids g
 });
 
 test('personal goal dismissals stay on this student and do not change coach requirements or milestones', () => {
-  let report = setRankBelt(withStarterRubric(blankStudentReport(70), 70), 'brown', 71);
+  let report = setRankBelt(withoutGoalSeeds(withStarterRubric(blankStudentReport(70), 70)), 'brown', 71);
   report = setRankAwardedOn(report, '2022-05-06', 72);
   report = setRankTapeCount(report, 3, 73);
   report.rubric.studentsCanEdit = false;

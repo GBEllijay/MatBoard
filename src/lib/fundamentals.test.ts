@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
+import { FACES } from '../preview/d8Subfactors/model.ts';
 import {
   assessmentAreaForMove,
   fundamentalAssessmentScores,
@@ -20,6 +21,7 @@ import { blankStudentReport, fundamentalsBoard, hideFundamental, setFundamentalL
 import { withStarterRubric } from './studentTools.ts';
 import type { JournalClip } from './progress/types.ts';
 import type { StudentFilm } from './studentFilm.ts';
+import { withLegacySavedRubric } from './testFixtures/legacySavedRubric.ts';
 
 function row(partial: Partial<FundamentalRow> & Pick<FundamentalRow, 'label' | 'level'>): FundamentalRow {
   return {
@@ -89,7 +91,7 @@ test('summary, sort, and filter stay on the saved levels', () => {
 });
 
 test('moves link to a checkpoint, a self-assessment area, and a matching clip', () => {
-  const report = withStarterRubric(blankStudentReport(10), 10);
+  const report = withStarterRubric(withLegacySavedRubric(blankStudentReport(10)), 10);
   const checkpoint = checkpointForMove(report.rubric.levels, 'sweep.scissor', 'white');
   assert.equal(checkpoint?.checkpointId, 'checkpoint.white.s1-guard-attack');
   const backEscape = checkpointForMove(report.rubric.levels, 'escape.back', 'white');
@@ -97,13 +99,13 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
   assert.equal(backEscape?.checkpointName, 'Back escape');
   assert.equal(assessmentAreaForMove('sweeps', 'Scissor sweep'), 'sweeps');
   assert.equal(assessmentAreaForMove('positions', 'Closed guard'), 'guard');
-  assert.equal(assessmentAreaForMove('positions', 'Mount'), 'passing');
-  assert.equal(assessmentAreaForMove('positions', 'Top pin', 'pos.mount'), 'passing');
+  assert.equal(assessmentAreaForMove('positions', 'Mount'), 'guard');
+  assert.equal(assessmentAreaForMove('positions', 'Top pin', 'pos.mount'), 'guard');
   assert.equal(assessmentAreaForMove('passes', 'Knee slice pass'), 'passing');
   assert.equal(assessmentAreaForMove('movement', 'Shrimp'), 'conditioning');
   assert.equal(assessmentAreaForMove('defense', 'Sprawl', 'def.sprawl'), 'takedowns');
   assert.equal(assessmentAreaForMove('defense', 'Submission defense', 'def.submission-defense'), 'escapes');
-  assert.equal(assessmentAreaForMove('positions', 'Back control', 'pos.back-control'), 'submissions');
+  assert.equal(assessmentAreaForMove('positions', 'Back control', 'pos.back-control'), 'guard');
 
   const clips: JournalClip[] = [
     { id: 'clip-scissor', url: 'https://example.com/scissor', description: 'Scissor sweep detail', note: '', createdAt: 1, updatedAt: 1 },
@@ -143,7 +145,7 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
   ]);
   assert.deepEqual(links.map((link) => link.label), [
     'Open: Sweeps self-assessment',
-    'Open: From closed guard, perform one sweep and one submission in drilling. benchmark',
+    'Open: Saved white benchmark s1-guard-attack benchmark',
     'Open: Scissor sweep detail in Video Library',
   ]);
   const openGuard = moveLinks({
@@ -156,7 +158,7 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
   });
   assert.deepEqual(openGuard.map((link) => link.label), [
     'Open: Guard self-assessment',
-    'Open: Keep your guard from being passed, and get it back when you are passed. benchmark',
+    'Open: Saved purple benchmark s1-retention benchmark',
   ]);
   const filmed = moveLinks({
     item: { catalogItemId: 'sweep.hip-bump', categoryId: 'sweeps', label: 'Hip bump sweep', name: 'Hip bump sweep' },
@@ -170,7 +172,7 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
 });
 
 test('checkpoint links stay on the belt being worn or the next belt', () => {
-  const report = withStarterRubric(blankStudentReport(10), 10);
+  const report = withStarterRubric(withLegacySavedRubric(blankStudentReport(10)), 10);
   const levels = report.rubric.levels;
   const belts = ['white', 'blue', 'purple', 'brown', 'black', 'grey', 'yellow', 'orange', 'green', 'coral', 'redWhite', 'red'];
   for (const belt of belts) {
@@ -205,7 +207,7 @@ test('checkpoint links stay on the belt being worn or the next belt', () => {
 test('fundamentals levels average into the chart and skip hidden or unstarted moves', () => {
   assert.equal(assessmentAreaForMove('positions', 'Standing', 'pos.standing'), 'takedowns');
   assert.equal(assessmentAreaForMove('positions', 'Turtle', 'pos.turtle'), 'escapes');
-  assert.equal(assessmentAreaForMove('defense', 'Guard retention', 'def.guard-retention'), 'guard');
+  assert.equal(assessmentAreaForMove('defense', 'Guard retention', 'def.guard-retention'), 'escapes');
   assert.equal(assessmentAreaForMove('sweeps', 'Lasso'), 'sweeps');
   assert.equal(assessmentAreaForMove('positions', 'Truck'), '');
   assert.equal(assessmentAreaForMove('movement', 'Jump rope'), 'conditioning');
@@ -225,9 +227,10 @@ test('fundamentals levels average into the chart and skip hidden or unstarted mo
     { catalogItemId: '', categoryId: 'positions', name: 'Truck', level: 5 },
   ]);
   // Sweeps is its own face now, so the scissor sweep (4) no longer averages into Guard.
-  assert.equal(scores.guard, 2);
+  // Mount (4) sits on Guard/Control with closed guard (2), as on the D8 catalog.
+  assert.equal(scores.guard, 3);
   assert.equal(scores.sweeps, 4);
-  assert.equal(scores.passing, 3);
+  assert.equal(scores.passing, 2);
   assert.equal(scores.takedowns, 3);
   assert.equal(scores.escapes, 2);
   assert.equal(scores.submissions, 1);
@@ -246,4 +249,45 @@ test('fundamentals levels average into the chart and skip hidden or unstarted mo
   const visible = fundamentalAssessmentScores(fundamentalsBoard(report).flatMap((category) => category.items));
   assert.equal(visible.sweeps, 4);
   assert.equal(visible.guard, undefined);
+});
+
+test('every starter Fundamentals line lands on exactly one D8 face that matches the D8 catalog', () => {
+  const expected: Record<string, string> = {
+    'pos.closed-guard': 'guard',
+    'pos.open-guard': 'guard',
+    'pos.half-guard': 'guard',
+    'pos.butterfly-guard': 'guard',
+    'pos.mount': 'guard',
+    'pos.side-control': 'guard',
+    'pos.knee-on-belly': 'guard',
+    'pos.north-south': 'guard',
+    'pos.scarf-hold': 'guard',
+    'pos.back-control': 'guard',
+    'pos.standing': 'takedowns',
+    'pos.turtle': 'escapes',
+    'def.guard-retention': 'escapes',
+    'def.submission-defense': 'escapes',
+    'def.sprawl': 'takedowns',
+  };
+  const faces = new Set(['guard', 'passing', 'sweeps', 'takedowns', 'escapes', 'submissions', 'conditioning']);
+  const byCategory: Record<string, string> = { sweeps: 'sweeps', escapes: 'escapes', passes: 'passing', submissions: 'submissions', takedowns: 'takedowns', movement: 'conditioning' };
+  const seen = new Set<string>();
+  for (const category of FUNDAMENTALS_CATALOG.categories) {
+    for (const item of category.items) {
+      assert.equal(seen.has(item.id), false, `${item.id} listed once`);
+      seen.add(item.id);
+      const area = assessmentAreaForMove(category.id, item.name, item.id);
+      assert.ok(faces.has(area), `${item.id} has a face (got '${area}')`);
+      assert.equal(area, expected[item.id] ?? byCategory[category.id], item.id);
+      // A custom line with the same name lands on the same face.
+      assert.equal(assessmentAreaForMove(category.id, item.name), area, `${item.name} by name`);
+    }
+  }
+  // Mount, Side Control, Knee on Belly and Back control are Guard/Control lines on the D8 catalog.
+  const guardFace = FACES.find((face) => face.id === 'guard-control');
+  for (const id of ['pos.mount', 'pos.side-control', 'pos.knee-on-belly', 'pos.back-control', 'pos.closed-guard', 'pos.half-guard']) {
+    assert.ok(guardFace?.subfactors.some((line) => line.id === id), `${id} on the Guard/Control face`);
+  }
+  const escapesFace = FACES.find((face) => face.id === 'escapes-defense');
+  assert.ok(escapesFace?.subfactors.some((line) => line.id === 'def.guard-retention'));
 });

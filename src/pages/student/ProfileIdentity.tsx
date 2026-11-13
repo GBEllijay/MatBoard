@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { DeviceMediaInput } from '../../components/DeviceMediaInput';
+import { ImageRightsGate, useImageRightsConfirm } from '../../components/ImageRightsConfirm';
 import { SendPhotoToCoach } from '../../components/SendPhotoToCoach';
 import { useStudentNoPhotos } from '../../components/rosterCard/StudentNoPhotos';
 import { beltModeOf } from '../../lib/beltBook';
@@ -105,6 +106,8 @@ function FieldAlert({ id, message }: { id: string; message: string }) {
 export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof useProfileMedia>; kids?: boolean }) {
   const { portrait, onPortrait, removePortrait } = media;
   const noPhotos = useStudentNoPhotos();
+  const rights = useImageRightsConfirm();
+  const pickPortrait = rights.interceptFiles(onPortrait);
   return (
     <div className="profile-identity">
       <section
@@ -160,17 +163,18 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
                 inputRef={media.portraitCapture}
                 accept={PHOTO_PICKER_ACCEPT}
                 capture="user"
-                onFiles={onPortrait}
+                onFiles={pickPortrait}
               />
               <DeviceMediaInput
                 id={PORTRAIT_LIBRARY}
                 inputRef={media.portraitLibrary}
                 accept={PHOTO_PICKER_ACCEPT}
-                onFiles={onPortrait}
+                onFiles={pickPortrait}
               />
             </>,
             document.body,
           )}
+      <ImageRightsGate rights={rights} />
     </div>
   );
 }

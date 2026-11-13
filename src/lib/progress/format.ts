@@ -1293,6 +1293,8 @@ function readLevel(value: unknown, index: number, errors: string[]): RubricLevel
   };
   if (record.starterAck === true) level.starterAck = true;
   else if (record.starterAck != null && record.starterAck !== false) errors.push(`${label} starterAck must be true or false.`);
+  if (record.promptsSeeded === true) level.promptsSeeded = true;
+  else if (record.promptsSeeded != null && record.promptsSeeded !== false) errors.push(`${label} promptsSeeded must be true or false.`);
   return level;
 }
 
