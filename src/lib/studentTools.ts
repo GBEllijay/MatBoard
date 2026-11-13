@@ -1303,7 +1303,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       report: withGymName(report, gym, true),
       shelf,
       message: gym
-        ? 'Gym name and logo are on this phone. Your journal was not changed. You can replace or remove the logo on My profile.'
+        ? 'Gym name and logo are stored on this phone. Your journal was not changed. Student screens no longer show a gym logo.'
         : 'That gym file did not include a name or logo. Your journal was not changed.',
       error: '',
       gym,
