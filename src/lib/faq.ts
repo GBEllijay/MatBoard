@@ -214,7 +214,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     paragraphs: [
       'They are three different tools.',
       'A JSON backup is your journal, rank, and the related notes in that file.',
-      'Restore a purchase uses the email from checkout. Advantage emails a one-time code. Confirm puts the purchase on this device. It does not bring journal entries back. The code expires and works once.',
+      'Restore a purchase uses the email from checkout. Advantage emails a one-time code. Confirm puts the purchase on this device. It does not bring journal entries back. The code expires and works once. If it does not arrive in a few minutes, check your spam or junk folder.',
       'A Google Drive or OneDrive folder is a place you connect. The academy folder is one your coach shared. You sign in with your own account. Advantage Cloud, when a gym has it, is hosted sharing for that gym’s cloud tools. It is not a hosted copy of your personal journal. If Cloud sharing pauses, the screen can show the days left to download the gym folder. The journal on the phone is separate.',
       'Buying an edition does not upload the journal. Work you type in the Student Edition demo on this phone can be saved into Student Edition when the purchase opens that edition and the real file is empty. Student, Media, Instructor, and Pro include Student Edition. White does not, so that demo stays on this phone and is not opened.',
       'If Student Edition already has a file, choose Keep the file on this phone or Use the demo copy. The purchase does not replace the file unless you choose the demo copy. The sample seed on the demo screen is not kept. Video files and photos from the demo are not copied. The example technique cloud is not part of this save.',
