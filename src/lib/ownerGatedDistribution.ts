@@ -1,25 +1,21 @@
 /**
- * Owner-gated distribution of Record for Review clips (with drawings) and
- * instructor notes to Student Edition journal libraries.
+ * Owner-gated distribution of instructor notes to Student Edition, and the
+ * hard stop that keeps Record for Review videos off the student path.
  *
- * Standing rule: student and kid video bytes never go to Advantage Cloud (R2).
- * Transport is the gym Google Drive or OneDrive folder, or a share file /
- * packet like a coach-plan handoff. JSON metadata may use the existing inbox;
- * this module never picks an Advantage Cloud home for video bytes.
+ * Record for Review videos stay on the instructor's device (with an optional
+ * Advantage Cloud copy for the instructor only). They are never queued for
+ * students, never fanned out as packets, never accepted into a student
+ * journal, and never offered as a student download.
  *
- * Approval reuses the owner-only Cloud / gallery approval switch. When the
- * switch is on, the item waits in the owner queue. When it is off, the send
- * goes through and a QC log row is still written. Journal ingest refuses an
- * unapproved item. A kid card never blocks receive; it only limits upload.
+ * Instructor notes (text only, no Record for Review video) can still use the
+ * owner approval queue and QC log. Student and kid video bytes never go to
+ * Advantage Cloud (R2).
  */
 
 import { beltModeOf } from './beltBook.ts';
 import { isKidsRosterBelt } from './rosterCard.ts';
 import { readGalleryApprovalHere } from './galleryApprovalDefault.ts';
 import {
-  commitStudentFilm,
-  upsertFilm,
-  writeFilms,
   type FilmCommitDeps,
   type StudentFilm,
 } from './studentFilm.ts';
@@ -35,6 +31,9 @@ export const QUEUED_MESSAGE = 'Sent to the owner for approval.';
 export const SENT_DIRECT_MESSAGE = 'Sent to students. A record was saved for the owner to review later.';
 export const NO_HOME_MESSAGE = 'Connect Google Drive or OneDrive, or save a share file. Student videos cannot go to Advantage Cloud.';
 export const KID_UPLOAD_CLOUD_MESSAGE = 'A kid-card student cannot upload this video to Advantage Cloud or the gym gallery.';
+export const REVIEW_VIDEO_STAYS_MESSAGE = 'Record for Review videos stay with you. Students never receive them.';
+export const REVIEW_VIDEO_STUDENT_BLOCKED_MESSAGE =
+  'Record for Review videos stay with the instructor. Students never receive them.';
 
 export type DistributionKind = 'review-video' | 'note';
 export type DistributionHome = 'google-drive' | 'onedrive' | 'share-file';
@@ -142,9 +141,13 @@ export function kidCardOfReport(report: { beltBook?: { mode?: string }; profile?
   return isKidCard({ belt: report.profile?.belt, beltMode: mode });
 }
 
-/** Kid card never blocks inbound journal video. */
-export function studentMayReceiveDistributedVideo(_input: { kidCard: boolean }): true {
-  return true;
+/** Record for Review videos are never distributed to students. */
+export function studentMayReceiveDistributedVideo(_input?: { kidCard?: boolean }): false {
+  return false;
+}
+
+export function reviewVideoMayReachStudent(): false {
+  return false;
 }
 
 export type UploadDestination = 'advantage-cloud' | 'gallery' | 'phone' | 'personal-drive' | 'academy-drive';
@@ -367,12 +370,10 @@ export function submitDistribution(
   storage: MemoryStore,
   approvalRequired: boolean,
 ): SubmitResult | { ok: false; error: string } {
-  if (!draft.targets.length) return { ok: false, error: 'Pick at least one student.' };
   if (draft.kind === 'review-video') {
-    if (!draft.media) return { ok: false, error: 'Record or pick a clip first.' };
-    const blocked = assertNoStudentVideoOnCloud(draft.media.home);
-    if (!blocked.ok) return blocked;
+    return { ok: false, error: REVIEW_VIDEO_STAYS_MESSAGE };
   }
+  if (!draft.targets.length) return { ok: false, error: 'Pick at least one student.' };
   const now = draft.now ?? Date.now();
   const id = draft.id ?? newId(draft.kind === 'note' ? 'note' : 'review', now);
   const status: DistributionStatus = approvalRequired ? 'pending' : 'sent-direct';
@@ -420,28 +421,13 @@ function qcSummary(item: DistributionItem, action: QcAction): string {
   return `${label} "${item.title}" ${action} · ${who}${kids ? ` · ${kids} kid-card` : ''}`;
 }
 
-export function fanOutPackets(item: DistributionItem): ReviewVideoPacket[] {
-  if (item.kind !== 'review-video' || !item.media) return [];
-  if (item.status !== 'approved' && item.status !== 'sent-direct') return [];
-  return item.targets.map((target) => ({
-    kind: REVIEW_VIDEO_PACKET_KIND,
-    version: 1 as const,
-    id: `${item.id}.${target.studentId}`,
-    itemId: item.id,
-    studentId: target.studentId,
-    title: item.title,
-    note: item.note,
-    lesson: item.lesson,
-    dateKey: item.dateKey,
-    media: item.media!,
-    approval: item.status === 'sent-direct' ? 'sent-direct' : 'approved',
-    kidCard: target.kidCard,
-    issuedAt: item.decidedAt ?? item.sentAt,
-  }));
+export function fanOutPackets(_item: DistributionItem): ReviewVideoPacket[] {
+  // Record for Review videos never reach a student inbox or journal.
+  return [];
 }
 
 export function pendingDistribution(storage: Pick<MemoryStore, 'getItem'>): DistributionItem[] {
-  return readDistributionQueue(storage).filter((item) => item.status === 'pending');
+  return readDistributionQueue(storage).filter((item) => item.status === 'pending' && item.kind !== 'review-video');
 }
 
 export function approveDistribution(
@@ -472,6 +458,7 @@ function decide(
   const items = readDistributionQueue(storage);
   const current = items.find((item) => item.id === id);
   if (!current) return { ok: false, error: 'That item is not in the queue.' };
+  if (current.kind === 'review-video') return { ok: false, error: REVIEW_VIDEO_STAYS_MESSAGE };
   if (current.status !== 'pending') return { ok: false, error: 'That item was already decided.' };
   const item: DistributionItem = { ...current, status, decidedAt: now };
   writeDistributionQueue(storage, items.map((row) => (row.id === id ? item : row)));
@@ -495,15 +482,9 @@ function decide(
   };
 }
 
-export function readReviewVideoInbox(storage: Pick<MemoryStore, 'getItem'>, studentId?: string): ReviewVideoPacket[] {
-  try {
-    const raw = JSON.parse(storage.getItem(REVIEW_VIDEO_INBOX_KEY) || 'null') as { packets?: unknown };
-    if (!Array.isArray(raw?.packets)) return [];
-    const packets = raw.packets.filter(isReviewVideoPacket);
-    return studentId ? packets.filter((packet) => packet.studentId === studentId) : packets;
-  } catch {
-    return [];
-  }
+export function readReviewVideoInbox(_storage?: Pick<MemoryStore, 'getItem'>, _studentId?: string): ReviewVideoPacket[] {
+  // Leftover packets from earlier drafts are ignored. Students never see them.
+  return [];
 }
 
 export function isReviewVideoPacket(value: unknown): value is ReviewVideoPacket {
@@ -512,11 +493,8 @@ export function isReviewVideoPacket(value: unknown): value is ReviewVideoPacket 
   return row.kind === REVIEW_VIDEO_PACKET_KIND && typeof row.id === 'string' && typeof row.studentId === 'string' && Boolean(cleanMedia(row.media));
 }
 
-export function queueReviewVideoPackets(storage: MemoryStore, packets: readonly ReviewVideoPacket[]): void {
-  const current = readReviewVideoInbox(storage);
-  const ids = new Set(packets.map((packet) => packet.id));
-  const next = [...packets, ...current.filter((packet) => !ids.has(packet.id))].slice(0, QUEUE_MAX);
-  storage.setItem(REVIEW_VIDEO_INBOX_KEY, JSON.stringify({ version: 1, packets: next }));
+export function queueReviewVideoPackets(_storage: MemoryStore, _packets?: readonly ReviewVideoPacket[]): void {
+  // Record for Review videos never enter a student inbox.
 }
 
 export function dismissReviewVideoPacket(storage: MemoryStore, packetId: string): void {
@@ -529,53 +507,14 @@ export type IngestResult =
   | { ok: false; error: string };
 
 /**
- * Accept a review into this student's journal video library.
- * A kid card does not block receive. An unapproved packet is refused.
- * Video bytes are read from the non-R2 home already on the packet (or a
- * provided blob); this never uploads to Advantage Cloud.
+ * Record for Review videos are never accepted into a student journal.
  */
 export async function ingestReviewVideoPacket(
-  packet: ReviewVideoPacket,
-  storage: MemoryStore,
-  deps: FilmCommitDeps & { films: readonly StudentFilm[]; blob: Blob; now?: number },
+  _packet: ReviewVideoPacket,
+  _storage?: MemoryStore,
+  _deps?: FilmCommitDeps & { films: readonly StudentFilm[]; blob: Blob; now?: number },
 ): Promise<IngestResult> {
-  if (!isReviewVideoPacket(packet)) return { ok: false, error: 'That file is not a review video.' };
-  if (packet.approval !== 'approved' && packet.approval !== 'sent-direct') return { ok: false, error: UNAPPROVED_MESSAGE };
-  studentMayReceiveDistributedVideo({ kidCard: packet.kidCard });
-  const blocked = assertNoStudentVideoOnCloud(packet.media.home);
-  if (!blocked.ok) return blocked;
-  const now = deps.now ?? Date.now();
-  const technique = packet.lesson.trim() || packet.title.trim() || 'Review';
-  const result = await commitStudentFilm(
-    {
-      file: {
-        name: packet.media.fileName || 'review.mp4',
-        type: packet.media.mime || deps.blob.type || 'video/mp4',
-        size: deps.blob.size || packet.media.size,
-        blob: deps.blob,
-      },
-      technique,
-      date: packet.dateKey,
-      where: 'phone',
-      provider: '',
-      films: deps.films,
-      now,
-    },
-    deps,
-  );
-  if (!result.ok) return result;
-  const films = upsertFilm(deps.films, result.film);
-  writeFilms(storage, films);
-  dismissReviewVideoPacket(storage, packet.id);
-  appendQc(storage, {
-    id: newId('qc', now),
-    itemId: packet.itemId,
-    at: now,
-    action: 'received',
-    actor: packet.studentId,
-    summary: `Journal received "${packet.title}"${packet.kidCard ? ' · kid-card student' : ''}`,
-  });
-  return { ok: true, film: result.film, films, message: 'Added to the journal video library.' };
+  return { ok: false, error: REVIEW_VIDEO_STUDENT_BLOCKED_MESSAGE };
 }
 
 export function formatDuration(ms?: number): string {

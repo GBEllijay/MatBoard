@@ -4,7 +4,7 @@ import { buildCoachCompetitionUpdate } from '../lib/coachCompetitionUpdate.ts';
 import { buildCoachRankUpdate } from '../lib/coachRankUpdate.ts';
 import type { PrivateJwk, PublicJwk } from '../lib/entitlementToken.ts';
 import { exportProgressPacket } from '../lib/progress/format.ts';
-import { handleStudentInbox, inboxObjectKey, type InboxBucket } from './studentInbox.ts';
+import { REVIEW_VIDEO_INBOX_REJECTED, handleStudentInbox, inboxObjectKey, type InboxBucket } from './studentInbox.ts';
 import { issueToken, type IssueInput } from './tokenIssue.ts';
 
 const LICENSE = 'license01';
@@ -413,4 +413,61 @@ test('student → coach: tournament registration and card share are narrow and n
   const after = (await (await shareAction('card-share-list', coach)).json()) as { shares: unknown[] };
   assert.deepEqual(after.shares, []);
   assert.equal(bucket.objects.has(`groups/${LICENSE}/card-shares/share-1.json`), true);
+});
+
+test('student inbox rejects a Record for Review video packet and never lists one', async () => {
+  const keys = await pair();
+  const bucket = memoryBucket();
+  const owner = await token(keys.secret, { tier: 'pro', src: 'stripe', kind: 'pro' });
+  const reviewPacket = {
+    schemaVersion: 1,
+    kind: 'coach-review-video-update',
+    id: 'review-1',
+    studentId: STUDENT,
+    updatedAt: 50,
+    issuedAt: 50,
+    updateId: 'review-nov13',
+    title: 'Armbar from closed guard',
+    media: { home: 'google-drive', ref: 'drive-file-1', fileName: 'armbar-review.mp4', mime: 'video/mp4', size: 100 },
+  };
+  const written = await call(
+    bucket,
+    keys.secret,
+    'POST',
+    'https://advantage.test/api/gym/inbox',
+    { action: 'write', license: LICENSE, studentId: STUDENT, packet: reviewPacket },
+    owner,
+  );
+  assert.equal(written.status, 400);
+  const body = (await written.json()) as { error?: string };
+  assert.equal(body.error, REVIEW_VIDEO_INBOX_REJECTED);
+  assert.equal(bucket.objects.size, 0);
+
+  const allowed = packet();
+  const ok = await call(
+    bucket,
+    keys.secret,
+    'POST',
+    'https://advantage.test/api/gym/inbox',
+    { action: 'write', license: LICENSE, studentId: STUDENT, packet: allowed },
+    owner,
+  );
+  assert.equal(ok.status, 200);
+  const writtenBody = (await ok.json()) as { studentPass?: string };
+  bucket.objects.set(
+    inboxObjectKey(LICENSE, STUDENT, 'sneaked-review'),
+    JSON.stringify(reviewPacket),
+  );
+  const read = await call(
+    bucket,
+    keys.secret,
+    'GET',
+    `https://advantage.test/api/gym/inbox?license=${LICENSE}&studentId=${STUDENT}`,
+    undefined,
+    writtenBody.studentPass,
+  );
+  assert.equal(read.status, 200);
+  const listed = (await read.json()) as { packets: { kind?: string; updateId?: string }[] };
+  assert.equal(listed.packets.some((row) => row.kind === 'coach-review-video-update'), false);
+  assert.equal(listed.packets.some((row) => row.updateId === 'rank-nov3'), true);
 });

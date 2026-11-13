@@ -36,7 +36,6 @@ import { JournalCardVideos } from './student/JournalCardVideos';
 import { VideoLibraryPage } from './student/VideoLibraryPage';
 import { WeightPage } from './student/WeightPage';
 import { CoachUpdateInbox } from '../components/CoachUpdateInbox';
-import { ReviewVideoInbox } from '../components/ReviewVideoInbox';
 import { GymLogoPrompt } from '../components/GymLogoPrompt';
 import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './student/chrome';
 import { studentScreen } from '../lib/studentHubMenu';
@@ -183,7 +182,6 @@ export function StudentEditionPage() {
     <>
       {demo ? <StudentDemoBanner /> : null}
       <CoachUpdateInbox />
-      <ReviewVideoInbox storage={localStorage} />
       <GymLogoPrompt />
       {screen}
     </>

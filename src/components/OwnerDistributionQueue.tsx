@@ -28,15 +28,15 @@ export function OwnerDistributionQueue({
   const [note, setNote] = useState('');
   if (!list.length) {
     return (
-      <section className="ogate__card" aria-label="Student-bound reviews and notes">
-        <h2>Student-bound reviews and notes</h2>
+      <section className="ogate__card" aria-label="Instructor notes waiting for approval">
+        <h2>Instructor notes waiting for approval</h2>
         <p>Nothing is waiting for approval.</p>
       </section>
     );
   }
   return (
-    <section className="ogate__card" aria-label="Student-bound reviews and notes">
-      <h2>Student-bound reviews and notes</h2>
+    <section className="ogate__card" aria-label="Instructor notes waiting for approval">
+      <h2>Instructor notes waiting for approval</h2>
       {list.map((item) => (
         <article key={item.id} aria-label={item.title}>
           {item.media?.thumbnailDataUrl ? <img className="ogate__thumb" src={item.media.thumbnailDataUrl} alt="" /> : null}
@@ -123,7 +123,7 @@ export function OwnerDistributionQcLog({
           disabled={!canEdit || !onToggle}
           onChange={(event) => onToggle?.(event.target.checked)}
         />
-        <span>Require approval before photos and videos go to the gallery, and before Record for Review clips or notes reach students.</span>
+        <span>Require approval before photos and videos go to the gallery, and before instructor notes reach students.</span>
       </label>
       <p>
         Only the Advantage owner can change this. When it is off, instructors can send without a thumbs-up, but every send still writes a record below.

@@ -38,6 +38,21 @@ export const INBOX_PACKET_KINDS = [
   'coach-gym-logo-update',
 ] as const;
 
+/** Record for Review videos are never a student-inbox packet. */
+export const REVIEW_VIDEO_INBOX_KIND = 'coach-review-video-update';
+export const REVIEW_VIDEO_INBOX_REJECTED =
+  'Record for Review videos stay with the instructor. Students never receive them.';
+
+function packetKindOf(value: unknown): string {
+  if (!value || typeof value !== 'object') return '';
+  const kind = (value as { kind?: unknown }).kind;
+  return typeof kind === 'string' ? kind : '';
+}
+
+export function isBlockedReviewVideoPacket(value: unknown): boolean {
+  return packetKindOf(value) === REVIEW_VIDEO_INBOX_KIND;
+}
+
 const RANK_BELTS = new Set([
   'white',
   'blue',
@@ -656,6 +671,9 @@ export async function handleStudentInbox(
       material.privateJwk,
     );
     if (body.action === 'pass') return json(200, { ok: true, studentPass });
+    if (isBlockedReviewVideoPacket(body.packet)) {
+      return json(400, { ok: false, error: REVIEW_VIDEO_INBOX_REJECTED });
+    }
     const parsed =
       readStoredRankUpdate(body.packet) ?? readStoredCompetitionUpdate(body.packet) ?? readStoredSyncPacket(body.packet);
     if (!parsed) return json(400, { ok: false, error: 'That file is not a coach update for a student inbox.' });
@@ -722,7 +740,9 @@ export async function handleStudentInbox(
       const stored = await bucket.get(object.key);
       if (!stored) continue;
       try {
-        packets.push(JSON.parse(await objectText(stored)));
+        const listedPacket: unknown = JSON.parse(await objectText(stored));
+        if (isBlockedReviewVideoPacket(listedPacket)) continue;
+        packets.push(listedPacket);
       } catch {
         /* a corrupt object stays out of the card list */
       }

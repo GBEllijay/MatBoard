@@ -29,8 +29,8 @@ export function ReviewJournalLibrary({ tick }: { tick: number }) {
     <section className="notes__card review-library" aria-label="Journal video library">
       <h2 className="replay-card__heading">Journal video library</h2>
       <p className="replay-card__note">
-        Clips you add from this review land here, in the same library as Film a move. Search by technique or title.
-        Review opens the clip so you can draw on it.
+        Clips you add from this review stay on this device so you can search and review them later. Students never
+        receive Record for Review videos. Review opens the clip so you can draw on it.
       </p>
       <div className="notes__field">
         <label className="replay-card__label">

@@ -1,12 +1,13 @@
 /**
  * Seeded fiction for owner-gated distribution previews. Not live gym data.
+ * Record for Review videos are never sent to students; the send and journal
+ * previews show that path as blocked. Notes can still use owner approval.
  */
 
 import {
   type DistributionItem,
   type DistributionTarget,
   type QcRecord,
-  type ReviewVideoPacket,
 } from '../../lib/ownerGatedDistribution.ts';
 
 export const OWNER_GATED_SEND_PATH = '/preview/owner-gated/send';
@@ -42,31 +43,23 @@ export const MICAH: DistributionTarget = {
 
 export const SEEDED_ROSTER: DistributionTarget[] = [ALEX, MICAH];
 
-export function seededPendingItem(now = 1_731_478_800_000): DistributionItem {
+export function seededReviewMedia() {
   return {
-    id: 'review.preview1',
-    kind: 'review-video',
+    home: 'google-drive' as const,
+    ref: 'preview-drive-file',
+    fileName: 'armbar-review.mp4',
+    mime: 'video/mp4',
+    size: 4_500_000,
+    durationMs: 95_000,
+    thumbnailDataUrl: PREVIEW_THUMB,
     title: 'Armbar from closed guard',
-    note: 'Watch the hip pinch at 0:32.',
-    sentBy: { name: 'Instructor Guise', seatId: 'seat-preview' },
-    sentAt: now,
-    dateKey: '2026-11-13',
     lesson: 'Armbar from guard',
-    targets: [ALEX, MICAH],
-    media: {
-      home: 'google-drive',
-      ref: 'preview-drive-file',
-      fileName: 'armbar-review.mp4',
-      mime: 'video/mp4',
-      size: 4_500_000,
-      durationMs: 95_000,
-      thumbnailDataUrl: PREVIEW_THUMB,
-      title: 'Armbar from closed guard',
-      lesson: 'Armbar from guard',
-    },
-    status: 'pending',
-    approvalRequired: true,
   };
+}
+
+/** Shown on the send preview only as a clip the instructor already recorded. Never a student recipient list. */
+export function seededReviewTitle(): { title: string; lesson: string } {
+  return { title: 'Armbar from closed guard', lesson: 'Armbar from guard' };
 }
 
 export function seededNoteItem(now = 1_731_478_400_000): DistributionItem {
@@ -80,58 +73,29 @@ export function seededNoteItem(now = 1_731_478_400_000): DistributionItem {
     dateKey: '2026-11-12',
     lesson: '',
     targets: [MICAH],
-    status: 'sent-direct',
-    approvalRequired: false,
-    decidedAt: now,
+    status: 'pending',
+    approvalRequired: true,
   };
 }
 
 export function seededQcLog(): QcRecord[] {
-  const pending = seededPendingItem();
   const note = seededNoteItem();
   return [
-    {
-      id: 'qc.preview3',
-      itemId: pending.id,
-      at: pending.sentAt,
-      action: 'queued',
-      actor: 'Instructor Guise',
-      summary: 'Review "Armbar from closed guard" queued · Alex Rivera, Micah Bates · 1 kid-card',
-    },
     {
       id: 'qc.preview2',
       itemId: note.id,
       at: note.sentAt,
-      action: 'sent-direct',
+      action: 'queued',
       actor: 'Instructor Guise',
-      summary: 'Note "Work the hip escape" sent-direct · Micah Bates · 1 kid-card',
+      summary: 'Note "Work the hip escape" queued · Micah Bates · 1 kid-card',
     },
     {
       id: 'qc.preview1',
-      itemId: 'review.older',
+      itemId: 'note.older',
       at: note.sentAt - 86_400_000,
       action: 'approved',
       actor: 'Owner',
-      summary: 'Review "Guard retention drill" approved · Alex Rivera',
+      summary: 'Note "Ask about the tournament waiver" approved · Alex Rivera',
     },
   ];
-}
-
-export function seededMicahPacket(): ReviewVideoPacket {
-  const item = seededPendingItem();
-  return {
-    kind: 'coach-review-video-update',
-    version: 1,
-    id: `${item.id}.stu-micah`,
-    itemId: item.id,
-    studentId: 'stu-micah',
-    title: item.title,
-    note: item.note,
-    lesson: item.lesson,
-    dateKey: item.dateKey,
-    media: item.media!,
-    approval: 'approved',
-    kidCard: true,
-    issuedAt: item.sentAt,
-  };
 }
