@@ -9,6 +9,12 @@ import { CLOUD_MEDIA_EVENT, readCloudBearer, type CloudStatusBody } from '../lib
 let cached: boolean | null = null;
 let inflight: Promise<boolean> | null = null;
 
+/** Test helper: forget the last status so the next mount refetches. */
+export function resetAdvantageCloudOnCacheForTests() {
+  cached = null;
+  inflight = null;
+}
+
 export async function fetchAdvantageCloudOn(fetcher: typeof fetch = fetch, bearer = readCloudBearer()): Promise<boolean> {
   if (!bearer) return false;
   try {

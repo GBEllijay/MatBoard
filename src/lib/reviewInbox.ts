@@ -62,8 +62,12 @@ function clean(value: unknown, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
-export function reviewPlanLabel(plan: Pick<TrainingNotesPlan, 'classDesignation' | 'classTime'>): string {
-  return [plan.classDesignation?.trim() ?? '', plan.classTime?.trim() ?? ''].filter(Boolean).join(' ');
+export function reviewPlanLabel(
+  plan: Pick<TrainingNotesPlan, 'classDesignation' | 'lessonTitle' | 'classTime'>,
+): string {
+  return [plan.classDesignation?.trim() ?? '', plan.lessonTitle?.trim() ?? '', plan.classTime?.trim() ?? '']
+    .filter(Boolean)
+    .join(' ');
 }
 
 export function submissionMatchesRevision(

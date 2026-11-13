@@ -1395,12 +1395,16 @@ button.mode-card__hit {
 }
 
 .plan-card__review-link {
-  display: flex;
-  align-items: center;
+  display: block;
   min-height: 44px;
+  padding: 0.35rem 0;
   color: var(--ink);
   font-weight: 700;
   text-decoration: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  hyphens: manual;
 }
 
 .review-inbox {
@@ -1464,7 +1468,38 @@ button.mode-card__hit {
 }
 
 .academy-menu-entry {
-  margin: 1.25rem 0 0;
+  margin: 0.7rem 0 0;
+}
+
+.instructor-hub > .academy-menu-entry + .suite__note {
+  margin-top: 0.85rem;
+}
+
+.drive-connect-collapse {
+  margin: 0.35rem 0 0;
+}
+
+.drive-connect-collapse__btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0.35rem 0.15rem;
+  border: 0;
+  background: transparent;
+  color: var(--gold-2);
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.drive-connect-collapse__btn:focus-visible {
+  outline: 2px solid var(--logo-blue);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .academy-menu-entry .btn {

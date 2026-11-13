@@ -6,6 +6,14 @@ import {
   DISTRIBUTE_LEAD,
   LESSON_DRIVE_QUEUE_KEY,
   OWNER_DRIVE_BODY,
+  OWNER_DRIVE_QUEUE,
+  OWNER_DRIVE_TITLE,
+  OWNER_CLOUD_BODY,
+  OWNER_CLOUD_QUEUE,
+  OWNER_CLOUD_TITLE,
+  ownerDriveBody,
+  ownerDriveQueueNote,
+  ownerDriveTitle,
   assignDriveFileId,
   commitDayPackage,
   drivePackageNotice,
@@ -122,13 +130,13 @@ test('Drive history keeps one draft per coach per day and drops file bytes', () 
   assert.equal(saved.find((row) => row.kind === 'distribution')?.status, 'saved-to-drive');
   assert.equal(saved.find((row) => row.kind === 'distribution')?.driveFileId, 'drive-plan-1');
   assert.equal(JSON.stringify(queue).includes('blob'), false);
-  assert.match(lessonRevisionLabel(queue[0]), /Alex · 2026-09-27 · Draft/);
+  assert.match(lessonRevisionLabel(queue[0]), /Alex · 2026-09-27 · Waiting for review/);
   assert.equal(withBlob.lessonTitle, '');
   const titled = lessonPlanForDrive({ ...plan, lessonTitle: 'Guard passing' });
   assert.equal(titled.lessonTitle, 'Guard passing');
   assert.match(
     lessonRevisionLabel({ ...queue[0], plan: titled }),
-    /Alex · Guard passing · 2026-09-27 · Draft/,
+    /Alex · Guard passing · 2026-09-27 · Waiting for review/,
   );
   assert.match(OWNER_DRIVE_BODY, /training-videos folder/);
   assert.match(OWNER_DRIVE_BODY, /offline play/);
@@ -260,7 +268,7 @@ test('two classes on one day stay separate drafts and keep designation and time'
   assert.equal(queue.find((row) => row.plan.id === second.id)?.plan.classDesignation, 'GB2');
   const gb1 = queue.find((row) => row.plan.id === first.id);
   assert.ok(gb1);
-  assert.match(lessonRevisionLabel(gb1), /Justin · GB1 5:00 PM · 2026-09-27 · Draft/);
+  assert.match(lessonRevisionLabel(gb1), /Justin · GB1 5:00 PM · 2026-09-27 · Waiting for review/);
 
   scheduleLessonDriveDraft({
     proSuite: true,
@@ -462,4 +470,41 @@ test('day package uploads video bytes to Drive and still saves lesson text when 
   assert.equal(stamped.slots.find((slot) => slot.slotId === 'tech-1')?.clipId, 'clip-1');
   const pending = pendingTrainingVideos(mediaWithPlanDriveIds(media, stamped), clips);
   assert.deepEqual(pending, []);
+});
+
+test('a hyphenated class name stays in the Sunday review label in full', () => {
+  const className = 'Professor Justin Geis - Tiny Champions Week 11, Class A';
+  const plan = emptyPlan();
+  plan.coachName = 'Professor Justin Geis';
+  plan.classDesignation = className;
+  const label = lessonRevisionLabel({
+    revisionId: 'draft:2026-11-09:professor justin geis:tiny-week-11-a',
+    dateKey: '2026-11-09',
+    coachName: 'Professor Justin Geis',
+    savedAt: Date.parse('2026-11-09T16:00:00.000Z'),
+    kind: 'draft',
+    driveFileId: null,
+    status: 'waiting-for-drive',
+    plan: lessonPlanForDrive(plan),
+    media: [],
+  });
+  assert.match(label, /Tiny Champions Week 11, Class A/);
+  assert.equal(label.includes(className), true);
+  assert.equal(label.split(' - ')[0].trim() === 'Professor Justin Geis' && !label.includes('Tiny Champions'), false);
+  assert.match(label, /2026-11-09/);
+  assert.match(label, /Waiting for review/);
+});
+
+test('Cloud gyms get short Sunday review copy; other gyms keep the Drive wording', () => {
+  assert.equal(ownerDriveTitle(false), OWNER_DRIVE_TITLE);
+  assert.equal(ownerDriveBody(false), OWNER_DRIVE_BODY);
+  assert.equal(ownerDriveQueueNote(false), OWNER_DRIVE_QUEUE);
+  assert.match(OWNER_DRIVE_QUEUE, /Drive file ids/);
+  assert.equal(ownerDriveTitle(true), OWNER_CLOUD_TITLE);
+  assert.equal(ownerDriveBody(true), OWNER_CLOUD_BODY);
+  assert.equal(ownerDriveQueueNote(true), OWNER_CLOUD_QUEUE);
+  assert.equal(OWNER_CLOUD_QUEUE, 'Lesson plans and videos save to Advantage Cloud for this gym.');
+  assert.doesNotMatch(OWNER_CLOUD_BODY, /Google Drive|Drive file ids|does not store the video files/);
+  assert.doesNotMatch(OWNER_CLOUD_QUEUE, /Google Drive|Drive file ids/);
+  assert.match(OWNER_CLOUD_BODY, /approve, request changes, or reject/);
 });

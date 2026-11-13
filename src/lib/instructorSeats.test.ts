@@ -818,7 +818,7 @@ test('seat chrome stays off the gym TV and purchase prompts follow the live seat
   assert.match(css, /\.home p\.invite-seat-cap__count/);
   assert.match(css, /\.home p\.invite-cap-note/);
   assert.match(css, /\.home p\.binder-list__seats/);
-  assert.match(unlimited, /<DriveConnectCard \/>/);
+  assert.match(unlimited, /<DriveConnectCard cloudOptionalCollapse \/>/);
   assert.doesNotMatch(unlimited, /seat \? null : <DriveConnectCard/);
 });
 

@@ -65,6 +65,24 @@ export const OWNER_DRIVE_BODY =
 export const OWNER_DRIVE_QUEUE =
   'These rows are lesson text and Drive file ids on this phone. When Google Drive is connected, the lesson text and video files are in that folder. Advantage does not store the video files.';
 
+/** Instructor Edition Sunday review card when the gym already has Advantage Cloud. */
+export const OWNER_CLOUD_TITLE = 'Class plans';
+export const OWNER_CLOUD_BODY =
+  'These rows are lesson drafts on this phone. Tap a class to open it, then approve, request changes, or reject.';
+export const OWNER_CLOUD_QUEUE = 'Lesson plans and videos save to Advantage Cloud for this gym.';
+
+export function ownerDriveTitle(cloudOn: boolean): string {
+  return cloudOn ? OWNER_CLOUD_TITLE : OWNER_DRIVE_TITLE;
+}
+
+export function ownerDriveBody(cloudOn: boolean): string {
+  return cloudOn ? OWNER_CLOUD_BODY : OWNER_DRIVE_BODY;
+}
+
+export function ownerDriveQueueNote(cloudOn: boolean): string {
+  return cloudOn ? OWNER_CLOUD_QUEUE : OWNER_DRIVE_QUEUE;
+}
+
 export type LessonMediaRef = {
   section: 'warmup' | 'technique' | 'cooldown';
   /** Zero-based technique ordinal. Null for Warm-up and Cool down. */
@@ -437,8 +455,9 @@ export function lessonRevisionLabel(revision: LessonRevision): string {
   const designation = revision.plan.classDesignation?.trim() ?? '';
   const title = revision.plan.lessonTitle?.trim() ?? '';
   const time = revision.plan.classTime?.trim() ?? '';
+  // Keep hyphenated class names intact. Do not split on "-" or " - ".
   const klass = [designation, title, time].filter(Boolean).join(' ');
-  const what = revision.kind === 'distribution' ? 'Shared for distribution' : 'Draft';
+  const what = revision.kind === 'distribution' ? 'Shared for distribution' : 'Waiting for review';
   return klass
     ? `${who} · ${klass} · ${revision.dateKey} · ${what}`
     : `${who} · ${revision.dateKey} · ${what}`;
