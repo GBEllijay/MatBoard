@@ -62,11 +62,11 @@ test('installing the app asks for persistent storage again on this visit', () =>
   assert.deepEqual(calls, [undefined, true]);
 });
 
-test('app routes use the cached shell; api, paid, card, and half-off do not', () => {
-  for (const path of ['/', '/match', '/training', '/tournament', '/suite', '/coach-unlimited', '/products', '/pro']) {
+test('app routes use the cached shell; api, paid, and half-off do not', () => {
+  for (const path of ['/', '/card', '/card/', '/card.html', '/match', '/training', '/tournament', '/suite', '/coach-unlimited', '/products', '/pro']) {
     assert.equal(appNavigationUsesShell(path), true, path);
   }
-  for (const path of ['/api', '/api/config', '/paid', '/paid/pro.js', '/card', '/card.html', '/card/', '/half-off', '/half-off.html', '/half-off/']) {
+  for (const path of ['/api', '/api/config', '/paid', '/paid/pro.js', '/half-off', '/half-off.html', '/half-off/']) {
     assert.equal(appNavigationUsesShell(path), false, path);
   }
 });

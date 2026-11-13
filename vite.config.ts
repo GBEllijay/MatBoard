@@ -2,7 +2,6 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { createAppShellHandler, createAppShellNavigation } from './src/server/appShellSw.ts';
-import { cardPagePlugin } from './src/server/cardPagePlugin.ts';
 import { halfOffPagePlugin } from './src/server/halfOffPagePlugin.ts';
 import { paidChunkPlugin } from './src/server/paidChunkPlugin.ts';
 import { ONETIME_FAIL_OPEN_DAYS, ONETIME_TOKEN_DAYS } from './src/server/paywallDecisions.ts';
@@ -47,7 +46,6 @@ export default defineConfig({
   plugins: [
     matboardBuildStamp(),
     whitePurchaseApiPlugin(),
-    cardPagePlugin(),
     halfOffPagePlugin(),
     react(),
     paidChunkPlugin(),
@@ -97,7 +95,7 @@ export default defineConfig({
         // Navigations still go to the network first (a fresh deploy shows up
         // right away online). Only when the network fails or takes longer than
         // 4s does the worker answer with the precached index.html for that
-        // app route. /api, /paid, /card and /half-off never get the app shell.
+        // app route. /api, /paid and /half-off never get the app shell.
         globPatterns: ['index.html', '**/*.{js,css,ico,png,jpg,jpeg,svg,woff,woff2,ttf,otf,webp,mp3,wav,ogg,webmanifest}'],
         globIgnores: [
           '**/branding/**',
@@ -106,9 +104,7 @@ export default defineConfig({
           'sw.js',
           'workbox-*.js',
           '**/version.json',
-          '**/card.html',
           '**/card-logo.*',
-          '**/card-qr.*',
           '**/half-off.html',
           '**/half-off/**',
           // Token-checked screens. Precaching them would ship the code with no grant check.
@@ -123,7 +119,7 @@ export default defineConfig({
         // Do not map "/" onto the precached index.html. That match is cache-first,
         // so the home screen would ignore the network until the next worker.
         directoryIndex: null,
-        navigateFallbackDenylist: [/^\/api\//, /^\/paid\//, /^\/card\/?(?:$|\?)/, /^\/half-off\/?(?:$|\?)/],
+        navigateFallbackDenylist: [/^\/api\//, /^\/paid\//, /^\/half-off\/?(?:$|\?)/],
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
@@ -155,13 +151,13 @@ export default defineConfig({
             // precached index.html of this deploy, which always matches the
             // precached JS/CSS. No per-URL HTML copy is kept, so an old page can
             // never point at chunks a newer deploy has already cleaned up.
-            // /api and /paid are excluded. /card and /half-off are separate pages.
+            // /api and /paid are excluded. /half-off is a separate page.
             urlPattern: appShellNavigation,
             handler: appShellHandler,
           },
           {
-            // /card and /half-off are their own small pages. Last good copy offline.
-            urlPattern: ({ request, url }) => request.mode === 'navigate' && /^\/(?:card|half-off)(?:\/|\.html)?$/.test(url.pathname),
+            // /half-off is its own small page. Last good copy offline.
+            urlPattern: ({ request, url }) => request.mode === 'navigate' && /^\/half-off(?:\/|\.html)?$/.test(url.pathname),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'pages',

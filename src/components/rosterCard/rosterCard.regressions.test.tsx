@@ -64,6 +64,7 @@ const { rosterIndexTopPx } = await import('../../lib/rosterIndex.ts');
 const { blankStudentReport, saveStudentReport } = await import('../../lib/studentEdition.ts');
 const { STUDENT_NO_PHOTOS_KEY } = await import('../../lib/studentPhotoFlag.ts');
 const { saveStudentDriveLink } = await import('../../lib/academyPathway.ts');
+const { readStudentGymLogo, writeStudentGymLogo } = await import('../../lib/studentGymMark.ts');
 type Student = import('../../lib/rosterStore.ts').Student;
 
 type Mounted = { root: Root; host: HTMLElement };
@@ -273,6 +274,35 @@ test('My profile: Save profile is the last control and stays on the editable car
   click(buttons('Close preview')[0]);
   assert.equal(document.querySelector('[data-testid="student-card-preview"]'), null, 'dismissed');
   assert.ok(document.querySelector('[data-testid="profile-card-face"]'), 'back on the editable card');
+  unmount(m);
+});
+
+test('My profile: the student card shows name and rank only, never a logo (saved logo data stays)', () => {
+  seedStudent();
+  const LOGO = 'data:image/png;base64,TE9HTw==';
+  writeStudentGymLogo(LOGO, localStorage);
+  const m = mount(<ProfilePage />, '/student/profile?student=1');
+  const face = document.querySelector('[data-testid="profile-card-face"]') as HTMLElement;
+  assert.ok(face, 'card face');
+  assert.equal(face.querySelector('.profile-face__crest'), null, 'no logo crest on the card face');
+  assert.equal(face.querySelector(`img[src="${LOGO}"]`), null, 'saved logo is not drawn on the card');
+  assert.equal(face.querySelectorAll('img').length, 0, 'no images on the face without a photo');
+  assert.doesNotMatch(face.textContent ?? '', /Add logo|\bLogo\b/, 'no logo hint on the card');
+  assert.equal(face.querySelector('button.profile-face__name')?.textContent?.trim(), 'Ana Lima', 'name shown');
+  assert.ok((face.querySelector('.profile-face__belt-text')?.textContent ?? '').trim(), 'rank shown');
+  assert.equal(document.querySelector('.profile-corner img[alt="Gym logo"]'), null, 'no logo in the header corner');
+  assert.equal(document.querySelector(`main img[src="${LOGO}"]`), null, 'logo not drawn anywhere on My profile');
+  assert.equal(readStudentGymLogo(localStorage), LOGO, 'saved logo data is kept');
+  assert.ok(document.querySelector('section[aria-label="Gym logo"]'), 'logo control stays for reports and backups');
+  submitProfile();
+  click(buttons('Preview my card')[0]);
+  const preview = document.querySelector('[data-testid="student-card-preview"]') as HTMLElement;
+  assert.ok(preview, 'preview open');
+  assert.equal(preview.querySelector('.clipboard__crest img'), null, 'no logo or Advantage mark on the student card preview');
+  assert.equal(preview.querySelector(`img[src="${LOGO}"]`), null);
+  assert.match(preview.querySelector('.clipboard__crest')?.textContent ?? '', /Advantage/, 'gym name still in the crest');
+  assert.match(preview.textContent ?? '', /Ana Lima/, 'name on the preview');
+  click(buttons('Close preview')[0]);
   unmount(m);
 });
 

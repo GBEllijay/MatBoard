@@ -56,7 +56,7 @@ export type ClipboardCardProps = {
   name: string;
   photo: CardPhotoView;
   gymName: string;
-  /** Gym logo data URL, or null for the Advantage mark. */
+  /** Gym logo data URL, or null for the Advantage mark. Coach mode only: the student card shows no logo. */
   gymLogo: string | null;
   belt: WornBeltPreview;
   onEditBelt?: () => void;
@@ -167,7 +167,9 @@ export function CoachClipboardCard(props: ClipboardCardProps) {
               ) : null}
             </div>
             <div className="clipboard__crest">
-              <img src={props.gymLogo || ADVANTAGE_MARK_SRC} alt={props.gymLogo ? `${props.gymName || 'Gym'} logo` : 'Advantage'} />
+              {props.mode === 'student' ? null : (
+                <img src={props.gymLogo || ADVANTAGE_MARK_SRC} alt={props.gymLogo ? `${props.gymName || 'Gym'} logo` : 'Advantage'} />
+              )}
               <small>{props.gymName || 'Gym not set'}</small>
             </div>
             <div className="clipboard__brow">

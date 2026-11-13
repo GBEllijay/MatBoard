@@ -9,19 +9,16 @@ import {
   CLEAR_CONFIRM_PHRASE,
   CLEAR_STUDENT_DATA_ITEMS,
   CLEAR_STUDENT_DEVICE_NOTE,
-  applyBackupToMemory,
   clearStudentMemory,
-  filmBlobsFromBackup,
-  parseStudentBackup,
   readBackupIncludeVideos,
   studentExportBusyLabel,
   writeBackupIncludeVideos,
-  type StudentBackupFile,
   type StudentExportKind,
 } from '../../lib/studentBackup';
 import { runStudentEditionExport } from '../../lib/studentBackupExport';
+import { applyStudentRestore, readRestoreChoice, type StudentRestoreChoice } from '../../lib/packets/student';
 import { clearFilmBlobs, putFilmBlob } from '../../lib/studentFilm';
-import { backupRestoreProfileId } from '../../lib/studentProfiles';
+import { backupRestoreProfileId, readStudentProfiles } from '../../lib/studentProfiles';
 import { loadRankPictures } from '../../lib/rankPhotos';
 import { BACKUP_GROUP_LABEL, BACKUP_LINKS, CLEAR_STUDENT_LABEL } from '../../lib/studentHubMenu';
 import { backupStampLabel, readStudentBackupStamp } from '../../lib/studentBackupStamp';
@@ -29,6 +26,7 @@ import { UpdateToLatestButton } from '../../components/UpdateToLatestButton';
 import { useStudentPath } from './chrome';
 import { ExportChoices } from './ExportChoices';
 import { GroupFrame, MenuList, MenuRow } from './groupChrome';
+import { RestoreChoice } from './RestoreChoice';
 
 export function BackupMenu() {
   const to = useStudentPath();
@@ -37,13 +35,15 @@ export function BackupMenu() {
     writeBackupIncludeVideos(localStorage, included);
     setIncludeVideosState(included);
   };
+  const [includeAllProfiles, setIncludeAllProfiles] = useState(false);
+  const profileCount = readStudentProfiles(localStorage).profiles.length;
   const [status, setStatus] = useState('');
   const [savedNote, setSavedNote] = useState('');
   const [savedPulse, setSavedPulse] = useState(0);
   const [error, setError] = useState('');
   const [busyKind, setBusyKind] = useState<StudentExportKind | null>(null);
   const [restoreBusy, setRestoreBusy] = useState(false);
-  const [pending, setPending] = useState<StudentBackupFile | null>(null);
+  const [pending, setPending] = useState<StudentRestoreChoice | null>(null);
   const [stamp, setStamp] = useState(() => backupStampLabel(readStudentBackupStamp(localStorage)));
   const locked = busyKind !== null || restoreBusy;
 
@@ -52,26 +52,36 @@ export function BackupMenu() {
     setError('');
     setStatus('');
     setSavedNote('');
-    const result = await runStudentEditionExport(kind, { includeVideos: videos });
+    const result = await runStudentEditionExport(kind, {
+      includeVideos: videos,
+      scope: includeAllProfiles ? 'all' : 'active',
+    });
     if (result.ok) {
-      if (kind === 'json') setStamp(backupStampLabel(readStudentBackupStamp(localStorage)));
+      if (kind === 'packet' || kind === 'json') setStamp(backupStampLabel(readStudentBackupStamp(localStorage)));
       setStatus(result.message);
     } else setError(result.message);
     setBusyKind(null);
   };
 
   const apply = async (mode: 'merge' | 'replace') => {
-    if (!pending) return;
+    if (!pending?.restorable) return;
     setRestoreBusy(true);
     setError('');
     try {
-      const profileId = backupRestoreProfileId(localStorage, pending);
-      if (mode === 'replace') await clearFilmBlobs(profileId).catch(() => undefined);
-      const result = applyBackupToMemory(localStorage, pending, mode, {
+      if (mode === 'replace') {
+        const ids =
+          pending.source === 'legacy'
+            ? [backupRestoreProfileId(localStorage, pending.file)]
+            : pending.bundles.map((bundle) => bundle.profile.id);
+        for (const profileId of ids) await clearFilmBlobs(profileId).catch(() => undefined);
+      }
+      const result = applyStudentRestore(localStorage, pending, mode, {
         rank: loadRankPictures(),
         bracket: loadBracketPhotos(),
       });
-      for (const item of filmBlobsFromBackup(pending)) await putFilmBlob(item.id, item.blob, profileId);
+      for (const group of result.films) {
+        for (const item of group.blobs) await putFilmBlob(item.id, item.blob, group.profileId);
+      }
       setStatus('');
       setSavedNote(result.note);
       setSavedPulse((pulse) => pulse + 1);
@@ -94,6 +104,9 @@ export function BackupMenu() {
           variant="arena"
           includeVideos={includeVideos}
           onIncludeVideos={setIncludeVideos}
+          includeAllProfiles={includeAllProfiles}
+          onIncludeAllProfiles={setIncludeAllProfiles}
+          profileCount={profileCount}
           locked={locked}
           busyKind={busyKind}
           stamp={stamp}
@@ -112,43 +125,43 @@ export function BackupMenu() {
         ) : null}
         <h2 className="s-kicker">Restore from backup</h2>
         {savedNote ? <SaveConfirm message={savedNote} token={savedPulse} /> : null}
-        <p className="student-quiet">Use the Student Edition backup from Back up my journal. A PDF or a spreadsheet is not a backup.</p>
+        <p className="student-quiet">
+          Use the student packet from Download student packet. An older JSON backup still restores here. A PDF or a spreadsheet is not a backup.
+        </p>
         <input
           type="file"
-          accept="application/json,.json"
+          accept=".advantage,application/json,.json"
           aria-label="Restore from backup"
           onChange={(event) => {
             const file = event.target.files?.[0];
             event.target.value = '';
             if (!file) return;
-            void file.text().then((text) => {
-              const parsed = parseStudentBackup(text);
+            void file.text().then(async (text) => {
+              const parsed = await readRestoreChoice(text);
               if (!parsed.ok) {
                 setError(parsed.error);
                 setPending(null);
                 setSavedNote('');
                 return;
               }
-              setPending(parsed.file);
+              setPending(parsed.choice);
               setError('');
               setSavedNote('');
-              setStatus('Choose merge or replace. Merge keeps records that are only on this phone.');
+              setStatus(parsed.choice.restorable ? 'Choose merge or replace. Merge keeps records that are only on this phone.' : '');
             });
           }}
         />
         {pending ? (
-          <div className="s-backup__actions" role="group" aria-label="Restore choices">
-            <p>{BACKUP_REPLACE_WARN}</p>
-            <button type="button" className="ink-btn" disabled={locked} onClick={() => void apply('merge')}>
-              Merge with this phone
-            </button>
-            <button type="button" className="ink-btn" disabled={locked} onClick={() => void apply('replace')}>
-              Replace this phone
-            </button>
-            <button type="button" className="ink-btn" onClick={() => setPending(null)}>
-              Cancel restore
-            </button>
-          </div>
+          <RestoreChoice
+            className="s-backup__actions"
+            lines={pending.preview.lines}
+            restorable={pending.restorable}
+            locked={locked}
+            replaceWarning={BACKUP_REPLACE_WARN}
+            onMerge={() => void apply('merge')}
+            onReplace={() => void apply('replace')}
+            onCancel={() => setPending(null)}
+          />
         ) : null}
       </section>
       <MenuList label={BACKUP_GROUP_LABEL}>
@@ -179,7 +192,7 @@ export function ClearStudentMenu() {
   const backUpFirst = async () => {
     setBackupBusy(true);
     setError('');
-    const result = await runStudentEditionExport('json', { includeVideos: false });
+    const result = await runStudentEditionExport('packet', { includeVideos: false });
     if (result.ok) setStatus(result.message);
     else {
       setError(result.message);
@@ -199,9 +212,9 @@ export function ClearStudentMenu() {
         ) : null}
         {step === 1 ? (
           <div className="s-backup__actions" role="group" aria-label="Back up before clear">
-            <p>{BACKUP_BEFORE_CLEAR} Back up first downloads one JSON file, then decide.</p>
+            <p>{BACKUP_BEFORE_CLEAR} Back up first downloads one student packet, then decide.</p>
             <button type="button" className="s-cta" disabled={backupBusy} onClick={() => void backUpFirst()}>
-              {backupBusy ? studentExportBusyLabel('json') : BACK_UP_FIRST_LABEL}
+              {backupBusy ? studentExportBusyLabel('packet') : BACK_UP_FIRST_LABEL}
             </button>
             <button type="button" className="ink-btn" onClick={() => setStep(2)}>
               Continue without a backup

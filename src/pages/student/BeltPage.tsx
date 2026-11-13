@@ -176,6 +176,7 @@ export function BeltPage() {
           </div>
           <section className="belt-benchmarks" aria-label={PRACTICAL_BENCHMARKS_HEADING}>
             <h2>{PRACTICAL_BENCHMARKS_HEADING}</h2>
+            <BenchmarkDisclaimer />
             <p className="student-quiet">{PRACTICAL_BENCHMARKS_LINE}</p>
             {timeBased ? <p>{TIME_BASED_PROGRESS}</p> : null}
             {!timeBased && visible.length ? (
@@ -277,7 +278,6 @@ export function BeltPage() {
                 />
               ))
             : null}
-          {adultPath && !staged && visible.length ? <BenchmarkDisclaimer /> : null}
           {adultPath && !timeBased ? (
             <RestoreBenchmarks onRestore={() => run(restoreStarterBenchmarks(report, belt))} />
           ) : null}
@@ -393,6 +393,7 @@ function KidsBenchmarks({
     <section className="belt-lane" aria-label="Kids belts">
       <section className="belt-benchmarks" aria-label={PRACTICAL_BENCHMARKS_HEADING}>
         <h2>{PRACTICAL_BENCHMARKS_HEADING}</h2>
+        <BenchmarkDisclaimer />
         <p className="student-quiet">{PRACTICAL_BENCHMARKS_LINE}</p>
         {rows.length === 0 ? <p>{NO_PRACTICAL_BENCHMARKS}</p> : null}
         {rows.map((row) => (
@@ -407,7 +408,6 @@ function KidsBenchmarks({
           </button>
         )}
         <p className="student-quiet">{INSTRUCTOR_FINAL_SAY}</p>
-        <BenchmarkDisclaimer />
       </section>
     </section>
   );
@@ -528,20 +528,17 @@ function OpenGoals({
 }
 
 function BenchmarkDisclaimer() {
-  const [open, setOpen] = useState(false);
   const to = useStudentPath();
+  const body = BENCHMARK_DISCLAIMER_MEDIUM.startsWith(BENCHMARK_DISCLAIMER_SHORT)
+    ? BENCHMARK_DISCLAIMER_MEDIUM.slice(BENCHMARK_DISCLAIMER_SHORT.length).trim()
+    : BENCHMARK_DISCLAIMER_MEDIUM;
   return (
-    <div className="belt-disclaimer">
-      <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-        {BENCHMARK_DISCLAIMER_SHORT}
-      </button>
-      {open ? (
-        <p>
-          {BENCHMARK_DISCLAIMER_MEDIUM}{' '}
-          <Link to={to('/terms#practical-benchmarks')}>Terms of Service</Link>
-        </p>
-      ) : null}
-    </div>
+    <aside className="belt-disclaimer" role="note" aria-label="Benchmark guidelines">
+      <p>
+        <strong className="belt-disclaimer__lead">{BENCHMARK_DISCLAIMER_SHORT}</strong> {body}{' '}
+        <Link to={to('/terms#practical-benchmarks')}>Terms of Service</Link>
+      </p>
+    </aside>
   );
 }
 
@@ -607,7 +604,6 @@ function BenchmarkGroupSection({
           onCriterion={(id, met, date, note) => run(setCriterionMark(report, id, met, date, note))}
         />
       ))}
-      <BenchmarkDisclaimer />
     </section>
   );
 }
@@ -643,6 +639,7 @@ function OpenedBeltBenchmarks({
     <section className="belt-opened" aria-label={`${label} belt benchmarks`}>
       <h2>{label} belt</h2>
       <p className="student-quiet">Opened from a link. Your current belt stays {BELT_LABELS[worn]}.</p>
+      <BenchmarkDisclaimer />
       <Link className="ink-btn" to={to('/student/rubric')}>
         Back to {BELT_LABELS[worn]} belt
       </Link>
