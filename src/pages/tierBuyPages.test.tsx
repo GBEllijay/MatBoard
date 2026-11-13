@@ -110,7 +110,7 @@ test('/editions/student: blue belt, $19.99, no checkout unless entitled, demo, r
   assert.ok(m.host.querySelector('form.alpha-code__form input[name="code"]'));
   assert.ok(m.host.querySelector('section.buy__checkout a[href^="mailto:"]'));
   assert.ok(m.host.querySelector('a[href="/student?student=1"]'));
-  assert.ok(m.host.querySelector('form.buy__restore'));
+  assert.ok(m.host.querySelector('.buy__restore'));
   assert.deepEqual(higher(m.host), ['media', 'instructor', 'pro']);
   m.done();
 });
@@ -128,7 +128,7 @@ test('/editions/instructor: brown belt, $49.99, optional Cloud, alpha line, only
   assert.ok(m.host.querySelector('form.alpha-code__form input[name="code"]'));
   assert.ok(m.host.querySelector('a[href^="mailto:advantageappllc@gmail.com"]'));
   assert.match(m.host.textContent ?? '', /Requires gym setup with a third-party drive/);
-  assert.ok(m.host.querySelector('form.buy__restore'));
+  assert.ok(m.host.querySelector('.buy__restore'));
   assert.deepEqual(higher(m.host), ['pro']);
   m.done();
 });
@@ -145,7 +145,7 @@ test('/editions/pro: black belt, $99.99 one-time, optional Cloud checkbox, alpha
   assert.ok(m.host.querySelector('input[name="advantageCloud"]'));
   assert.ok(m.host.querySelector('form.alpha-code__form input[name="code"]'));
   assert.ok(m.host.querySelector('a[href^="mailto:advantageappllc@gmail.com"]'));
-  assert.ok(m.host.querySelector('form.buy__restore'));
+  assert.ok(m.host.querySelector('.buy__restore'));
   assert.equal(m.host.querySelector('[data-higher-tiers]'), null);
   m.done();
 });
@@ -247,5 +247,28 @@ test('/buy/coach displayed price equals the Instructor price coach Checkout char
   assert.ok(header.includes(shown), header);
   const button = [...m.host.querySelectorAll('button')].find((b) => /Continue to checkout/.test(b.textContent ?? ''));
   assert.ok(button?.textContent?.includes(shown));
+  m.done();
+});
+
+test('tier restore card sends people to /restore and can carry the typed email', () => {
+  const m = mount('/editions/student');
+  const restore = m.host.querySelector('.buy__restore');
+  assert.ok(restore);
+  assert.equal(restore?.tagName, 'SECTION');
+  assert.equal(restore?.querySelector('form'), null);
+  const link = restore?.querySelector('a[href^="/restore"]');
+  assert.equal(link?.getAttribute('href'), '/restore');
+  assert.match(link?.textContent ?? '', /Restore purchase/);
+  const input = restore?.querySelector('input[name="email"]') as HTMLInputElement;
+  assert.ok(input);
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value')?.set;
+    setter?.call(input, 'marty@gym.test');
+    input.dispatchEvent(new view.Event('input', { bubbles: true }));
+    const key = Object.keys(input).find((name) => name.startsWith('__reactProps'));
+    const props = key ? (input as unknown as Record<string, { onChange?: (event: { target: HTMLInputElement }) => void }>)[key] : null;
+    props?.onChange?.({ target: input });
+  });
+  assert.equal(restore?.querySelector('a[href^="/restore"]')?.getAttribute('href'), '/restore?email=marty%40gym.test');
   m.done();
 });

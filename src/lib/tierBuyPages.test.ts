@@ -185,3 +185,9 @@ test('Coach hub buy link opens the Instructor buy page; checkout product key sta
   const checkout = readFileSync(new URL('./checkoutProducts.ts', import.meta.url), 'utf8');
   assert.match(checkout, /coach: '\/buy\/coach'/);
 });
+
+test('TierRestoreCard links to /restore and does not post a restore request', () => {
+  assert.match(parts, /restoreHref\(email\)/);
+  assert.doesNotMatch(parts, /restoreWhiteByEmail/);
+  assert.doesNotMatch(parts, /<form className="buy__card buy__restore"/);
+});
