@@ -162,11 +162,38 @@ export async function deliverRankUpdate(
   }
 }
 
+/** The head coach's call on one of this student's own profile photos. */
+export type PhotoDecision = { photoId: string; decision: 'approve' | 'decline'; decidedAt: number };
+
+const PHOTO_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
+
+export function readPhotoDecisions(value: unknown): PhotoDecision[] {
+  if (!Array.isArray(value)) return [];
+  const out: PhotoDecision[] = [];
+  for (const row of value) {
+    if (!row || typeof row !== 'object') continue;
+    const item = row as { photoId?: unknown; decision?: unknown; decidedAt?: unknown };
+    if (typeof item.photoId !== 'string' || !PHOTO_ID_RE.test(item.photoId)) continue;
+    if (item.decision !== 'approve' && item.decision !== 'decline') continue;
+    out.push({
+      photoId: item.photoId,
+      decision: item.decision,
+      decidedAt: typeof item.decidedAt === 'number' && Number.isFinite(item.decidedAt) ? item.decidedAt : 0,
+    });
+  }
+  return out;
+}
+
 export async function pullStudentInbox(
   pass: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<
-  | { ok: true; packets: unknown[]; fromInstructor: { name: string; path: string; dateKey: string }[] }
+  | {
+      ok: true;
+      packets: unknown[];
+      fromInstructor: { name: string; path: string; dateKey: string }[];
+      photoDecisions: PhotoDecision[];
+    }
   | { ok: false; reason: 'unbound' | 'denied' | 'offline' }
 > {
   const license = inboxPassLicense(pass);
@@ -180,7 +207,7 @@ export async function pullStudentInbox(
     if (response.status === 503) return { ok: false, reason: 'unbound' };
     if (response.status === 401 || response.status === 403) return { ok: false, reason: 'denied' };
     if (!response.ok) return { ok: false, reason: 'offline' };
-    const body = (await response.json()) as { packets?: unknown; fromInstructor?: unknown };
+    const body = (await response.json()) as { packets?: unknown; fromInstructor?: unknown; photoDecisions?: unknown };
     const fromInstructor = Array.isArray(body.fromInstructor)
       ? body.fromInstructor.filter((row): row is { name: string; path: string; dateKey: string } => {
           if (!row || typeof row !== 'object') return false;
@@ -188,7 +215,12 @@ export async function pullStudentInbox(
           return typeof file.name === 'string' && typeof file.path === 'string' && typeof file.dateKey === 'string';
         })
       : [];
-    return { ok: true, packets: Array.isArray(body.packets) ? body.packets : [], fromInstructor };
+    return {
+      ok: true,
+      packets: Array.isArray(body.packets) ? body.packets : [],
+      fromInstructor,
+      photoDecisions: readPhotoDecisions(body.photoDecisions),
+    };
   } catch {
     return { ok: false, reason: 'offline' };
   }
