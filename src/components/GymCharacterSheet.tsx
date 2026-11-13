@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CloudUsageMetric } from './AdvantageCloudHome';
+import { ImageRightsConfirm, useImageRightsConfirm } from './ImageRightsConfirm';
 import { useCurrentSeat } from './SeatSessionBar';
 import {
   academyInstructorsHref,
@@ -77,6 +78,7 @@ export function GymCharacterSheet() {
   const [editing, setEditing] = useState(false);
   const [logoNote, setLogoNote] = useState('');
   const nameRef = useRef<HTMLInputElement>(null);
+  const rights = useImageRightsConfirm();
   useEffect(() => {
     ensureGymBackfill();
     void syncGymEvents();
@@ -114,10 +116,12 @@ export function GymCharacterSheet() {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    void saveGymLogoFile(file).then(
-      () => setLogoNote('Logo saved on this device.'),
-      () => setLogoNote('That picture could not be saved.'),
-    );
+    rights.request(file, (chosen) => {
+      void saveGymLogoFile(chosen).then(
+        () => setLogoNote('Logo saved on this device.'),
+        () => setLogoNote('That picture could not be saved.'),
+      );
+    });
   };
 
   return (
@@ -324,6 +328,14 @@ export function GymCharacterSheet() {
           <CloudUsageMetric />
         </div>
       ) : null}
+      <ImageRightsConfirm
+        pending={rights.pending}
+        preview={rights.preview}
+        owned={rights.owned}
+        onOwnedChange={rights.setOwned}
+        onCancel={rights.cancel}
+        onUse={rights.confirm}
+      />
     </section>
   );
 }

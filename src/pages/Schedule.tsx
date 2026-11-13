@@ -14,6 +14,7 @@ import {
   type FullscreenRequestResult,
 } from '../lib/fullscreen';
 import { LESSON_COVER_HOME_HINT } from '../lib/lessonScreenCover';
+import { ImageRightsConfirm, useImageRightsConfirm } from '../components/ImageRightsConfirm';
 import { Sheet } from '../components/Sheet';
 import { useGymLogo, useGymName } from '../hooks/useGymBrand';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
@@ -655,6 +656,7 @@ function ScheduleEditor({
   const csvRef = useRef<HTMLInputElement>(null);
   const [csvNote, setCsvNote] = useState('');
   const [pendingImport, setPendingImport] = useState<ScheduleCsvImport | null>(null);
+  const rights = useImageRightsConfirm();
 
   const usedMatsAtTime = classesOnDay(schedule.classes, day)
     .filter((row) => row.time === time)
@@ -686,9 +688,7 @@ function ScheduleEditor({
     setSubtitle('');
   };
 
-  const onLogo = async (files: FileList | null) => {
-    const file = files?.[0];
-    if (!file) return;
+  const savePickedLogo = async (file: File) => {
     try {
       const blob = await readPickedImage(file);
       await setLogoBlob(blob);
@@ -696,6 +696,14 @@ function ScheduleEditor({
     } catch (error) {
       setPickerNote(quotaAddNote(error) ?? 'That file is not a picture this board can keep.');
     }
+  };
+
+  const onLogo = (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    rights.request(file, (chosen) => {
+      void savePickedLogo(chosen);
+    });
   };
 
   const onQrImage = async (files: FileList | null) => {
@@ -711,6 +719,7 @@ function ScheduleEditor({
   };
 
   return (
+    <>
     <Sheet open={open} title="Edit class schedule" onClose={onClose}>
       <p className="schedule-edit__copy">
         Fat-thumb fields for the gym TV board. Logo, QR, classes, and notices stay on this phone or
@@ -1127,6 +1136,15 @@ function ScheduleEditor({
         }}
       />
     </Sheet>
+    <ImageRightsConfirm
+      pending={rights.pending}
+      preview={rights.preview}
+      owned={rights.owned}
+      onOwnedChange={rights.setOwned}
+      onCancel={rights.cancel}
+      onUse={rights.confirm}
+    />
+    </>
   );
 }
 

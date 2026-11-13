@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { DeviceMediaInput } from '../../components/DeviceMediaInput';
+import { ImageRightsConfirm, useImageRightsConfirm } from '../../components/ImageRightsConfirm';
 import { SendPhotoToCoach } from '../../components/SendPhotoToCoach';
 import { useStudentNoPhotos } from '../../components/rosterCard/StudentNoPhotos';
 import { beltModeOf } from '../../lib/beltBook';
@@ -173,6 +174,9 @@ function FieldAlert({ id, message }: { id: string; message: string }) {
 export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof useProfileMedia>; kids?: boolean }) {
   const { portrait, logo, onPortrait, onLogo, removePortrait, removeLogo } = media;
   const noPhotos = useStudentNoPhotos();
+  const rights = useImageRightsConfirm();
+  const pickPortrait = rights.interceptFiles(onPortrait);
+  const pickLogo = rights.interceptFiles(onLogo);
   return (
     <div className="profile-identity">
       <section
@@ -269,30 +273,38 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
                 inputRef={media.portraitCapture}
                 accept={PHOTO_PICKER_ACCEPT}
                 capture="user"
-                onFiles={onPortrait}
+                onFiles={pickPortrait}
               />
               <DeviceMediaInput
                 id={PORTRAIT_LIBRARY}
                 inputRef={media.portraitLibrary}
                 accept={PHOTO_PICKER_ACCEPT}
-                onFiles={onPortrait}
+                onFiles={pickPortrait}
               />
               <DeviceMediaInput
                 id={LOGO_CAPTURE}
                 inputRef={media.logoCapture}
                 accept={PHOTO_PICKER_ACCEPT}
                 capture="environment"
-                onFiles={onLogo}
+                onFiles={pickLogo}
               />
               <DeviceMediaInput
                 id={LOGO_LIBRARY}
                 inputRef={media.logoLibrary}
                 accept={PHOTO_PICKER_ACCEPT}
-                onFiles={onLogo}
+                onFiles={pickLogo}
               />
             </>,
             document.body,
           )}
+      <ImageRightsConfirm
+        pending={rights.pending}
+        preview={rights.preview}
+        owned={rights.owned}
+        onOwnedChange={rights.setOwned}
+        onCancel={rights.cancel}
+        onUse={rights.confirm}
+      />
     </div>
   );
 }
