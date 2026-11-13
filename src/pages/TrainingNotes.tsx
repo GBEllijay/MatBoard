@@ -100,7 +100,7 @@ import {
 } from '../lib/advantageCloudMedia';
 import { decideLessonOpen, readLessonSource, writeLessonSource, type LessonPlanSource } from '../lib/lessonPlanCopies';
 import { LessonPlanSourceBar } from '../components/LessonPlanSourceBar';
-import { REVIEW_SUBMIT, REVIEW_SUBMITTED, REVIEW_VERSION_LEAD, listPlanVersions, submitForReview } from '../lib/reviewInbox';
+import { REVIEW_SUBMIT, reviewSubmitMessage, REVIEW_VERSION_LEAD, listPlanVersions, submitForReview } from '../lib/reviewInbox';
 import {
   isLiveSeat,
   menuCloudSharing,
@@ -1225,8 +1225,9 @@ export function TrainingNotesPage() {
                         plan,
                         photoId: photo?.id ?? '',
                         photoName: photo?.name ?? '',
+                        actor: isLiveSeat(seat) ? 'seat' : 'owner',
                       });
-                      setReviewNote(REVIEW_SUBMITTED);
+                      setReviewNote(reviewSubmitMessage(submitted.status));
                       void publishReviewToGym(submitted);
                     });
                   }}>
@@ -2115,8 +2116,9 @@ export function TrainingNotesPage() {
                     plan,
                     photoId: photo?.id ?? '',
                     photoName: photo?.name ?? '',
+                    actor: isLiveSeat(seat) ? 'seat' : 'owner',
                   });
-                  setReviewNote(REVIEW_SUBMITTED);
+                  setReviewNote(reviewSubmitMessage(submitted.status));
                   setHandoffChecked(false);
                   void publishReviewToGym(submitted).then((sent) => {
                     setHandoffNote(sent === 'saved' ? DRIVE_HANDOFF_SAVED : '');
