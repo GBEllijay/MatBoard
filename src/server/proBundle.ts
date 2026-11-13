@@ -13,6 +13,11 @@ import {
   FREE_STUDENT_LICENSES,
   HALF_OFF_MAX_USES,
   INSTRUCTOR_HALF_OFF_MAX_USES,
+  OWNER_ALPHA_LICENSE_ID,
+  OWNER_FREE_INSTRUCTOR_SEATS,
+  OWNER_FREE_STUDENT_LICENSES,
+  freeInstructorSeatsForLicense,
+  freeStudentLicensesForLicense,
   instructorSeatAllowance,
   studentLicenseAllowance,
 } from '../lib/proBundleMath.ts';
@@ -23,6 +28,11 @@ export {
   FREE_STUDENT_LICENSES,
   HALF_OFF_MAX_USES,
   INSTRUCTOR_HALF_OFF_MAX_USES,
+  OWNER_ALPHA_LICENSE_ID,
+  OWNER_FREE_INSTRUCTOR_SEATS,
+  OWNER_FREE_STUDENT_LICENSES,
+  freeInstructorSeatsForLicense,
+  freeStudentLicensesForLicense,
   instructorSeatAllowance,
   studentLicenseAllowance,
 };
@@ -148,5 +158,5 @@ export async function noteHalfOffRedemption(db: D1Database, promoId: string): Pr
 
 export async function instructorAllowanceForLicense(db: D1Database, licenseId: string): Promise<number> {
   const row = await readHalfOffCode(db, licenseId);
-  return instructorSeatAllowance(row?.instructorUses ?? 0);
+  return instructorSeatAllowance(row?.instructorUses ?? 0, licenseId);
 }

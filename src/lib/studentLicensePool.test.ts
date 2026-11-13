@@ -9,6 +9,7 @@ import {
   FREE_STUDENT_LICENSES,
   STUDENT_LICENSE_EMPTY,
   freeStudentLicenseTicker,
+  freeStudentLicensesForLicense,
   freeStudentLicensesLeft,
   halfOffPoolNote,
   isStudentLicenseCode,
@@ -21,6 +22,7 @@ import {
   STUDENT_JOIN_PATH,
   STUDENT_LICENSE_GIVE,
 } from './studentLicensePool.ts';
+import { OWNER_ALPHA_LICENSE_ID } from './proBundleMath.ts';
 
 const STUDENT = 'student-license-id-1';
 
@@ -37,6 +39,16 @@ test('free Student license pool is 5, and a revoke returns one immediately', () 
   assert.equal(afterRevoke, 1);
   assert.equal(freeStudentLicenseTicker(4), '1 of 5 free Student licenses left');
   assert.match(halfOffPoolNote(100), /100-use half-off code still has 100 uses/);
+});
+
+test('owner alpha free Student pool is 25; any other license stays at 5', () => {
+  assert.equal(freeStudentLicensesForLicense(), 5);
+  assert.equal(freeStudentLicensesForLicense('paid-pro-license'), 5);
+  assert.equal(freeStudentLicensesForLicense(OWNER_ALPHA_LICENSE_ID), 25);
+  assert.equal(freeStudentLicensesLeft(0, 25), 25);
+  assert.equal(freeStudentLicensesLeft(1, 25), 24);
+  assert.equal(freeStudentLicenseTicker(1, 25), '24 of 25 free Student licenses left');
+  assert.equal(freeStudentLicenseTicker(25, 25), '0 of 25 free Student licenses left');
 });
 
 test('student cloud scope is only that student\'s own files', () => {

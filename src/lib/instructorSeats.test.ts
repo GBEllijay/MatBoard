@@ -14,6 +14,7 @@ import {
   ownerProHubOpen,
 } from './productNames.ts';
 import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
+import { OWNER_ALPHA_LICENSE_ID, instructorSeatAllowance } from './proBundleMath.ts';
 import {
   DEFAULT_INSTRUCTOR_PERMISSIONS,
   INSTRUCTOR_PERMISSION_FIELDS,
@@ -332,6 +333,52 @@ test('Pro stops at 5 free instructor seats and a revoke frees one', () => {
   assert.equal(again.ok, true);
   if (!again.ok) return;
   assert.equal(countOpenInstructorSeats(listInstructorSeats()), 5);
+});
+
+test('the owner alpha license can issue 20 instructor seats; a regular Pro license still stops at 5', () => {
+  reset();
+  assert.equal(instructorSeatAllowance(0), 5);
+  assert.equal(instructorSeatAllowance(0, OWNER_ALPHA_LICENSE_ID), 20);
+  assert.equal(proSeatUsageLabel(3, 20), '3 of 20 free instructor seats used');
+  for (let index = 0; index < 20; index += 1) {
+    const issued = issueInstructorInvite({
+      email: `owner-seat${index}@gym.com`,
+      presetId: 'instructors',
+      origin: 'https://advantage.test',
+      now: index,
+      token: `owner-tok-${index}`,
+      licenseId: OWNER_ALPHA_LICENSE_ID,
+    });
+    assert.equal(issued.ok, true, String(index));
+  }
+  assert.equal(countOpenInstructorSeats(listInstructorSeats()), 20);
+  const blocked = issueInstructorInvite({
+    email: 'owner-extra@gym.com',
+    presetId: 'instructors',
+    origin: 'https://advantage.test',
+    licenseId: OWNER_ALPHA_LICENSE_ID,
+  });
+  assert.deepEqual(blocked, { ok: false, reason: 'cap' });
+
+  reset();
+  for (let index = 0; index < 5; index += 1) {
+    const issued = issueInstructorInvite({
+      email: `pro-seat${index}@gym.com`,
+      presetId: 'instructors',
+      origin: 'https://advantage.test',
+      now: index,
+      token: `pro-tok-${index}`,
+      licenseId: 'paid-pro-license',
+    });
+    assert.equal(issued.ok, true);
+  }
+  const proBlocked = issueInstructorInvite({
+    email: 'pro-extra@gym.com',
+    presetId: 'instructors',
+    origin: 'https://advantage.test',
+    licenseId: 'paid-pro-license',
+  });
+  assert.deepEqual(proBlocked, { ok: false, reason: 'cap' });
 });
 
 test('a signed-in coach, program director, or instructor cannot issue invites', () => {

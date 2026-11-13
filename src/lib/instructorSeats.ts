@@ -4,9 +4,10 @@
  * can carry the invite text to another browser. Advantage does not email the
  * link and does not host the files.
  *
- * Pro includes 5 free instructor seats. Half-off uses can add more, up to 105.
- * The old fixed cap of 10 is retired. Revoked seats free a slot. A signed-in
- * seat cannot issue invites. Program directors do not get a path to invite assistants.
+ * Pro includes 5 free instructor seats. The owner alpha license has 20.
+ * Half-off uses can add more, up to 105. The old fixed cap of 10 is retired.
+ * Revoked seats free a slot. A signed-in seat cannot issue invites.
+ * Program directors do not get a path to invite assistants.
  *
  * This app has no separate gym id. The Media Console gym name
  * (`matboard.gymName.v1`) is the gym identity when one is saved. A blank name
@@ -23,6 +24,17 @@ import { SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
 
 /** Free instructor seats on Pro before any half-off use. */
 export const PRO_INSTRUCTOR_SEAT_CAP = FREE_INSTRUCTOR_SEATS;
+
+/** License id on the signed-in owner pass, when one is present. */
+export function currentLicenseId(): string | null {
+  const sub = entitlementSnapshot().claims?.sub;
+  return typeof sub === 'string' && sub ? sub : null;
+}
+
+/** Free instructor seat cap for the signed-in license, including the owner alpha override. */
+export function currentInstructorSeatAllowance(allowanceUses = 0): number {
+  return instructorSeatAllowance(allowanceUses, currentLicenseId());
+}
 
 /** Shown next to the seat count. Not a checkout. */
 export const PRO_SEAT_CAP_REQUEST_NOTE = `Additional seats may be available for authorization upon owner request. Email ${SITE_FEEDBACK_EMAIL}.`;
@@ -596,14 +608,14 @@ export function proSeatsRemaining(used: number, allowance = instructorSeatAllowa
 }
 
 /** Remaining open seats. One seat stays singular. */
-export function proSeatRemainingLabel(used: number): string {
-  const remaining = proSeatsRemaining(used);
+export function proSeatRemainingLabel(used: number, allowance = instructorSeatAllowance(0)): string {
+  const remaining = proSeatsRemaining(used, allowance);
   return remaining === 1 ? '1 seat remaining' : `${remaining} seats remaining`;
 }
 
 /** Last two open seats, and a full roster, repeat the extra-seat email beside the binders. */
-export function proSeatCapNear(used: number): boolean {
-  return proSeatsRemaining(used) <= 2;
+export function proSeatCapNear(used: number, allowance = instructorSeatAllowance(0)): boolean {
+  return proSeatsRemaining(used, allowance) <= 2;
 }
 
 export function proSeatCapBlockedCopy(allowance = instructorSeatAllowance(0)): string {
@@ -618,15 +630,19 @@ export function issueInstructorInvite(input: {
   now?: number;
   token?: string;
   id?: string;
-  /** Half-off uses already spent on Instructor. The free allowance is 5. */
+  /** Half-off uses already spent on Instructor. The free allowance is 5 for Pro. */
   allowanceUses?: number;
+  /** When set, used instead of the signed-in license id to pick the free seat cap. */
+  licenseId?: string | null;
 }): IssueInviteResult {
   const email = normalizeInviteEmail(input.email);
   if (!isInviteEmail(email)) return { ok: false, reason: 'email' };
   if (readCurrentSeat() && !ownerPassOutranksSeat(entitlementSnapshot().claims)) return { ok: false, reason: 'owner' };
   const archive = readArchive();
   if (openEmailTaken(archive.seats, email)) return { ok: false, reason: 'duplicate' };
-  if (countOpenInstructorSeats(archive.seats) >= instructorSeatAllowance(input.allowanceUses ?? 0)) {
+  const allowance = instructorSeatAllowance(input.allowanceUses ?? 0, input.licenseId ?? currentLicenseId());
+  const fromServer = Boolean(input.token?.trim() && input.id?.trim());
+  if (!fromServer && countOpenInstructorSeats(archive.seats) >= allowance) {
     return { ok: false, reason: 'cap' };
   }
   const token = input.token?.trim() || newId();
