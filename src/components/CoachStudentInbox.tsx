@@ -16,9 +16,11 @@ import {
   refreshCardNotices,
   refreshCardShares,
   subscribeCardSync,
+  type CardShareMasterPush,
 } from '../lib/cardSync';
 import type { Student } from '../lib/rosterStore';
 import { applyStudentPhotoFlag, parseStudentPhotoFlag } from '../lib/studentPhotoFlag';
+import { CARD_SHARE_CHECK_FAILED, cardShareCheckNote } from '../lib/cardShareCheck';
 
 function useTick(): number {
   const [tick, setTick] = useState(0);
@@ -65,10 +67,20 @@ export function CoachStudentNotices({ student, roster }: { student: Student; ros
   );
 }
 
+/** What happened to the academy master roster copy after an accept. */
+export function masterNote(master: CardShareMasterPush): string {
+  if (master === 'applied') return ' Also on the academy roster.';
+  if (master === 'pending') return ' Sent to the head coach for the academy roster.';
+  if (master === 'failed') return ' The academy roster copy did not save. Sync the roster later.';
+  return '';
+}
+
 /** Student card shares from QR sign-ups, waiting for an Instructor or Coach seat. */
 export function PendingCardShares({ roster, title = 'Student cards waiting' }: { roster: readonly Student[]; title?: string }) {
   useTick();
   const [status, setStatus] = useState('');
+  const [checkNote, setCheckNote] = useState('');
+  const [checking, setChecking] = useState(false);
   const [mergeInto, setMergeInto] = useState<Record<string, string>>({});
   const [, setTick] = useState(0);
   const shares = getPendingCardShares();
@@ -84,13 +96,14 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
             {share.card.stripes ? ` · ${share.card.stripes} stripes` : ''}
             {share.card.gym ? ` · ${share.card.gym}` : ''}
             {share.photo ? ' · photo pending head coach' : ''}
+            {share.viaInstructorId ? ` · scanned ${share.viaInstructorId === 'owner' ? "the owner's" : 'an instructor'} code` : ''}
           </p>
           <button
             type="button"
             className="btn"
             onClick={async () => {
               const result = await acceptCardShare(share.shareId, { mode: 'new' });
-              setStatus(result.ok ? 'Added to Student Roster.' : 'Only an Instructor or Coach seat can accept.');
+              setStatus(result.ok ? `Added to Student Roster.${masterNote(result.master)}` : 'Only an Instructor or Coach seat can accept.');
             }}
           >
             Accept as new card
@@ -113,7 +126,7 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
             disabled={!mergeInto[share.shareId]}
             onClick={async () => {
               const result = await acceptCardShare(share.shareId, { mode: 'merge', cardId: mergeInto[share.shareId] });
-              setStatus(result.ok ? 'Merged. Coach fields were kept.' : `Could not merge (${result.reason}).`);
+              setStatus(result.ok ? `Merged. Coach fields were kept.${masterNote(result.master)}` : `Could not merge (${result.reason}).`);
             }}
           >
             Merge
@@ -130,13 +143,28 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
       <button
         type="button"
         className="btn btn--ghost"
+        disabled={checking}
         onClick={async () => {
-          const result = await refreshCardShares();
-          setStatus(result.ok ? `${result.pending} waiting.` : 'Could not reach Advantage Cloud.');
+          const before = shares.length;
+          setChecking(true);
+          setCheckNote('Checking for student cards…');
+          try {
+            const result = await refreshCardShares();
+            setCheckNote(result.ok ? cardShareCheckNote(result.pending, before) : CARD_SHARE_CHECK_FAILED);
+          } catch {
+            setCheckNote(CARD_SHARE_CHECK_FAILED);
+          } finally {
+            setChecking(false);
+          }
         }}
       >
         Check for student cards
       </button>
+      {checkNote ? (
+        <p role="status" data-card-share-check="">
+          {checkNote}
+        </p>
+      ) : null}
       <label>
         Import a student file
         <input
@@ -177,7 +205,7 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
   return (
     <div aria-label="Student updates waiting">
       <h3>Student updates waiting</h3>
-      <p>Adding fills only blank fields on the linked card, including a blank bout division from an entered tournament. Tournaments and weight are kept with the student's updates. Belt and stripes change only when you approve them.</p>
+      <p>Adding fills only blank fields on the linked card, including a blank bout division from an entered tournament. Tournaments, weight, and opponent cards are kept with the student's updates. Belt and stripes change only when you approve them. Dismiss leaves that file off the card.</p>
       {updates.map((update) => {
         const card = roster.find((row) => row.linkedStudentId === update.studentId && !row.guestId);
         const tournaments = update.competition?.tournaments ?? [];
@@ -192,14 +220,34 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
               {update.assessments?.length ? ` · ${update.assessments.length} self-assessment(s)` : ''}
               {update.weight?.weighIns.length ? ` · weigh-ins ${update.weight.weighIns.map((w) => `${w.weight} ${w.unit} ${w.date}`).join(', ')}` : ''}
               {update.weight?.goalWeight ? ` · goal ${update.weight.goalWeight} ${update.weight.goalUnit || update.weight.unit}` : ''}
+              {update.scouting?.cards.length ? ` · ${update.scouting.cards.length} opponent card(s)` : ''}
             </p>
+            {update.scouting?.cards.length ? (
+              <ul aria-label="Opponent cards">
+                {update.scouting.cards.map((scout) => (
+                  <li key={scout.id}>
+                    {scout.name}
+                    {scout.gym ? ` · ${scout.gym}` : ''}
+                    {` · ${scout.group === 'open' ? 'Open class' : 'Weight class'}`}
+                    {scout.weightClass ? ` · ${scout.weightClass}` : ''}
+                    {scout.belt ? ` · ${scout.belt}` : ''}
+                    {scout.style ? ` · ${scout.style}` : ''}
+                    {` · record ${scout.record.line}`}
+                    {scout.strengths ? ` · strengths ${scout.strengths}` : ''}
+                    {scout.weaknesses ? ` · weaknesses ${scout.weaknesses}` : ''}
+                    {scout.notes ? ` · ${scout.notes}` : ''}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <button
               type="button"
               className="btn"
               disabled={!card}
               onClick={() => {
                 const result = applyStudentUpdate(update.updateId, false);
-                done(result.ok ? `Added. Filled: ${result.filled.join(', ') || 'nothing blank'}.` : `Could not add (${result.reason}).`);
+                const cards = update.scouting?.cards.length ? ` Opponent cards kept: ${update.scouting.cards.length}.` : '';
+                done(result.ok ? `Added. Filled: ${result.filled.join(', ') || 'nothing blank'}.${cards}` : `Could not add (${result.reason}).`);
               }}
             >
               Add (fill blanks)
@@ -211,7 +259,8 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
                 disabled={!card}
                 onClick={() => {
                   const result = applyStudentUpdate(update.updateId, true);
-                  done(result.ok ? 'Added. Belt and stripes approved.' : result.reason === 'not-allowed' ? 'Only a Coach seat or the owner can approve belt changes.' : `Could not add (${result.reason}).`);
+                  const cards = update.scouting?.cards.length ? ` Opponent cards kept: ${update.scouting.cards.length}.` : '';
+                  done(result.ok ? `Added. Belt and stripes approved.${cards}` : result.reason === 'not-allowed' ? 'Only a Coach seat or the owner can approve belt changes.' : `Could not add (${result.reason}).`);
                 }}
               >
                 Add and approve belt

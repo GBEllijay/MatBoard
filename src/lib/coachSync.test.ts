@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   acceptCoachSyncUpdate,
   buildCoachAssessmentUpdate,
+  coachAssessmentTrend,
   buildCoachBeltProgressUpdate,
   buildCoachGymLogoUpdate,
   deliverSyncPacket,
@@ -23,8 +24,9 @@ import { readGymLogoSync } from './studentGymMark.ts';
 import { dismissCoachRankUpdate, emptyUpdateLedger, readCoachQueue } from './coachRankUpdate.ts';
 import { memoryHandoffFolder } from './driveHandoff.ts';
 import { exportProgressPacket, parseProgressPacket } from './progress/format.ts';
-import { SYNC_ASSESSMENT_AREA_IDS } from './progress/syncPackets.ts';
-import { ASSESSMENT_AREAS } from './studentAssessment.ts';
+import { SYNC_ASSESSMENT_AREA_IDS, readCoachAssessment } from './progress/syncPackets.ts';
+import { assessmentSummary } from './rosterCard.ts';
+import { ASSESSMENT_AREAS, ASSESSMENT_FORM_AREAS } from './studentAssessment.ts';
 import { blankStudentReport } from './studentEdition.ts';
 import { assignStudentId } from './studentIdentity.ts';
 import { everyTestPacket, TEST_LOGO, TEST_LOGO_2, testMemory } from './testPackets.ts';
@@ -67,8 +69,85 @@ test('builders refuse bad input', () => {
   );
 });
 
-test('assessment area ids match the student assessment areas', () => {
-  assert.deepEqual([...SYNC_ASSESSMENT_AREA_IDS], ASSESSMENT_AREAS.map((area) => area.id));
+test('assessment area ids match the eight student check-in faces, Sweeps included', () => {
+  assert.deepEqual([...SYNC_ASSESSMENT_AREA_IDS], ASSESSMENT_FORM_AREAS.map((area) => area.id));
+  assert.equal(SYNC_ASSESSMENT_AREA_IDS.length, 8);
+});
+
+const SEVEN = { guard: 4, passing: 3, takedowns: 2, escapes: 4, submissions: 3, conditioning: 2, mindset: 5 };
+
+test('an old seven-face coach assessment packet still imports, with Sweeps not rated', () => {
+  // Exactly what an older coach app sent: no sweeps key.
+  const old = {
+    schemaVersion: 2,
+    kind: 'coach-assessment-update',
+    id: 'assess-old',
+    studentId: 'stu-alex',
+    updatedAt: 10,
+    issuedAt: 10,
+    updateId: 'assess-old',
+    assessment: { date: '2026-10-01', note: '', scores: SEVEN, strengths: '', weaknesses: '' },
+  };
+  const parsed = parseProgressPacket(JSON.stringify(old));
+  assert.equal(parsed.ok, true, JSON.stringify(parsed));
+  if (!parsed.ok || parsed.value.kind !== 'coach-assessment-update') throw new Error('kind');
+  assert.equal(Object.hasOwn(parsed.value.assessment.scores, 'sweeps'), false, 'never invented');
+  const report = assignStudentId(blankStudentReport(10), 'stu-alex', 10);
+  const accepted = acceptCoachSyncUpdate(report, parsed.value, emptyUpdateLedger(), emptyCoachOverlay());
+  assert.equal(accepted.applied, true);
+  assert.equal(accepted.overlay.assessments[0]?.scores.sweeps, undefined);
+  assert.equal(coachAssessmentTrend(accepted.overlay)[0]?.average, Math.round((23 / 7) * 10) / 10, 'averages the seven it has');
+  const entry = { id: 'a', date: '2026-10-01', note: '', scores: accepted.overlay.assessments[0].scores as typeof SEVEN };
+  const sweepsRow = assessmentSummary([entry], [], 'coach').rows.find((row) => row.id === 'sweeps');
+  assert.equal(sweepsRow?.coach, null);
+});
+
+test('a new coach assessment carries Sweeps through the file round trip onto the student card', () => {
+  const built = buildCoachAssessmentUpdate({ studentId: 'stu-alex', date: '2026-11-03', scores: { ...SEVEN, sweeps: 1 }, updateId: 'assess-8' });
+  assert.equal(built.ok, true);
+  if (!built.ok) return;
+  assert.equal(built.packet.assessment.scores.sweeps, 1);
+  const file = syncPacketFile(built.packet);
+  const parsed = parseProgressPacket(file.json);
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'coach-assessment-update') throw new Error('kind');
+  assert.equal(parsed.value.assessment.scores.sweeps, 1);
+  const report = assignStudentId(blankStudentReport(10), 'stu-alex', 10);
+  const accepted = acceptCoachSyncUpdate(report, parsed.value, emptyUpdateLedger(), emptyCoachOverlay());
+  assert.equal(accepted.overlay.assessments[0]?.scores.sweeps, 1);
+  assert.equal(coachAssessmentTrend(accepted.overlay)[0]?.average, Math.round((24 / 8) * 10) / 10);
+  const entry = { id: 'a', date: '2026-11-03', note: '', scores: accepted.overlay.assessments[0].scores as typeof SEVEN };
+  const summary = assessmentSummary([entry], [], 'coach');
+  assert.deepEqual(summary.rows.map((row) => row.label), ASSESSMENT_FORM_AREAS.map((area) => area.label));
+  assert.equal(summary.rows.find((row) => row.id === 'sweeps')?.coach, 1);
+  assert.match(summary.weaknesses, /Sweeps \(1\)/);
+  // The same file through the gym folder / import path still queues.
+  const storage = testMemory();
+  assert.equal(importCoachText(storage, report, file.json).kind, 'queued');
+  const queued = readCoachQueue(storage)[0];
+  assert.equal(queued?.kind, 'coach-assessment-update');
+  if (queued?.kind === 'coach-assessment-update') assert.equal(queued.assessment.scores.sweeps, 1);
+});
+
+test('a newer packet degrades safely in an older reader: same schema and kind, and the seven old faces survive', () => {
+  const built = buildCoachAssessmentUpdate({ studentId: 'stu-alex', date: '2026-11-03', scores: { ...SEVEN, sweeps: 1 }, updateId: 'assess-8' });
+  const legacy = buildCoachAssessmentUpdate({ studentId: 'stu-alex', date: '2026-11-03', scores: SEVEN, updateId: 'assess-8' });
+  assert.ok(built.ok && legacy.ok);
+  if (!built.ok || !legacy.ok) return;
+  // No version bump: an older app checks schemaVersion and kind, and those are unchanged.
+  assert.equal(built.packet.schemaVersion, legacy.packet.schemaVersion);
+  assert.equal(built.packet.kind, legacy.packet.kind);
+  // The only difference on the wire is one extra score key.
+  const { sweeps, ...rest } = built.packet.assessment.scores;
+  assert.equal(sweeps, 1);
+  assert.deepEqual({ ...built.packet, assessment: { ...built.packet.assessment, scores: rest } }, legacy.packet);
+  // An older reader keeps only the ids it knows. Reading through the seven old ids gives the old packet.
+  const olderIds = ASSESSMENT_AREAS.map((area) => area.id) as readonly string[];
+  const errors: string[] = [];
+  const read = readCoachAssessment(built.packet.assessment, errors);
+  assert.deepEqual(errors, []);
+  const olderView = Object.fromEntries(Object.entries(read.scores).filter(([key]) => olderIds.includes(key)));
+  assert.deepEqual(olderView, SEVEN);
 });
 
 test('send gate: toggle off, guest, unlinked and assistant are blocked', () => {

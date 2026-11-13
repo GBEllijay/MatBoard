@@ -4,13 +4,18 @@ import test from 'node:test';
 import { handleWebhook } from './handlers.ts';
 import { memoryEntitlementStore } from './entitlements.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
+import { readFileSync } from 'node:fs';
 import {
   BUNDLE_CEILING,
   FREE_INSTRUCTOR_SEATS,
   FREE_STUDENT_LICENSES,
   HALF_OFF_MAX_USES,
+  OWNER_ALPHA_LICENSE_ID,
+  OWNER_FREE_INSTRUCTOR_SEATS,
+  OWNER_FREE_STUDENT_LICENSES,
   ensureHalfOffCode,
   halfOffUseAllowed,
+  instructorAllowanceForLicense,
   instructorSeatAllowance,
   readHalfOffCode,
   studentLicenseAllowance,
@@ -83,3 +88,33 @@ test('checkout.session.completed for Pro writes one half-off row and does not mi
   const count = await db.prepare(`SELECT COUNT(*) AS total FROM half_off_codes`).first<{ total: number }>();
   assert.equal(Number(count?.total), 1);
 });
+
+test('regular Pro stays at 5 seats and 5 student licenses; only the owner alpha license is raised', async () => {
+  assert.equal(FREE_INSTRUCTOR_SEATS, 5);
+  assert.equal(FREE_STUDENT_LICENSES, 5);
+  assert.equal(instructorSeatAllowance(0), 5);
+  assert.equal(studentLicenseAllowance(0), 5);
+  assert.equal(instructorSeatAllowance(0, 'paid-pro-license'), 5);
+  assert.equal(studentLicenseAllowance(0, 'paid-pro-license'), 5);
+  assert.equal(OWNER_FREE_INSTRUCTOR_SEATS, 20);
+  assert.equal(OWNER_FREE_STUDENT_LICENSES, 25);
+  assert.equal(instructorSeatAllowance(0, OWNER_ALPHA_LICENSE_ID), 20);
+  assert.equal(studentLicenseAllowance(0, OWNER_ALPHA_LICENSE_ID), 25);
+  const db = sqliteD1();
+  assert.equal(await instructorAllowanceForLicense(db, 'paid-pro-license'), 5);
+  assert.equal(await instructorAllowanceForLicense(db, OWNER_ALPHA_LICENSE_ID), 20);
+});
+
+test('Stripe checkout source does not import or change owner or Pro seat caps', () => {
+  const checkout = readFileSync(new URL('./stripeCheckout.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(
+    checkout,
+    /OWNER_ALPHA_LICENSE_ID|OWNER_FREE_INSTRUCTOR_SEATS|OWNER_FREE_STUDENT_LICENSES|FREE_INSTRUCTOR_SEATS|FREE_STUDENT_LICENSES|instructorSeatAllowance|studentLicenseAllowance/,
+  );
+  const confirm = readFileSync(new URL('./checkoutConfirm.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(
+    confirm,
+    /OWNER_ALPHA_LICENSE_ID|OWNER_FREE_INSTRUCTOR_SEATS|OWNER_FREE_STUDENT_LICENSES/,
+  );
+});
+

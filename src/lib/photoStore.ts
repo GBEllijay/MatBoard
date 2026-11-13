@@ -145,7 +145,7 @@ export type StoredPhoto = PlaylistItem & {
   qrLinks: string[];
   /**
    * Gym Google Drive file id when this item was picked from Drive.
-   * The blob is the on-device copy the TV plays. Advantage does not host it.
+   * The blob is the on-device copy the TV plays. With Advantage Cloud on, the gallery copy also lives in this gym's Cloud.
    */
   driveFileId: string | null;
   /** Gallery caption. Empty on Pro Shop and Events. */

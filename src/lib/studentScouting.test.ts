@@ -487,7 +487,7 @@ test('sample opponents are written only for an empty archive opened with sample=
   assert.match(seeded[0].name, /\(sample\)/);
   assert.match(seeded[0].notes, /Not a real opponent/);
   assert.equal(seeded[0].ratings.sweeps, 3);
-  assert.equal(seeded[1].ratings.sweeps, undefined);
+  assert.equal(seeded[1].ratings.sweeps, 5);
   assert.equal(scoutRecord(seeded[0], []).line, '3-1-0');
   const again = seedSampleScouting(storage, '?sample=1');
   assert.equal(again.length, 2);

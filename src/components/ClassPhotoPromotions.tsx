@@ -5,13 +5,11 @@ import { MediaSourceSheet } from './VideoSourceSheet';
 import {
   addClassPhotoPromotionFiles,
   CLASS_PHOTO_PROMOTIONS_ADD,
-  CLASS_PHOTO_PROMOTIONS_FAILED,
   CLASS_PHOTO_PROMOTIONS_LABEL,
   CLASS_PHOTO_PROMOTIONS_LEAD,
-  CLASS_PHOTO_PROMOTIONS_SAVED_DRIVE,
-  CLASS_PHOTO_PROMOTIONS_SAVED_PHONE,
   CLASS_PHOTO_PROMOTIONS_SKIPPED,
-  CLASS_PHOTO_PROMOTIONS_STAY,
+  classPhotoResultNote,
+  classPhotoStayCopy,
   listClassPhotoPromotions,
   type ClassPhotoPromotionItem,
 } from '../lib/classPhotoPromotions';
@@ -21,7 +19,9 @@ import {
   VIDEO_CAPTURE,
   VIDEO_RECORD_ACCEPT,
 } from '../lib/mediaPicker';
+import { loadAdvantageCloudHome } from '../lib/advantageCloudMedia';
 import { quotaAddNote } from '../lib/storageQuota';
+import { readGalleryApprovalHere } from '../lib/galleryApprovalDefault';
 
 const PHOTO_CAPTURE_ID = 'class-photo-promotions-capture';
 const VIDEO_RECORD_ID = 'class-photo-promotions-record';
@@ -45,6 +45,8 @@ export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: s
   const [note, setNote] = useState('');
   const [revision, setRevision] = useState(0);
   const [previews, setPreviews] = useState<Preview[]>([]);
+  const [cloudOn, setCloudOn] = useState(false);
+  const approvalRequired = readGalleryApprovalHere(typeof localStorage === 'undefined' ? null : localStorage).required;
 
   useEffect(() => {
     let cancelled = false;
@@ -69,6 +71,16 @@ export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: s
     };
   }, [dateKey, revision]);
 
+  useEffect(() => {
+    let cancel = false;
+    void loadAdvantageCloudHome().then((view) => {
+      if (!cancel) setCloudOn(view.phase === 'ready');
+    });
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
   const onFiles = async (files: readonly File[]) => {
     setOpen(false);
     if (!files.length || busy) return;
@@ -81,9 +93,14 @@ export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: s
         setNote(result.skipped ? CLASS_PHOTO_PROMOTIONS_SKIPPED : '');
         return;
       }
-      if (result.failed) setNote(CLASS_PHOTO_PROMOTIONS_FAILED);
-      else if (result.needsDrive) setNote(CLASS_PHOTO_PROMOTIONS_SAVED_PHONE);
-      else setNote(CLASS_PHOTO_PROMOTIONS_SAVED_DRIVE);
+      setNote(
+        classPhotoResultNote({
+          cloud: result.cloud,
+          lane: result.lane,
+          failed: result.failed > 0 && result.uploaded === 0,
+          needsDrive: result.needsDrive,
+        }),
+      );
     } catch (error) {
       setNote(quotaAddNote(error) ?? 'Could not save that file on this phone. Try again.');
     } finally {
@@ -95,7 +112,7 @@ export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: s
     <aside className="notes__distribute notes__class-photos" aria-label={CLASS_PHOTO_PROMOTIONS_LABEL}>
       <h2>{CLASS_PHOTO_PROMOTIONS_LABEL}</h2>
       {readOnly ? null : <p>{CLASS_PHOTO_PROMOTIONS_LEAD}</p>}
-      {readOnly ? null : <p>{CLASS_PHOTO_PROMOTIONS_STAY}</p>}
+      {readOnly ? null : <p>{classPhotoStayCopy(cloudOn, approvalRequired)}</p>}
       <PlayingFromLine />
       {readOnly ? null : (
         <button
@@ -135,7 +152,7 @@ export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: s
         captureInputId={PHOTO_CAPTURE_ID}
         recordInputId={VIDEO_RECORD_ID}
         libraryInputId={LIBRARY_ID}
-        stay={CLASS_PHOTO_PROMOTIONS_STAY}
+        stay={classPhotoStayCopy(cloudOn, approvalRequired)}
         onClose={() => setOpen(false)}
       />
       <DeviceMediaInput

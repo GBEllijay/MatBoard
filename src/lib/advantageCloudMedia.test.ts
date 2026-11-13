@@ -17,12 +17,16 @@ import {
   claimsOpenPlusCloud,
   cloudCapBytes,
   cloudFullMessage,
+  cloudOverSoftLimit,
+  cloudSoftLimitWarning,
   cloudListPrefix,
   cloudMediaAccess,
   cloudObjectKey,
   cloudPartPlan,
   cloudRelativePath,
   cloudTooLargeMessage,
+  academyCloudTileVisible,
+  cloudUsageFigures,
   cloudUsageLine,
   formatCloudBytes,
   readCloudMediaHome,
@@ -106,7 +110,10 @@ test('cloud paths stay on the gym tree and refuse a public or escaped key', () =
   assert.equal(lesson.ok && lesson.path, 'lessons/current/2026-W45/2026-11-03.json');
   assert.equal(media.ok && media.path, 'lessons/current/2026-W45/media/2026-11-03/demo-clip.mp4');
   assert.equal(cloudObjectKey('lic_owner-1', daily.ok ? daily.path : ''), 'groups/lic_owner-1/videos/daily/2026-11-03/armbar.mp4');
-  assert.equal(cloudObjectKey('lic_owner-1', 'gallery/approved/2026-11-03/photo.jpg'), null);
+  assert.equal(
+    cloudObjectKey('lic_owner-1', 'gallery/approved/2026-11-03/photo.jpg'),
+    'groups/lic_owner-1/gallery/approved/2026-11-03/photo.jpg',
+  );
   assert.equal(cloudObjectKey('lic_owner-1', '../secret'), null);
   assert.equal(cloudObjectKey('bad id', 'videos/daily/2026-11-03/armbar.mp4'), null);
   assert.equal(cloudListPrefix('lesson', '2026-11-03')?.plan, 'lessons/current/2026-W45/2026-11-03.json');
@@ -134,16 +141,44 @@ test('program director daily-video drop needs Plus Cloud and the PD preset, and 
   assert.match(CLOUD_DAILY_DROP_ONLY, /today's daily videos/);
 });
 
-test('the bucket cap defaults to 8 GB and a full upload says so in plain words', () => {
+test('the per-gym cap defaults to 100 GB and a full upload says so in plain words', () => {
   assert.equal(cloudCapBytes(undefined), DEFAULT_CLOUD_CAP_BYTES);
-  assert.equal(cloudCapBytes(''), 8_000_000_000);
+  assert.equal(cloudCapBytes(''), 100_000_000_000);
   assert.equal(cloudCapBytes('1000'), 1000);
   assert.equal(cloudCapBytes('nope'), DEFAULT_CLOUD_CAP_BYTES);
   assert.equal(DEFAULT_MAX_UPLOAD_BYTES, 512_000_000);
   assert.equal(formatCloudBytes(8_000_000_000), '8 GB');
-  assert.match(cloudUsageLine(1200, 8_000_000_000, 8_000_000_000), /This license is using 1\.2 KB/);
-  assert.match(cloudUsageLine(1200, 8_000_000_000, 8_000_000_000), /8 GB of 8 GB/);
-  assert.match(cloudFullMessage(8_000_000_000, 8_000_000_000), /Advantage Cloud is full/);
+  assert.deepEqual(cloudUsageFigures(null), [{ value: '…', unit: '', label: 'Advantage Cloud' }]);
+  assert.deepEqual(cloudUsageFigures({ phase: 'unbound' }), [{ value: '—', unit: '', label: 'Not connected' }]);
+  assert.deepEqual(cloudUsageFigures({ phase: 'error' }), [{ value: '—', unit: '', label: 'Could not read Cloud usage' }]);
+  assert.equal(academyCloudTileVisible({ owner: true, cloudEntitled: true, lapsed: false }), true);
+  assert.equal(academyCloudTileVisible({ owner: true, cloudEntitled: false, lapsed: false }), false);
+  assert.equal(academyCloudTileVisible({ owner: false, cloudEntitled: true, lapsed: false }), false);
+  assert.equal(academyCloudTileVisible({ owner: true, cloudEntitled: true, lapsed: true }), false);
+  assert.deepEqual(cloudUsageFigures({ phase: 'connected' }), [{ value: '—', unit: '', label: 'Sign in' }]);
+  assert.deepEqual(cloudUsageFigures({ phase: 'unavailable' }), [{ value: '—', unit: '', label: 'Not on this license' }]);
+  assert.deepEqual(
+    cloudUsageFigures({
+      phase: 'ready',
+      canUpload: true,
+      licenseUsedBytes: 96_000_000,
+      capBytes: 100_000_000_000,
+    }),
+    [
+      { value: '96', unit: 'MB', label: 'This gym' },
+      { value: '100', unit: 'GB', label: 'Limit' },
+    ],
+  );
+  assert.equal(
+    cloudUsageFigures({ phase: 'ready', canUpload: true, licenseUsedBytes: 51_000_000_000, capBytes: 100_000_000_000 })[1]!.label,
+    'Limit · delete old videos',
+  );
+  assert.equal(cloudUsageLine(1200, 100_000_000_000), 'This gym is using 1.2 KB of 100 GB in Advantage Cloud.');
+  assert.match(cloudUsageLine(60_000_000_000, 100_000_000_000), /60 GB of 100 GB.*delete old videos/);
+  assert.match(cloudFullMessage(100_000_000_000, 100_000_000_000), /Advantage Cloud is full for this gym/);
+  assert.match(cloudSoftLimitWarning(55_000_000_000, 100_000_000_000), /55 GB of 100 GB.*Past 50 GB, please delete old videos/);
+  assert.equal(cloudOverSoftLimit(49_999_999_999, 100_000_000_000), false);
+  assert.equal(cloudOverSoftLimit(50_000_000_000, 100_000_000_000), true);
   assert.match(cloudTooLargeMessage(512_000_000), /512 MB/);
   assert.equal(cloudPartPlan(100).mode, 'single');
   assert.equal(cloudPartPlan(CLOUD_CHUNK_PLUS()).mode, 'multipart');
@@ -185,10 +220,13 @@ test('Advantage Cloud is an added choice and does not replace Drive, OneDrive, o
   assert.doesNotMatch(gallery, /createMultipartUpload/);
   assert.match(panel, /if \(!status\?\.cloud\) return null/);
   assert.match(panel, /Upload a video/);
+  assert.match(panel, /isDailyPhoto/);
+  assert.match(panel, /notifyCloudMedia/);
   assert.match(panel, /Upload lesson media/);
   assert.match(panel, /Play/);
   assert.match(panel, /Download/);
-  assert.match(panel, /Save this lesson plan/);
+  assert.match(panel, /Save my plan to Cloud/);
+  assert.match(panel, /planTarget: 'mine'/);
   assert.doesNotMatch(panel, /Upgrade|locked|greyed|coming soon/i);
   assert.equal(CLOUD_SAVED_MESSAGE.includes('Advantage Cloud'), true);
 });
@@ -228,7 +266,6 @@ test('the head instructor home says when Cloud is unbound, connected, or how ful
         cloud: true,
         canUpload: true,
         licenseUsedBytes: 1800000,
-        bucketUsedBytes: 2400000,
         capBytes: 8000000000,
       }),
       { status: 200 },
@@ -240,6 +277,15 @@ test('the head instructor home says when Cloud is unbound, connected, or how ful
     assert.equal(ready.capBytes, 8000000000);
     assert.match(cloudHomeStatusLine(ready), /1\.8 MB/);
   }
+  const missingBytes = await loadAdvantageCloudHome(async (input) => {
+    const url = String(input);
+    if (url.includes('probe=1')) return new Response(JSON.stringify({ ok: true, bound: true }), { status: 200 });
+    return new Response(JSON.stringify({ ok: true, cloud: true, canUpload: true }), { status: 200 });
+  });
+  assert.equal(missingBytes.phase, 'error');
+  assert.equal(cloudHomeStatusLine(missingBytes), CLOUD_HOME_ERROR);
+  assert.match(CLOUD_HOME_ERROR, /Could not read Cloud usage/);
+  assert.doesNotMatch(cloudHomeStatusLine(missingBytes), /0 B|96 MB|397 MB/);
 
   const refused = await loadAdvantageCloudHome(async (input) => {
     const url = String(input);

@@ -1,20 +1,24 @@
 /**
  * Competition card v1 (fight-poster face) for a Competitor Roster card.
- * Draws only data the coach already has on this phone: the competitor card, the
- * imported student progress file, and the coach's latest assessment on the linked
- * Student roster card. It saves nothing. Game plans, the video suggestion and an
- * updates archive have no coach-side data yet and are not drawn.
+ * Draws the competitor card, the imported student progress file, and the coach's
+ * latest assessment on the linked Student roster card. Competition Ready links
+ * and the game plan use the same stores as Competitor Management.
  */
 import { useState, type ReactNode } from 'react';
-import type { Student } from '../../lib/rosterStore';
+import { resultClassLine } from '../../lib/divisionFields';
+import { Link } from 'react-router-dom';
+import { READY_ITEMS, linkedRosterStudent, type Student } from '../../lib/rosterStore';
+import { followedCompetitorPhoto } from '../../lib/competitorCarryOver';
+import { SharedGamePlanFields } from './CompetitorWorkspace';
 import type { ImportedCompetitionPlan } from '../../lib/progress/competition';
 import { formatWeight, tournamentStatusLabel } from '../../lib/progress/competition';
 import type { AssessmentScore } from '../../lib/studentAssessment';
-import { ASSESSMENT_AREAS } from '../../lib/studentAssessment';
+import { ASSESSMENT_FORM_AREAS } from '../../lib/studentAssessment';
 import { cardDate, initialsOf } from '../../lib/rosterCard';
 import { METHOD_LABELS, competitionRecord, latestWeighIn, opponentsFaced, tournamentsIcs, upcomingTournaments } from '../../lib/competitionCard';
 import { DEFAULT_CARD_LOOK, type CardLook } from '../../lib/cardLook';
 import { RankBelt } from './RankBelt';
+import { ScoutedByStudent } from './ScoutedByStudent';
 import { CardRadar } from './CoachClipboardCard';
 import { todayIso } from './fileSave';
 import './coachClipboard.css';
@@ -73,7 +77,9 @@ export function CompetitionCard({
   onChangeDetails: () => void;
   today?: string;
 }) {
-  const noPhotos = Boolean(student.noPhotos);
+  const linked = linkedRosterStudent(student.id);
+  const photo = followedCompetitorPhoto(student, linked);
+  const noPhotos = Boolean(student.noPhotos || linked?.noPhotos);
   const record = competitionRecord(plan);
   const upcoming = upcomingTournaments(plan, today);
   const opponents = opponentsFaced(plan);
@@ -102,8 +108,8 @@ export function CompetitionCard({
       <article className="comp-card__sheet" aria-label={`${student.name} Competition card`}>
         <header className="comp-card__poster">
           <div className="comp-card__photo">
-            {student.photo && !noPhotos ? (
-              <img src={student.photo} alt={`${student.name} photo`} />
+            {photo && !noPhotos ? (
+              <img src={photo} alt={`${student.name} photo`} />
             ) : (
               <span className="comp-card__initials" aria-label="No photo yet">
                 {initialsOf(student.name)}
@@ -133,6 +139,26 @@ export function CompetitionCard({
             </div>
           </div>
         </header>
+
+        <section className="comp-card__sec comp-card__ready" aria-label="Competition Ready" data-testid="comp-ready">
+          <h3 className="comp-card__h">
+            <span className="comp-card__sec-head">
+              <span className="comp-card__sec-title">Competition Ready</span>
+            </span>
+          </h3>
+          <div className="comp-card__ready-links">
+            {READY_ITEMS.map((item) => (
+              <Link
+                key={item.id}
+                className="comp-card__btn comp-card__btn--ghost"
+                data-ready-item={item.id}
+                to={`/competition-ready?id=${encodeURIComponent(student.id)}&item=${item.id}`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </section>
 
         <dl className="comp-card__facts">
           <div>
@@ -213,7 +239,7 @@ export function CompetitionCard({
             <>
               <CardRadar coach={coachScores} self={null} />
               <ul className="comp-card__scores">
-                {ASSESSMENT_AREAS.map((area) => (
+                {ASSESSMENT_FORM_AREAS.map((area) => (
                   <li key={area.id}>
                     <span>{area.label}</span>
                     <b>{coachScores[area.id] ?? '—'}/5</b>
@@ -234,7 +260,7 @@ export function CompetitionCard({
                 <li key={result.id} className="comp-card__result">
                   <span className="comp-card__event">
                     <b>{result.tournamentName}</b>
-                    {result.division}
+                    {resultClassLine(result)}
                   </span>
                   <span className="comp-card__matches">
                     {result.matches.map((match) => `${match.result === 'win' ? 'W' : match.result === 'loss' ? 'L' : 'D'} ${match.opponent}${match.method ? ` · ${METHOD_LABELS[match.method]}` : ''}`).join(', ') || 'No matches noted'}
@@ -266,6 +292,7 @@ export function CompetitionCard({
           ) : (
             <p className="comp-card__quiet">No opponents faced yet.</p>
           )}
+          <ScoutedByStudent studentId={student.linkedStudentId} studentName={student.name} />
         </Section>
 
         {history.length ? (
@@ -282,6 +309,10 @@ export function CompetitionCard({
             </ul>
           </Section>
         ) : null}
+
+        <Section num="07" title="Game plan" testId="comp-game">
+          <SharedGamePlanFields key={student.id} competitorId={student.id} />
+        </Section>
 
         <footer className="comp-card__foot">
           <p className="comp-card__infoline">

@@ -43,6 +43,20 @@ const CITED_UNMAPPED = [
 
 export type Vec = [number, number, number];
 
+/** Average of a face's mesh or projected corners. Same result for a triangle as averaging its first three points. */
+export function faceCentroid(points: readonly Vec[]): Vec {
+  if (!points.length) return [0, 0, 0];
+  const acc: Vec = [0, 0, 0];
+  for (const point of points) {
+    acc[0] += point[0];
+    acc[1] += point[1];
+    acc[2] += point[2];
+  }
+  const n = points.length;
+  return [acc[0] / n, acc[1] / n, acc[2] / n];
+}
+
+
 export type TopoMove = {
   id: string;
   name: string;
@@ -98,6 +112,29 @@ export function tileTone(id: string): TileTone {
   if (id.startsWith('escape.') || id.startsWith('def.')) return 'defense';
   if (id.startsWith('pass.') || id.startsWith('sweep.')) return 'pass';
   return 'position';
+}
+
+const FACE_TONE: Record<string, TileTone> = {
+  submissions: 'submission',
+  'escapes-defense': 'defense',
+  passing: 'pass',
+  sweeps: 'pass',
+  'guard-control': 'position',
+  takedowns: 'position',
+  conditioning: 'position',
+  mindset: 'position',
+};
+
+/**
+ * Live index cards are `term.*` and take the color of their face.
+ * Catalog and preview rows keep the id prefix (`sub.`, `escape.`, `pass.`, `sweep.`).
+ */
+export function tileToneFor(id: string, faceId?: string): TileTone {
+  if (id.startsWith('term.')) {
+    if (faceId && FACE_TONE[faceId]) return FACE_TONE[faceId];
+    return 'position';
+  }
+  return tileTone(id);
 }
 
 const TONE_ALIASES: Record<string, string> = {

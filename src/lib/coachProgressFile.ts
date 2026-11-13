@@ -8,19 +8,28 @@
  *  - weight: new weigh-ins, goal weight and weigh-in day, only when the student
  *    turned on "Share my weight updates with my coach" (off by default)
  *  - assessments: self-assessments added since the last file
+ *  - scouting: opponent cards whose share fields changed since the last file.
+ *    On unless the student turns the section off. Unchanged cards are left out.
  * Never in the file: promotion photos, any photo, the journal, move-permission
- * toggles (techniquePolicy), results, bracket notes, the gym logo, the spreadsheet.
- * Weight is never sent while the opt-in is off.
+ * toggles (techniquePolicy), results, bracket notes, the gym logo, the spreadsheet,
+ * or another student's private notes. A competition result can change an opponent
+ * card's record line. The result itself stays out.
+ * Weight is never sent while the opt-in is off. Opponent cards are never sent
+ * while that section is off.
  *
  * The coach import only fills blanks. Belt and stripes are coach-owned and wait
- * for an Instructor / Coach seat (or the owner) to approve them.
+ * for an Instructor / Coach seat (or the owner) to approve them. Approved
+ * opponent cards stay with that student's updates and replace the same card id.
  */
 
 import type { SyncActor } from './coachSync.ts';
 import { canAcceptCardShare } from './coachStudentInbox.ts';
+import { cleanRatings, type AreaRatings } from './opponentAssessment.ts';
+import { competitionOf } from './progress/competition.ts';
 import type { AssessmentEntry } from './studentAssessment.ts';
+import { loadScouting, scoutRecord, type ScoutingCard } from './studentScouting.ts';
 import type { Student, StudentDraft } from './rosterStore.ts';
-import type { CompetitionGames, StudentProgressReport } from './progress/types.ts';
+import type { CompetitionGames, CompetitionResult, StudentProgressReport } from './progress/types.ts';
 
 type Store = { getItem(key: string): string | null; setItem(key: string, value: string): void };
 
@@ -45,7 +54,22 @@ export function writeShareWeightWithCoach(storage: Store, on: boolean): void {
   storage.setItem(SHARE_WEIGHT_WITH_COACH_KEY, on ? '1' : '0');
 }
 
-export type CoachUpdateSection = 'profile' | 'card' | 'competition' | 'weight' | 'assessments';
+/** Opponent cards go in the coach file unless the student saved '0'. Missing means on. */
+export const SHARE_SCOUTING_WITH_COACH_KEY = 'matboard.studentEdition.shareScoutingWithCoach.v1';
+
+export function readShareScoutingWithCoach(storage: Pick<Store, 'getItem'> | null): boolean {
+  try {
+    return storage?.getItem(SHARE_SCOUTING_WITH_COACH_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+export function writeShareScoutingWithCoach(storage: Store, on: boolean): void {
+  storage.setItem(SHARE_SCOUTING_WITH_COACH_KEY, on ? '1' : '0');
+}
+
+export type CoachUpdateSection = 'profile' | 'card' | 'competition' | 'weight' | 'assessments' | 'scouting';
 
 export type UpdateTournament = {
   id: string;
@@ -66,6 +90,24 @@ export type UpdateWeight = {
   weighIns: { id: string; date: string; weight: number; unit: string }[];
 };
 
+/** Opponent card fields the coach is allowed to see. Nothing else from the card is copied. */
+export type UpdateScoutCard = {
+  id: string;
+  name: string;
+  gym: string;
+  /** Weight class or open class. */
+  group: 'weight' | 'open';
+  style: string;
+  /** Weight class the student typed. */
+  weightClass: string;
+  belt: string;
+  ratings: AreaRatings;
+  strengths: string;
+  weaknesses: string;
+  record: { wins: number; losses: number; draws: number; line: string };
+  notes: string;
+};
+
 export type StudentCoachUpdate = {
   schemaVersion: 1;
   kind: typeof STUDENT_COACH_UPDATE_KIND;
@@ -82,9 +124,18 @@ export type StudentCoachUpdate = {
   };
   weight?: UpdateWeight;
   assessments?: { id: string; date: string; note: string; scores: Record<string, number> }[];
+  /** Changed opponent cards only. Absent on a file from before this section existed. */
+  scouting?: { studentName: string; cards: UpdateScoutCard[] };
 };
 
-type Snapshot = { at: number; sections: Partial<Record<CoachUpdateSection, string>>; assessmentIds: string[]; weighInIds: string[] };
+type Snapshot = {
+  at: number;
+  sections: Partial<Record<CoachUpdateSection, string>>;
+  assessmentIds: string[];
+  weighInIds: string[];
+  /** Card id to the last shared field text. Absent on a snapshot from before opponent cards. */
+  scouting: Record<string, string>;
+};
 
 function clip(value: unknown, max = TEXT_MAX): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -94,16 +145,104 @@ function readSnapshot(storage: Pick<Store, 'getItem'>): Snapshot {
   try {
     const raw = storage.getItem(COACH_FILE_SNAPSHOT_KEY);
     const parsed = raw ? (JSON.parse(raw) as Partial<Snapshot>) : null;
-    if (!parsed) return { at: 0, sections: {}, assessmentIds: [], weighInIds: [] };
+    if (!parsed) return { at: 0, sections: {}, assessmentIds: [], weighInIds: [], scouting: {} };
     return {
       at: typeof parsed.at === 'number' ? parsed.at : 0,
       sections: parsed.sections && typeof parsed.sections === 'object' ? parsed.sections : {},
       assessmentIds: Array.isArray(parsed.assessmentIds) ? parsed.assessmentIds.filter((id) => typeof id === 'string') : [],
       weighInIds: Array.isArray(parsed.weighInIds) ? parsed.weighInIds.filter((id) => typeof id === 'string') : [],
+      scouting: scoutFingerprints(parsed.scouting),
     };
   } catch {
-    return { at: 0, sections: {}, assessmentIds: [], weighInIds: [] };
+    return { at: 0, sections: {}, assessmentIds: [], weighInIds: [], scouting: {} };
   }
+}
+
+function scoutFingerprints(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out: Record<string, string> = {};
+  for (const [key, row] of Object.entries(value)) {
+    if (typeof row !== 'string' || row.length > 8000) continue;
+    const id = clip(key);
+    if (id) out[id] = row;
+    if (Object.keys(out).length >= 400) break;
+  }
+  return out;
+}
+
+function scoutCount(value: unknown): number {
+  const count = typeof value === 'number' ? value : Number(value);
+  if (!Number.isInteger(count) || count < 0) return 0;
+  return Math.min(count, 999);
+}
+
+function scoutRecordFields(value: unknown): UpdateScoutCard['record'] {
+  const row = value && typeof value === 'object' ? (value as { wins?: unknown; losses?: unknown; draws?: unknown }) : {};
+  const wins = scoutCount(row.wins);
+  const losses = scoutCount(row.losses);
+  const draws = scoutCount(row.draws);
+  return { wins, losses, draws, line: `${wins}-${losses}-${draws}` };
+}
+
+/** Share text for one card. Extra fields on the saved card are not copied. */
+function scoutShareCard(card: ScoutingCard, results: readonly CompetitionResult[]): UpdateScoutCard | null {
+  const id = clip(card.id);
+  const name = clip(card.name);
+  if (!id || !name) return null;
+  const record = scoutRecord(card, results);
+  return {
+    id,
+    name,
+    gym: clip(card.gym),
+    group: card.group === 'open' ? 'open' : 'weight',
+    style: clip(card.style, 500),
+    weightClass: clip(card.weightClass, 80),
+    belt: clip(card.belt, 20),
+    ratings: cleanRatings(card.ratings),
+    strengths: clip(card.strengths, 500),
+    weaknesses: clip(card.weaknesses, 500),
+    record: { wins: record.wins, losses: record.losses, draws: record.draws, line: record.line },
+    notes: clip(card.notes, 500),
+  };
+}
+
+function readScoutCard(value: unknown): UpdateScoutCard | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Partial<UpdateScoutCard>;
+  const id = clip(row.id);
+  const name = clip(row.name);
+  if (!id || !name) return null;
+  return {
+    id,
+    name,
+    gym: clip(row.gym),
+    group: row.group === 'open' ? 'open' : 'weight',
+    style: clip(row.style, 500),
+    weightClass: clip(row.weightClass, 80),
+    belt: clip(row.belt, 20),
+    ratings: cleanRatings(row.ratings),
+    strengths: clip(row.strengths, 500),
+    weaknesses: clip(row.weaknesses, 500),
+    record: scoutRecordFields(row.record),
+    notes: clip(row.notes, 500),
+  };
+}
+
+function readScouting(value: unknown): StudentCoachUpdate['scouting'] | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const row = value as { studentName?: unknown; cards?: unknown };
+  if (!Array.isArray(row.cards)) return undefined;
+  const cards: UpdateScoutCard[] = [];
+  for (const item of row.cards) {
+    const card = readScoutCard(item);
+    if (!card) continue;
+    const index = cards.findIndex((existing) => existing.id === card.id);
+    if (index >= 0) cards[index] = card;
+    else cards.push(card);
+    if (cards.length >= 80) break;
+  }
+  if (!cards.length) return undefined;
+  return { studentName: clip(row.studentName), cards };
 }
 
 function games(value: CompetitionGames | undefined) {
@@ -169,6 +308,10 @@ export function buildCoachUpdateFile(
     studentId?: string;
     /** Defaults to the student's opt-in in storage. */
     shareWeight?: boolean;
+    /** Defaults to the cards saved on this phone. */
+    scouting?: readonly ScoutingCard[];
+    /** Defaults to on. Pass false when the student turned the section off. */
+    shareScouting?: boolean;
     now?: number;
     today?: string;
   },
@@ -187,7 +330,13 @@ export function buildCoachUpdateFile(
     since: before.at,
   };
   const included: CoachUpdateSection[] = [];
-  const next: Snapshot = { at: now, sections: { ...before.sections }, assessmentIds: [...before.assessmentIds], weighInIds: [...before.weighInIds] };
+  const next: Snapshot = {
+    at: now,
+    sections: { ...before.sections },
+    assessmentIds: [...before.assessmentIds],
+    weighInIds: [...before.weighInIds],
+    scouting: { ...before.scouting },
+  };
   for (const key of ['profile', 'card', 'competition'] as const) {
     const value = parts[key];
     const text = JSON.stringify(value);
@@ -230,6 +379,31 @@ export function buildCoachUpdateFile(
     included.push('assessments');
   }
   next.assessmentIds = [...new Set([...before.assessmentIds, ...input.assessments.map((entry) => entry.id)])].slice(-400);
+  const shareScouting = input.shareScouting ?? readShareScoutingWithCoach(input.storage);
+  if (shareScouting) {
+    const results = competitionOf(report).results;
+    const source = input.scouting ?? loadScouting(input.storage);
+    const prepared = source
+      .flatMap((card) => {
+        const shared = scoutShareCard(card, results);
+        return shared ? [shared] : [];
+      })
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .slice(0, 400);
+    const changed = prepared.filter((card) => before.scouting[card.id] !== JSON.stringify(card));
+    const sending = changed.slice(0, 80);
+    if (sending.length) {
+      update.scouting = { studentName: clip(report.profile.displayName), cards: sending };
+      included.push('scouting');
+    }
+    const sent = new Set(sending.map((card) => card.id));
+    const fingerprints: Record<string, string> = {};
+    for (const card of prepared) {
+      const text = JSON.stringify(card);
+      if (sent.has(card.id) || before.scouting[card.id] === text) fingerprints[card.id] = text;
+    }
+    next.scouting = fingerprints;
+  }
   const json = JSON.stringify(update);
   const safe = (report.profile.displayName || 'student').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'student';
   return { update, name: `advantage-update-for-coach-${safe}-${today}.json`, json, included, snapshot: next };
@@ -308,6 +482,8 @@ export function readStudentCoachUpdate(raw: unknown): StudentCoachUpdate | null 
       ),
     }));
   }
+  const scouting = readScouting(row.scouting);
+  if (scouting) out.scouting = scouting;
   return out;
 }
 
@@ -387,6 +563,57 @@ export function studentCompetitorSummary(storage: Pick<Store, 'getItem'>, studen
 
 export function pendingStudentCoachUpdates(storage: Pick<Store, 'getItem'>): StudentCoachUpdate[] {
   return readUpdates(storage).pending;
+}
+
+export type ApprovedStudentScouting = {
+  studentName: string;
+  cards: UpdateScoutCard[];
+  /** Latest self-assessment the student included in a file the coach kept. */
+  self: { date: string; scores: AreaRatings } | null;
+};
+
+/**
+ * Opponent cards the coach approved for this student. The same card id keeps
+ * one row: a later file replaces the earlier one. Dismissed files are not here.
+ */
+export function approvedStudentScouting(storage: Pick<Store, 'getItem'>, studentId: string): ApprovedStudentScouting {
+  const byId = new Map<string, { card: UpdateScoutCard; sentAt: number }>();
+  let studentName = '';
+  let nameAt = -1;
+  let self: { date: string; scores: AreaRatings; sentAt: number; index: number } | null = null;
+  for (const row of keptStudentCoachUpdates(storage, studentId)) {
+    if (row.profile?.displayName && row.sentAt >= nameAt) {
+      studentName = row.profile.displayName;
+      nameAt = row.sentAt;
+    }
+    if (row.scouting?.studentName && row.sentAt >= nameAt) {
+      studentName = row.scouting.studentName;
+      nameAt = row.sentAt;
+    }
+    for (const card of row.scouting?.cards ?? []) {
+      const prev = byId.get(card.id);
+      if (!prev || row.sentAt >= prev.sentAt) byId.set(card.id, { card, sentAt: row.sentAt });
+    }
+    const assessments = row.assessments ?? [];
+    for (let index = 0; index < assessments.length; index += 1) {
+      const entry = assessments[index];
+      const scores = cleanRatings(entry.scores);
+      if (
+        !self ||
+        entry.date > self.date ||
+        (entry.date === self.date && (row.sentAt > self.sentAt || (row.sentAt === self.sentAt && index >= self.index)))
+      ) {
+        self = { date: entry.date, scores, sentAt: row.sentAt, index };
+      }
+    }
+  }
+  return {
+    studentName,
+    cards: [...byId.values()]
+      .map((row) => row.card)
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)),
+    self: self ? { date: self.date, scores: self.scores } : null,
+  };
 }
 
 /** Student-owned fields: fill blanks on the linked card only. */

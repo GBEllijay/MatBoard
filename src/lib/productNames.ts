@@ -67,7 +67,7 @@ export const PRO_DRIVE_NOTE =
 
 /** Instructor Edition requirement. Advantage does not host the gym drive. */
 export const INSTRUCTOR_DRIVE_REQUIREMENT =
-  'Requires gym setup with a third-party drive (Google Drive, OneDrive, or Dropbox). Advantage does not host it.';
+  'Requires gym setup with a third-party drive (Google Drive or OneDrive). Advantage does not host it.';
 
 /** Display name for the hosted-storage plan. No checkout product. The constant name stays. */
 export const PRO_PLUS_CLOUD_NAME = 'Advantage Pro + Cloud';
@@ -310,7 +310,8 @@ export const INSTRUCTOR_COLLAB_NAME = 'Instructor Invitation and Access Manageme
 export const INSTRUCTOR_COLLAB_HUB_LABEL = 'Instructor Invitation and Access Management';
 
 /** Pro hub that replaced Competitor Management System. Opens Unlimited tools. */
-export const INSTRUCTOR_COACH_ENTRY = 'Advantage Coach Unlimited';
+/** Edition label on the Instructor Edition hub and its lesson plan. Was “Advantage Coach Unlimited”. */
+export const INSTRUCTOR_COACH_ENTRY = 'Instructor Edition';
 
 /**
  * Display label for that hub in Pro's feature lists (Pro console hubs, Pro Coming Soon ad).
@@ -616,6 +617,17 @@ export function mediaConsoleDoorOpen(input: ProSurfaceInput): boolean {
   // No seat: the Media door (Media Edition, or Pro which includes it). Lock Media closes it.
   if (!input.seated) return input.mediaUnlocked ?? input.proUnlocked;
   return input.seatGrantsMedia;
+}
+
+/**
+ * Media Edition on /products and the /media hub.
+ * Open when the Media door is open (a Media pass, or Instructor/Pro which include it),
+ * or when a live seat grants Media Console (same seated rule as mediaConsoleDoorOpen).
+ * A seat token never opens the Media door itself. A seat without a media preset does
+ * not shut a Media door that is already open, so the card and the /media route stay aligned.
+ */
+export function mediaEditionDoorOpen(input: ProSurfaceInput): boolean {
+  return Boolean(input.mediaUnlocked) || mediaConsoleDoorOpen(input);
 }
 
 /**

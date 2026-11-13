@@ -1,0 +1,27 @@
+/* Assessments waiting badge (in-app only). */
+.assess-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4em;
+  height: 1.4em;
+  padding: 0 0.4em;
+  margin-left: 0.35em;
+  border-radius: 999px;
+  background: #c62828;
+  color: #fff;
+  font-size: 0.75em;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.assess-waiting [data-assessment-item] {
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.assess-send {
+  margin: 12px 0;
+}

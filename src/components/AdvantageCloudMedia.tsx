@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react';
 import {
   CLOUD_MEDIA_EVENT,
   CLOUD_SAVED_MESSAGE,
+  CLOUD_SENT_FOR_APPROVAL,
   cloudUsageLine,
+  galleryDecisionAllowed,
+  isDailyVideoCloudPath,
+  notifyCloudMedia,
+  parseGalleryCloudPath,
   readCloudBearer,
   readCloudMediaHome,
   setCloudUploadReady,
@@ -14,7 +19,18 @@ import {
   type CloudStatusBody,
   type PendingReplayRow,
 } from '../lib/advantageCloudMedia';
+import {
+  CLOUD_DELETE_CONFIRM_PHOTO,
+  CLOUD_DELETE_CONFIRM_VIDEO,
+  CLOUD_DELETE_DONE,
+  deleteCloudMedia,
+} from '../lib/cloudVideoCleanup';
+import { isDailyPhoto, uploadDailyMediaFile } from '../lib/dailyOwnerUpload';
+import { MEDIA_LIBRARY_ACCEPT } from '../lib/mediaPicker';
+import { CLOUD_STUDENT_LICENSE_HINT } from '../lib/storageCopy';
 import { useCurrentSeat } from './SeatSessionBar';
+import { CloudDeleteConfirm } from './CloudDeleteConfirm';
+import { CloudVideoCleanup } from './CloudVideoCleanup';
 
 type Purpose = 'daily-video' | 'lesson';
 
@@ -46,13 +62,18 @@ function authHeaders(): HeadersInit | null {
  * Renders nothing unless this signed-in license has Plus Cloud.
  */
 export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) {
-  const ownerSession = useCurrentSeat() === null;
+  const seat = useCurrentSeat();
+  const ownerSession = seat === null;
+  const canManage = galleryDecisionAllowed({ kind: seat ? 'seat' : 'owner', preset: seat?.presetId });
   const [status, setStatus] = useState<CloudStatusBody | null>(null);
   const [files, setFiles] = useState<CloudFileRow[]>([]);
   const [home, setHome] = useState<CloudMediaHome>('device');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [player, setPlayer] = useState<Player | null>(null);
+  const [studentLicenseId, setStudentLicenseId] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<CloudFileRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     setHome(readCloudMediaHome(typeof localStorage === 'undefined' ? null : localStorage));
@@ -86,7 +107,9 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
         }
         setStatus(body);
         setCloudUploadReady(Boolean(body.canUpload));
-        const listed = await fetch(`/api/gym/cloud?op=list&purpose=${purpose}&date=${encodeURIComponent(dateKey)}`, { headers });
+        // Approvers also get pending and rejected daily videos, tagged with their lane.
+        const lanes = purpose === 'daily-video' ? '&lanes=all' : '';
+        const listed = await fetch(`/api/gym/cloud?op=list&purpose=${purpose}&date=${encodeURIComponent(dateKey)}${lanes}`, { headers });
         const listBody = await readJson<{ files?: CloudFileRow[] }>(listed);
         if (!cancelled) setFiles(listed.ok && listBody?.files ? listBody.files : []);
       } catch {
@@ -108,8 +131,11 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
   if (!status?.cloud) return null;
 
   const canUpload = Boolean(status.canUpload);
-  const usage = cloudUsageLine(status.licenseUsedBytes ?? 0, status.bucketUsedBytes ?? 0, status.capBytes ?? 0);
-  const accept = purpose === 'daily-video' ? 'video/*' : 'video/*,image/*';
+  const usage =
+    typeof status.licenseUsedBytes === 'number' && typeof status.capBytes === 'number'
+      ? cloudUsageLine(status.licenseUsedBytes, status.capBytes)
+      : 'Could not read Cloud usage.';
+  const accept = purpose === 'daily-video' ? MEDIA_LIBRARY_ACCEPT : 'video/*,image/*';
 
   const chooseHome = (next: CloudMediaHome) => {
     writeCloudMediaHome(localStorage, next);
@@ -157,11 +183,20 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
     if (!list?.length || !canUpload) return;
     setBusy(true);
     setNote('');
-    let failed = '';
+    const notes: string[] = [];
+    let cloudWrote = false;
     for (let index = 0; index < list.length; index += 1) {
       const file = list[index];
       if (!file) continue;
-      setNote(list.length === 1 ? 'Uploading to Advantage Cloud…' : `Uploading ${index + 1} of ${list.length} to Advantage Cloud…`);
+      const photo = purpose === 'daily-video' && isDailyPhoto(file);
+      setNote(photo ? 'Saving photo…' : list.length === 1 ? 'Uploading to Advantage Cloud…' : `Uploading ${index + 1} of ${list.length} to Advantage Cloud…`);
+      if (photo) {
+        const saved = await uploadDailyMediaFile(file, dateKey);
+        notes.push(saved.message);
+        if (saved.cloud) cloudWrote = true;
+        if (!saved.ok) break;
+        continue;
+      }
       const result = await uploadAdvantageCloudFile({
         purpose: purpose === 'lesson' ? 'lesson-media' : 'daily-video',
         dateKey,
@@ -170,12 +205,38 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
         mime: file.type || (purpose === 'daily-video' ? 'video/mp4' : 'application/octet-stream'),
       });
       if (!result.ok) {
-        failed = result.message;
+        notes.push(result.message);
         break;
       }
+      cloudWrote = true;
+      notes.push(result.lane === 'pending' ? CLOUD_SENT_FOR_APPROVAL : CLOUD_SAVED_MESSAGE);
     }
     setBusy(false);
-    setNote(failed || CLOUD_SAVED_MESSAGE);
+    setNote(notes.join(' ') || (cloudWrote ? CLOUD_SAVED_MESSAGE : 'Could not read Cloud usage.'));
+    if (cloudWrote) notifyCloudMedia();
+  };
+
+  const sendToStudent = async (file: CloudFileRow) => {
+    const headers = authHeaders();
+    const studentId = studentLicenseId.trim();
+    if (!headers || !studentId) {
+      setNote('Enter the student license, then send.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await fetch('/api/gym/cloud', {
+        method: 'POST',
+        headers: { ...headers, 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'send-to-student', key: file.path, studentId, dateKey }),
+      });
+      const body = await readJson<{ error?: string; path?: string }>(response);
+      setNote(response.ok ? `Sent ${file.name} to that student.` : body?.error || 'That did not send.');
+    } catch {
+      setNote('That did not send.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const savePlan = async () => {
@@ -187,9 +248,29 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
       file: new Blob([planJson], { type: 'application/json' }),
       fileName: `${dateKey}.json`,
       mime: 'application/json',
+      planTarget: 'mine',
     });
     setBusy(false);
-    setNote(result.ok ? 'Lesson plan saved to Advantage Cloud.' : result.message);
+    setNote(result.ok ? 'Saved to your plan in Advantage Cloud. The gym template was not changed.' : result.message);
+  };
+
+  const canDeleteFile = (file: CloudFileRow) => canManage && (isDailyVideoCloudPath(file.path) || Boolean(parseGalleryCloudPath(file.path)));
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleteBusy(true);
+    const result = await deleteCloudMedia({ paths: [pendingDelete.path] });
+    setDeleteBusy(false);
+    if (!result.ok) {
+      setNote(result.message);
+      return;
+    }
+    setPendingDelete(null);
+    setNote(CLOUD_DELETE_DONE);
+    if (typeof result.licenseUsedBytes === 'number' && typeof result.bucketUsedBytes === 'number' && typeof result.capBytes === 'number') {
+      setStatus((current) => (current ? { ...current, licenseUsedBytes: result.licenseUsedBytes, bucketUsedBytes: result.bucketUsedBytes, capBytes: result.capBytes } : current));
+    }
+    notifyCloudMedia();
   };
 
   return (
@@ -222,6 +303,21 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
         <p>You can play and download these files. A coach uploads them.</p>
       )}
       {canUpload ? (
+        <label>
+          Student license
+          <input
+            data-send-student=""
+            value={studentLicenseId}
+            onChange={(event) => setStudentLicenseId(event.target.value)}
+            autoComplete="off"
+            aria-describedby={`cloud-student-hint-${purpose}`}
+          />
+          <small id={`cloud-student-hint-${purpose}`} className="cloud-media__hint" data-student-license-hint="">
+            {CLOUD_STUDENT_LICENSE_HINT}
+          </small>
+        </label>
+      ) : null}
+      {canUpload ? (
         <div className="cloud-media__actions">
           <label className="btn cloud-media__upload">
             <span>{purpose === 'daily-video' ? 'Upload a video' : 'Upload lesson media'}</span>
@@ -239,7 +335,7 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
           </label>
           {purpose === 'lesson' ? (
             <button type="button" className="btn" disabled={busy || !planJson} onClick={() => void savePlan()}>
-              Save this lesson plan
+              Save my plan to Cloud
             </button>
           ) : null}
         </div>
@@ -252,8 +348,12 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
       {files.length ? (
         <ul className="cloud-media__files">
           {files.map((file) => (
-            <li key={file.path} className="cloud-media__file" data-cloud-file={file.path}>
-              <span>{file.name}</span>
+            <li key={file.path} className="cloud-media__file" data-cloud-file={file.path} data-cloud-lane={file.lane ?? 'approved'}>
+              <span>
+                {file.lessonPlan === 'template' ? 'Gym template · ' : file.lessonPlan === 'mine' ? 'My plan · ' : ''}
+                {file.name}
+                {file.lane === 'pending' ? ' · Waiting for approval' : file.lane === 'rejected' ? ' · Rejected' : ''}
+              </span>
               {file.mime.startsWith('image/') || file.mime.startsWith('video/') || file.mime === 'application/octet-stream' ? (
                 <button type="button" className="btn" onClick={() => void play(file)}>
                   Play
@@ -262,12 +362,32 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
               <button type="button" className="btn btn--ghost" onClick={() => void download(file)}>
                 Download
               </button>
+              {canUpload && (file.lane ?? 'approved') === 'approved' && (file.mime.startsWith('video/') || file.mime === 'application/octet-stream') ? (
+                <button type="button" className="btn" disabled={busy} onClick={() => void sendToStudent(file)}>
+                  Send to student
+                </button>
+              ) : null}
+              {canDeleteFile(file) ? (
+                <button type="button" className="btn btn--ghost" data-cloud-delete={file.path} disabled={busy || deleteBusy} onClick={() => setPendingDelete(file)}>
+                  Delete
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
       ) : (
         <p className="cloud-media__empty">No Advantage Cloud files for this day yet.</p>
       )}
+      {pendingDelete ? (
+        <CloudDeleteConfirm
+          title="Delete from Advantage Cloud"
+          body={pendingDelete.mime.startsWith('image/') ? CLOUD_DELETE_CONFIRM_PHOTO : CLOUD_DELETE_CONFIRM_VIDEO}
+          busy={deleteBusy}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void confirmDelete()}
+        />
+      ) : null}
+      {canManage && purpose === 'daily-video' ? <CloudVideoCleanup /> : null}
       {player?.kind === 'video' ? <video className="cloud-media__player" src={player.url} controls playsInline /> : null}
       {player?.kind === 'image' ? <img className="cloud-media__player" src={player.url} alt={player.name} /> : null}
       {purpose === 'lesson' ? <PendingReplayApprovals owner={ownerSession} /> : null}

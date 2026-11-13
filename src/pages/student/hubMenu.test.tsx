@@ -26,7 +26,7 @@ import { DRIVE_BINDING_KEY } from '../../lib/googleDrive.ts';
 import { BackupMenu, ClearStudentMenu } from './BackupMenu.tsx';
 import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from './StudentMenus.tsx';
 import { StudentProfileSwitcher } from './StudentProfileSwitcher.tsx';
-import { ADD_PROFILE_LABEL, readActiveStudentProfile, readStudentProfiles } from '../../lib/studentProfiles.ts';
+import { ADD_PROFILE_LABEL, EXTRA_PROFILE_FIXTURE_KEY, readActiveStudentProfile, readStudentProfiles } from '../../lib/studentProfiles.ts';
 import { WhitePage } from '../White.tsx';
 
 const dom = new Window({ url: 'http://localhost/student?student=1' });
@@ -109,6 +109,15 @@ test('the hub is five groups and has no Menu card', () => {
     hub.host.querySelector('a[aria-label="Current belt"]')?.getAttribute('href') ?? '',
     /\/student\/rank\?student=1#current$/,
   );
+  unmount(hub);
+});
+
+test('the hub Profiles card sits below Backup & Print and above FAQ', () => {
+  const hub = mount(<StudentHub />, '/student?student=1');
+  const switcher = hub.host.querySelector('[data-testid="student-profile-switcher"]');
+  assert.ok(switcher);
+  assert.match(switcher?.previousElementSibling?.getAttribute('aria-label') ?? '', /^Backup & Print/);
+  assert.equal(switcher?.nextElementSibling?.getAttribute('aria-label'), 'FAQ');
   unmount(hub);
 });
 
@@ -417,6 +426,70 @@ test('the main menu belt and the hub current-belt link follow My rank', () => {
   unmount(cleared);
 });
 
+test('the hub rank tile and progress belt summary omit the next-stripe line in every state', () => {
+  localStorage.clear();
+  const fresh = mount(<StudentHub />, '/student?student=1');
+  assert.equal(fresh.host.querySelector('.s-rank__cap'), null);
+  assert.ok(fresh.host.querySelector('.s-rank .s-meter'));
+  assert.equal(fresh.host.textContent?.includes('Next stripe'), false);
+  assert.equal(fresh.host.querySelector('.s-rank')?.textContent?.includes('0%'), false);
+  assert.equal(fresh.host.textContent?.includes('White · 0 stripes'), true);
+  unmount(fresh);
+
+  const zeroProgress = mount(<ProgressMenu />, '/student/progress?student=1');
+  const zeroSummary = zeroProgress.host.querySelector('[aria-label="Belt summary"]');
+  assert.ok(zeroSummary);
+  assert.equal(zeroSummary?.textContent?.includes('White belt · 0 stripes'), true);
+  assert.equal(zeroSummary?.textContent?.includes('Next stripe'), false);
+  assert.equal(zeroSummary?.textContent?.includes('0%'), false);
+  assert.ok(zeroSummary?.querySelector('.s-meter'));
+  assert.ok(zeroSummary?.querySelector('.s-belt-mark'));
+  unmount(zeroProgress);
+
+  act(() => {
+    wear(setRankTapeCount(setRankBelt(blankStudentReport(2), 'blue', 3), 2, 4));
+  });
+  const midHub = mount(<StudentHub />, '/student?student=1');
+  assert.equal(midHub.host.querySelector('.s-rank__cap'), null);
+  assert.equal(midHub.host.textContent?.includes('Next stripe'), false);
+  assert.equal(midHub.host.querySelector('.s-rank')?.textContent?.includes('50%'), false);
+  assert.equal(midHub.host.textContent?.includes('Blue · 2 stripes'), true);
+  assert.ok(midHub.host.querySelector('.s-rank .s-meter'));
+  unmount(midHub);
+
+  const midProgress = mount(<ProgressMenu />, '/student/progress?student=1');
+  const midSummary = midProgress.host.querySelector('[aria-label="Belt summary"]');
+  assert.equal(midSummary?.textContent?.includes('Blue belt · 2 stripes'), true);
+  assert.equal(midSummary?.textContent?.includes('Next stripe'), false);
+  assert.equal(midSummary?.textContent?.includes('50%'), false);
+  assert.ok(midSummary?.querySelector('.s-meter'));
+  unmount(midProgress);
+
+  act(() => {
+    wear(setRankTapeCount(setRankBelt(blankStudentReport(3), 'blue', 3), 4, 4));
+  });
+  const maxHub = mount(<StudentHub />, '/student?student=1');
+  assert.equal(maxHub.host.querySelector('.s-rank__cap'), null);
+  assert.equal(maxHub.host.textContent?.includes('All four stripes'), false);
+  assert.equal(maxHub.host.textContent?.includes('Blue · 4 stripes'), true);
+  unmount(maxHub);
+
+  const maxProgress = mount(<ProgressMenu />, '/student/progress?student=1');
+  const maxSummary = maxProgress.host.querySelector('[aria-label="Belt summary"]');
+  assert.equal(maxSummary?.textContent?.includes('All four stripes'), false);
+  assert.equal(maxSummary?.textContent?.includes('Blue belt · 4 stripes'), true);
+  unmount(maxProgress);
+
+  wear(setRankBelt(blankStudentReport(10), 'red', 11));
+  const finalProgress = mount(<ProgressMenu />, '/student/progress?student=1');
+  const finalSummary = finalProgress.host.querySelector('[aria-label="Belt summary"]');
+  assert.equal(finalSummary?.textContent?.includes('Final rank'), false);
+  assert.equal(finalSummary?.textContent?.includes('Red belt · 9 degrees'), true);
+  unmount(finalProgress);
+
+  localStorage.clear();
+});
+
 test('kids stripes and the adult switch repaint the same belt mark', () => {
   localStorage.clear();
   let report = setBeltMode(blankStudentReport(20), 'kids', 21);
@@ -551,6 +624,7 @@ test('Lock White uses the hub text button and leaves roster and journal in place
 
 test('a profile can be added and switched from the hub, then deleted after confirmation', () => {
   localStorage.clear();
+  localStorage.setItem(EXTRA_PROFILE_FIXTURE_KEY, '1');
   let reloads = 0;
   Object.defineProperty(view.location, 'reload', {
     configurable: true,
@@ -597,6 +671,21 @@ test('a profile can be added and switched from the hub, then deleted after confi
   click(page.host, 'Delete Sam');
   assert.equal(readStudentProfiles(localStorage).profiles.some((profile) => profile.name === 'Sam'), false);
   assert.equal(readActiveStudentProfile(localStorage).name, 'My profile');
+  unmount(page);
+  localStorage.clear();
+});
+
+test('adding a second profile offers the $5.99 checkout unless the fixture is on', () => {
+  localStorage.clear();
+  const page = mount(<StudentProfileSwitcher />, '/student/profile');
+  const add = [...page.host.querySelectorAll('button')].find((node) => node.textContent?.includes('$5.99'));
+  assert.ok(add);
+  act(() => {
+    add.click();
+  });
+  assert.match(page.host.textContent ?? '', /Continue to checkout — \$5\.99/);
+  assert.equal(page.host.querySelector('input[aria-label="Profile name"]'), null);
+  assert.equal(readStudentProfiles(localStorage).profiles.length, 1);
   unmount(page);
   localStorage.clear();
 });

@@ -53,8 +53,8 @@ class MemoryBucket implements GymMediaBucket {
     const bytes = value instanceof Uint8Array ? new Uint8Array(value) : new Uint8Array(value);
     this.objects.set(key, { bytes, type: options?.httpMetadata?.contentType || 'application/octet-stream' });
   }
-  async delete(key: string) {
-    this.objects.delete(key);
+  async delete(keys: string | string[]) {
+    for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key);
   }
   async list(options?: { prefix?: string }) {
     const prefix = options?.prefix ?? '';
@@ -96,7 +96,7 @@ function redeem(code: string, deviceId: string): Request {
 
 test('an owner code is one academy with no end, and an expired pass refreshes onto it', async () => {
   resetRateLimitsForTests();
-  assert.equal(DEFAULT_CLOUD_CAP_BYTES, 8_000_000_000);
+  assert.equal(DEFAULT_CLOUD_CAP_BYTES, 100_000_000_000);
   const signing = await signingSecret();
   const material = signingMaterial(signing, 'k1');
   assert.ok(material);

@@ -174,7 +174,7 @@ test('belt checkpoints, goals, coach suggestions, and the share file', async ({ 
   expect(report.journal).toEqual([]);
 
   await page.getByRole('link', { name: 'Make a file for my coach', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Email the file' })).toHaveAttribute('href', /subject=Advantage%20progress%20report/);
+  await expect(page.getByRole('link', { name: 'Open email (attach the file yourself)' })).toHaveAttribute('href', /subject=Advantage%20progress%20report/);
   await expect(page.getByRole('checkbox', { name: 'Also include the spreadsheet' })).toBeVisible();
   await shot(page, 'student-share-390');
   const downloadPromise = page.waitForEvent('download');

@@ -172,7 +172,7 @@ test('events and pro shop stay on the media tree, and a finished week can archiv
 });
 
 test('Google Photos albums stay out of the gym tree', () => {
-  assert.equal(PHOTOS_PICK_MAX, '50');
+  assert.equal(PHOTOS_PICK_MAX, '2000');
   const photos = readFileSync(new URL('./googlePhotos.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(photos, /gallery\/approved|videos\/daily/);
 });

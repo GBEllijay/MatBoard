@@ -3,7 +3,7 @@ import test from 'node:test';
 import { exportProgressPacket } from './progress/format.ts';
 import { addJournalClip, addJournalEntry, blankStudentReport, setStudentProfile } from './studentEdition.ts';
 import { extractPdfText, formatPdfNumber, pdfPageCount, pdfToText } from './simplePdf.ts';
-import { assessmentReportPdf, beltArtDraws, chartPoint, layoutAssessment, outerRingRadius, progressReportPdf, radarPolygonRadii, renderReportPages, REPORT_BELT_HEIGHT, REPORT_CONTENT_WIDTH } from './reportPdf.ts';
+import { assessmentReportPdf, beltArtDraws, layoutAssessment, progressReportPdf, renderReportPages, REPORT_BELT_HEIGHT, REPORT_CONTENT_WIDTH } from './reportPdf.ts';
 import { setBeltMode, setKidsBelt, setKidsTapeCount } from './beltBook.ts';
 import { saveAssessment } from './studentAssessment.ts';
 import {
@@ -160,7 +160,7 @@ test('progress PDF keeps every section, the student track, and checkpoint status
     {
       date: '2026-10-23',
       note: 'conditioning is the limiter',
-      scores: { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 },
+      scores: { guard: 5, passing: 4, sweeps: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 },
     },
   );
   const lines = progressReportLines(report, assessment, { scouting: [scout], films: [film] });
@@ -281,7 +281,9 @@ test('a journal line uses the card labels and the written date', () => {
   assert.match(line, /Drills: hip escapes/);
   assert.match(line, /Rolls: 5 rounds/);
   assert.match(line, /Drill notes: grip the collar deeper/);
-  assert.match(line, /Stop doing: posting the near hand/);
+  // Older stop-doing text folds into How it went; there is no separate Stop doing line.
+  assert.match(line, /How it went: posting the near hand/);
+  assert.doesNotMatch(line, /Stop doing/);
   const pdf = progressReportPdf(report, { entries: [] }, {}, '2026-10-11');
   const text = extractPdfText(pdf);
   assert.match(text, /Technique drilled #1: Scissor sweep/);
@@ -350,29 +352,32 @@ test('a kids belt report lists only the kids track, in order', () => {
   assert.equal(lines.includes('\nCoral\n'), false);
 });
 
-test('self-assessment PDF draws the shared radar and does not add an empty page', () => {
+test('self-assessment PDF draws the static D8 diamond and does not add an empty page', () => {
   const report = setStudentProfile(blankStudentReport(3), { displayName: 'Ada', gymName: 'GB', startedOn: '2020-01-02' }, 4);
-  const first = saveAssessment(
-    { entries: [] },
-    {
-      date: '2026-10-01',
-      note: 'earlier pass',
-      scores: { guard: 2, passing: 2, takedowns: 2, escapes: 2, submissions: 2, conditioning: 2, mindset: 2 },
-    },
-  );
+  // The earlier day was saved before Sweeps existed, so it has no Sweeps rating.
+  const first = {
+    entries: [
+      {
+        id: 'assess.old',
+        date: '2026-10-01',
+        note: 'earlier pass',
+        scores: { guard: 2, passing: 2, takedowns: 2, escapes: 2, submissions: 2, conditioning: 2, mindset: 2 } as const,
+      },
+    ],
+  };
   const assessment = saveAssessment(first, {
     date: '2026-10-23',
     note: 'calm rounds',
-    scores: { guard: 5, passing: 4, takedowns: 3, escapes: 5, submissions: 4, conditioning: 3, mindset: 5 },
+    scores: { guard: 5, passing: 4, sweeps: 3, takedowns: 3, escapes: 5, submissions: 4, conditioning: 3, mindset: 5 },
   });
   const layout = layoutAssessment(report, assessment, '2026-10-23');
-  assert.ok(layout.radarBox);
+  assert.ok(layout.diamond);
   const pdf = progressBytes(layout);
   const raw = pdfToText(pdf);
-  const top = chartPoint(0, 5, layout.radarBox);
-  const prior = chartPoint(0, 2, layout.radarBox);
-  assert.ok(raw.includes(`${formatPdfNumber(top.x)} ${formatPdfNumber(top.y)} m`));
-  assert.ok(raw.includes(`${formatPdfNumber(prior.x)} ${formatPdfNumber(prior.y)} m`));
+  // The front diamond's top tip and right tip are path corners in the page stream.
+  const { front, back } = layout.diamond;
+  assert.ok(raw.includes(`${formatPdfNumber(front.cx)} ${formatPdfNumber(front.cy + front.r)}`));
+  assert.ok(raw.includes(`${formatPdfNumber(back.cx + back.r)} ${formatPdfNumber(back.cy)}`));
   const text = extractPdfText(pdf);
   assert.match(text, /Self-assessment/);
   assert.match(text, /Ada/);
@@ -380,35 +385,45 @@ test('self-assessment PDF draws the shared radar and does not add an empty page'
   assert.match(text, /earlier pass/);
   assert.match(text, /This check-in/);
   assert.match(text, /Previous 2026-10-01/);
-  assert.match(text, /4\.1/);
+  assert.match(text, /Front/);
+  assert.match(text, /Back \(turned over\)/);
   assert.equal(text.includes('?'), false);
   assert.equal(pdfPageCount(pdf), 1);
   assert.equal(raw.includes('/Subtype /Image'), true);
-  const bodies = raw.split('stream\n').map((part) => part.split('endstream')[0]).filter((part) => part.includes('Tj'));
-  for (const body of bodies) {
-    assert.ok(/Self-assessment|Earlier|Notes|calm rounds|earlier pass/.test(body), body.slice(0, 80));
+  const draws = layout.pages.flatMap((page) => page);
+  const labels = ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset'];
+  for (const label of labels) {
+    // Each area is named on the diamond (9pt) and on its bar (10pt).
+    assert.ok(draws.some((draw) => draw.op === 'text' && draw.text === label && draw.size === 9), `${label} on the diamond`);
+    assert.ok(draws.some((draw) => draw.op === 'text' && draw.text === label && draw.size === 10), `${label} bar`);
   }
-  const guard = layout.pages.flatMap((page) => page).find((draw) => draw.op === 'text' && draw.text === 'Guard' && draw.size === 10);
-  const guardScore = layout.pages.flatMap((page) => page).find((draw) => draw.op === 'text' && draw.text === '5' && draw.font === 'bold' && guard && draw.y === guard.y);
+  const triangles = draws.filter((draw) => draw.op === 'poly' && draw.points.length === 3);
+  assert.equal(triangles.length, 8);
+  const guard = draws.find((draw) => draw.op === 'text' && draw.text === 'Guard/Control' && draw.size === 10);
+  const guardScore = draws.find((draw) => draw.op === 'text' && draw.text === '5' && draw.font === 'bold' && guard && draw.y === guard.y);
   assert.ok(guard && guardScore);
+  const sweeps = draws.find((draw) => draw.op === 'text' && draw.text === 'Sweeps' && draw.size === 10);
+  const sweepsScore = draws.find((draw) => draw.op === 'text' && draw.text === '3' && draw.font === 'bold' && sweeps && draw.y === sweeps.y);
+  assert.ok(sweeps && sweepsScore);
+  assert.match(text, /Sweeps not rated/);
 });
 
 test('the black-belt sample fits on one page', () => {
   let report = setStudentProfile(blankStudentReport(8), { displayName: 'Ada Student', gymName: 'GB Ellijay', startedOn: '2014-03-01' }, 9);
   report = { ...report, profile: { ...report.profile, belt: 'black' } };
-  const latest = { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 } as const;
+  const latest = { guard: 5, passing: 4, sweeps: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 } as const;
   let assessment = saveAssessment(
     { entries: [] },
     {
       date: '2026-08-01',
       note: 'hip bump is late',
-      scores: { guard: 3, passing: 3, takedowns: 2, escapes: 3, submissions: 3, conditioning: 2, mindset: 4 },
+      scores: { guard: 3, passing: 3, sweeps: 3, takedowns: 2, escapes: 3, submissions: 3, conditioning: 2, mindset: 4 },
     },
   );
   assessment = saveAssessment(assessment, {
     date: '2026-09-12',
     note: 'passing still stalls',
-    scores: { guard: 4, passing: 3, takedowns: 3, escapes: 4, submissions: 4, conditioning: 3, mindset: 4 },
+    scores: { guard: 4, passing: 3, sweeps: 3, takedowns: 3, escapes: 4, submissions: 4, conditioning: 3, mindset: 4 },
   });
   assessment = saveAssessment(assessment, {
     date: '2026-10-23',
@@ -433,7 +448,7 @@ test('a long self-assessment history continues onto the next page', () => {
     assessment = saveAssessment(assessment, {
       date: `2026-0${index + 1}-15`,
       note: `history note ${index}`,
-      scores: { guard: 3, passing: 3, takedowns: 3, escapes: 3, submissions: 3, conditioning: 3, mindset: 3 },
+      scores: { guard: 3, passing: 3, sweeps: 3, takedowns: 3, escapes: 3, submissions: 3, conditioning: 3, mindset: 3 },
     });
   }
   const pdf = assessmentReportPdf(report, assessment, '2026-10-23');
@@ -443,24 +458,29 @@ test('a long self-assessment history continues onto the next page', () => {
   assert.match(text, /history note 7/);
 });
 
-test('every radar polygon vertex stays on or inside the outer ring', () => {
+test('a check-in saved before Sweeps existed prints Sweeps as not rated, not a copied number', () => {
   const report = setStudentProfile(blankStudentReport(3), { displayName: 'Ada', gymName: 'GB', startedOn: '2020-01-02' }, 4);
-  const assessment = saveAssessment(
-    { entries: [] },
-    {
-      date: '2026-10-23',
-      note: 'calm rounds',
-      scores: { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 },
-    },
-  );
+  // Stored before Sweeps existed: seven faces, no Sweeps key.
+  const assessment = {
+    entries: [
+      {
+        id: 'assess.pre-sweeps',
+        date: '2026-10-23',
+        note: 'calm rounds',
+        scores: { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 5, conditioning: 3, mindset: 5 } as const,
+      },
+    ],
+  };
   const layout = layoutAssessment(report, assessment, '2026-10-23');
-  assert.ok(layout.radarBox);
-  const outer = outerRingRadius(layout.radarBox);
-  const radii = radarPolygonRadii(layout.radarBox, layout.pages.flat());
-  assert.ok(radii.length >= 7 * 5);
-  for (const radius of radii) assert.ok(radius <= outer + 0.05, `${radius} > ${outer}`);
-  const onRing = radii.filter((radius) => Math.abs(radius - outer) <= 0.05);
-  assert.ok(onRing.length >= 7);
+  assert.ok(layout.diamond);
+  const draws = layout.pages.flat();
+  const triangles = draws.filter((draw) => draw.op === 'poly' && draw.points.length === 3);
+  assert.equal(triangles.length, 8);
+  const fills = new Set(triangles.map((draw) => (draw.op === 'poly' ? JSON.stringify(draw.fill) : '')));
+  // Scores 3, 4, 5 plus the unrated Sweeps face give four different fills.
+  assert.equal(fills.size, 4);
+  const sweeps = draws.find((draw) => draw.op === 'text' && draw.text === 'Sweeps' && draw.size === 10);
+  assert.ok(sweeps && draws.some((draw) => draw.op === 'text' && draw.text === '-' && draw.y === sweeps.y));
 });
 
 function progressBytes(layout: { pages: Parameters<typeof renderReportPages>[0] }): Uint8Array {
@@ -478,7 +498,7 @@ test('profile fields survive backup, and the assessment file name matches the do
     {
       date: '2026-10-17',
       note: 'calm rounds',
-      scores: { guard: 3, passing: 4, takedowns: 2, escapes: 5, submissions: 3, conditioning: 4, mindset: 5 },
+      scores: { guard: 3, passing: 4, sweeps: 3, takedowns: 2, escapes: 5, submissions: 3, conditioning: 4, mindset: 5 },
     },
   );
   const built = await buildStudentBackup({

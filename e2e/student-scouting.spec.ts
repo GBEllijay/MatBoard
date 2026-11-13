@@ -4,7 +4,9 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/student/results?student=1');
   await page.getByLabel('Result tournament name').fill('Spring Open');
-  await page.getByLabel('Result division').fill('Adult Blue Middle');
+  await page.getByLabel('Result age division').selectOption('Adult');
+  await page.getByLabel('Result belt rank').selectOption('Blue');
+  await page.getByLabel('Result weight class').selectOption('Middle');
   await page.getByRole('button', { name: 'Add result', exact: true }).click();
   await page.getByLabel('Opponent for Spring Open').fill('Sam');
   await page.getByRole('group', { name: 'Result for Spring Open' }).getByRole('button', { name: 'Win', exact: true }).click();
@@ -12,7 +14,10 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
   await page.getByRole('button', { name: 'Add match for Spring Open' }).click();
   await expect(page.getByText('Win · Sam · Sub')).toBeVisible();
 
-  await page.goto('/student?student=1');
+  await page.getByRole('link', { name: 'Back. Hold for Home.', exact: true }).click();
+  await expect(page).toHaveURL(/\/student\/compete\?student=1$/);
+  await page.getByRole('link', { name: 'Back. Hold for Home.', exact: true }).click();
+  await expect(page).toHaveURL(/\/student\?student=1$/);
   await page.getByRole('link', { name: 'Competitor', exact: true }).click();
   const scouting = page.getByRole('link', { name: 'Opponent card archive', exact: true });
   const weightLink = page.getByRole('link', { name: 'Weight management', exact: true });
@@ -41,6 +46,9 @@ test('scouting cards import a roster csv and link a recorded match', async ({ pa
     'href',
     '/student/self-assessment?from=scouting&student=1',
   );
+  const emptyOverlay = page.getByRole('region', { name: 'Me versus Sam' });
+  await expect(emptyOverlay.getByRole('button', { name: 'Cage for Sam', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(emptyOverlay.getByText('Eight areas inside the cage.', { exact: true })).toBeVisible();
   await page.getByRole('textbox', { name: 'Search opponents' }).fill('pressure');
   await expect(weight.locator('strong').filter({ hasText: /^Sam$/ })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Open class' }).getByText('No opponents in this class yet.')).toBeVisible();
@@ -89,7 +97,8 @@ test('scouting opponent tracker compares the latest self-assessment', async ({ p
   await page.getByRole('button', { name: 'Save self-assessment', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Update self-assessment', exact: true })).toBeVisible();
 
-  await page.goto('/student/scouting?student=1');
+  await page.getByRole('link', { name: 'Back. Hold for Home.', exact: true }).click();
+  await expect(page).toHaveURL(/\/student\/scouting\?student=1$/);
   await page.getByLabel('Opponent name').fill('Sam');
   await page.getByLabel('Opponent gym').fill('Atos');
   await page.getByLabel('Opponent belt').selectOption('Blue');
@@ -114,16 +123,25 @@ test('scouting opponent tracker compares the latest self-assessment', async ({ p
   await tracker.getByRole('button', { name: 'Save notes for Sam', exact: true }).click();
 
   const overlay = page.getByRole('region', { name: 'Me versus Sam' });
-  await expect(overlay.getByRole('button', { name: 'Diamond for Sam', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(overlay.locator('.archive-diamond canvas')).toBeVisible();
-  await overlay.getByRole('button', { name: 'Spider for Sam', exact: true }).click();
+  const graph = overlay.getByRole('group', { name: 'Graph for Sam' });
+  await expect(graph.getByRole('button').nth(0)).toHaveAccessibleName('Cage for Sam');
+  await expect(graph.getByRole('button').nth(1)).toHaveAccessibleName('Diamond for Sam');
+  await expect(overlay.getByRole('button', { name: 'Cage for Sam', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(overlay.getByText('Eight areas inside the cage. Me in blue, opponent in orange.', { exact: true })).toBeVisible();
   await expect(overlay.getByRole('img', { name: /Me versus Sam/ })).toBeVisible();
   await expect(overlay.getByRole('list', { name: 'Radar legend' })).toContainText('Me');
-  await expect(overlay.getByRole('list', { name: 'Radar legend' })).toContainText('Sam');
+  await expect(overlay.getByRole('list', { name: 'Radar legend' })).toContainText('Opponent');
+  await expect(overlay.getByRole('img', { name: /Sweeps not rated/ })).toBeVisible();
   await expect(overlay.getByRole('list', { name: 'Comparison with Sam' })).toContainText('Favored: Guard, Submissions, Conditioning');
   await expect(overlay.getByRole('list', { name: 'Comparison with Sam' })).toContainText('Even: Takedowns');
   await expect(overlay.getByRole('list', { name: 'Comparison with Sam' })).toContainText('At a disadvantage: Passing, Escapes, Mindset');
   await expect(tracker.getByRole('link', { name: 'Do your self-assessment' })).toHaveCount(0);
+  await overlay.getByRole('button', { name: 'Diamond for Sam', exact: true }).click();
+  await expect(overlay.getByRole('button', { name: 'Diamond for Sam', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(overlay.locator('.archive-diamond canvas')).toBeVisible();
+  await expect(overlay.getByText('Eight areas on one shape. Peaks are stronger. Dips need work.', { exact: true })).toBeVisible();
+  await overlay.getByRole('button', { name: 'Cage for Sam', exact: true }).click();
+  await expect(overlay.getByRole('button', { name: 'Cage for Sam', exact: true })).toHaveAttribute('aria-pressed', 'true');
 
   const ratings = page.getByRole('group', { name: 'Ratings for Sam' });
   await ratings.screenshot({ path: '/opt/cursor/artifacts/screenshots/tracker-ratings-phone.png' });

@@ -15,16 +15,66 @@ import {
   STUDENT_LICENSE_OWNER_ONLY,
   freeStudentLicenseTicker,
   halfOffPoolNote,
-  studentLicenseClaimUrl,
+  studentInviteJoinUrl,
 } from '../lib/studentLicensePool';
-import { SHARE_OWNER_ONLY } from '../lib/licenseShare';
+import { SHARE_OWNER_ONLY, copyShareLink } from '../lib/licenseShare';
 import { qrDataUrl } from '../lib/qr';
 
 function origin(): string {
   return typeof window === 'undefined' ? '' : window.location.origin;
 }
 
-function LicenseQr({ link, caption }: { link: string; caption: string }) {
+function downloadDataUrl(dataUrl: string, filename: string): void {
+  const anchor = document.createElement('a');
+  anchor.href = dataUrl;
+  anchor.download = filename;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
+function InviteActions({ link, qrSrc, label }: { link: string; qrSrc: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
+  const copy = async () => setCopied(await copyShareLink(link));
+  const share = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: label, text: label, url: link });
+        setShared(true);
+        return;
+      }
+    } catch {
+      /* fall through to copy */
+    }
+    setCopied(await copyShareLink(link));
+  };
+  return (
+    <div className="student-license__actions">
+      <label>
+        Invite link
+        <input readOnly value={link} aria-label="Invite link" onFocus={(event) => event.currentTarget.select()} />
+      </label>
+      <button type="button" className="btn" onClick={() => void copy()}>
+        {copied ? 'Copied' : 'Copy link'}
+      </button>
+      <button type="button" className="btn btn--ghost" onClick={() => void share()}>
+        {shared ? 'Shared' : 'Share'}
+      </button>
+      <button
+        type="button"
+        className="btn btn--ghost"
+        disabled={!qrSrc}
+        onClick={() => qrSrc && downloadDataUrl(qrSrc, 'student-edition-invite.png')}
+      >
+        Download QR PNG
+      </button>
+    </div>
+  );
+}
+
+function LicenseQr({ link, caption, actions = false }: { link: string; caption: string; actions?: boolean }) {
   const logo = resolveShareLogo(useGymLogo());
   const [src, setSrc] = useState('');
   useEffect(() => {
@@ -38,6 +88,7 @@ function LicenseQr({ link, caption }: { link: string; caption: string }) {
     };
   }, [link]);
   return (
+    <>
     <figure className="license-share__frame license-share__frame--student">
       <img className="license-share__logo" src={logo} alt="" width={56} height={56} />
       <div className="license-share__qr">
@@ -47,12 +98,45 @@ function LicenseQr({ link, caption }: { link: string; caption: string }) {
         <span className="license-share__cap">{caption}</span>
       </figcaption>
     </figure>
+    {actions ? <InviteActions link={link} qrSrc={src} label={caption} /> : null}
+    </>
   );
+}
+
+function HalfOffShare({ halfOff }: { halfOff: HalfOffPointer }) {
+  const [copied, setCopied] = useState(false);
+  const share = async () => setCopied(await copyShareLink(halfOff.code));
+  const percent = typeof halfOff.percentOff === 'number' ? `${halfOff.percentOff}% off Student Edition. ` : '';
+  return (
+    <div className="student-license__halfoff" data-academy-half-off="code">
+      <p>{halfOffPoolNote(halfOff.usesLeft, halfOff.maxUses)}</p>
+      <p>
+        {percent}
+        {halfOff.usesLeft} uses left.
+      </p>
+      <LicenseQr link={halfOff.code} caption="Student Edition half-off code" />
+      <label>
+        Half-off code
+        <input readOnly value={halfOff.code} aria-label="Half-off code" onFocus={(event) => event.currentTarget.select()} />
+      </label>
+      <button type="button" className="btn" onClick={() => void share()}>
+        {copied ? 'Copied' : 'Share'}
+      </button>
+    </div>
+  );
+}
+
+/** Pro owner and Instructor Edition owner. Renders nothing until a code is stored. */
+export function AcademyHalfOffShare() {
+  const { halfOff } = useLicenseList();
+  if (!halfOff?.code) return null;
+  return <HalfOffShare halfOff={halfOff} />;
 }
 
 function useLicenseList() {
   const [rows, setRows] = useState<StudentLicenseRow[]>([]);
   const [left, setLeft] = useState<number | null>(null);
+  const [cap, setCap] = useState(FREE_STUDENT_LICENSES);
   const [halfOff, setHalfOff] = useState<HalfOffPointer | null>(null);
   const [role, setRole] = useState<'owner' | 'seat' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,13 +149,14 @@ function useLicenseList() {
     setError(null);
     setRows(listed.claims);
     setLeft(listed.left);
+    if (typeof listed.cap === 'number' && listed.cap > 0) setCap(listed.cap);
     setRole(listed.role);
     setHalfOff(listed.halfOff ?? null);
   };
   useEffect(() => {
     void reload();
   }, []);
-  return { rows, left, halfOff, role, error, reload, setError, setLeft };
+  return { rows, left, cap, halfOff, role, error, reload, setError, setLeft, setCap };
 }
 
 function IssuedCode({
@@ -84,12 +169,13 @@ function IssuedCode({
   onRevoke: (code: string) => void;
 }) {
   const gym = useGymName();
-  const link = row.code ? studentLicenseClaimUrl(origin(), row.code, gym) : '';
+  const token = row.invite || row.code || '';
+  const link = token ? studentInviteJoinUrl(origin(), token, gym) : '';
   const [confirm, setConfirm] = useState(false);
   return (
     <div className="student-license__row">
       <p>{row.status === 'claimed' ? 'Claimed' : row.status === 'revoked' ? 'Revoked' : 'Ready to scan'}</p>
-      {row.status === 'issued' && link ? <LicenseQr link={link} caption="Free Student license" /> : null}
+      {row.status === 'issued' && link ? <LicenseQr link={link} caption="Student Edition only" actions /> : null}
       {canRevoke && row.status !== 'revoked' && (row.code || row.claimed) ? (
         confirm ? (
           <div className="student-license__confirm">
@@ -116,7 +202,7 @@ function IssuedCode({
 }
 
 export function StudentLicenseOwnerPanel() {
-  const { rows, left, halfOff, error, reload, setError, setLeft } = useLicenseList();
+  const { rows, left, cap, halfOff, error, reload, setError, setLeft, setCap } = useLicenseList();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const issue = async () => {
@@ -131,6 +217,7 @@ export function StudentLicenseOwnerPanel() {
       return;
     }
     setLeft(issued.left);
+    if (typeof issued.cap === 'number' && issued.cap > 0) setCap(issued.cap);
     setNote('Code issued. The student scans it, enters their email, then adds Advantage to their Home Screen.');
     await reload();
   };
@@ -144,6 +231,7 @@ export function StudentLicenseOwnerPanel() {
       return;
     }
     setLeft(result.left);
+    if (typeof result.cap === 'number' && result.cap > 0) setCap(result.cap);
     setNote(
       result.claimed
         ? 'Revoked. That student lost this free Student Edition, and the seat is back in your pool. The code is dead.'
@@ -156,24 +244,17 @@ export function StudentLicenseOwnerPanel() {
     <section className="student-license" aria-label="Free Student licenses" data-student-license="owner">
       <h2>{STUDENT_LICENSE_GIVE}</h2>
       <p className="license-share__ticker" data-ticker="student-license">
-        {left === null ? 'Checking free Student licenses…' : freeStudentLicenseTicker(occupiedFromLeft(left))}
+        {left === null ? 'Checking free Student licenses…' : freeStudentLicenseTicker(Math.max(0, cap - left), cap)}
       </p>
       <p className="student-license__note">
-        One scan uses one license from your Pro pool. The student enters an email so the home screen app can restore
-        this Student Edition.
+        One scan uses one of your {cap} free Student Edition licenses. The link is single-use and does not expire until it
+        is claimed or you revoke it. It opens Student Edition only, and never an instructor seat. The student enters an
+        email so the home screen app can restore this Student Edition.
       </p>
       {left === 0 ? (
         <p role="status">{STUDENT_LICENSE_EMPTY}</p>
       ) : null}
-      {left === 0 && halfOff ? (
-        <div className="student-license__halfoff">
-          <p>{halfOffPoolNote(halfOff.usesLeft)}</p>
-          <label>
-            100-use half-off code
-            <input readOnly value={halfOff.code} aria-label="100-use half-off code" onFocus={(event) => event.currentTarget.select()} />
-          </label>
-        </div>
-      ) : null}
+      {halfOff?.code ? <HalfOffShare halfOff={halfOff} /> : null}
       {error ? <p role="alert">{error}</p> : null}
       {note ? <p role="status">{note}</p> : null}
       <button type="button" className="btn" onClick={() => void issue()} disabled={busy || left === 0}>
@@ -184,10 +265,6 @@ export function StudentLicenseOwnerPanel() {
       ))}
     </section>
   );
-}
-
-function occupiedFromLeft(left: number): number {
-  return Math.max(0, FREE_STUDENT_LICENSES - left);
 }
 
 export function StudentLicenseSeatShow() {

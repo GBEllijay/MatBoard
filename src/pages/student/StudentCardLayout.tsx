@@ -204,10 +204,14 @@ export function MatchLogSheet({ medal, onClose }: { medal: CardMedal; onClose: (
         <MedalGraphic kind={medal.kind} size={44} />
         <div>
           <h3>{medal.name}</h3>
-          <p>{[medal.division, `${MEDAL_LABEL[medal.kind]}, ${medal.place}`, medal.date].filter(Boolean).join(' · ')}</p>
+          <p>{[medal.division, medal.belt, `${MEDAL_LABEL[medal.kind]}, ${medal.place}`, medal.date].filter(Boolean).join(' · ')}</p>
         </div>
       </div>
-      <p className="match-log__k">{`${medal.matches.length} ${medal.matches.length === 1 ? 'match' : 'matches'} · ${wins} ${wins === 1 ? 'win' : 'wins'}`}</p>
+      <p className="match-log__k">
+        {medal.quick && medal.matches.length === 0
+          ? `Quick result · ${MEDAL_LABEL[medal.kind]}`
+          : `${medal.matches.length} ${medal.matches.length === 1 ? 'match' : 'matches'} · ${wins} ${wins === 1 ? 'win' : 'wins'}`}
+      </p>
       <ol className="match-log__list">
         {medal.matches.map((m) => (
           <li key={m.id} className="match-log__row" data-testid="match-log-row">
@@ -239,10 +243,10 @@ export function CardMedals({ report, to, rail = false }: { report: StudentProgre
         <ul className="card-medals__strip">
           {medals.map((m) => (
             <li key={m.resultId}>
-              <button type="button" className="card-medal" data-testid="card-medal" data-kind={m.kind} aria-label={`${MEDAL_LABEL[m.kind]}, ${m.place}, ${m.name}. Open match log`} onClick={() => setOpen(m.resultId)}>
+              <button type="button" className="card-medal" data-testid="card-medal" data-kind={m.kind} data-belt={m.belt || undefined} aria-label={`${MEDAL_LABEL[m.kind]}, ${m.place}, ${m.name}${m.belt ? `, ${m.belt}` : ''}. Open match log`} onClick={() => setOpen(m.resultId)}>
                 <MedalGraphic kind={m.kind} />
                 <b>{m.name}</b>
-                <span>{m.place}</span>
+                <span>{[m.place, m.belt].filter(Boolean).join(' · ')}</span>
               </button>
               <PodiumPhotoRow studentId={report.studentId} resultId={m.resultId} label={m.name} />
             </li>
@@ -341,7 +345,7 @@ export function WinsZone({ report, to }: { report: StudentProgressReport; to: (p
 }
 
 /** The whole card column on the profile page. `home` = the /student order with `streak` beside mat hours. */
-export function StudentCardLayout({ portrait, logo, to, home = false, bodyScan }: { portrait: string | null; logo: string | null; to: (path: string) => string; home?: boolean; bodyScan?: React.ReactNode }) {
+export function StudentCardLayout({ portrait, to, home = false, bodyScan }: { portrait: string | null; to: (path: string) => string; home?: boolean; bodyScan?: React.ReactNode }) {
   const { report, commit } = useStudentFile();
   const [adding, setAdding] = useState(false);
   if (home) {
@@ -349,7 +353,7 @@ export function StudentCardLayout({ portrait, logo, to, home = false, bodyScan }
       <div className="cs-sheet student-card-layout student-card-layout--home" data-testid="student-card-layout" role="group" aria-label="Character sheet">
         <section className="sheet-zone sheet-zone--identity" data-testid="sheet-zone" data-zone="identity" aria-label="Identity">
           <h3 className="sheet-cap">Identity</h3>
-          <ProfileCardFace report={report} portrait={portrait} logo={logo} to={to} editHref={to('/student/profile')} />
+          <ProfileCardFace report={report} portrait={portrait} to={to} editHref={to('/student/profile')} />
         </section>
         <section className="sheet-zone sheet-zone--stats" data-testid="sheet-zone" data-zone="stats" aria-label="Stats">
           <SheetStats report={report} to={to} onAdd={() => setAdding(true)} />
@@ -377,7 +381,6 @@ export function StudentCardLayout({ portrait, logo, to, home = false, bodyScan }
       <ProfileCardFace
         report={report}
         portrait={portrait}
-        logo={logo}
         to={to}
         beltStat={
           <div className="mh-row" data-testid="mat-hours-row">

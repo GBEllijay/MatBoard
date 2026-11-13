@@ -105,7 +105,6 @@ export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
           <ProfileCard />
             </>
           )}
-          <StudentProfileSwitcher />
           <Link className="s-tile s-journal" to={to('/student/training')} aria-label={TRAINING_GROUP_LABEL}>
             <JournalDecor />
             <span className="s-tile__text">
@@ -133,10 +132,6 @@ export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
             </Link>
             <span className="s-meter" aria-hidden="true">
               <i style={{ width: `${worn.percent}%` }} />
-            </span>
-            <span className="s-rank__cap">
-              <span>{worn.nextLabel}</span>
-              <span>{`${worn.percent}%`}</span>
             </span>
           </div>
           {competitor ? (
@@ -171,6 +166,7 @@ export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
               {`Last backup: ${stamp}`}
             </span>
           </Link>
+          <StudentProfileSwitcher />
           <Link className="s-ghost" to={to('/student/faq')} aria-label="FAQ">
             <RowIcon label="FAQ" />
             <span className="s-ghost__label">FAQ</span>
@@ -221,12 +217,10 @@ export function ProgressMenu() {
   const { report } = useStudentFile();
   const links = progressLinks(report.profile.belt);
   const worn = wornBeltPreview(report);
-  const next = worn.nextLabel === 'Next stripe' ? `Next stripe ${worn.percent}%` : worn.nextLabel;
   return (
     <GroupFrame title={RANK_GROUP_LABEL}>
       <section className="s-rank-summary" aria-label="Belt summary">
         <span>{worn.summary}</span>
-        <span>{next}</span>
         <WornBeltMark preview={worn} />
         <span className="s-meter" aria-hidden="true">
           <i style={{ width: `${worn.percent}%` }} />

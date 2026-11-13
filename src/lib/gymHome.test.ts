@@ -69,7 +69,7 @@ test('a missing Cloud binding falls back instead of pretending Cloud is on', asy
 });
 
 test('Google Photos stays the album picker and gallery bytes are not a public bucket URL', () => {
-  assert.equal(PHOTOS_PICK_MAX, '50');
+  assert.equal(PHOTOS_PICK_MAX, '2000');
   const photos = readFileSync(new URL('./googlePhotos.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(photos, /gallery\/approved/);
   const worker = readFileSync(new URL('../../functions/api/gym/media.ts', import.meta.url), 'utf8');

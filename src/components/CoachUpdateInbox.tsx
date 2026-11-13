@@ -1,4 +1,15 @@
 import { useEffect, useState } from 'react';
+import { GrandmasterCheer } from './GrandmasterCheer';
+import {
+  acceptCoachBlueBelt,
+  BLUE_BELT_CHEER_LINES,
+  blueBeltNotes,
+  blueBeltPreviewSample,
+  bluePreviewRequested,
+  claimBlueCheer,
+  cleanBirthYear,
+  isKidsToBlueUpdate,
+} from '../lib/blueBeltCheer';
 import { gymPacketAllowed } from '../lib/academyMembership';
 import {
   acceptCoachCompetitionUpdate,
@@ -27,7 +38,7 @@ import {
 } from '../lib/coachSync';
 import { writeStudentGymLogo } from '../lib/studentGymMark';
 import { assignStudentId, readStableStudentId } from '../lib/studentIdentity';
-import { clearStudentInboxItem, pullStudentInbox, readInboxPass } from '../lib/studentInboxClient';
+import { clearStudentInboxItem, downloadFromInstructor, pullStudentInbox, readInboxPass } from '../lib/studentInboxClient';
 import { useStudentFile } from '../pages/student/chrome';
 
 function matchingPacket(reportStudentId: string, packets: readonly CoachInboxPacket[]): CoachInboxPacket | null {
@@ -44,8 +55,16 @@ function matchingPacket(reportStudentId: string, packets: readonly CoachInboxPac
 export function CoachUpdateInbox() {
   const { report, commit } = useStudentFile();
   const [packets, setPackets] = useState<CoachInboxPacket[]>(() => readCoachQueue(localStorage));
+  const [fromInstructor, setFromInstructor] = useState<{ name: string; path: string; dateKey: string }[]>([]);
   const [choices, setChoices] = useState<Record<number, MatchKeep>>({});
   const [note, setNote] = useState('');
+  // Kids belt → Blue from the coach: confirm the belt and birth year first.
+  const [blueStep, setBlueStep] = useState(false);
+  const [blueYear, setBlueYear] = useState('');
+  const [cheer, setCheer] = useState(false);
+  const [sample, setSample] = useState(() =>
+    typeof window !== 'undefined' && bluePreviewRequested(window.location.search) ? blueBeltPreviewSample() : null,
+  );
 
   useEffect(() => {
     const reload = () => setPackets(readCoachQueue(localStorage));
@@ -59,6 +78,7 @@ export function CoachUpdateInbox() {
     let alive = true;
     void pullStudentInbox(pass).then((result) => {
       if (!alive || !result.ok) return;
+      setFromInstructor(result.fromInstructor);
       for (const item of result.packets) {
         const received = receiveSyncPacket(localStorage, item);
         // A gym logo is not an accept card. Once recorded, clear it from the inbox list.
@@ -73,13 +93,52 @@ export function CoachUpdateInbox() {
     };
   }, []);
 
-  const packet = matchingPacket(
-    report.studentId,
-    packets.filter((item) => gymPacketAllowed(localStorage, item)),
-  );
-  if (!packet) return null;
+  const packet = sample
+    ? sample.packet
+    : matchingPacket(
+        report.studentId,
+        packets.filter((item) => gymPacketAllowed(localStorage, item)),
+      );
+  const fileReport = sample ? sample.report : report;
+  const kidsToBlue = packet ? isKidsToBlueUpdate(fileReport, packet) : false;
+  const downloadInstructorFile = (path: string, name: string) => {
+    const pass = readInboxPass(localStorage);
+    if (!pass) return;
+    void downloadFromInstructor(pass, path).then((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+  };
 
-  const finish = (kind: 'accept' | 'dismiss') => {
+  const cheerNode = cheer ? (
+    <GrandmasterCheer lines={BLUE_BELT_CHEER_LINES} onDismiss={() => setCheer(false)} />
+  ) : null;
+  if (!packet && fromInstructor.length === 0) return cheerNode;
+
+  const openBlueStep = () => {
+    const saved = fileReport.beltBook?.birthYear;
+    setBlueYear(saved != null ? String(saved) : '');
+    setBlueStep(true);
+  };
+
+  const finish = (kind: 'accept' | 'dismiss' | 'confirm-blue') => {
+    if (!packet) return;
+    if (kind === 'accept' && kidsToBlue) {
+      openBlueStep();
+      return;
+    }
+    if (sample) {
+      // Preview link: nothing is written. Confirm shows the cheer once.
+      setSample(null);
+      setBlueStep(false);
+      if (kind === 'confirm-blue') setCheer(true);
+      return;
+    }
     let current = report;
     if (current.studentId !== packet.studentId) {
       const stable = readStableStudentId(localStorage);
@@ -91,7 +150,14 @@ export function CoachUpdateInbox() {
     }
     const ledger = readUpdateLedger(localStorage);
     let result: { report: typeof current; ledger: typeof ledger; applied: boolean };
-    if (kind === 'dismiss') {
+    let cheerNow = false;
+    if (kind === 'confirm-blue' && packet.kind === 'coach-rank-update') {
+      const blue = acceptCoachBlueBelt(current, packet, ledger, { birthYear: cleanBirthYear(blueYear) });
+      result = blue;
+      cheerNow = blue.cheer && claimBlueCheer(localStorage, current.studentId, packet.updateId);
+    } else if (kind === 'confirm-blue') {
+      return;
+    } else if (kind === 'dismiss') {
       result = dismissCoachRankUpdate(current, packet, ledger);
     } else if (packet.kind === 'coach-rank-update') {
       result = acceptCoachRankUpdate(current, packet, ledger);
@@ -103,10 +169,11 @@ export function CoachUpdateInbox() {
       if (synced.applied) writeCoachOverlay(localStorage, synced.overlay);
       result = { report: synced.report, ledger: synced.ledger, applied: synced.applied };
     }
-    if (result.applied && kind === 'accept' && result.report !== current) {
+    const accepted = kind === 'accept' || kind === 'confirm-blue';
+    if (result.applied && accepted && result.report !== current) {
       commit(result.report);
     }
-    if (result.applied && kind === 'accept') {
+    if (result.applied && accepted) {
       if (packet.gym?.logo) writeStudentGymLogo(packet.gym.logo);
     }
     if (result.applied || result.ledger !== ledger) writeUpdateLedger(localStorage, result.ledger);
@@ -114,10 +181,37 @@ export function CoachUpdateInbox() {
     const pass = readInboxPass(localStorage);
     if (pass) void clearStudentInboxItem(pass, packet.updateId);
     setNote('');
+    setBlueStep(false);
+    if (cheerNow) setCheer(true);
   };
 
-  const conflicts = packet.kind === 'coach-competition-update' ? competitionConflicts(report, packet) : [];
+  const blueBirthYear = cleanBirthYear(blueYear);
+  const blueNotes = blueStep
+    ? blueBeltNotes({ birthYear: blueBirthYear, trainingSince: fileReport.profile.startedOn, self: true })
+    : [];
+
+  const conflicts = packet?.kind === 'coach-competition-update' ? competitionConflicts(report, packet) : [];
   return (
+    <>
+    {cheerNode}
+    {fromInstructor.length ? (
+      <section className="coach-update" aria-label="From your instructor">
+        <h2>From your instructor</h2>
+        <ul>
+          {fromInstructor.map((file) => (
+            <li key={file.path}>
+              <span>
+                {file.dateKey} · {file.name}
+              </span>
+              <button type="button" onClick={() => downloadInstructorFile(file.path, file.name)}>
+                Download
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null}
+    {packet ? (
     <section className="coach-update" aria-label="Coach update">
       <h2>From your coach</h2>
       <p>
@@ -183,14 +277,57 @@ export function CoachUpdateInbox() {
       {note ? (
         <p role="alert">{note}</p>
       ) : null}
+      {sample ? <p className="student-quiet">Preview: sample student and sample coach update. Nothing is saved.</p> : null}
+      {blueStep ? (
+        <fieldset className="blue-belt-confirm" aria-label="Confirm your blue belt">
+          <legend>Your coach promoted you to Blue belt</legend>
+          <p>
+            Confirm your new belt and your birth year. Your kids belts move to Earlier belts, and your adult belt starts
+            on {packet.kind === 'coach-rank-update' ? packet.rankUpdate.promotionDate : 'the promotion date'}.
+          </p>
+          <p>New belt: Blue</p>
+          <label>
+            Birth year
+            <input
+              aria-label="Birth year"
+              inputMode="numeric"
+              value={blueYear}
+              placeholder="YYYY"
+              maxLength={4}
+              onChange={(event) => setBlueYear(event.target.value)}
+            />
+          </label>
+          {blueNotes.map((line) => (
+            <p key={line} className="blue-belt-confirm__note">
+              {line}
+            </p>
+          ))}
+          <div className="coach-update__actions">
+            <button
+              type="button"
+              className="ink-btn ink-btn--save"
+              disabled={blueBirthYear == null}
+              onClick={() => finish('confirm-blue')}
+            >
+              {blueBirthYear == null ? 'Add your birth year' : `Confirm Blue belt, born ${blueBirthYear}`}
+            </button>
+            <button type="button" className="ink-btn" onClick={() => setBlueStep(false)}>
+              Not yet
+            </button>
+          </div>
+        </fieldset>
+      ) : (
       <div className="coach-update__actions">
         <button type="button" className="ink-btn ink-btn--save" onClick={() => finish('accept')}>
-          Accept
+          {kidsToBlue ? 'Accept blue belt' : 'Accept'}
         </button>
         <button type="button" className="ink-btn" onClick={() => finish('dismiss')}>
           Dismiss
         </button>
       </div>
+      )}
     </section>
+    ) : null}
+    </>
   );
 }

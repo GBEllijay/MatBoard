@@ -15,6 +15,7 @@
  * ambiguous and skipped. Nothing is guessed.
  */
 
+import { fillAssignedInstructor, isInstructorId } from './instructorIdentity.ts';
 import {
   type CoachInboxItemLike,
   type RosterCardFile,
@@ -38,6 +39,11 @@ export type BackupStudent = {
   checkedIn?: boolean;
   rosterList?: 'student';
   linkedStudentId?: string;
+  /**
+   * Instructor this student is assigned to (seat id, or 'owner'; instructorIdentity.ts).
+   * A merge only fills it when blank. Only the owner reassigns (gym roster op=assign).
+   */
+  assignedInstructorId?: string;
   guestId?: string;
   stripes?: number;
   /** Roster sync layer: 'off' keeps the card local. */
@@ -91,6 +97,7 @@ export function lightNormalizeRoster(raw: unknown): BackupRoster {
     if (s.rosterList === 'student') student.rosterList = 'student';
     if (typeof s.linkedStudentId === 'string' && ID_RE.test(s.linkedStudentId)) student.linkedStudentId = s.linkedStudentId;
     if (typeof s.guestId === 'string' && ID_RE.test(s.guestId)) student.guestId = s.guestId;
+    if (isInstructorId(s.assignedInstructorId) && !student.guestId) student.assignedInstructorId = s.assignedInstructorId;
     // Same ceiling as rosterStore ROSTER_STRIPE_CAP (kids belts store up to 11 tapes).
     if (typeof s.stripes === 'number' && Number.isInteger(s.stripes) && s.stripes >= 0 && s.stripes <= 11) student.stripes = s.stripes;
     if (s.coachSync === 'off') student.coachSync = 'off';
@@ -437,6 +444,9 @@ function fillStudent(local: BackupStudent, incoming: BackupStudent): BackupStude
   // coachSync and parentPhotoApproval stay as this device has them for a card already here.
   if (!next.linkedStudentId && incoming.linkedStudentId) next.linkedStudentId = incoming.linkedStudentId;
   if (!next.guestId && incoming.guestId) next.guestId = incoming.guestId;
+  // Fill blank only. A file or a seat never moves a student to another instructor.
+  const assigned = fillAssignedInstructor(next.assignedInstructorId, incoming.assignedInstructorId);
+  if (assigned && !next.guestId) next.assignedInstructorId = assigned;
   if (next.stripes === undefined && incoming.stripes !== undefined) next.stripes = incoming.stripes;
   if (!next.archivedAt && incoming.archivedAt) {
     next.archivedAt = incoming.archivedAt;

@@ -11,6 +11,11 @@ import { beltLevel } from './studentTools.ts';
 export const ASSESSMENT_STORAGE_KEY = 'matboard.studentEdition.assessment.v1';
 export const ASSESSMENT_MAX = 400;
 
+/**
+ * The seven faces every saved check-in has had since the first version.
+ * A stored day must have all seven to load. Use ASSESSMENT_FORM_AREAS for the
+ * eight faces a student rates, saves, sees on the chart, and exports.
+ */
 export const ASSESSMENT_AREAS = [
   { id: 'guard', label: 'Guard' },
   { id: 'passing', label: 'Passing' },
@@ -22,9 +27,10 @@ export const ASSESSMENT_AREAS = [
 ] as const;
 
 /**
- * Check-in form order. Labels on this list are the approved names.
+ * The eight D8 faces, in check-in form order. Labels on this list are the approved names.
  * Stored ids stay guard and escapes so an older file still loads.
- * Sweeps is optional: a day without that field is unrated, not a copy of Passing.
+ * Sweeps is a full face: a new check-in needs it, and a new day carries it over.
+ * A day saved before Sweeps existed still loads with Sweeps unrated, not a copy of Passing.
  */
 export const ASSESSMENT_FORM_AREAS = [
   { id: 'guard', label: 'Guard/Control' },
@@ -38,7 +44,8 @@ export const ASSESSMENT_FORM_AREAS = [
 ] as const;
 
 /**
- * Scorable lines under Mindset. Same 1–5 scale as the category.
+ * Personal goals for the technique-based check-in.
+ * Generic mode rates Mindset as one face and does not score these lines.
  * A missing line is unscored. It is not a zero, and it is not required to save.
  */
 export const MINDSET_GOALS = [
@@ -51,8 +58,9 @@ export const MINDSET_GOALS = [
 ] as const;
 
 /**
- * Scorable lines under Conditioning. Same 1–5 scale as the category.
- * A missing line is unscored. It is not a zero, and it is not required to save.
+ * Context under the generic Conditioning face.
+ * Stamina, power, and flexibility are named there. They are not separate ratings.
+ * A missing older line is unscored. It is not a zero, and it is not required to save.
  * None of these lines is a promotion benchmark.
  */
 export const CONDITIONING_ITEMS = [
@@ -65,14 +73,29 @@ export const CONDITIONING_ITEMS = [
 ] as const;
 
 export type AssessmentAreaId = (typeof ASSESSMENT_AREAS)[number]['id'];
+/** One of the eight D8 faces, Sweeps included. */
+export type AssessmentFaceId = (typeof ASSESSMENT_FORM_AREAS)[number]['id'];
 export type MindsetGoalId = (typeof MINDSET_GOALS)[number]['id'];
 export type ConditioningItemId = (typeof CONDITIONING_ITEMS)[number]['id'];
 export type AssessmentScore = 1 | 2 | 3 | 4 | 5;
+/**
+ * Sweeps is typed optional only so a day saved before that face existed still loads.
+ * Every new save stores all eight.
+ */
 export type AssessmentScores = Record<AssessmentAreaId, AssessmentScore> & {
   sweeps?: AssessmentScore;
 };
 export type MindsetGoalScores = Partial<Record<MindsetGoalId, AssessmentScore>>;
 export type ConditioningItemScores = Partial<Record<ConditioningItemId, AssessmentScore>>;
+
+/**
+ * A face the student rated directly on the generic check-in.
+ * Legacy sub-lines stay stored. They no longer cover that face.
+ */
+export type DirectFaces = {
+  conditioning?: true;
+  mindset?: true;
+};
 
 export type AssessmentEntry = {
   id: string;
@@ -83,6 +106,8 @@ export type AssessmentEntry = {
   mindsetGoals?: MindsetGoalScores;
   /** Present only when at least one Conditioning item was scored. Older days omit it. */
   conditioningItems?: ConditioningItemScores;
+  /** Omitted until the student rates that face on the generic check-in. */
+  directFaces?: DirectFaces;
 };
 
 export type AssessmentState = {
@@ -99,21 +124,24 @@ export type AssessmentDraft = {
    */
   mindsetGoals?: MindsetGoalScores;
   conditioningItems?: ConditioningItemScores;
+  directFaces?: DirectFaces;
 };
 
 export type AssessmentCheckpointLink = {
-  areaId: AssessmentAreaId;
+  areaId: AssessmentFaceId;
   checkpointId: string;
   checkpointName: string;
 };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const AREA_IDS = ASSESSMENT_AREAS.map((area) => area.id);
+const FACE_IDS = ASSESSMENT_FORM_AREAS.map((area) => area.id);
 
 /** Words on a belt checkpoint that belong to a self-rating. Whole words only. */
-const AREA_WORDS: Record<AssessmentAreaId, readonly string[]> = {
+const AREA_WORDS: Record<AssessmentFaceId, readonly string[]> = {
   guard: ['guard'],
   passing: ['passing', 'passes', 'pass'],
+  sweeps: ['sweep', 'sweeps'],
   takedowns: ['takedown', 'takedowns'],
   escapes: ['escape', 'escapes'],
   submissions: ['submission', 'submissions', 'choke', 'chokes'],
@@ -127,21 +155,18 @@ export function emptyAssessments(): AssessmentState {
   return { entries: [] };
 }
 
+/** Average of the eight faces. A day saved before Sweeps existed averages the faces it has. */
 export function assessmentAverage(scores: AssessmentScores): number {
-  let total = AREA_IDS.reduce((sum, id) => sum + scores[id], 0);
-  let count = AREA_IDS.length;
-  if (isAssessmentScore(scores.sweeps)) {
-    total += scores.sweeps;
-    count += 1;
-  }
-  return Math.round((total / count) * 10) / 10;
+  const rated = FACE_IDS.map((id) => scores[id]).filter(isAssessmentScore);
+  if (!rated.length) return 0;
+  return Math.round((rated.reduce((sum, value) => sum + value, 0) / rated.length) * 10) / 10;
 }
 
 /** Oldest first, for the trend line. */
 export function assessmentTrend(entries: readonly AssessmentEntry[]): { date: string; average: number }[] {
   return [...entries]
     .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-    .map((entry) => ({ date: entry.date, average: assessmentAverage(entry.scores) }));
+    .map((entry) => ({ date: entry.date, average: assessmentAverage(displayedAssessmentScores(entry)) }));
 }
 
 export function loadAssessments(storage: Pick<Storage, 'getItem'>): AssessmentState {
@@ -165,19 +190,62 @@ export function writeAssessments(storage: MemoryStore, state: AssessmentState): 
   return loadAssessments(storage);
 }
 
-/** One check-in per date. Saving the same day again replaces that day. */
+/**
+ * Short names under the generic Conditioning face.
+ * The three lines are context, not a second set of ratings.
+ */
+export function conditioningContextText(): string {
+  const short: Record<(typeof CONDITIONING_ITEMS)[number]['id'], string> = {
+    warmup: 'Warm-up',
+    recovery: 'Recovery',
+    speed: 'Speed',
+    stamina: 'Stamina',
+    power: 'power',
+    flexibility: 'flexibility',
+  };
+  const names = (['stamina', 'power', 'flexibility'] as const).flatMap((id) =>
+    CONDITIONING_ITEMS.some((item) => item.id === id) ? [short[id]] : [],
+  );
+  if (names.length === 0) return '';
+  if (names.length === 1) return `${names[0]}.`;
+  const last = names[names.length - 1];
+  return `${names.slice(0, -1).join(', ')}, and ${last}.`;
+}
+
+/**
+ * One number per face for the check-in.
+ * Legacy sub-lines average into Conditioning or Mindset until that face is rated directly.
+ * The stored face score and the lines themselves are left as saved.
+ */
+export function displayedAssessmentScores(
+  entry: Pick<AssessmentEntry, 'scores' | 'mindsetGoals' | 'conditioningItems' | 'directFaces'>,
+): AssessmentScores {
+  const scores: AssessmentScores = { ...entry.scores };
+  if (!entry.directFaces?.mindset) {
+    const averaged = mindsetScoreFromGoals(entry.mindsetGoals);
+    if (averaged) scores.mindset = averaged;
+  }
+  if (!entry.directFaces?.conditioning) {
+    const averaged = conditioningScoreFromItems(entry.conditioningItems);
+    if (averaged) scores.conditioning = averaged;
+  }
+  return scores;
+}
+
+/**
+ * One check-in per date. Saving the same day again replaces that day. Face scores are the numbers passed in.
+ * All eight faces are required. The one exception: re-saving a day that was stored before Sweeps
+ * existed may leave Sweeps unrated, so a note or goal edit on that old day still saves.
+ */
 export function saveAssessment(state: AssessmentState, draft: AssessmentDraft, now = Date.now()): AssessmentState {
   const date = requireDate(draft.date);
   const note = cleanNote(draft.note);
   const existing = state.entries.find((entry) => entry.date === date);
   const mindsetGoals = resolveLines(MINDSET_GOALS, existing?.mindsetGoals, draft, 'mindsetGoals');
   const conditioningItems = resolveLines(CONDITIONING_ITEMS, existing?.conditioningItems, draft, 'conditioningItems');
-  const rolledMindset = mindsetScoreFromGoals(mindsetGoals);
-  const rolledConditioning = conditioningScoreFromItems(conditioningItems);
-  const scoreInput: Partial<AssessmentScores> = { ...draft.scores };
-  if (rolledMindset) scoreInput.mindset = rolledMindset;
-  if (rolledConditioning) scoreInput.conditioning = rolledConditioning;
-  const scores = requireScores(scoreInput);
+  const directFaces = resolveDirect(existing?.directFaces, draft);
+  const olderDayWithoutSweeps = Boolean(existing) && !isAssessmentScore(existing?.scores.sweeps);
+  const scores = requireScores(draft.scores, olderDayWithoutSweeps);
   const nextEntry: AssessmentEntry = {
     id: existing?.id ?? newId(now),
     date,
@@ -186,6 +254,7 @@ export function saveAssessment(state: AssessmentState, draft: AssessmentDraft, n
   };
   if (hasLineScore(MINDSET_GOALS, mindsetGoals)) nextEntry.mindsetGoals = mindsetGoals;
   if (hasLineScore(CONDITIONING_ITEMS, conditioningItems)) nextEntry.conditioningItems = conditioningItems;
+  if (directFaces) nextEntry.directFaces = directFaces;
   const entries = existing
     ? state.entries.map((entry) => (entry.date === date ? nextEntry : entry))
     : [...state.entries, nextEntry];
@@ -228,7 +297,9 @@ export function removeAssessment(state: AssessmentState, id: string): Assessment
 
 /**
  * A saved check-in for this date is the record.
- * Today, with no check-in yet, starts from the fundamentals tracker.
+ * Today, with no check-in yet, starts from the most recent check-in saved before today,
+ * so all eight faces, Sweeps included, carry over. A face that check-in lacks (or every
+ * face, when there is none) starts from the fundamentals tracker.
  * Any other empty date stays blank, so today's levels are not written onto the past.
  * Nothing here writes storage. The student still saves the day they want kept.
  */
@@ -241,12 +312,28 @@ export function assessmentDraftScores(
   const saved = entries.find((entry) => entry.date === date);
   if (saved) return { ...saved.scores };
   if (date !== today) return {};
+  const previous = latestBefore(entries, date);
+  const carried: Partial<AssessmentScores> = previous ? displayedAssessmentScores(previous) : {};
   const next: Partial<AssessmentScores> = {};
-  for (const area of ASSESSMENT_AREAS) {
-    const value = tracker[area.id];
-    if (isAssessmentScore(value)) next[area.id] = value;
+  for (const id of FACE_IDS) {
+    const value = isAssessmentScore(carried[id]) ? carried[id] : tracker[id];
+    if (isAssessmentScore(value)) next[id] = value;
   }
   return next;
+}
+
+/** The latest check-in dated before this date, or null. */
+export function latestAssessmentBefore(entries: readonly AssessmentEntry[], date: string): AssessmentEntry | null {
+  return latestBefore(entries, date);
+}
+
+function latestBefore(entries: readonly AssessmentEntry[], date: string): AssessmentEntry | null {
+  let best: AssessmentEntry | null = null;
+  for (const entry of entries) {
+    if (entry.date >= date) continue;
+    if (!best || entry.date > best.date || (entry.date === best.date && entry.id > best.id)) best = entry;
+  }
+  return best;
 }
 
 /** The open draft wins. With nothing typed, the chart uses the saved day, then the latest day. */
@@ -255,7 +342,7 @@ export function assessmentChartScores(
   savedOnDate: AssessmentScores | undefined,
   latest: AssessmentScores | undefined,
 ): Partial<AssessmentScores> | null {
-  if (ASSESSMENT_AREAS.some((area) => isAssessmentScore(draft[area.id]))) return draft;
+  if (FACE_IDS.some((id) => isAssessmentScore(draft[id]))) return draft;
   return savedOnDate ?? latest ?? null;
 }
 
@@ -268,7 +355,7 @@ export function checkpointLinks(report: StudentProgressReport): AssessmentCheckp
   const current = beltLevel(report, report.profile.belt);
   if (!current) return [];
   const links: AssessmentCheckpointLink[] = [];
-  for (const area of ASSESSMENT_AREAS) {
+  for (const area of ASSESSMENT_FORM_AREAS) {
     const hit = current.checkpoints.find((row) => nameHits(row.name, AREA_WORDS[area.id]));
     if (!hit) continue;
     links.push({ areaId: area.id, checkpointId: hit.id, checkpointName: hit.name });
@@ -285,25 +372,26 @@ function nameHits(name: string, words: readonly string[]): boolean {
   return words.some((word) => tokens.includes(word));
 }
 
-function requireScores(scores: Partial<AssessmentScores>): AssessmentScores {
+/** All eight faces, in form order. `sweepsMayStayBlank` is only for re-saving a day stored before Sweeps. */
+function requireScores(scores: Partial<AssessmentScores>, sweepsMayStayBlank = false): AssessmentScores {
   const next = {} as AssessmentScores;
-  for (const id of AREA_IDS) {
+  for (const id of FACE_IDS) {
     const value = scores[id];
+    if (id === 'sweeps' && sweepsMayStayBlank && value === undefined) continue;
     if (!isScore(value)) throw new Error(`Rate ${labelFor(id)} from 1 to 5.`);
     next[id] = value;
-  }
-  if (Object.prototype.hasOwnProperty.call(scores, 'sweeps')) {
-    if (!isScore(scores.sweeps)) throw new Error('Rate Sweeps from 1 to 5.');
-    next.sweeps = scores.sweeps;
   }
   return next;
 }
 
-function labelFor(id: AssessmentAreaId | 'sweeps'): string {
+function labelFor(id: AssessmentFaceId): string {
   return ASSESSMENT_FORM_AREAS.find((area) => area.id === id)?.label ?? id;
 }
 
-/** Seven required ratings, plus Sweeps only when that day actually stored one. */
+/**
+ * The original seven ratings must be present for a stored day to load.
+ * Sweeps loads when stored. A day saved before Sweeps existed loads with it unrated.
+ */
 function storedScores(raw: unknown): AssessmentScores | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
@@ -381,6 +469,8 @@ function normalizeEntry(raw: unknown): AssessmentEntry | null {
   if (hasLineScore(MINDSET_GOALS, mindsetGoals)) entry.mindsetGoals = mindsetGoals;
   const conditioningItems = readLines(CONDITIONING_ITEMS, row.conditioningItems);
   if (hasLineScore(CONDITIONING_ITEMS, conditioningItems)) entry.conditioningItems = conditioningItems;
+  const directFaces = readDirect(row.directFaces);
+  if (directFaces) entry.directFaces = directFaces;
   return entry;
 }
 
@@ -401,6 +491,20 @@ function lineText<Id extends string>(lines: LineDef<Id>, values: LineScores<Id> 
     const value = values[line.id];
     return isAssessmentScore(value) ? [`${line.label}: ${value}`] : [];
   });
+}
+
+function resolveDirect(saved: DirectFaces | undefined, draft: AssessmentDraft): DirectFaces | undefined {
+  if (!Object.prototype.hasOwnProperty.call(draft, 'directFaces')) return readDirect(saved);
+  return readDirect(draft.directFaces);
+}
+
+function readDirect(raw: unknown): DirectFaces | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const row = raw as Record<string, unknown>;
+  const next: DirectFaces = {};
+  if (row.conditioning === true) next.conditioning = true;
+  if (row.mindset === true) next.mindset = true;
+  return next.conditioning || next.mindset ? next : undefined;
 }
 
 function resolveLines<Id extends string>(

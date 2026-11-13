@@ -35,9 +35,11 @@ import { ASSESSMENT_STORAGE_KEY } from './studentAssessment.ts';
 import {
   DEFAULT_STUDENT_PROFILE_ID,
   STUDENT_PROFILES_KEY,
+  EXTRA_PROFILE_FIXTURE_KEY,
   addStudentProfile,
   deleteStudentProfile,
   ensureStudentProfiles,
+  extraProfileNeedsPurchase,
   installStudentProfileScope,
   readActiveStudentProfile,
   readStudentProfiles,
@@ -74,6 +76,7 @@ function scores(value: 2 | 3 | 4 | 5) {
   return {
     guard: value,
     passing: value,
+    sweeps: value,
     takedowns: value,
     escapes: value,
     submissions: value,
@@ -118,19 +121,24 @@ function cards(name: string) {
   };
 }
 
-test('adding a profile is open, and the only purchase note is a TODO', () => {
+test('the first profile is free, the next one needs a slot, and the fixture path still adds', () => {
   const source = readFileSync(new URL('./studentProfiles.ts', import.meta.url), 'utf8');
   const ui = readFileSync(new URL('../pages/student/StudentProfileSwitcher.tsx', import.meta.url), 'utf8');
-  assert.deepEqual(source.match(/TODO/g), ['TODO']);
-  assert.match(source, /future purchase check would go here/);
-  assert.doesNotMatch(`${source}\n${ui}`, /5\.99|extraProfileSlots|Stripe|Checkout/);
+  assert.match(ui, /Continue to checkout — \$\{EXTRA_PROFILE_PRICE_LABEL\}/);
+  assert.match(ui, /product: 'extra-profile'/);
+  assert.match(source, /EXTRA_PROFILE_FIXTURE_KEY/);
+  assert.doesNotMatch(`${source}\n${ui}`, /OWNER_TEST_SECRET/);
+  assert.equal(extraProfileNeedsPurchase(1, 0, false), true);
+  assert.equal(extraProfileNeedsPurchase(1, 1, false), false);
+  assert.equal(extraProfileNeedsPurchase(2, 1, false), true);
+  assert.equal(extraProfileNeedsPurchase(2, 0, true), false);
   const store = memory();
   store.setItem(JOURNAL, '{"journal":"keep-me"}');
+  store.setItem(EXTRA_PROFILE_FIXTURE_KEY, '1');
   const added = addStudentProfile(store, { name: 'Sam' });
   assert.equal(added.ok, true);
   assert.equal(readStudentProfiles(store).profiles.length, 2);
   assert.equal(store.values.get(JOURNAL), '{"journal":"keep-me"}');
-  assert.equal([...store.values.keys()].some((key) => /slot|price|stripe/i.test(key)), false);
 });
 
 test('an existing single profile becomes the default profile with no data loss', () => {

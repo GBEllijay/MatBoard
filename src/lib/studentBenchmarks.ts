@@ -24,10 +24,10 @@ import type {
 import { BENCHMARK_STAGES } from './progress/types.ts';
 
 export const BENCHMARK_DISCLAIMER_SHORT =
-  'Suggested benchmarks are general guidance, reviewed by black belts. Always review them with your coach, who has the final say.';
+  'General guidelines only.';
 
 export const BENCHMARK_DISCLAIMER_MEDIUM =
-  'These Practical Benchmarks are general suggestions based on commonly accepted jiu-jitsu training, and they have been reviewed by black belts. They are a starting point, not a requirement or a promotion standard. Every academy and coach sees things differently, so review and adjust them with your coach, who has the final say on your progress.';
+  'General guidelines only. Advantage does not set requirements. Your federation and your instructor decide all actual requirements, stripes and promotions. These suggestions are based on commonly taught jiu-jitsu and are a starting point to review with your instructor.';
 
 /** Shown on the promotion to black list, beside the age note. */
 export const BLACK_BELT_AGE_NOTE = 'Age 19+. An Adult Brown Belt World Champion may be promoted at 18.';
@@ -236,7 +236,7 @@ const WHITE_SPECS: Spec[] = [
   {
     slug: 's2-movement',
     stage: 'stripe-2',
-    name: 'Body movement. Show breakfalls, shrimping, bridging and a technical lift/stand-up. (One requirement, due before the third stripe.)',
+    name: 'Body movement. Show breakfalls, shrimping, bridging and a technical lift/stand-up.',
     refs: ['move.breakfalls', 'move.shrimp', 'move.bridge', 'move.technical-standup'],
     match: 'all',
     target: 3,
@@ -291,7 +291,7 @@ const WHITE_SPECS: Spec[] = [
   {
     slug: 's3-defense',
     stage: 'stripe-3',
-    name: 'Defensive movement. Show guard retention, submission defense and sprawl. (One requirement, due before the fourth stripe.)',
+    name: 'Defensive movement. Show guard retention, submission defense and sprawl.',
     refs: ['def.guard-retention', 'def.submission-defense', 'def.sprawl'],
     match: 'all',
     target: 3,

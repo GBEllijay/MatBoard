@@ -24,6 +24,10 @@ type Props = {
   onPickTree?: (treeId: string | null) => void;
   /** Empty-library link. Callers pass the hub flag so Back stays on that hub. */
   treeLibraryTo?: string;
+  /** Edit this class plan's clip without deleting the library file. */
+  canEditVideos?: boolean;
+  onReplace?: () => void;
+  onRemove?: () => void;
 };
 
 /** Small video preview plus an optional Technique Tree control for one lesson section. */
@@ -44,8 +48,12 @@ export function LessonMediaRail({
   onOpenTree,
   onPickTree,
   treeLibraryTo = '/technique-tree',
+  canEditVideos = false,
+  onReplace,
+  onRemove,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
   const [menu, setMenu] = useState<{
     left: number;
@@ -60,6 +68,7 @@ export function LessonMediaRail({
 
   useEffect(() => {
     setThumbFailed(false);
+    setConfirmRemove(false);
   }, [clipUrl]);
 
   const placeMenu = () => {
@@ -139,6 +148,35 @@ export function LessonMediaRail({
         </button>
       ) : null}
       {showVideo && mediaName ? <p className="notes__video-name">{mediaName}</p> : null}
+      {showVideo && clipUrl && canEditVideos && onReplace && onRemove ? (
+        confirmRemove ? (
+          <div className="notes__video-actions notes__confirm" role="group" aria-label={`Remove ${videoLabel} from this lesson plan`}>
+            <p>Remove this video from this lesson plan? The file stays in your library.</p>
+            <button type="button" className="btn btn--ghost" onClick={() => setConfirmRemove(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setConfirmRemove(false);
+                onRemove();
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <div className="notes__video-actions">
+            <button type="button" className="btn" onClick={onReplace}>
+              Replace
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setConfirmRemove(true)}>
+              Remove
+            </button>
+          </div>
+        )
+      ) : null}
       {linkedTree && onOpenTree ? (
         <button
           type="button"

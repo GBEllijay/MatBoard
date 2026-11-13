@@ -289,16 +289,44 @@ export async function publishReviewToGym(submission: ReviewSubmission): Promise<
   }
 }
 
-export async function pullReviewHandoff(): Promise<'saved' | 'empty' | 'connect'> {
-  if (planHandoff(readDriveBinding() !== null) === 'connect') return 'connect';
+export type ReviewHandoffCheck =
+  | { status: 'saved'; count: number }
+  | { status: 'empty'; count: 0 }
+  | { status: 'connect'; count: 0 }
+  | { status: 'error'; count: 0 };
+
+/** Same pull as pullReviewHandoff, with how many rows came in and whether the folder could not be read. */
+export async function checkReviewHandoff(): Promise<ReviewHandoffCheck> {
+  if (planHandoff(readDriveBinding() !== null) === 'connect') return { status: 'connect', count: 0 };
   try {
     const folder = await gymDriveFolder();
-    if (!folder) return 'connect';
+    if (!folder) return { status: 'connect', count: 0 };
     const merged = await takeReviewHandoffs(folder);
-    return merged > 0 ? 'saved' : 'empty';
+    return merged > 0 ? { status: 'saved', count: merged } : { status: 'empty', count: 0 };
   } catch {
-    return 'connect';
+    return { status: 'error', count: 0 };
   }
+}
+
+export async function pullReviewHandoff(): Promise<'saved' | 'empty' | 'connect'> {
+  const result = await checkReviewHandoff();
+  return result.status === 'error' ? 'connect' : result.status;
+}
+
+export const DRIVE_HANDOFF_NOT_CONNECTED =
+  'The gym Google Drive folder is not connected on this device, so there was nothing to check. Connect the folder first.';
+export const DRIVE_HANDOFF_READ_ERROR =
+  'Could not read the gym Google Drive folder. Nothing on this device was changed. Try again.';
+
+/** One visible line after Check the gym folder. */
+export function reviewHandoffCheckNote(result: ReviewHandoffCheck): string {
+  if (result.status === 'saved') {
+    const rows = result.count === 1 ? '1 new review row' : `${result.count} new review rows`;
+    return `Found ${rows} in the gym Google Drive folder. They are in the list below.`;
+  }
+  if (result.status === 'empty') return DRIVE_HANDOFF_EMPTY;
+  if (result.status === 'connect') return DRIVE_HANDOFF_NOT_CONNECTED;
+  return DRIVE_HANDOFF_READ_ERROR;
 }
 
 export async function pullInviteHandoff(token: string): Promise<ReturnType<typeof acceptInstructorInvite> | { ok: false; reason: 'connect' }> {

@@ -338,6 +338,39 @@ export function techniqueNodePath(treeId: string, nodeId: string): string {
   return `/technique-tree?${params.toString()}`;
 }
 
+export type ImportedGameNotes = { techniques?: string; notes?: string };
+
+/** Text from a student progress A/B/C game. Blank when that game was never filled in. */
+export function importedGameText(game: ImportedGameNotes | undefined): string {
+  const techniques = game?.techniques?.trim() ?? '';
+  const notes = game?.notes?.trim() ?? '';
+  if (techniques && notes) return `${techniques}\n${notes}`;
+  return techniques || notes;
+}
+
+/**
+ * One Competitor Game Plan. Coach notes already stored on the roster win.
+ * A blank A/B/C section picks up the imported student game so those notes
+ * are not dropped. Home focus is only on this plan and is left as saved.
+ * Returns the same object when nothing blank needs filling.
+ */
+export function mergeImportedGameNotes(
+  plan: CompetitorGamePlan,
+  games: { a?: ImportedGameNotes; b?: ImportedGameNotes; c?: ImportedGameNotes } | null | undefined,
+): CompetitorGamePlan {
+  if (!games) return plan;
+  let changed = false;
+  const next: CompetitorGamePlan = { a: plan.a, b: plan.b, c: plan.c, home: plan.home };
+  for (const section of GAME_LAYER_SECTIONS) {
+    if (next[section].notes.trim()) continue;
+    const incoming = importedGameText(games[section]).slice(0, GAME_NOTE_MAX);
+    if (!incoming) continue;
+    next[section] = { ...next[section], notes: incoming };
+    changed = true;
+  }
+  return changed ? next : plan;
+}
+
 export function gamePlanMentionIndex(
   competitors: readonly { id: string; name: string }[],
   plans: Record<string, CompetitorGamePlan>,

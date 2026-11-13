@@ -6,18 +6,19 @@
  * email is stored only as the existing identities hash so Restore can find it.
  * Revoke sets status to revoked and, once claimed, inactivates that grant.
  * That ends academy access for the code. The student's own journal, photos, and backup stay theirs.
- * A revoked code stays revoked. The seat returns to the pool of 5 either way.
+ * A revoked code stays revoked. The seat returns to the free pool either way.
  */
 
 import { appVersionOf } from '../lib/appCapability.ts';
-import { signJson, verifyToken, type EntitlementClaims } from '../lib/entitlementToken.ts';
+import { readSignedJson, signJson, verifyToken, type EntitlementClaims } from '../lib/entitlementToken.ts';
 import {
-  FREE_STUDENT_LICENSES,
   STUDENT_LICENSE_EMPTY,
   STUDENT_LICENSE_OWNER_ONLY,
+  STUDENT_INVITE_TYP,
   STUDENT_LICENSE_PRESET,
   STUDENT_LICENSE_REVOKED_MESSAGE,
   STUDENT_LICENSE_TAKEN_MESSAGE,
+  freeStudentLicensesForLicense,
   freeStudentLicensesLeft,
   isStudentLicenseCode,
   studentLicenseSourceRef,
@@ -100,6 +101,30 @@ function mintCode(): string {
   return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+/** Signed student invite. No exp: the link works until it is claimed or revoked. Single-use. */
+async function signStudentInvite(env: StudentLicenseEnv, input: { code: string; gym: string }): Promise<string | null> {
+  const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
+  if (!material) return null;
+  return signJson(material.kid, { typ: STUDENT_INVITE_TYP, code: input.code, gym: input.gym, v: 1 }, material.privateJwk);
+}
+
+type StudentInvitePayload = { typ?: string; code?: string; gym?: string; v?: number };
+
+async function readStudentInviteCode(raw: unknown, env: StudentLicenseEnv): Promise<string | null> {
+  if (typeof raw !== 'string') return null;
+  const value = raw.trim();
+  if (!value) return null;
+  if (isStudentLicenseCode(value.toLowerCase())) return value.toLowerCase();
+  const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
+  if (!material) return null;
+  const parsed = await readSignedJson(value, [{ kid: material.kid, jwk: material.publicJwk }]);
+  if (!parsed || typeof parsed !== 'object') return null;
+  const row = parsed as StudentInvitePayload;
+  if (row.typ !== STUDENT_INVITE_TYP) return null;
+  const code = typeof row.code === 'string' ? row.code.trim().toLowerCase() : '';
+  return isStudentLicenseCode(code) ? code : null;
+}
+
 async function verifyCaller(requestToken: unknown, env: StudentLicenseEnv): Promise<EntitlementClaims | Response> {
   const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
   if (!material) return json(503, { ok: false, error: SIGNING_MESSAGE });
@@ -120,7 +145,12 @@ async function seatIsActive(db: D1Database, licenseId: string, seatId: string): 
   return row.status === 'claimed' || row.status === 'active';
 }
 
-async function readCaller(claims: EntitlementClaims, db: D1Database, allowSeat: boolean): Promise<Caller | Response> {
+async function readCaller(
+  claims: EntitlementClaims,
+  db: D1Database,
+  allowSeat: boolean,
+  allowCoachOwner = false,
+): Promise<Caller | Response> {
   if (claims.subs?.state === 'locked') return json(403, { ok: false, error: STUDENT_LICENSE_OWNER_ONLY });
   const seat = claims.src === 'seat' || claims.tier === 'seat';
   if (seat) {
@@ -132,7 +162,13 @@ async function readCaller(claims: EntitlementClaims, db: D1Database, allowSeat: 
     }
     return { role: 'seat', licenseId: gym };
   }
-  if (!claims.grants.includes('pro')) return json(403, { ok: false, error: STUDENT_LICENSE_OWNER_ONLY });
+  if (!claims.grants.includes('pro')) {
+    // Instructor Edition owns its own half-off code. It does not own Pro's free pool.
+    if (allowCoachOwner && claims.grants.includes('coach') && claims.sub && claims.src !== 'seat' && claims.tier !== 'seat') {
+      return { role: 'owner', licenseId: claims.sub };
+    }
+    return json(403, { ok: false, error: STUDENT_LICENSE_OWNER_ONLY });
+  }
   if (!claims.sub) return json(403, { ok: false, error: STUDENT_LICENSE_OWNER_ONLY });
   return { role: 'owner', licenseId: claims.sub };
 }
@@ -158,7 +194,7 @@ async function readCode(db: D1Database, code: string): Promise<CodeRow | null> {
     .first<CodeRow>();
 }
 
-async function gymHasCloud(db: D1Database, licenseId: string, now: Date): Promise<boolean> {
+export async function gymHasCloud(db: D1Database, licenseId: string, now: Date): Promise<boolean> {
   if (licenseId === 'owner-test') return true;
   try {
     const grants = await grantsForLicense(db, licenseId, now);
@@ -271,11 +307,17 @@ async function halfOffForOwner(db: D1Database, licenseId: string): Promise<{ cod
     code: row.code,
     maxUses: row.maxUses,
     usesLeft: Math.max(0, row.maxUses - row.instructorUses - row.studentUses),
+    ...(typeof row.percentOff === 'number' ? { percentOff: row.percentOff } : {}),
   };
 }
 
-function poolBody(occupied: number): { left: number; cap: number } {
-  return { left: freeStudentLicensesLeft(occupied), cap: FREE_STUDENT_LICENSES };
+function poolCap(licenseId: string): number {
+  return freeStudentLicensesForLicense(licenseId);
+}
+
+function poolBody(occupied: number, licenseId: string): { left: number; cap: number } {
+  const cap = poolCap(licenseId);
+  return { left: freeStudentLicensesLeft(occupied, cap), cap };
 }
 
 export async function handleStudentLicenseIssue(
@@ -304,13 +346,14 @@ export async function handleStudentLicenseIssue(
            WHERE license_id = ? AND status IN ('issued', 'claimed')
          ) < ?`,
       )
-      .bind(code, caller.licenseId, stamp, caller.licenseId, FREE_STUDENT_LICENSES)
+      .bind(code, caller.licenseId, stamp, caller.licenseId, poolCap(caller.licenseId))
       .run();
     const occupied = await occupiedCount(db, caller.licenseId);
     if (!inserted.meta.changes) {
-      return json(409, { ok: false, error: STUDENT_LICENSE_EMPTY, ...poolBody(occupied) });
+      return json(409, { ok: false, error: STUDENT_LICENSE_EMPTY, ...poolBody(occupied, caller.licenseId) });
     }
-    return json(200, { ok: true, code, status: 'issued', ...poolBody(occupied) });
+    const invite = await signStudentInvite(env, { code, gym: caller.licenseId });
+    return json(200, { ok: true, code, invite: invite ?? undefined, typ: STUDENT_INVITE_TYP, status: 'issued', ...poolBody(occupied, caller.licenseId) });
   } catch (error) {
     if (missingStudentCodes(error)) return json(503, { ok: false, error: SETUP_MESSAGE, setup: true });
     throw error;
@@ -329,8 +372,12 @@ export async function handleStudentLicenseList(
   const verified = await verifyCaller(body.token, env);
   if (verified instanceof Response) return verified;
   try {
-    const caller = await readCaller(verified, db, true);
+    const caller = await readCaller(verified, db, true, true);
     if (caller instanceof Response) return caller;
+    if (caller.role === 'owner' && !verified.grants.includes('pro')) {
+      const halfOff = await halfOffForOwner(db, caller.licenseId);
+      return json(200, { ok: true, role: 'owner', left: 0, cap: 0, claims: [], halfOff });
+    }
     const rows = await db
       .prepare(
         `SELECT code, license_id AS licenseId, status, claimed_device AS claimedDevice, created_at AS createdAt
@@ -339,24 +386,30 @@ export async function handleStudentLicenseList(
       .bind(caller.licenseId)
       .all<CodeRow>();
     const occupied = rows.results.filter((row) => row.status === 'issued' || row.status === 'claimed').length;
-    const claims = rows.results
-      .filter((row) => row.status === 'issued' || row.status === 'claimed' || row.status === 'revoked')
-      .map((row) => ({
+    const visible = rows.results.filter((row) => row.status === 'issued' || row.status === 'claimed' || row.status === 'revoked');
+    const claims = [];
+    for (const row of visible) {
+      const showCode =
+        (caller.role === 'owner' && (row.status === 'issued' || row.status === 'claimed')) ||
+        (caller.role === 'seat' && row.status === 'issued');
+      const invite =
+        showCode && row.status === 'issued' && row.code
+          ? await signStudentInvite(env, { code: row.code, gym: caller.licenseId })
+          : null;
+      claims.push({
         status: row.status,
         createdAt: row.createdAt,
         claimed: row.status === 'claimed',
         // The owner needs the code to revoke a claimed license. A seat only
         // receives an unclaimed code, so they can show that QR.
-        ...((caller.role === 'owner' && (row.status === 'issued' || row.status === 'claimed')) ||
-        (caller.role === 'seat' && row.status === 'issued')
-          ? { code: row.code }
-          : {}),
-      }));
+        ...(showCode ? { code: row.code, ...(invite ? { invite } : {}) } : {}),
+      });
+    }
     const halfOff = caller.role === 'owner' ? await halfOffForOwner(db, caller.licenseId) : null;
     return json(200, {
       ok: true,
       role: caller.role,
-      ...poolBody(occupied),
+      ...poolBody(occupied, caller.licenseId),
       claims,
       ...(caller.role === 'owner' ? { halfOff } : {}),
     });
@@ -408,7 +461,7 @@ export async function handleStudentLicenseRevoke(
     if (!updated.meta.changes) return json(409, { ok: false, error: ALREADY_REVOKED });
     if (claimed) await revokeGrant(db, code, now());
     const occupied = await occupiedCount(db, caller.licenseId);
-    return json(200, { ok: true, status: 'revoked', claimed, ...poolBody(occupied) });
+    return json(200, { ok: true, status: 'revoked', claimed, ...poolBody(occupied, caller.licenseId) });
   } catch (error) {
     if (missingStudentCodes(error)) return json(503, { ok: false, error: SETUP_MESSAGE, setup: true });
     throw error;
@@ -425,8 +478,8 @@ export async function handleStudentLicenseClaim(
   if (!db) return json(503, { ok: false, error: STORAGE_MESSAGE });
   const body = await readBody(request, 8_000);
   if (body instanceof Response) return body;
-  const code = typeof body.code === 'string' ? body.code.trim().toLowerCase() : '';
-  if (!isStudentLicenseCode(code)) return json(400, { ok: false, error: INVALID_CODE });
+  const code = (await readStudentInviteCode(body.code, env)) ?? (await readStudentInviteCode(body.invite, env));
+  if (!code) return json(400, { ok: false, error: INVALID_CODE });
   const deviceId = cleanDevice(body.deviceId);
   const email = cleanEmail(body.email) ?? '';
   const stamp = now();

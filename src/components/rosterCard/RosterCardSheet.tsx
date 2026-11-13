@@ -26,7 +26,8 @@ import {
 } from '../../lib/cardSync';
 import { cardLookCode, readCardLook, subscribeCardLook } from '../../lib/cardLook';
 import { readPhotoReviews } from '../../lib/rosterPhotoApproval';
-import { ASSESSMENT_AREAS, type AssessmentScore, type AssessmentScores } from '../../lib/studentAssessment';
+import { selfAssessmentsForStudent, subscribeAssessmentsWaiting } from '../../lib/instructorAssessmentClient';
+import { ASSESSMENT_FORM_AREAS, type AssessmentScore, type AssessmentScores } from '../../lib/studentAssessment';
 import { readGymLogo, subscribeGymLogo } from '../../lib/gymLogo';
 import { useGymName } from '../../hooks/useGymBrand';
 import { getRoster, setNoPhotos, subscribeRoster, type Student } from '../../lib/rosterStore';
@@ -130,6 +131,8 @@ export function RosterCardBody({
   onOpenCompetitorRoster: () => void;
 }) {
   const tick = useCardTick();
+  const [waitingTick, setWaitingTick] = useState(0);
+  useEffect(() => subscribeAssessmentsWaiting(() => setWaitingTick((value) => value + 1)), []);
   const record = useMemo(() => readRosterCard(student.id), [student.id, tick]);
   const sync = useMemo(() => getCardSyncState(student.id), [student.id, tick, student]);
   const look = useMemo(() => readCardLook(), [tick]);
@@ -151,7 +154,9 @@ export function RosterCardBody({
   const source = coachRankSource({ ...student, stripes }, record.coachRank);
   const belt = cardBelt(source);
   const dates = dateFacts(promotionDates(source));
-  const summary = assessmentSummary(record.coachAssessments, [], view);
+  // Self view: the student's own scores this coach kept from a student file or received over Advantage Cloud.
+  const selfAssessments = useMemo(() => selfAssessmentsForStudent(storage(), student.linkedStudentId), [student.linkedStudentId, tick, waitingTick]);
+  const summary = assessmentSummary(record.coachAssessments, selfAssessments, view);
   const checkpoints = record.snapshot?.checkpoints ?? [];
   const bench = benchmarkItems(checkpoints, record.benchmarkChecks);
   const latestAssessment = [...record.coachAssessments].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))[0];
@@ -470,7 +475,7 @@ function NewAssessmentSheet({
   const [date, setDate] = useState(todayIso());
   const [note, setNote] = useState('');
   const [scores, setScores] = useState<AssessmentScores>(
-    () => Object.fromEntries(ASSESSMENT_AREAS.map((area) => [area.id, 3])) as AssessmentScores,
+    () => Object.fromEntries(ASSESSMENT_FORM_AREAS.map((area) => [area.id, 3])) as AssessmentScores,
   );
   return (
     <Sheet open={open} title="New assessment" onClose={onClose} stacked portal>
@@ -487,7 +492,8 @@ function NewAssessmentSheet({
           <input type="date" value={date} onChange={(event) => setDate(event.target.value || todayIso())} />
         </label>
         <div className="clipboard__scores">
-          {ASSESSMENT_AREAS.map((area) => (
+          {/* All eight D8 faces, Sweeps included. */}
+          {ASSESSMENT_FORM_AREAS.map((area) => (
             <label key={area.id} className="clipboard__field">
               {area.label}
               <select

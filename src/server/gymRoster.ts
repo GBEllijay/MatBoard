@@ -7,6 +7,11 @@
  *   settings.json         { trustMode } — off unless the owner turns it on
  *   private/{author}.json one author's private coach notes, never merged into master.json
  *
+ * assignedInstructorId on a master entry: which instructor a student belongs to
+ * (seat id or 'owner'). Merges fill it only when blank. op=assign (owner only)
+ * sets or changes it on every entry linked to one Student Edition id.
+ * Assessment scores never go in master.json (they live under instructors/{id}/assessments/).
+ *
  * Who can do what:
  * - Plus Cloud is required. Revoked seats are refused by readGymCloudActor.
  * - Owner, Coach, and Instructors seats can read the master roster and submit.
@@ -32,6 +37,7 @@ import {
   type RosterBackup,
   type RosterMergeReport,
 } from '../lib/rosterBackup.ts';
+import { canReassignInstructor, isInstructorId } from '../lib/instructorIdentity.ts';
 import { gymBytesUnder, readGymCloudActor, type GymCloudActor, type GymCloudEnv } from './gymCloud.ts';
 
 export const ROSTER_MASTER_MAX_BYTES = 20_000_000;
@@ -96,8 +102,9 @@ async function writeJson(env: GymCloudEnv, key: string, value: unknown, max: num
   const bytes = new TextEncoder().encode(JSON.stringify(value));
   if (bytes.byteLength > max) return json(413, { ok: false, error: 'That roster is too large for Advantage Cloud.' });
   const bucket = env.GYM_MEDIA!;
-  const cap = cloudCapBytes(env.GYM_MEDIA_CAP_BYTES);
-  const [used, existing] = await Promise.all([gymBytesUnder(bucket, ''), bucket.head(key)]);
+  const cap = cloudCapBytes(env.GYM_MEDIA_LICENSE_CAP_BYTES);
+  const license = /^groups\/[^/]+\//.exec(key)?.[0] ?? key;
+  const [used, existing] = await Promise.all([gymBytesUnder(bucket, license), bucket.head(key)]);
   if (used - (existing?.size ?? 0) + bytes.byteLength > cap) {
     return json(409, { ok: false, error: 'Advantage Cloud is full.' });
   }
@@ -278,6 +285,29 @@ export async function handleGymRoster(request: Request, env: GymCloudEnv, now: (
     const failed = await writeJson(env, key, next, ROSTER_MASTER_MAX_BYTES);
     if (failed) return failed;
     return json(200, { ok: true, status: next.status, report: next.report ?? null });
+  }
+
+  if (op === 'assign') {
+    // Only the owner moves a student to another instructor. A seat's card share or roster
+    // submit only fills a blank assignment through the normal merge.
+    if (!role.isOwner || !canReassignInstructor(actor)) return json(403, { ok: false, error: 'Only the gym owner assigns students to instructors.' });
+    const linked = typeof body.linkedStudentId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(body.linkedStudentId) ? body.linkedStudentId : '';
+    const instructorId = body.instructorId === null ? null : isInstructorId(body.instructorId) ? body.instructorId : undefined;
+    if (!linked || instructorId === undefined) return json(400, { ok: false, error: 'Choose a student and an instructor.' });
+    const master = await readMaster(env, actor);
+    const hits = master ? master.roster.students.filter((row) => row.linkedStudentId === linked && !row.guestId) : [];
+    if (!master || !hits.length) return json(404, { ok: false, error: 'That student is not on the gym roster yet.' });
+    for (const row of hits) {
+      if (instructorId) row.assignedInstructorId = instructorId;
+      else delete row.assignedInstructorId;
+    }
+    const merged = buildRosterBackup(
+      { roster: master.roster, cardFile: { cards: master.cards, settings: master.cardSettings }, privateNotes: {}, inbox: master.inbox, coachStores: master.coachStores },
+      { scope: 'shared', now: stamp },
+    );
+    const failed = await writeJson(env, `${prefix(actor)}master.json`, merged, ROSTER_MASTER_MAX_BYTES);
+    if (failed) return failed;
+    return json(200, { ok: true, linkedStudentId: linked, assignedInstructorId: instructorId, cards: hits.length });
   }
 
   if (op === 'trust') {

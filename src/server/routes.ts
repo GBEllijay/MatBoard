@@ -16,6 +16,9 @@ export const API_PRODUCT_PRO = 'advantage-pro';
  */
 export const API_PRODUCT_MEDIA = 'advantage-media';
 
+/** Extra Student profile. One-time slot on the account. Not a tier grant. */
+export const API_PRODUCT_EXTRA_PROFILE = 'advantage-extra-profile';
+
 export const API_CHECKOUT_PATH = '/api/checkout';
 
 /** Upgrade price for one email and tier. Returns only the prices, never purchase rows. */

@@ -18,7 +18,10 @@ import { photoImageFits } from './rosterPhotoApproval.ts';
 
 export const CARD_SHARE_KIND = 'student-card-share';
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
-const SHARE_KEYS = new Set(['kind', 'v', 'shareId', 'studentId', 'card', 'photo', 'parent', 'sentAt']);
+const SHARE_KEYS = new Set(['kind', 'v', 'shareId', 'studentId', 'card', 'photo', 'parent', 'sentAt', 'via', 'viaInstructorId']);
+const SIGNED_RE = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+const INSTRUCTOR_RE = /^[A-Za-z0-9_-]{1,80}$/;
+export const CARD_SHARE_VIA_MAX = 4000;
 const CARD_KEYS = new Set(['name', 'belt', 'stripes', 'division', 'gym']);
 export const CARD_SHARE_TEXT_MAX = 80;
 
@@ -35,6 +38,13 @@ export type StudentCardShare = {
   photo: CardSharePhoto | null;
   parent: CardShareParent;
   sentAt: number;
+  /**
+   * Phone → server only: the signed coach connect code the student scanned.
+   * The server checks it, keeps only viaInstructorId, and never stores the code.
+   */
+  via?: string;
+  /** Set by the server from a checked `via`: the instructor who showed the code. */
+  viaInstructorId?: string;
 };
 
 function text(value: unknown, required = false): string | null {
@@ -75,7 +85,16 @@ export function readStudentCardShare(value: unknown): StudentCardShare | null {
   if (!rawParent || typeof rawParent !== 'object' || typeof rawParent.required !== 'boolean') return null;
   const parent: CardShareParent = { required: rawParent.required };
   if (typeof rawParent.approvedAt === 'number' && Number.isFinite(rawParent.approvedAt)) parent.approvedAt = rawParent.approvedAt;
-  return { kind: CARD_SHARE_KIND, v: 1, shareId: row.shareId, studentId: row.studentId, card: { name, belt, stripes, division, gym }, photo, parent, sentAt: row.sentAt };
+  const share: StudentCardShare = { kind: CARD_SHARE_KIND, v: 1, shareId: row.shareId, studentId: row.studentId, card: { name, belt, stripes, division, gym }, photo, parent, sentAt: row.sentAt };
+  if (row.via !== undefined) {
+    if (typeof row.via !== 'string' || row.via.length > CARD_SHARE_VIA_MAX || !SIGNED_RE.test(row.via)) return null;
+    share.via = row.via;
+  }
+  if (row.viaInstructorId !== undefined) {
+    if (typeof row.viaInstructorId !== 'string' || !INSTRUCTOR_RE.test(row.viaInstructorId)) return null;
+    share.viaInstructorId = row.viaInstructorId;
+  }
+  return share;
 }
 
 /* ------------------------------ student device ----------------------------- */

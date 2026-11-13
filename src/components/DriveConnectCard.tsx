@@ -53,6 +53,8 @@ import {
 } from '../lib/googleDrive';
 import { PHOTOS_CONNECTED, photosOwnerFacingError } from '../lib/googlePhotos';
 import { addDriveMediaFiles } from '../lib/photoStore';
+import { CLOUD_CONNECT_COLLAPSE_LABEL, CLOUD_CONNECT_OPTIONAL, connectAccountNote, connectWithBody } from '../lib/storageCopy';
+import { useAdvantageCloudOn } from './useAdvantageCloudOn';
 import {
   clearOneDriveResumeFlag,
   loadMicrosoftClientId,
@@ -102,14 +104,18 @@ export function DriveConnectCard({
   resumeMode = null,
   onReady,
   changeFolderOnOpen = false,
+  cloudOptionalCollapse = false,
 }: {
   resumeMode?: 'token' | 'error' | null;
   /** Fired after a reconnect grants a token that can browse. */
   onReady?: () => void;
   /** Open the folder picker once, without clearing the connected folder. */
   changeFolderOnOpen?: boolean;
+  /** Instructor Edition only: Cloud gyms collapse this card to one optional line. */
+  cloudOptionalCollapse?: boolean;
 }) {
   const location = useLocation();
+  const cloudOn = useAdvantageCloudOn();
   const owned = ownedGoogleClientId();
   const ownedMicrosoft = ownedMicrosoftClientId();
   const [devAppId, setDevAppId] = useState(() => (import.meta.env.DEV && !owned ? googleClientId() : ''));
@@ -132,6 +138,7 @@ export function DriveConnectCard({
   const connectRef = useRef<(provider: CloudStorageConnector) => Promise<void>>(async () => {});
   const changeFolderRef = useRef<() => Promise<void>>(async () => {});
   const openedChange = useRef(false);
+  const [cloudFolderOpen, setCloudFolderOpen] = useState(false);
 
   useEffect(() => {
     googleClientId();
@@ -368,12 +375,31 @@ export function DriveConnectCard({
     }
   };
 
+  const collapseOptional = cloudOptionalCollapse && cloudOn && !binding && !folders && !resumeMode;
+  if (collapseOptional && !cloudFolderOpen) {
+    return (
+      <p className="drive-connect-collapse">
+        <button type="button" className="drive-connect-collapse__btn" onClick={() => setCloudFolderOpen(true)}>
+          {CLOUD_CONNECT_COLLAPSE_LABEL}
+        </button>
+      </p>
+    );
+  }
+
+  const compactCloudCopy = collapseOptional && cloudFolderOpen;
+
   return (
     <article className="plan-card">
       <p className="plan-card__kicker">{connected ? connected.displayName : CONNECT_WITH_KICKER}</p>
       <strong>{binding ? binding.folderName : CONNECT_WITH_TITLE}</strong>
-      {binding ? <span>{connectedDetail(binding)}</span> : <span>{CONNECT_WITH_BODY}</span>}
-      <p className="drive-connect__note">{CONNECT_ACCOUNT_NOTE}</p>
+      {binding ? (
+        <span>{connectedDetail(binding)}</span>
+      ) : compactCloudCopy ? (
+        <span>{CLOUD_CONNECT_OPTIONAL}</span>
+      ) : (
+        <span>{connectWithBody(cloudOn, CONNECT_WITH_BODY)}</span>
+      )}
+      {compactCloudCopy ? null : <p className="drive-connect__note">{connectAccountNote(cloudOn, CONNECT_ACCOUNT_NOTE)}</p>}
       {import.meta.env.DEV && (!owned || !ownedMicrosoft) ? (
         <details className="drive-connect__advanced">
           <summary>Advanced</summary>

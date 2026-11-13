@@ -12,7 +12,7 @@ import { IBJJF_KIDS_TEMPLATE } from './beltTemplates.ts';
 import { rosterBeltToProgress } from './coachRankUpdate.ts';
 import { emptyRank, emptyTapeDates, rankBeltLabel, wornBeltPreview, type WornBeltPreview } from './studentRank.ts';
 import { KIDS_BELTS, canonicalBelt, type Student } from './rosterStore.ts';
-import { ASSESSMENT_AREAS, assessmentAverage, type AssessmentAreaId, type AssessmentEntry } from './studentAssessment.ts';
+import { ASSESSMENT_FORM_AREAS, assessmentAverage, isAssessmentScore, type AssessmentEntry, type AssessmentFaceId } from './studentAssessment.ts';
 import { RANK_TAPE_MAX, type BeltBook, type ProgressBelt, type RubricCheckpoint, type StudentProgressReport, type StudentRank } from './progress/types.ts';
 import type { CoachRankLog } from './rosterCardStore.ts';
 
@@ -204,7 +204,8 @@ export function initialsOf(name: string): string {
   return `${first}${last}`.toUpperCase();
 }
 
-export type AssessmentRow = { id: AssessmentAreaId; label: string; coach: number | null; self: number | null; gap: number | null };
+/** One row per D8 face, Sweeps included. A face an older entry never rated is null, not 0. */
+export type AssessmentRow = { id: AssessmentFaceId; label: string; coach: number | null; self: number | null; gap: number | null };
 
 export type AssessmentSummary = {
   rows: AssessmentRow[];
@@ -234,16 +235,24 @@ export function assessmentSummary(
 ): AssessmentSummary {
   const coachLatest = latest(coach);
   const selfLatest = latest(self);
-  const rows = ASSESSMENT_AREAS.map((area) => {
-    const c = coachLatest?.scores[area.id] ?? null;
-    const s = selfLatest?.scores[area.id] ?? null;
+  const rows = ASSESSMENT_FORM_AREAS.map((area) => {
+    const coachScore = coachLatest?.scores[area.id];
+    const selfScore = selfLatest?.scores[area.id];
+    const c = isAssessmentScore(coachScore) ? coachScore : null;
+    const s = isAssessmentScore(selfScore) ? selfScore : null;
     return { id: area.id, label: area.label, coach: c, self: s, gap: c !== null && s !== null ? s - c : null };
   });
   const lead = view === 'self' ? selfLatest : coachLatest ?? (view === 'both' ? selfLatest : null);
   let strengths = '';
   let weaknesses = '';
-  if (lead) {
-    const scores = ASSESSMENT_AREAS.map((area) => ({ label: area.label, score: lead.scores[area.id] }));
+  const rated = lead
+    ? ASSESSMENT_FORM_AREAS.flatMap((area) => {
+        const score = lead.scores[area.id];
+        return isAssessmentScore(score) ? [{ label: area.label, score }] : [];
+      })
+    : [];
+  if (lead && rated.length) {
+    const scores = rated;
     const max = Math.max(...scores.map((row) => row.score));
     const min = Math.min(...scores.map((row) => row.score));
     strengths = `${scores.filter((row) => row.score === max).map((row) => row.label).join(', ')} (${max})`;

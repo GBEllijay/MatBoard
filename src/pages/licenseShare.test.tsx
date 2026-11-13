@@ -324,7 +324,7 @@ test('Pro owner keeps the academy pathway and can see the free Student license p
   assert.ok(pathway);
   assert.equal(input?.value, academyPathwayUrl(pathway, ORIGIN));
   assert.match(m.host.textContent ?? '', /4 of 5 free Student licenses left/);
-  assert.match(m.host.textContent ?? '', /Give a free Student license/);
+  assert.match(m.host.textContent ?? '', /Invite a student \(Student Edition only\)/);
   m.done();
 });
 

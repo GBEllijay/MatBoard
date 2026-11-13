@@ -1,4 +1,8 @@
+import { ensureAccountByEmail } from './accountId.ts';
+import type { D1Database } from './d1.ts';
+import { recordExtraProfileSlot } from './profileSlots.ts';
 import { allowAttempt, clientIp, rateBucket, rateLimitedResponse, CONFIRM_LIMIT } from './rateLimit.ts';
+import { API_PRODUCT_EXTRA_PROFILE } from './routes.ts';
 import { stripeErrorMessage, type StripeRuntimeEnv } from './stripeCheckout.ts';
 
 const JSON_HEADERS = {
@@ -31,7 +35,9 @@ type StripeSession = {
   payment_status?: string;
   status?: string;
   mode?: string;
-  metadata?: { product?: string };
+  metadata?: { product?: string; account_id?: string };
+  customer_details?: { email?: string | null };
+  customer_email?: string | null;
 };
 
 async function retrieveSession(secret: string, sessionId: string, fetchImpl: typeof fetch): Promise<StripeSession | null> {
@@ -59,6 +65,7 @@ export async function handleCheckoutConfirm(
   fetchImpl: typeof fetch = fetch,
   kv: { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<unknown> } | null = null,
   now: () => Date = () => new Date(),
+  extras: { db?: D1Database | null } = {},
 ): Promise<Response> {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed.' });
   const pepper = env.CODE_HASH_PEPPER?.trim() ?? '';
@@ -94,6 +101,30 @@ export async function handleCheckoutConfirm(
   if (!session) return unconfirmed();
   const paid = session.payment_status === 'paid' || session.payment_status === 'no_payment_required';
   const product = session.metadata?.product ?? '';
+  if (product === API_PRODUCT_EXTRA_PROFILE) {
+    if (!paid || session.status === 'expired') return unconfirmed();
+    if (!extras.db) return json(503, { ok: false, entitled: false, error: 'Entitlement storage is not set up yet. Bind ENTITLEMENTS_DB.' });
+    const email = session.customer_details?.email || session.customer_email || '';
+    const account = await ensureAccountByEmail(extras.db, {
+      email,
+      pepper: env.CODE_HASH_PEPPER,
+      now: now(),
+      accountId: session.metadata?.account_id,
+    });
+    if (!account) return unconfirmed();
+    const extraProfileSlots = await recordExtraProfileSlot(extras.db, {
+      accountId: account.accountId,
+      sessionId,
+      now: now(),
+    });
+    return json(200, {
+      ok: true,
+      entitled: false,
+      product,
+      extraProfileSlots,
+      accountId: account.accountId,
+    });
+  }
   const grants = PRODUCT_GRANTS[product];
   if (!paid || !grants || session.status === 'expired') return unconfirmed();
   return json(200, { ok: true, entitled: true, product, grants, source: 'stripe' });

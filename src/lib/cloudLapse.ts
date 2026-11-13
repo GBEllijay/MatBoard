@@ -11,6 +11,13 @@ export const CLOUD_SEEN_KEY = 'matboard.plusCloud.seenActive.v1';
 export const CLOUD_LAPSED_KEY = 'matboard.plusCloud.lapsedAt.v1';
 
 export const LAPSE_PAUSED = 'Cloud sharing is paused. Everything on this phone still works.';
+/**
+ * What “paused” means. Same condition as the notice: this browser once had
+ * Advantage Pro Plus Cloud open, and the pass signed in here does not open it now.
+ * Wording only. The condition is unchanged.
+ */
+export const LAPSE_WHY =
+  "What is paused: the pass signed in on this browser does not include Advantage Pro Plus Cloud right now. That happens when the Cloud subscription has ended, when this browser is signed in with an instructor seat instead of the gym owner's pass, or when no pass is signed in here. Sign in again with the owner pass that has Advantage Cloud and this notice goes away. The days left count from when this browser first saw Cloud off.";
 export const LAPSE_CONNECT =
   'To use these files on another device, connect Google Drive, OneDrive, or a folder on this computer.';
 export const LAPSE_REMOVED =
@@ -87,6 +94,7 @@ export function gymFolderDownloadText(): string {
     'videos/daily/',
     'lessons/current/',
     'lessons/archive/',
+    'lessons/instructors/',
     'students/',
     'instructors/',
     'handoff/invites/',

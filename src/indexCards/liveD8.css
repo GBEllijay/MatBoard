@@ -1,0 +1,333 @@
+/* Live Student D8 and its index card. The /preview/d8-subfactors page keeps the navy draft. */
+
+html:has(.d8-live),
+body:has(.d8-live),
+#root:has(.d8-live) {
+  background-color: var(--mat-fill, #12243a);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile, min(100vw, 24rem)) calc(var(--mat-tile, min(100vw, 24rem)) * 4 / 3);
+  background-repeat: repeat;
+  background-position: center top;
+}
+
+.sheet-diamond-full:has(.d8-live) {
+  background-color: var(--mat-fill, #12243a);
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile, min(100vw, 24rem)) calc(var(--mat-tile, min(100vw, 24rem)) * 4 / 3);
+  background-repeat: repeat;
+  background-position: center top;
+  color: #f2f4f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.sheet-diamond-full:has(.d8-live) .sheet-diamond-full__close {
+  min-height: 44px;
+  margin-bottom: 10px;
+  padding: 0.2rem 0.95rem;
+  border: 2px solid #1c140e;
+  border-radius: 999px;
+  background: rgba(244, 240, 228, 0.94);
+  color: #1c140e;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.d8-live {
+  --d8-ink: #1c140e;
+  --d8-paper: #f4f0e4;
+  --d8-blue: #004eba;
+  color: #f2f4f7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.d8-live-diamond {
+  position: relative;
+}
+
+.d8-live.d8sf .topo-stage {
+  height: var(--d8-stage-h, 630px);
+  min-height: 260px;
+  max-height: 92vh;
+  container-type: size;
+  border: 2px solid var(--d8-ink);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(28, 78, 160, 0.45), rgba(8, 18, 36, 0.15) 46%, transparent 72%),
+    rgba(12, 35, 68, 0.78);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+}
+
+.d8-live-grip {
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--d8-stage-h, 630px) - 44px);
+  right: 2px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, transparent 0 46%, rgba(244, 240, 228, 0.85) 46% 54%, transparent 54% 62%, rgba(244, 240, 228, 0.85) 62% 70%, transparent 70%);
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.d8-live-grip:focus-visible {
+  outline: 3px solid var(--d8-blue);
+  outline-offset: 2px;
+}
+
+.d8-live-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.d8-live .topo-controls,
+.d8-live .topo-legend {
+  gap: 8px;
+}
+
+.d8-live .topo-controls button,
+.d8-live .topo-legend button,
+.d8-live-tools button,
+.d8-live .crystal-readout button,
+.d8-live .d8sf-card-list + button,
+.d8-live [data-add-card] {
+  min-height: 44px;
+  padding: 0.2rem 0.9rem;
+  border: 2px solid var(--d8-ink);
+  border-radius: 999px;
+  background: rgba(244, 240, 228, 0.94);
+  color: var(--d8-ink);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.d8-live .topo-legend button[aria-pressed='true'] {
+  background: var(--d8-blue);
+  border-color: var(--d8-blue);
+  color: #fff;
+}
+
+.d8-live .topo-legend button:focus-visible,
+.d8-live .topo-controls button:focus-visible,
+.d8-live-tools button:focus-visible,
+.d8-live .crystal-readout button:focus-visible {
+  outline: 3px solid var(--d8-blue);
+  outline-offset: 2px;
+}
+
+.d8-live .topo-label,
+.d8-live button.topo-label-face,
+.d8-live .crystal button.topo-label-face {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(12px, 2.8cqh, 16px);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--d8-ink);
+  background: rgba(244, 240, 228, 0.94);
+  border: 1px solid rgba(28, 20, 14, 0.55);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.d8-live .crystal-readout {
+  margin-top: 14px;
+  padding: 16px 16px 18px;
+  border: 2px solid var(--d8-ink);
+  border-radius: 16px;
+  background: var(--d8-paper);
+  color: var(--d8-ink);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.d8-live .crystal-readout h2 {
+  margin: 0 0 6px;
+  color: var(--d8-ink);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 750;
+}
+
+.d8-live .crystal-readout p {
+  margin: 0 0 8px;
+  color: #3a3128;
+  font-size: 0.95rem;
+}
+
+.d8-live .d8sf-term,
+.d8-live .d8sf-slot-name {
+  padding: 3px 7px;
+  border: 1px solid rgba(28, 20, 14, 0.4);
+  border-radius: 6px;
+  background: rgba(255, 252, 245, 0.92);
+  color: var(--d8-ink);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-decoration-color: var(--d8-blue);
+}
+
+.d8-live .d8sf-empty {
+  min-width: 72px;
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 1.5px dashed rgba(28, 20, 14, 0.38);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(28, 20, 14, 0.62);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.d8-live .d8sf-card-list li {
+  color: var(--d8-ink);
+  font-size: 0.95rem;
+}
+
+.d8-live-sheet {
+  color: var(--d8-ink, #1c140e);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.d8-live-sheet .d8sf-index {
+  border: 2px solid #1c140e;
+  background: #f4f0e4;
+  color: #1c140e;
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.28);
+}
+
+.d8-live-sheet .d8sf-index-title {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.d8-live-sheet .d8sf-kicker,
+.d8-live-sheet .d8sf-index-block h3 {
+  color: #5c5148;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.d8-live-sheet .d8sf-index-block {
+  border: 1px solid rgba(28, 20, 14, 0.16);
+  background: rgba(255, 252, 245, 0.72);
+}
+
+.d8-live-sheet .d8sf-index-empty,
+.d8-live-sheet .d8sf-index-hint,
+.d8-live-sheet .d8sf-index-face {
+  color: #3a3128;
+}
+
+.d8-live-sheet .d8sf-index a {
+  color: #004eba;
+  font-weight: 700;
+}
+
+.d8-live-sheet button:not(.d8sf-scrim) {
+  min-height: 44px;
+  border: 2px solid #1c140e;
+  border-radius: 999px;
+  background: rgba(244, 240, 228, 0.96);
+  color: #1c140e;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+}
+
+.d8-live-sheet .d8sf-rate[aria-pressed='true'] {
+  background: #004eba;
+  border-color: #004eba;
+  color: #fff;
+}
+
+.d8-live-sheet .d8sf-rate:focus-visible,
+.d8-live-sheet button:focus-visible {
+  outline: 3px solid #004eba;
+  outline-offset: 2px;
+}
+
+.d8-live-sheet .d8sf-mini input,
+.d8-live-sheet .d8sf-field input {
+  border: 2px solid #1c140e;
+  border-radius: 10px;
+  background: #fff;
+  color: #1c140e;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.d8-rate-saved {
+  min-height: 1.25em;
+  margin: 0;
+  color: #0c2344;
+  font-weight: 700;
+}
+
+.d8-rate-saved[data-on='true'] {
+  animation: d8-saved-fade 2s ease forwards;
+}
+
+@keyframes d8-saved-fade {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .d8-live.d8sf .topo-stage {
+    height: var(--d8-stage-h, 630px);
+  }
+}
+
+/*
+ * 4×4 and 5×5 faces. The readout lays each mesh row out as a centered,
+ * wrapping line so names never sit on top of each other. Text stays at 12px or more.
+ */
+.d8-live .d8-live-pyramid-rows {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: auto;
+  min-height: 0;
+  padding: 6px 0;
+}
+
+.d8-live .d8-live-pyramid-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.d8-live .d8-live-pyramid-rows .d8sf-slot {
+  position: static;
+  transform: none;
+  max-width: min(140px, 44%);
+}
+
+.d8-live .d8-live-pyramid-rows .d8sf-term {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.d8-live .d8-live-pyramid-rows .d8sf-empty {
+  min-width: 56px;
+  min-height: 32px;
+  font-size: 12px;
+}

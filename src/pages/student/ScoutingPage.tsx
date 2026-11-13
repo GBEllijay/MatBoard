@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { RadarChart, type RadarSeries } from '../../components/RadarChart';
+import { ScoutCage } from '../../components/CleanCage';
 import { competitionOf } from '../../lib/progress/competition';
 import type { CompetitionResult } from '../../lib/progress/types';
 import {
   compareToOpponent,
-  isCompleteRatings,
+  isDrawableRatings,
   matchupLabels,
   matchupLine,
   type AreaRatings,
@@ -584,14 +584,6 @@ function matchWord(result: CompetitionResult['matches'][number]['result']): stri
   return 'Loss';
 }
 
-function chartSeries(name: string, mine: AssessmentScores | null, theirs: AssessmentScores | null): RadarSeries[] {
-  const series: RadarSeries[] = [];
-  if (mine) series.push({ name: 'Me', scores: mine, tone: 'me' });
-  if (theirs) series.push({ name, scores: theirs, tone: 'opponent' });
-  if (!series.length) series.push({ name, scores: null, tone: 'opponent' });
-  return series;
-}
-
 function OpponentTracker({
   card,
   selfScores,
@@ -619,8 +611,8 @@ function OpponentTracker({
     }
     node.focus();
   }, [focus]);
-  const [graph, setGraph] = useState<'diamond' | 'spider'>('diamond');
-  const theirs = isCompleteRatings(card.ratings) ? card.ratings : null;
+  const [graph, setGraph] = useState<'cage' | 'diamond'>('cage');
+  const theirs = isDrawableRatings(card.ratings) ? card.ratings : null;
   const rows = compareToOpponent(selfScores, card.ratings);
   const groups = matchupLabels(rows);
   const save = (patch: { ratings: AreaRatings; strengths: string; weaknesses: string }) => onSave(patch);
@@ -629,12 +621,17 @@ function OpponentTracker({
     [selfScores, card.ratings],
   );
   const comparing = Object.keys(factors.self).length + Object.keys(factors.opponent).length > 0;
+  const cageHelp =
+    selfScores && theirs
+      ? 'Eight areas inside the cage. Me in blue, opponent in orange.'
+      : 'Eight areas inside the cage.';
 
   return (
     <section className="scout-tracker" aria-label={`Opponent card for ${card.name}`}>
       <div ref={rateRef} className="scout-rates archive-ratings" role="group" tabIndex={-1} aria-label={`Ratings for ${card.name}`}>
         <h3>Ratings</h3>
         <p className="archive-help">{`Rate ${card.name}. 1 is early. 5 is ready to rely on.`}</p>
+        {/* Same eight faces as the daily check-in, Sweeps included. No sub-item ratings. */}
         {ASSESSMENT_FORM_AREAS.map((area) => (
           <fieldset key={area.id} className="assess-area">
             <legend>{area.label}</legend>
@@ -688,6 +685,15 @@ function OpponentTracker({
         <div className="archive-graph" role="group" aria-label={`Graph for ${card.name}`}>
           <button
             type="button"
+            className={graph === 'cage' ? 'student-choice is-on' : 'student-choice'}
+            aria-pressed={graph === 'cage'}
+            aria-label={`Cage for ${card.name}`}
+            onClick={() => setGraph('cage')}
+          >
+            Cage
+          </button>
+          <button
+            type="button"
             className={graph === 'diamond' ? 'student-choice is-on' : 'student-choice'}
             aria-pressed={graph === 'diamond'}
             aria-label={`Diamond for ${card.name}`}
@@ -695,18 +701,9 @@ function OpponentTracker({
           >
             Diamond
           </button>
-          <button
-            type="button"
-            className={graph === 'spider' ? 'student-choice is-on' : 'student-choice'}
-            aria-pressed={graph === 'spider'}
-            aria-label={`Spider for ${card.name}`}
-            onClick={() => setGraph('spider')}
-          >
-            Spider
-          </button>
         </div>
         <p className="archive-help">
-          {graph === 'diamond' ? 'Eight areas on one shape. Peaks are stronger. Dips need work.' : 'The same areas as a spider graph.'}
+          {graph === 'diamond' ? 'Eight areas on one shape. Peaks are stronger. Dips need work.' : cageHelp}
         </p>
         {graph === 'diamond' ? (
           <div className="archive-diamond">
@@ -730,8 +727,10 @@ function OpponentTracker({
             />
           </div>
         ) : (
-          <RadarChart
-            series={chartSeries(card.name, selfScores, theirs)}
+          <ScoutCage
+            mine={selfScores}
+            theirs={theirs}
+            opponentName={card.name}
             title={selfScores && theirs ? 'Me vs them' : 'Shape'}
             empty="Rate this opponent to see their shape."
           />

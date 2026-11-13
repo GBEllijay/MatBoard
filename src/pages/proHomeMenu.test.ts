@@ -57,12 +57,13 @@ test('Pro + Cloud edition cards match Pro destinations, belts, and order', () =>
   assert.match(cloud, mediaRetitle);
   assert.doesNotMatch(cloud, /to="\/media"|to="\/buy\/media"|to=\{MEDIA_EDITION_PATH\}|to="\/buy"/);
 
-  const upload = cloud.indexOf('<AdvantageCloudHome />');
+  const sheet = cloud.indexOf('<GymCharacterSheet />');
   const white = cloud.indexOf('data-pro-entry="white"');
   const student = cloud.indexOf('data-pro-entry="student"');
   const hubs = cloud.indexOf('<ProToolboxCard');
   const invite = cloud.indexOf('<InstructorInvitePanel />');
-  assert.ok(upload > -1 && white > upload && student > white && hubs > student && invite > hubs);
+  assert.doesNotMatch(cloud, /AdvantageCloudHome/);
+  assert.ok(sheet > -1 && white > sheet && student > white && hubs > student && invite > hubs);
 });
 
 test('the Pro home header clearance is page-local and the hub tiles stay cream', () => {

@@ -30,6 +30,7 @@ import {
   coachDoorOpen,
   coachUnlimitedDoorOpen,
   mediaConsoleDoorOpen,
+  mediaEditionDoorOpen,
   mediaFolderDoorOpen,
   ownerProHubOpen,
   proDoorOpen,
@@ -44,6 +45,7 @@ import { preservesAppHomeQuery } from './lib/submenuNav';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
 import { StudentEditionPage } from './pages/StudentEdition';
+import { StudentJoinPage } from './pages/student/StudentLicenseClaim';
 import { IndexCardProvider } from './indexCards/IndexCardHost';
 import { Journal2036Page } from './preview/journal2036/Journal2036Page';
 import { AssessmentRadarPreviewPage } from './preview/assessmentRadar/AssessmentRadarPreview';
@@ -52,7 +54,9 @@ import { TERM_CARD_PATH, TermCardPreviewPage } from './preview/termCard/TermCard
 import { INDEX_CARD_PATH, IndexCardPreviewPage } from './preview/indexCard/IndexCardPreview';
 import { CRYSTAL_PREVIEW_PATH, CrystallineSweepsPreview } from './preview/crystallineSweeps/CrystallineSweepsPreview';
 import { D8_SUBFACTORS_PATH, D8SubfactorsPreview } from './preview/d8Subfactors/D8SubfactorsPreview';
+import { D8_GRID_PREVIEW_PATH, D8GridPreview } from './indexCards/D8GridPreview';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
+import { InstructorSheetPreviewPage } from './preview/instructorSheet/InstructorSheetPreview';
 import { ConnectCoachPreviewPage } from './preview/proHome/ConnectCoachPreview';
 import { InstructorCardsPreviewPage } from './preview/proHome/InstructorCardsPreview';
 import { ProHomePreviewPage } from './preview/proHome/ProHomePreview';
@@ -66,7 +70,6 @@ import { StudentHoursPreview } from './preview/studentRecord/StudentHoursPreview
 import { CoachPage } from './pages/Coach';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
-import { CardPage } from './pages/Card';
 import { HalfOffPage } from './pages/HalfOff';
 import { ComingSoonPage } from './pages/ComingSoon';
 import { CompetitionManagementPage } from './pages/CompetitionManagement';
@@ -223,14 +226,15 @@ function MediaConsoleRoute({ children }: { children: ReactNode }) {
 
 /**
  * /media, the one Media Edition hub. A browser whose Media door is open (a Media
- * pass, Pro, or owner) and whose token can download the chunk gets the paid hub
- * menu. Everyone else sees the public $29.99 marketing page, never the paid
- * chunk and never a raw 401.
+ * pass, Instructor, Pro, or owner) or whose live seat grants Media Console, and
+ * whose token can download the chunk, gets the paid hub menu. Everyone else sees
+ * the public $29.99 marketing page, never the paid chunk and never a raw 401.
  * MediaEditionGate checks a saved pass first, so a refresh does not flash the marketing page.
+ * The /products Media card uses the same mediaEditionDoorOpen rule.
  */
 function MediaEditionRoute() {
   const door = useSeatDoor();
-  return <MediaEditionGate open={paidDoorAgrees('media-console', mediaConsoleDoorOpen(door))} />;
+  return <MediaEditionGate open={paidDoorAgrees('media-console', mediaEditionDoorOpen(door))} />;
 }
 
 /** Tournament suite and invite admin. A signed-in seat does not open these. */
@@ -466,6 +470,7 @@ export default function App() {
       <Route path={MEDIA_EDITION_PATH} element={<MediaEditionRoute />} />
       <Route path={MEDIA_EDITION_OLD_PATH} element={<Navigate to={MEDIA_EDITION_PATH} replace />} />
       <Route path="/restore" element={<RestoreAccessPage />} />
+      <Route path="/join/student" element={<StudentJoinPage />} />
       {/* Public tier buy pages (display + alpha line). The gated /buy/student, /buy/coach and /buy/pro checkouts are unchanged. */}
       <Route path="/editions/student" element={<BuyStudentEditionPage />} />
       <Route path="/editions/instructor" element={<BuyInstructorEditionPage />} />
@@ -782,6 +787,7 @@ export default function App() {
       <Route path={CRYSTAL_PREVIEW_PATH} element={<CrystallineSweepsPreview />} />
       {/* Isolated sub-factor diamond. Direct link only. It does not write a check-in. */}
       <Route path={D8_SUBFACTORS_PATH} element={<D8SubfactorsPreview />} />
+      <Route path={D8_GRID_PREVIEW_PATH} element={<D8GridPreview />} />
       <Route path="/preview/student-ancestry" element={<StudentAncestryPreview />} />
       <Route path="/preview/student-hours" element={<StudentHoursPreview />} />
       <Route path="/student/*" element={<StudentEditionPage />} />
@@ -795,6 +801,8 @@ export default function App() {
       <Route path="/preview/lineage-line" element={<ExpandedLineageLine />} />
       {/* Isolated instructor-sheet concept. Not in edition menus, and it does not write a profile. */}
       <Route path="/preview/instructor-profile" element={<InstructorProfilePreviewPage />} />
+      {/* Isolated instructor character sheet. Fills the gap between the student profile and the owner identity card. Nothing is saved. */}
+      <Route path="/preview/instructor-sheet" element={<InstructorSheetPreviewPage />} />
       {/* Isolated Pro hub preview. Live /pro is unchanged. */}
       <Route path="/preview/pro-home" element={<ProHomePreviewPage />} />
       {/* Isolated White hub. Live /white and /match stay on their current paths. */}
@@ -817,7 +825,7 @@ export default function App() {
       <Route path="/preview/2036-instructor" element={<Future2036Page place="instructor" />} />
       <Route path="/preview/2036-academy" element={<Future2036Page place="academy" />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
-      <Route path="/card" element={<CardPage />} />
+      <Route path="/card" element={<Navigate to="/" replace />} />
       <Route path="/half-off" element={<HalfOffPage />} />
       <Route path="/faq" element={<FaqPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />

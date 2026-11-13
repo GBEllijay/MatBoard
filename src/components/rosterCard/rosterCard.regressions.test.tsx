@@ -46,7 +46,7 @@ const { addStudent, getRoster, linkRosterCard, resetRoster, setNoPhotos, updateS
 const { CARD_LOOKS, readCardLook, writeCardLook } = await import('../../lib/cardLook.ts');
 const { getCardSyncState } = await import('../../lib/cardSync.ts');
 const { updateRosterCard } = await import('../../lib/rosterCardStore.ts');
-const { ASSESSMENT_AREAS } = await import('../../lib/studentAssessment.ts');
+const { ASSESSMENT_AREAS, ASSESSMENT_FORM_AREAS } = await import('../../lib/studentAssessment.ts');
 const { ProfilePage } = await import('../../pages/student/ProfilePage.tsx');
 const { StudentCard } = await import('../../pages/Roster.tsx');
 const { readRosterCard } = await import('../../lib/rosterCardStore.ts');
@@ -63,6 +63,7 @@ const { rosterIndexTopPx } = await import('../../lib/rosterIndex.ts');
 const { blankStudentReport, saveStudentReport } = await import('../../lib/studentEdition.ts');
 const { STUDENT_NO_PHOTOS_KEY } = await import('../../lib/studentPhotoFlag.ts');
 const { saveStudentDriveLink } = await import('../../lib/academyPathway.ts');
+const { readStudentGymLogo, writeStudentGymLogo } = await import('../../lib/studentGymMark.ts');
 type Student = import('../../lib/rosterStore.ts').Student;
 
 type Mounted = { root: Root; host: HTMLElement };
@@ -261,6 +262,35 @@ test('My profile: Save profile is the last control and stays on the editable car
   click(buttons('Close preview')[0]);
   assert.equal(document.querySelector('[data-testid="student-card-preview"]'), null, 'dismissed');
   assert.ok(document.querySelector('[data-testid="profile-card-face"]'), 'back on the editable card');
+  unmount(m);
+});
+
+test('My profile: the student card shows name and rank only, never a logo (saved logo data stays)', () => {
+  seedStudent();
+  const LOGO = 'data:image/png;base64,TE9HTw==';
+  writeStudentGymLogo(LOGO, localStorage);
+  const m = mount(<ProfilePage />, '/student/profile?student=1');
+  const face = document.querySelector('[data-testid="profile-card-face"]') as HTMLElement;
+  assert.ok(face, 'card face');
+  assert.equal(face.querySelector('.profile-face__crest'), null, 'no logo crest on the card face');
+  assert.equal(face.querySelector(`img[src="${LOGO}"]`), null, 'saved logo is not drawn on the card');
+  assert.equal(face.querySelectorAll('img').length, 0, 'no images on the face without a photo');
+  assert.doesNotMatch(face.textContent ?? '', /Add logo|\bLogo\b/, 'no logo hint on the card');
+  assert.equal(face.querySelector('button.profile-face__name')?.textContent?.trim(), 'Ana Lima', 'name shown');
+  assert.ok((face.querySelector('.profile-face__belt-text')?.textContent ?? '').trim(), 'rank shown');
+  assert.equal(document.querySelector('.profile-corner img[alt="Gym logo"]'), null, 'no logo in the header corner');
+  assert.equal(document.querySelector(`main img[src="${LOGO}"]`), null, 'logo not drawn anywhere on My profile');
+  assert.equal(readStudentGymLogo(localStorage), LOGO, 'saved logo data is kept');
+  assert.ok(document.querySelector('section[aria-label="Gym logo"]'), 'logo control stays for reports and backups');
+  submitProfile();
+  click(buttons('Preview my card')[0]);
+  const preview = document.querySelector('[data-testid="student-card-preview"]') as HTMLElement;
+  assert.ok(preview, 'preview open');
+  assert.equal(preview.querySelector('.clipboard__crest img'), null, 'no logo or Advantage mark on the student card preview');
+  assert.equal(preview.querySelector(`img[src="${LOGO}"]`), null);
+  assert.match(preview.querySelector('.clipboard__crest')?.textContent ?? '', /Advantage/, 'gym name still in the crest');
+  assert.match(preview.textContent ?? '', /Ana Lima/, 'name on the preview');
+  click(buttons('Close preview')[0]);
   unmount(m);
 });
 
@@ -722,7 +752,11 @@ test('Competition card: sections in order, record and upcoming from the imported
     assert.ok(!root.classList.contains('roster-card'), 'not a .roster-card (e2e counts rows)');
     assert.equal(document.querySelector('.comp-card__sheet')?.getAttribute('aria-label'), 'Maya Alvarez Competition card');
     const order = [...document.querySelectorAll('[data-testid^="comp-"]')].map((el) => (el as HTMLElement).dataset.testid);
-    assert.deepEqual(order.filter((id) => id !== 'comp-archive'), ['comp-record', 'comp-upcoming', 'comp-assessment', 'comp-results', 'comp-scouting']);
+    assert.deepEqual(order.filter((id) => id !== 'comp-archive'), ['comp-ready', 'comp-record', 'comp-upcoming', 'comp-assessment', 'comp-results', 'comp-scouting', 'comp-game']);
+    const readyItems = [...document.querySelectorAll('[data-ready-item]')].map((el) => el.getAttribute('data-ready-item'));
+    assert.deepEqual(readyItems, ['medical', 'gi', 'division', 'travel', 'waiver', 'weighIn']);
+    const giHref = document.querySelector('[data-ready-item="gi"]')?.getAttribute('href') ?? '';
+    assert.match(giHref, new RegExp(`/competition-ready\\?id=${card.id}&item=gi`));
     const body = text();
     assert.match(body, /Competition card/);
     assert.match(body, /60% win rate/);
@@ -787,7 +821,10 @@ test('Roster page: Rolodex wraps both lists in the card look and opens the right
   const { readFileSync } = await import('node:fs');
   const page = readFileSync('src/pages/Roster.tsx', 'utf8');
   assert.match(page, /className="clipboard rolodex"/);
-  assert.match(page, /onOpenFace=\{studentRoster \? \(\) => setCardTarget\([^)]*\) : \(\) => setCompCardTarget\([^)]*\)\}/);
+  assert.match(
+    page,
+    /onOpenFace=\{\s*studentRoster\s*\?\s*\(\) => setCardTarget\(competitor\.id\)\s*:[\s\S]*?setCompCardTarget\(competitor\.id\)/,
+  );
   assert.match(page, /<CompetitionCard\b/);
   const css = readFileSync('src/components/rosterCard/rolodex.css', 'utf8');
   assert.match(css, /scroll-snap-type:\s*none/);
@@ -1169,14 +1206,132 @@ test('a new assessment keeps its scores and note, and Save assessment stays a su
   const note = form.querySelector('textarea') as HTMLTextAreaElement;
   const selects = [...form.querySelectorAll('select')] as HTMLSelectElement[];
   assert.equal(note.value, '');
-  assert.equal(selects.length, ASSESSMENT_AREAS.length);
+  assert.equal(selects.length, ASSESSMENT_FORM_AREAS.length, 'all eight faces, Sweeps included');
+  assert.equal(selects.length, 8);
   assert.ok(selects.every((item) => item.value === '3'));
+  const labels = [...form.querySelectorAll('.clipboard__scores label')].map((node) => node.firstChild?.textContent?.trim());
+  assert.deepEqual(labels, ASSESSMENT_FORM_AREAS.map((area) => area.label));
+  const sweepsSelect = selects[ASSESSMENT_FORM_AREAS.findIndex((area) => area.id === 'sweeps')];
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(sweepsSelect), 'value')?.set;
+    setter?.call(sweepsSelect, '1');
+    sweepsSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  assert.equal(sweepsSelect.value, '1');
   click(save);
   const saved = readRosterCard(card.id).coachAssessments.at(-1);
   assert.equal(saved?.note, '');
   assert.equal(saved?.scores.mindset, 3);
+  assert.equal(saved?.scores.sweeps, 1, 'coach-entered Sweeps saves');
   assert.equal(fresh(card.id).name, 'Rio Assessment');
   assert.equal(fresh(card.id).belt, 'Blue');
   assert.equal(document.querySelector('form.clipboard--form'), null);
+  unmount(m);
+
+  // Reload: the saved Sweeps shows on the card's eight-row assessment table.
+  const again = mount(sheet(fresh(card.id)));
+  click(buttons(/^Assessments/)[0]);
+  const rows = [...document.querySelectorAll('.clipboard table tbody tr')].map((tr) =>
+    [...tr.querySelectorAll('td')].map((td) => td.textContent?.trim()).slice(0, 2).join(' '),
+  );
+  assert.equal(rows.length, 8);
+  assert.deepEqual(rows.map((r) => r.split(' ').slice(0, -1).join(' ')), ASSESSMENT_FORM_AREAS.map((area) => area.label));
+  assert.ok(rows.includes('Sweeps 1'), rows.join(' | '));
+  assert.equal(readRosterCard(card.id).coachAssessments.at(-1)?.scores.sweeps, 1, 'reloads');
+  unmount(again);
+});
+
+test('a coach assessment saved before Sweeps shows Sweeps as not rated on the roster card', () => {
+  localStorage.clear();
+  resetRoster();
+  const card = studentCard('Old Seven');
+  const scores = Object.fromEntries(ASSESSMENT_AREAS.map((a) => [a.id, 4]));
+  updateRosterCard(card.id, (r) => ({ ...r, coachAssessments: [{ id: 'old7', date: '2026-10-01', note: '', scores } as never] }));
+  const m = mount(sheet(card));
+  click(buttons(/^Assessments/)[0]);
+  const rows = [...document.querySelectorAll('.clipboard table tbody tr')].map((tr) =>
+    [...tr.querySelectorAll('td')].map((td) => td.textContent?.trim()),
+  );
+  assert.equal(rows.length, 8);
+  const sweeps = rows.find((r) => r[0] === 'Sweeps');
+  assert.ok(sweeps);
+  assert.notEqual(sweeps?.[1], '4', 'not invented');
+  assert.notEqual(sweeps?.[1], '0');
+  assert.match(text(), /Avg 4/, 'the trend averages the seven it has');
+  unmount(m);
+});
+
+test('Competition card: approved opponent cards sit beside opponents faced and open onto Me vs them', async () => {
+  const { applyStudentCoachUpdate, receiveStudentCoachUpdate } = await import('../../lib/coachProgressFile.ts');
+  localStorage.clear();
+  resetRoster();
+  const card = addStudent({ name: 'Maya Alvarez', belt: 'purple', division: 'Adult', gym: 'Ellijay Academy', lastPromotion: '', lastPromotionDetail: '', note: '', photo: '' });
+  assert.ok(card);
+  assert.ok(linkRosterCard(card.id, 'stu-alex'));
+  const file = {
+    schemaVersion: 1,
+    kind: 'student-coach-update',
+    updateId: 'scu-scout-1',
+    studentId: 'stu-alex',
+    sentAt: 100,
+    since: 0,
+    profile: { displayName: 'Alex Kim', gymName: 'North Side', startedOn: '', trainingStyle: 'gi' },
+    assessments: [{ id: 'as-self', date: '2026-11-02', note: '', scores: { guard: 4, passing: 3, sweeps: 2, takedowns: 3, escapes: 3, submissions: 4, conditioning: 3, mindset: 5 } }],
+    scouting: {
+      studentName: 'Alex Kim',
+      cards: [
+        {
+          id: 'scout-jordan',
+          name: 'Jordan Hale',
+          gym: 'Checkmat',
+          group: 'open',
+          style: 'pressure passer',
+          weightClass: 'Middle',
+          belt: 'Purple',
+          ratings: { guard: 2, passing: 4, sweeps: 5, takedowns: 3, escapes: 3, submissions: 4, conditioning: 2, mindset: 4 },
+          strengths: 'top pressure',
+          weaknesses: 'open guard',
+          record: { wins: 2, losses: 1, draws: 0, line: '2-1-0' },
+          notes: 'likes closed guard',
+        },
+      ],
+    },
+  };
+  assert.equal(receiveStudentCoachUpdate(localStorage, file), 'pending');
+  const applied = applyStudentCoachUpdate(localStorage, file.updateId, { students: getRoster().students, update: updateStudent }, { actor: 'coach', approveRank: false });
+  assert.equal(applied.ok, true);
+  let m = mount(compCard(fresh(card.id)));
+  const section = document.querySelector('[data-testid="comp-scouting"]');
+  assert.match(section?.textContent ?? '', /Riley Thompson/);
+  assert.match(section?.textContent ?? '', /Scouted by Alex Kim/);
+  assert.match(section?.textContent ?? '', /Jordan Hale/);
+  const details = document.querySelector('[data-testid="comp-scout-card"]') as HTMLDetailsElement;
+  assert.equal(details.open, false);
+  const cage = details.querySelector('[data-testid="scout-cage"] svg');
+  assert.match(cage?.getAttribute('aria-label') ?? '', /Me versus Jordan Hale/);
+  assert.match(cage?.getAttribute('aria-label') ?? '', /Sweeps 2/);
+  assert.match(cage?.getAttribute('aria-label') ?? '', /Sweeps 5/);
+  assert.match(details.textContent ?? '', /top pressure/);
+  assert.match(details.textContent ?? '', /likes closed guard/);
+  unmount(m);
+
+  const again = {
+    ...file,
+    updateId: 'scu-scout-2',
+    sentAt: 200,
+    scouting: {
+      studentName: 'Alex Kim',
+      cards: [{ ...file.scouting.cards[0], notes: 'switched to knee cut', ratings: { ...file.scouting.cards[0].ratings, sweeps: 1 } }],
+    },
+  };
+  assert.equal(receiveStudentCoachUpdate(localStorage, again), 'pending');
+  applyStudentCoachUpdate(localStorage, again.updateId, { students: getRoster().students, update: updateStudent }, { actor: 'coach', approveRank: false });
+  m = mount(compCard(fresh(card.id)));
+  const cards = [...document.querySelectorAll('[data-testid="comp-scout-card"]')];
+  assert.equal(cards.length, 1);
+  assert.match(cards[0].textContent ?? '', /switched to knee cut/);
+  assert.doesNotMatch(cards[0].textContent ?? '', /likes closed guard/);
+  const nextCage = cards[0].querySelector('[data-testid="scout-cage"] svg');
+  assert.match(nextCage?.getAttribute('aria-label') ?? '', /Sweeps 1/);
   unmount(m);
 });

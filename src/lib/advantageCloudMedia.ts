@@ -4,8 +4,11 @@
  * Google Drive, OneDrive, and this phone stay the default until a coach picks Cloud.
  */
 
+import { canDecideApproval, uploadLaneFor, type ApprovalLane } from './approvalLanes.ts';
 import { cloudPathScope } from './cloudDataOwnership.ts';
-import { lessonMediaPath, lessonWeekId, routeUpload, isCalendarDateKey, type GymActor } from './gymTree.ts';
+import { fetchWithRetry, isCanceled, retryableStatus, type RetryOptions } from './cloudUploadRetry.ts';
+import { lessonMediaPath, lessonWeekId, routeUpload, isCalendarDateKey, safePathSegment, type GymActor } from './gymTree.ts';
+import { INSTRUCTOR_LESSON_KEY, type LessonPlanSource, type LessonPlanTarget } from './lessonPlanCopies.ts';
 
 /** Same storage key as src/lib/entitlement.ts. Kept here so the server handler does not import the browser entitlement module. */
 const ENTITLEMENT_TOKEN_KEY = 'advantage.entitlement.token';
@@ -13,8 +16,20 @@ const ENTITLEMENT_TOKEN_KEY = 'advantage.entitlement.token';
 export const CLOUD_MEDIA_HOME_KEY = 'matboard.plusCloud.mediaHome.v1';
 export const CLOUD_MEDIA_EVENT = 'matboard-advantage-cloud';
 
-/** 8 GB, decimal, under R2's 10 GB free tier. Override with GYM_MEDIA_CAP_BYTES (bytes). */
-export const DEFAULT_CLOUD_CAP_BYTES = 8_000_000_000;
+/**
+ * Per-gym (per-license) Cloud limits, decimal bytes. Every key for a license
+ * lives under groups/{licenseId}/, so each gym is measured on its own.
+ * Over the soft limit, uploads still save but the owner is asked to delete
+ * old videos. At the hard limit an upload is refused.
+ */
+export const CLOUD_LICENSE_SOFT_LIMIT_BYTES = 50_000_000_000;
+export const CLOUD_LICENSE_HARD_LIMIT_BYTES = 100_000_000_000;
+
+/** Hard limit per license. Override with GYM_MEDIA_LICENSE_CAP_BYTES (bytes). */
+export const DEFAULT_CLOUD_CAP_BYTES = CLOUD_LICENSE_HARD_LIMIT_BYTES;
+
+/** Where the owner deletes old Cloud videos: the Media gallery, with the cleanup panel opened. */
+export const CLOUD_CLEANUP_ROUTE: string | null = '/slideshow?folder=gallery&cleanup=old-videos';
 
 /** One phone video. Override with GYM_MEDIA_MAX_UPLOAD_BYTES (bytes). */
 export const DEFAULT_MAX_UPLOAD_BYTES = 512_000_000;
@@ -28,17 +43,27 @@ export const CLOUD_CHUNK_BYTES = 8 * 1024 * 1024;
 export const CLOUD_SIGN_IN_MESSAGE = 'Sign in on this device to use Advantage Cloud.';
 export const CLOUD_ROLE_MESSAGE = 'Assistant coaches can play and download these files. A coach uploads them.';
 export const CLOUD_SAVED_MESSAGE = 'Saved to Advantage Cloud. This phone keeps a copy.';
+export const CLOUD_SENT_FOR_APPROVAL =
+  'Sent to Advantage Cloud for approval. It shows after the owner or an Instructors seat approves it in Review Inbox.';
 export const CLOUD_DAILY_DROP_ONLY =
   "A program director can send videos to today's daily videos. Lesson plans and other Cloud files stay with the coaches.";
 export const CLOUD_UNAVAILABLE_MESSAGE = 'Advantage Cloud is not on this license.';
 export const CLOUD_HOME_UNBOUND = 'Advantage Cloud is not connected on this site.';
-export const CLOUD_HOME_ERROR = 'Advantage Cloud could not be checked. Nothing on this device was changed.';
+export const CLOUD_HOME_ERROR = 'Could not read Cloud usage. Nothing on this device was changed.';
 export const CLOUD_HOME_CONNECTED =
   'Advantage Cloud is connected. Sign in on this device to see how much space this license is using.';
 export const CLOUD_ROLE_HOME =
   'The gym owner, a Coach, and Instructors can upload daily videos and lesson-plan media. An assistant coach can play and download them. A program director can send videos to today\'s daily videos, without opening lesson plans.';
 
-export type CloudMediaPurpose = 'daily-video' | 'lesson' | 'lesson-media' | 'replay-pending';
+export type CloudMediaPurpose =
+  | 'daily-video'
+  | 'lesson'
+  | 'lesson-media'
+  | 'replay-pending'
+  | 'gallery'
+  | 'instructor-video'
+  | 'instructor-photo'
+  | 'from-instructor';
 export type CloudMediaHome = 'device' | 'advantage-cloud';
 
 export type CloudAccess = { read: boolean; upload: boolean };
@@ -197,12 +222,26 @@ function trimNumber(value: number): string {
   return fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed;
 }
 
-export function cloudUsageLine(licenseUsed: number, bucketUsed: number, cap: number): string {
-  return `This license is using ${formatCloudBytes(licenseUsed)}. Advantage Cloud is using ${formatCloudBytes(bucketUsed)} of ${formatCloudBytes(cap)}.`;
+/** Soft limit when the cap was lowered below it (tests, a small trial). */
+export function cloudSoftLimitBytes(cap: number): number {
+  return Math.min(CLOUD_LICENSE_SOFT_LIMIT_BYTES, Math.floor(cap / 2));
 }
 
-export function cloudFullMessage(bucketUsed: number, cap: number): string {
-  return `Advantage Cloud is full. This file was not saved. Advantage Cloud is using ${formatCloudBytes(bucketUsed)} of ${formatCloudBytes(cap)}. Remove older files, then try again.`;
+export function cloudOverSoftLimit(licenseUsed: number, cap: number): boolean {
+  return licenseUsed >= cloudSoftLimitBytes(cap);
+}
+
+export function cloudSoftLimitWarning(licenseUsed: number, cap: number): string {
+  return `This gym is using ${formatCloudBytes(licenseUsed)} of ${formatCloudBytes(cap)} in Advantage Cloud. Past ${formatCloudBytes(cloudSoftLimitBytes(cap))}, please delete old videos you no longer need. At ${formatCloudBytes(cap)} new uploads stop.`;
+}
+
+export function cloudUsageLine(licenseUsed: number, cap: number): string {
+  const line = `This gym is using ${formatCloudBytes(licenseUsed)} of ${formatCloudBytes(cap)} in Advantage Cloud.`;
+  return cloudOverSoftLimit(licenseUsed, cap) ? `${line} Please delete old videos you no longer need.` : line;
+}
+
+export function cloudFullMessage(licenseUsed: number, cap: number): string {
+  return `Advantage Cloud is full for this gym. This file was not saved. This gym is using ${formatCloudBytes(licenseUsed)} of ${formatCloudBytes(cap)}. Delete old videos, then try again.`;
 }
 
 export function cloudTooLargeMessage(maxBytes: number): string {
@@ -226,6 +265,9 @@ const PENDING_STATUS_KEY = /^pending\/status\/[A-Za-z0-9_-]{1,80}\/\d{4}-\d{2}-\
 const LESSON_MEDIA_KEY = /^lessons\/current\/\d{4}-W\d{2}\/media\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
 const SKIN_IMAGE_KEY = /^skins\/[a-z0-9]{8,40}$/;
 const SKIN_META_KEY = /^skins\/[a-z0-9]{8,40}\.json$/;
+const GALLERY_KEY = /^gallery\/(pending|approved|rejected)\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
+const INSTRUCTOR_FOLDER_KEY = /^instructors\/[A-Za-z0-9_-]{1,80}\/(videos|photos)\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
+const FROM_INSTRUCTOR_KEY = /^students\/[A-Za-z0-9][A-Za-z0-9._-]{0,79}\/from-instructor\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
 
 /** Uploaded skins per license. The bytes still use the bucket cap below. */
 export const CUSTOM_SKIN_CLOUD_CAP = 10;
@@ -253,17 +295,234 @@ export function cloudObjectKey(licenseId: string, relativePath: string): string 
   if (
     !DAILY_KEY.test(relativePath) &&
     !LESSON_JSON_KEY.test(relativePath) &&
+    !INSTRUCTOR_LESSON_KEY.test(relativePath) &&
     !LESSON_MEDIA_KEY.test(relativePath) &&
     !SKIN_IMAGE_KEY.test(relativePath) &&
     !SKIN_META_KEY.test(relativePath) &&
     !PENDING_REPLAY_KEY.test(relativePath) &&
-    !PENDING_STATUS_KEY.test(relativePath)
+    !PENDING_STATUS_KEY.test(relativePath) &&
+    !GALLERY_KEY.test(relativePath) &&
+    !INSTRUCTOR_FOLDER_KEY.test(relativePath) &&
+    !FROM_INSTRUCTOR_KEY.test(relativePath)
   ) {
     return null;
   }
-  // Gym media upload is academy material only. A shared copy uses the inbox.
-  if (cloudPathScope(relativePath) !== 'academy') return null;
+  const scope = cloudPathScope(relativePath);
+  // A from-instructor file is a shared copy, and it still counts against the bucket cap.
+  if (scope === 'refused') return null;
+  if (scope === 'shared' && !FROM_INSTRUCTOR_KEY.test(relativePath)) return null;
+  if (scope !== 'academy' && !FROM_INSTRUCTOR_KEY.test(relativePath)) return null;
   return `groups/${licenseId}/${relativePath}`;
+}
+
+export type GalleryCloudLane = 'pending' | 'approved' | 'rejected';
+
+/**
+ * Owner photos go straight to approved. Coach and Instructors seats land in
+ * pending when Cloud approval is on (the default), or approved when the owner
+ * has turned that gym-wide setting off. The client cannot choose the lane.
+ * Assistant coaches and program directors do not upload class photos.
+ */
+export function galleryUploadLane(input: {
+  kind: 'owner' | 'seat';
+  preset?: string | null;
+  /** License-level Cloud setting. Omit or true keeps today's pending-for-seats rule. */
+  approvalRequired?: boolean;
+}): 'pending' | 'approved' | null {
+  if (input.kind === 'owner') return 'approved';
+  if (input.preset === 'coach' || input.preset === 'instructors') {
+    return input.approvalRequired === false ? 'approved' : 'pending';
+  }
+  return null;
+}
+
+/** Owner, or an Instructors seat. A coach cannot approve their own upload. */
+export function galleryDecisionAllowed(input: { kind: 'owner' | 'seat'; preset?: string | null }): boolean {
+  return canDecideApproval(input);
+}
+
+/**
+ * Daily videos use the same rule as class photos: the owner is approved, and
+ * a seat that may upload daily videos (Coach, Instructors, program director)
+ * lands in pending while the license approval switch is on.
+ */
+export function dailyVideoUploadLane(input: { kind: 'owner' | 'seat'; approvalRequired?: boolean }): 'pending' | 'approved' {
+  return uploadLaneFor(input);
+}
+
+const DAILY_MARKER = /^pending\/daily\/(pending|rejected)\/(\d{4}-\d{2}-\d{2})\/([A-Za-z0-9._-]{1,80})$/;
+
+/**
+ * Decision marker beside a daily video. The video bytes never move:
+ * `videos/daily/{date}/{file}` stays the one copy. A pending or rejected
+ * marker hides it; no marker (every video uploaded before lanes) is approved.
+ * Built only by the server. `cloudObjectKey` refuses these paths, so a
+ * browser cannot write or delete a marker through op=put.
+ */
+export function dailyVideoMarkerPath(videoPath: string, lane: 'pending' | 'rejected'): string | null {
+  if (!DAILY_KEY.test(videoPath)) return null;
+  const [, , dateKey, name] = videoPath.split('/');
+  if (!dateKey || !name) return null;
+  const path = `pending/daily/${lane}/${dateKey}/${name}`;
+  return DAILY_MARKER.test(path) ? path : null;
+}
+
+export function parseDailyVideoMarkerPath(
+  path: string,
+): { lane: 'pending' | 'rejected'; dateKey: string; name: string; videoPath: string } | null {
+  const match = DAILY_MARKER.exec(path);
+  if (!match) return null;
+  const lane = match[1] === 'rejected' ? 'rejected' : 'pending';
+  const videoPath = `videos/daily/${match[2]}/${match[3]}`;
+  if (!DAILY_KEY.test(videoPath)) return null;
+  return { lane, dateKey: match[2], name: match[3], videoPath };
+}
+
+/** `groups/{license}/pending/daily/...` for a marker. Null for anything else. */
+export function dailyVideoMarkerKey(licenseId: string, videoPath: string, lane: 'pending' | 'rejected'): string | null {
+  if (!LICENSE_ID.test(licenseId)) return null;
+  const path = dailyVideoMarkerPath(videoPath, lane);
+  return path ? `groups/${licenseId}/${path}` : null;
+}
+
+export function galleryCloudPath(lane: GalleryCloudLane, dateKey: string, fileName: string): string | null {
+  if (!isCalendarDateKey(dateKey)) return null;
+  const name = safePathSegment((fileName.split(/[/\\]/).pop() ?? '').trim(), 'class-photo');
+  const path = `gallery/${lane}/${dateKey}/${name}`;
+  return GALLERY_KEY.test(path) ? path : null;
+}
+
+export function parseGalleryCloudPath(path: string): { lane: GalleryCloudLane; dateKey: string; name: string } | null {
+  const match = /^gallery\/(pending|approved|rejected)\/(\d{4}-\d{2}-\d{2})\/([A-Za-z0-9._-]{1,80})$/.exec(path);
+  if (!match) return null;
+  const lane = match[1];
+  if (lane !== 'pending' && lane !== 'approved' && lane !== 'rejected') return null;
+  return { lane, dateKey: match[2], name: match[3] };
+}
+
+export function instructorCloudPath(
+  seatId: string,
+  kind: 'videos' | 'photos',
+  dateKey: string,
+  fileName: string,
+): string | null {
+  if (!SEAT_SEGMENT.test(seatId) || !isCalendarDateKey(dateKey)) return null;
+  if (kind !== 'videos' && kind !== 'photos') return null;
+  const name = safePathSegment((fileName.split(/[/\\]/).pop() ?? '').trim(), kind === 'videos' ? 'clip' : 'photo');
+  const path = `instructors/${seatId}/${kind}/${dateKey}/${name}`;
+  return INSTRUCTOR_FOLDER_KEY.test(path) ? path : null;
+}
+
+export function parseInstructorCloudPath(
+  path: string,
+): { seatId: string; kind: 'videos' | 'photos'; dateKey: string; name: string } | null {
+  const match = /^instructors\/([A-Za-z0-9_-]{1,80})\/(videos|photos)\/(\d{4}-\d{2}-\d{2})\/([A-Za-z0-9._-]{1,80})$/.exec(path);
+  if (!match || (match[2] !== 'videos' && match[2] !== 'photos')) return null;
+  return { seatId: match[1], kind: match[2], dateKey: match[3], name: match[4] };
+}
+
+/** A claimed seat reads and writes only its own folder. The owner reads every seat. */
+export function instructorFolderAccess(input: {
+  kind: 'owner' | 'seat';
+  seatId?: string;
+  targetSeatId: string;
+  mode: 'read' | 'write';
+}): boolean {
+  if (!SEAT_SEGMENT.test(input.targetSeatId)) return false;
+  if (input.mode === 'read' && input.kind === 'owner') return true;
+  return input.kind === 'seat' && Boolean(input.seatId) && input.seatId === input.targetSeatId;
+}
+
+/** Owner, Coach, and Instructors. Assistant coach and program director cannot send. */
+export function canSendCloudFileToStudent(input: { kind: 'owner' | 'seat'; preset?: string | null }): boolean {
+  if (input.kind === 'owner') return true;
+  return input.preset === 'coach' || input.preset === 'instructors';
+}
+
+export function fromInstructorCloudPath(studentId: string, dateKey: string, fileName: string): string | null {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(studentId) || !isCalendarDateKey(dateKey)) return null;
+  const name = safePathSegment((fileName.split(/[/\\]/).pop() ?? '').trim(), 'file');
+  const path = `students/${studentId}/from-instructor/${dateKey}/${name}`;
+  return FROM_INSTRUCTOR_KEY.test(path) ? path : null;
+}
+
+export function parseFromInstructorCloudPath(path: string): { studentId: string; dateKey: string; name: string } | null {
+  const match = /^students\/([A-Za-z0-9][A-Za-z0-9._-]{0,79})\/from-instructor\/(\d{4}-\d{2}-\d{2})\/([A-Za-z0-9._-]{1,80})$/.exec(path);
+  if (!match) return null;
+  return { studentId: match[1], dateKey: match[2], name: match[3] };
+}
+
+export function isLessonMediaCloudPath(relativePath: string): boolean {
+  return LESSON_MEDIA_KEY.test(relativePath);
+}
+
+export function galleryDecisionPath(pendingPath: string, lane: 'approved' | 'rejected'): string | null {
+  const parsed = parseGalleryCloudPath(pendingPath);
+  if (!parsed || parsed.lane !== 'pending') return null;
+  const next = `gallery/${lane}/${parsed.dateKey}/${parsed.name}`;
+  return parseGalleryCloudPath(next) ? next : null;
+}
+
+/** True when this signed-in license has Advantage Cloud. A missing sign-in is off. */
+export async function advantageCloudReady(input?: { token?: string; fetcher?: CloudFetcher }): Promise<boolean> {
+  const token = input?.token ?? readCloudBearer();
+  if (!token) return false;
+  const fetcher = input?.fetcher ?? fetch;
+  try {
+    const response = await fetcher(cloudUrl('/api/gym/cloud?op=status'), {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return false;
+    const body = (await response.json()) as { cloud?: unknown };
+    return body.cloud === true;
+  } catch {
+    return false;
+  }
+}
+
+
+/** The gym-wide Cloud approval setting. Missing or unread is treated as on. */
+export async function fetchCloudGalleryApproval(input?: {
+  token?: string;
+  fetcher?: CloudFetcher;
+}): Promise<{ ok: true; required: boolean } | { ok: false }> {
+  const token = input?.token ?? readCloudBearer();
+  if (!token) return { ok: false };
+  const fetcher = input?.fetcher ?? fetch;
+  try {
+    const response = await fetcher(cloudUrl('/api/gym/cloud?op=gallery-approval'), {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return { ok: false };
+    const body = (await response.json()) as { required?: unknown };
+    return { ok: true, required: body.required !== false };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** Owner only. Seats are refused by the server. */
+export async function saveCloudGalleryApproval(
+  required: boolean,
+  input?: { token?: string; fetcher?: CloudFetcher },
+): Promise<{ ok: true; required: boolean } | { ok: false; error: string; status?: number }> {
+  const token = input?.token ?? readCloudBearer();
+  if (!token) return { ok: false, error: CLOUD_SIGN_IN_MESSAGE };
+  const fetcher = input?.fetcher ?? fetch;
+  try {
+    const response = await fetcher(cloudUrl('/api/gym/cloud'), {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'gallery-approval', required }),
+    });
+    if (!response.ok) {
+      return { ok: false, error: await readError(response, 'Advantage Cloud could not save that setting.'), status: response.status };
+    }
+    const body = (await response.json()) as { required?: unknown };
+    return { ok: true, required: body.required !== false };
+  } catch {
+    return { ok: false, error: 'Advantage Cloud could not save that setting.' };
+  }
 }
 
 export function cloudRelativePath(input: {
@@ -272,7 +531,15 @@ export function cloudRelativePath(input: {
   dateKey: string;
   fileName: string;
 }): { ok: true; path: string } | { ok: false; error: string } {
-  if (input.purpose === 'replay-pending') return { ok: false, error: CLOUD_ROLE_MESSAGE };
+  if (
+    input.purpose === 'replay-pending' ||
+    input.purpose === 'gallery' ||
+    input.purpose === 'instructor-video' ||
+    input.purpose === 'instructor-photo' ||
+    input.purpose === 'from-instructor'
+  ) {
+    return { ok: false, error: CLOUD_ROLE_MESSAGE };
+  }
   if (input.purpose === 'lesson-media') {
     if (input.role === 'student' || input.role === 'program-director' || input.role === 'none') {
       return { ok: false, error: CLOUD_ROLE_MESSAGE };
@@ -317,6 +584,10 @@ export type CloudFileRow = {
   path: string;
   size: number;
   mime: string;
+  /** Daily videos and gallery items. Missing means approved (older servers). */
+  lane?: ApprovalLane;
+  /** Lesson plan JSON rows: the gym template or the signed-in instructor's own copy. */
+  lessonPlan?: LessonPlanSource;
 };
 
 export type CloudHomeView =
@@ -328,7 +599,6 @@ export type CloudHomeView =
       phase: 'ready';
       canUpload: boolean;
       licenseUsedBytes: number;
-      bucketUsedBytes: number;
       capBytes: number;
     };
 
@@ -339,12 +609,64 @@ export function cloudHomeStatusLine(view: CloudHomeView | null): string {
   if (view.phase === 'error') return CLOUD_HOME_ERROR;
   if (view.phase === 'unavailable') return CLOUD_UNAVAILABLE_MESSAGE;
   if (view.phase === 'connected') return CLOUD_HOME_CONNECTED;
-  return cloudUsageLine(view.licenseUsedBytes, view.bucketUsedBytes, view.capBytes);
+  return cloudUsageLine(view.licenseUsedBytes, view.capBytes);
+}
+
+export type CloudUsageFigure = {
+  /** Hero figure, same role as the other academy stat numbers. */
+  value: string;
+  /** Unit beside the figure. Empty when there is no measurement yet. */
+  unit: string;
+  /** Short line under the figure. */
+  label: string;
+};
+
+function splitCloudBytes(bytes: number): { value: string; unit: string } {
+  const text = formatCloudBytes(bytes);
+  const space = text.lastIndexOf(' ');
+  if (space < 0) return { value: text, unit: '' };
+  return { value: text.slice(0, space), unit: text.slice(space + 1) };
+}
+
+/**
+ * Compact academy-card figures for a Cloud owner.
+ * Ready: this license, then the bucket used of the quota.
+ * Anything else stays a single tappable figure with no invented bytes.
+ */
+export function cloudUsageFigures(view: CloudHomeView | null): CloudUsageFigure[] {
+  if (!view) return [{ value: '…', unit: '', label: 'Advantage Cloud' }];
+  if (view.phase !== 'ready') {
+    const label =
+      view.phase === 'unbound'
+        ? 'Not connected'
+        : view.phase === 'error'
+          ? 'Could not read Cloud usage'
+          : view.phase === 'connected'
+            ? 'Sign in'
+            : 'Not on this license';
+    return [{ value: '—', unit: '', label }];
+  }
+  const license = splitCloudBytes(view.licenseUsedBytes);
+  const cap = splitCloudBytes(view.capBytes);
+  return [
+    { value: license.value, unit: license.unit, label: 'This gym' },
+    { value: cap.value, unit: cap.unit, label: cloudOverSoftLimit(view.licenseUsedBytes, view.capBytes) ? 'Limit · delete old videos' : 'Limit' },
+  ];
+}
+
+/**
+ * The academy card shows Cloud usage only for the owner of an entitled, active
+ * Advantage Cloud license. A Google Drive or OneDrive academy, a lapsed Cloud
+ * license, and a signed-in seat do not get the tile.
+ */
+export function academyCloudTileVisible(input: { owner: boolean; cloudEntitled: boolean; lapsed: boolean }): boolean {
+  return input.owner && input.cloudEntitled && !input.lapsed;
 }
 
 /**
  * Probe the site bucket, then read this license when the device is signed in.
- * This does not provision storage and does not call Google Drive or OneDrive.
+ * Numbers come only from `/api/gym/media?probe=1` and `/api/gym/cloud?op=status`.
+ * This does not invent usage and does not call Google Drive or OneDrive.
  */
 export async function loadAdvantageCloudHome(fetcher: CloudFetcher = fetch): Promise<CloudHomeView> {
   let bound = false;
@@ -368,12 +690,21 @@ export async function loadAdvantageCloudHome(fetcher: CloudFetcher = fetch): Pro
     if (!response.ok) return { phase: 'error' };
     const body = (await response.json()) as CloudStatusBody;
     if (!body.cloud) return { phase: 'unavailable' };
+    const licenseUsedBytes = body.licenseUsedBytes;
+    const capBytes = body.capBytes;
+    if (
+      typeof licenseUsedBytes !== 'number' ||
+      typeof capBytes !== 'number' ||
+      !Number.isFinite(licenseUsedBytes) ||
+      !Number.isFinite(capBytes)
+    ) {
+      return { phase: 'error' };
+    }
     return {
       phase: 'ready',
       canUpload: Boolean(body.canUpload),
-      licenseUsedBytes: body.licenseUsedBytes ?? 0,
-      bucketUsedBytes: body.bucketUsedBytes ?? 0,
-      capBytes: body.capBytes ?? DEFAULT_CLOUD_CAP_BYTES,
+      licenseUsedBytes,
+      capBytes,
     };
   } catch {
     return { phase: 'error' };
@@ -384,18 +715,39 @@ export type CloudStatusBody = {
   ok: true;
   cloud: boolean;
   canUpload?: boolean;
+  /** License-level Cloud approval. Default true when the owner has never saved a choice. */
+  galleryApprovalRequired?: boolean;
   /** Program director: may put a video in today's daily videos, nothing else. */
   dailyVideoDrop?: boolean;
   /** Program director: may list and play today's daily videos, nothing else. */
   dailyVideoPlay?: boolean;
   licenseUsedBytes?: number;
+  /** Older builds read this. It now equals licenseUsedBytes; the whole bucket is no longer scanned. */
   bucketUsedBytes?: number;
+  /** Per-license hard limit. */
   capBytes?: number;
+  /** Per-license soft limit: past this the owner is asked to delete old videos. */
+  softLimitBytes?: number;
   maxUploadBytes?: number;
   replayUpload?: ReplayCloudUpload;
 };
 
-export type CloudUploadResult = { ok: true; path: string } | { ok: false; message: string };
+export type CloudUploadResult =
+  | { ok: true; path: string; lane?: 'pending' | 'approved'; duplicate?: boolean }
+  | { ok: false; message: string; retryable?: boolean; canceled?: boolean };
+
+/**
+ * Where a multipart upload got to. The queue keeps this between tries so a
+ * manual Retry resumes from the last good part instead of starting over.
+ */
+export type CloudUploadResume = {
+  key?: string;
+  path?: string;
+  uploadId?: string;
+  partSize?: number;
+  lane?: 'pending' | 'approved';
+  parts?: { partNumber: number; etag: string }[];
+};
 
 type CloudFetcher = typeof fetch;
 
@@ -415,6 +767,33 @@ async function readError(response: Response, fallback: string): Promise<string> 
   return fallback;
 }
 
+const CLOUD_UNREACHABLE = 'Advantage Cloud could not be reached. Check the connection, then retry.';
+
+async function failure(response: Response, fallback: string): Promise<CloudUploadResult> {
+  return { ok: false, message: await readError(response, fallback), retryable: retryableStatus(response.status) };
+}
+
+/** Abort the server-side multipart upload. Best effort: R2 also expires it after a week. */
+export async function abortAdvantageCloudUpload(input: {
+  key: string;
+  uploadId: string;
+  token?: string;
+  fetcher?: CloudFetcher;
+}): Promise<void> {
+  const token = input.token ?? readCloudBearer();
+  if (!token) return;
+  const fetcher = input.fetcher ?? fetch;
+  try {
+    await fetcher(cloudUrl('/api/gym/cloud'), {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'abort', key: input.key, uploadId: input.uploadId }),
+    });
+  } catch {
+    /* Expires on its own. */
+  }
+}
+
 export async function uploadAdvantageCloudFile(input: {
   purpose: CloudMediaPurpose;
   dateKey: string;
@@ -423,80 +802,149 @@ export async function uploadAdvantageCloudFile(input: {
   mime: string;
   token?: string;
   fetcher?: CloudFetcher;
+  /** Ignored for the object path. The server picks the lane from the license setting and the actor role. */
+  lane?: 'pending' | 'approved';
+  studentId?: string;
   onProgress?: (sent: number, total: number) => void;
+  /** Content fingerprint (cloudFingerprint.ts). The server skips a file this gym already has. */
+  fingerprint?: string;
+  /** Cancel. A multipart upload is aborted on the server too. */
+  signal?: AbortSignal;
+  /** Per-request retry with backoff. Default: one try, as before. */
+  retry?: RetryOptions;
+  /** Kept between tries so a retry resumes a multipart upload. */
+  resume?: CloudUploadResume;
+  /** Lesson plan JSON only. Default `mine`: the instructor's own copy. `template` is owner / Coach only. */
+  planTarget?: LessonPlanTarget;
 }): Promise<CloudUploadResult> {
   const token = input.token ?? readCloudBearer();
   if (!token) return { ok: false, message: CLOUD_SIGN_IN_MESSAGE };
   const fetcher = input.fetcher ?? fetch;
   const headers = { authorization: `Bearer ${token}` };
-  const start = await fetcher(cloudUrl('/api/gym/cloud'), {
-    method: 'POST',
-    headers: { ...headers, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      action: 'start',
-      purpose: input.purpose,
-      dateKey: input.dateKey,
-      fileName: input.fileName,
-      size: input.file.size,
-      mime: input.mime,
-    }),
-  });
-  if (!start.ok) return { ok: false, message: await readError(start, 'Advantage Cloud could not take that file.') };
-  const opened = (await start.json()) as {
-    mode?: string;
-    key?: string;
-    path?: string;
-    uploadId?: string;
-    partSize?: number;
-  };
-  if (!opened.key || !opened.path) return { ok: false, message: 'Advantage Cloud could not take that file.' };
-  if (opened.mode === 'multipart') {
-    const partSize = opened.partSize && opened.partSize > 0 ? opened.partSize : CLOUD_CHUNK_BYTES;
-    const parts: { partNumber: number; etag: string }[] = [];
-    let partNumber = 1;
-    for (let offset = 0; offset < input.file.size; offset += partSize) {
-      const chunk = input.file.slice(offset, Math.min(input.file.size, offset + partSize));
-      const put = await fetcher(
-        cloudUrl(
-          `/api/gym/cloud?op=part&key=${encodeURIComponent(opened.key)}&uploadId=${encodeURIComponent(opened.uploadId ?? '')}&partNumber=${partNumber}`,
-        ),
-        { method: 'PUT', headers, body: chunk },
-      );
-      if (!put.ok) return { ok: false, message: await readError(put, 'Advantage Cloud stopped during that upload.') };
-      const part = (await put.json()) as { etag?: string };
-      if (!part.etag) return { ok: false, message: 'Advantage Cloud stopped during that upload.' };
-      parts.push({ partNumber, etag: part.etag });
-      partNumber += 1;
-      input.onProgress?.(Math.min(input.file.size, offset + chunk.size), input.file.size);
+  const resume: CloudUploadResume = input.resume ?? {};
+  const send = (url: string, init: RequestInit) =>
+    fetchWithRetry(fetcher, cloudUrl(url), init, { ...input.retry, signal: input.signal });
+  const canceled = async (): Promise<CloudUploadResult> => {
+    if (resume.key && resume.uploadId) {
+      await abortAdvantageCloudUpload({ key: resume.key, uploadId: resume.uploadId, token, fetcher });
+      resume.uploadId = undefined;
+      resume.parts = [];
     }
-    const done = await fetcher(cloudUrl('/api/gym/cloud'), {
-      method: 'POST',
-      headers: { ...headers, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        action: 'complete',
-        key: opened.key,
-        uploadId: opened.uploadId,
-        parts,
-        size: input.file.size,
-      }),
+    return { ok: false, message: 'Canceled.', canceled: true };
+  };
+  try {
+    if (!resume.key || !resume.path || (resume.partSize && !resume.uploadId)) {
+      const start = await send('/api/gym/cloud', {
+        method: 'POST',
+        headers: { ...headers, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'start',
+          purpose: input.purpose,
+          dateKey: input.dateKey,
+          fileName: input.fileName,
+          size: input.file.size,
+          mime: input.mime,
+          ...(input.lane ? { lane: input.lane } : {}),
+          ...(input.studentId ? { studentId: input.studentId } : {}),
+          ...(input.fingerprint ? { fingerprint: input.fingerprint } : {}),
+          ...(input.purpose === 'lesson' ? { planTarget: input.planTarget === 'template' ? 'template' : 'mine' } : {}),
+        }),
+      });
+      if (!start.ok) return failure(start, 'Advantage Cloud could not take that file.');
+      const opened = (await start.json()) as {
+        mode?: string;
+        key?: string;
+        path?: string;
+        uploadId?: string;
+        partSize?: number;
+        lane?: string;
+      };
+      const openedLane = opened.lane === 'pending' || opened.lane === 'approved' ? opened.lane : undefined;
+      if (opened.mode === 'duplicate' && opened.path) {
+        input.onProgress?.(input.file.size, input.file.size);
+        return { ok: true, path: opened.path, duplicate: true, ...(openedLane ? { lane: openedLane } : {}) };
+      }
+      if (!opened.key || !opened.path) return { ok: false, message: 'Advantage Cloud could not take that file.' };
+      resume.key = opened.key;
+      resume.path = opened.path;
+      resume.lane = openedLane;
+      resume.parts = [];
+      if (opened.mode === 'multipart') {
+        resume.uploadId = opened.uploadId ?? '';
+        resume.partSize = opened.partSize && opened.partSize > 0 ? opened.partSize : CLOUD_CHUNK_BYTES;
+      } else {
+        resume.uploadId = undefined;
+        resume.partSize = undefined;
+      }
+    }
+    const key = resume.key as string;
+    const path = resume.path as string;
+    const lane: { lane?: 'pending' | 'approved' } = resume.lane ? { lane: resume.lane } : {};
+    const print = input.fingerprint ? `&fingerprint=${encodeURIComponent(input.fingerprint)}` : '';
+    if (resume.uploadId && resume.partSize) {
+      const partSize = resume.partSize;
+      const parts = resume.parts ?? (resume.parts = []);
+      const done = new Set(parts.map((part) => part.partNumber));
+      let partNumber = 1;
+      for (let offset = 0; offset < input.file.size; offset += partSize) {
+        const end = Math.min(input.file.size, offset + partSize);
+        if (!done.has(partNumber)) {
+          const chunk = input.file.slice(offset, end);
+          const put = await send(
+            `/api/gym/cloud?op=part&key=${encodeURIComponent(key)}&uploadId=${encodeURIComponent(resume.uploadId)}&partNumber=${partNumber}`,
+            { method: 'PUT', headers, body: chunk },
+          );
+          if (!put.ok) return failure(put, 'Advantage Cloud stopped during that upload.');
+          const part = (await put.json()) as { etag?: string };
+          if (!part.etag) return { ok: false, message: 'Advantage Cloud stopped during that upload.', retryable: true };
+          parts.push({ partNumber, etag: part.etag });
+        }
+        partNumber += 1;
+        input.onProgress?.(end, input.file.size);
+      }
+      const finished = await send('/api/gym/cloud', {
+        method: 'POST',
+        headers: { ...headers, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'complete',
+          key,
+          uploadId: resume.uploadId,
+          parts: [...parts].sort((a, b) => a.partNumber - b.partNumber),
+          size: input.file.size,
+          ...(input.fingerprint ? { fingerprint: input.fingerprint } : {}),
+        }),
+      });
+      if (!finished.ok) {
+        // A refused complete (full, too large) closes the upload on the server. Start fresh next time.
+        if (!retryableStatus(finished.status)) {
+          resume.key = undefined;
+          resume.uploadId = undefined;
+          resume.parts = [];
+        }
+        return failure(finished, 'Advantage Cloud could not finish that file.');
+      }
+      notifyCloudMedia();
+      return { ok: true, path, ...lane };
+    }
+    const put = await send(`/api/gym/cloud?op=put&key=${encodeURIComponent(key)}${print}`, {
+      method: 'PUT',
+      headers: { ...headers, 'content-type': input.mime || 'application/octet-stream' },
+      body: input.file,
     });
-    if (!done.ok) return { ok: false, message: await readError(done, 'Advantage Cloud could not finish that file.') };
-    return { ok: true, path: opened.path };
+    if (!put.ok) return failure(put, 'Advantage Cloud could not take that file.');
+    input.onProgress?.(input.file.size, input.file.size);
+    notifyCloudMedia();
+    return { ok: true, path, ...lane };
+  } catch (error) {
+    if (isCanceled(error, input.signal)) return canceled();
+    return { ok: false, message: CLOUD_UNREACHABLE, retryable: true };
   }
-  const put = await fetcher(cloudUrl(`/api/gym/cloud?op=put&key=${encodeURIComponent(opened.key)}`), {
-    method: 'PUT',
-    headers: { ...headers, 'content-type': input.mime || 'application/octet-stream' },
-    body: input.file,
-  });
-  if (!put.ok) return { ok: false, message: await readError(put, 'Advantage Cloud could not take that file.') };
-  input.onProgress?.(input.file.size, input.file.size);
-  return { ok: true, path: opened.path };
 }
 
 let lessonTimer: ReturnType<typeof setTimeout> | null = null;
 let lessonPending: { dateKey: string; json: string } | null = null;
 
-/** Debounced lesson-plan text. No-ops unless this page confirmed Cloud uploads. */
+/** Debounced lesson-plan text, saved to the instructor's own copy. No-ops unless this page confirmed Cloud uploads. */
 export function scheduleCloudLessonSave(input: { dateKey: string; json: string; token?: string }): void {
   if (!cloudUploadSelected()) return;
   lessonPending = { dateKey: input.dateKey, json: input.json };
@@ -514,10 +962,82 @@ export function scheduleCloudLessonSave(input: { dateKey: string; json: string; 
       fileName: `${pending.dateKey}.json`,
       mime: 'application/json',
       token,
+      // Edits never touch the gym template. They go to this instructor's own copy.
+      planTarget: 'mine',
     }).then((result) => {
       if (result.ok) notifyCloudMedia();
     });
   }, 500);
+}
+
+export type CloudLessonPlanRead = {
+  ok: true;
+  instructorId: string;
+  canEditTemplate: boolean;
+  template: { path: string; exists: boolean; plan: unknown | null };
+  mine: { path: string; exists: boolean; plan: unknown | null };
+};
+
+/** The gym template and this instructor's own copy for one day. Null when Cloud cannot be read. */
+export async function fetchCloudLessonPlan(input: {
+  dateKey: string;
+  token?: string;
+  fetcher?: CloudFetcher;
+}): Promise<CloudLessonPlanRead | null> {
+  const token = input.token ?? readCloudBearer();
+  if (!token || !isCalendarDateKey(input.dateKey)) return null;
+  const fetcher = input.fetcher ?? fetch;
+  try {
+    const response = await fetcher(cloudUrl(`/api/gym/cloud?op=lesson-plan&date=${encodeURIComponent(input.dateKey)}`), {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as Partial<CloudLessonPlanRead> | null;
+    if (!body?.ok || !body.template || !body.mine || typeof body.instructorId !== 'string') return null;
+    return body as CloudLessonPlanRead;
+  } catch {
+    return null;
+  }
+}
+
+/** Owner / Coach: replace the gym template for one day with this plan. */
+export function saveCloudLessonTemplate(input: { dateKey: string; json: string; token?: string; fetcher?: CloudFetcher }): Promise<CloudUploadResult> {
+  return uploadAdvantageCloudFile({
+    purpose: 'lesson',
+    dateKey: input.dateKey,
+    file: new Blob([input.json], { type: 'application/json' }),
+    fileName: `${input.dateKey}.json`,
+    mime: 'application/json',
+    token: input.token,
+    fetcher: input.fetcher,
+    planTarget: 'template',
+  });
+}
+
+/** Drop this instructor's own copy for one day, so the gym template opens again. The template is never touched. */
+export async function resetMyCloudLessonPlan(input: {
+  dateKey: string;
+  token?: string;
+  fetcher?: CloudFetcher;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const token = input.token ?? readCloudBearer();
+  if (!token) return { ok: false, message: CLOUD_SIGN_IN_MESSAGE };
+  const fetcher = input.fetcher ?? fetch;
+  try {
+    const response = await fetcher(cloudUrl('/api/gym/cloud'), {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'lesson-reset', dateKey: input.dateKey }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      return { ok: false, message: body?.error || 'Advantage Cloud could not reset that plan.' };
+    }
+    notifyCloudMedia();
+    return { ok: true };
+  } catch {
+    return { ok: false, message: CLOUD_UNREACHABLE };
+  }
 }
 
 /**

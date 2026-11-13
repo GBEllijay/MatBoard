@@ -4,13 +4,15 @@
  * one and vanish on the other.
  */
 
-import { tournamentClassLine } from './divisionFields.ts';
+import { foldStopDoing } from './journalNotes.ts';
+import { resultClassLine, tournamentClassLine } from './divisionFields.ts';
 import { competitionOf } from './progress/competition.ts';
 import { checklistLevelLine, fundamentalLevelOf, proficiencySummary } from './fundamentals.ts';
 import { ageIllegalTechniques } from './studentBenchmarks.ts';
 import type { CompetitionMatch, JournalEntry, MatchMethod, ProgressBelt, StudentProgressReport } from './progress/types.ts';
 import {
   ASSESSMENT_AREAS,
+  ASSESSMENT_FORM_AREAS,
   assessmentAverage,
   conditioningItemLines,
   mindsetGoalLines,
@@ -22,7 +24,6 @@ import {
   JOURNAL_NOTES_LABEL,
   JOURNAL_PARTNERS_LABEL,
   JOURNAL_ROLLS_LABEL,
-  JOURNAL_STOP_LABEL,
   formatJournalDate,
 } from './journalCopy.ts';
 import { techniqueDrilledLabel } from './progress/format.ts';
@@ -171,14 +172,13 @@ export function journalReportLine(entry: JournalEntry): string {
     const note = (lines.find((row) => row.startsWith(notePrefix)) ?? '').slice(notePrefix.length).trim();
     parts.push(`${techniqueDrilledLabel(index)}: ${name}${note ? ` — What I learned: ${note}` : ''}`);
   });
-  const howItWent = (lines.find((row) => row.startsWith('How it went:')) ?? '').slice('How it went:'.length).trim();
-  if (howItWent) parts.push(`How it went: ${howItWent}`);
   if (decoded.partners.trim()) parts.push(`${JOURNAL_PARTNERS_LABEL}: ${decoded.partners.trim()}`);
   if (decoded.drills.trim()) parts.push(`${JOURNAL_DRILLS_LABEL}: ${decoded.drills.trim()}`);
   if (decoded.rolls.trim()) parts.push(`${JOURNAL_ROLLS_LABEL}: ${decoded.rolls.trim()}`);
   if (decoded.notes.trim()) parts.push(`${JOURNAL_NOTES_LABEL}: ${decoded.notes.trim()}`);
-  const stopDoing = decoded.stopDoing?.trim() ?? '';
-  if (stopDoing) parts.push(`${JOURNAL_STOP_LABEL}: ${stopDoing}`);
+  // One reflection field: an older card's stop-doing text reads as part of How it went.
+  const howItWent = foldStopDoing(decoded.howItWent ?? '', decoded.stopDoing ?? '').replace(/\s*\n\s*/g, ' / ');
+  if (howItWent) parts.push(`How it went: ${howItWent}`);
   const extra = entry.amendments.map((item) => item.body.trim()).filter(Boolean);
   if (extra.length) parts.push(extra[extra.length - 1] ?? '');
   return parts.filter(Boolean).join(' · ');
@@ -395,7 +395,7 @@ function competitionBlock(report: StudentProgressReport): ReportBlock {
   const draws = matches.filter((match) => match.result === 'draw').length;
   if (competition.results.length) lines.push(matchRecordLine(wins, losses, draws));
   for (const result of competition.results) {
-    const heading = [result.tournamentName || 'Matches', result.division].filter(Boolean).join(' — ');
+    const heading = [result.tournamentName || 'Matches', resultClassLine(result)].filter(Boolean).join(' — ');
     lines.push(heading);
     if (!result.matches.length) lines.push('  None yet');
     for (const match of result.matches) lines.push(`  ${matchLine(match)}`);
@@ -502,7 +502,10 @@ export function selfAssessmentLines(report: StudentProgressReport, assessment: A
   if (!entries.length) lines.push('No self-assessment saved on this phone.');
   for (const entry of entries) {
     lines.push(`${entry.date} — average ${assessmentAverage(entry.scores).toFixed(1)}`);
-    for (const area of ASSESSMENT_AREAS) lines.push(`  ${area.label}: ${entry.scores[area.id]}`);
+    for (const area of ASSESSMENT_FORM_AREAS) {
+      const score = entry.scores[area.id];
+      lines.push(`  ${area.label}: ${isAssessmentScore(score) ? score : 'not rated'}`);
+    }
     for (const line of conditioningItemLines(entry.conditioningItems)) lines.push(`  ${line}`);
     for (const line of mindsetGoalLines(entry.mindsetGoals)) lines.push(`  ${line}`);
     if (entry.note.trim()) lines.push(`  Note: ${entry.note.trim()}`);

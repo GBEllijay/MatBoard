@@ -34,7 +34,7 @@ export type CloudDataScope = 'academy' | 'shared' | 'refused';
 
 /**
  * Academy folder roles.
- * `academy` is the gym's own material (roster, lessons, daily videos, skins, pending clips).
+ * `academy` is the gym's own material (roster, lessons, daily videos, gallery, skins, pending clips).
  * `shared` is a copy sent under a permission (inbox, photo submission, card share, event).
  * Anything else, including a student journal, is refused as an academy object.
  */
@@ -43,6 +43,8 @@ export function cloudPathScope(relativePath: string): CloudDataScope {
     relativePath.startsWith('roster/') ||
     relativePath.startsWith('lessons/') ||
     relativePath.startsWith('videos/daily/') ||
+    relativePath.startsWith('gallery/') ||
+    relativePath.startsWith('instructors/') ||
     relativePath.startsWith('skins/') ||
     relativePath.startsWith('pending/')
   ) {

@@ -1,17 +1,19 @@
 /**
- * Journal video history: latest practice by date, earlier dates, and a cancelled choose.
+ * One video section on a journal card. Videos the older Videos section attached still show,
+ * untagged, with "Tag this". Film a move and Pick from gallery are add sources of Class videos.
+ * Latest and earlier practice for the card's techniques still show.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import { addJournalClip, addJournalEntry, blankStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
-import { writeFilms, type StudentFilm } from '../../lib/studentFilm.ts';
-import { applyLinkIntent, setClipAnchor, setClipJournal, setFilmAnchor, setFilmJournal } from '../../lib/videoAssociation.ts';
+import { addJournalClip, addJournalEntry, blankStudentReport, loadStudentReport, saveStudentReport } from '../../lib/studentEdition.ts';
+import { loadFilms, writeFilms, type StudentFilm } from '../../lib/studentFilm.ts';
+import { applyLinkIntent, setClipAnchor, setClipJournal } from '../../lib/videoAssociation.ts';
 import { readWorkingGraph } from '../../lib/workingTechniques.ts';
-import { JournalVideos } from './JournalVideos.tsx';
+import { JournalCardVideos } from './JournalCardVideos.tsx';
 
 const dom = new Window({ url: 'http://localhost/student/cards/card' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -45,30 +47,14 @@ function button(host: ParentNode, text: string) {
   return found as HTMLButtonElement;
 }
 
-test('the card shows the latest practice date and a cancelled choose does not move the original class', async () => {
+function seed() {
   localStorage.clear();
   let report = applyLinkIntent(blankStudentReport(1), 'Waiter sweep', { kind: 'create-working' }, 2).report;
   const workingId = readWorkingGraph(report.working)?.nodes[0]?.id ?? '';
-  report = addJournalEntry(report, {
-    date: '2026-11-01',
-    className: 'First',
-    gameTag: '',
-    techniques: [{ id: '', name: 'Waiter sweep', workingId }],
-    partners: '',
-    drills: '',
-    rolls: '',
-    notes: '',
-  }, 10);
-  report = addJournalEntry(report, {
-    date: '2026-11-08',
-    className: 'Later',
-    gameTag: '',
-    techniques: [{ id: '', name: 'Waiter sweep', workingId }],
-    partners: '',
-    drills: '',
-    rolls: '',
-    notes: '',
-  }, 20);
+  const line = { id: '', name: 'Waiter sweep', workingId };
+  const day = (date: string, className: string, now: number) => ({ date, className, gameTag: '' as const, techniques: [line], partners: '', drills: '', rolls: '', notes: '' });
+  report = addJournalEntry(report, day('2026-11-01', 'First', 10), 10);
+  report = addJournalEntry(report, day('2026-11-08', 'Later', 20), 20);
   const origin = report.journal[0]?.id ?? '';
   const later = report.journal[1]?.id ?? '';
   report = addJournalClip(report, 'https://example.com/waiter', 'Waiter sweep details', 11);
@@ -94,66 +80,71 @@ test('the card shows the latest practice date and a cancelled choose does not mo
   };
   writeFilms(localStorage, [film]);
   saveStudentReport(localStorage, report);
-  const { host, root } = mount(
-    <JournalVideos entryId={origin} date="2026-11-01" techniques={[{ id: '', name: 'Waiter sweep', workingId }]} />,
-  );
-  const text = host.textContent ?? '';
-  assert.match(text, /Latest practice · 2026-11-08/);
-  assert.match(text, /Original class for this video/);
-  const record = document.getElementById(`journal-film-record-${origin}`) as HTMLInputElement | null;
-  const gallery = document.getElementById(`journal-film-library-${origin}`) as HTMLInputElement | null;
+  return { origin, later, clipId, line };
+}
+
+test('Film a move and Pick from gallery are add sources of Class videos', () => {
+  const { origin, line } = seed();
+  const { host, root } = mount(<JournalCardVideos entryId={origin} date="2026-11-01" techniques={[line]} />);
+  const record = document.getElementById(`journal-card-video-record-${origin}`) as HTMLInputElement | null;
+  const gallery = document.getElementById(`journal-card-video-gallery-${origin}`) as HTMLInputElement | null;
   assert.equal(record?.getAttribute('capture'), 'environment');
   assert.equal(record?.getAttribute('accept'), 'video/*');
   assert.equal(gallery?.hasAttribute('capture'), false);
-  assert.equal(
-    [...host.querySelectorAll('label')].find((item) => item.getAttribute('for') === `journal-film-record-${origin}`)?.textContent?.trim(),
-    'Film a move',
-  );
-  assert.equal(
-    [...host.querySelectorAll('label')].find((item) => item.getAttribute('for') === `journal-film-library-${origin}`)?.textContent?.trim(),
-    'Pick from gallery',
-  );
-  if (typeof URL.createObjectURL !== 'function') {
-    URL.createObjectURL = () => 'blob:journal-film';
-    URL.revokeObjectURL = () => {};
-  }
-  const clip = new File([new Uint8Array(8)], 'move.mp4', { type: 'video/mp4' });
-  const files = {
-    0: clip,
-    length: 1,
-    item: (index: number) => (index === 0 ? clip : null),
-    *[Symbol.iterator]() {
-      yield clip;
-    },
-  };
-  Object.defineProperty(gallery, 'files', { configurable: true, value: files });
-  await act(async () => {
-    gallery?.dispatchEvent(new view.Event('change', { bubbles: true }));
-    await new Promise((resolve) => setTimeout(resolve, 40));
-  });
-  assert.match(host.textContent ?? '', /Review filmed move|Preview filmed move|Keep/);
-  act(() => {
-    button(host, 'Cancel').click();
-  });
-  assert.equal(host.querySelector('[aria-label="Review filmed move"]'), null);
-  const afterCancel = JSON.parse(localStorage.getItem('matboard.studentEdition.films.v1') ?? '{}') as { films?: unknown[] };
-  assert.equal(afterCancel.films?.length, 1);
-  const latest = [...host.querySelectorAll('a')].find((link) => link.textContent?.includes('Latest practice'));
-  assert.match(latest?.getAttribute('href') ?? '', new RegExp(later));
-  act(() => {
-    button(host, 'Choose a saved video').click();
-  });
-  act(() => {
-    button(host, 'Cancel').click();
-  });
+  const labels = [...host.querySelectorAll('label')];
+  assert.equal(labels.find((item) => item.getAttribute('for') === `journal-card-video-record-${origin}`)?.textContent?.trim(), 'Film a move');
+  assert.equal(labels.find((item) => item.getAttribute('for') === `journal-card-video-gallery-${origin}`)?.textContent?.trim(), 'Pick from gallery');
+  button(host, 'Paste a video link');
+  button(host, 'Choose a saved video');
+  assert.equal(host.querySelectorAll('section').length, 1);
   act(() => root.unmount());
-  const again = mount(
-    <JournalVideos entryId={later} date="2026-11-08" techniques={[{ id: '', name: 'Waiter sweep', workingId }]} />,
-  );
-  assert.match(again.host.textContent ?? '', /Earlier practice · 2026-11-01 · Waiter sweep/);
-  assert.match(again.host.textContent ?? '', /This is the latest saved practice, 2026-11-08/);
-  const stored = JSON.parse(localStorage.getItem('matboard.studentEdition.films.v1') ?? '{}') as { films?: { journalEntryId?: string }[] };
-  assert.equal(stored.films?.[0]?.journalEntryId, origin);
-  assert.equal(JSON.parse(localStorage.getItem('matboard.studentEdition.v1') ?? '{}').clips[0].journalEntryId, origin);
-  act(() => again.root.unmount());
+});
+
+test('older videos on this card still show untagged, and Tag this keeps the library item', () => {
+  const { origin, clipId, line } = seed();
+  const { host, root } = mount(<JournalCardVideos entryId={origin} date="2026-11-01" techniques={[line]} />);
+  assert.equal(host.querySelectorAll('[data-testid="journal-card-video-untagged"]').length, 2);
+  assert.match(host.textContent ?? '', /Not tagged/);
+  assert.match(host.textContent ?? '', /Latest practice · 2026-11-08/);
+  act(() => button(host, 'Tag this: Waiter sweep').click());
+  // The older video named its technique; that is offered as the tag.
+  assert.match(host.querySelector('[data-testid="journal-card-video-term"]')?.textContent ?? '', /Waiter sweep/i);
+  act(() => button(host, 'Save tag').click());
+  const saved = loadStudentReport(localStorage).journal[0].videos ?? [];
+  assert.equal(saved.length, 1);
+  assert.match(saved[0].term.name, /^Waiter sweep$/i);
+  const tagged = saved[0];
+  assert.ok(tagged.filmId === 'film.waiter' || tagged.clipId === clipId);
+  // Library items are unchanged.
+  assert.equal(loadFilms(localStorage)[0]?.journalEntryId, origin);
+  assert.equal(loadStudentReport(localStorage).clips?.[0]?.journalEntryId, origin);
+  assert.equal(host.querySelectorAll('[data-testid="journal-card-video-untagged"]').length, 1);
+  assert.equal(host.querySelectorAll('[data-testid="journal-card-video"]').length, 1);
+  act(() => root.unmount());
+});
+
+test('a later card shows the older video under Same technique, other classes with its original class', () => {
+  const { origin, later, line } = seed();
+  const { host, root } = mount(<JournalCardVideos entryId={later} date="2026-11-08" techniques={[line]} />);
+  const text = host.textContent ?? '';
+  assert.match(text, /Same technique, other classes/);
+  assert.match(text, /Earlier practice · 2026-11-01 · Waiter sweep/);
+  assert.match(text, /This is the latest saved practice, 2026-11-08/);
+  assert.equal(host.querySelectorAll('[data-testid="journal-card-video-untagged"]').length, 0);
+  const originLink = [...host.querySelectorAll('a')].find((link) => link.textContent?.includes('Original class · 2026-11-01'));
+  assert.match(originLink?.getAttribute('href') ?? '', new RegExp(origin));
+  act(() => root.unmount());
+});
+
+test('removing an older video clears only its tie to this card', () => {
+  const { origin, line } = seed();
+  const { host, root } = mount(<JournalCardVideos entryId={origin} date="2026-11-01" techniques={[line]} />);
+  act(() => button(host, 'Remove Waiter sweep details from card').click());
+  act(() => button(host, 'Keep video').click());
+  assert.equal(loadStudentReport(localStorage).clips?.[0]?.journalEntryId, origin);
+  act(() => button(host, 'Remove Waiter sweep details from card').click());
+  act(() => button(host, 'Confirm remove').click());
+  assert.equal(loadStudentReport(localStorage).clips?.[0]?.journalEntryId, undefined);
+  assert.equal(loadStudentReport(localStorage).clips?.length, 1);
+  act(() => root.unmount());
 });

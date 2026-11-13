@@ -80,10 +80,8 @@ function TreeStub() {
 
 test('example relief, list selection, curved toggle, and back do not write storage', () => {
   localStorage.clear();
-  writeAssessments(
-    localStorage,
-    saveAssessment(emptyAssessments(), { date: '2026-11-01', note: 'seven', scores: seven() }, 4),
-  );
+  // Stored before Sweeps existed: seven faces, no Sweeps key.
+  localStorage.setItem(ASSESSMENT_STORAGE_KEY, JSON.stringify({ entries: [{ id: 'assess.seven', date: '2026-11-01', note: 'seven', scores: seven() }] }));
   const before = snapshot();
   const mounted = mount(<CrystallineSweepsPreview />);
   const host = mounted.host;

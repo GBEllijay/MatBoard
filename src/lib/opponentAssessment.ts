@@ -1,12 +1,14 @@
 /**
- * Opponent ratings use the same 1–5 scale as self-assessment.
- * Sweeps is optional. A card saved before that area loads with Sweeps blank.
+ * Opponent ratings use the same eight faces as the daily check-in, with no sub-items.
+ * Sweeps is a full face: a card is complete only with all eight rated.
+ * A card saved before Sweeps existed still loads with Sweeps blank, and its seven
+ * rated faces still compare and draw.
  * A higher score for the student is favored. An equal score is even.
  * A lower score is a disadvantage. Areas missing on either side are left out.
  */
 
 import {
-  ASSESSMENT_AREAS,
+  ASSESSMENT_FORM_AREAS,
   isAssessmentScore,
   type AssessmentAreaId,
   type AssessmentScore,
@@ -25,10 +27,8 @@ export type AreaMatchup = {
   balance: AreaBalance;
 };
 
-const MATCHUP_AREAS: readonly { id: ScoutAreaId; label: string }[] = [
-  ...ASSESSMENT_AREAS,
-  { id: 'sweeps', label: 'Sweeps' },
-];
+/** The eight faces, in the same order and with the same labels as the daily check-in. */
+export const MATCHUP_AREAS: readonly { id: ScoutAreaId; label: string }[] = ASSESSMENT_FORM_AREAS;
 
 export function cleanRatings(value: unknown): AreaRatings {
   if (!value || typeof value !== 'object') return {};
@@ -42,9 +42,19 @@ export function cleanRatings(value: unknown): AreaRatings {
   return ratings;
 }
 
+/** All eight faces rated, Sweeps included. */
 export function isCompleteRatings(ratings: AreaRatings | null | undefined): ratings is AssessmentScores {
   if (!ratings) return false;
-  return ASSESSMENT_AREAS.every((area) => isAssessmentScore(ratings[area.id]));
+  return MATCHUP_AREAS.every((area) => isAssessmentScore(ratings[area.id]));
+}
+
+/**
+ * Enough to draw an opponent's shape: all eight, or a card saved before Sweeps
+ * existed that has the other seven. Its Sweeps vertex stays unrated.
+ */
+export function isDrawableRatings(ratings: AreaRatings | null | undefined): ratings is AssessmentScores {
+  if (!ratings) return false;
+  return MATCHUP_AREAS.every((area) => area.id === 'sweeps' || isAssessmentScore(ratings[area.id]));
 }
 
 export function compareToOpponent(mine: AreaRatings | null | undefined, theirs: AreaRatings | null | undefined): AreaMatchup[] {

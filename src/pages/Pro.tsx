@@ -22,7 +22,7 @@ import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { lockMedia } from '../lib/mediaUnlock';
 import { ownerIdentitySheetVisible } from '../lib/ownerIdentitySheet';
 import { lockPro } from '../lib/proUnlock';
-import { AdvantageCloudHome } from '../components/AdvantageCloudHome';
+import { GalleryPendingBadge } from '../components/GalleryPendingNotice';
 import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 import { CloudLapseNotice } from '../components/CloudLapseNotice';
 import { GymCharacterSheet } from '../components/GymCharacterSheet';
@@ -71,7 +71,7 @@ export function ProPage() {
           {ownerIdentitySheetVisible({ page: 'pro', proUnlocked: door.proUnlocked, seated: door.seated }) ? (
             <InstructorSheet />
           ) : null}
-          {cloudConsole && !seat ? <AdvantageCloudHome /> : null}
+          {!seat ? <GalleryPendingBadge /> : null}
           <Link className="pro-hub" to="/white" data-pro-entry="white">
             <BeltRail kind="white" />
             <span>Advantage White</span>

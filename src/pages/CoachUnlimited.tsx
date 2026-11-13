@@ -5,6 +5,7 @@ import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
 import { InstructorToolMark, type InstructorToolMarkName } from '../components/InstructorToolMark';
 import { DriveConnectCard } from '../components/DriveConnectCard';
+import { useAdvantageCloudOn } from '../components/useAdvantageCloudOn';
 import { HomeMark } from '../components/HomeMark';
 import { LicenseShareButton } from '../components/LicenseShareButton';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -17,10 +18,10 @@ import { coachToolVisible } from '../lib/instructorSeats';
 import {
   lessonRevisionLabel,
   listLessonRevisions,
-  OWNER_DRIVE_BODY,
   OWNER_DRIVE_KICKER,
-  OWNER_DRIVE_QUEUE,
-  OWNER_DRIVE_TITLE,
+  ownerDriveBody,
+  ownerDriveQueueNote,
+  ownerDriveTitle,
   type LessonRevision,
 } from '../lib/lessonDrive';
 import { COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY, PRODUCTS_PATH, proConsoleEntryOpen } from '../lib/productNames';
@@ -56,6 +57,7 @@ export function CoachUnlimitedPage() {
   const door = useSeatDoor();
   const access = entitlementSnapshot();
   const backTo = proConsoleEntryOpen(door, access.claims, entitlementNowMs(), access.amnesty) ? '/pro' : PRODUCTS_PATH;
+  const cloudOn = useAdvantageCloudOn();
   const [revisions, setRevisions] = useState<LessonRevision[]>([]);
   useEffect(() => {
     setRevisions(listLessonRevisions());
@@ -95,6 +97,11 @@ export function CoachUnlimitedPage() {
             </div>
           </nav>
           <LicenseShareButton />
+          <p className="academy-menu-entry">
+            <Link className="btn" to="/coach-unlimited/academy">
+              Connect to my academy
+            </Link>
+          </p>
           <p className="suite__note">
             <Link className="home__text-btn" to={previewEntryPath('unlimited')}>
               Preview
@@ -103,11 +110,11 @@ export function CoachUnlimitedPage() {
           </p>
           <article className="plan-card">
             <p className="plan-card__kicker">{OWNER_DRIVE_KICKER}</p>
-            <strong>{OWNER_DRIVE_TITLE}</strong>
-            <span>{OWNER_DRIVE_BODY}</span>
+            <strong>{ownerDriveTitle(cloudOn)}</strong>
+            <span>{ownerDriveBody(cloudOn)}</span>
             {revisions.length ? (
               <>
-                <ul className="plan-card__revisions" aria-label="Lesson drafts waiting for Google Drive">
+                <ul className="plan-card__revisions" aria-label="Lesson drafts waiting for review">
                   {revisions.map((revision) => (
                     <li key={revision.revisionId}>
                       <Link
@@ -119,16 +126,11 @@ export function CoachUnlimitedPage() {
                     </li>
                   ))}
                 </ul>
-                <span>{OWNER_DRIVE_QUEUE}</span>
+                <span>{ownerDriveQueueNote(cloudOn)}</span>
               </>
             ) : null}
           </article>
-          <DriveConnectCard />
-          <p className="academy-menu-entry">
-            <Link className="btn" to="/coach-unlimited/academy">
-              Connect to my academy
-            </Link>
-          </p>
+          <DriveConnectCard cloudOptionalCollapse />
         </section>
         <EditionLadder page="instructor" />
         <SiteFooter />

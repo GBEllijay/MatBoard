@@ -41,6 +41,7 @@ import {
   homeConsoleLabel,
   closedDoorPath,
   mediaConsoleDoorOpen,
+  mediaEditionDoorOpen,
   mediaFolderDoorOpen,
   ownerProHubOpen,
   proDoorOpen,
@@ -254,7 +255,7 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   );
   assert.equal(
     INSTRUCTOR_COACH_ENTRY,
-    'Advantage Coach Unlimited',
+    'Instructor Edition',
   );
   assert.equal(COACH_UNLIMITED_PATH, '/coach-unlimited');
   assert.equal(UNLIMITED_LESSON_PATH, '/notes?plan=unlimited');
@@ -601,6 +602,46 @@ test('a media grant opens Media Console with Pro locked; a seat without one stay
   assert.equal((MEDIA_CONSOLE_ROUTES as readonly string[]).includes('/media'), false);
 });
 
+test('mediaEditionDoorOpen matches /media: a seated instructors preset shows Open even when the Media door is closed', () => {
+  const seatedInstructors = {
+    proUnlocked: false,
+    seated: true,
+    seatGrantsMedia: true,
+    programDirectorSeat: false,
+    coachMenus: true,
+    mediaUnlocked: false,
+    coachUnlocked: false,
+  };
+  assert.equal(mediaConsoleDoorOpen(seatedInstructors), true, 'instructors preset opens Media Console');
+  assert.equal(mediaEditionDoorOpen(seatedInstructors), true, 'the /products card and /media hub must follow that seat');
+
+  const seatedCoachOnly = { ...seatedInstructors, seatGrantsMedia: false };
+  assert.equal(mediaConsoleDoorOpen(seatedCoachOnly), false);
+  assert.equal(mediaEditionDoorOpen(seatedCoachOnly), false, 'a coach seat without a media preset stays locked');
+
+  const seatedWithMediaDoor = { ...seatedCoachOnly, mediaUnlocked: true };
+  assert.equal(mediaConsoleDoorOpen(seatedWithMediaDoor), false, 'the console still follows the preset');
+  assert.equal(
+    mediaEditionDoorOpen(seatedWithMediaDoor),
+    true,
+    'a Media door already open is not shut by a seat without a media preset',
+  );
+
+  const unseatedMedia = {
+    proUnlocked: false,
+    seated: false,
+    seatGrantsMedia: false,
+    programDirectorSeat: false,
+    coachMenus: false,
+    mediaUnlocked: true,
+  };
+  assert.equal(mediaEditionDoorOpen(unseatedMedia), true);
+  assert.equal(mediaEditionDoorOpen({ ...unseatedMedia, mediaUnlocked: false }), false);
+
+  const unseatedPro = { ...unseatedMedia, mediaUnlocked: undefined, proUnlocked: true };
+  assert.equal(mediaEditionDoorOpen(unseatedPro), true);
+});
+
 const PRO_BUTTONS = [
   'Media Console',
   'Advantage Instructor Edition',
@@ -670,7 +711,7 @@ test('Pro Plus Cloud copy stays off the Advantage Pro blurb', () => {
   );
   assert.equal(
     INSTRUCTOR_DRIVE_REQUIREMENT,
-    'Requires gym setup with a third-party drive (Google Drive, OneDrive, or Dropbox). Advantage does not host it.',
+    'Requires gym setup with a third-party drive (Google Drive or OneDrive). Advantage does not host it.',
   );
   assert.doesNotMatch(PRO_PLUS_CLOUD_DESCRIPTION, /Cloudflare/);
   assert.equal(PRO_PLUS_CLOUD_PATH, '/pro-plus-cloud');

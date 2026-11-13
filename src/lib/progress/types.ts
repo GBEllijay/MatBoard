@@ -175,6 +175,17 @@ export type MatchResult = (typeof MATCH_RESULTS)[number];
 export const MATCH_METHODS = ['points', 'sub', 'advantage', 'dq'] as const;
 export type MatchMethod = '' | (typeof MATCH_METHODS)[number];
 
+/** Overall tournament place, including a quick result with no match list. */
+export const COMPETITION_PLACES = ['gold', 'silver', 'bronze', 'participated', 'dnp'] as const;
+export type CompetitionPlace = (typeof COMPETITION_PLACES)[number];
+export const COMPETITION_PLACE_LABELS: Record<CompetitionPlace, string> = {
+  gold: 'Gold',
+  silver: 'Silver',
+  bronze: 'Bronze',
+  participated: 'Participated',
+  dnp: 'Did not place',
+};
+
 export const CALENDAR_KINDS = ['class', 'training', 'promotion', 'note', 'other'] as const;
 export type CalendarKind = (typeof CALENDAR_KINDS)[number];
 
@@ -237,6 +248,8 @@ export const PROGRESS_EXAMPLE_MAX = 200;
 export const PROGRESS_EXAMPLES_MAX = 8;
 export const PROGRESS_JOURNAL_MAX = 500;
 export const PROGRESS_CLIPS_MAX = 200;
+/** Injuries added from the body-scan list, not from a journal card. Omitted on older files. */
+export const PROGRESS_INJURIES_MAX = 200;
 export const PROGRESS_CLIP_URL_MAX = 2000;
 export const PROGRESS_AMENDMENTS_MAX = 50;
 export const PROGRESS_CHECKLIST_MAX = 400;
@@ -551,6 +564,69 @@ export type JournalEntry = {
   };
   /** Marks a hiatus/break. Starts on `start` (the card date by default). Empty `end` means still on break. */
   hiatus?: { reason: 'medical' | 'other'; start: string; end: string };
+  /**
+   * Videos for this one class card, each tagged with the glossary term it shows.
+   * Absent on older cards: read as no videos. A phone video keeps only its id here;
+   * the bytes stay in this phone's film store (IndexedDB), never in this file or the cloud.
+   */
+  videos?: JournalCardVideo[];
+};
+
+/** Most videos one journal card keeps. */
+export const JOURNAL_CARD_VIDEOS_MAX = 20;
+
+/** The glossary term a card video shows. `id` is `gl.<key>` (core glossary), `mine.<key>` (the student's own move), or blank for a free name. */
+export type JournalVideoTerm = { id: string; name: string };
+
+/**
+ * One video on one journal card.
+ * `phone`: a file filmed or picked on this device; the bytes are in the local film store under `filmId ?? id`.
+ * `link`: an http(s) link (YouTube, Instagram, Drive, …) the student pasted.
+ */
+export type JournalCardVideo = {
+  id: string;
+  source: 'phone' | 'link';
+  /** Link videos only. */
+  url?: string;
+  /** Link videos only: the clip in the student's link list this came from, when chosen from saved videos. */
+  clipId?: string;
+  /**
+   * Phone videos only: the Video library film whose bytes this plays, when chosen from saved videos
+   * or tagged from an older card. Absent: the bytes are stored for this card under `id`.
+   */
+  filmId?: string;
+  /** Phone videos only: original file name, type, and size, for the label. */
+  fileName?: string;
+  mime?: string;
+  size?: number;
+  term: JournalVideoTerm;
+  note: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+/**
+ * An injury added from the injury list, not from a journal card.
+ * Stored on the student file next to `journal`. Omitted on older files.
+ * Private to the student: never copied into a coach file or card share.
+ */
+export const INJURY_SOURCES = ['training', 'outside'] as const;
+export type InjurySource = (typeof INJURY_SOURCES)[number];
+export type StandaloneInjury = {
+  id: string;
+  /** Day it happened (YYYY-MM-DD). */
+  date: string;
+  area: string;
+  note: string;
+  /** Optional fixed body zone (lib/bodyScan BODY_ZONES). */
+  zone?: string;
+  status?: 'hurt' | 'healing' | 'healed';
+  /** Day the status was last set (YYYY-MM-DD). */
+  markedOn?: string;
+  /** How it happened. Absent on older rows. Default when added from the list is `outside`. */
+  source?: InjurySource;
+  createdAt: number;
+  updatedAt: number;
 };
 
 export const JOURNAL_SESSIONS = ['class', 'openMat', 'misc', 'other'] as const;
@@ -694,10 +770,32 @@ export type CompetitionResult = {
   id: string;
   tournamentId: string;
   tournamentName: string;
+  /**
+   * Combined class line, or the original free-text value from an older file.
+   * New entries also store the four picker fields below. The original text
+   * is kept so nothing is lost.
+   */
   division: string;
   matches: CompetitionMatch[];
   bracket: BracketNote[];
   bracketPhoto: boolean;
+  /** Event day, YYYY-MM-DD. Omitted on older results. */
+  date?: string;
+  /** Optional note. Omitted on older results or when left blank. */
+  note?: string;
+  /** Explicit place. Set on a quick result; optional on a full entry. Omitted on older files. */
+  place?: CompetitionPlace;
+  /** True when this was saved as a quick result with no match list. Omitted on full or older entries. */
+  quick?: boolean;
+  /**
+   * Age division, competition division, weight class, and belt at the event.
+   * Each is independent and is never inferred from the student's current belt.
+   * Omitted on older files until a clear parse fills them, or the student edits.
+   */
+  ageDivision?: string;
+  competitionDivision?: string;
+  weightClass?: string;
+  belt?: string;
 };
 
 /**
@@ -845,6 +943,12 @@ export type StudentProgressReport = PacketBase & {
   rubric: StudentRubric;
   checklist: StudentChecklistEntry[];
   journal: JournalEntry[];
+  /**
+   * Injuries added from the injury list, not from a journal card.
+   * Omitted on older files. An empty list means the list is present and empty.
+   * Private: never copied into a coach file or card share.
+   */
+  injuries?: StandaloneInjury[];
   calendar: CalendarEvent[];
   goals: StudentGoal[];
   /**

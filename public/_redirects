@@ -1,3 +1,5 @@
-# /card is the built card.html file. Pages serves that file at /card and
-# redirects /card.html to /card. Do not rewrite /card back to /card.html.
+# The business card maker at /card was removed. Send leftover links home.
+/card        /            301
+/card/       /            301
+/card.html   /            301
 /*        /index.html  200

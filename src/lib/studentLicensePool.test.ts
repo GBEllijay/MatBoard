@@ -9,12 +9,20 @@ import {
   FREE_STUDENT_LICENSES,
   STUDENT_LICENSE_EMPTY,
   freeStudentLicenseTicker,
+  freeStudentLicensesForLicense,
   freeStudentLicensesLeft,
   halfOffPoolNote,
   isStudentLicenseCode,
   studentCloudPathAllowed,
+  isStudentInviteValue,
+  studentClaimWouldDowngrade,
+  studentInviteJoinUrl,
   studentLicenseClaimUrl,
+  STUDENT_INVITE_TYP,
+  STUDENT_JOIN_PATH,
+  STUDENT_LICENSE_GIVE,
 } from './studentLicensePool.ts';
+import { OWNER_ALPHA_LICENSE_ID } from './proBundleMath.ts';
 
 const STUDENT = 'student-license-id-1';
 
@@ -33,12 +41,24 @@ test('free Student license pool is 5, and a revoke returns one immediately', () 
   assert.match(halfOffPoolNote(100), /100-use half-off code still has 100 uses/);
 });
 
+test('owner alpha free Student pool is 25; any other license stays at 5', () => {
+  assert.equal(freeStudentLicensesForLicense(), 5);
+  assert.equal(freeStudentLicensesForLicense('paid-pro-license'), 5);
+  assert.equal(freeStudentLicensesForLicense(OWNER_ALPHA_LICENSE_ID), 25);
+  assert.equal(freeStudentLicensesLeft(0, 25), 25);
+  assert.equal(freeStudentLicensesLeft(1, 25), 24);
+  assert.equal(freeStudentLicenseTicker(1, 25), '24 of 25 free Student licenses left');
+  assert.equal(freeStudentLicenseTicker(25, 25), '0 of 25 free Student licenses left');
+});
+
 test('student cloud scope is only that student\'s own files', () => {
   assert.equal(studentCloudPathAllowed(`students/${STUDENT}/inbox/update.json`, STUDENT), true);
   assert.equal(studentCloudPathAllowed(`students/${STUDENT}/photos/pending/photo-1.json`, STUDENT), true);
   assert.equal(studentCloudPathAllowed(`students/${STUDENT}/photos/approved/photo-1.png`, STUDENT), true);
   assert.equal(studentCloudPathAllowed(`students/${STUDENT}/events/open.json`, STUDENT), true);
+  assert.equal(studentCloudPathAllowed(`students/${STUDENT}/from-instructor/2026-11-04/clip.mp4`, STUDENT), true);
   assert.equal(studentCloudPathAllowed(`students/${STUDENT}/from-instructor/2026-11-04.json`, STUDENT), false);
+  assert.equal(studentCloudPathAllowed(`students/other-student/from-instructor/2026-11-04/clip.mp4`, STUDENT), false);
   assert.equal(studentCloudPathAllowed('lessons/current/2026-W45/2026-11-04.json', STUDENT), false);
   assert.equal(studentCloudPathAllowed('lessons/current/2026-W45/media/2026-11-04/clip.mp4', STUDENT), false);
   assert.equal(studentCloudPathAllowed('videos/daily/2026-11-04/class.mp4', STUDENT), false);
@@ -64,4 +84,44 @@ test('claim links carry the code, and the home screen tip is on the claim page',
   assert.equal(ADD_TO_HOME_IPHONE, 'iPhone: Share > Add to Home Screen');
   assert.equal(ADD_TO_HOME_ANDROID, 'Android: Install / Add to Home screen');
   assert.equal(ADD_TO_HOME_EMAIL, 'then sign in with this same email inside the app if asked');
+});
+
+test('join links use /join/student and signed or hex codes are accepted', () => {
+  const code = 'ab'.repeat(32);
+  const signed = 'aaa.bbb.ccc';
+  assert.equal(isStudentInviteValue(code), true);
+  assert.equal(isStudentInviteValue(signed), true);
+  assert.equal(isStudentInviteValue('not-a-code'), false);
+  assert.equal(
+    studentInviteJoinUrl('https://advantagebjjtimer.com/', signed, 'North Gym'),
+    `https://advantagebjjtimer.com/join/student?${new URLSearchParams({ code: signed, gym: 'North Gym' }).toString()}`,
+  );
+  assert.equal(STUDENT_JOIN_PATH, '/join/student');
+  assert.equal(STUDENT_INVITE_TYP, 'student-invite');
+  assert.equal(STUDENT_LICENSE_GIVE, 'Invite a student (Student Edition only)');
+});
+
+test('a student claim does not overwrite a higher seat or license already on the phone', () => {
+  assert.equal(studentClaimWouldDowngrade(null), false);
+  assert.equal(studentClaimWouldDowngrade({ src: 'free', tier: 'student', grants: ['student', 'white'] }), false);
+  assert.equal(studentClaimWouldDowngrade({ src: 'seat', tier: 'seat', grants: ['pro', 'coach', 'student'] }), true);
+  assert.equal(studentClaimWouldDowngrade({ src: 'stripe', tier: 'pro', grants: ['pro', 'coach', 'student'] }), true);
+  assert.equal(studentClaimWouldDowngrade({ src: 'stripe', tier: 'coach', grants: ['coach', 'student'] }), true);
+  assert.equal(studentClaimWouldDowngrade({ src: 'stripe', tier: 'media', grants: ['media'] }), true);
+  // One no-downgrade rule (passDowngrade.ts): White < Student on the ladder, so a Student claim keeps White open.
+  assert.equal(studentClaimWouldDowngrade({ src: 'stripe', tier: 'white', grants: ['white'] }), false);
+  assert.equal(studentClaimWouldDowngrade({ src: 'owner', tier: 'owner', grants: ['pro'] }), true);
+  assert.equal(studentClaimWouldDowngrade({ src: 'seat', tier: 'seat', grants: [], subs: { state: 'locked' } }), false);
+});
+
+test('the Pro invite panel and public join page are wired to Student Edition only', () => {
+  const panel = readFileSync(new URL('../components/InstructorInvitePanel.tsx', import.meta.url), 'utf8');
+  assert.match(panel, /StudentLicenseOwnerPanel/);
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.match(app, /path="\/join\/student"/);
+  const share = readFileSync(new URL('../components/StudentLicenseShare.tsx', import.meta.url), 'utf8');
+  assert.match(share, /Copy link/);
+  assert.match(share, /Download QR PNG/);
+  assert.match(share, /Share/);
+  assert.match(share, /studentInviteJoinUrl/);
 });

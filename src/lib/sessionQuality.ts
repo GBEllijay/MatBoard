@@ -4,7 +4,8 @@
  * white is survival and learning, blue/purple technique and game building,
  * brown/black refinement and leading, kids get simple words.
  */
-import type { JournalEntry } from './progress/types.ts';
+import { foldStopDoing, readHowItWentLines, splitJournalNotes } from './journalNotes.ts';
+import type { JournalEntry, StandaloneInjury } from './progress/types.ts';
 
 export type QualityStage = 'white' | 'builder' | 'refiner' | 'kids';
 export type QualityScale = { prompt: string; labels: [string, string, string, string, string] };
@@ -31,12 +32,26 @@ export function qualityText(quality: number, stage: QualityStage): string {
 
 const HOW_PREFIX = 'How it went:';
 
-/** Read the free-text "How it went" note from a card body. */
+function headLines(entry: Pick<JournalEntry, 'body'>): string[] {
+  const lines = entry.body.split('\n');
+  const notesAt = lines.findIndex((row) => row.startsWith('Notes:'));
+  return notesAt >= 0 ? lines.slice(0, notesAt) : lines;
+}
+
+/** How it went as written, without an older card's stop-doing text. */
+function writtenHowItWent(entry: Pick<JournalEntry, 'body'>): string {
+  return readHowItWentLines(headLines(entry));
+}
+
+/**
+ * Read the free-text "How it went" note from a card body.
+ * An older card's separate "Stop doing" note is read as part of it (How it went first).
+ */
 export function howItWentOf(entry: Pick<JournalEntry, 'body'>): string {
   const lines = entry.body.split('\n');
   const notesAt = lines.findIndex((row) => row.startsWith('Notes:'));
-  const head = notesAt >= 0 ? lines.slice(0, notesAt) : lines;
-  return (head.find((row) => row.startsWith(HOW_PREFIX)) ?? '').slice(HOW_PREFIX.length).trim();
+  const stopDoing = notesAt >= 0 ? splitJournalNotes(lines.slice(notesAt + 1).join('\n')).stopDoing : '';
+  return foldStopDoing(writtenHowItWent(entry), stopDoing);
 }
 
 /**
@@ -46,7 +61,7 @@ export function howItWentOf(entry: Pick<JournalEntry, 'body'>): string {
 export function migrateQualityToNote(entry: JournalEntry, stage: QualityStage): JournalEntry {
   if (entry.quality === undefined) return entry;
   const { quality, ...rest } = entry;
-  if (howItWentOf(entry)) return rest;
+  if (writtenHowItWent(entry)) return rest;
   const text = qualityText(quality, stage);
   if (!text) return rest;
   const lines = entry.body.split('\n');
@@ -63,7 +78,8 @@ export function latestHowItWent(journal: readonly JournalEntry[]): { text: strin
     .filter((row) => row.text)
     .sort((a, b) => (a.entry.date === b.entry.date ? b.entry.createdAt - a.entry.createdAt : a.entry.date < b.entry.date ? 1 : -1));
   if (!noted.length) return null;
-  return { text: noted[0].text, date: noted[0].entry.date, count: noted.length };
+  // One line on the report: written lines (and older stop-doing text) join with a space.
+  return { text: noted[0].text.replace(/\s*\n\s*/g, ' ').trim(), date: noted[0].entry.date, count: noted.length };
 }
 
 export type BodyStatus = {
@@ -75,12 +91,15 @@ function hiatusText(h: NonNullable<JournalEntry['hiatus']>): string {
   return `${h.reason === 'medical' ? 'Medical break' : 'Break'} · ${h.start}${h.end ? ` to ${h.end}` : ' · ongoing'}`;
 }
 
-/** Injury and break status, pulled from journal cards. Private to the student. */
-export function bodyStatus(journal: readonly JournalEntry[], today: string): BodyStatus {
+/** Injury and break status, pulled from journal cards and list-added injuries. Private to the student. */
+export function bodyStatus(journal: readonly JournalEntry[], today: string, extras: readonly StandaloneInjury[] = []): BodyStatus {
   const history: BodyStatus['history'] = [];
   for (const entry of journal) {
     if (entry.injury) history.push({ id: `${entry.id}-i`, kind: 'injury', text: `Injury · ${entry.injury.area || 'unspecified'}${entry.injury.note ? ` — ${entry.injury.note}` : ''}`, date: entry.date });
     if (entry.hiatus) history.push({ id: `${entry.id}-h`, kind: 'hiatus', text: hiatusText(entry.hiatus), date: entry.hiatus.start || entry.date });
+  }
+  for (const inj of extras) {
+    history.push({ id: `${inj.id}-i`, kind: 'injury', text: `Injury · ${inj.area || 'unspecified'}${inj.note ? ` — ${inj.note}` : ''}`, date: inj.date });
   }
   history.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   const breakNow = journal.find((e) => e.hiatus && (e.hiatus.start || e.date) <= today && (!e.hiatus.end || e.hiatus.end >= today));

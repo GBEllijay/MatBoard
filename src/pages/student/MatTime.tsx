@@ -247,8 +247,11 @@ export function extrasDraft(value: SessionExtrasValue, date: string) {
   };
 }
 
-/** "How it went" free-text note (lined paper, belt-worded prompt) and Injury / Break marks. Private to the student. */
-export function SessionExtras({
+/**
+ * "How it went": the one reflection field on a journal card (lined paper, belt-worded prompt).
+ * Older cards' "Stop doing" text arrives here folded in. Multi-line text keeps its lines.
+ */
+export function HowItWentField({
   idPrefix,
   report,
   value,
@@ -261,23 +264,41 @@ export function SessionExtras({
 }) {
   const preview = wornBeltPreview(report);
   const scale = QUALITY_SCALES[qualityStage(preview.belt, preview.kind === 'kids')];
-  const set = (patch: Partial<SessionExtrasValue>) => onChange({ ...value, ...patch });
   return (
-    <>
-    <label className="ink ink--wobble journal-note">
+    <label className="ink ink--wobble journal-note" data-testid="journal-how-it-went">
       <span className="ink__label">How it went</span>
       <span className="student-quiet" aria-hidden="true">
-        {scale.prompt}
+        {scale.prompt} What worked, and what to stop doing.
       </span>
       <textarea spellCheck autoCorrect="on" autoCapitalize="sentences"
         aria-label={`${idPrefix}How it went`}
-        rows={2}
-        maxLength={400}
+        rows={3}
+        maxLength={HOW_IT_WENT_MAX}
         placeholder={scale.labels[2]}
         value={value.howItWent}
-        onChange={(e) => set({ howItWent: e.target.value })}
+        onChange={(e) => onChange({ ...value, howItWent: e.target.value })}
       />
     </label>
+  );
+}
+
+/** Longest How it went the field takes. Older cards folded with stop-doing text can be longer and still open. */
+export const HOW_IT_WENT_MAX = 1000;
+
+/** Injury / Break marks. Private to the student. How it went is its own field (HowItWentField). */
+export function SessionExtras({
+  idPrefix,
+  value,
+  onChange,
+}: {
+  idPrefix: string;
+  report?: StudentProgressReport;
+  value: SessionExtrasValue;
+  onChange: (next: SessionExtrasValue) => void;
+}) {
+  const set = (patch: Partial<SessionExtrasValue>) => onChange({ ...value, ...patch });
+  return (
+    <>
     <fieldset className="ink mat-time" aria-label={`${idPrefix}Card marks`}>
       <legend className="ink__label">Mark card (optional)</legend>
       <div className="mat-time__row" role="group" aria-label={`${idPrefix}Mark card`}>

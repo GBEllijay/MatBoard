@@ -779,3 +779,44 @@ test('the license plan is recorded for a later step', () => {
     'Each Pro license includes a half-off code for 100 Instructor or Student licenses. After 100 uses, email advantageappllc@gmail.com.',
   );
 });
+
+
+test('injuries added from the list are optional: older files parse without them, new files round-trip, and merge keeps both', () => {
+  const report = sampleReport();
+  const parsed = parseProgressPacket(JSON.stringify(report));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.equal('injuries' in parsed.value, false);
+
+  const withList: StudentProgressReport = {
+    ...report,
+    injuries: [{
+      id: 'inj.list1',
+      date: '2026-11-10',
+      area: 'Left knee',
+      note: 'car accident',
+      zone: 'kneeL',
+      status: 'hurt',
+      markedOn: '2026-11-10',
+      source: 'outside',
+      createdAt: 20,
+      updatedAt: 20,
+    }],
+  };
+  const saved = parseProgressPacket(exportProgressPacket(withList));
+  assert.equal(saved.ok, true);
+  if (!saved.ok) return;
+  assert.deepEqual(saved.value.kind === 'student-progress-report' ? saved.value.injuries : undefined, withList.injuries);
+
+  const merged = mergeStudentProgress(parsed.value, withList);
+  assert.equal(merged.report.journal.length, report.journal.length);
+  assert.equal(merged.report.injuries?.[0].note, 'car accident');
+
+  const again = mergeStudentProgress(merged.report, {
+    ...withList,
+    injuries: [{ ...withList.injuries![0], note: 'should not replace' }, { id: 'inj.list2', date: '2026-11-11', area: 'Neck', note: '', source: 'training', createdAt: 21, updatedAt: 21 }],
+  });
+  assert.equal(again.report.injuries?.length, 2);
+  assert.equal(again.report.injuries?.find((row) => row.id === 'inj.list1')?.note, 'car accident');
+  assert.equal(again.report.journal.length, report.journal.length);
+});

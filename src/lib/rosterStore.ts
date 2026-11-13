@@ -3,7 +3,9 @@
  * Game plans and Competition Ready checklists live on this same save, keyed by competitor id.
  */
 
+import { isInstructorId } from './instructorIdentity.ts';
 import { clipCompetitorPhoto } from './competitorPhoto.ts';
+import { blankCompetitorPatch } from './competitorCarryOver.ts';
 import {
   competitionSnapshot,
   planMatchesCoachResultQuery,
@@ -11,9 +13,10 @@ import {
   type ImportedRank,
 } from './progress/competition.ts';
 import { parseProgressPacket } from './progress/format.ts';
-import { PROGRESS_BELTS, type ProgressBelt } from './progress/types.ts';
+import { PROGRESS_BELTS, PROGRESS_NOTE_MAX, PROGRESS_WEIGH_INS_MAX, type ProgressBelt, type WeighIn, type WeightUnit } from './progress/types.ts';
 import {
   emptyGamePlan,
+  mergeImportedGameNotes,
   normalizeGamePlan,
   normalizeGamePlanMap,
   withGameAudit,
@@ -27,6 +30,7 @@ import {
   type GameLinkFlag,
   type GameSection,
 } from './gamePlan.ts';
+import { competitorCardLinks, readRosterCard } from './rosterCardStore.ts';
 import { recordCheckIn, recordStudentAdded, recordStudentArchived, recordStudentDeleted, recordStudentRestored } from './gymEventLog.ts';
 import { isStableStudentId } from './studentIdentity.ts';
 import { isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
@@ -88,6 +92,12 @@ export type Student = {
    * The same name on the other roster is still a separate card.
    */
   linkedStudentId?: string;
+  /**
+   * Instructor this student is assigned to: a seat id, or 'owner' (instructorIdentity.ts).
+   * Set from the coach connect code the student scanned when their card share is accepted.
+   * Filled only when blank; only the owner reassigns. Never set on a guest card.
+   */
+  assignedInstructorId?: string;
   /**
    * Guest archive id. Set when this competitor card was placed from Guest competitors.
    * A guest is not an Advantage student and is never sent a message.
@@ -606,10 +616,12 @@ export function normalizeStudent(raw: unknown): Student | null {
   const card: Student = row.rosterList === 'student' ? { ...student, rosterList: 'student' } : student;
   const linked = typeof row.linkedStudentId === 'string' ? row.linkedStudentId.trim() : '';
   if (isStableStudentId(linked)) card.linkedStudentId = linked;
+  if (isInstructorId(row.assignedInstructorId)) card.assignedInstructorId = row.assignedInstructorId;
   const guestId = typeof row.guestId === 'string' ? row.guestId.trim() : '';
   if (isStableStudentId(guestId) || /^guest-[A-Za-z0-9._-]{1,74}$/.test(guestId)) card.guestId = guestId;
   const stripes = clipStripes(row.stripes);
   if (stripes !== undefined) card.stripes = stripes;
+  if (card.guestId) delete card.assignedInstructorId;
   copySyncSettings(row, card);
   copyArchive(row, card);
   return card;
@@ -983,6 +995,7 @@ function preserveRosterCard(current: Student, next: Student, draft: Partial<Stud
   const card: Student = current.rosterList === 'student' ? { ...next, rosterList: 'student' } : { ...next };
   if (current.linkedStudentId) card.linkedStudentId = current.linkedStudentId;
   if (current.guestId) card.guestId = current.guestId;
+  if (current.assignedInstructorId) card.assignedInstructorId = current.assignedInstructorId;
   const stripes = draft.stripes !== undefined ? clipStripes(draft.stripes) : current.stripes;
   if (stripes !== undefined) card.stripes = stripes;
   copySyncSettings(current, card);
@@ -1022,6 +1035,46 @@ export function setCardPhoto(id: string, photoId: string, image: string): Studen
   return next;
 }
 
+/**
+ * The Student Roster card linked to this competitor, either by Add to Competitor
+ * Roster (`competitorCardId`) or by Same person (`linkedStudentId`).
+ */
+export function linkedRosterStudent(
+  competitorId: string,
+  roster: RosterState = getRoster(),
+  storage?: Parameters<typeof competitorCardLinks>[0],
+): Student | undefined {
+  const competitor = roster.students.find((row) => row.id === competitorId);
+  if (!competitor || competitor.rosterList === 'student') return undefined;
+  for (const [studentId, compId] of competitorCardLinks(storage)) {
+    if (compId !== competitorId) continue;
+    const student = roster.students.find((row) => row.id === studentId && row.rosterList === 'student' && !isArchivedStudent(row));
+    if (student) return student;
+  }
+  if (!competitor.linkedStudentId) return undefined;
+  return roster.students.find(
+    (row) => row.rosterList === 'student' && !isArchivedStudent(row) && row.linkedStudentId === competitor.linkedStudentId,
+  );
+}
+
+/**
+ * Copy blank identity fields from the linked Student Roster card.
+ * A non-blank competitor value stays. Notes, results, weigh-ins, and plans stay.
+ * Returns the competitor card, updated or not.
+ */
+export function fillBlankCompetitorFromLinkedStudent(
+  competitorId: string,
+  storage?: Parameters<typeof readRosterCard>[1],
+): Student | null {
+  const competitor = state.students.find((row) => row.id === competitorId);
+  if (!competitor || competitor.rosterList === 'student') return competitor ?? null;
+  const student = linkedRosterStudent(competitorId, getRoster(), storage);
+  if (!student) return competitor;
+  const patch = blankCompetitorPatch(competitor, student, readRosterCard(student.id, storage));
+  if (!patch) return competitor;
+  return updateStudent(competitorId, patch) ?? competitor;
+}
+
 /** One-time: this competitor card is the same person as a Student Roster card. */
 export function linkCompetitorToRosterStudent(
   competitorId: string,
@@ -1042,7 +1095,7 @@ export function linkCompetitorToRosterStudent(
   }
   const next = { ...competitor, linkedStudentId: rosterStudent.linkedStudentId };
   commit(state.students.map((row) => (row.id === competitorId ? next : row)));
-  return { ok: true, card: next };
+  return { ok: true, card: fillBlankCompetitorFromLinkedStudent(competitorId) ?? next };
 }
 
 export function tagGuestCard(id: string, guestId: string): Student | null {
@@ -1050,6 +1103,21 @@ export function tagGuestCard(id: string, guestId: string): Student | null {
   if (!current || current.rosterList === 'student') return null;
   const next = { ...current, guestId };
   delete next.linkedStudentId;
+  commit(state.students.map((row) => (row.id === id ? next : row)));
+  return next;
+}
+
+/**
+ * Assign this card to an instructor. Fills a blank assignment; only the owner
+ * (`reassign: true`) may change one that is already set. Guests are never assigned.
+ */
+export function setAssignedInstructor(id: string, instructorId: string, options: { reassign?: boolean } = {}): Student | null {
+  if (!isInstructorId(instructorId)) return null;
+  const current = state.students.find((row) => row.id === id);
+  if (!current || current.guestId) return null;
+  if (current.assignedInstructorId === instructorId) return current;
+  if (current.assignedInstructorId && !options.reassign) return current;
+  const next = { ...current, assignedInstructorId: instructorId };
   commit(state.students.map((row) => (row.id === id ? next : row)));
   return next;
 }
@@ -1220,6 +1288,73 @@ export function resetRoster(): void {
 
 export function competitorGamePlan(studentId: string, roster: RosterState = getRoster()): CompetitorGamePlan {
   return roster.gamePlans[studentId] ?? emptyGamePlan();
+}
+
+/**
+ * Fold a blank A/B/C section of the coach game plan over the imported student
+ * game. Coach notes, Home focus, and technique links stay. The imported games
+ * stay on the competition plan too, so nothing already written is deleted.
+ */
+export function migrateSharedGamePlan(competitorId: string): CompetitorGamePlan {
+  const current = competitorGamePlan(competitorId);
+  const games = state.competitionPlans[competitorId]?.games;
+  const merged = mergeImportedGameNotes(current, games);
+  if (merged !== current) writeGamePlan(competitorId, merged);
+  return competitorGamePlan(competitorId);
+}
+
+const WEIGH_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function emptyImportedPlan(competitor: Student, now: number): ImportedCompetitionPlan {
+  return {
+    studentId: competitor.linkedStudentId || competitor.id,
+    displayName: competitor.name,
+    importedAt: now,
+    sourceUpdatedAt: now,
+    games: {
+      a: { techniques: '', notes: '' },
+      b: { techniques: '', notes: '' },
+      c: { techniques: '', notes: '' },
+    },
+    tournaments: [],
+    weighIns: [],
+    results: [],
+    weightUnit: 'lb',
+    goalWeight: null,
+    goalUnit: 'lb',
+    weighDate: '',
+  };
+}
+
+/** Append one weigh-in on this competitor's competition plan. Other plan fields stay. */
+export function addCompetitorWeighIn(
+  competitorId: string,
+  draft: { date: string; weight: string; unit: WeightUnit; note?: string },
+  now = Date.now(),
+): { ok: true; plan: ImportedCompetitionPlan } | { ok: false; error: string } {
+  const competitor = state.students.find((row) => row.id === competitorId);
+  if (!competitor || competitor.rosterList === 'student') return { ok: false, error: 'Choose a competitor card.' };
+  const date = draft.date.trim();
+  if (!WEIGH_DATE_RE.test(date)) return { ok: false, error: 'Weigh-in date must be YYYY-MM-DD.' };
+  const [year, month, day] = date.split('-').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  if (parsed.getFullYear() !== year || parsed.getMonth() !== month - 1 || parsed.getDate() !== day) {
+    return { ok: false, error: 'Weigh-in date must be YYYY-MM-DD.' };
+  }
+  const weight = Number(draft.weight.trim());
+  if (!Number.isFinite(weight) || weight <= 0 || weight > 999) return { ok: false, error: 'Add a weight above 0.' };
+  const current = state.competitionPlans[competitorId] ?? emptyImportedPlan(competitor, now);
+  if (current.weighIns.length >= PROGRESS_WEIGH_INS_MAX) return { ok: false, error: 'The weigh-in list is full.' };
+  const weighIn: WeighIn = {
+    id: createStudentId(),
+    date,
+    weight: Math.round(weight * 10) / 10,
+    unit: draft.unit === 'kg' ? 'kg' : 'lb',
+    note: (draft.note ?? '').trim().slice(0, PROGRESS_NOTE_MAX),
+  };
+  const plan: ImportedCompetitionPlan = { ...current, weighIns: [...current.weighIns, weighIn] };
+  commit(state.students, state.gamePlans, state.ready, { ...state.competitionPlans, [competitorId]: plan });
+  return { ok: true, plan };
 }
 
 export function setGameNotes(studentId: string, section: GameSection, notes: string): void {

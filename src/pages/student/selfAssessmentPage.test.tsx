@@ -4,16 +4,21 @@
  * Self-assessment controls:
  * Back. Hold for Home. Home.
  * Heading Self-assessment. Lead sentence.
- * Sentence: today's ratings start from Fundamentals. Mindset is rated here.
- *   A saved day stays as saved.
+ * Sentence: today's ratings start from the last check-in, all eight areas
+ *   including Sweeps. Anything that check-in lacks starts from Fundamentals.
+ *   Mindset is rated here. A saved day stays as saved.
  * Latest average when a check-in exists.
  * Radar chart. Trend chart.
  * Mindset hint when Fundamentals filled the other areas and Mindset is empty.
  * Self-assessment date. Changing the date loads that day's note and ratings.
- *   Today with no saved check-in reloads the Fundamentals draft.
+ *   Today with no saved check-in reloads the last check-in, then Fundamentals.
  *   Another empty date stays blank.
- * Guard, Passing, Takedowns, Escapes, Submissions, Conditioning, Mindset.
- * Each area: rating 1–5, pressed state, and Open: {benchmark} benchmark
+ * Evaluation mode: Generic, Technique-based.
+ * Generic rates Guard/Control, Passing, Sweeps, Takedowns, Escapes/Defense,
+ * Submissions, Conditioning, and Mindset. One rating each. No sub-item taps.
+ * Conditioning names stamina, power, and flexibility as context.
+ * Technique-based rates each move and the Mindset goals.
+ * Each generic area: rating 1–5, pressed state, and Open: {benchmark} benchmark
  * only when the belt the student wears has that checkpoint.
  * A white belt links Guard, Passes, and Escapes on white. It does not link
  * Takedowns or Submissions on blue. Conditioning and Mindset have no checkpoint.
@@ -44,7 +49,11 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { radarPoints, selfAssessmentShapeLabel } from '../../lib/radarChart.ts';
-import { ASSESSMENT_STORAGE_KEY, CONDITIONING_ITEMS, MINDSET_GOALS, saveAssessment, writeAssessments, type AssessmentScores } from '../../lib/studentAssessment.ts';
+import { d8Catalog } from '../../indexCards/catalog.ts';
+import { resetIndexCardStoreForTests } from '../../indexCards/store.ts';
+import { INDEX_CARDS_STORAGE_KEY, emptyIndexCards, withRating } from '../../lib/indexCards.ts';
+import { ASSESSMENT_STORAGE_KEY, MINDSET_GOALS, type AssessmentScores } from '../../lib/studentAssessment.ts';
+import { selfAssessmentLines } from '../../lib/studentReport.ts';
 import { clearStudentDemoOverlay, installStudentMockGuard, resetStudentMockGuardForTests } from '../../lib/studentDemo.ts';
 import { STUDENT_BACKUP_STAMP_KEY } from '../../lib/studentBackupStamp.ts';
 import { blankStudentReport, saveStudentReport, setFundamentalLevel, todayIso } from '../../lib/studentEdition.ts';
@@ -124,21 +133,20 @@ function setControl(node: HTMLInputElement | HTMLTextAreaElement, value: string)
 }
 
 function rateAll(host: ParentNode, score: number) {
-  for (const area of ['Guard/Control', 'Passing', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset']) {
+  for (const area of ['Guard/Control', 'Passing', 'Sweeps', 'Takedowns', 'Escapes/Defense', 'Submissions', 'Conditioning', 'Mindset']) {
     act(() => {
       labeled(host, `${area} ${score}`).click();
     });
   }
 }
 
+/** Writes check-ins exactly as an older phone stored them, without going through today's save rules. */
+function storeRaw(entries: readonly Record<string, unknown>[]) {
+  localStorage.setItem(ASSESSMENT_STORAGE_KEY, JSON.stringify({ entries }));
+}
+
 function areaLegends(): string[] {
-  const labels: string[] = [];
-  for (const [, label] of FORM) {
-    labels.push(label);
-    if (label === 'Conditioning') labels.push(...CONDITIONING_ITEMS.map((item) => item.label));
-    if (label === 'Mindset') labels.push(...MINDSET_GOALS.map((goal) => goal.label));
-  }
-  return labels;
+  return FORM.map(([, label]) => label);
 }
 
 const FORM = [
@@ -170,6 +178,12 @@ test('the self-assessment page keeps every control and Back returns to Rank & Pr
   labeled(host, 'Self-assessment note');
   labeled(host, 'Self-assessment history');
   assert.equal(control(host, 'button', 'Save self-assessment').classList.contains('ink-btn--save'), true);
+  assert.equal(control(host, 'button', 'Generic').getAttribute('aria-pressed'), 'true');
+  assert.equal(control(host, 'button', 'Technique-based').getAttribute('aria-pressed'), 'false');
+  assert.match(host.textContent ?? '', /One overall rating for each area/);
+  assert.match(host.textContent ?? '', /Stamina, power, and flexibility/);
+  assert.equal(host.querySelector('[aria-label="Mindset goals"]'), null);
+  assert.equal(host.querySelector('[aria-label="Techniques"]'), null);
   assert.deepEqual(
     [...host.querySelectorAll('.assess-area legend')].map((node) => node.textContent),
     areaLegends(),
@@ -247,11 +261,12 @@ test('a check-in saves, updates, and a white belt links only that belt', () => {
   rateAll(host, 4);
   assert.equal(labeled(host, 'Guard/Control 4').getAttribute('aria-pressed'), 'true');
   assert.equal(labeled(host, 'Guard/Control 3').getAttribute('aria-pressed'), 'false');
-  assert.equal(labeled(host, 'Sweeps 4').getAttribute('aria-pressed'), 'false');
+  assert.equal(labeled(host, 'Sweeps 4').getAttribute('aria-pressed'), 'true');
   setControl(labeled(host, 'Self-assessment note') as HTMLTextAreaElement, 'calm rounds');
   const filled: AssessmentScores = {
     guard: 4,
     passing: 4,
+    sweeps: 4,
     takedowns: 4,
     escapes: 4,
     submissions: 4,
@@ -260,7 +275,7 @@ test('a check-in saves, updates, and a white belt links only that belt', () => {
   };
   const shape = host.querySelector('svg.assess-chart');
   assert.equal(shape?.getAttribute('aria-label'), selfAssessmentShapeLabel(filled));
-  assert.equal(shape?.querySelector('polygon.assess-chart__shape')?.getAttribute('points'), radarPoints([4, 4, 4, 4, 4, 4, 4]));
+  assert.equal(shape?.querySelector('polygon.assess-chart__shape')?.getAttribute('points'), radarPoints([4, 4, 4, 4, 4, 4, 4, 4]));
   act(() => {
     control(host, 'button', 'Save self-assessment').click();
   });
@@ -416,12 +431,13 @@ test('the print route still shows the self-assessment report', () => {
   unmount(mounted);
 });
 
-test('fundamentals levels show on the chart without retyping, and a saved day is kept', () => {
+test('with no earlier check-in, fundamentals levels show on the chart without retyping, and a saved day is kept', () => {
   localStorage.clear();
   let report = withStarterRubric(blankStudentReport());
   const mark = (catalogItemId: string, categoryId: string, name: string, level: 0 | 1 | 2 | 3 | 4 | 5, now: number) => {
     report = setFundamentalLevel(report, { catalogItemId, categoryId, name }, level, now);
   };
+  mark('pos.closed-guard', 'positions', 'Closed guard', 4, 10);
   mark('sweep.scissor', 'sweeps', 'Scissor sweep', 4, 11);
   mark('sweep.hip-bump', 'sweeps', 'Hip bump sweep', 0, 12);
   mark('pass.knee-slice', 'passes', 'Knee slice pass', 2, 13);
@@ -430,30 +446,16 @@ test('fundamentals levels show on the chart without retyping, and a saved day is
   mark('sub.armbar-guard', 'submissions', 'Armbar from guard', 1, 16);
   mark('move.shrimp', 'movement', 'Shrimp', 4, 17);
   saveStudentReport(localStorage, report);
-  writeAssessments(
-    localStorage,
-    saveAssessment(
-      { entries: [] },
-      {
-        date: '2024-05-01',
-        note: 'kept from an older phone',
-        scores: { guard: 2, passing: 2, takedowns: 2, escapes: 2, submissions: 2, conditioning: 2, mindset: 2 },
-      },
-      20,
-    ),
-  );
 
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
-  assert.match(host.textContent ?? '', /Today's ratings start from Fundamentals/);
-  assert.match(host.textContent ?? '', /kept from an older phone/);
+  assert.match(host.textContent ?? '', /Today's ratings start from your last check-in, all eight areas including Sweeps/);
+  assert.match(host.textContent ?? '', /Anything that check-in lacks starts\s+from Fundamentals/);
   assert.equal(labeled(host, 'Guard/Control 4').getAttribute('aria-pressed'), 'true');
   assert.equal(labeled(host, 'Passing 2').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Sweeps 4').getAttribute('aria-pressed'), 'true', 'the Sweeps list fills the Sweeps face');
   assert.equal(labeled(host, 'Takedowns 5').getAttribute('aria-pressed'), 'true');
   assert.equal(labeled(host, 'Escapes/Defense 3').getAttribute('aria-pressed'), 'true');
-  for (const score of [1, 2, 3, 4, 5]) {
-    assert.equal(labeled(host, `Sweeps ${score}`).getAttribute('aria-pressed'), 'false');
-  }
   assert.equal(labeled(host, 'Submissions 1').getAttribute('aria-pressed'), 'true');
   assert.equal(labeled(host, 'Conditioning 4').getAttribute('aria-pressed'), 'true');
   for (const score of [1, 2, 3, 4, 5]) {
@@ -462,19 +464,17 @@ test('fundamentals levels show on the chart without retyping, and a saved day is
   const shape = host.querySelector('svg.assess-chart');
   assert.equal(
     shape?.getAttribute('aria-label'),
-    selfAssessmentShapeLabel({ guard: 4, passing: 2, takedowns: 5, escapes: 3, submissions: 1, conditioning: 4 }),
+    selfAssessmentShapeLabel({ guard: 4, passing: 2, sweeps: 4, takedowns: 5, escapes: 3, submissions: 1, conditioning: 4 }),
   );
-  assert.equal(shape?.querySelector('polygon.assess-chart__shape')?.getAttribute('points'), radarPoints([4, 2, 5, 3, 1, 4, 0]));
+  assert.equal(shape?.querySelector('polygon.assess-chart__shape')?.getAttribute('points'), radarPoints([4, 2, 4, 5, 3, 1, 4, 0]));
   assert.match(host.textContent ?? '', /Mindset is not on the Fundamentals list/);
-  const beforeSave = localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '';
-  assert.match(beforeSave, /kept from an older phone/);
-  assert.equal(beforeSave.includes(todayIso()), false);
+  assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY), null, 'opening the page writes nothing');
 
   act(() => {
     control(host, 'button', 'Save self-assessment').click();
   });
   assert.match(labeled(host, 'Self-assessment').textContent ?? '', /Rate Mindset from 1 to 5/);
-  assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY)?.includes(todayIso()), false);
+  assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY), null);
 
   act(() => {
     labeled(host, 'Mindset 2').click();
@@ -485,22 +485,22 @@ test('fundamentals levels show on the chart without retyping, and a saved day is
   });
   const savedText = localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '';
   assert.match(savedText, /from fundamentals/);
-  assert.match(savedText, /kept from an older phone/);
+  assert.match(savedText, /"sweeps":4/);
   assert.equal(labeled(host, 'Guard/Control 4').getAttribute('aria-pressed'), 'true');
   assert.equal(labeled(host, 'Mindset 2').getAttribute('aria-pressed'), 'true');
-  assert.equal(savedText.includes('"sweeps"'), false);
   unmount(mounted);
 
   report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 1, 30);
   saveStudentReport(localStorage, report);
   const again = mount(<SelfAssessmentPage />);
-  assert.equal(labeled(again.host, 'Guard/Control 4').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(again.host, 'Sweeps 4').getAttribute('aria-pressed'), 'true', 'a saved day beats the tracker');
   assert.match(again.host.textContent ?? '', /from fundamentals/);
   setControl(labeled(again.host, 'Self-assessment date') as HTMLInputElement, '2020-01-02');
   assert.equal(labeled(again.host, 'Guard/Control 4').getAttribute('aria-pressed'), 'false');
+  assert.equal(labeled(again.host, 'Sweeps 4').getAttribute('aria-pressed'), 'false');
   assert.equal((labeled(again.host, 'Self-assessment note') as HTMLTextAreaElement).value, '');
   setControl(labeled(again.host, 'Self-assessment date') as HTMLInputElement, todayIso());
-  assert.equal(labeled(again.host, 'Guard/Control 4').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(again.host, 'Sweeps 4').getAttribute('aria-pressed'), 'true');
   assert.equal((labeled(again.host, 'Self-assessment note') as HTMLTextAreaElement).value, 'from fundamentals');
 
   const day = todayIso();
@@ -510,10 +510,87 @@ test('fundamentals levels show on the chart without retyping, and a saved day is
   act(() => {
     control(again.host, 'button', `Confirm remove check-in ${day}`).click();
   });
-  assert.equal(labeled(again.host, 'Guard/Control 1').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(again.host, 'Sweeps 1').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(again.host, 'Guard/Control 4').getAttribute('aria-pressed'), 'true');
   assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY)?.includes('from fundamentals'), false);
-  assert.match(localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '', /kept from an older phone/);
   unmount(again);
+});
+
+test('a new day carries all eight faces, Sweeps included, from the last check-in', () => {
+  localStorage.clear();
+  let report = withStarterRubric(blankStudentReport());
+  report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 5, 10);
+  report = setFundamentalLevel(report, { catalogItemId: 'td.double-leg', categoryId: 'takedowns', name: 'Double leg' }, 5, 11);
+  saveStudentReport(localStorage, report);
+  storeRaw([
+    {
+      id: 'assess.last',
+      date: '2020-03-02',
+      note: 'last time',
+      scores: { guard: 3, passing: 4, sweeps: 2, takedowns: 1, escapes: 3, submissions: 4, conditioning: 2, mindset: 5 },
+    },
+    {
+      id: 'assess.before',
+      date: '2020-03-01',
+      note: 'before that',
+      scores: { guard: 1, passing: 1, sweeps: 1, takedowns: 1, escapes: 1, submissions: 1, conditioning: 1, mindset: 1 },
+    },
+  ]);
+  const before = localStorage.getItem(ASSESSMENT_STORAGE_KEY);
+  const mounted = mount(<SelfAssessmentPage />);
+  const { host } = mounted;
+  const pressed = FORM.map(([, label]) =>
+    [1, 2, 3, 4, 5].find((score) => labeled(host, `${label} ${score}`).getAttribute('aria-pressed') === 'true') ?? null,
+  );
+  assert.deepEqual(pressed, [3, 4, 2, 1, 3, 4, 2, 5], 'every face, Sweeps included, comes from the last check-in, not the tracker');
+  assert.equal((labeled(host, 'Self-assessment note') as HTMLTextAreaElement).value, '', 'the note is not carried');
+  assert.equal(control(host, 'button', 'Save self-assessment').textContent, 'Save self-assessment');
+  assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY), before, 'opening the page writes nothing');
+
+  act(() => {
+    control(host, 'button', 'Save self-assessment').click();
+  });
+  const saved = JSON.parse(localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '{}') as { entries: { date: string; scores: AssessmentScores }[] };
+  const todayEntry = saved.entries.find((entry) => entry.date === todayIso());
+  assert.equal(todayEntry?.scores.sweeps, 2, 'Sweeps saves with the rest, no retyping');
+  assert.equal(todayEntry?.scores.passing, 4);
+  assert.equal(saved.entries.find((entry) => entry.date === '2020-03-02')?.scores.sweeps, 2, 'the earlier day is unchanged');
+  unmount(mounted);
+});
+
+test('a new day after an old seven-value check-in leaves Sweeps blank and asks for it', () => {
+  localStorage.clear();
+  saveStudentReport(localStorage, withStarterRubric(blankStudentReport()));
+  storeRaw([
+    {
+      id: 'assess.seven',
+      date: '2020-03-02',
+      note: 'seven',
+      scores: { guard: 3, passing: 4, takedowns: 1, escapes: 3, submissions: 4, conditioning: 2, mindset: 5 },
+    },
+  ]);
+  const mounted = mount(<SelfAssessmentPage />);
+  const { host } = mounted;
+  assert.equal(labeled(host, 'Passing 4').getAttribute('aria-pressed'), 'true');
+  for (const score of [1, 2, 3, 4, 5]) {
+    assert.equal(labeled(host, `Sweeps ${score}`).getAttribute('aria-pressed'), 'false', 'Sweeps is not copied from Passing');
+  }
+  assert.match(host.textContent ?? '', /Sweeps not rated/, 'the older day lists Sweeps as not rated');
+  act(() => {
+    control(host, 'button', 'Save self-assessment').click();
+  });
+  assert.match(labeled(host, 'Self-assessment').textContent ?? '', /Rate Sweeps from 1 to 5/);
+  assert.equal((localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '').includes(todayIso()), false);
+  act(() => {
+    labeled(host, 'Sweeps 3').click();
+  });
+  act(() => {
+    control(host, 'button', 'Save self-assessment').click();
+  });
+  const saved = JSON.parse(localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '{}') as { entries: { date: string; scores: AssessmentScores }[] };
+  assert.equal(saved.entries.find((entry) => entry.date === todayIso())?.scores.sweeps, 3);
+  assert.equal(Object.hasOwn(saved.entries.find((entry) => entry.date === '2020-03-02')?.scores ?? {}, 'sweeps'), false);
+  unmount(mounted);
 });
 
 test('an old seven-value check-in keeps Sweeps empty until that rating is saved', () => {
@@ -528,7 +605,7 @@ test('an old seven-value check-in keeps Sweeps empty until that rating is saved'
     conditioning: 2,
     mindset: 3,
   };
-  writeAssessments(localStorage, saveAssessment({ entries: [] }, { date: today, note: 'seven', scores: seven }, 40));
+  storeRaw([{ id: 'assess.seven', date: today, note: 'seven', scores: seven }]);
   assert.equal((localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '').includes('sweeps'), false);
 
   const mounted = mount(<SelfAssessmentPage />);
@@ -597,145 +674,179 @@ function freshPhone() {
   saveStudentReport(localStorage, blankStudentReport());
 }
 
-test('mindset goals score on the same 1–5 taps and roll up without rewriting an older day', () => {
+test('technique ratings and mindset goals stay off the generic check-in', () => {
   freshPhone();
+  resetIndexCardStoreForTests();
+  const seed = withRating(d8Catalog(), emptyIndexCards(), 'sweep.hip-bump', 4);
+  localStorage.setItem(INDEX_CARDS_STORAGE_KEY, JSON.stringify(seed));
   const today = todayIso();
-  const older = {
-    guard: 5,
-    passing: 3,
-    takedowns: 4,
-    escapes: 2,
-    submissions: 4,
-    conditioning: 2,
-    mindset: 3,
-  };
-  writeAssessments(localStorage, saveAssessment({ entries: [] }, { date: '2024-05-01', note: 'kept from an older phone', scores: older }, 41));
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
-  for (const goal of MINDSET_GOALS) {
-    labeled(host, `${goal.label} rating`);
-    for (const score of [1, 2, 3, 4, 5]) {
-      assert.equal(labeled(host, `${goal.label} ${score}`).getAttribute('aria-pressed'), 'false');
-    }
-  }
-  act(() => {
-    labeled(host, `${MINDSET_GOALS[0].label} 5`).click();
-    labeled(host, `${MINDSET_GOALS[1].label} 2`).click();
-  });
-  assert.equal(labeled(host, `${MINDSET_GOALS[0].label} 5`).getAttribute('aria-pressed'), 'true');
-  assert.equal(labeled(host, `${MINDSET_GOALS[1].label} 2`).getAttribute('aria-pressed'), 'true');
-  assert.equal(labeled(host, `${MINDSET_GOALS[2].label} 5`).getAttribute('aria-pressed'), 'false');
-  assert.equal(labeled(host, 'Mindset 4').getAttribute('aria-pressed'), 'true');
-  assert.equal(labeled(host, 'Mindset 3').getAttribute('aria-pressed'), 'false');
-  rateAll(host, 4);
+  assert.equal(host.querySelector('[aria-label="Mindset goals"]'), null);
+  assert.equal(host.querySelector('[aria-label="Closed Guard rating"]'), null);
+  assert.match(host.textContent ?? '', /Stamina, power, and flexibility/);
+  rateAll(host, 3);
   act(() => {
     control(host, 'button', 'Save self-assessment').click();
   });
+  const afterGeneric = localStorage.getItem(INDEX_CARDS_STORAGE_KEY) ?? '';
+  assert.match(afterGeneric, /"sweep.hip-bump"/);
+  assert.match(afterGeneric, /"rating":4/);
+  assert.equal(afterGeneric.includes('pos.closed-guard'), false);
+  const generic = JSON.parse(localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '{}') as {
+    entries: { date: string; scores: AssessmentScores; mindsetGoals?: Record<string, number> }[];
+  };
+  assert.equal(generic.entries.find((entry) => entry.date === today)?.scores.mindset, 3);
+  assert.equal(generic.entries.find((entry) => entry.date === today)?.scores.guard, 3);
+  assert.equal(generic.entries.find((entry) => entry.date === today)?.mindsetGoals, undefined);
+
+  act(() => {
+    control(host, 'button', 'Technique-based').click();
+  });
+  assert.equal(control(host, 'button', 'Technique-based').getAttribute('aria-pressed'), 'true');
+  assert.equal(control(host, 'button', 'Update self-assessment').classList.contains('ink-btn--save'), true);
+  assert.match(host.textContent ?? '', /Rate each technique/);
+  assert.equal(host.querySelector('[aria-label="Guard/Control rating"]'), null);
+  labeled(host, 'Mindset goals');
+  labeled(host, 'Closed Guard rating');
+  for (const goal of MINDSET_GOALS) labeled(host, `${goal.label} rating`);
+  assert.equal(labeled(host, 'Hip bump sweep 4').getAttribute('aria-pressed'), 'true');
+  act(() => {
+    labeled(host, `${MINDSET_GOALS[0].label} 5`).click();
+    labeled(host, `${MINDSET_GOALS[1].label} 2`).click();
+    labeled(host, 'Closed Guard 2').click();
+  });
+  assert.equal(labeled(host, `${MINDSET_GOALS[0].label} 5`).getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Closed Guard 2').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Hip bump sweep 4').getAttribute('aria-pressed'), 'true');
+  const cardsAfterTap = localStorage.getItem(INDEX_CARDS_STORAGE_KEY) ?? '';
+  assert.match(cardsAfterTap, /"id":"pos.closed-guard"/);
+  assert.match(cardsAfterTap, /"rating":2/);
+  assert.match(cardsAfterTap, /"rating":4/);
+  act(() => {
+    control(host, 'button', 'Update self-assessment').click();
+  });
   const saved = JSON.parse(localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '{}') as {
-    entries: { date: string; note: string; scores: AssessmentScores & { sweeps?: number }; mindsetGoals?: Record<string, number> }[];
+    entries: { date: string; scores: AssessmentScores; mindsetGoals?: Record<string, number> }[];
   };
   const todayEntry = saved.entries.find((entry) => entry.date === today);
-  const oldEntry = saved.entries.find((entry) => entry.date === '2024-05-01');
-  assert.ok(todayEntry);
-  assert.equal(todayEntry?.scores.mindset, 4);
-  assert.equal(todayEntry?.scores.guard, 4);
-  assert.equal(todayEntry?.scores.conditioning, 4);
-  assert.equal(todayEntry?.scores.sweeps, undefined);
+  assert.equal(todayEntry?.scores.mindset, 3);
+  assert.equal(todayEntry?.scores.guard, 3);
+  assert.equal(todayEntry?.scores.conditioning, 3);
   assert.equal(todayEntry?.mindsetGoals?.['calm-focused'], 5);
   assert.equal(todayEntry?.mindsetGoals?.['intentional-roll'], 2);
   assert.equal(todayEntry?.mindsetGoals?.['game-plan'], undefined);
-  assert.equal(oldEntry?.note, 'kept from an older phone');
-  assert.equal(oldEntry?.scores.mindset, 3);
-  assert.equal(oldEntry?.mindsetGoals, undefined);
   assert.match(host.textContent ?? '', /I've formed a routine and habit that keeps me calm and focused: 5/);
+  act(() => {
+    control(host, 'button', 'Generic').click();
+  });
+  assert.equal(host.querySelector('[aria-label="Mindset goals"]'), null);
+  assert.equal(host.querySelector('[aria-label="Closed Guard rating"]'), null);
+  assert.equal(labeled(host, 'Mindset 3').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(host, 'Guard/Control 3').getAttribute('aria-pressed'), 'true');
+  assert.match(host.textContent ?? '', /Stamina, power, and flexibility/);
+  const cardsAfterGenericReturn = localStorage.getItem(INDEX_CARDS_STORAGE_KEY) ?? '';
+  assert.match(cardsAfterGenericReturn, /"id":"pos.closed-guard"/);
+  assert.match(cardsAfterGenericReturn, /"rating":4/);
   unmount(mounted);
-
-  const again = mount(<SelfAssessmentPage />);
-  assert.equal(labeled(again.host, `${MINDSET_GOALS[0].label} 5`).getAttribute('aria-pressed'), 'true');
-  assert.equal(labeled(again.host, `${MINDSET_GOALS[1].label} 2`).getAttribute('aria-pressed'), 'true');
-  assert.equal(labeled(again.host, 'Mindset 4').getAttribute('aria-pressed'), 'true');
-  setControl(labeled(again.host, 'Self-assessment date') as HTMLInputElement, '2024-05-01');
-  assert.equal(labeled(again.host, 'Mindset 3').getAttribute('aria-pressed'), 'true');
-  for (const goal of MINDSET_GOALS) {
-    assert.equal(labeled(again.host, `${goal.label} 5`).getAttribute('aria-pressed'), 'false');
-  }
-  unmount(again);
 });
 
-test('conditioning items score on the same 1–5 taps and roll up without rewriting an older day', () => {
+test('older sub-line scores show as one face and still export', () => {
   freshPhone();
-  const today = todayIso();
+  resetIndexCardStoreForTests();
+  const indexBefore = JSON.stringify(withRating(d8Catalog(), emptyIndexCards(), 'sweep.scissor', 5));
+  localStorage.setItem(INDEX_CARDS_STORAGE_KEY, indexBefore);
   const older = {
     guard: 2,
     passing: 2,
     takedowns: 2,
     escapes: 2,
     submissions: 2,
-    conditioning: 2,
-    mindset: 2,
+    conditioning: 1,
+    mindset: 5,
   };
-  writeAssessments(localStorage, saveAssessment({ entries: [] }, { date: '2024-05-01', note: 'kept from an older phone', scores: older }, 42));
+  storeRaw([
+    {
+      id: 'assess.older',
+      date: '2024-05-01',
+      note: 'kept from an older phone',
+      scores: older,
+      conditioningItems: { stamina: 5, power: 1, flexibility: 3 },
+      mindsetGoals: { 'calm-focused': 5, 'intentional-roll': 2 },
+    },
+  ]);
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
-  for (const item of CONDITIONING_ITEMS) {
-    labeled(host, `${item.label} rating`);
-    for (const score of [1, 2, 3, 4, 5]) {
-      assert.equal(labeled(host, `${item.label} ${score}`).getAttribute('aria-pressed'), 'false');
-    }
-  }
-  const speed = CONDITIONING_ITEMS.find((item) => item.id === 'speed');
-  const power = CONDITIONING_ITEMS.find((item) => item.id === 'power');
-  assert.ok(speed && power);
-  act(() => {
-    labeled(host, `${speed.label} 5`).click();
-    labeled(host, `${power.label} 1`).click();
-  });
-  assert.equal(labeled(host, 'Speed 5').getAttribute('aria-pressed'), 'true');
-  assert.equal(labeled(host, 'Power 1').getAttribute('aria-pressed'), 'true');
-  assert.equal(labeled(host, 'Flexibility 5').getAttribute('aria-pressed'), 'false');
+  assert.match(host.textContent ?? '', /Stamina, power, and flexibility/);
+  assert.equal(host.querySelector('[aria-label="Stamina during live rolls rating"]'), null);
+  assert.equal(host.querySelector('[aria-label="Power rating"]'), null);
+  assert.match(host.textContent ?? '', /kept from an older phone/);
+  assert.match(host.textContent ?? '', /Stamina during live rolls: 5/);
+  assert.match(host.textContent ?? '', /Power: 1/);
+  assert.match(host.textContent ?? '', /Flexibility: 3/);
+  assert.match(host.textContent ?? '', /I've formed a routine and habit that keeps me calm and focused: 5/);
+  setControl(labeled(host, 'Self-assessment date') as HTMLInputElement, '2024-05-01');
   assert.equal(labeled(host, 'Conditioning 3').getAttribute('aria-pressed'), 'true');
-  assert.equal(labeled(host, 'Conditioning 2').getAttribute('aria-pressed'), 'false');
+  assert.equal(labeled(host, 'Conditioning 1').getAttribute('aria-pressed'), 'false');
+  assert.equal(labeled(host, 'Mindset 4').getAttribute('aria-pressed'), 'true');
+  assert.match(host.textContent ?? '', /Earlier conditioning detail averages to 3/);
+  assert.match(host.textContent ?? '', /Earlier mindset detail averages to 4/);
   act(() => {
-    labeled(host, 'Conditioning 5').click();
+    control(host, 'button', 'Update self-assessment').click();
   });
-  assert.equal(labeled(host, 'Conditioning 3').getAttribute('aria-pressed'), 'true');
-  rateAll(host, 4);
-  act(() => {
-    control(host, 'button', 'Save self-assessment').click();
-  });
-  const saved = JSON.parse(localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '{}') as {
+  const kept = JSON.parse(localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '{}') as {
     entries: {
-      date: string;
-      note: string;
       scores: AssessmentScores;
       conditioningItems?: Record<string, number>;
       mindsetGoals?: Record<string, number>;
+      directFaces?: { conditioning?: boolean; mindset?: boolean };
     }[];
   };
-  const todayEntry = saved.entries.find((entry) => entry.date === today);
-  const oldEntry = saved.entries.find((entry) => entry.date === '2024-05-01');
-  assert.equal(todayEntry?.scores.conditioning, 3);
-  assert.equal(todayEntry?.scores.guard, 4);
-  assert.equal(todayEntry?.scores.mindset, 4);
-  assert.equal(todayEntry?.conditioningItems?.speed, 5);
-  assert.equal(todayEntry?.conditioningItems?.power, 1);
-  assert.equal(todayEntry?.conditioningItems?.flexibility, undefined);
-  assert.equal(todayEntry?.conditioningItems?.warmup, undefined);
-  assert.equal(todayEntry?.mindsetGoals, undefined);
-  assert.equal(oldEntry?.scores.conditioning, 2);
-  assert.equal(oldEntry?.conditioningItems, undefined);
-  assert.match(host.textContent ?? '', /Speed: 5/);
-  assert.match(host.textContent ?? '', /Power: 1/);
+  assert.equal(kept.entries[0].scores.conditioning, 1);
+  assert.equal(kept.entries[0].scores.mindset, 5);
+  assert.equal(kept.entries[0].conditioningItems?.stamina, 5);
+  assert.equal(kept.entries[0].conditioningItems?.power, 1);
+  assert.equal(kept.entries[0].conditioningItems?.flexibility, 3);
+  assert.equal(kept.entries[0].mindsetGoals?.['calm-focused'], 5);
+  assert.equal(kept.entries[0].mindsetGoals?.['intentional-roll'], 2);
+  assert.equal(kept.entries[0].directFaces, undefined);
+  assert.equal(localStorage.getItem(INDEX_CARDS_STORAGE_KEY), indexBefore);
+  const lines = selfAssessmentLines(blankStudentReport(), { entries: kept.entries as never });
+  assert.equal(lines.some((line) => line.includes('Conditioning: 1')), true);
+  assert.equal(lines.some((line) => line.includes('Mindset: 5')), true);
+  assert.equal(lines.some((line) => line.includes('Stamina during live rolls: 5')), true);
+  assert.equal(lines.some((line) => line.includes('Power: 1')), true);
+  assert.equal(lines.some((line) => line.includes('Flexibility: 3')), true);
+  assert.equal(lines.some((line) => line.includes("I've formed a routine and habit that keeps me calm and focused: 5")), true);
+
+  act(() => {
+    labeled(host, 'Conditioning 5').click();
+  });
+  assert.equal(labeled(host, 'Conditioning 5').getAttribute('aria-pressed'), 'true');
+  act(() => {
+    control(host, 'button', 'Update self-assessment').click();
+  });
+  const rated = JSON.parse(localStorage.getItem(ASSESSMENT_STORAGE_KEY) ?? '{}') as {
+    entries: {
+      scores: AssessmentScores;
+      conditioningItems?: Record<string, number>;
+      directFaces?: { conditioning?: boolean };
+    }[];
+  };
+  assert.equal(rated.entries[0].scores.conditioning, 5);
+  assert.equal(rated.entries[0].scores.mindset, 5);
+  assert.equal(rated.entries[0].directFaces?.conditioning, true);
+  assert.equal(rated.entries[0].conditioningItems?.stamina, 5);
+  assert.equal(rated.entries[0].conditioningItems?.flexibility, 3);
+  assert.equal(localStorage.getItem(INDEX_CARDS_STORAGE_KEY), indexBefore);
   unmount(mounted);
 
+  resetIndexCardStoreForTests();
   const again = mount(<SelfAssessmentPage />);
-  assert.equal(labeled(again.host, 'Speed 5').getAttribute('aria-pressed'), 'true');
-  assert.equal(labeled(again.host, 'Power 1').getAttribute('aria-pressed'), 'true');
-  assert.equal(labeled(again.host, 'Conditioning 3').getAttribute('aria-pressed'), 'true');
   setControl(labeled(again.host, 'Self-assessment date') as HTMLInputElement, '2024-05-01');
-  assert.equal(labeled(again.host, 'Conditioning 2').getAttribute('aria-pressed'), 'true');
-  for (const item of CONDITIONING_ITEMS) {
-    assert.equal(labeled(again.host, `${item.label} 5`).getAttribute('aria-pressed'), 'false');
-  }
+  assert.equal(labeled(again.host, 'Conditioning 5').getAttribute('aria-pressed'), 'true');
+  assert.equal(labeled(again.host, 'Mindset 4').getAttribute('aria-pressed'), 'true');
+  assert.equal(again.host.textContent?.includes('Earlier conditioning detail averages to 3'), false);
+  assert.match(again.host.textContent ?? '', /Stamina during live rolls: 5/);
   unmount(again);
 });

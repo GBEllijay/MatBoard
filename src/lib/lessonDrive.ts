@@ -31,6 +31,7 @@
 
 import { publishLessonToDrive, publishTrainingVideos, readDriveBinding } from './googleDrive.ts';
 import { replayForDrive } from './replayAnalysis.ts';
+import { TRAINING_CLOUD_ACTION, TRAINING_CLOUD_LEAD, TRAINING_CLOUD_WARNING } from './storageCopy.ts';
 import type { DriveLessonDocument, TrainingVideoUpload, TrainingVideoUploadResult } from './googleDrive.ts';
 import {
   clampDriveFileId,
@@ -63,6 +64,24 @@ export const OWNER_DRIVE_BODY =
   'When the gym Google Drive folder is connected, a lesson plan saves there as the coach types, and attached technique videos are copied into a dated folder under Videos. Older clips already in that day’s training-videos folder stay there. This phone keeps those clips for offline play. Leaving the page or skipping upload still keeps the draft. Version history in that folder shows each coach’s week so you can choose what to keep. Advantage does not host the photos or videos.';
 export const OWNER_DRIVE_QUEUE =
   'These rows are lesson text and Drive file ids on this phone. When Google Drive is connected, the lesson text and video files are in that folder. Advantage does not store the video files.';
+
+/** Instructor Edition Sunday review card when the gym already has Advantage Cloud. */
+export const OWNER_CLOUD_TITLE = 'Class plans';
+export const OWNER_CLOUD_BODY =
+  'These rows are lesson drafts on this phone. Tap a class to open it, then approve, request changes, or reject.';
+export const OWNER_CLOUD_QUEUE = 'Lesson plans and videos save to Advantage Cloud for this gym.';
+
+export function ownerDriveTitle(cloudOn: boolean): string {
+  return cloudOn ? OWNER_CLOUD_TITLE : OWNER_DRIVE_TITLE;
+}
+
+export function ownerDriveBody(cloudOn: boolean): string {
+  return cloudOn ? OWNER_CLOUD_BODY : OWNER_DRIVE_BODY;
+}
+
+export function ownerDriveQueueNote(cloudOn: boolean): string {
+  return cloudOn ? OWNER_CLOUD_QUEUE : OWNER_DRIVE_QUEUE;
+}
 
 export type LessonMediaRef = {
   section: 'warmup' | 'technique' | 'cooldown';
@@ -332,6 +351,8 @@ export function trainingClipHandoff(input: {
   driveConnected: boolean;
   /** Live seat allowed into Daily Training Videos. */
   seatedAuthorized?: boolean;
+  /** Advantage Cloud answered as on for this license. Wording only. */
+  cloudOn?: boolean;
 }): TrainingClipHandoff {
   const seated = Boolean(input.seatedAuthorized);
   const share = input.proSuite || seated;
@@ -342,6 +363,9 @@ export function trainingClipHandoff(input: {
       action: '',
       warning: 'Clips stay on this device. Nothing is uploaded.',
     };
+  }
+  if (input.cloudOn && !input.driveConnected) {
+    return { share: true, lead: TRAINING_CLOUD_LEAD, action: TRAINING_CLOUD_ACTION, warning: TRAINING_CLOUD_WARNING };
   }
   const warning = input.driveConnected
     ? 'Until this day is saved, these clips stay on this device only and are not shared with the owner or other instructors yet. This phone keeps a copy for offline play.'
@@ -373,6 +397,7 @@ export function trainingClipStayCopy(input: {
   proSuite: boolean;
   driveConnected: boolean;
   seatedAuthorized?: boolean;
+  cloudOn?: boolean;
 }): string {
   const handoff = trainingClipHandoff(input);
   if (!handoff.share) return handoff.warning;
@@ -430,8 +455,9 @@ export function lessonRevisionLabel(revision: LessonRevision): string {
   const designation = revision.plan.classDesignation?.trim() ?? '';
   const title = revision.plan.lessonTitle?.trim() ?? '';
   const time = revision.plan.classTime?.trim() ?? '';
+  // Keep hyphenated class names intact. Do not split on "-" or " - ".
   const klass = [designation, title, time].filter(Boolean).join(' ');
-  const what = revision.kind === 'distribution' ? 'Shared for distribution' : 'Draft';
+  const what = revision.kind === 'distribution' ? 'Shared for distribution' : 'Waiting for review';
   return klass
     ? `${who} · ${klass} · ${revision.dateKey} · ${what}`
     : `${who} · ${revision.dateKey} · ${what}`;

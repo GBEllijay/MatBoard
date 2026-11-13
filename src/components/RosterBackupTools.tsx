@@ -29,6 +29,7 @@ import {
   parseRosterBackupOnDevice,
 } from '../lib/rosterBackupDevice';
 import { normalizeRoster } from '../lib/rosterStore';
+import { ROSTER_CLOUD_HINT } from '../lib/storageCopy';
 
 function downloadJson(filename: string, text: string): void {
   const blob = new Blob([text], { type: 'application/json' });
@@ -223,6 +224,11 @@ export function RosterBackupTools({ seat, canExport, canImport }: Props) {
         A full backup keeps everything on this device, private coach notes included. Keep it private. Importing only adds
         students and fills blanks.
       </p>
+      {cloud?.role.canSubmit || cloud?.role.canRead ? (
+        <p className="roster__csv-hint" data-roster-cloud-hint="">
+          {ROSTER_CLOUD_HINT}
+        </p>
+      ) : null}
       {cloud?.role.isOwner ? (
         <label className="roster__trust">
           <input type="checkbox" checked={cloud.trustMode} disabled={busy} onChange={() => void toggleTrust()} /> Trust

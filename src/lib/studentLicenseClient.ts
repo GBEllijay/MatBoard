@@ -3,10 +3,11 @@
  * stay in the request body. Nothing here writes them to a log.
  */
 
+import { keepStudentSideToken, wouldDowngradePass } from './passDowngrade.ts';
 import { joinCloudAcademy } from './academyMembership.ts';
 import { acceptServerToken, readDeviceId } from './entitlement.ts';
 import { ENTITLEMENT_TOKEN_KEY } from './entitlement.ts';
-import { saveInboxPass } from './studentInboxClient.ts';
+import { readStoredEntitlementToken, saveInboxPass } from './studentInboxClient.ts';
 import { applyServerGrant } from './serverGrant.ts';
 
 export type StudentLicenseRow = {
@@ -14,9 +15,10 @@ export type StudentLicenseRow = {
   createdAt: string;
   claimed: boolean;
   code?: string;
+  invite?: string;
 };
 
-export type HalfOffPointer = { code: string; usesLeft: number; maxUses: number };
+export type HalfOffPointer = { code: string; usesLeft: number; maxUses: number; percentOff?: number | null };
 
 export type StudentLicenseList = {
   ok: true;
@@ -85,7 +87,7 @@ export async function listStudentLicenses(fetcher: typeof fetch = fetch): Promis
 
 export async function issueStudentLicense(
   fetcher: typeof fetch = fetch,
-): Promise<{ ok: true; code: string; left: number; cap: number } | StudentLicenseFailure> {
+): Promise<{ ok: true; code: string; invite?: string; left: number; cap: number } | StudentLicenseFailure> {
   const token = readToken();
   if (!token) return { ok: false, error: 'Sign in on this device to issue a free Student license.' };
   try {
@@ -93,7 +95,13 @@ export async function issueStudentLicense(
     if (status >= 400 || body.ok !== true || typeof body.code !== 'string') {
       return failure(body, 'Could not issue a free Student license.');
     }
-    return { ok: true, code: body.code, left: Number(body.left ?? 0), cap: Number(body.cap ?? 5) };
+    return {
+      ok: true,
+      code: body.code,
+      ...(typeof body.invite === 'string' ? { invite: body.invite } : {}),
+      left: Number(body.left ?? 0),
+      cap: Number(body.cap ?? 5),
+    };
   } catch {
     return { ok: false, error: 'Could not issue a free Student license.' };
   }
@@ -141,13 +149,29 @@ export async function claimStudentLicense(
   }
 }
 
-/** Save the pass on this browser and connect the gym. The home-screen app still uses Restore. */
+export type AppliedStudentLicense = { applied: boolean; keptHigher: boolean };
+
+/**
+ * Save the pass on this browser and connect the gym, the way a coach-connect
+ * scan links a student to the academy. The home-screen app still uses Restore.
+ *
+ * One no-downgrade rule (passDowngrade.ts, shared with code redeem): a higher pass
+ * already here (Instructor seat, Media / Instructor / Pro license, owner) is never
+ * replaced, because it already opens Student Edition. The Student pass is kept
+ * beside it instead, and the academy join and student inbox pass still save.
+ */
 export async function applyClaimedStudentLicense(
   result: StudentLicenseClaimResult,
   gymName: string,
-): Promise<boolean> {
+  storage: Storage = localStorage,
+): Promise<AppliedStudentLicense> {
   applyServerGrant({ grants: result.grants });
-  joinCloudAcademy(localStorage, { license: result.gymId, gymName });
-  if (result.studentPass) saveInboxPass(localStorage, result.studentPass);
-  return acceptServerToken(result.token);
+  joinCloudAcademy(storage, { license: result.gymId, gymName });
+  if (result.studentPass) saveInboxPass(storage, result.studentPass);
+  if (wouldDowngradePass(readStoredEntitlementToken(storage), result.token)) {
+    keepStudentSideToken(storage, result.token);
+    return { applied: false, keptHigher: true };
+  }
+  const applied = await acceptServerToken(result.token);
+  return { applied, keptHigher: false };
 }

@@ -13,7 +13,7 @@ import {
   weightToTarget,
 } from './progress/competition.ts';
 import type { StudentProgressReport } from './progress/types.ts';
-import { ASSESSMENT_AREAS } from './studentAssessment.ts';
+import { ASSESSMENT_FORM_AREAS } from './studentAssessment.ts';
 import { studentDemoRequested } from './studentDemo.ts';
 
 export const TRAINING_GROUP_LABEL = 'Training & Journal';
@@ -98,7 +98,7 @@ export const COACH_LINKS: readonly MenuLink[] = [
 
 export const BACKUP_LINKS: readonly MenuLink[] = [
   { label: 'Print progress report', note: 'PDF of rank, journal, and competition', to: '/student/print/progress' },
-  { label: 'Print self-assessment', note: 'PDF of the seven areas', to: '/student/print/assessment' },
+  { label: 'Print self-assessment', note: 'PDF of the eight areas', to: '/student/print/assessment' },
   { label: 'Connections', note: 'Academy folder, personal drive, and backup', to: '/student/connections' },
 ];
 
@@ -200,7 +200,7 @@ export function isSelfAssessmentHash(id: string): boolean {
   if (id === 'self-assessment') return true;
   if (!id.startsWith('assess-')) return false;
   const area = id.slice('assess-'.length);
-  return ASSESSMENT_AREAS.some((item) => item.id === area);
+  return ASSESSMENT_FORM_AREAS.some((item) => item.id === area);
 }
 
 /**

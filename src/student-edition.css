@@ -783,6 +783,29 @@ button.student-book .student-mark__press {
   gap: 0.5rem;
 }
 
+.coach-update .blue-belt-confirm {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.7rem 0.8rem 0.8rem;
+  border: 2px solid #1f4fa3;
+  border-radius: 14px;
+  background: rgba(225, 236, 255, 0.7);
+}
+
+.coach-update .blue-belt-confirm legend {
+  padding: 0 0.3rem;
+  font-weight: 800;
+  color: #1f4fa3;
+}
+
+.coach-update .blue-belt-confirm label {
+  display: grid;
+  gap: 0.2rem;
+  max-width: 10rem;
+  font-weight: 700;
+}
+
 .student-confirm .ink-btn {
   min-height: 36px;
   padding: 0.05rem 0.7rem;
@@ -2653,6 +2676,23 @@ input.sr-only.student-film-file {
   flex: none;
 }
 
+.student-share-contents {
+  margin: 0.35rem 0 0.75rem;
+}
+
+.student-share-contents summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+  display: list-item;
+  padding: 0.35rem 0;
+}
+
+.student-share-contents p {
+  margin: 0.45rem 0 0;
+  color: #3a3a3c;
+}
+
 .student-share-other {
   display: grid;
   gap: 0.45rem;
@@ -3243,4 +3283,51 @@ body:has(main.academy-modern) .parent-approvals ~ main.student.academy-modern {
 .video-link__list .ink-btn {
   flex: 1 1 12rem;
   min-height: 44px;
+}
+
+/* Static D8 diamond on the self-assessment print sheet: diamond above, eight bars below. */
+.report-layout.report-layout--diamond {
+  grid-template-columns: 1fr !important;
+  align-items: start;
+}
+
+.report-diamond__svg {
+  display: block;
+  width: 100%;
+  max-width: 34rem;
+  height: auto;
+}
+
+.report-diamond__caption {
+  font: 700 10px Inter, Helvetica, Arial, sans-serif;
+  fill: #0c2344;
+}
+
+.report-diamond__label {
+  font: 400 10px Inter, Helvetica, Arial, sans-serif;
+  fill: #1d1d1f;
+}
+
+.report-diamond__score {
+  font: 700 13px Inter, Helvetica, Arial, sans-serif;
+}
+
+.report-layout--diamond .report-bars li {
+  grid-template-columns: 7.6rem 1fr auto;
+}
+
+.report-bar__prior {
+  color: #6e6e73;
+  font-weight: 400;
+}
+
+@media print {
+  .report-diamond__svg {
+    max-width: 6.5in;
+  }
+}
+
+.coach-update .blue-belt-confirm__note {
+  color: #8a4b00;
+  font-weight: 700;
 }

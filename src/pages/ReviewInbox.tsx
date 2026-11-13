@@ -9,10 +9,10 @@ import { LessonVersionHistory } from '../components/LessonVersionHistory';
 import { SiteFooter } from '../components/SiteFooter';
 import { getClassPhotoPromotion } from '../lib/classPhotoPromotions';
 import {
-  DRIVE_HANDOFF_EMPTY,
   DRIVE_HANDOFF_SAVED,
+  checkReviewHandoff,
   publishReviewToGym,
-  pullReviewHandoff,
+  reviewHandoffCheckNote,
 } from '../lib/driveHandoff';
 import { listLessonRevisions } from '../lib/lessonDrive';
 import { addFolderFiles } from '../lib/photoStore';
@@ -86,15 +86,11 @@ export function ReviewInboxPage() {
   };
 
   const checkFolder = () => {
-    void pullReviewHandoff().then((result) => {
-      if (result === 'connect') {
-        setHandoffChecked(false);
-        setHandoffNote('');
-        return;
-      }
-      setHandoffChecked(true);
-      setHandoffNote(result === 'saved' ? DRIVE_HANDOFF_SAVED : DRIVE_HANDOFF_EMPTY);
-      setTick((value) => value + 1);
+    setHandoffNote('Checking the gym folder…');
+    void checkReviewHandoff().then((result) => {
+      setHandoffChecked(result.status === 'saved' || result.status === 'empty');
+      setHandoffNote(reviewHandoffCheckNote(result));
+      if (result.status === 'saved') setTick((value) => value + 1);
     });
   };
 
@@ -123,7 +119,7 @@ export function ReviewInboxPage() {
           <p className="plan-card__kicker">Review inbox</p>
           <h1>Sunday review</h1>
           <p>
-            <Link to="/coach-unlimited">Back to Coach Unlimited</Link>
+            <Link to="/coach-unlimited">Back to Instructor Edition</Link>
           </p>
           <DriveHandoffCheck on={handoffChecked} onClick={checkFolder} />
           {driveConnected ? null : <DriveHandoffGuide />}
@@ -139,7 +135,7 @@ export function ReviewInboxPage() {
                 </li>
               ))}
             </ul>
-          ) : (
+          ) : revision || shown ? null : (
             <p>No plans are waiting. A coach submits today's plan from Daily Lesson Plan.</p>
           )}
           {revision || shown ? (

@@ -591,7 +591,7 @@ test('editing a card keeps its id and later notes, and delete removes only that 
   assert.equal(deleteJournalEntry(gone, id, 15), gone);
 });
 
-test('an older combined note stays readable, and a Stop doing line splits out', () => {
+test('an older combined note stays readable, and a Stop doing line splits out and folds into How it went', () => {
   const combined = decodeJournalBody('Class: Gi\nNotes:\ncollar deeper and I keep posting');
   assert.equal(combined.notes, 'collar deeper and I keep posting');
   assert.equal(combined.stopDoing, '');
@@ -625,7 +625,9 @@ test('an older combined note stays readable, and a Stop doing line splits out', 
   );
   const card = viewJournalEntry(saved.journal[0]);
   assert.equal(card.notes, 'collar deeper');
-  assert.equal(card.stopDoing, 'posting the near hand');
+  // One reflection field: the older stop-doing text reads as How it went.
+  assert.equal(card.stopDoing, '');
+  assert.equal(card.howItWent, 'posting the near hand');
   assert.equal(card.drills, 'hip escapes');
   const again = updateJournalEntry(saved, saved.journal[0].id, {
     date: '2026-10-11',
@@ -637,7 +639,10 @@ test('an older combined note stays readable, and a Stop doing line splits out', 
     rolls: '5 rounds',
     notes: 'collar deeper',
   });
-  assert.equal(viewJournalEntry(again.journal[0]).stopDoing, 'posting the near hand');
+  // An update that does not touch How it went keeps the old text, now saved as How it went.
+  assert.equal(viewJournalEntry(again.journal[0]).howItWent, 'posting the near hand');
+  assert.equal(decodeJournalBody(again.journal[0].body).stopDoing, '');
+  assert.equal(viewJournalEntry(again.journal[0]).notes, 'collar deeper');
 });
 
 test('a fresh journal starts white, and a file without name, gym, or start date keeps its cards', () => {

@@ -45,8 +45,8 @@ class MemoryBucket implements GymMediaBucket {
     this.objects.set(key, { bytes, type: options?.httpMetadata?.contentType || 'application/octet-stream' });
   }
 
-  async delete(key: string) {
-    this.objects.delete(key);
+  async delete(keys: string | string[]) {
+    for (const key of Array.isArray(keys) ? keys : [keys]) this.objects.delete(key);
   }
 
   async list(options?: { prefix?: string; cursor?: string; limit?: number }) {
@@ -260,16 +260,16 @@ test('an owner uploads, lists, and plays a daily video through the signed-in fun
   assert.equal(statusBody.cloud, true);
   assert.equal(statusBody.canUpload, true);
   assert.equal(statusBody.licenseUsedBytes, 4);
-  assert.equal(statusBody.capBytes, 8_000_000_000);
+  assert.equal(statusBody.capBytes, 100_000_000_000);
   const raw = JSON.stringify(statusBody);
   assert.equal(raw.includes('r2.dev'), false);
   assert.equal(raw.includes('http'), false);
 });
 
-test('a seated assistant can download and a coach can upload; a full bucket refuses the file', async () => {
+test('a seated assistant can download and a coach can upload; a full license refuses the file', async () => {
   const secret = await signingSecret();
   const bucket = new MemoryBucket();
-  bucket.objects.set('groups/other/videos/daily/2026-11-03/keep.mp4', {
+  bucket.objects.set('groups/owner-test/pending/replays/seed-seat/2026-11-03/keep.mp4', {
     bytes: Uint8Array.from([9, 9, 9, 9, 9, 9, 9, 9, 9, 9]),
     type: 'video/mp4',
   });
@@ -277,7 +277,7 @@ test('a seated assistant can download and a coach can upload; a full bucket refu
     GYM_MEDIA: bucket,
     ENTITLEMENT_SIGNING_KEY: secret,
     ENTITLEMENT_KEY_ID: 'k1',
-    GYM_MEDIA_CAP_BYTES: '20',
+    GYM_MEDIA_LICENSE_CAP_BYTES: '20',
     GYM_MEDIA_MAX_UPLOAD_BYTES: '12',
   };
   const assistant = await token(secret, {
@@ -379,6 +379,8 @@ test('a seated assistant can download and a coach can upload; a full bucket refu
         fileName: 'ignored.json',
         size: 4,
         mime: 'application/json',
+        // A Coach seat may update the gym template on purpose. Plain edits go to the seat's own copy.
+        planTarget: 'template',
       }),
     },
     coach,
@@ -399,8 +401,8 @@ test('a seated assistant can download and a coach can upload; a full bucket refu
   assert.equal(await played.text(), 'plan');
   const usage = await call(env, '/api/gym/cloud?op=status', {}, coach);
   const usageBody = (await usage.json()) as { licenseUsedBytes: number; bucketUsedBytes: number };
-  assert.equal(usageBody.licenseUsedBytes, 4);
-  assert.equal(usageBody.bucketUsedBytes, 14);
+  assert.equal(usageBody.licenseUsedBytes, 14, 'the seeded file is in this license');
+  assert.equal(usageBody.bucketUsedBytes, 14, 'mirrors licenseUsedBytes for older builds');
 });
 
 test('a video larger than one part is uploaded in chunks and a revoked seat cannot read it', async () => {
@@ -600,7 +602,7 @@ test('custom skins sync under the license cap and the existing byte cap', async 
   );
   assert.equal(gif.status, 400);
   const tightBucket = new MemoryBucket();
-  const tight: GymCloudEnv = { ...env, GYM_MEDIA: tightBucket, GYM_MEDIA_CAP_BYTES: '20' };
+  const tight: GymCloudEnv = { ...env, GYM_MEDIA: tightBucket, GYM_MEDIA_LICENSE_CAP_BYTES: '20' };
   const overCap = await call(
     tight,
     `/api/gym/cloud?op=put&key=${encodeURIComponent('groups/lic-owner/skins/skin00000013')}`,
@@ -898,8 +900,10 @@ test('a program director can only drop a video into today\'s daily videos, and a
   if (notVideo.status === 200) {
     assert.notEqual(bucket.objects.get('groups/lic-code/videos/daily/2026-11-03/x.mp4')?.type, 'text/html');
   } else {
-    assert.equal(notVideo.status, 400);
+    // 403: with approval on, a PD write without `start` has no pending marker and is refused.
+    assert.ok([400, 403].includes(notVideo.status), String(notVideo.status));
   }
+  assert.equal(bucket.objects.has('groups/lic-code/videos/daily/2026-11-03/x.mp4'), false);
 
   // A revoked PD seat is refused before anything else.
   const revokedEnv: GymCloudEnv = {

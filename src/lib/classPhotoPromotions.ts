@@ -10,17 +10,22 @@
  * `gallery/pending/{date}/` when approval is on. A short video uses that
  * same gallery path. It does not go in `videos/daily` or `class-photos`.
  * The phone keeps a copy. An approved item is also added to the local Gallery
- * so the slideshow can play it. Advantage does not host the bytes here.
+ * so the slideshow can play it. When the gym has Advantage Cloud, the shared
+ * copy is gallery/{approved|pending}/{date}/ on Cloud. The phone copy stays.
+ * Drive and OneDrive still take the copy when Cloud is off.
  *
  * Capture reuses Gallery / Daily Training inputs: Take photo
  * (`image/*` + capture), Record (`video/*` + capture), and Pick from gallery
  * (`image/*,video/*`, no capture).
  */
 
-import { galleryHoldExpired, playsInGallery, readGalleryApproval } from './galleryApproval.ts';
+import { gymActorForCloud } from './advantageCloudMedia.ts';
+import { galleryHoldExpired, playsInGallery } from './galleryApproval.ts';
+import { readGalleryApprovalHere } from './galleryApprovalDefault.ts';
 import { shrinkPhotoForStore } from './imageShrink.ts';
 import { publishGymFile } from './gymPublish.ts';
-import { GALLERY_ROUTE_NOTE } from './gymTree.ts';
+import { GALLERY_ROUTE_NOTE, type GymActor } from './gymTree.ts';
+import { readCurrentSeat } from './instructorSeats.ts';
 import { CLASS_PHOTO_PROMOTIONS_ROLE } from './googleDrive.ts';
 import { addFolderFiles, isAcceptedVideoFile } from './photoStore.ts';
 import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
@@ -32,13 +37,16 @@ export const CLASS_PHOTO_PROMOTIONS_LABEL = "Today's class photo / promotions";
 export const CLASS_PHOTO_PROMOTIONS_ADD = 'Add photo or video';
 export const CLASS_PHOTO_PROMOTIONS_LEAD =
   'A class photo or a short clip. Take photo, Record, or Pick from gallery.';
-export const CLASS_PHOTO_PROMOTIONS_STAY = `${GALLERY_ROUTE_NOTE} Photos and clips stay on this phone. When Google Drive or OneDrive is connected, the copy goes in the gallery folder there. Advantage does not host them.`;
+export const CLASS_PHOTO_PROMOTIONS_STAY = `${GALLERY_ROUTE_NOTE} Photos and clips stay on this phone. With Advantage Cloud on, they upload to this gym's Advantage Cloud. Without Cloud, when Google Drive or OneDrive is connected, the copy goes in the gallery folder there, and Advantage does not host them.`;
 export const CLASS_PHOTO_PROMOTIONS_SAVED_DRIVE =
   'Saved in the gallery folder. A copy stays on this phone.';
 export const CLASS_PHOTO_PROMOTIONS_SAVED_PHONE =
   'Saved on this phone. Connect Google Drive or OneDrive to use the same gallery on another device.';
 export const CLASS_PHOTO_PROMOTIONS_FAILED =
   'Saved on this phone. Google Drive could not take this file.';
+export const CLASS_PHOTO_CLOUD_UPLOADED = 'Uploaded to Advantage Cloud.';
+export const CLASS_PHOTO_CLOUD_FAILED = 'Saved on this phone. Advantage Cloud could not take this file.';
+export const CLASS_PHOTO_CLOUD_STAY = `${GALLERY_ROUTE_NOTE} Uploaded to Advantage Cloud. The owner's photos are Approved. When Cloud approval is on, Coach and Instructors photos are Pending until the owner or an Instructors seat approves them. When the owner turns Cloud approval off, those photos go straight to the gallery.`;
 export const CLASS_PHOTO_PROMOTIONS_SKIPPED =
   'That file is not a photo or video. Take photo, Record, or pick a photo or video from the gallery.';
 
@@ -66,7 +74,53 @@ export type AddClassPhotoPromotionsResult = {
   failed: number;
   skipped: number;
   needsDrive: boolean;
+  cloud: boolean;
+  lane: ClassPhotoLane | null;
 };
+
+/** Cloud gyms say where the photo landed. A gym without Cloud keeps the phone and Drive lines. */
+export function classPhotoResultNote(input: {
+  cloud: boolean;
+  lane: ClassPhotoLane | null;
+  failed: boolean;
+  needsDrive: boolean;
+}): string {
+  if (input.cloud && input.failed) return CLASS_PHOTO_CLOUD_FAILED;
+  if (input.cloud && input.lane && !input.failed) {
+    const status = input.lane === 'approved' ? 'Approved' : input.lane === 'pending' ? 'Pending' : 'Rejected';
+    return `${CLASS_PHOTO_CLOUD_UPLOADED} ${status}.`;
+  }
+  if (input.failed) return CLASS_PHOTO_PROMOTIONS_FAILED;
+  if (input.needsDrive) return CLASS_PHOTO_PROMOTIONS_SAVED_PHONE;
+  return CLASS_PHOTO_PROMOTIONS_SAVED_DRIVE;
+}
+
+/** Device and Drive gallery: what the approval switch on this device does right now. */
+export const CLASS_PHOTO_APPROVAL_ON =
+  'Approval is on: new photos and clips wait as Pending until the owner or a named approver approves them in Review Inbox.';
+export const CLASS_PHOTO_APPROVAL_OFF = 'Approval is off: new photos and clips go straight to the gallery.';
+/** Cloud lane follows the owner's gym-wide setting, not this phone's local switch. */
+export const CLASS_PHOTO_CLOUD_RULE = 'The owner sets Cloud approval on Advantage Pro Plus Cloud. That gym-wide setting, not the switch on this phone, decides whether instructor Cloud uploads wait. The switch on this phone still only governs photos that stay here or go to Google Drive or OneDrive.';
+
+/**
+ * `approvalRequired` is the gallery approval switch as this device reads it.
+ * Omit it to keep the older copy.
+ */
+export function classPhotoStayCopy(cloudOn: boolean, approvalRequired?: boolean): string {
+  if (cloudOn) return approvalRequired === undefined ? CLASS_PHOTO_CLOUD_STAY : `${CLASS_PHOTO_CLOUD_STAY} ${CLASS_PHOTO_CLOUD_RULE}`;
+  if (approvalRequired === undefined) return CLASS_PHOTO_PROMOTIONS_STAY;
+  return `${CLASS_PHOTO_PROMOTIONS_STAY} ${approvalRequired ? CLASS_PHOTO_APPROVAL_ON : CLASS_PHOTO_APPROVAL_OFF}`;
+}
+
+function classPhotoActor(): GymActor {
+  try {
+    const seat = readCurrentSeat();
+    if (!seat) return 'owner';
+    return gymActorForCloud('seat', seat.presetId);
+  } catch {
+    return 'owner';
+  }
+}
 
 export function classPhotoPromotionKind(file: File): ClassPhotoPromotionKind | null {
   if (isAcceptedVideoFile(file)) return 'video';
@@ -251,18 +305,21 @@ export async function addClassPhotoPromotionFiles(
     saved.push(item);
   }
   if (!saved.length) {
-    return { saved: 0, uploaded: 0, failed: 0, skipped, needsDrive: false };
+    return { saved: 0, uploaded: 0, failed: 0, skipped, needsDrive: false, cloud: false, lane: null };
   }
-  const approvalRequired = readGalleryApproval(typeof localStorage === 'undefined' ? null : localStorage).required;
+  const approvalRequired = readGalleryApprovalHere(typeof localStorage === 'undefined' ? null : localStorage).required;
   let uploaded = 0;
   let failed = 0;
   let needsDrive = true;
+  let cloud = false;
+  let lane: ClassPhotoLane | null = null;
+  const role = classPhotoActor();
   for (const item of saved) {
     item.lane = approvalRequired ? 'pending' : 'approved';
     await putItem(item);
     const published = await publishGymFile({
       purpose: 'gallery',
-      role: 'owner',
+      role,
       kind: item.kind,
       dateKey,
       fileName: item.name,
@@ -270,6 +327,14 @@ export async function addClassPhotoPromotionFiles(
       mime: item.mime,
       approvalRequired,
     });
+    if (published.home === 'advantage-cloud') {
+      cloud = true;
+      if (published.route.ok && published.route.lane) {
+        lane = published.route.lane;
+        item.lane = published.route.lane;
+        await putItem(item);
+      }
+    }
     if (published.route.ok && playsInGallery(published.route.lane)) {
       try {
         const file = new File([item.blob], item.name, { type: item.mime });
@@ -287,7 +352,15 @@ export async function addClassPhotoPromotionFiles(
     uploaded += 1;
     await setDriveFileId(item.id, published.remoteId);
   }
-  return { saved: saved.length, uploaded, failed, skipped, needsDrive: needsDrive && uploaded === 0 && failed === 0 };
+  return {
+    saved: saved.length,
+    uploaded,
+    failed,
+    skipped,
+    needsDrive: needsDrive && uploaded === 0 && failed === 0,
+    cloud,
+    lane,
+  };
 }
 
 export { CLASS_PHOTO_PROMOTIONS_ROLE };

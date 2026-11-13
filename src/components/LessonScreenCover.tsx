@@ -159,9 +159,14 @@ export function LessonCoverProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Top-of-page Hide screen control. Same cover as the per-card buttons. */
-export function LessonScreenHide() {
+/**
+ * Top-of-page Hide screen control. Same cover as the per-card buttons.
+ * The main Daily Lesson Plan passes `enabled={false}` so this bar stays off.
+ * Technique cards and the written lesson sections keep `CardHideScreen`.
+ */
+export function LessonScreenHide({ enabled = true }: { enabled?: boolean }) {
   const { mode, openCover } = useLessonCover();
+  if (!enabled) return null;
   return (
     <section className="notes__screen" aria-label="Hide screen">
       <button type="button" className="btn notes__screen-hide" onClick={() => openCover(mode)}>

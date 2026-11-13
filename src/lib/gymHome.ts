@@ -4,6 +4,8 @@
  * Google Photos is not a home. Albums stay on the picker.
  */
 
+import { PLAYING_FROM_PHONE_CLOUD } from './storageCopy.ts';
+
 export type GymHomeId = 'advantage-cloud' | 'google-drive' | 'onedrive' | 'phone';
 
 export function chooseGymHome(input: {
@@ -42,13 +44,15 @@ export function mediaConsoleGalleryLead(input: { cloudEntitled: boolean; driveCo
   const drive = input.driveConnected
     ? ' Import from Google Drive copies files onto this phone. The folder that is already connected stays connected.'
     : '';
-  return `Add photos and Add videos stay on this phone. Advantage Cloud is this gym's storage when the status below says it is ready.${drive} Optional import copies files from Google Photos onto this phone. It does not replace Advantage Cloud. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.`;
+  return `Add photos and Add videos keep a copy on this phone and upload to this gym's Advantage Cloud when the status below says it is ready. Each file shows its progress; anything already uploaded is skipped.${drive} Optional import copies files from Google Photos onto this phone. It does not replace Advantage Cloud. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.`;
 }
 
-export function playingFromCopy(home: GymHomeId): string {
+/** `cloudOn`: Advantage Cloud answered as on for this license, but this screen is not playing from it. */
+export function playingFromCopy(home: GymHomeId, cloudOn = false): string {
   if (home === 'advantage-cloud') return 'Playing from Advantage Cloud.';
   if (home === 'google-drive') return 'Playing from Google Drive.';
   if (home === 'onedrive') return 'Playing from OneDrive.';
+  if (cloudOn) return PLAYING_FROM_PHONE_CLOUD;
   return 'Playing from this phone. Connect Google Drive, OneDrive, Advantage Cloud, or a folder on this PC to use the same files on another device.';
 }
 

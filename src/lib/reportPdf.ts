@@ -1,11 +1,12 @@
 /**
  * Designed Student Edition PDFs.
- * Light paper, navy header, Helvetica. The radar is vector paths from the
- * shared radar geometry, not a picture of the chart.
+ * Light paper, navy header, Helvetica. The self-assessment shape is a static
+ * D8 diamond (front and back, eight faces) drawn as vector paths, not a picture.
  */
 
-import { ASSESSMENT_AREAS, assessmentAverage, conditioningItemLines, mindsetGoalLines, type AssessmentState } from './studentAssessment.ts';
-import { radarPoint, RADAR_CENTER } from './radarChart.ts';
+import { assessmentAverage, conditioningItemLines, mindsetGoalLines, type AssessmentScores, type AssessmentState } from './studentAssessment.ts';
+import { shapeAxesFromLegacy, type ShapeAxisReading } from './shapeAxes.ts';
+import { diamondFaces, diamondShade, quadrantTriangle, triangleCentroid, type DiamondSide } from './staticDiamond.ts';
 import { advantageLogo } from './advantageLogo.ts';
 import { drawPdf, type PdfDraw, type PdfImageAsset, type Rgb } from './simplePdf.ts';
 import {
@@ -44,8 +45,6 @@ const SOFT: Rgb = [0.961, 0.961, 0.969];
 const TRACK: Rgb = [0.91, 0.91, 0.929];
 const RULE: Rgb = [0.89, 0.9, 0.93];
 const PREVIOUS: Rgb = [0.557, 0.557, 0.576];
-
-export type RadarBox = { x: number; y: number; size: number; plot: number };
 
 /** Images in the navy header. Omit a slot to leave it off the page. */
 export type ReportHeaderArt = {
@@ -93,27 +92,6 @@ export function wrapReportText(value: string, size: number, bold: boolean, maxWi
   }
   if (current) lines.push(current);
   return lines;
-}
-
-export function chartPoint(index: number, value: number, box: RadarBox): { x: number; y: number } {
-  const plot = box.plot;
-  const pad = (box.size - plot) / 2;
-  const scale = plot / 320;
-  const spot = radarPoint(index, value);
-  return {
-    x: Math.round((box.x + pad + spot.x * scale) * 100) / 100,
-    y: Math.round((box.y + pad + (320 - spot.y) * scale) * 100) / 100,
-  };
-}
-
-export function chartCenter(box: RadarBox): { x: number; y: number } {
-  const plot = box.plot;
-  const pad = (box.size - plot) / 2;
-  const scale = plot / 320;
-  return {
-    x: Math.round((box.x + pad + RADAR_CENTER * scale) * 100) / 100,
-    y: Math.round((box.y + pad + (320 - RADAR_CENTER) * scale) * 100) / 100,
-  };
 }
 
 function metaLine(identity: ReportIdentity, issuedOn: string): string {
@@ -414,151 +392,134 @@ function drawBlocks(state: PageState, blocks: readonly ReportBlock[]) {
   }
 }
 
-function ring(box: RadarBox, value: number): { x: number; y: number }[] {
-  return ASSESSMENT_AREAS.map((_, index) => chartPoint(index, value, box));
+/** Center and size of one printed diamond, in PDF points (y grows upward). */
+export type DiamondBox = { cx: number; cy: number; r: number };
+export type DiamondBoxes = { front: DiamondBox; back: DiamondBox };
+
+const DIAMOND_R = 62;
+/** Room beside a diamond for the longest face name at 9pt. */
+const DIAMOND_LABEL_ROOM = 84;
+const DIAMOND_HALF_W = DIAMOND_R / 2 + 8 + DIAMOND_LABEL_ROOM;
+const DIAMOND_CAPTION = 16;
+export const DIAMOND_BLOCK_HEIGHT = DIAMOND_CAPTION + DIAMOND_R * 2 + 10;
+
+/** Solid blend of white paper and a color. The PDF writer has only two opacity levels. */
+function mixPaper(color: Rgb, amount: number): Rgb {
+  const mix = (channel: number) => Math.round((1 - amount + channel * amount) * 1000) / 1000;
+  return [mix(color[0]), mix(color[1]), mix(color[2])];
 }
 
-function seriesPolygon(values: readonly number[], box: RadarBox): { x: number; y: number }[] {
-  return values.map((value, index) => chartPoint(index, value, box));
+function pdfPoint(point: { x: number; y: number }): { x: number; y: number } {
+  return { x: Math.round(point.x * 100) / 100, y: Math.round((PAGE_H - point.y) * 100) / 100 };
 }
 
-/** Distance from the chart center to the level-5 ring. Series vertices must stay inside it. */
-export function outerRingRadius(box: RadarBox): number {
-  const center = chartCenter(box);
-  const spot = chartPoint(0, 5, box);
-  return Math.hypot(spot.x - center.x, spot.y - center.y);
-}
-
-export function radarPolygonRadii(box: RadarBox, draws: readonly PdfDraw[]): number[] {
-  const center = chartCenter(box);
-  const radii: number[] = [];
-  const visit = (list: readonly PdfDraw[]) => {
-    for (const draw of list) {
-      if (draw.op === 'poly') {
-        for (const point of draw.points) radii.push(Math.hypot(point.x - center.x, point.y - center.y));
-      } else if (draw.op === 'group') {
-        if (draw.clip) {
-          for (const point of draw.clip) radii.push(Math.hypot(point.x - center.x, point.y - center.y));
-        }
-        visit(draw.draws);
-      }
-    }
+/** Static D8: front and back of the diamond, eight faces shaded by this check-in. */
+function drawDiamonds(draws: PdfDraw[], top: number, scores: Partial<AssessmentScores>): DiamondBoxes {
+  const cy = top + DIAMOND_CAPTION + DIAMOND_R;
+  const centers: Record<DiamondSide, number> = {
+    front: MARGIN_X + DIAMOND_HALF_W,
+    back: MARGIN_X + CONTENT_W - DIAMOND_HALF_W,
   };
-  visit(draws);
-  return radii;
-}
-
-function drawRadar(
-  draws: PdfDraw[],
-  box: RadarBox,
-  current: readonly number[],
-  previous: readonly number[] | null,
-) {
-  const center = chartCenter(box);
-  const outer = ring(box, 5);
-  for (const value of [1, 2, 3, 4]) {
-    draws.push({ op: 'poly', points: ring(box, value), stroke: RULE, lineWidth: 0.7, lineJoin: 'round' });
-  }
-  for (let index = 0; index < ASSESSMENT_AREAS.length; index += 1) {
-    const end = chartPoint(index, 5, box);
-    draws.push({ op: 'line', x1: center.x, y1: center.y, x2: end.x, y2: end.y, color: RULE, lineWidth: 0.7 });
-  }
-  const series: PdfDraw[] = [];
-  if (previous) {
-    series.push({
-      op: 'poly',
-      points: seriesPolygon(previous, box),
-      stroke: PREVIOUS,
-      lineWidth: 1.35,
-      dash: true,
-      lineJoin: 'round',
-    });
-  }
-  series.push({
-    op: 'poly',
-    points: seriesPolygon(current, box),
-    fill: NAVY,
-    fillOpacity: 0.4,
-    stroke: GOLD,
-    lineWidth: 1.8,
-    lineJoin: 'round',
-  });
-  // Clip the series to the outer ring so a stroke cannot draw a second outline past the grid.
-  draws.push({ op: 'group', clip: outer, draws: series });
-  draws.push({ op: 'poly', points: outer, stroke: NAVY, lineWidth: 1.15, lineJoin: 'round' });
-
-  const radius = outerRingRadius(box);
-  for (const value of [1, 2, 3, 4, 5]) {
-    const text = String(value);
-    const y = center.y + (value / 5) * radius - 8;
+  const faces = diamondFaces(scores);
+  for (const side of ['front', 'back'] as const) {
+    const cx = centers[side];
+    const center = { x: cx, y: cy };
+    const caption = side === 'front' ? 'Front' : 'Back (turned over)';
     draws.push({
       op: 'text',
-      text,
-      x: center.x - measure(text, 7, false) - 4,
-      y,
-      size: 7,
-      font: 'regular',
-      color: MUTED,
+      text: caption,
+      x: cx - measure(caption, 9, true) / 2,
+      y: PAGE_H - top - 10,
+      size: 9,
+      font: 'bold',
+      color: NAVY,
     });
+    for (const face of faces.filter((item) => item.side === side)) {
+      const tri = quadrantTriangle(center, DIAMOND_R, face.quadrant).map(pdfPoint);
+      const shade = diamondShade(face.axis.value);
+      draws.push(
+        shade == null
+          ? { op: 'poly', points: tri, fill: TRACK, stroke: NAVY, lineWidth: 0.9, lineJoin: 'round' }
+          : { op: 'poly', points: tri, fill: mixPaper(NAVY, shade), stroke: NAVY, lineWidth: 0.9, lineJoin: 'round' },
+      );
+      const mid = pdfPoint(triangleCentroid(quadrantTriangle(center, DIAMOND_R, face.quadrant)));
+      const value = face.axis.value == null ? '-' : String(face.axis.value);
+      draws.push({
+        op: 'text',
+        text: value,
+        x: mid.x - measure(value, 12, true) / 2,
+        y: mid.y - 4,
+        size: 12,
+        font: 'bold',
+        color: shade != null && shade > 0.5 ? WHITE : NAVY,
+      });
+      const right = face.quadrant.endsWith('right');
+      const upper = face.quadrant.startsWith('top');
+      const labelX = right ? cx + DIAMOND_R / 2 + 8 : cx - DIAMOND_R / 2 - 8 - measure(face.axis.label, 9, false);
+      const labelY = upper ? cy - DIAMOND_R / 2 - 6 : cy + DIAMOND_R / 2 + 12;
+      draws.push({ op: 'text', text: face.axis.label, x: labelX, y: PAGE_H - labelY, size: 9, font: 'regular', color: INK });
+    }
   }
-  ASSESSMENT_AREAS.forEach((area, index) => {
-    const spot = chartPoint(index, 5.55, box);
-    const width = measure(area.label, 9, false);
-    let x = spot.x - width / 2;
-    if (spot.x < center.x - 8) x = spot.x - width - 4;
-    else if (spot.x > center.x + 8) x = spot.x + 4;
-    draws.push({ op: 'text', text: area.label, x, y: spot.y - 3, size: 9, font: 'regular', color: INK });
-  });
+  return {
+    front: { cx: centers.front, cy: PAGE_H - cy, r: DIAMOND_R },
+    back: { cx: centers.back, cy: PAGE_H - cy, r: DIAMOND_R },
+  };
 }
 
 function drawLegend(draws: PdfDraw[], x: number, top: number, previousDate: string | null) {
   const swatch = 16;
-  const row = (label: string, y: number, paint: (y: number) => void) => {
-    paint(y);
-    draws.push({ op: 'text', text: label, x: x + swatch + 8, y, size: 9, font: 'regular', color: INK });
-  };
-  row('This check-in', PAGE_H - top - 10, (y) => {
-    draws.push({ op: 'rect', x, y: y + 1, w: swatch, h: 7, fill: NAVY });
-    draws.push({ op: 'rect', x, y: y + 1, w: swatch, h: 7, stroke: GOLD, lineWidth: 1.2 });
-  });
+  const baseline = PAGE_H - top - 10;
+  let cursor = x;
+  draws.push({ op: 'rect', x: cursor, y: baseline + 1, w: swatch, h: 7, fill: NAVY });
+  cursor += swatch + 6;
+  const now = 'This check-in';
+  draws.push({ op: 'text', text: now, x: cursor, y: baseline, size: 9, font: 'regular', color: INK });
+  cursor += measure(now, 9, false) + 18;
   if (previousDate) {
-    row(`Previous ${previousDate}`, PAGE_H - top - 28, (y) => {
-      draws.push({
-        op: 'line',
-        x1: x,
-        y1: y + 4,
-        x2: x + swatch,
-        y2: y + 4,
-        color: PREVIOUS,
-        lineWidth: 1.4,
-        dash: true,
-      });
-    });
+    draws.push({ op: 'line', x1: cursor + 4, y1: baseline - 1, x2: cursor + 4, y2: baseline + 9, color: PREVIOUS, lineWidth: 1.4 });
+    cursor += 14;
+    const prior = `Previous ${previousDate}`;
+    draws.push({ op: 'text', text: prior, x: cursor, y: baseline, size: 9, font: 'regular', color: INK });
+    cursor += measure(prior, 9, false) + 18;
   }
+  const key = 'Darker face = higher score. - = not rated.';
+  draws.push({ op: 'text', text: key, x: cursor, y: baseline, size: 9, font: 'regular', color: MUTED });
 }
 
-function drawBars(draws: PdfDraw[], scores: readonly number[], x: number, top: number, width: number) {
+function drawBars(
+  draws: PdfDraw[],
+  readings: readonly ShapeAxisReading[],
+  previous: readonly ShapeAxisReading[] | null,
+  x: number,
+  top: number,
+  width: number,
+) {
   const labelW = 92;
   const numW = 16;
   const gap = 10;
   const barW = width - labelW - numW - gap;
   const barH = 7;
   const rowH = 16;
-  scores.forEach((score, index) => {
-    const area = ASSESSMENT_AREAS[index];
-    if (!area) return;
+  readings.forEach((reading, index) => {
     const baseline = PAGE_H - (top + index * rowH) - 12;
-    draws.push({ op: 'text', text: area.label, x, y: baseline, size: 10, font: 'regular', color: INK });
+    draws.push({ op: 'text', text: reading.label, x, y: baseline, size: 10, font: 'regular', color: INK });
     draws.push({ op: 'rect', x: x + labelW, y: baseline + 1, w: barW, h: barH, fill: TRACK });
-    draws.push({
-      op: 'rect',
-      x: x + labelW,
-      y: baseline + 1,
-      w: Math.max(2, (score / 5) * barW),
-      h: barH,
-      fill: NAVY,
-    });
-    const num = String(score);
+    if (reading.value != null) {
+      draws.push({
+        op: 'rect',
+        x: x + labelW,
+        y: baseline + 1,
+        w: Math.max(2, (reading.value / 5) * barW),
+        h: barH,
+        fill: NAVY,
+      });
+    }
+    const prior = previous?.[index]?.value;
+    if (prior != null) {
+      const tick = x + labelW + (prior / 5) * barW;
+      draws.push({ op: 'line', x1: tick, y1: baseline - 1, x2: tick, y2: baseline + barH + 3, color: PREVIOUS, lineWidth: 1.4 });
+    }
+    const num = reading.value == null ? '-' : String(reading.value);
     draws.push({
       op: 'text',
       text: num,
@@ -571,7 +532,7 @@ function drawBars(draws: PdfDraw[], scores: readonly number[], x: number, top: n
   });
 }
 
-export type AssessmentLayout = { pages: PdfDraw[][]; radarBox: RadarBox | null };
+export type AssessmentLayout = { pages: PdfDraw[][]; diamond: DiamondBoxes | null };
 
 export function layoutAssessment(report: StudentProgressReport, assessment: AssessmentState, issuedOn: string): AssessmentLayout {
   const identity = reportIdentity(report);
@@ -581,7 +542,7 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
 
   const latest = entries[0];
   const previous = entries[1] ?? null;
-  let radarBox: RadarBox | null = null;
+  let diamond: DiamondBoxes | null = null;
   if (!latest) {
     drawWrapped(state, 'No self-assessment saved on this phone.', 11, 'regular', INK, 4);
   } else {
@@ -610,22 +571,16 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
     });
     state.top += 24;
 
-    // The 320-unit radar view includes empty corners. Advance only through the rings and labels.
-    const plot = 304;
-    const scale = plot / 320;
-    const contentRadius = 108 * (5.55 / 5) * scale + 11;
-    const chartHeight = Math.ceil(contentRadius * 2);
-    const bleed = (plot - chartHeight) / 2;
-    ensure(state, chartHeight);
+    ensure(state, DIAMOND_BLOCK_HEIGHT + 22);
     const chartTop = state.top;
-    radarBox = { x: MARGIN_X, y: PAGE_H - chartTop - chartHeight - bleed, size: plot, plot };
-    const current = ASSESSMENT_AREAS.map((area) => latest.scores[area.id]);
-    const prior = previous ? ASSESSMENT_AREAS.map((area) => previous.scores[area.id]) : null;
-    drawRadar(state.draws, radarBox, current, prior);
-    drawLegend(state.draws, MARGIN_X + plot + 12, chartTop + Math.max(0, (chartHeight - 36) / 2), previous?.date ?? null);
-    state.top = chartTop + chartHeight + 4;
-    drawBars(state.draws, current, MARGIN_X, state.top, CONTENT_W);
-    state.top += ASSESSMENT_AREAS.length * 16 + 6;
+    diamond = drawDiamonds(state.draws, chartTop, latest.scores);
+    state.top = chartTop + DIAMOND_BLOCK_HEIGHT;
+    drawLegend(state.draws, MARGIN_X, state.top, previous?.date ?? null);
+    state.top += 20;
+    const current = shapeAxesFromLegacy(latest.scores);
+    const prior = previous ? shapeAxesFromLegacy(previous.scores) : null;
+    drawBars(state.draws, current, prior, MARGIN_X, state.top, CONTENT_W);
+    state.top += current.length * 16 + 6;
     const note = latest.note.trim() || 'No note on this check-in.';
     const noteLines = wrapReportText(note, 10, false, CONTENT_W - 20);
     const cardH = 20 + noteLines.length * 13;
@@ -654,7 +609,9 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
       for (const entry of earlier) {
         const bits = [
           `${entry.date} — average ${assessmentAverage(entry.scores).toFixed(1)}`,
-          ASSESSMENT_AREAS.map((area) => `${area.label} ${entry.scores[area.id]}`).join(', '),
+          shapeAxesFromLegacy(entry.scores)
+            .map((axis) => `${axis.label} ${axis.value ?? 'not rated'}`)
+            .join(', '),
         ];
         const conditioning = conditioningItemLines(entry.conditioningItems);
         if (conditioning.length) bits.push(conditioning.join(', '));
@@ -666,7 +623,7 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
       }
     }
   }
-  return { pages: finish(state, 'SELF-ASSESSMENT'), radarBox };
+  return { pages: finish(state, 'SELF-ASSESSMENT'), diamond };
 }
 
 export function renderReportPages(pages: readonly PdfDraw[][], images: readonly PdfImageAsset[] = []): Uint8Array {

@@ -40,6 +40,7 @@ const handoff = readFileSync(new URL('./fixtures/send-to-coach-handoff.json', im
 const scores: AssessmentScores = {
   guard: 4,
   passing: 3,
+  sweeps: 3,
   takedowns: 2,
   escapes: 3,
   submissions: 4,
@@ -186,6 +187,7 @@ test('next event and the weight countdown use the soonest real tournament', () =
 const simScores: AssessmentScores = {
   guard: 3,
   passing: 3,
+  sweeps: 3,
   takedowns: 3,
   escapes: 4,
   submissions: 3,
@@ -206,7 +208,7 @@ function simHistory(): string {
     {
       date: '2026-10-24',
       note: 'Mock self-assessment before Pan Pacific.',
-      scores: { guard: 5, passing: 4, takedowns: 4, escapes: 5, submissions: 4, conditioning: 4, mindset: 5 },
+      scores: { guard: 5, passing: 4, sweeps: 4, takedowns: 4, escapes: 5, submissions: 4, conditioning: 4, mindset: 5 },
     },
     1,
   );

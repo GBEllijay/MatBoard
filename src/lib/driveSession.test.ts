@@ -322,7 +322,7 @@ test('every Google Drive connection surface keeps connect and adds change folder
   assert.match(notes, /OpenMyDrive/);
   assert.match(consolePage, /OpenMyDrive/);
   assert.match(consolePage, /<DriveConnectCard \/>/);
-  assert.match(unlimited, /<DriveConnectCard \/>/);
+  assert.match(unlimited, /<DriveConnectCard cloudOptionalCollapse \/>/);
   assert.match(pro, /AcademyPathwayPanel/);
   assert.match(connections, /Connect Google Drive/);
   assert.match(connections, /Disconnect academy folder/);

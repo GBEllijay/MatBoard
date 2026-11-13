@@ -60,12 +60,15 @@ export function studentDemoRequested(): boolean {
 
 /** Same key as indexCards. Duplicated so this guard does not import that module. */
 const STUDENT_INDEX_CARDS_GUARD_KEY = 'matboard.studentEdition.indexCards.v1';
+/** Same key as glossaryAdditions. The public demo's added moves stay in the overlay. */
+const STUDENT_GLOSSARY_ADDITIONS_GUARD_KEY = 'matboard.studentEdition.glossaryAdditions.v1';
 
 const STUDENT_GUARD_KEYS = new Set([
   STUDENT_FILE_STORAGE_KEY,
   STUDENT_ASSESSMENT_GUARD_KEY,
   STUDENT_BACKUP_STAMP_GUARD_KEY,
   STUDENT_INDEX_CARDS_GUARD_KEY,
+  STUDENT_GLOSSARY_ADDITIONS_GUARD_KEY,
 ]);
 
 let demoSeedProvider: () => string = () => '';

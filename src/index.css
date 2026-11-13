@@ -1395,12 +1395,16 @@ button.mode-card__hit {
 }
 
 .plan-card__review-link {
-  display: flex;
-  align-items: center;
+  display: block;
   min-height: 44px;
+  padding: 0.35rem 0;
   color: var(--ink);
   font-weight: 700;
   text-decoration: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  hyphens: manual;
 }
 
 .review-inbox {
@@ -1464,7 +1468,38 @@ button.mode-card__hit {
 }
 
 .academy-menu-entry {
-  margin: 1.25rem 0 0;
+  margin: 0.7rem 0 0;
+}
+
+.instructor-hub > .academy-menu-entry + .suite__note {
+  margin-top: 0.85rem;
+}
+
+.drive-connect-collapse {
+  margin: 0.35rem 0 0;
+}
+
+.drive-connect-collapse__btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0.35rem 0.15rem;
+  border: 0;
+  background: transparent;
+  color: var(--gold-2);
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.drive-connect-collapse__btn:focus-visible {
+  outline: 2px solid var(--logo-blue);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .academy-menu-entry .btn {
@@ -11298,6 +11333,36 @@ input.roster-pick__name:focus,
   font-weight: 700;
 }
 
+.blue-belt-confirm {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.25rem 0;
+  padding: 0.7rem 0.8rem 0.8rem;
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+}
+
+.blue-belt-confirm legend {
+  padding: 0 0.3rem;
+  font-weight: 800;
+}
+
+.blue-belt-confirm p {
+  margin: 0;
+}
+
+.blue-belt-confirm__note {
+  color: #fde68a;
+  font-weight: 700;
+}
+
+.blue-belt-confirm__check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+}
+
 .t-slot .roster-field,
 .bracket__champ .roster-field,
 .tournament__seeds .roster-field {
@@ -11460,6 +11525,15 @@ input.roster-pick__name:focus,
   padding: 0;
   flex: 0 0 auto;
   accent-color: var(--gold-2);
+}
+
+.cloud-media__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-weight: 500;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  opacity: 0.85;
 }
 
 .cloud-media__actions {
@@ -11674,7 +11748,7 @@ input.roster-pick__name:focus,
   opacity: 0.45;
 }
 
-/* On the player, including fullscreen. Safe-area insets keep Exit above the home indicator. */
+/* On the player while it is in the window. Full screen hides this bar. */
 .techniques__frame .techniques__dock {
   position: absolute;
   z-index: 5;
@@ -11693,9 +11767,59 @@ input.roster-pick__name:focus,
   padding-right: 0.4rem;
 }
 
-/* Page fullscreen hides every .play-fs chip. This one is the exit, so it stays. */
-.play--fs .techniques__frame .techniques__dock .play-fs {
-  display: inline-flex;
+/* Full screen is the picture. Start, Stop, Exit, and Unmute stay in the window. */
+.techniques__frame--fill .techniques__dock,
+.techniques__frame--fill .techniques__chrome,
+.techniques__frame--fill .techniques__sound,
+.techniques__frame--fill .saver__unmute,
+.play--fs .techniques__frame .techniques__dock,
+.play--fs .techniques__frame .techniques__chrome,
+.play--fs .techniques__frame .techniques__sound,
+.play--fs .techniques__frame .saver__unmute,
+.lesson-player--fill .techniques__dock,
+.lesson-player--fill .techniques__chrome,
+.lesson-player--fill .techniques__sound,
+.lesson-player--fill .saver__unmute,
+.lesson-player:fullscreen .techniques__dock,
+.lesson-player:fullscreen .techniques__chrome,
+.lesson-player:fullscreen .techniques__sound,
+.lesson-player:fullscreen .saver__unmute,
+.techniques__frame:fullscreen .techniques__dock,
+.techniques__frame:fullscreen .techniques__chrome,
+.techniques__frame:fullscreen .techniques__sound,
+.techniques__frame:fullscreen .saver__unmute {
+  display: none;
+}
+
+.techniques__sound {
+  position: absolute;
+  z-index: 6;
+  top: calc(0.45rem + var(--safe-t));
+  left: calc(0.45rem + var(--safe-l));
+  min-height: 44px;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(252, 192, 0, 0.9);
+  background: rgba(8, 12, 20, 0.92);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.techniques__sound--muted {
+  background: var(--permission-on);
+  border-color: transparent;
+  color: var(--white);
+}
+
+.techniques__sound:focus-visible {
+  outline: 2px solid var(--gold-2);
+  outline-offset: 2px;
+}
+
+.techniques__frame:has(.techniques__sound) .techniques__live {
+  left: auto;
+  right: calc(0.45rem + var(--safe-r));
 }
 
 .techniques__frame:has(.techniques__dock) .techniques__chrome,
@@ -12120,6 +12244,36 @@ html.lesson-cover-open body {
 
 .notes__date-nav .notes__recent {
   flex-basis: 100%;
+}
+
+.notes__video-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.notes__video-actions .btn {
+  min-height: 48px;
+}
+
+.notes__video-actions.notes__confirm {
+  grid-template-columns: 1fr 1fr;
+}
+
+.notes__video-actions.notes__confirm p {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.notes__media:has(.notes__video-actions) {
+  width: 100%;
+  max-width: 16rem;
+}
+
+.notes__media:has(.lesson-player):has(.notes__video-actions) {
+  max-width: none;
 }
 
 .notes__video-name {
@@ -13184,7 +13338,7 @@ html.lesson-cover-open body {
   width: auto;
   flex: 0 0 auto;
   min-width: 5.5rem;
-  max-width: 8rem;
+  max-width: 9.5rem;
   min-height: 48px;
   margin: 0 0 0 auto;
   padding: 0.2rem 0.75rem;
@@ -15962,6 +16116,7 @@ a.plan-pick {
 }
 
 .ready-row {
+  scroll-margin-top: 5.5rem;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 5.75rem;
   gap: 0.55rem 0.65rem;
@@ -20061,6 +20216,23 @@ a.plan-pick {
   min-height: 2.75rem;
 }
 
+.student-license__actions {
+  display: grid;
+  gap: 0.55rem;
+  width: min(22rem, 100%);
+}
+
+.student-license-claim__qr {
+  margin: 0.4rem 0 0.8rem;
+}
+
+.student-license-claim__qr img {
+  width: 240px;
+  height: 240px;
+  background: #fff;
+  border-radius: 12px;
+}
+
 .student-license-claim {
   padding: 1rem 0 2rem;
 }
@@ -20081,4 +20253,87 @@ a.plan-pick {
   .student-license-claim__card {
     width: 100%;
   }
+}
+
+/* Advantage Cloud gallery on the Gallery page (approved photos and daily videos). */
+.cloud-gallery { margin: 16px 0; display: grid; gap: 8px; }
+.cloud-gallery__hint { margin: 0; opacity: 0.85; font-size: 0.9rem; }
+.cloud-gallery__error { color: #b42318; font-weight: 600; }
+.cloud-gallery__grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.cloud-gallery__open { width: 100%; display: grid; gap: 4px; padding: 6px; border-radius: 10px; border: 1px solid rgba(0, 0, 0, 0.15); background: #fffdf7; color: #1f1f1f; text-align: left; cursor: pointer; }
+.cloud-gallery__open img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+.cloud-gallery__glyph { width: 100%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 6px; background: #2b2b2b; color: #fff; font-size: 1.6rem; }
+.cloud-gallery__name { font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cloud-gallery__date { font-size: 0.7rem; opacity: 0.7; }
+.cloud-gallery__player { position: fixed; inset: 0; z-index: 80; background: #000; color: #fff; display: grid; grid-template-rows: 1fr auto; place-items: center; }
+.cloud-gallery__player img, .cloud-gallery__player video { max-width: 100vw; max-height: calc(100vh - 72px); object-fit: contain; }
+.cloud-gallery__controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; padding: 12px; }
+
+.cloud-gallery__tile { display: grid; gap: 4px; }
+.cloud-gallery__delete { justify-self: stretch; font-size: 0.8rem; }
+.cloud-cleanup { margin: 12px 0; display: grid; gap: 8px; }
+.cloud-cleanup__hint { margin: 0; opacity: 0.85; font-size: 0.9rem; }
+.cloud-cleanup__days { display: flex; gap: 8px; align-items: center; }
+.cloud-cleanup__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.9rem; }
+.cloud-delete-confirm { display: grid; gap: 8px; padding: 12px; border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 10px; background: #fffdf7; }
+.cloud-delete-confirm__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.saver-cloud-copy { margin: 8px 0; font-size: 0.9rem; }
+.saver-cloud-copy--error { color: #b42318; font-weight: 600; }
+
+/* Advantage Cloud upload queue (Media Console gallery and the Cloud home card). */
+.cloud-queue { margin: 12px 0; padding: 12px; display: grid; gap: 8px; border: 1px solid rgba(127, 127, 127, 0.35); border-radius: 18px; background: rgba(127, 127, 127, 0.06); }
+.cloud-queue__head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; justify-content: space-between; }
+.cloud-queue__summary { margin: 0; font-weight: 600; line-height: 1.4; }
+.cloud-queue__bytes { font-size: 0.85rem; opacity: 0.8; font-variant-numeric: tabular-nums; }
+.cloud-queue__bar { height: 6px; border-radius: 999px; background: rgba(127, 127, 127, 0.25); overflow: hidden; }
+.cloud-queue__bar > span { display: block; height: 100%; border-radius: inherit; background: var(--logo-blue); transition: width 0.25s ease; }
+.cloud-queue__bar--total { height: 8px; }
+.cloud-queue__bar--total > span { background: var(--gold); }
+.cloud-queue__warning { margin: 0; padding: 8px 10px; border-radius: 10px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.5); font-size: 0.9rem; font-weight: 600; line-height: 1.4; }
+.cloud-queue__actions { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.cloud-queue__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 50vh; overflow-y: auto; }
+.cloud-queue__row { display: grid; gap: 4px; padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(127, 127, 127, 0.3); }
+.cloud-queue__row--done .cloud-queue__bar > span { background: var(--points); }
+.cloud-queue__row--skip .cloud-queue__bar > span { background: var(--muted); }
+.cloud-queue__row--error { border-color: rgba(180, 35, 24, 0.6); }
+.cloud-queue__row--error .cloud-queue__status { color: #b42318; font-weight: 600; }
+.cloud-queue__line { display: flex; gap: 8px; align-items: center; justify-content: space-between; min-width: 0; }
+.cloud-queue__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; font-weight: 600; }
+.cloud-queue__size, .cloud-queue__status { font-size: 0.8rem; opacity: 0.85; font-variant-numeric: tabular-nums; }
+.cloud-queue__row--error .cloud-queue__status { opacity: 1; }
+.cloud-queue__action { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(127, 127, 127, 0.5); background: transparent; color: inherit; font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+
+/* Lesson plan source: gym template vs this instructor's own copy. */
+.lesson-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+.lesson-source__label {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid currentColor;
+}
+.lesson-source__label--template {
+  color: #8a6d1f;
+  background: #fbf3dc;
+}
+.lesson-source__label--mine {
+  color: #1f5f8a;
+  background: #e3f0fa;
+}
+.lesson-source__hint {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+.lesson-source__note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.85rem;
 }
