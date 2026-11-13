@@ -32,20 +32,18 @@ import {
   CLEAR_CONFIRM_PHRASE,
   CLEAR_STUDENT_DATA_ITEMS,
   CLEAR_STUDENT_DEVICE_NOTE,
-  applyBackupToMemory,
   clearStudentMemory,
-  filmBlobsFromBackup,
-  parseStudentBackup,
   readBackupIncludeVideos,
   studentExportBusyLabel,
   writeBackupIncludeVideos,
-  type StudentBackupFile,
   type StudentExportKind,
 } from '../../lib/studentBackup';
 import { runStudentEditionExport } from '../../lib/studentBackupExport';
+import { applyStudentRestore, readRestoreChoice, type StudentRestoreChoice } from '../../lib/packets/student';
+import { RestoreChoice } from './RestoreChoice';
 import { backupStampLabel, readStudentBackupStamp } from '../../lib/studentBackupStamp';
 import { clearFilmBlobs, putFilmBlob } from '../../lib/studentFilm';
-import { backupRestoreProfileId } from '../../lib/studentProfiles';
+import { backupRestoreProfileId, readStudentProfiles } from '../../lib/studentProfiles';
 import { StudentMarks, useStudentPath } from './chrome';
 import { AcademyConnect } from './AcademyConnect';
 import { ExportChoices } from './ExportChoices';
@@ -83,13 +81,17 @@ export function ConnectionsPage() {
     writeBackupIncludeVideos(localStorage, included);
     setIncludeVideosState(included);
   };
+  const [includeAllProfiles, setIncludeAllProfiles] = useState(false);
   const [busyKind, setBusyKind] = useState<StudentExportKind | null>(null);
   const [stamp, setStamp] = useState(() => backupStampLabel(readStudentBackupStamp(localStorage)));
   const exportFile = async (kind: StudentExportKind) => {
     setBusyKind(kind);
     try {
-      const result = await runStudentEditionExport(kind, { includeVideos });
-      if (kind === 'json' && result.ok) setStamp(backupStampLabel(readStudentBackupStamp(localStorage)));
+      const result = await runStudentEditionExport(kind, {
+        includeVideos,
+        scope: includeAllProfiles ? 'all' : 'active',
+      });
+      if ((kind === 'packet' || kind === 'json') && result.ok) setStamp(backupStampLabel(readStudentBackupStamp(localStorage)));
       return result;
     } finally {
       setBusyKind(null);
@@ -106,6 +108,9 @@ export function ConnectionsPage() {
             to={to}
             includeVideos={includeVideos}
             setIncludeVideos={setIncludeVideos}
+            includeAllProfiles={includeAllProfiles}
+            setIncludeAllProfiles={setIncludeAllProfiles}
+            profileCount={readStudentProfiles(localStorage).profiles.length}
             busyKind={busyKind}
             stamp={stamp}
             onExport={exportFile}
@@ -121,7 +126,7 @@ export function ConnectionsPage() {
           </section>
           <ClearStudentData
             busyKind={busyKind}
-            onBackup={() => exportFile('json')}
+            onBackup={() => exportFile('packet')}
             onCleared={() => setStamp(backupStampLabel(readStudentBackupStamp(localStorage)))}
           />
       </div>
@@ -290,6 +295,9 @@ function ExportAndPrint({
   to,
   includeVideos,
   setIncludeVideos,
+  includeAllProfiles,
+  setIncludeAllProfiles,
+  profileCount,
   busyKind,
   stamp,
   onExport,
@@ -297,6 +305,9 @@ function ExportAndPrint({
   to: (path: string) => string;
   includeVideos: boolean;
   setIncludeVideos: (value: boolean) => void;
+  includeAllProfiles: boolean;
+  setIncludeAllProfiles: (value: boolean) => void;
+  profileCount: number;
   busyKind: StudentExportKind | null;
   stamp: string;
   onExport: (kind: StudentExportKind) => Promise<{ ok: boolean; message: string }>;
@@ -306,7 +317,7 @@ function ExportAndPrint({
   const [savedPulse, setSavedPulse] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState<StudentBackupFile | null>(null);
+  const [pending, setPending] = useState<StudentRestoreChoice | null>(null);
   const working = busy || busyKind !== null;
 
   const exportFile = async (kind: StudentExportKind) => {
@@ -319,17 +330,24 @@ function ExportAndPrint({
   };
 
   const apply = async (mode: 'merge' | 'replace') => {
-    if (!pending) return;
+    if (!pending?.restorable) return;
     setBusy(true);
     setError('');
     try {
-      const profileId = backupRestoreProfileId(localStorage, pending);
-      if (mode === 'replace') await clearFilmBlobs(profileId).catch(() => undefined);
-      const result = applyBackupToMemory(localStorage, pending, mode, {
+      if (mode === 'replace') {
+        const ids =
+          pending.source === 'legacy'
+            ? [backupRestoreProfileId(localStorage, pending.file)]
+            : pending.bundles.map((bundle) => bundle.profile.id);
+        for (const profileId of ids) await clearFilmBlobs(profileId).catch(() => undefined);
+      }
+      const result = applyStudentRestore(localStorage, pending, mode, {
         rank: loadRankPictures(),
         bracket: loadBracketPhotos(),
       });
-      for (const item of filmBlobsFromBackup(pending)) await putFilmBlob(item.id, item.blob, profileId);
+      for (const group of result.films) {
+        for (const item of group.blobs) await putFilmBlob(item.id, item.blob, group.profileId);
+      }
       setStatus('');
       setSavedNote(result.note);
       setSavedPulse((pulse) => pulse + 1);
@@ -346,12 +364,15 @@ function ExportAndPrint({
     <section className="ink" aria-label="Export and print">
       <h2>Export and print</h2>
       <p className="student-quiet">
-        Back up my journal downloads one JSON file. That file restores this phone. Each other button downloads one file. If your gym does not use Advantage, print the progress report or the self-assessment and hand that page to your instructor.
+        Download student packet saves one file. That file restores this phone. It includes the journal, self-assessment, ranks, index cards, and a spreadsheet. The spreadsheet button downloads only the spreadsheet. If your gym does not use Advantage, print the progress report or the self-assessment and hand that page to your instructor.
       </p>
       <ExportChoices
         variant="paper"
         includeVideos={includeVideos}
         onIncludeVideos={setIncludeVideos}
+        includeAllProfiles={includeAllProfiles}
+        onIncludeAllProfiles={setIncludeAllProfiles}
+        profileCount={profileCount}
         locked={working}
         busyKind={busyKind}
         stamp={stamp}
@@ -380,40 +401,38 @@ function ExportAndPrint({
       {savedNote ? <SaveConfirm message={savedNote} token={savedPulse} /> : null}
       <input
         type="file"
-        accept="application/json,.json"
+        accept=".advantage,application/json,.json"
         aria-label="Restore from backup"
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = '';
           if (!file) return;
-          void file.text().then((text) => {
-            const parsed = parseStudentBackup(text);
+          void file.text().then(async (text) => {
+            const parsed = await readRestoreChoice(text);
             if (!parsed.ok) {
               setError(parsed.error);
               setPending(null);
               setSavedNote('');
               return;
             }
-            setPending(parsed.file);
+            setPending(parsed.choice);
             setError('');
             setSavedNote('');
-            setStatus('Choose merge or replace. Merge keeps records that are only on this phone.');
+            setStatus(parsed.choice.restorable ? 'Choose merge or replace. Merge keeps records that are only on this phone.' : '');
           });
         }}
       />
       {pending ? (
-        <div className="student-confirm" role="group" aria-label="Restore choices">
-          <p>{BACKUP_REPLACE_WARN}</p>
-          <button type="button" className="ink-btn" disabled={busy} onClick={() => void apply('merge')}>
-            Merge with this phone
-          </button>
-          <button type="button" className="ink-btn" disabled={busy} onClick={() => void apply('replace')}>
-            Replace this phone
-          </button>
-          <button type="button" className="ink-btn" onClick={() => setPending(null)}>
-            Cancel restore
-          </button>
-        </div>
+        <RestoreChoice
+          className="student-confirm"
+          lines={pending.preview.lines}
+          restorable={pending.restorable}
+          locked={busy}
+          replaceWarning={BACKUP_REPLACE_WARN}
+          onMerge={() => void apply('merge')}
+          onReplace={() => void apply('replace')}
+          onCancel={() => setPending(null)}
+        />
       ) : null}
     </section>
   );
@@ -450,7 +469,7 @@ function ClearStudentData({
       ) : null}
       {step === 1 ? (
         <div className="student-confirm" role="group" aria-label="Back up before clear">
-          <p>{BACKUP_BEFORE_CLEAR} Back up first downloads one JSON file, then decide.</p>
+          <p>{BACKUP_BEFORE_CLEAR} Back up first downloads one student packet, then decide.</p>
           <button
             type="button"
             className="ink-btn ink-btn--save"
@@ -468,7 +487,7 @@ function ClearStudentData({
               })
             }
           >
-            {busyKind === 'json' ? studentExportBusyLabel('json') : BACK_UP_FIRST_LABEL}
+            {busyKind === 'packet' ? studentExportBusyLabel('packet') : BACK_UP_FIRST_LABEL}
           </button>
           <button type="button" className="ink-btn" onClick={() => setStep(2)}>
             Continue without a backup

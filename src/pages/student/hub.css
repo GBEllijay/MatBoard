@@ -631,6 +631,21 @@
   touch-action: manipulation;
 }
 
+button.s-ghost {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  appearance: none;
+}
+
+.s-profiles-entry {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .s-ghost__label {
   font-size: 15px;
   font-weight: 600;
@@ -1622,6 +1637,69 @@
 .s-profiles input:focus-visible {
   outline: 3px solid #6ea8ff;
   outline-offset: 2px;
+}
+
+.s-profiles-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  align-items: end;
+}
+
+.s-profiles-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(4, 10, 18, 0.62);
+  cursor: pointer;
+}
+
+.s-profiles--sheet {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 480px);
+  margin: 0 auto 12px;
+  max-height: min(88vh, 720px);
+  overflow: auto;
+}
+
+.s-profiles__sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.s-profiles--sheet .s-profiles__sheet-head h2 {
+  flex: 1;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #f2f4f7;
+}
+
+.s-profiles__divider {
+  width: 100%;
+  margin: 2px 0 4px;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.s-profiles .s-profiles__close,
+.student .s-profiles .s-profiles__close {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: transparent;
+  color: #f2f4f7;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
 .student.student--profile .s-profiles {

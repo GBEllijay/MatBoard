@@ -9,6 +9,7 @@ import { acceptServerToken, readDeviceId } from './entitlement.ts';
 import { ENTITLEMENT_TOKEN_KEY } from './entitlement.ts';
 import { readStoredEntitlementToken, saveInboxPass } from './studentInboxClient.ts';
 import { applyServerGrant } from './serverGrant.ts';
+import { setStudentPurchased } from './studentEdition.ts';
 
 export type StudentLicenseRow = {
   status: string;
@@ -188,6 +189,8 @@ export async function applyClaimedStudentLicense(
   storage: Storage = localStorage,
 ): Promise<AppliedStudentLicense> {
   applyServerGrant({ grants: result.grants });
+  // Same local remember a paid Student checkout writes, so Home and / treat this like a purchase.
+  if (result.grants.includes('student')) setStudentPurchased(true);
   joinCloudAcademy(storage, { license: result.gymId, gymName });
   if (result.studentPass) saveInboxPass(storage, result.studentPass);
   if (wouldDowngradePass(readStoredEntitlementToken(storage), result.token)) {

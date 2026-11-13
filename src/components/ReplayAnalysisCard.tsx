@@ -8,14 +8,10 @@ import {
   REPLAY_TITLE_MAX,
   replayFileName,
   replayReviewLabel,
-  reviewInJournalLibrary,
   type ReplayBlock,
   type ReplayClipRef,
   type ReplaySaveKind,
 } from '../lib/replayAnalysis';
-import type { AttachReviewNameResult } from '../lib/reviewIndexLink';
-import type { StudentProgressReport } from '../lib/progress/types';
-import { ReviewIndexControls } from './ReviewIndexControls';
 import { newReplayClipId, putReplayClip, readReplayClip } from '../lib/replayClipStore';
 import { annotatedFileName } from '../lib/annotatedReplay';
 import { REPLAY_PENDING_MESSAGE, availableReplaySaveTargets, plainVideoMime, saveReplayClip } from '../lib/replaySave';
@@ -34,22 +30,10 @@ type Props = {
   canCapture: boolean;
   onChange: (patch: Partial<Omit<ReplayBlock, 'id'>>) => void;
   /**
-   * Inside another block (Competition "Record for replay" / "Record for Review").
+   * Inside another block (Competition "Record for replay").
    * The host block keeps its own heading and notes, so only the clip, player and save show.
    */
   embedded?: boolean;
-  /**
-   * Standalone Record for Review. Lesson-plan cards leave this off.
-   * Pick or add a fundamental; the free-text title stays the tournament label.
-   */
-  linkIndex?: {
-    report: StudentProgressReport;
-    onAdd: (categoryId: string, name: string) => AttachReviewNameResult;
-  };
-  /** Explicit add into the journal video library. Not called until the button is pressed. */
-  journalLibrary?: {
-    onAdd: (blob: Blob) => Promise<string>;
-  };
 };
 
 type ClipState = { status: 'none' } | { status: 'loading' } | { status: 'ready'; url: string; blob: Blob } | { status: 'missing' };
@@ -67,8 +51,6 @@ export function ReplayAnalysisCard({
   canCapture,
   onChange,
   embedded = false,
-  linkIndex,
-  journalLibrary,
 }: Props) {
   const recordRef = useRef<HTMLInputElement | null>(null);
   const libraryRef = useRef<HTMLInputElement | null>(null);
@@ -77,8 +59,6 @@ export function ReplayAnalysisCard({
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState<{ kind: ReplaySaveKind; pct: number } | null>(null);
   const [targets, setTargets] = useState<ReplaySaveKind[]>(() => availableReplaySaveTargets());
-  const [libraryNote, setLibraryNote] = useState<string | null>(null);
-  const [libraryBusy, setLibraryBusy] = useState(false);
   const localId = replay.clip?.localId ?? '';
   /** Async saves finish after more typing; always patch the newest plan. */
   const onChangeRef = useRef(onChange);
@@ -125,10 +105,6 @@ export function ReplayAnalysisCard({
       alive = false;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [localId]);
-
-  useEffect(() => {
-    setLibraryNote(null);
   }, [localId]);
 
   const onFiles = async (files: readonly File[], source: ReplayClipRef['source']) => {
@@ -198,25 +174,7 @@ export function ReplayAnalysisCard({
   const titleId = `${inputBase}-title`;
   const notesId = `${inputBase}-notes`;
   const showCapture = editable && canCapture;
-  const showIndex = Boolean(linkIndex) && !embedded;
-  const showJournalLibrary = Boolean(journalLibrary) && editable && !embedded;
-  const inLibrary = reviewInJournalLibrary(replay);
   const reviewLabel = replayReviewLabel(replay);
-
-  const addToLibrary = async () => {
-    if (!journalLibrary || libraryBusy || inLibrary) return;
-    if (clip.status !== 'ready') {
-      setLibraryNote('Record or pick a clip first.');
-      return;
-    }
-    setLibraryBusy(true);
-    setLibraryNote(null);
-    try {
-      setLibraryNote(await journalLibrary.onAdd(clip.blob));
-    } finally {
-      setLibraryBusy(false);
-    }
-  };
 
   return (
     <section
@@ -231,15 +189,6 @@ export function ReplayAnalysisCard({
             <div className="notes__section-head">
               <h2 className="replay-card__heading">{heading}</h2>
             </div>
-            {showIndex && linkIndex ? (
-              <ReviewIndexControls
-                report={linkIndex.report}
-                link={replay.indexLink}
-                readOnly={!editable}
-                onPick={(next) => onChange(next ? { indexLink: next } : { indexLink: undefined })}
-                onAdd={linkIndex.onAdd}
-              />
-            ) : null}
             <label htmlFor={titleId} className="replay-card__label">
               What are we reviewing?
             </label>
@@ -252,9 +201,6 @@ export function ReplayAnalysisCard({
               readOnly={!editable}
               onChange={(event) => onChange({ title: event.target.value })}
             />
-            {showIndex ? (
-              <p className="replay-card__note">Optional label, such as a tournament round. The fundamental is the name on the index.</p>
-            ) : null}
           </>
         )}
 
@@ -306,18 +252,6 @@ export function ReplayAnalysisCard({
         ) : null}
         {showCapture && clip.status === 'ready' && targets.length === 0 ? (
           <p className="replay-card__note">{REPLAY_STAY_COPY}</p>
-        ) : null}
-        {showJournalLibrary ? (
-          <div className="replay-card__actions">
-            <button type="button" className="btn btn--ghost" disabled={libraryBusy || inLibrary} onClick={() => void addToLibrary()}>
-              {libraryBusy ? 'Adding to journal video library…' : inLibrary ? 'In the journal video library' : 'Add to journal video library'}
-            </button>
-          </div>
-        ) : null}
-        {libraryNote ? (
-          <p className="replay-card__note" role="status">
-            {libraryNote}
-          </p>
         ) : null}
         {message ? (
           <p className="replay-card__note" role="status">

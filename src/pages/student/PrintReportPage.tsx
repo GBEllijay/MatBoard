@@ -3,7 +3,6 @@ import { beltModeOf } from '../../lib/beltBook';
 import { headerVisibility, readProfileMarks } from '../../lib/profileMarks';
 import { readProfilePortrait } from '../../lib/profilePortrait';
 import { reportHeaderArt } from '../../lib/pdfRaster';
-import { readStudentGymLogo } from '../../lib/studentGymMark';
 import { StaticDiamond } from '../../components/StaticDiamond';
 import { shapeAxesFromLegacy } from '../../lib/shapeAxes';
 import { assessmentAverage, loadAssessments, type AssessmentState } from '../../lib/studentAssessment';
@@ -32,11 +31,10 @@ export function PrintReportPage({ kind }: { kind: 'progress' | 'assessment' }) {
   const issuedOn = todayIso();
   const visibility = headerVisibility(beltModeOf(report), readProfileMarks());
   const selfie = kind === 'progress' && visibility.selfie ? readProfilePortrait() : null;
-  const gymLogo = kind === 'progress' && visibility.logo ? readStudentGymLogo() : null;
 
   const download = () => {
     void (async () => {
-    const art = kind === 'progress' ? await reportHeaderArt({ selfie, gymLogo }) : { selfie: null, gymLogo: null };
+    const art = kind === 'progress' ? await reportHeaderArt({ selfie, gymLogo: null }) : { selfie: null, gymLogo: null };
     const pdf = kind === 'assessment'
       ? assessmentReportPdf(report, assessment, issuedOn)
       : progressReportPdf(report, assessment, { scouting, films }, issuedOn, art);
@@ -87,7 +85,6 @@ export function PrintReportPage({ kind }: { kind: 'progress' | 'assessment' }) {
             films={films}
             issuedOn={issuedOn}
             selfie={selfie}
-            gymLogo={gymLogo}
           />
         )}
       </article>
@@ -101,14 +98,12 @@ function ReportHero({
   issuedOn,
   score,
   selfie,
-  gymLogo,
 }: {
   title: string;
   report: StudentProgressReport;
   issuedOn: string;
   score?: string;
   selfie?: string | null;
-  gymLogo?: string | null;
 }) {
   const identity = reportIdentity(report);
   return (
@@ -132,10 +127,9 @@ function ReportHero({
           <small> / 5</small>
         </p>
       ) : null}
-      {gymLogo || selfie ? (
+      {selfie ? (
         <div className="report-hero__art">
-          {gymLogo ? <img className="report-hero__logo" src={gymLogo} alt="Gym logo" /> : null}
-          {selfie ? <img className="report-hero__selfie" src={selfie} alt="Student photo" /> : null}
+          <img className="report-hero__selfie" src={selfie} alt="Student photo" />
         </div>
       ) : null}
     </header>
@@ -233,7 +227,6 @@ function ProgressSheet({
   films,
   issuedOn,
   selfie,
-  gymLogo,
 }: {
   report: StudentProgressReport;
   assessment: AssessmentState;
@@ -241,12 +234,11 @@ function ProgressSheet({
   films: readonly StudentFilm[];
   issuedOn: string;
   selfie: string | null;
-  gymLogo: string | null;
 }) {
   const blocks = progressReportBlocks(report, assessment, { scouting, films });
   return (
     <>
-      <ReportHero title="Progress report" report={report} issuedOn={issuedOn} selfie={selfie} gymLogo={gymLogo} />
+      <ReportHero title="Progress report" report={report} issuedOn={issuedOn} selfie={selfie} />
       <div className="report-body">
         <ReportBelt report={report} />
         {blocks.map((block) => (

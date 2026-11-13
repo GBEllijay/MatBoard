@@ -1,6 +1,6 @@
 /**
  * Backup and Connections controls still do their own job:
- * JSON backup, spreadsheet, both PDFs, include videos, Last backup,
+ * student packet, spreadsheet, both PDFs, include videos, Last backup,
  * restore Merge/Replace, drive-not-connected note, and clear.
  * Include video files stays off until chosen, then stays across reload.
  * A finished JSON backup says what was saved, with or without videos.
@@ -133,7 +133,7 @@ async function exerciseExports(host: HTMLElement) {
   const text = () => host.textContent ?? '';
   assert.match(text(), /Last backup: Not yet/);
   assert.match(text(), /Video files: off/);
-  assert.match(text(), /Downloads advantage-student-backup-/);
+  assert.match(text(), /Downloads advantage-student-packet-/);
   assert.match(text(), /Downloads advantage-student-templates-/);
   assert.match(text(), /Downloads advantage-student-progress-/);
   assert.match(text(), /Downloads advantage-student-self-assessment-/);
@@ -169,21 +169,25 @@ async function exerciseExports(host: HTMLElement) {
   assert.match(text(), /Video files: on/);
   assert.equal(host.querySelector('[data-on="yes"]')?.textContent, 'On');
 
-  await click(button(host, 'Back up my journal (.json)'));
+  await click(button(host, 'Download student packet (.advantage)'));
   assert.equal(saved.length, before + 4);
-  assert.match(saved.at(-1)?.name ?? '', /\.json$/);
+  assert.match(saved.at(-1)?.name ?? '', /\.advantage$/);
   assert.match(text(), /Backup saved/);
-  assert.match(text(), /Saved on this phone as advantage-student-backup-/);
+  assert.match(text(), /Saved on this phone as advantage-student-packet-/);
   assert.match(text(), /Video files kept on this device are included/);
   assert.equal(host.querySelector('[data-kind="ok"]')?.getAttribute('role'), 'status');
   const file = JSON.parse(await (saved.at(-1)?.blob.text() ?? '{}')) as {
-    films?: { technique?: string }[];
-    filmFiles?: unknown;
-    filmFilesOmitted?: { id: string }[];
+    format?: string;
+    kind?: string;
+    sections?: Record<string, { films?: { technique?: string }[]; filmFiles?: unknown; filmFilesOmitted?: { id: string }[]; csv?: string }>;
   };
-  assert.equal(file.films?.[0]?.technique, 'Armbar');
-  assert.equal(file.filmFiles, undefined);
-  assert.equal(file.filmFilesOmitted?.[0]?.id, clip.id);
+  const bundle = file.sections?.['bundle:default'];
+  assert.equal(file.format, 'advantage-packet');
+  assert.equal(file.kind, 'student');
+  assert.equal(bundle?.films?.[0]?.technique, 'Armbar');
+  assert.equal(bundle?.filmFiles, undefined);
+  assert.equal(bundle?.filmFilesOmitted?.[0]?.id, clip.id);
+  assert.match(bundle?.csv ?? '', /Armbar/);
   assert.match(text(), /Last backup: \d{4}-\d{2}-\d{2}/);
   assert.equal(text().includes('Last backup: Not yet'), false);
   assert.match(text(), /No academy folder or personal drive is connected/);
@@ -266,11 +270,11 @@ test('connections page keeps the same export, restore, and clear controls', asyn
   assert.match(page.host.textContent ?? '', /Print self-assessment/);
 
   await click(button(page.host, 'Clear all Student Edition data'));
-  assert.match(page.host.textContent ?? '', /Back up first \(\.json\)/);
+  assert.match(page.host.textContent ?? '', /Back up first \(\.advantage\)/);
   const count = saved.length;
-  await click(button(page.host, 'Back up first (.json)'));
+  await click(button(page.host, 'Back up first (.advantage)'));
   assert.equal(saved.length, count + 1);
-  assert.match(saved.at(-1)?.name ?? '', /\.json$/);
+  assert.match(saved.at(-1)?.name ?? '', /\.advantage$/);
   assert.match(page.host.textContent ?? '', /Saved on this phone/);
 
   await click(button(page.host, 'Continue without a backup'));
@@ -294,15 +298,15 @@ test('connections page keeps the same export, restore, and clear controls', asyn
   unmount(page);
 });
 
-test('clear from Backup & Print downloads one JSON file and still requires CLEAR', async () => {
+test('clear from Backup & Print downloads one student packet and still requires CLEAR', async () => {
   localStorage.clear();
   saved.length = 0;
   saveStudentReport(localStorage, journal('keep until clear', 8));
   const page = mount(<ClearStudentMenu />, '/student/backup/clear?student=1');
   await click(button(page.host, 'Clear all Student Edition data'));
-  await click(button(page.host, 'Back up first (.json)'));
+  await click(button(page.host, 'Back up first (.advantage)'));
   assert.equal(saved.length, 1);
-  assert.match(saved[0]?.name ?? '', /\.json$/);
+  assert.match(saved[0]?.name ?? '', /\.advantage$/);
   assert.match(await (saved[0]?.blob.text() ?? ''), /keep until clear/);
   assert.match(page.host.textContent ?? '', /Saved on this phone/);
   await click(button(page.host, 'Continue without a backup'));
@@ -350,7 +354,7 @@ test('include video files stays off until chosen, then stays on after reload', a
   const off = videoCheckbox(first.host);
   assert.equal(off.checked, false);
   assert.equal(first.host.querySelector('[data-on="no"]')?.textContent, 'Off');
-  await click(button(first.host, 'Back up my journal (.json)'));
+  await click(button(first.host, 'Download student packet (.advantage)'));
   assert.match(first.host.textContent ?? '', /Backup saved/);
   assert.match(first.host.textContent ?? '', /Video files kept on this device are not included/);
   assert.match(first.host.textContent ?? '', /No academy folder or personal drive is connected/);
@@ -381,7 +385,7 @@ test('a failed backup shows an error and does not claim the file was saved', asy
   };
   view.URL.createObjectURL = urlApi.createObjectURL;
   try {
-    await click(button(page.host, 'Back up my journal (.json)'));
+    await click(button(page.host, 'Download student packet (.advantage)'));
     const alert = page.host.querySelector('[role="alert"]');
     assert.equal(alert?.getAttribute('data-kind'), 'error');
     assert.match(alert?.textContent ?? '', /Backup did not finish/);

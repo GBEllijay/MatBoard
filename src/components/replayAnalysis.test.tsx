@@ -13,8 +13,6 @@ import { ANNOTATED_FALLBACK_COPY } from '../lib/annotatedReplay.ts';
 import { SWIPE_BLOCK_SELECTOR, coachSwipeTarget, swipeGestureBlocked } from '../lib/coachSwipe.ts';
 import { INSTRUCTOR_PRESETS, canCaptureReplay, replayCaptureAccess, visibleCoachControl } from '../lib/instructorSeats.ts';
 import { ADD_REPLAY_LABEL, createReplay, type ReplayBlock } from '../lib/replayAnalysis.ts';
-import { STANDALONE_REVIEW_KEY } from '../lib/recordForReviewStore.ts';
-import { TRAINING_NOTES_STORAGE_KEY } from '../lib/trainingNotesStore.ts';
 import { ReplayAnalysisCard } from './ReplayAnalysisCard.tsx';
 import { ReplayPlayer } from './ReplayPlayer.tsx';
 import type { ReplaySaveKind } from '../lib/replayAnalysis.ts';
@@ -273,7 +271,7 @@ test('Daily Lesson Plan keeps its controls and adds the replay button beside the
   assert.ok(src.includes('replayCanCapture({ owner: true, seat })'));
 });
 
-// ---------- Competition curriculum: three per-block modes + Record for Review ----------
+// ---------- Competition curriculum: three per-block modes ----------
 
 function curriculumCards(host: ParentNode): HTMLElement[] {
   return [...host.querySelectorAll('section.notes__card[aria-labelledby^="curriculum-"]')] as HTMLElement[];
@@ -324,49 +322,19 @@ test('curriculum: Record for replay shows the replay recorder and hides the roun
   unmount(mounted);
 });
 
-test('curriculum: Record for Review is on Live Rounds and Specific Training among the starter blocks; it keeps the timer', async () => {
+test('curriculum: Record for Review is gone from every block and from Closing', async () => {
   const mounted = await curriculumPage();
-  const blockSwitches = curriculumCards(mounted.host)
-    .map((card) => [(card.querySelector('h2')?.textContent ?? '').trim(), card.querySelector('[data-record-review]')] as const)
-    .filter(([, sw]) => sw);
-  const titles = blockSwitches.map(([t]) => t);
-  assert.equal(titles.length, 2, titles.join(','));
-  assert.ok(titles.some((t) => /live/i.test(t)), 'live');
-  assert.ok(titles.some((t) => /specific/i.test(t)), 'specific');
-  for (const card of curriculumCards(mounted.host)) {
-    const h = (card.querySelector('h2')?.textContent ?? '').trim();
-    if (/warm|body|takedown|technique|cool/i.test(h)) assert.equal(card.querySelector('[data-record-review]'), null, h);
-  }
-  const title = titles.find((t) => /live/i.test(t)) as string;
-  const sw = cardTitled(mounted.host, title).querySelector('[data-record-review]') as HTMLButtonElement;
-  assert.equal(sw.getAttribute('aria-checked'), 'false');
-  assert.equal(sw.getAttribute('role'), 'switch');
-  click(sw);
-  const card = cardTitled(mounted.host, title);
-  const on = card.querySelector('[data-record-review]') as HTMLButtonElement;
-  assert.equal(on.getAttribute('aria-checked'), 'true');
-  assert.ok(card.querySelector('.replay-card--embedded'), 'recorder appears');
-  assert.ok(buttons(card).some((b) => (b.textContent ?? '').includes('Open round timer')), 'timer stays');
-  click(on);
-  assert.equal(cardTitled(mounted.host, title).querySelector('.replay-card--embedded'), null);
+  assert.equal(mounted.host.querySelector('[data-record-review]'), null);
+  assert.doesNotMatch(mounted.host.textContent ?? '', /Record for Review/);
   unmount(mounted);
 });
 
-test('curriculum: the Closing (outro) section offers Record for Review and shows the recorder when on', async () => {
-  const mounted = await curriculumPage();
-  const label = mounted.host.querySelector('[aria-label="Record for Review for Closing"]') as HTMLButtonElement;
-  assert.ok(label, 'closing switch');
-  click(label);
-  const on = mounted.host.querySelector('[aria-label="Record for Review for Closing"]') as HTMLButtonElement;
-  assert.equal(on.getAttribute('aria-checked'), 'true');
-  assert.ok(on.parentElement?.querySelector('.replay-card--embedded'));
-  unmount(mounted);
-});
-
-test('Daily Lesson Plan source: Intro, Specific Training and Closing carry Record for Review; Cool down does not', () => {
+test('Daily Lesson Plan source: Record for Review is not offered on any section', () => {
   const src = readFileSync('src/pages/TrainingNotes.tsx', 'utf8');
-  for (const kind of ['intro', 'specific', 'closing']) assert.ok(src.includes(`blockOffersReviewToggle('${kind}')`), kind);
-  assert.equal(src.includes("blockOffersReviewToggle('cooldown')"), false);
+  assert.equal(src.includes('ReviewSlotControls'), false);
+  assert.equal(src.includes('blockOffersReviewToggle'), false);
+  assert.doesNotMatch(src, /Record for Review/);
+  assert.ok(src.includes('<ReplayAnalysisCard'), 'Add video replay analysis stays');
 });
 
 test('player: Restart returns the clip to 0:00 and pauses', () => {
@@ -386,10 +354,11 @@ test('player: Restart returns the clip to 0:00 and pauses', () => {
   unmount(mounted);
 });
 
-test('curriculum source: modes and toggle come from the shared lists; Program director cannot capture', () => {
+test('curriculum source: modes come from the shared lists; Program director cannot capture', () => {
   const src = readFileSync('src/pages/CompetitionCurriculum.tsx', 'utf8');
   assert.ok(src.includes('CURRICULUM_TIMINGS.map'));
-  assert.ok(src.includes('blockOffersReviewToggle(block.kind)'));
+  assert.equal(src.includes('blockOffersReviewToggle'), false);
+  assert.doesNotMatch(src, /Record for Review|ReviewSlotControls|data-record-review/);
   assert.ok(src.includes('replayCanCapture({ owner: true, seat })'));
   assert.ok(src.includes('Open round timer'));
   assert.ok(src.includes('<LessonMediaRail'));
@@ -501,7 +470,7 @@ function withDuration(mounted: Mounted) {
   return video;
 }
 
-test('drawing on Record for Review does not navigate to Daily Training Videos', () => {
+test('drawing on the replay player does not navigate to Daily Training Videos', () => {
   const mounted = player();
   click(button(mounted.host, 'Arrow'));
   const root = mounted.host.querySelector('.replay-player') as HTMLElement;
@@ -668,26 +637,6 @@ test('when burn-in is unavailable, annotated save sends the clip and a still thr
   unmount(mounted);
 });
 
-test('standalone Record for Review works with no lesson plan', async () => {
-  localStorage.clear();
-  const { RecordForReviewPage } = await import('../pages/RecordForReview.tsx');
-  const mounted = mount(<RecordForReviewPage />);
-  assert.match(mounted.host.textContent ?? '', /Record for Review/);
-  assert.ok(button(mounted.host, 'Record or pick video'));
-  assert.equal(localStorage.getItem(TRAINING_NOTES_STORAGE_KEY), null);
-  const saved = localStorage.getItem(STANDALONE_REVIEW_KEY);
-  assert.ok(saved, 'the standalone tool stores its own review');
-  assert.equal(JSON.parse(saved).clip, undefined);
-  assert.ok(mounted.host.querySelector('section.replay-card'));
-  assert.equal(mounted.host.querySelector('.replay-player'), null, 'no clip yet, so the shared card is waiting');
-  const page = readFileSync('src/pages/RecordForReview.tsx', 'utf8');
-  const notes = readFileSync('src/pages/TrainingNotes.tsx', 'utf8');
-  assert.match(page, /<ReplayAnalysisCard/);
-  assert.doesNotMatch(page, /TRAINING_NOTES_STORAGE_KEY|loadTrainingArchive/);
-  assert.match(notes, /<ReviewSlotControls/);
-  assert.match(notes, /<ReplayAnalysisCard/);
-  unmount(mounted);
-});
 
 test('a lesson replay card does not offer the index or the journal library', () => {
   const { mounted } = card();
@@ -697,128 +646,9 @@ test('a lesson replay card does not offer the index or the journal library', () 
   assert.equal(text.includes('Fundamental'), false);
   const notes = readFileSync('src/pages/TrainingNotes.tsx', 'utf8');
   const curriculum = readFileSync('src/pages/CompetitionCurriculum.tsx', 'utf8');
-  const slots = readFileSync('src/components/ReviewSlotControls.tsx', 'utf8');
+  const replayCard = readFileSync('src/components/ReplayAnalysisCard.tsx', 'utf8');
   assert.doesNotMatch(notes, /linkIndex|journalLibrary|ReviewIndexControls/);
   assert.doesNotMatch(curriculum, /linkIndex|journalLibrary|ReviewIndexControls/);
-  assert.doesNotMatch(slots, /linkIndex|journalLibrary|ReviewIndexControls/);
-  unmount(mounted);
-});
-
-test('record for review picks or adds a fundamental and does not auto-add the journal library', async () => {
-  localStorage.clear();
-  const { RecordForReviewPage } = await import('../pages/RecordForReview.tsx');
-  const { STUDENT_EDITION_STORAGE_KEY, loadStudentReport } = await import('../lib/studentEdition.ts');
-  const { FILM_STORAGE_KEY } = await import('../lib/studentFilm.ts');
-  const mounted = mount(<RecordForReviewPage />);
-  const text = () => mounted.host.textContent ?? '';
-  assert.match(text(), /Pick from index/);
-  assert.match(text(), /Add a new fundamental/);
-  assert.match(text(), /Add to journal video library/);
-  assert.equal(localStorage.getItem(FILM_STORAGE_KEY), null);
-  assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), null);
-
-  click(button(mounted.host, 'Add to journal video library'));
-  assert.match(text(), /Record or pick a clip first/);
-  assert.equal(localStorage.getItem(FILM_STORAGE_KEY), null, 'the library button does not write a film without a clip');
-
-  click(button(mounted.host, 'Pick from index'));
-  click(button(mounted.host, 'Armbar from guard'));
-  assert.match(text(), /Armbar from guard/);
-  const picked = JSON.parse(localStorage.getItem(STANDALONE_REVIEW_KEY) ?? '{}');
-  assert.deepEqual(picked.indexLink, { id: 'sub.armbar-guard', name: 'Armbar from guard' });
-  assert.equal(picked.title, '');
-  assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY), null, 'picking a catalog fundamental does not write the journal file');
-  assert.equal(localStorage.getItem(TRAINING_NOTES_STORAGE_KEY), null);
-
-  click(button(mounted.host, 'Add a new fundamental'));
-  const name = mounted.host.querySelector('[aria-label="New fundamental name"]') as HTMLInputElement;
-  assert.ok(name);
-  const setValue = (el: HTMLInputElement, value: string) => {
-    Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value')?.set?.call(el, value);
-    const key = Object.keys(el).find((item) => item.startsWith('__reactProps'));
-    const props = key ? (el as unknown as Record<string, { onChange?: (event: unknown) => void }>)[key] : null;
-    act(() => props?.onChange?.({ target: el, currentTarget: el }));
-  };
-  setValue(name, 'Knee cut');
-  click(button(mounted.host, 'Passes'));
-  click(button(mounted.host, 'Add to index'));
-  assert.match(text(), /Knee cut/);
-  const linked = JSON.parse(localStorage.getItem(STANDALONE_REVIEW_KEY) ?? '{}');
-  assert.equal(linked.indexLink.name, 'Knee cut');
-  assert.equal(linked.title, '');
-  const report = loadStudentReport(localStorage);
-  const row = report.checklist.find((entry) => entry.name === 'Knee cut');
-  assert.ok(row, 'the new name is on the fundamentals index');
-  assert.equal(row?.categoryId, 'passes');
-  assert.equal(row?.catalogItemId, '');
-  assert.equal(linked.indexLink.id, row?.id);
-  assert.equal(localStorage.getItem(FILM_STORAGE_KEY), null);
-  assert.equal(localStorage.getItem(TRAINING_NOTES_STORAGE_KEY), null);
-
-  assert.match(text(), /Journal video library/);
-  assert.match(text(), /No videos in the journal library yet/);
-  const library = readFileSync('src/components/ReviewJournalLibrary.tsx', 'utf8');
-  assert.match(library, /searchStudentFilms/);
-  assert.match(library, /<ReplayPlayer/);
-
-  click(button(mounted.host, 'Clear fundamental'));
-  const cleared = JSON.parse(localStorage.getItem(STANDALONE_REVIEW_KEY) ?? '{}');
-  assert.equal(cleared.indexLink, undefined);
-  assert.match(text(), /Not on the index yet/);
-  assert.equal(loadStudentReport(localStorage).checklist.some((entry) => entry.name === 'Knee cut'), true, 'clearing the review keeps the index line');
-  unmount(mounted);
-});
-
-test('the journal library on Record for Review searches filmed moves and offers review', async () => {
-  localStorage.clear();
-  const { writeFilms } = await import('../lib/studentFilm.ts');
-  const { RecordForReviewPage } = await import('../pages/RecordForReview.tsx');
-  writeFilms(localStorage, [
-    {
-      id: 'film.knee',
-      fileName: 'knee.mp4',
-      date: '2026-11-06',
-      technique: 'Knee cut',
-      note: 'Saturday finals',
-      mime: 'video/mp4',
-      size: 12,
-      createdAt: 2,
-      updatedAt: 2,
-      where: 'phone',
-      provider: '',
-      driveFileId: '',
-      dateFolder: '2026-11-06',
-    },
-    {
-      id: 'film.arm',
-      fileName: 'arm.mp4',
-      date: '2026-11-05',
-      technique: 'Armbar from guard',
-      note: '',
-      mime: 'video/mp4',
-      size: 12,
-      createdAt: 1,
-      updatedAt: 1,
-      where: 'phone',
-      provider: '',
-      driveFileId: '',
-      dateFolder: '2026-11-05',
-    },
-  ]);
-  const mounted = mount(<RecordForReviewPage />);
-  const text = () => mounted.host.textContent ?? '';
-  assert.match(text(), /2026-11-06 Knee cut/);
-  assert.match(text(), /2026-11-05 Armbar from guard/);
-  const search = mounted.host.querySelector('[aria-label="Search journal video library"]') as HTMLInputElement;
-  assert.ok(search);
-  Object.getOwnPropertyDescriptor(search.constructor.prototype, 'value')?.set?.call(search, 'knee');
-  const key = Object.keys(search).find((item) => item.startsWith('__reactProps'));
-  const props = key ? (search as unknown as Record<string, { onChange?: (event: unknown) => void }>)[key] : null;
-  act(() => props?.onChange?.({ target: search, currentTarget: search }));
-  assert.match(text(), /Knee cut/);
-  assert.doesNotMatch(text(), /Armbar from guard/);
-  click(button(mounted.host, 'Review 2026-11-06 Knee cut'));
-  assert.match(text(), /Close review/);
-  assert.match(text(), /Opening clip…/);
+  assert.doesNotMatch(replayCard, /linkIndex|journalLibrary|ReviewIndexControls/);
   unmount(mounted);
 });

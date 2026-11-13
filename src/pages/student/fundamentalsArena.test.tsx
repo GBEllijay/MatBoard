@@ -34,6 +34,7 @@ import {
   STUDENT_EDITION_STORAGE_KEY,
 } from '../../lib/studentEdition.ts';
 import { FundamentalsPage } from './FundamentalsPage.tsx';
+import { withLegacySavedRubric } from '../../lib/testFixtures/legacySavedRubric.ts';
 
 const dom = new Window({ url: 'http://localhost/student/fundamentals' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -132,7 +133,7 @@ test('fundamentals keeps every control on the dark arena surface', () => {
 test('a learned date without a level opens at live, and taps, sort, filter, notes, and links still work', () => {
   localStorage.clear();
   let report = setFundamentalLearned(
-    blankStudentReport(10),
+    withLegacySavedRubric(blankStudentReport(10)),
     { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' },
     true,
     '2026-10-11',
@@ -154,7 +155,7 @@ test('a learned date without a level opens at live, and taps, sort, filter, note
     '/student/self-assessment?from=fundamentals#assess-sweeps',
   );
   assert.equal(
-    control(sweeps, 'a', 'Open: From closed guard, perform one sweep and one submission in drilling. benchmark').getAttribute('href'),
+    control(sweeps, 'a', 'Open: Saved white benchmark s1-guard-attack benchmark').getAttribute('href'),
     '/student/rubric#checkpoint.white.s1-guard-attack',
   );
   assert.equal(control(sweeps, 'a', 'Open: Scissor sweep detail in Video Library').getAttribute('href')?.startsWith('/student/videos#clip-'), true);
@@ -291,6 +292,7 @@ test('rename, remove, add, and restore keep the saved level', () => {
 
 test('a chosen level stays distinct from the filled levels below it, and a blue benchmark link names blue', () => {
   localStorage.clear();
+  saveStudentReport(localStorage, withLegacySavedRubric(blankStudentReport(10)));
   const mounted = mount(<FundamentalsPage />);
   const { host } = mounted;
   try {
@@ -299,7 +301,7 @@ test('a chosen level stays distinct from the filled levels below it, and a blue 
     assert.equal(turtle?.getAttribute('href'), '/student/rubric#checkpoint.blue.s1-turtle');
     assert.match(turtle?.textContent ?? '', /benchmark/);
     const sweeps = labeled(host, 'Sweeps');
-    const whiteLink = control(sweeps, 'a', 'Open: From closed guard, perform one sweep and one submission in drilling. benchmark');
+    const whiteLink = control(sweeps, 'a', 'Open: Saved white benchmark s1-guard-attack benchmark');
     assert.equal(whiteLink.getAttribute('href'), '/student/rubric#checkpoint.white.s1-guard-attack');
     act(() => {
       labeled(sweeps, 'Scissor sweep 3 Live with resistance').click();
@@ -409,12 +411,24 @@ test('polish: Video Library button routes to the Video Library', () => {
   assert.equal(clickAndWhere((h) => labeled(h, 'Video Library')), '/student/videos');
 });
 
-test('polish: practical benchmarks render as a checklist with a done count and each row routes to its benchmark', () => {
+test('a new file shows only the three editable seed prompts in the checklist, with no 0 of 0', () => {
   localStorage.clear();
   const mounted = mount(<FundamentalsPage />);
   const list = labeled(mounted.host, 'Practical benchmarks checklist');
+  assert.equal(list.querySelectorAll('.fund-check').length, 3);
+  assert.ok(list.textContent?.includes('Techniques your instructor calls out in class'));
+  assert.ok(list.textContent?.includes('0 of 3 done'));
+  assert.doesNotMatch(list.textContent ?? '', /of 0|NaN/);
+  unmount(mounted);
+});
+
+test('polish: practical benchmarks render as a checklist with a done count and each row routes to its benchmark', () => {
+  localStorage.clear();
+  saveStudentReport(localStorage, withLegacySavedRubric(blankStudentReport(10)));
+  const mounted = mount(<FundamentalsPage />);
+  const list = labeled(mounted.host, 'Practical benchmarks checklist');
   const rows = [...list.querySelectorAll('.fund-check')];
-  assert.ok(rows.length > 0, 'white belt starter benchmarks show as rows');
+  assert.ok(rows.length > 0, 'saved white belt benchmarks show as rows');
   for (const row of rows) {
     assert.ok(row.querySelector('.fund-check__box'));
     assert.match(row.getAttribute('aria-label') ?? '', /, (done|partly done|not done)$/);

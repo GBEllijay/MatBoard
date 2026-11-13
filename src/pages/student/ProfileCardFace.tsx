@@ -22,7 +22,6 @@ export const TRAINS_LABELS: Record<string, string> = { gi: 'Gi', nogi: 'No-Gi', 
 /** Selectors for the field each face part fills in. Exported for tests. */
 export const FACE_TARGETS = {
   photo: 'section[aria-label="Profile photo"]',
-  logo: 'section[aria-label="Gym logo"]',
   name: 'form[aria-label="My profile"] input[aria-label="Name"]',
   gym: 'form[aria-label="My profile"] input[aria-label="Gym"]',
   began: 'form[aria-label="My profile"] input[aria-label="Training start date"]',
