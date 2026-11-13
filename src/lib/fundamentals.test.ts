@@ -20,6 +20,7 @@ import { blankStudentReport, fundamentalsBoard, hideFundamental, setFundamentalL
 import { withStarterRubric } from './studentTools.ts';
 import type { JournalClip } from './progress/types.ts';
 import type { StudentFilm } from './studentFilm.ts';
+import { withLegacySavedRubric } from './testFixtures/legacySavedRubric.ts';
 
 function row(partial: Partial<FundamentalRow> & Pick<FundamentalRow, 'label' | 'level'>): FundamentalRow {
   return {
@@ -89,7 +90,7 @@ test('summary, sort, and filter stay on the saved levels', () => {
 });
 
 test('moves link to a checkpoint, a self-assessment area, and a matching clip', () => {
-  const report = withStarterRubric(blankStudentReport(10), 10);
+  const report = withStarterRubric(withLegacySavedRubric(blankStudentReport(10)), 10);
   const checkpoint = checkpointForMove(report.rubric.levels, 'sweep.scissor', 'white');
   assert.equal(checkpoint?.checkpointId, 'checkpoint.white.s1-guard-attack');
   const backEscape = checkpointForMove(report.rubric.levels, 'escape.back', 'white');
@@ -143,7 +144,7 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
   ]);
   assert.deepEqual(links.map((link) => link.label), [
     'Open: Sweeps self-assessment',
-    'Open: From closed guard, perform one sweep and one submission in drilling. benchmark',
+    'Open: Saved white benchmark s1-guard-attack benchmark',
     'Open: Scissor sweep detail in Video Library',
   ]);
   const openGuard = moveLinks({
@@ -156,7 +157,7 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
   });
   assert.deepEqual(openGuard.map((link) => link.label), [
     'Open: Guard self-assessment',
-    'Open: Keep your guard from being passed, and get it back when you are passed. benchmark',
+    'Open: Saved purple benchmark s1-retention benchmark',
   ]);
   const filmed = moveLinks({
     item: { catalogItemId: 'sweep.hip-bump', categoryId: 'sweeps', label: 'Hip bump sweep', name: 'Hip bump sweep' },
@@ -170,7 +171,7 @@ test('moves link to a checkpoint, a self-assessment area, and a matching clip', 
 });
 
 test('checkpoint links stay on the belt being worn or the next belt', () => {
-  const report = withStarterRubric(blankStudentReport(10), 10);
+  const report = withStarterRubric(withLegacySavedRubric(blankStudentReport(10)), 10);
   const levels = report.rubric.levels;
   const belts = ['white', 'blue', 'purple', 'brown', 'black', 'grey', 'yellow', 'orange', 'green', 'coral', 'redWhite', 'red'];
   for (const belt of belts) {

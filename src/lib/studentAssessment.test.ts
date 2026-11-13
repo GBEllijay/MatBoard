@@ -33,6 +33,7 @@ import {
   type AssessmentDraft,
   type AssessmentScores,
 } from './studentAssessment.ts';
+import { withLegacySavedRubric } from './testFixtures/legacySavedRubric.ts';
 
 function memory() {
   const store = new Map<string, string>();
@@ -127,14 +128,15 @@ test('history keeps the newest days when the list is full', () => {
   assert.equal(state.entries[0].date, isoOffset(ASSESSMENT_MAX + 4));
 });
 
-test('starter checkpoints link the matching areas on the belt being worn', () => {
-  const report = withStarterRubric(blankStudentReport());
+test('saved checkpoints link the matching areas on the belt being worn', () => {
+  const report = withStarterRubric(withLegacySavedRubric(blankStudentReport()));
   const links = checkpointLinks(report);
-  assert.equal(links.find((link) => link.areaId === 'guard')?.checkpointId, 'checkpoint.white.s1-positions');
+  // Saved rows only: a new file has no benchmarks, so it links nothing.
+  assert.equal(links.find((link) => link.areaId === 'guard')?.checkpointId, 'checkpoint.white.s1-guard-attack');
   assert.equal(links.find((link) => link.areaId === 'passing')?.checkpointId, 'checkpoint.white.s1-pass');
-  assert.equal(links.find((link) => link.areaId === 'escapes')?.checkpointId, 'checkpoint.white.s2-escape-resist');
-  assert.equal(links.find((link) => link.areaId === 'takedowns')?.checkpointId, 'checkpoint.white.promo-standing');
-  assert.equal(links.find((link) => link.areaId === 'submissions')?.checkpointId, 'checkpoint.white.s1-guard-attack');
+  assert.equal(links.find((link) => link.areaId === 'escapes')?.checkpointId, 'checkpoint.white.s1-escapes');
+  assert.equal(links.find((link) => link.areaId === 'submissions')?.checkpointId, 'checkpoint.white.s4-back-choke');
+  assert.equal(checkpointLinks(withStarterRubric(blankStudentReport())).length, 0);
   assert.equal(links.find((link) => link.areaId === 'conditioning'), undefined);
   assert.equal(links.find((link) => link.areaId === 'mindset'), undefined);
   assert.equal(links.some((link) => link.checkpointId.includes('.blue.')), false);
@@ -142,10 +144,10 @@ test('starter checkpoints link the matching areas on the belt being worn', () =>
 });
 
 test('a white belt does not receive a checkpoint from another belt', () => {
-  const white = withStarterRubric(blankStudentReport());
+  const white = withStarterRubric(withLegacySavedRubric(blankStudentReport()));
   white.profile.belt = 'white';
   assert.equal(checkpointLinks(white).every((link) => link.checkpointId.includes('.white.')), true);
-  const green = withStarterRubric(blankStudentReport());
+  const green = withStarterRubric(withLegacySavedRubric(blankStudentReport()));
   green.profile.belt = 'green';
   const links = checkpointLinks(green);
   assert.equal(links.find((link) => link.areaId === 'takedowns')?.checkpointId, sharedCheckpointId('green', 'takedowns'));
@@ -154,7 +156,7 @@ test('a white belt does not receive a checkpoint from another belt', () => {
 
 test('every belt links only to checkpoints on that belt', () => {
   for (const belt of PROGRESS_BELTS) {
-    const report = withStarterRubric(blankStudentReport());
+    const report = withStarterRubric(withLegacySavedRubric(blankStudentReport()));
     report.profile.belt = belt;
     const links = checkpointLinks(report);
     assert.equal(
@@ -166,12 +168,12 @@ test('every belt links only to checkpoints on that belt', () => {
 });
 
 test('a blue belt prefers the checkpoints on that belt', () => {
-  const report = withStarterRubric(blankStudentReport());
+  const report = withStarterRubric(withLegacySavedRubric(blankStudentReport()));
   report.profile.belt = 'blue';
   const links = checkpointLinks(report);
-  assert.equal(links.find((link) => link.areaId === 'guard')?.checkpointId, 'checkpoint.blue.s1-half-bottom');
+  assert.equal(links.find((link) => link.areaId === 'guard')?.checkpointId, 'checkpoint.blue.s2-your-guard');
   assert.equal(links.find((link) => link.areaId === 'takedowns')?.checkpointId, 'checkpoint.blue.s4-takedowns');
-  assert.equal(links.find((link) => link.areaId === 'submissions')?.checkpointId, 'checkpoint.blue.s1-defend');
+  assert.equal(links.find((link) => link.areaId === 'escapes')?.checkpointId, 'checkpoint.blue.s1-escapes');
 });
 
 test('the competitor skin keeps 56px targets and leaves the hub notebook alone', () => {

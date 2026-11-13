@@ -38,7 +38,6 @@ import {
   goalPromptsForBelt,
   goalsForBelt,
   gymClassesOnDate,
-  isUntouchedLegacyBrown,
   journalDates,
   learnedCatalogIds,
   mergeOwnStudentFile,
@@ -514,10 +513,10 @@ test('completed fundamentals levels count toward belt progress', () => {
   assert.equal(checkpointFilled(guard, learnedCatalogIds(report)), true);
 });
 
-test('an edited legacy brown list stays, and an untouched one is replaced by the prompts', () => {
+test('a new file starts with empty belts, and a saved legacy brown list stays exactly as saved', () => {
   const fresh = withStarterRubric(blankStudentReport(10), 10);
-  assert.ok((beltLevel(fresh, 'brown')?.checkpoints.length ?? 0) > 0);
-  assert.equal(beltLevel(fresh, 'white')?.checkpoints[0]?.id, 'checkpoint.white.s1-positions');
+  assert.equal(beltLevel(fresh, 'brown')?.checkpoints.length, 0);
+  assert.equal(beltLevel(fresh, 'white')?.checkpoints.length, 0);
   const legacy = legacyAdultReport(10);
   const brown = beltLevel(legacy, 'brown');
   assert.ok(brown);
@@ -554,9 +553,9 @@ test('an edited legacy brown list stays, and an untouched one is replaced by the
       ],
     },
   ];
-  assert.equal(isUntouchedLegacyBrown(brown), true);
+  const saved = structuredClone(brown.checkpoints);
   const replaced = withStarterRubric(legacy, 20);
-  assert.equal(beltLevel(replaced, 'brown')?.checkpoints[0]?.id, 'checkpoint.brown.s1-game');
+  assert.deepEqual(beltLevel(replaced, 'brown')?.checkpoints, saved);
   assert.equal(beltLevel(replaced, 'white')?.checkpoints[0]?.id, 'checkpoint.white.guard');
 
   const marked = structuredClone(legacy);

@@ -21,6 +21,7 @@ import { setInstructorBars, setInstructorBarsOn, setRankAwardedOn, setRankBelt, 
 import { TermsPage } from '../Terms.tsx';
 import { BeltPage } from './BeltPage.tsx';
 import { RankPage } from './RankPage.tsx';
+import { withLegacySavedRubric } from '../../lib/testFixtures/legacySavedRubric.ts';
 
 const dom = new Window({ url: 'http://localhost/student/rank?student=1' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -471,7 +472,9 @@ test('belt progress hides coral until black is worn', async () => {
   try {
     assert.equal(document.body.textContent?.includes('Unlocked after black belt'), false);
     assert.equal(document.body.textContent?.includes('Next: 1st degree'), false);
-    assert.ok(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'));
+    // A new file has no practical benchmarks: an empty state, no stripe boxes and no count.
+    assert.equal(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'), null);
+    assert.match(document.body.textContent ?? '', /No practical benchmarks yet\. Add the ones your instructor gives you\./);
   } finally {
     unmount(locked);
   }
@@ -903,7 +906,8 @@ test('kids belt progress uses empty practical benchmarks and personal goals', as
   saveStudentReport(localStorage, back);
   const adult = mount(<BeltPage />);
   try {
-    assert.ok(document.querySelector('[aria-label="Practical benchmarks between Blue and Purple"]'));
+    assert.equal(document.querySelector('[aria-label="Practical benchmarks between Blue and Purple"]'), null);
+    assert.match(document.body.textContent ?? '', /No practical benchmarks yet/);
     assert.equal(document.body.textContent?.includes('not on this page yet'), false);
   } finally {
     unmount(adult);
@@ -971,7 +975,7 @@ test('fundamentals at live level fill the white belt checkpoint count', async ()
 });
 
 test('brown tap-to-add goals can be edited and removed without becoming checkpoints', async () => {
-  const report = setRankBelt(withStarterRubric(blankStudentReport(80), 80), 'brown', 81);
+  const report = setRankBelt(withStarterRubric(withLegacySavedRubric(blankStudentReport(80)), 80), 'brown', 81);
   saveStudentReport(localStorage, report);
   const mounted = mount(<BeltPage />);
   try {
@@ -1003,7 +1007,7 @@ test('brown tap-to-add goals can be edited and removed without becoming checkpoi
 });
 
 test('a dismissed suggestion stays gone after reload, and removing an adopted one does not bring it back', async () => {
-  let report = setRankBelt(withStarterRubric(blankStudentReport(300), 300), 'brown', 301);
+  let report = setRankBelt(withStarterRubric(withLegacySavedRubric(blankStudentReport(300)), 300), 'brown', 301);
   report = setRankAwardedOn(report, '2021-02-03', 302);
   report = setRankTapeCount(report, 2, 303);
   report.rubric.studentsCanEdit = false;
@@ -1085,7 +1089,7 @@ test('a dismissed suggestion stays gone after reload, and removing an adopted on
 });
 
 test('black belt goals and degree focus do not change degree milestones', async () => {
-  let report = setRankBelt(withStarterRubric(blankStudentReport(90), 90), 'black', 91);
+  let report = setRankBelt(withStarterRubric(withLegacySavedRubric(blankStudentReport(90)), 90), 'black', 91);
   report = setRankAwardedOn(report, '2010-01-02', 92);
   report = setRankTapeCount(report, 2, 93);
   saveStudentReport(localStorage, report);
@@ -1164,13 +1168,52 @@ test('a locked coach checkpoint is read-only and an edited coach checkpoint show
   }
 });
 
-test('stripe lists show the disclaimer, no-gi line, and brown prompts', async () => {
-  saveStudentReport(localStorage, withStarterRubric(blankStudentReport(200), 200));
+test('a new file shows an empty Practical Benchmarks list with no count, stripe boxes or restore', async () => {
+  saveStudentReport(localStorage, blankStudentReport(190));
+  const white = mount(<BeltPage />);
+  try {
+    const text = document.body.textContent ?? '';
+    assert.match(text, /No practical benchmarks yet\. Add the ones your instructor gives you\./);
+    assert.equal(text.includes(BENCHMARK_DISCLAIMER_MEDIUM), true);
+    assert.equal(document.querySelector('.checkpoint-row'), null);
+    assert.equal(document.querySelector('[aria-label="Belt progress count"]'), null);
+    assert.equal(document.querySelector('.belt-stripe'), null);
+    assert.doesNotMatch(text, /0 of 0|NaN|Stripe 1/);
+    assert.equal([...document.querySelectorAll('button')].some((b) => b.textContent?.includes('Restore suggested list')), false);
+    assert.ok(labeled('Practical benchmark name'));
+    assert.ok(buttonNamed('Add a practical benchmark'));
+    await typeControl(labeled('Practical benchmark name') as HTMLInputElement, 'Lead the warm-up');
+    await submitNamed('Add a practical benchmark');
+    assert.match(document.body.textContent ?? '', /0 of 1 practical benchmarks filled\./);
+    assert.equal(document.body.textContent?.includes('No practical benchmarks yet'), false);
+  } finally {
+    unmount(white);
+  }
+  const stored = loadStudentReport(localStorage);
+  assert.deepEqual(
+    stored.rubric.levels.filter((level) => level.belt !== 'white').map((level) => level.checkpoints.length).filter(Boolean),
+    [],
+  );
+
+  saveStudentReport(localStorage, setRankBelt(blankStudentReport(195), 'brown', 196));
+  const brown = mount(<BeltPage />);
+  try {
+    assert.match(document.body.textContent ?? '', /No practical benchmarks yet/);
+    assert.equal([...document.querySelectorAll('button')].some((b) => b.textContent?.trim() === 'Competition'), false);
+  } finally {
+    unmount(brown);
+  }
+});
+
+test('saved stripe lists still show plain stripe groups, the disclaimer, no-gi line, and brown prompts', async () => {
+  saveStudentReport(localStorage, withStarterRubric(withLegacySavedRubric(blankStudentReport(200)), 200));
   const white = mount(<BeltPage />);
   try {
     assert.equal(labeled('Stripe 1, open').tagName, 'LI');
-    assert.match(document.body.textContent ?? '', /Stripe 1 — First safe positions/);
-    assert.match(document.body.textContent ?? '', /No-gi uses underhooks/);
+    assert.ok([...document.querySelectorAll('.belt-stripe h2')].some((node) => node.textContent === 'Stripe 1'));
+    assert.doesNotMatch(document.body.textContent ?? '', /Stripe 1 —/);
+    assert.match(document.body.textContent ?? '', /No-gi version of saved benchmark s1-positions/);
+    assert.match(document.body.textContent ?? '', /\d+ of \d+ practical benchmarks filled\./);
     assert.equal((document.body.textContent ?? '').includes(BENCHMARK_DISCLAIMER_MEDIUM), true);
     assert.equal(document.querySelector('.belt-disclaimer button'), null);
     assert.equal(document.querySelector('.belt-disclaimer[role="note"]')?.getAttribute('aria-label'), 'Benchmark guidelines');
@@ -1178,27 +1221,26 @@ test('stripe lists show the disclaimer, no-gi line, and brown prompts', async ()
       [...document.querySelectorAll('a')].find((link) => link.textContent?.trim() === 'Terms of Service')?.getAttribute('href'),
       '/terms?student=1#practical-benchmarks',
     );
-    assert.ok(buttonNamed('Restore suggested list'));
+    assert.equal([...document.querySelectorAll('button')].some((b) => b.textContent?.includes('Restore suggested list')), false);
   } finally {
     unmount(white);
   }
 
-  saveStudentReport(localStorage, setRankBelt(withStarterRubric(blankStudentReport(210), 210), 'brown', 211));
+  saveStudentReport(localStorage, setRankBelt(withStarterRubric(withLegacySavedRubric(blankStudentReport(210)), 210), 'brown', 211));
   const brown = mount(<BeltPage />);
   try {
     assert.match(document.body.textContent ?? '', new RegExp(BLACK_BELT_AGE_NOTE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-    assert.equal(document.body.textContent?.includes('Leg locks (optional'), false);
+    assert.equal(document.body.textContent?.includes('Saved brown benchmark s3-competition'), false);
     await click(buttonNamed('Competition'));
-    assert.match(document.body.textContent ?? '', /only if you compete/);
+    assert.match(document.body.textContent ?? '', /Saved brown benchmark s3-competition/);
   } finally {
     unmount(brown);
   }
 
-  saveStudentReport(localStorage, setTrainingStyle(withStarterRubric(blankStudentReport(220), 220), 'gi', 221));
+  saveStudentReport(localStorage, setTrainingStyle(withStarterRubric(withLegacySavedRubric(blankStudentReport(220)), 220), 'gi', 221));
   const gi = mount(<BeltPage />);
   try {
-    assert.equal(document.body.textContent?.includes('No-gi uses underhooks'), false);
-    assert.equal(document.body.textContent?.includes('No-gi: Guillotine'), false);
+    assert.equal(document.body.textContent?.includes('No-gi version of saved benchmark'), false);
   } finally {
     unmount(gi);
   }
@@ -1212,11 +1254,11 @@ test('Terms contain the Practical Benchmarks section', () => {
     assert.match(section?.textContent ?? '', /17\. Practical Benchmarks/);
     assert.equal(
       section?.querySelector('p')?.textContent,
-      'The Practical Benchmarks in Advantage are example suggestions only. They are general guidance based on commonly accepted jiu-jitsu training and have been reviewed by black belts, but they are not an official curriculum, a promotion standard, or a replacement for instruction from a qualified coach. Every academy and coach sees things differently. Always review and adjust the benchmarks with your coach, who has the final say on your progress and promotions. For children, a parent or guardian is responsible for deciding what their child trains and when. Advantage App, LLC does not set, guarantee, or award belt promotions.',
+      'Advantage does not include a list of Practical Benchmarks. The Practical Benchmarks feature is a place to keep the benchmarks you or your coach add. They are general guidance only, not an official curriculum, a promotion standard, or a replacement for instruction from a qualified coach. Every academy and coach sees things differently. Always review and adjust the benchmarks with your coach, who has the final say on your progress and promotions. For children, a parent or guardian is responsible for deciding what their child trains and when. Advantage App, LLC does not set, guarantee, or award belt promotions.',
     );
     assert.equal(
       BENCHMARK_DISCLAIMER_MEDIUM,
-      'General guidelines only. Advantage does not set requirements. Your federation and your instructor decide all actual requirements, stripes and promotions. These suggestions are based on commonly taught jiu-jitsu and are a starting point to review with your instructor.',
+      'General guidelines only. Advantage does not set requirements and does not include a benchmark list. Your federation and your instructor decide all actual requirements, stripes and promotions. Add the benchmarks your instructor gives you.',
     );
     assert.match(document.body.textContent ?? '', /Last updated: October 27, 2026/);
   } finally {
@@ -1270,7 +1312,7 @@ test('a blue benchmark anchor opens Blue and scrolls, and a white anchor still s
   HTMLElement.prototype.scrollIntoView = function remember(this: HTMLElement) {
     scrolled.push(this.id);
   };
-  saveStudentReport(localStorage, withStarterRubric(blankStudentReport(80), 81));
+  saveStudentReport(localStorage, withStarterRubric(withLegacySavedRubric(blankStudentReport(80)), 81));
   const blue = mount(<BeltPage />, '/student/rubric?student=1#blue.s1-turtle');
   try {
     const turtle = document.getElementById('checkpoint.blue.s1-turtle');
@@ -1279,12 +1321,11 @@ test('a blue benchmark anchor opens Blue and scrolls, and a white anchor still s
     const opened = document.querySelector('[aria-label="Blue belt benchmarks"]');
     assert.equal(opened?.querySelector('h2')?.textContent, 'Blue belt');
     assert.match(opened?.textContent ?? '', /Your current belt stays White/);
-    assert.match(opened?.textContent ?? '', /Properly utilize Turtle Position/);
+    assert.match(opened?.textContent ?? '', /Saved blue benchmark s1-turtle/);
     const back = [...document.querySelectorAll('a')].find((link) => link.textContent === 'Back to White belt');
     assert.equal(back?.getAttribute('href'), '/student/rubric?student=1');
     assert.ok(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'));
     assert.ok(document.querySelector('[aria-label="Add a practical benchmark"]'));
-    assert.ok(buttonNamed('Restore suggested list'));
     assert.ok(scrolled.includes('checkpoint.blue.s1-turtle'));
     assert.equal(loadStudentReport(localStorage).profile.belt, 'white');
     assert.equal(document.getElementById('checkpoint.white.s1-guard-attack')?.classList.contains('is-anchor'), false);

@@ -60,6 +60,7 @@ import {
   nextBelt,
   NO_PERSONAL_GOALS,
   NO_PRACTICAL_BENCHMARKS,
+  NO_PRACTICAL_BENCHMARKS_HINT,
   OPEN_GOAL_LINE,
   openGoalBelt,
   PERSONAL_GOALS_HEADING,
@@ -68,7 +69,6 @@ import {
   PRACTICAL_BENCHMARKS_LINE,
   removeCheckpoint,
   removeGoal,
-  restoreStarterBenchmarks,
   renameCheckpoint,
   setCheckpointMark,
   showsAdultCheckpoints,
@@ -164,7 +164,7 @@ export function BeltPage() {
               </>
             ) : (
               <>
-                Practical benchmarks and personal goals for the kids belt on <Link to={to('/student/rank')}>My rank</Link>. Add the ones you want. Suggested lists come later.
+                Practical benchmarks and personal goals for the kids belt on <Link to={to('/student/rank')}>My rank</Link>. Add the ones your instructor gives you.
               </>
             )}
           </p>
@@ -223,8 +223,12 @@ export function BeltPage() {
                 {summary}
               </p>
             ) : null}
-            {visible.length === 0 ? <p>{NO_PRACTICAL_BENCHMARKS}</p> : null}
-            {!timeBased && belt === 'brown' && !view.policy.competition ? (
+            {visible.length === 0 ? (
+              <p className="belt-empty">
+                {NO_PRACTICAL_BENCHMARKS} {NO_PRACTICAL_BENCHMARKS_HINT}
+              </p>
+            ) : null}
+            {!timeBased && belt === 'brown' && !view.policy.competition && checkpoints.some((row) => row.policy === 'competition') ? (
               <button type="button" className="belt-chip" onClick={() => run(setTechniquePolicy(report, 'competition', true))}>
                 Competition
               </button>
@@ -278,9 +282,6 @@ export function BeltPage() {
                 />
               ))
             : null}
-          {adultPath && !timeBased ? (
-            <RestoreBenchmarks onRestore={() => run(restoreStarterBenchmarks(report, belt))} />
-          ) : null}
           {adultPath ? (
             <section className="ink" aria-label="Add a practical benchmark">
               <NameForm label="Practical benchmark name" submit="Add a practical benchmark" onAdd={(name) => run(addCheckpoint(report, belt, name))} />
@@ -395,7 +396,11 @@ function KidsBenchmarks({
         <h2>{PRACTICAL_BENCHMARKS_HEADING}</h2>
         <BenchmarkDisclaimer />
         <p className="student-quiet">{PRACTICAL_BENCHMARKS_LINE}</p>
-        {rows.length === 0 ? <p>{NO_PRACTICAL_BENCHMARKS}</p> : null}
+        {rows.length === 0 ? (
+          <p className="belt-empty">
+            {NO_PRACTICAL_BENCHMARKS} {NO_PRACTICAL_BENCHMARKS_HINT}
+          </p>
+        ) : null}
         {rows.map((row) => (
           <KidsBenchmarkRow key={row.id} row={row} report={report} run={run} />
         ))}
@@ -539,28 +544,6 @@ function BenchmarkDisclaimer() {
         <Link to={to('/terms#practical-benchmarks')}>Terms of Service</Link>
       </p>
     </aside>
-  );
-}
-
-function RestoreBenchmarks({ onRestore }: { onRestore: () => void }) {
-  const [ask, setAsk] = useState(false);
-  if (!ask) {
-    return (
-      <button type="button" className="ink-btn" onClick={() => setAsk(true)}>
-        Restore suggested list
-      </button>
-    );
-  }
-  return (
-    <div className="student-actions" role="group" aria-label="Restore suggested list">
-      <p>This puts the suggested list back. Marks on matching items stay. Items you added are removed.</p>
-      <button type="button" className="ink-btn ink-btn--save" onClick={onRestore}>
-        Confirm restore
-      </button>
-      <button type="button" className="ink-btn" onClick={() => setAsk(false)}>
-        Cancel
-      </button>
-    </div>
   );
 }
 

@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { exportProgressPacket, parseProgressPacket } from './progress/format.ts';
-import type { RubricCheckpoint, RubricCriterion } from './progress/types.ts';
+import type { BenchmarkStage, RubricCheckpoint, RubricCriterion, StudentProgressReport } from './progress/types.ts';
 import {
   BENCHMARK_DISCLAIMER_MEDIUM,
   BENCHMARK_DISCLAIMER_SHORT,
   BLACK_BELT_AGE_NOTE,
-  COMPETITION_PROMPT,
   adultStarterLevels,
+  benchmarkGroups,
   benchmarkNoGiLine,
   benchmarkView,
   benchmarkVisible,
@@ -18,7 +18,7 @@ import {
   ageIllegalTechniques,
   defaultTechniquePolicy,
   benchmarkAnchorFromHash,
-  starterCheckpoint,
+  stripeHeading,
   visibleTechniqueNames,
 } from './studentBenchmarks.ts';
 import { setBeltMode, setBirthYear } from './beltBook.ts';
@@ -29,9 +29,8 @@ import {
   addCheckpoint,
   beltLevel,
   beltProgressSummary,
-  isUntouchedLegacyBrown,
+  beltRequirementProgress,
   removeCheckpoint,
-  restoreStarterBenchmarks,
   withStarterRubric,
 } from './studentTools.ts';
 
@@ -44,148 +43,176 @@ const LEGACY_IDS = [
   'td.double-leg', 'td.single-leg', 'td.arm-drag', 'td.hip-throw',
 ];
 
-function legacyBrown(): RubricCheckpoint[] {
-  const row = (slug: string, name: string, criteria: RubricCriterion[]): RubricCheckpoint => ({
-    id: `checkpoint.brown.${slug}`,
-    name,
+/** A row shaped like one an older build saved into a student's file. Test data only. */
+function savedRow(
+  belt: 'white' | 'blue' | 'purple' | 'brown',
+  slug: string,
+  stage: BenchmarkStage | undefined,
+  extra: Partial<RubricCheckpoint> = {},
+  criterion?: Partial<RubricCriterion>,
+): RubricCheckpoint {
+  const row: RubricCheckpoint = {
+    id: `checkpoint.${belt}.${slug}`,
+    name: `Saved benchmark ${slug}`,
     met: null,
     note: '',
-    criteria,
-  });
-  const item = (slug: string, requirement: string, id: string, name: string): RubricCriterion => ({
-    id: `rubric.brown.${slug}`,
-    requirement,
-    techniqueRefs: [{ id, name }],
-    met: null,
-    note: '',
-  });
-  return [
-    row('top', 'Top', [item('mount', 'Hold mount.', 'pos.mount', 'Mount'), item('knee-on-belly', 'Hold knee on belly.', 'pos.knee-on-belly', 'Knee on belly')]),
-    row('standing', 'Standing', [
-      item('standing', 'Work standing.', 'pos.standing', 'Standing'),
-      item('double-leg', 'Finish a double leg.', 'td.double-leg', 'Double leg'),
-      item('hip-throw', 'Finish a hip throw.', 'td.hip-throw', 'Hip throw'),
-    ]),
-    row('chokes', 'Chokes', [
-      item('guillotine', 'Finish a guillotine.', 'sub.guillotine', 'Guillotine'),
-      item('cross-collar', 'Finish a cross collar choke.', 'sub.cross-collar', 'Cross collar choke'),
-    ]),
-  ];
+    criteria: criterion
+      ? [{ id: `rubric.${belt}.${slug}`, requirement: '', techniqueRefs: [], met: null, note: '', ...criterion }]
+      : [],
+    ...extra,
+  };
+  if (stage) row.stage = stage;
+  return row;
 }
 
-test('starter lists keep the approved sentences, links, and kids belts', () => {
+/** An existing file that already holds 33 saved white rows across the five stages, plus a marked row. */
+function fileWithSavedWhite(): StudentProgressReport {
+  const stages: BenchmarkStage[] = ['stripe-1', 'stripe-2', 'stripe-3', 'stripe-4', 'promotion'];
+  const rows = Array.from({ length: 33 }, (_, index) =>
+    savedRow('white', `saved-${index + 1}`, stages[index % stages.length], index === 0 ? { met: true, note: 'kept' } : {}),
+  );
+  const report = blankStudentReport(1);
+  report.rubric.levels = [{ id: 'level.white', name: 'White', belt: 'white', checkpoints: rows }];
+  return report;
+}
+
+test('no benchmark list ships: every starter level is empty and the preface says so', () => {
   assert.equal(BENCHMARK_DISCLAIMER_SHORT, 'General guidelines only.');
   assert.equal(
     BENCHMARK_DISCLAIMER_MEDIUM,
-    'General guidelines only. Advantage does not set requirements. Your federation and your instructor decide all actual requirements, stripes and promotions. These suggestions are based on commonly taught jiu-jitsu and are a starting point to review with your instructor.',
+    'General guidelines only. Advantage does not set requirements and does not include a benchmark list. Your federation and your instructor decide all actual requirements, stripes and promotions. Add the benchmarks your instructor gives you.',
   );
   assert.equal(BLACK_BELT_AGE_NOTE, 'Age 19+. An Adult Brown Belt World Champion may be promoted at 18.');
-  const white = adultStarterLevels().find((level) => level.belt === 'white');
-  assert.ok(white);
-  assert.equal(white.checkpoints[0]?.name.startsWith('Name the four basic control positions'), true);
-  const movement = starterCheckpoint('white', 's2-movement');
-  const defense = starterCheckpoint('white', 's3-defense');
-  assert.equal(movement?.id, 'checkpoint.white.s2-movement');
-  assert.equal(defense?.id, 'checkpoint.white.s3-defense');
-  assert.equal(movement?.name, 'Body movement. Show breakfalls, shrimping, bridging and a technical lift/stand-up.');
-  assert.equal(defense?.name, 'Defensive movement. Show guard retention, submission defense and sprawl.');
-  assert.equal(movement?.name.includes('One requirement'), false);
-  assert.equal(defense?.name.includes('due before the'), false);
-  assert.equal(movement?.criteria[0]?.match, 'all');
-  assert.equal(defense?.criteria[0]?.match, 'all');
-  assert.equal(starterCheckpoint('white', 's1-guard-attack')?.criteria[0]?.match, undefined);
-  assert.equal(starterCheckpoint('blue', 's1-turtle')?.name.includes('Properly utilize Turtle Position'), true);
-  assert.equal(starterCheckpoint('blue', 's1-escapes')?.name.startsWith('Close the gaps'), false);
-  assert.match(starterCheckpoint('blue', 's1-escapes')?.name ?? '', /Escape heavy pins/);
-  assert.equal(starterCheckpoint('brown', 's2-finishes')?.criteria[0]?.catalogNeed?.count, 1);
-  assert.equal(starterCheckpoint('brown', 's2-finishes')?.criteria[0]?.catalogNeed?.level, 5);
-  assert.equal(starterCheckpoint('brown', 's4-teach')?.criteria[0]?.catalogNeed?.count, 3);
-  assert.equal(starterCheckpoint('brown', 'promo-teach')?.criteria[0]?.catalogNeed?.count, 5);
-  assert.equal(starterCheckpoint('brown', 's3-leglock')?.policy, 'leg-lock');
-  assert.equal(starterCheckpoint('brown', 's3-competition')?.optional, true);
-  assert.equal(starterCheckpoint('brown', 's3-competition')?.name, COMPETITION_PROMPT);
-  assert.equal(beltLevel({ ...blankStudentReport(), rubric: { id: 'r', levels: STARTER_RUBRIC_LEVELS } }, 'black')?.checkpoints.length, 0);
-  assert.equal(STARTER_RUBRIC_LEVELS.find((level) => level.belt === 'grey')?.checkpoints[0]?.id, 'checkpoint.grey.positions');
-  assert.equal(STARTER_RUBRIC_LEVELS.find((level) => level.belt === 'green')?.checkpoints[0]?.id, 'checkpoint.green.takedowns');
+  assert.deepEqual(adultStarterLevels().map((level) => level.belt), ['white', 'blue', 'purple', 'brown']);
+  for (const level of adultStarterLevels()) {
+    assert.equal(level.checkpoints.length, 0, `${level.belt} ships empty`);
+    assert.equal(level.starterAck, true);
+  }
+  for (const level of STARTER_RUBRIC_LEVELS) assert.equal(level.checkpoints.length, 0, `${level.belt} ships empty`);
+  assert.deepEqual(
+    STARTER_RUBRIC_LEVELS.map((level) => level.belt),
+    ['white', 'blue', 'purple', 'brown', 'black', 'coral', 'redWhite', 'red', 'grey', 'yellow', 'orange', 'green'],
+  );
+  assert.equal(stripeHeading('white', 'stripe-1'), 'Stripe 1');
+  assert.equal(stripeHeading('brown', 'promotion'), 'Promotion');
+  // The Fundamentals catalog is a separate feature and is unchanged.
   const ids = FUNDAMENTALS_CATALOG.categories.flatMap((category) => category.items.map((item) => item.id));
   assert.deepEqual(ids.filter((id) => LEGACY_IDS.includes(id)), LEGACY_IDS);
   assert.ok(ids.includes('move.shrimp'));
-  assert.ok(ids.includes('sweep.butterfly'));
   assert.equal(FUNDAMENTALS_CATALOG.categories.find((category) => category.id === 'positions')?.items[0]?.name, 'Closed guard');
 });
 
-test('saved benchmarks stay, empty brown is seeded once, and a cleared list stays clear', () => {
-  const seeded = withStarterRubric(blankStudentReport(10), 10);
-  const whiteIds = beltLevel(seeded, 'white')?.checkpoints.map((row) => row.id) ?? [];
-  assert.equal(whiteIds[0], 'checkpoint.white.s1-positions');
-  assert.ok((beltLevel(seeded, 'brown')?.checkpoints.length ?? 0) > 0);
-  const again = withStarterRubric(seeded, 11);
-  assert.equal(again, seeded);
+test('a new file starts empty, with no 0 of 0 count and no groups', () => {
+  const fresh = withStarterRubric(blankStudentReport(10), 10);
+  for (const level of fresh.rubric.levels) assert.equal(level.checkpoints.length, 0, `${level.belt} is empty`);
+  assert.equal(withStarterRubric(fresh, 11), fresh);
+  const white = beltLevel(fresh, 'white');
+  assert.equal(beltProgressSummary(white, catalogLevelMap(fresh)), '');
+  assert.equal(beltProgressSummary(null, catalogLevelMap(fresh)), '');
+  assert.deepEqual(beltRequirementProgress(white, catalogLevelMap(fresh)), {
+    requirements: 0,
+    counted: 0,
+    fromFundamentals: 0,
+    checkpoints: 0,
+    checkpointsFilled: 0,
+  });
+  assert.deepEqual(benchmarkGroups([], 'white'), []);
+  for (const belt of ['blue', 'purple', 'brown'] as const) {
+    const moved = withStarterRubric(setRankBelt(fresh, belt, 12), 13);
+    assert.equal(beltLevel(moved, belt)?.checkpoints.length, 0);
+  }
 
-  const cleared = removeCheckpoint(
-    { ...seeded, rubric: { ...seeded.rubric, levels: seeded.rubric.levels.map((level) => (level.belt === 'white' ? { ...level, checkpoints: level.checkpoints.slice(0, 1) } : level)) } },
-    'checkpoint.white.s1-positions',
-    12,
-  );
+  const added = addCheckpoint(fresh, 'white', 'Lead the warm-up', 14);
+  const summary = beltProgressSummary(beltLevel(added, 'white'), catalogLevelMap(added));
+  assert.equal(summary, '0 of 1 practical benchmarks filled.');
+  assert.doesNotMatch(summary, /NaN|of 0/);
+  const cleared = removeCheckpoint(added, beltLevel(added, 'white')!.checkpoints[0]!.id, 15);
   assert.equal(beltLevel(cleared, 'white')?.checkpoints.length, 0);
-  assert.equal(beltLevel(cleared, 'white')?.starterAck, true);
-  assert.equal(withStarterRubric(cleared, 13), cleared);
-
-  const emptyBrown = blankStudentReport(20);
-  emptyBrown.rubric.levels = [{ id: 'level.brown', name: 'Brown', belt: 'brown', checkpoints: [] }];
-  const filledBrown = withStarterRubric(emptyBrown, 21);
-  assert.equal(beltLevel(filledBrown, 'brown')?.checkpoints[0]?.id, 'checkpoint.brown.s1-game');
-
-  const legacy = structuredClone(seeded);
-  const brown = beltLevel(legacy, 'brown');
-  assert.ok(brown);
-  brown.checkpoints = legacyBrown();
-  assert.equal(isUntouchedLegacyBrown(brown), true);
-  const replaced = withStarterRubric(legacy, 22);
-  assert.equal(beltLevel(replaced, 'brown')?.checkpoints[0]?.id, 'checkpoint.brown.s1-game');
-  assert.equal(beltLevel(replaced, 'white')?.checkpoints[0]?.id, 'checkpoint.white.s1-positions');
-
-  const edited = structuredClone(legacy);
-  beltLevel(edited, 'brown')!.checkpoints[0]!.met = true;
-  const kept = withStarterRubric(edited, 23);
-  assert.equal(beltLevel(kept, 'brown')?.checkpoints.length, 3);
-  assert.equal(beltLevel(kept, 'brown')?.checkpoints[0]?.name, 'Top');
-  assert.equal(beltLevel(kept, 'brown')?.checkpoints[0]?.met, true);
+  assert.equal(withStarterRubric(cleared, 16), cleared);
 });
 
-test('all-of bundles, target levels, gi names, and optional prompts follow the rules', () => {
+test('saved benchmarks are never reseeded, replaced or rewritten on load', () => {
+  const existing = fileWithSavedWhite();
+  const before = structuredClone(existing.rubric.levels[0]!.checkpoints);
+  const loaded = withStarterRubric(existing, 2);
+  assert.deepEqual(beltLevel(loaded, 'white')?.checkpoints, before);
+  assert.equal(beltLevel(loaded, 'white')?.checkpoints[0]?.met, true);
+  assert.equal(beltLevel(loaded, 'white')?.checkpoints[0]?.note, 'kept');
+  assert.equal(beltLevel(loaded, 'blue')?.checkpoints.length, 0);
+
+  // A round trip through the saved file format keeps every row too.
+  const parsed = parseProgressPacket(exportProgressPacket(loaded));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  const reloaded = withStarterRubric(parsed.value, 3);
+  assert.deepEqual(beltLevel(reloaded, 'white')?.checkpoints, before);
+  assert.equal(withStarterRubric(reloaded, 4), reloaded);
+
+  // Saved stripe groups still render with plain stage names.
+  const groups = benchmarkGroups(before, 'white');
+  assert.deepEqual(groups.map((group) => group.title), ['Stripe 1', 'Stripe 2', 'Stripe 3', 'Stripe 4', 'Promotion']);
+  assert.equal(groups.reduce((sum, group) => sum + group.rows.length, 0), 33);
+  const mixed = benchmarkGroups([...before.slice(0, 2), savedRow('white', 'mine', undefined)], 'white');
+  assert.equal(mixed.at(-1)?.title, 'Your benchmarks');
+  const summary = beltProgressSummary(beltLevel(reloaded, 'white'), catalogLevelMap(reloaded));
+  assert.equal(summary, '1 of 33 practical benchmarks filled.');
+
+  // An empty brown is not filled, and an old prefilled brown list stays as saved.
+  const emptyBrown = blankStudentReport(20);
+  emptyBrown.rubric.levels = [{ id: 'level.brown', name: 'Brown', belt: 'brown', checkpoints: [] }];
+  const settled = withStarterRubric(emptyBrown, 21);
+  assert.equal(beltLevel(settled, 'brown')?.checkpoints.length, 0);
+  assert.equal(beltLevel(settled, 'brown')?.starterAck, true);
+  const oldBrown = blankStudentReport(22);
+  const legacy = [
+    savedRow('brown', 'top', undefined, { name: 'Top' }, { requirement: 'Hold mount.', techniqueRefs: [{ id: 'pos.mount', name: 'Mount' }] }),
+  ];
+  oldBrown.rubric.levels = [{ id: 'level.brown', name: 'Brown', belt: 'brown', checkpoints: structuredClone(legacy) }];
+  assert.deepEqual(beltLevel(withStarterRubric(oldBrown, 23), 'brown')?.checkpoints, legacy);
+});
+
+test('saved rows still follow the counting and visibility rules', () => {
   let report = withStarterRubric(blankStudentReport(10), 10);
   const learned = () => catalogLevelMap(report);
-  const movement = starterCheckpoint('white', 's2-movement')!;
+  const bundle = savedRow('white', 'bundle', 'stripe-2', {}, {
+    match: 'all',
+    techniqueRefs: ['move.breakfalls', 'move.shrimp', 'move.bridge', 'move.technical-standup'].map((id) => ({ id, name: id })),
+  });
   report = setFundamentalLevel(report, { catalogItemId: 'move.breakfalls', categoryId: 'movement', name: 'Breakfalls' }, 3, 11);
-  assert.equal(criterionCounts(movement.criteria[0]!, learned()), false);
+  assert.equal(criterionCounts(bundle.criteria[0]!, learned()), false);
   for (const id of ['move.shrimp', 'move.bridge', 'move.technical-standup']) {
     report = setFundamentalLevel(report, { catalogItemId: id, categoryId: 'movement', name: id }, 3, 12);
   }
-  assert.equal(criterionCounts(movement.criteria[0]!, learned()), true);
+  assert.equal(criterionCounts(bundle.criteria[0]!, learned()), true);
 
-  const pass = starterCheckpoint('white', 's1-pass')!;
-  report = setFundamentalLevel(report, { catalogItemId: 'pass.knee-slice', categoryId: 'passes', name: 'Knee slice pass' }, 2, 13);
-  assert.equal(criterionCounts(pass.criteria[0]!, learned()), true);
-  const keep = starterCheckpoint('white', 'promo-keep-guard')!;
+  const target = savedRow('white', 'target', 'promotion', {}, {
+    targetLevel: 4,
+    techniqueRefs: [{ id: 'pos.closed-guard', name: 'Closed guard' }],
+  });
   report = setFundamentalLevel(report, { catalogItemId: 'pos.closed-guard', categoryId: 'positions', name: 'Closed guard' }, 3, 14);
-  assert.equal(criterionCounts(keep.criteria[0]!, learned()), false);
+  assert.equal(criterionCounts(target.criteria[0]!, learned()), false);
   report = setFundamentalLevel(report, { catalogItemId: 'pos.closed-guard', categoryId: 'positions', name: 'Closed guard' }, 4, 15);
-  assert.equal(criterionCounts(keep.criteria[0]!, learned()), true);
+  assert.equal(criterionCounts(target.criteria[0]!, learned()), true);
 
-  const attack = starterCheckpoint('white', 's2-second-attack')!;
-  assert.deepEqual(visibleTechniqueNames(attack, 'both').includes('Cross collar choke'), true);
-  assert.equal(visibleTechniqueNames(attack, 'nogi').includes('Cross collar choke'), false);
-  assert.match(benchmarkNoGiLine(attack, 'both'), /^No-gi: Guillotine/);
-  assert.equal(benchmarkNoGiLine(attack, 'gi'), '');
+  const gi = savedRow('white', 'gi', 'stripe-2', { noGiVariant: 'No-gi: Guillotine instead.' }, {
+    techniqueRefs: [
+      { id: 'sub.cross-collar', name: 'Cross collar choke', style: 'gi' },
+      { id: 'sub.guillotine', name: 'Guillotine' },
+    ],
+  });
+  assert.equal(visibleTechniqueNames(gi, 'both').includes('Cross collar choke'), true);
+  assert.equal(visibleTechniqueNames(gi, 'nogi').includes('Cross collar choke'), false);
+  assert.match(benchmarkNoGiLine(gi, 'both'), /^No-gi: Guillotine/);
+  assert.equal(benchmarkNoGiLine(gi, 'gi'), '');
 
   report = setRankBelt(report, 'brown', 16);
   const view = benchmarkView(report);
-  const leg = starterCheckpoint('brown', 's3-leglock')!;
-  const comp = starterCheckpoint('brown', 's3-competition')!;
+  const leg = savedRow('brown', 'leg', 'stripe-3', { policy: 'leg-lock' });
+  const comp = savedRow('brown', 'comp', 'stripe-3', { policy: 'competition', optional: true });
+  const plain = savedRow('brown', 'plain', 'stripe-1');
   assert.equal(benchmarkVisible(leg, view), false);
   assert.equal(benchmarkVisible(comp, view), false);
-  assert.equal(checkpointsForProgress([comp, leg, starterCheckpoint('brown', 's1-game')!], view).length, 1);
+  assert.equal(checkpointsForProgress([comp, leg, plain], view).length, 1);
   report = setTechniquePolicy(report, 'competition', true);
   report = setTechniquePolicy(report, 'legLocks', true);
   const open = benchmarkView(report);
@@ -196,26 +223,22 @@ test('all-of bundles, target levels, gi names, and optional prompts follow the r
   assert.equal(checkpointsForProgress([comp], benchmarkView(report)).length, 0);
 
   const year = new Date().getFullYear();
+  const ankle = savedRow('white', 'ankle', 'stripe-4', { policy: 'straight-ankle' });
   const youth = { ...report, profile: { ...report.profile, belt: 'white' as const }, beltBook: { birthYear: year - 15 } };
   assert.equal(defaultTechniquePolicy('white', 15).straightAnkleLock, false);
-  assert.equal(benchmarkVisible(starterCheckpoint('white', 's4-ankle')!, benchmarkView(youth)), false);
+  assert.equal(benchmarkVisible(ankle, benchmarkView(youth)), false);
   const adult = { ...youth, beltBook: { birthYear: year - 16 } };
-  assert.equal(benchmarkVisible(starterCheckpoint('white', 's4-ankle')!, benchmarkView(adult)), true);
-  assert.equal(benchmarkVisible(starterCheckpoint('white', 's4-ankle')!, benchmarkView(withStarterRubric(blankStudentReport()))), true);
+  assert.equal(benchmarkVisible(ankle, benchmarkView(adult)), true);
   assert.equal(defaultTechniquePolicy('white', null).wristLocks, false);
   assert.equal(defaultTechniquePolicy('blue', null).wristLocks, true);
 
   report = setRankBelt(withStarterRubric(blankStudentReport(30), 30), 'brown', 31);
-  const finishes = starterCheckpoint('brown', 's2-finishes')!;
+  const finishes = savedRow('brown', 'finishes', 'stripe-2', {}, { catalogNeed: { categoryId: 'submissions', count: 1, level: 5 } });
   assert.equal(criterionCounts(finishes.criteria[0]!, catalogLevelMap(report)), false);
   report = setFundamentalLevel(report, { catalogItemId: 'sub.kimura', categoryId: 'submissions', name: 'Kimura' }, 5, 32);
   assert.equal(criterionCounts(finishes.criteria[0]!, catalogLevelMap(report)), true);
-  const summary = beltProgressSummary(
-    { ...beltLevel(report, 'brown')!, checkpoints: checkpointsForProgress(beltLevel(report, 'brown')!.checkpoints, benchmarkView(report)) },
-    catalogLevelMap(report),
-  );
+  const summary = beltProgressSummary({ ...beltLevel(report, 'brown')!, checkpoints: [finishes] }, catalogLevelMap(report));
   assert.match(summary, /from fundamentals/);
-  assert.equal(summary.includes(COMPETITION_PROMPT), false);
 });
 
 test('kids default to gi and hide techniques that are illegal at their age', () => {
@@ -252,7 +275,7 @@ test('kids default to gi and hide techniques that are illegal at their age', () 
   assert.doesNotMatch(copy, /Gracie Barra|Alliance|Checkmat/i);
 });
 
-test('new benchmark fields round-trip, and restore keeps marks', () => {
+test('new benchmark fields round-trip, and a student-added row keeps its marks', () => {
   let report = setTrainingStyle(setRankBelt(withStarterRubric(blankStudentReport(10), 10), 'blue', 11), 'nogi', 12);
   report = setTechniquePolicy(report, 'legLocks', true, 13);
   report = addCheckpoint(report, 'white', 'Grip fighting', 14);
@@ -265,13 +288,12 @@ test('new benchmark fields round-trip, and restore keeps marks', () => {
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
   assert.equal(parsed.value.profile.trainingStyle, 'nogi');
   assert.equal(parsed.value.profile.techniquePolicy?.legLocks, true);
-  assert.equal(parsed.value.rubric.levels.find((level) => level.belt === 'white')?.checkpoints[0]?.stage, 'stripe-1');
-  assert.equal(parsed.value.rubric.levels.find((level) => level.belt === 'white')?.starterAck, true);
-  const restored = restoreStarterBenchmarks(parsed.value, 'white', 15);
-  const white = beltLevel(restored, 'white');
+  const white = beltLevel(withStarterRubric(parsed.value, 15), 'white');
+  assert.equal(white?.starterAck, true);
+  assert.equal(white?.checkpoints.length, 1);
+  assert.equal(white?.checkpoints[0]?.name, 'Grip fighting');
   assert.equal(white?.checkpoints[0]?.met, true);
   assert.equal(white?.checkpoints[0]?.note, 'kept');
-  assert.equal(white?.checkpoints.some((row) => row.name === 'Grip fighting'), false);
   const bare = parseProgressPacket(exportProgressPacket(blankStudentReport(1)));
   assert.equal(bare.ok, true);
   if (bare.ok && bare.value.kind === 'student-progress-report') {
