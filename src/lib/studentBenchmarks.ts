@@ -24,7 +24,7 @@ export const BENCHMARK_DISCLAIMER_SHORT =
   'General guidelines only.';
 
 export const BENCHMARK_DISCLAIMER_MEDIUM =
-  'General guidelines only. Advantage does not set requirements and does not include a benchmark list. Your federation and your instructor decide all actual requirements, stripes and promotions. Add the benchmarks your instructor gives you.';
+  'Advantage does not set requirements. Your federation and your instructor decide all actual promotion requirements.';
 
 /** Shown on the promotion to black list, beside the age note. */
 export const BLACK_BELT_AGE_NOTE = 'Age 19+. An Adult Brown Belt World Champion may be promoted at 18.';
@@ -84,7 +84,6 @@ function emptyAdultLevel(belt: ProgressBelt): RubricLevel {
     name: belt.charAt(0).toUpperCase() + belt.slice(1),
     belt,
     checkpoints: [],
-    starterAck: true,
   };
 }
 

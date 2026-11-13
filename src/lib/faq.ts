@@ -151,7 +151,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     question: 'What is Belt progress?',
     paragraphs: [
       'Belt progress is practical benchmarks and personal goals for the belt you are on. It is separate from Fundamentals, and separate from the dates on My rank.',
-      'Advantage does not include a benchmark list. Each belt starts empty, and you add the practical benchmarks your instructor gives you.',
+      'Advantage does not set requirements or include a benchmark list. Each belt starts with three editable prompts for practical benchmarks and three for personal goals. They are seeds, not requirements: rename them to what your instructor actually said, add more with Add another, and delete what does not fit.',
       'You can leave goals blank.',
     ],
     links: [{ label: 'Belt progress', to: '/student/rubric' }],

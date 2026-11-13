@@ -424,28 +424,66 @@ export const STARTER_RUBRIC_LEVELS: RubricLevel[] = [
 
 const SEEDED_ADULT = new Set<ProgressBelt>(['white', 'blue', 'purple', 'brown']);
 
+/** Editable seed cards for a new adult belt list. Not requirements. */
+export const STARTER_BENCHMARK_PROMPTS = [
+  'Techniques your instructor calls out in class',
+  'Positions your coach wants you working',
+  'Whatever they name before your next promotion',
+] as const;
+
+export const STARTER_GOAL_PROMPTS = [
+  'How often you want to train',
+  'One thing you want to feel confident in',
+  'Anything else on your mind',
+] as const;
+
+export const SEED_LINE =
+  "These are seeds, not requirements — add what your instructor actually said, or your own words, and delete what doesn't fit.";
+
 /**
- * Add any belt level this file does not already have, always empty.
- * Benchmarks already saved in the file are never removed, replaced or reseeded,
- * including lists that came from an older built-in starter.
- * starterAck is set on the adult belts so an older app build never refills them.
+ * Add any belt level this file does not already have.
+ * A new white, blue, purple or brown list gets the three seed cards once, and that
+ * belt gets the three personal goal seeds when it has no goals. promptsSeeded and
+ * starterAck stop them coming back after a delete or a reload.
+ * Benchmarks and goals already saved in the file are never removed, replaced or
+ * reseeded, including lists that came from an older built-in starter. A level that
+ * an older build already settled (starterAck) gets no seeds.
  */
 export function withStarterRubric(report: StudentProgressReport, now = Date.now()): StudentProgressReport {
   const present = new Set(report.rubric.levels.map((item) => item.id));
   const missing = STARTER_RUBRIC_LEVELS.filter((item) => !present.has(item.id));
   let changed = missing.length > 0;
+  let goals = report.goals;
   const levels = (missing.length ? [...report.rubric.levels, ...structuredClone(missing)] : report.rubric.levels).map((row) => {
-    const next = settleStarterLevel(row);
-    if (next !== row) changed = true;
-    return next;
+    if (!SEEDED_ADULT.has(row.belt)) return row;
+    if (row.promptsSeeded || row.starterAck) return row;
+    changed = true;
+    if (row.checkpoints.length) return { ...row, starterAck: true };
+    const checkpoints: RubricCheckpoint[] = STARTER_BENCHMARK_PROMPTS.map((name, index) => ({
+      id: `checkpoint.${row.belt}.seed-${index + 1}`,
+      name,
+      met: null,
+      note: '',
+      criteria: [],
+    }));
+    const beltGoals = goals.filter((goal) => !goal.kidsBeltId && (!goal.belt || goal.belt === row.belt));
+    if (!beltGoals.length && goals.length + STARTER_GOAL_PROMPTS.length <= PROGRESS_GOALS_MAX) {
+      goals = [
+        ...goals,
+        ...STARTER_GOAL_PROMPTS.map((name, index) => ({ id: `goal.seed.${row.belt}.${index + 1}`, name, note: '', met: false, belt: row.belt })),
+      ];
+    }
+    return { ...row, checkpoints, starterAck: true, promptsSeeded: true };
   });
   if (!changed) return report;
-  return touch({ ...report, rubric: { ...report.rubric, levels } }, now);
+  return touch({ ...report, goals, rubric: { ...report.rubric, levels } }, now);
 }
 
-function settleStarterLevel(row: RubricLevel): RubricLevel {
-  if (!SEEDED_ADULT.has(row.belt) || row.starterAck) return row;
-  return { ...row, starterAck: true };
+/** "3 practical benchmarks added, 1 met." Met is the student's own mark. */
+export function addedMetLine(kind: 'benchmark' | 'goal', added: number, met: number): string {
+  const noun = kind === 'benchmark' ? 'practical benchmark' : 'personal goal';
+  if (!added) return `No ${noun}s added yet.`;
+  return `${added} ${noun}${added === 1 ? '' : 's'} added, ${met} met.`;
 }
 
 export function learnedCatalogIds(report: StudentProgressReport): Set<string> {

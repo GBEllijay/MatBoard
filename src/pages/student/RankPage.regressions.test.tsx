@@ -472,9 +472,9 @@ test('belt progress hides coral until black is worn', async () => {
   try {
     assert.equal(document.body.textContent?.includes('Unlocked after black belt'), false);
     assert.equal(document.body.textContent?.includes('Next: 1st degree'), false);
-    // A new file has no practical benchmarks: an empty state, no stripe boxes and no count.
-    assert.equal(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'), null);
-    assert.match(document.body.textContent ?? '', /No practical benchmarks yet\. Add the ones your instructor gives you\./);
+    // A new file starts with three editable seed cards and no box row.
+    assert.equal(document.querySelector('.checkpoint-row'), null);
+    assert.equal(labeled('Practical benchmarks count').textContent, '3 practical benchmarks added, 0 met.');
   } finally {
     unmount(locked);
   }
@@ -882,19 +882,20 @@ test('kids belt progress uses empty practical benchmarks and personal goals', as
   const kids = mount(<BeltPage />);
   try {
     assert.match(document.body.textContent ?? '', /Practical Benchmarks/);
-    assert.match(document.body.textContent ?? '', /No practical benchmarks yet/);
-    assert.match(document.body.textContent ?? '', new RegExp(BENCHMARK_DISCLAIMER_SHORT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-    assert.ok(labeled('Practical benchmark name'));
-    assert.ok(buttonNamed('Add a practical benchmark'));
+    assert.equal(labeled('Practical benchmarks count').textContent, 'No practical benchmarks added yet.');
+    assert.equal((document.body.textContent ?? '').includes(BENCHMARK_DISCLAIMER_MEDIUM), true);
+    assert.doesNotMatch(document.body.textContent ?? '', /stripe/i);
+    assert.ok(buttonNamed('Add another practical benchmark'));
     assert.ok(document.querySelector('[aria-label="Personal Goals"]'));
-    assert.match(document.body.textContent ?? '', /No personal goals yet/);
+    assert.equal(labeled('Personal goals count').textContent, 'No personal goals added yet.');
     assert.equal(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'), null);
     assert.equal(document.body.textContent?.includes('Next: 1st degree'), false);
     assert.equal(document.body.textContent?.includes('not on this page yet'), false);
-    await typeControl(labeled('Practical benchmark name') as HTMLInputElement, 'Breakfall');
-    await submitNamed('Add a practical benchmark');
+    await click(buttonNamed('Add another practical benchmark'));
+    await typeControl(labeled('Edit New practical benchmark') as HTMLInputElement, 'Breakfall');
+    await submitNamed('Save New practical benchmark');
     assert.equal((labeled('Edit Breakfall') as HTMLInputElement).value, 'Breakfall');
-    assert.equal(document.body.textContent?.includes('No practical benchmarks yet'), false);
+    assert.equal(labeled('Practical benchmarks count').textContent, '1 practical benchmark added, 0 met.');
     assert.ok(buttonNamed('Competition'));
     await click(buttonNamed('Competition'));
     assert.match(document.body.textContent ?? '', /Competition prompt is on/);
@@ -906,8 +907,8 @@ test('kids belt progress uses empty practical benchmarks and personal goals', as
   saveStudentReport(localStorage, back);
   const adult = mount(<BeltPage />);
   try {
-    assert.equal(document.querySelector('[aria-label="Practical benchmarks between Blue and Purple"]'), null);
-    assert.match(document.body.textContent ?? '', /No practical benchmarks yet/);
+    assert.equal(document.querySelector('.checkpoint-row'), null);
+    assert.equal(labeled('Practical benchmarks count').textContent, '3 practical benchmarks added, 0 met.');
     assert.equal(document.body.textContent?.includes('not on this page yet'), false);
   } finally {
     unmount(adult);
@@ -960,15 +961,19 @@ test('fundamentals at live level fill the white belt checkpoint count', async ()
   saveStudentReport(localStorage, report);
   const mounted = mount(<BeltPage />);
   try {
-    assert.match(labeled('Belt progress count').textContent ?? '', /2 of 6 requirements counted\. 2 from fundamentals\./);
-    assert.match(labeled('Belt progress count').textContent ?? '', /1 of 3 practical benchmarks filled/);
-    assert.equal(labeled('Guard, filled').tagName, 'LI');
-    assert.match(document.body.textContent ?? '', /Counted from your fundamentals\./);
+    // The count is what was added and what the student marked met. No requirement or glossary extras.
+    assert.equal(labeled('Practical benchmarks count').textContent, '3 practical benchmarks added, 0 met.');
+    assert.equal(document.querySelector('.checkpoint-row'), null);
+    assert.equal(document.body.textContent?.includes('Counted from your fundamentals'), false);
+    assert.equal(document.body.textContent?.includes('Closed guard, Scissor sweep'), false);
+    assert.equal(document.body.textContent?.includes('Hold closed guard.'), false);
     assert.equal(labeled('Practical Benchmarks').tagName, 'SECTION');
     assert.match(document.body.textContent ?? '', /Skills the coach or template expects before the next belt/);
-    assert.ok(labeled('Personal goal name'));
-    assert.ok(labeled('Personal goal note'));
-    assert.ok(buttonNamed('Add personal goal'));
+    await click(buttonNamed('Mark Guard benchmark met'));
+    assert.equal(labeled('Practical benchmarks count').textContent, '3 practical benchmarks added, 1 met.');
+    assert.equal(document.querySelector('[aria-label="Personal goal name"]'), null);
+    assert.ok(buttonNamed('Add another personal goal'));
+    assert.equal(labeled('Personal goals count').textContent, 'No personal goals added yet.');
   } finally {
     unmount(mounted);
   }
@@ -981,7 +986,7 @@ test('brown tap-to-add goals can be edited and removed without becoming checkpoi
   try {
     assert.match(document.body.textContent ?? '', new RegExp(OPEN_GOAL_LINE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     assert.ok(document.querySelector('[aria-label="Tap to add"]'));
-    assert.ok(buttonNamed('Add personal goal'));
+    assert.ok(buttonNamed('Add another personal goal'));
     assert.equal(document.querySelector('[aria-label="Goal name"]'), null);
     assert.match(document.body.textContent ?? '', /Your own goals, which never affect belt or degree milestones/);
     assert.equal(document.body.textContent?.includes('not on this page yet'), false);
@@ -1061,11 +1066,10 @@ test('a dismissed suggestion stays gone after reload, and removing an adopted on
     assert.equal(hasButton('Teaching: lead a class'), false);
     assert.equal(loadStudentReport(localStorage).goals.length, 0);
     assert.ok(loadStudentReport(localStorage).dismissedGoalPrompts?.includes('Teaching: lead a class'));
-    await typeControl(labeled('Personal goal name') as HTMLInputElement, 'Film my guard');
-    await submitNamed('Add personal goal');
-    await typeControl(labeled('Edit Film my guard') as HTMLInputElement, 'Film my closed guard');
-    await typeControl(labeled('Note for Film my guard') as HTMLInputElement, 'from the knees');
-    await submitNamed('Save Film my guard');
+    await click(buttonNamed('Add another personal goal'));
+    await typeControl(labeled('Edit New personal goal') as HTMLInputElement, 'Film my closed guard');
+    await typeControl(labeled('Note for New personal goal') as HTMLInputElement, 'from the knees');
+    await submitNamed('Save New personal goal');
     await click(buttonNamed('Mark Film my closed guard met'));
     const custom = loadStudentReport(localStorage);
     assert.equal(custom.goals[0]?.name, 'Film my closed guard');
@@ -1081,7 +1085,7 @@ test('a dismissed suggestion stays gone after reload, and removing an adopted on
     assert.equal(hasButton('Remove Coach requires this'), false);
     assert.equal(cleared.profile.belt, 'brown');
     assert.equal(cleared.rank?.tapeCount, 2);
-    assert.ok(buttonNamed('Add personal goal'));
+    assert.ok(buttonNamed('Add another personal goal'));
     assert.ok(buttonNamed('Competition or rolling goals'));
   } finally {
     unmount(again);
@@ -1158,9 +1162,8 @@ test('a locked coach checkpoint is read-only and an edited coach checkpoint show
   saveStudentReport(localStorage, savedGuard(110, 'coach', true));
   const starred = mount(<BeltPage />);
   try {
-    assert.equal(labeled('Guard* benchmark').querySelector('h2')?.textContent, 'Guard*');
-    assert.match(labeled('Guard*, open').textContent ?? '', /Guard\*/);
-    assert.ok(buttonNamed('Rename Guard'));
+    assert.equal((labeled('Guard* benchmark').querySelector('input[aria-label="Edit Guard"]') as HTMLInputElement | null)?.value, 'Guard');
+    assert.ok(buttonNamed('Remove Guard'));
     assert.match(document.body.textContent ?? '', /Edited from the coach list\./);
     assert.equal(document.body.textContent?.includes('This practical benchmark stays as they sent it'), false);
   } finally {
@@ -1168,52 +1171,82 @@ test('a locked coach checkpoint is read-only and an edited coach checkpoint show
   }
 });
 
-test('a new file shows an empty Practical Benchmarks list with no count, stripe boxes or restore', async () => {
+test('a new file shows three seed cards per list, the preface, seed lines and Add another, never reseeded after a delete', async () => {
   saveStudentReport(localStorage, blankStudentReport(190));
   const white = mount(<BeltPage />);
   try {
     const text = document.body.textContent ?? '';
-    assert.match(text, /No practical benchmarks yet\. Add the ones your instructor gives you\./);
-    assert.equal(text.includes(BENCHMARK_DISCLAIMER_MEDIUM), true);
+    assert.equal(text.includes('Advantage does not set requirements. Your federation and your instructor decide all actual promotion requirements.'), true);
+    assert.doesNotMatch(text, /commonly taught|stripe|0 of 0|NaN/i);
     assert.equal(document.querySelector('.checkpoint-row'), null);
-    assert.equal(document.querySelector('[aria-label="Belt progress count"]'), null);
     assert.equal(document.querySelector('.belt-stripe'), null);
-    assert.doesNotMatch(text, /0 of 0|NaN|Stripe 1/);
-    assert.equal([...document.querySelectorAll('button')].some((b) => b.textContent?.includes('Restore suggested list')), false);
-    assert.ok(labeled('Practical benchmark name'));
-    assert.ok(buttonNamed('Add a practical benchmark'));
-    await typeControl(labeled('Practical benchmark name') as HTMLInputElement, 'Lead the warm-up');
-    await submitNamed('Add a practical benchmark');
-    assert.match(document.body.textContent ?? '', /0 of 1 practical benchmarks filled\./);
-    assert.equal(document.body.textContent?.includes('No practical benchmarks yet'), false);
+    assert.equal(labeled('Practical benchmarks count').textContent, '3 practical benchmarks added, 0 met.');
+    assert.equal(labeled('Personal goals count').textContent, '3 personal goals added, 0 met.');
+    for (const name of ['Techniques your instructor calls out in class', 'Positions your coach wants you working', 'Whatever they name before your next promotion']) {
+      assert.equal((labeled(`Edit ${name}`) as HTMLInputElement).value, name);
+      assert.ok(labeled(`${name} note`));
+      assert.ok(buttonNamed(`Mark ${name} benchmark met`));
+    }
+    for (const name of ['How often you want to train', 'One thing you want to feel confident in', 'Anything else on your mind']) {
+      assert.equal((labeled(`Edit ${name}`) as HTMLInputElement).value, name);
+    }
+    const seedLine = "These are seeds, not requirements — add what your instructor actually said, or your own words, and delete what doesn't fit.";
+    assert.equal(text.split(seedLine).length - 1, 2);
+    assert.equal([...document.querySelectorAll('button')].some((b) => /Restore/.test(b.textContent ?? '')), false);
+    assert.equal(document.querySelector('[aria-label="Practical benchmark name"]'), null);
+    assert.equal(buttonNamed('Add another practical benchmark').textContent, 'Add another');
+    assert.equal(buttonNamed('Add another personal goal').textContent, 'Add another');
+
+    await click(buttonNamed('Mark Positions your coach wants you working benchmark met'));
+    assert.equal(labeled('Practical benchmarks count').textContent, '3 practical benchmarks added, 1 met.');
+    await typeControl(labeled('Edit Techniques your instructor calls out in class') as HTMLInputElement, 'Knee shield from half guard', 'blur');
+    assert.ok(labeled('Edit Knee shield from half guard'));
+    await click(buttonNamed('Add another practical benchmark'));
+    assert.equal((labeled('Edit New practical benchmark') as HTMLInputElement).value, 'New practical benchmark');
+    assert.equal(labeled('Practical benchmarks count').textContent, '4 practical benchmarks added, 1 met.');
+    await click(buttonNamed('Remove Whatever they name before your next promotion'));
+    await click(buttonNamed('Confirm remove Whatever they name before your next promotion'));
+    await click(buttonNamed('Remove Anything else on your mind'));
+    assert.equal(labeled('Personal goals count').textContent, '2 personal goals added, 0 met.');
   } finally {
     unmount(white);
   }
-  const stored = loadStudentReport(localStorage);
-  assert.deepEqual(
-    stored.rubric.levels.filter((level) => level.belt !== 'white').map((level) => level.checkpoints.length).filter(Boolean),
-    [],
-  );
+  const again = mount(<BeltPage />);
+  try {
+    assert.equal(labeled('Practical benchmarks count').textContent, '3 practical benchmarks added, 1 met.');
+    assert.equal(labeled('Personal goals count').textContent, '2 personal goals added, 0 met.');
+    assert.equal(document.querySelector('[aria-label="Edit Whatever they name before your next promotion"]'), null);
+    assert.equal(document.querySelector('[aria-label="Edit Anything else on your mind"]'), null);
+  } finally {
+    unmount(again);
+  }
 
   saveStudentReport(localStorage, setRankBelt(blankStudentReport(195), 'brown', 196));
   const brown = mount(<BeltPage />);
   try {
-    assert.match(document.body.textContent ?? '', /No practical benchmarks yet/);
+    assert.equal(labeled('Practical benchmarks count').textContent, '3 practical benchmarks added, 0 met.');
     assert.equal([...document.querySelectorAll('button')].some((b) => b.textContent?.trim() === 'Competition'), false);
   } finally {
     unmount(brown);
   }
 });
 
-test('saved stripe lists still show plain stripe groups, the disclaimer, no-gi line, and brown prompts', async () => {
+test('saved lists show flat cards with only name, note and Mark benchmark met, and brown prompts', async () => {
   saveStudentReport(localStorage, withStarterRubric(withLegacySavedRubric(blankStudentReport(200)), 200));
   const white = mount(<BeltPage />);
   try {
-    assert.equal(labeled('Stripe 1, open').tagName, 'LI');
-    assert.ok([...document.querySelectorAll('.belt-stripe h2')].some((node) => node.textContent === 'Stripe 1'));
-    assert.doesNotMatch(document.body.textContent ?? '', /Stripe 1 —/);
-    assert.match(document.body.textContent ?? '', /No-gi version of saved benchmark s1-positions/);
-    assert.match(document.body.textContent ?? '', /\d+ of \d+ practical benchmarks filled\./);
+    const text = document.body.textContent ?? '';
+    assert.doesNotMatch(text, /stripe/i);
+    assert.equal(document.querySelector('.checkpoint-row'), null);
+    assert.equal(document.querySelector('.belt-stripe'), null);
+    assert.equal(text.includes('No-gi version of saved benchmark'), false);
+    assert.equal(text.includes('Counted from your fundamentals'), false);
+    assert.equal(text.includes('IBJJF rule book'), false);
+    assert.match(labeled('Practical benchmarks count').textContent ?? '', /^\d+ practical benchmarks added, 0 met\.$/);
+    const card = labeled('Saved white benchmark s1-positions benchmark');
+    assert.equal((card.querySelector('input[aria-label="Edit Saved white benchmark s1-positions"]') as HTMLInputElement | null)?.value, 'Saved white benchmark s1-positions');
+    assert.ok(card.querySelector('[aria-label="Saved white benchmark s1-positions note"]'));
+    assert.equal(card.querySelectorAll('.student-quiet').length, 0);
     assert.equal((document.body.textContent ?? '').includes(BENCHMARK_DISCLAIMER_MEDIUM), true);
     assert.equal(document.querySelector('.belt-disclaimer button'), null);
     assert.equal(document.querySelector('.belt-disclaimer[role="note"]')?.getAttribute('aria-label'), 'Benchmark guidelines');
@@ -1221,28 +1254,23 @@ test('saved stripe lists still show plain stripe groups, the disclaimer, no-gi l
       [...document.querySelectorAll('a')].find((link) => link.textContent?.trim() === 'Terms of Service')?.getAttribute('href'),
       '/terms?student=1#practical-benchmarks',
     );
-    assert.equal([...document.querySelectorAll('button')].some((b) => b.textContent?.includes('Restore suggested list')), false);
+    assert.equal([...document.querySelectorAll('button')].some((b) => b.textContent?.includes('Restore')), false);
   } finally {
     unmount(white);
   }
+  const savedWhite = loadStudentReport(localStorage).rubric.levels.find((level) => level.belt === 'white');
+  assert.equal(savedWhite?.checkpoints.length, 33);
+  assert.equal(savedWhite?.checkpoints[0]?.stage, 'stripe-1');
 
   saveStudentReport(localStorage, setRankBelt(withStarterRubric(withLegacySavedRubric(blankStudentReport(210)), 210), 'brown', 211));
   const brown = mount(<BeltPage />);
   try {
     assert.match(document.body.textContent ?? '', new RegExp(BLACK_BELT_AGE_NOTE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-    assert.equal(document.body.textContent?.includes('Saved brown benchmark s3-competition'), false);
+    assert.equal(document.querySelector('[aria-label="Edit Saved brown benchmark s3-competition"]'), null);
     await click(buttonNamed('Competition'));
-    assert.match(document.body.textContent ?? '', /Saved brown benchmark s3-competition/);
+    assert.ok(labeled('Edit Saved brown benchmark s3-competition'));
   } finally {
     unmount(brown);
-  }
-
-  saveStudentReport(localStorage, setTrainingStyle(withStarterRubric(withLegacySavedRubric(blankStudentReport(220)), 220), 'gi', 221));
-  const gi = mount(<BeltPage />);
-  try {
-    assert.equal(document.body.textContent?.includes('No-gi version of saved benchmark'), false);
-  } finally {
-    unmount(gi);
   }
 });
 
@@ -1254,11 +1282,11 @@ test('Terms contain the Practical Benchmarks section', () => {
     assert.match(section?.textContent ?? '', /17\. Practical Benchmarks/);
     assert.equal(
       section?.querySelector('p')?.textContent,
-      'Advantage does not include a list of Practical Benchmarks. The Practical Benchmarks feature is a place to keep the benchmarks you or your coach add. They are general guidance only, not an official curriculum, a promotion standard, or a replacement for instruction from a qualified coach. Every academy and coach sees things differently. Always review and adjust the benchmarks with your coach, who has the final say on your progress and promotions. For children, a parent or guardian is responsible for deciding what their child trains and when. Advantage App, LLC does not set, guarantee, or award belt promotions.',
+      'Advantage does not set requirements and does not include a list of Practical Benchmarks. A new belt starts with three editable starter prompts, which are seeds, not requirements, and the Practical Benchmarks feature is a place to keep the benchmarks you or your coach add. They are general guidance only, not an official curriculum, a promotion standard, or a replacement for instruction from a qualified coach. Every academy and coach sees things differently. Always review and adjust the benchmarks with your coach, who has the final say on your progress and promotions. For children, a parent or guardian is responsible for deciding what their child trains and when. Advantage App, LLC does not set, guarantee, or award belt promotions.',
     );
     assert.equal(
       BENCHMARK_DISCLAIMER_MEDIUM,
-      'General guidelines only. Advantage does not set requirements and does not include a benchmark list. Your federation and your instructor decide all actual requirements, stripes and promotions. Add the benchmarks your instructor gives you.',
+      'Advantage does not set requirements. Your federation and your instructor decide all actual promotion requirements.',
     );
     assert.match(document.body.textContent ?? '', /Last updated: October 27, 2026/);
   } finally {
@@ -1321,10 +1349,9 @@ test('a blue benchmark anchor opens Blue and scrolls, and a white anchor still s
     const opened = document.querySelector('[aria-label="Blue belt benchmarks"]');
     assert.equal(opened?.querySelector('h2')?.textContent, 'Blue belt');
     assert.match(opened?.textContent ?? '', /Your current belt stays White/);
-    assert.match(opened?.textContent ?? '', /Saved blue benchmark s1-turtle/);
+    assert.ok(opened?.querySelector('input[aria-label="Edit Saved blue benchmark s1-turtle"]'));
     const back = [...document.querySelectorAll('a')].find((link) => link.textContent === 'Back to White belt');
     assert.equal(back?.getAttribute('href'), '/student/rubric?student=1');
-    assert.ok(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'));
     assert.ok(document.querySelector('[aria-label="Add a practical benchmark"]'));
     assert.ok(scrolled.includes('checkpoint.blue.s1-turtle'));
     assert.equal(loadStudentReport(localStorage).profile.belt, 'white');
@@ -1349,7 +1376,7 @@ test('a blue benchmark anchor opens Blue and scrolls, and a white anchor still s
     assert.equal(card?.classList.contains('is-anchor'), true);
     assert.equal(document.getElementById('checkpoint.blue.s1-turtle'), null);
     assert.ok(scrolled.includes('checkpoint.white.s1-guard-attack'));
-    assert.ok(document.querySelector('[aria-label="Practical benchmarks between White and Blue"]'));
+    assert.equal(document.querySelector('.checkpoint-row'), null);
   } finally {
     unmount(white);
     HTMLElement.prototype.scrollIntoView = previous;

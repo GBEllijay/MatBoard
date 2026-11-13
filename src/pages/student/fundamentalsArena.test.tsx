@@ -411,12 +411,13 @@ test('polish: Video Library button routes to the Video Library', () => {
   assert.equal(clickAndWhere((h) => labeled(h, 'Video Library')), '/student/videos');
 });
 
-test('a new file has no practical benchmarks and the checklist shows only its link', () => {
+test('a new file shows only the three editable seed prompts in the checklist, with no 0 of 0', () => {
   localStorage.clear();
   const mounted = mount(<FundamentalsPage />);
   const list = labeled(mounted.host, 'Practical benchmarks checklist');
-  assert.equal(list.querySelectorAll('.fund-check').length, 0);
-  assert.ok(list.textContent?.includes('Open your belt checklist'));
+  assert.equal(list.querySelectorAll('.fund-check').length, 3);
+  assert.ok(list.textContent?.includes('Techniques your instructor calls out in class'));
+  assert.ok(list.textContent?.includes('0 of 3 done'));
   assert.doesNotMatch(list.textContent ?? '', /of 0|NaN/);
   unmount(mounted);
 });

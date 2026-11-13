@@ -31,6 +31,12 @@ import {
   beltProgressSummary,
   beltRequirementProgress,
   removeCheckpoint,
+  removeGoal,
+  goalsForBelt,
+  addedMetLine,
+  SEED_LINE,
+  STARTER_BENCHMARK_PROMPTS,
+  STARTER_GOAL_PROMPTS,
   withStarterRubric,
 } from './studentTools.ts';
 
@@ -80,13 +86,13 @@ test('no benchmark list ships: every starter level is empty and the preface says
   assert.equal(BENCHMARK_DISCLAIMER_SHORT, 'General guidelines only.');
   assert.equal(
     BENCHMARK_DISCLAIMER_MEDIUM,
-    'General guidelines only. Advantage does not set requirements and does not include a benchmark list. Your federation and your instructor decide all actual requirements, stripes and promotions. Add the benchmarks your instructor gives you.',
+    'Advantage does not set requirements. Your federation and your instructor decide all actual promotion requirements.',
   );
   assert.equal(BLACK_BELT_AGE_NOTE, 'Age 19+. An Adult Brown Belt World Champion may be promoted at 18.');
   assert.deepEqual(adultStarterLevels().map((level) => level.belt), ['white', 'blue', 'purple', 'brown']);
   for (const level of adultStarterLevels()) {
     assert.equal(level.checkpoints.length, 0, `${level.belt} ships empty`);
-    assert.equal(level.starterAck, true);
+    assert.equal(level.starterAck, undefined);
   }
   for (const level of STARTER_RUBRIC_LEVELS) assert.equal(level.checkpoints.length, 0, `${level.belt} ships empty`);
   assert.deepEqual(
@@ -102,14 +108,40 @@ test('no benchmark list ships: every starter level is empty and the preface says
   assert.equal(FUNDAMENTALS_CATALOG.categories.find((category) => category.id === 'positions')?.items[0]?.name, 'Closed guard');
 });
 
-test('a new file starts empty, with no 0 of 0 count and no groups', () => {
+test('a new file gets three editable seed cards and three goal seeds once, never again after a delete', () => {
   const fresh = withStarterRubric(blankStudentReport(10), 10);
-  for (const level of fresh.rubric.levels) assert.equal(level.checkpoints.length, 0, `${level.belt} is empty`);
+  for (const belt of ['white', 'blue', 'purple', 'brown'] as const) {
+    const level = beltLevel(fresh, belt);
+    assert.deepEqual(level?.checkpoints.map((row) => row.name), [...STARTER_BENCHMARK_PROMPTS], `${belt} seeds`);
+    assert.equal(level?.promptsSeeded, true);
+    assert.equal(level?.starterAck, true);
+    assert.ok(level?.checkpoints.every((row) => row.met === null && row.criteria.length === 0 && !row.stage));
+    assert.deepEqual(goalsForBelt(fresh, belt).map((goal) => goal.name), [...STARTER_GOAL_PROMPTS], `${belt} goal seeds`);
+  }
+  for (const belt of ['black', 'coral', 'redWhite', 'red', 'grey', 'yellow', 'orange', 'green'] as const) {
+    assert.equal(beltLevel(fresh, belt)?.checkpoints.length, 0, `${belt} stays empty`);
+  }
+  for (const text of [...STARTER_BENCHMARK_PROMPTS, ...STARTER_GOAL_PROMPTS, SEED_LINE]) assert.doesNotMatch(text, /stripe/i);
   assert.equal(withStarterRubric(fresh, 11), fresh);
-  const white = beltLevel(fresh, 'white');
-  assert.equal(beltProgressSummary(white, catalogLevelMap(fresh)), '');
-  assert.equal(beltProgressSummary(null, catalogLevelMap(fresh)), '');
-  assert.deepEqual(beltRequirementProgress(white, catalogLevelMap(fresh)), {
+
+  // Reload through the saved file format: no duplicates.
+  const parsed = parseProgressPacket(exportProgressPacket(fresh));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  const reloaded = withStarterRubric(parsed.value, 12);
+  assert.equal(beltLevel(reloaded, 'white')?.checkpoints.length, 3);
+  assert.equal(goalsForBelt(reloaded, 'white').length, 3);
+
+  // Deleting a seed never brings it back, and an emptied list stays empty.
+  let cleared = fresh;
+  for (const row of beltLevel(fresh, 'white')!.checkpoints) cleared = removeCheckpoint(cleared, row.id, 13);
+  for (const goal of goalsForBelt(fresh, 'white')) cleared = removeGoal(cleared, goal.id, 14);
+  assert.equal(beltLevel(cleared, 'white')?.checkpoints.length, 0);
+  assert.equal(withStarterRubric(cleared, 15), cleared);
+  assert.equal(goalsForBelt(withStarterRubric(cleared, 16), 'white').length, 0);
+  const white = beltLevel(cleared, 'white');
+  assert.equal(beltProgressSummary(white, catalogLevelMap(cleared)), '');
+  assert.deepEqual(beltRequirementProgress(white, catalogLevelMap(cleared)), {
     requirements: 0,
     counted: 0,
     fromFundamentals: 0,
@@ -117,18 +149,17 @@ test('a new file starts empty, with no 0 of 0 count and no groups', () => {
     checkpointsFilled: 0,
   });
   assert.deepEqual(benchmarkGroups([], 'white'), []);
-  for (const belt of ['blue', 'purple', 'brown'] as const) {
-    const moved = withStarterRubric(setRankBelt(fresh, belt, 12), 13);
-    assert.equal(beltLevel(moved, belt)?.checkpoints.length, 0);
-  }
 
-  const added = addCheckpoint(fresh, 'white', 'Lead the warm-up', 14);
+  assert.equal(addedMetLine('benchmark', 0, 0), 'No practical benchmarks added yet.');
+  assert.equal(addedMetLine('goal', 0, 0), 'No personal goals added yet.');
+  assert.equal(addedMetLine('benchmark', 1, 0), '1 practical benchmark added, 0 met.');
+  assert.equal(addedMetLine('benchmark', 3, 1), '3 practical benchmarks added, 1 met.');
+  assert.equal(addedMetLine('goal', 2, 0), '2 personal goals added, 0 met.');
+
+  const added = addCheckpoint(cleared, 'white', 'Lead the warm-up', 17);
   const summary = beltProgressSummary(beltLevel(added, 'white'), catalogLevelMap(added));
   assert.equal(summary, '0 of 1 practical benchmarks filled.');
   assert.doesNotMatch(summary, /NaN|of 0/);
-  const cleared = removeCheckpoint(added, beltLevel(added, 'white')!.checkpoints[0]!.id, 15);
-  assert.equal(beltLevel(cleared, 'white')?.checkpoints.length, 0);
-  assert.equal(withStarterRubric(cleared, 16), cleared);
 });
 
 test('saved benchmarks are never reseeded, replaced or rewritten on load', () => {
@@ -138,7 +169,25 @@ test('saved benchmarks are never reseeded, replaced or rewritten on load', () =>
   assert.deepEqual(beltLevel(loaded, 'white')?.checkpoints, before);
   assert.equal(beltLevel(loaded, 'white')?.checkpoints[0]?.met, true);
   assert.equal(beltLevel(loaded, 'white')?.checkpoints[0]?.note, 'kept');
-  assert.equal(beltLevel(loaded, 'blue')?.checkpoints.length, 0);
+  // White already had rows, so it gets no seeds and no goal seeds. Missing belts get seeds.
+  assert.equal(beltLevel(loaded, 'white')?.promptsSeeded, undefined);
+  assert.equal(goalsForBelt(loaded, 'white').length, 0);
+  assert.equal(beltLevel(loaded, 'blue')?.checkpoints.length, 3);
+
+  // A file an older build already settled (every adult belt acked) gets nothing new.
+  const settledFile = blankStudentReport(5);
+  settledFile.rubric.levels = (['white', 'blue', 'purple', 'brown'] as const).map((belt) => ({
+    id: `level.${belt}`,
+    name: belt,
+    belt,
+    checkpoints: belt === 'white' ? structuredClone(before) : [],
+    starterAck: true,
+  }));
+  const settledLoad = withStarterRubric(settledFile, 6);
+  for (const belt of ['white', 'blue', 'purple', 'brown'] as const) {
+    assert.deepEqual(beltLevel(settledLoad, belt)?.checkpoints, beltLevel(settledFile, belt)?.checkpoints);
+  }
+  assert.equal(settledLoad.goals.length, 0);
 
   // A round trip through the saved file format keeps every row too.
   const parsed = parseProgressPacket(exportProgressPacket(loaded));
@@ -157,12 +206,7 @@ test('saved benchmarks are never reseeded, replaced or rewritten on load', () =>
   const summary = beltProgressSummary(beltLevel(reloaded, 'white'), catalogLevelMap(reloaded));
   assert.equal(summary, '1 of 33 practical benchmarks filled.');
 
-  // An empty brown is not filled, and an old prefilled brown list stays as saved.
-  const emptyBrown = blankStudentReport(20);
-  emptyBrown.rubric.levels = [{ id: 'level.brown', name: 'Brown', belt: 'brown', checkpoints: [] }];
-  const settled = withStarterRubric(emptyBrown, 21);
-  assert.equal(beltLevel(settled, 'brown')?.checkpoints.length, 0);
-  assert.equal(beltLevel(settled, 'brown')?.starterAck, true);
+  // An old prefilled brown list stays as saved.
   const oldBrown = blankStudentReport(22);
   const legacy = [
     savedRow('brown', 'top', undefined, { name: 'Top' }, { requirement: 'Hold mount.', techniqueRefs: [{ id: 'pos.mount', name: 'Mount' }] }),
@@ -281,8 +325,9 @@ test('new benchmark fields round-trip, and a student-added row keeps its marks',
   report = addCheckpoint(report, 'white', 'Grip fighting', 14);
   const marked = beltLevel(report, 'white');
   assert.ok(marked);
-  marked.checkpoints[0]!.met = true;
-  marked.checkpoints[0]!.note = 'kept';
+  const gripRow = marked.checkpoints.find((row) => row.name === 'Grip fighting')!;
+  gripRow.met = true;
+  gripRow.note = 'kept';
   const parsed = parseProgressPacket(exportProgressPacket(report));
   assert.equal(parsed.ok, true);
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
@@ -290,10 +335,10 @@ test('new benchmark fields round-trip, and a student-added row keeps its marks',
   assert.equal(parsed.value.profile.techniquePolicy?.legLocks, true);
   const white = beltLevel(withStarterRubric(parsed.value, 15), 'white');
   assert.equal(white?.starterAck, true);
-  assert.equal(white?.checkpoints.length, 1);
-  assert.equal(white?.checkpoints[0]?.name, 'Grip fighting');
-  assert.equal(white?.checkpoints[0]?.met, true);
-  assert.equal(white?.checkpoints[0]?.note, 'kept');
+  const grip = white?.checkpoints.find((row) => row.name === 'Grip fighting');
+  assert.equal(white?.checkpoints.length, 4);
+  assert.equal(grip?.met, true);
+  assert.equal(grip?.note, 'kept');
   const bare = parseProgressPacket(exportProgressPacket(blankStudentReport(1)));
   assert.equal(bare.ok, true);
   if (bare.ok && bare.value.kind === 'student-progress-report') {

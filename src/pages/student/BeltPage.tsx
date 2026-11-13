@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   blackBeltClock,
@@ -14,40 +14,28 @@ import {
   wornDegree,
   yearsAtName,
 } from '../../lib/blackBeltDegrees';
-import type { RubricCheckpoint, RubricCriterion, StudentGoal, StudentProgressReport, TrainingStyle } from '../../lib/progress/types';
+import type { RubricCheckpoint, StudentGoal, StudentProgressReport, TrainingStyle } from '../../lib/progress/types';
 import {
   BENCHMARK_DISCLAIMER_MEDIUM,
-  BENCHMARK_DISCLAIMER_SHORT,
   BLACK_BELT_AGE_NOTE,
-  IBJJF_RULEBOOK_URL,
-  STAGE_SHORT,
   benchmarkAnchorFromHash,
-  benchmarkCountHint,
   benchmarkDisplayName,
-  benchmarkGroups,
-  benchmarkNoGiLine,
   benchmarkView,
   benchmarkVisible,
-  catalogLevelMap,
   checkpointsForProgress,
 } from '../../lib/studentBenchmarks';
-import type { BenchmarkGroup, LearnedIndex } from '../../lib/studentBenchmarks';
 import { loadStudentReport, setTechniquePolicy, todayIso } from '../../lib/studentEdition';
 import { degreeFocusOf, instructorBarsOf, rankOf, setDegreeFocus } from '../../lib/studentRank';
 import { addKidsBenchmark, currentKidsBelt, kidsBenchmarksOf, removeKidsBenchmark, setKidsBenchmark } from '../../lib/beltBook';
 import {
   addCheckpoint,
+  addedMetLine,
   addGoal,
   BELT_LABELS,
   beltLevel,
-  beltProgressSummary,
   checkpointReadOnly,
-  checkpointShare,
-  checkpointState,
-  checkpointTitle,
   copyFocusToGoal,
   copySuggestionToGoal,
-  criterionFromFundamentals,
   degreeProgressIsTimeBased,
   dismissGoalPrompt,
   goalCopied,
@@ -58,9 +46,6 @@ import {
   loadCoachShelf,
   moveCheckpoint,
   nextBelt,
-  NO_PERSONAL_GOALS,
-  NO_PRACTICAL_BENCHMARKS,
-  NO_PRACTICAL_BENCHMARKS_HINT,
   OPEN_GOAL_LINE,
   openGoalBelt,
   PERSONAL_GOALS_HEADING,
@@ -69,12 +54,11 @@ import {
   PRACTICAL_BENCHMARKS_LINE,
   removeCheckpoint,
   removeGoal,
+  SEED_LINE,
   renameCheckpoint,
   setCheckpointMark,
   showsAdultCheckpoints,
-  setCriterionMark,
   setGoalMet,
-  splitMarkNote,
   TIME_BASED_PROGRESS,
   updateGoal,
   withGoalPromptLinks,
@@ -109,19 +93,16 @@ export function BeltPage() {
   const nextDegree = degree == null ? null : nextDegreeRule(degree);
   const endLabel = nextDegree ? nextDegree.label : degree != null ? 'Final rank' : upcoming ? BELT_LABELS[upcoming] : 'Last belt on this list';
   const level = beltLevel(report, belt);
-  const learned = catalogLevelMap(report);
   const view = benchmarkView(report);
   const checkpoints = level?.checkpoints ?? [];
   const visible = checkpoints.filter((row) => benchmarkVisible(row, view));
   const counted = checkpointsForProgress(checkpoints, view);
-  const staged = checkpoints.some((row) => row.stage);
-  const groups = benchmarkGroups(visible, belt);
   const anchor = benchmarkAnchorFromHash(hash);
   const openedBelt = adultPath && anchor && anchor.belt !== belt ? anchor.belt : null;
   const openedLevel = openedBelt ? beltLevel(report, openedBelt) : null;
   const openedIds = openedLevel?.checkpoints.map((row) => row.id).join('|') ?? '';
   useScrollToHash(`${visible.map((row) => row.id).join('|')}|${openedIds}|${anchor?.elementId ?? ''}`, anchor?.elementId ?? '');
-  const summary = beltProgressSummary(level ? { ...level, checkpoints: counted } : null, learned);
+  const benchmarkCount = addedMetLine('benchmark', counted.length, counted.filter((row) => row.met === true).length);
   const timeBased = degreeProgressIsTimeBased(belt);
   const openGoals = openGoalBelt(belt);
   const share = to('/student/share?from=rubric');
@@ -151,7 +132,6 @@ export function BeltPage() {
               belt={openedBelt}
               anchorId={anchor.elementId}
               report={report}
-              learned={learned}
               view={view}
               to={to}
               run={run}
@@ -179,55 +159,10 @@ export function BeltPage() {
             <BenchmarkDisclaimer />
             <p className="student-quiet">{PRACTICAL_BENCHMARKS_LINE}</p>
             {timeBased ? <p>{TIME_BASED_PROGRESS}</p> : null}
-            {!timeBased && visible.length ? (
-            <ol className="checkpoint-row" aria-label={upcoming ? `Practical benchmarks between ${BELT_LABELS[belt]} and ${BELT_LABELS[upcoming]}` : `${BELT_LABELS[belt]} practical benchmarks`}>
-              {(staged ? groups : [{ id: 'yours', title: '', rows: visible }]).map((group) => {
-                if (!staged) {
-                  return group.rows.map((row) => {
-                    const state = checkpointState(row, learned);
-                    const share = checkpointShare(row, learned);
-                    const title = checkpointTitle(row);
-                    return (
-                      <li
-                        key={row.id}
-                        className={state === 'filled' ? 'is-filled' : state === 'partly filled' ? 'is-partial' : undefined}
-                        style={{ '--fill': `${Math.round(share * 100)}%` } as CSSProperties}
-                        aria-label={`${title}, ${state}`}
-                      >
-                        <span className="checkpoint-box" />
-                        <span>{title}</span>
-                      </li>
-                    );
-                  });
-                }
-                const rows = checkpointsForProgress(group.rows, view);
-                const share = rows.length ? rows.reduce((sum, row) => sum + checkpointShare(row, learned), 0) / rows.length : 0;
-                const state = share >= 1 ? 'filled' : share > 0 ? 'partly filled' : 'open';
-                const title = STAGE_SHORT[group.id as keyof typeof STAGE_SHORT] ?? group.title;
-                return (
-                  <li
-                    key={group.id}
-                    className={state === 'filled' ? 'is-filled' : state === 'partly filled' ? 'is-partial' : undefined}
-                    style={{ '--fill': `${Math.round(share * 100)}%` } as CSSProperties}
-                    aria-label={`${title}, ${state}`}
-                  >
-                    <span className="checkpoint-box" />
-                    <span>{title}</span>
-                  </li>
-                );
-              })}
-            </ol>
-            ) : null}
-            {!timeBased && summary ? (
-              <p className="belt-count" aria-label="Belt progress count">
-                {summary}
-              </p>
-            ) : null}
-            {visible.length === 0 ? (
-              <p className="belt-empty">
-                {NO_PRACTICAL_BENCHMARKS} {NO_PRACTICAL_BENCHMARKS_HINT}
-              </p>
-            ) : null}
+            <p className="belt-count" aria-label="Practical benchmarks count">
+              {benchmarkCount}
+            </p>
+            {belt === 'brown' ? <p className="belt-age">{BLACK_BELT_AGE_NOTE}</p> : null}
             {!timeBased && belt === 'brown' && !view.policy.competition && checkpoints.some((row) => row.policy === 'competition') ? (
               <button type="button" className="belt-chip" onClick={() => run(setTechniquePolicy(report, 'competition', true))}>
                 Competition
@@ -248,7 +183,7 @@ export function BeltPage() {
               Import from coach
             </Link>
           </div>
-          {adultPath && !staged
+          {adultPath
             ? visible.map((row) => (
                 <CheckpointCard
                   key={row.id}
@@ -256,47 +191,30 @@ export function BeltPage() {
                   anchored={row.id === anchor?.elementId}
                   index={checkpoints.findIndex((item) => item.id === row.id)}
                   count={checkpoints.length}
-                  learned={learned}
                   training={view.trainingStyle}
                   readOnly={checkpointReadOnly(report, row)}
                   onMark={(met, note) => run(setCheckpointMark(report, row.id, met, note))}
                   onRename={(name) => run(renameCheckpoint(report, row.id, name))}
                   onRemove={() => run(removeCheckpoint(report, row.id))}
                   onMove={(direction) => run(moveCheckpoint(report, row.id, direction))}
-                  onCriterion={(id, met, date, note) => run(setCriterionMark(report, id, met, date, note))}
-                />
-              ))
-            : null}
-          {adultPath && staged
-            ? groups.map((group) => (
-                <BenchmarkGroupSection
-                  key={group.id}
-                  group={group}
-                  belt={belt}
-                  anchorId={anchor?.elementId ?? ''}
-                  checkpoints={checkpoints}
-                  learned={learned}
-                  training={view.trainingStyle}
-                  report={report}
-                  run={run}
                 />
               ))
             : null}
           {adultPath ? (
-            <section className="ink" aria-label="Add a practical benchmark">
-              <NameForm label="Practical benchmark name" submit="Add a practical benchmark" onAdd={(name) => run(addCheckpoint(report, belt, name))} />
+            <section className="ink belt-more" aria-label="Add a practical benchmark">
+              <AddAnother label="Add another practical benchmark" onAdd={() => run(addCheckpoint(report, belt, NEW_BENCHMARK_NAME))} />
+              <p className="student-quiet">{SEED_LINE}</p>
               <p className="student-quiet">{INSTRUCTOR_FINAL_SAY}</p>
             </section>
           ) : null}
           <GoalsSection
             goals={adultPath ? stageGoals : goalsForKidsBelt(report, currentKidsBelt(report).beltId)}
             personal
-            showForm={adultPath ? !openGoals : true}
             prompts={adultPath && openGoals ? prompts : []}
             onPrompt={(name) => run(addGoal(report, name, '', Date.now(), belt, undefined, name))}
             onDismiss={(name) => run(dismissGoalPrompt(report, name))}
-            onAdd={(name, note) =>
-              run(addGoal(report, name, note, Date.now(), adultPath ? belt : undefined, adultPath ? undefined : currentKidsBelt(report).beltId))
+            onAddAnother={() =>
+              run(addGoal(report, NEW_GOAL_NAME, '', Date.now(), adultPath ? belt : undefined, adultPath ? undefined : currentKidsBelt(report).beltId))
             }
             onUpdate={(id, name, note) => run(updateGoal(report, id, name, note))}
             onMet={(id, met) => run(setGoalMet(report, id, met))}
@@ -396,17 +314,16 @@ function KidsBenchmarks({
         <h2>{PRACTICAL_BENCHMARKS_HEADING}</h2>
         <BenchmarkDisclaimer />
         <p className="student-quiet">{PRACTICAL_BENCHMARKS_LINE}</p>
-        {rows.length === 0 ? (
-          <p className="belt-empty">
-            {NO_PRACTICAL_BENCHMARKS} {NO_PRACTICAL_BENCHMARKS_HINT}
-          </p>
-        ) : null}
+        <p className="belt-count" aria-label="Practical benchmarks count">
+          {addedMetLine('benchmark', rows.length, rows.filter((row) => row.met === true).length)}
+        </p>
         {rows.map((row) => (
           <KidsBenchmarkRow key={row.id} row={row} report={report} run={run} />
         ))}
-        <NameForm label="Practical benchmark name" submit="Add a practical benchmark" onAdd={(name) => run(addKidsBenchmark(report, beltId, name))} />
+        <AddAnother label="Add another practical benchmark" onAdd={() => run(addKidsBenchmark(report, beltId, NEW_BENCHMARK_NAME))} />
+        <p className="student-quiet">{SEED_LINE}</p>
         {competition ? (
-          <p className="student-quiet">Competition prompt is on. It does not count toward a stripe.</p>
+          <p className="student-quiet">Competition prompt is on. It is not a requirement.</p>
         ) : (
           <button type="button" className="belt-chip" onClick={() => run(setTechniquePolicy(report, 'competition', true))}>
             Competition
@@ -502,12 +419,10 @@ function OpenGoals({
   prompts,
   onPrompt,
   onDismiss,
-  onAdd,
 }: {
   prompts: readonly string[];
   onPrompt: (name: string) => void;
   onDismiss: (name: string) => void;
-  onAdd: (name: string) => void;
 }) {
   return (
     <div className="belt-open">
@@ -527,67 +442,29 @@ function OpenGoals({
           ))}
         </div>
       ) : null}
-      <NameForm label="Personal goal name" submit="Add personal goal" onAdd={onAdd} />
     </div>
   );
 }
 
 function BenchmarkDisclaimer() {
   const to = useStudentPath();
-  const body = BENCHMARK_DISCLAIMER_MEDIUM.startsWith(BENCHMARK_DISCLAIMER_SHORT)
-    ? BENCHMARK_DISCLAIMER_MEDIUM.slice(BENCHMARK_DISCLAIMER_SHORT.length).trim()
-    : BENCHMARK_DISCLAIMER_MEDIUM;
   return (
     <aside className="belt-disclaimer" role="note" aria-label="Benchmark guidelines">
       <p>
-        <strong className="belt-disclaimer__lead">{BENCHMARK_DISCLAIMER_SHORT}</strong> {body}{' '}
-        <Link to={to('/terms#practical-benchmarks')}>Terms of Service</Link>
+        {BENCHMARK_DISCLAIMER_MEDIUM} <Link to={to('/terms#practical-benchmarks')}>Terms of Service</Link>
       </p>
     </aside>
   );
 }
 
-function BenchmarkGroupSection({
-  group,
-  belt,
-  anchorId,
-  checkpoints,
-  learned,
-  training,
-  report,
-  run,
-}: {
-  group: BenchmarkGroup;
-  belt: StudentProgressReport['profile']['belt'];
-  anchorId: string;
-  checkpoints: RubricCheckpoint[];
-  learned: LearnedIndex;
-  training: TrainingStyle;
-  report: StudentProgressReport;
-  run: (next: StudentProgressReport) => void;
-}) {
+const NEW_BENCHMARK_NAME = 'New practical benchmark';
+const NEW_GOAL_NAME = 'New personal goal';
+
+function AddAnother({ label, onAdd }: { label: string; onAdd: () => void }) {
   return (
-    <section className="belt-stripe" aria-label={group.title || 'Your benchmarks'}>
-      {group.title ? <h2>{group.title}</h2> : null}
-      {belt === 'brown' && group.id === 'promotion' ? <p className="belt-age">{BLACK_BELT_AGE_NOTE}</p> : null}
-      {group.rows.map((row) => (
-        <CheckpointCard
-          key={row.id}
-          row={row}
-          anchored={row.id === anchorId}
-          index={checkpoints.findIndex((item) => item.id === row.id)}
-          count={checkpoints.length}
-          learned={learned}
-          training={training}
-          readOnly={checkpointReadOnly(report, row)}
-          onMark={(met, note) => run(setCheckpointMark(report, row.id, met, note))}
-          onRename={(name) => run(renameCheckpoint(report, row.id, name))}
-          onRemove={() => run(removeCheckpoint(report, row.id))}
-          onMove={(direction) => run(moveCheckpoint(report, row.id, direction))}
-          onCriterion={(id, met, date, note) => run(setCriterionMark(report, id, met, date, note))}
-        />
-      ))}
-    </section>
+    <button type="button" className="ink-btn belt-add-another" aria-label={label} onClick={onAdd}>
+      Add another
+    </button>
   );
 }
 
@@ -596,7 +473,6 @@ function OpenedBeltBenchmarks({
   belt,
   anchorId,
   report,
-  learned,
   view,
   to,
   run,
@@ -605,7 +481,6 @@ function OpenedBeltBenchmarks({
   belt: StudentProgressReport['profile']['belt'];
   anchorId: string;
   report: StudentProgressReport;
-  learned: LearnedIndex;
   view: ReturnType<typeof benchmarkView>;
   to: (path: string) => string;
   run: (next: StudentProgressReport) => void;
@@ -614,8 +489,6 @@ function OpenedBeltBenchmarks({
   const checkpoints = level?.checkpoints ?? [];
   const openedView = { ...view, belt };
   const visible = checkpoints.filter((row) => benchmarkVisible(row, openedView));
-  const staged = checkpoints.some((row) => row.stage);
-  const groups = benchmarkGroups(visible, belt);
   const label = BELT_LABELS[belt];
   const found = visible.some((row) => row.id === anchorId);
   return (
@@ -631,62 +504,22 @@ function OpenedBeltBenchmarks({
           That benchmark is not on the {label} list on this phone.
         </p>
       )}
-      {staged
-        ? groups.map((group) => (
-            <BenchmarkGroupSection
-              key={group.id}
-              group={group}
-              belt={belt}
-              anchorId={anchorId}
-              checkpoints={checkpoints}
-              learned={learned}
-              training={openedView.trainingStyle}
-              report={report}
-              run={run}
-            />
-          ))
-        : visible.map((row) => (
-            <CheckpointCard
-              key={row.id}
-              row={row}
-              anchored={row.id === anchorId}
-              index={checkpoints.findIndex((item) => item.id === row.id)}
-              count={checkpoints.length}
-              learned={learned}
-              training={openedView.trainingStyle}
-              readOnly={checkpointReadOnly(report, row)}
-              onMark={(met, note) => run(setCheckpointMark(report, row.id, met, note))}
-              onRename={(name) => run(renameCheckpoint(report, row.id, name))}
-              onRemove={() => run(removeCheckpoint(report, row.id))}
-              onMove={(direction) => run(moveCheckpoint(report, row.id, direction))}
-              onCriterion={(id, met, date, note) => run(setCriterionMark(report, id, met, date, note))}
-            />
-          ))}
+      {visible.map((row) => (
+        <CheckpointCard
+          key={row.id}
+          row={row}
+          anchored={row.id === anchorId}
+          index={checkpoints.findIndex((item) => item.id === row.id)}
+          count={checkpoints.length}
+          training={openedView.trainingStyle}
+          readOnly={checkpointReadOnly(report, row)}
+          onMark={(met, note) => run(setCheckpointMark(report, row.id, met, note))}
+          onRename={(name) => run(renameCheckpoint(report, row.id, name))}
+          onRemove={() => run(removeCheckpoint(report, row.id))}
+          onMove={(direction) => run(moveCheckpoint(report, row.id, direction))}
+        />
+      ))}
     </section>
-  );
-}
-
-function NameForm({ label, submit, onAdd }: { label: string; submit: string; onAdd: (name: string) => void }) {
-  const [name, setName] = useState('');
-  return (
-    <form
-      className="belt-add"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const trimmed = name.trim();
-        if (!trimmed) return;
-        onAdd(trimmed);
-        setName('');
-      }}
-    >
-      <label>
-        <span className="ink__label">{label}</span>
-        <input aria-label={label} value={name} onChange={(event) => setName(event.target.value)} />
-      </label>
-      <button type="submit" className="ink-btn">
-        {submit}
-      </button>
-    </form>
   );
 }
 
@@ -695,48 +528,80 @@ function CheckpointCard({
   anchored,
   index,
   count,
-  learned,
   training,
   readOnly,
   onMark,
   onRename,
   onRemove,
   onMove,
-  onCriterion,
 }: {
   row: RubricCheckpoint;
   anchored: boolean;
   index: number;
   count: number;
-  learned: LearnedIndex;
   training: TrainingStyle;
   readOnly: boolean;
   onMark: (met: boolean, note: string) => void;
   onRename: (name: string) => void;
   onRemove: () => void;
   onMove: (direction: -1 | 1) => void;
-  onCriterion: (id: string, met: boolean, date: string, note: string) => void;
 }) {
-  const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(row.name);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const shown = benchmarkDisplayName(row, training);
   const title = row.source === 'coach' && row.edited === true ? `${shown}*` : shown;
-  const done = checkpointState(row, learned) === 'filled';
-  const written = row.criteria.filter((item) => item.requirement.trim());
-  const linked = row.criteria.filter((item) => !item.requirement.trim());
-  const names = visibleNames(row, training);
-  const hint = benchmarkCountHint(row);
-  const noGi = benchmarkNoGiLine(row, training);
-  const fromFundamentals = linked.some((item) => criterionFromFundamentals(item, learned));
+  const met = row.met === true;
   useEffect(() => {
     setDraft(row.name);
   }, [row.name]);
   return (
     <section id={row.id} className={anchored ? 'ink belt-block is-anchor' : 'ink belt-block'} aria-label={`${title} benchmark`}>
-      <h2>{title}</h2>
-      {readOnly ? <p className="student-quiet">From your coach. This practical benchmark stays as they sent it.</p> : null}
+      {readOnly ? (
+        <>
+          <h2>{title}</h2>
+          <p className="student-quiet">From your coach. This practical benchmark stays as they sent it.</p>
+        </>
+      ) : (
+        <label>
+          <span className="ink__label">Practical benchmark</span>
+          <input
+            aria-label={`Edit ${row.name}`}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={(event) => {
+              const next = event.target.value.trim();
+              if (!next) {
+                setDraft(row.name);
+                return;
+              }
+              if (next !== row.name) onRename(next);
+            }}
+          />
+        </label>
+      )}
       {row.source === 'coach' && row.edited ? <p className="student-quiet">Edited from the coach list.</p> : null}
+      <label>
+        <span className="ink__label">Note</span>
+        <input
+          aria-label={`${row.name} note`}
+          defaultValue={row.note}
+          key={`${row.id}-${row.note}`}
+          readOnly={readOnly}
+          onBlur={(event) => {
+            if (readOnly || event.target.value === row.note) return;
+            onMark(met, event.target.value);
+          }}
+        />
+      </label>
+      <button
+        type="button"
+        className={met ? 'ink-btn ink-btn--save student-choice is-on' : 'ink-btn ink-btn--save student-choice'}
+        aria-pressed={met}
+        aria-label={met ? `${row.name} benchmark met` : `Mark ${row.name} benchmark met`}
+        onClick={() => onMark(!met, row.note)}
+      >
+        {met ? 'Benchmark met' : 'Mark benchmark met'}
+      </button>
       {readOnly ? null : (
         <div className="belt-edit">
           <button type="button" className="ink-btn" aria-label={`Move ${row.name} up`} disabled={index === 0} onClick={() => onMove(-1)}>
@@ -745,32 +610,11 @@ function CheckpointCard({
           <button type="button" className="ink-btn" aria-label={`Move ${row.name} down`} disabled={index === count - 1} onClick={() => onMove(1)}>
             Move down
           </button>
-          <button type="button" className="ink-btn" aria-label={`Rename ${row.name}`} onClick={() => setRenaming((open) => !open)}>
-            Rename
-          </button>
           <button type="button" className="ink-btn" aria-label={`Remove ${row.name}`} onClick={() => setConfirmRemove(true)}>
             Remove
           </button>
         </div>
       )}
-      {renaming && !readOnly ? (
-        <form
-          className="belt-add"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onRename(draft);
-            setRenaming(false);
-          }}
-        >
-          <label>
-            <span className="ink__label">Name</span>
-            <input aria-label={`New name for ${row.name}`} value={draft} onChange={(event) => setDraft(event.target.value)} />
-          </label>
-          <button type="submit" className="ink-btn" aria-label={`Save ${row.name}`}>
-            Save
-          </button>
-        </form>
-      ) : null}
       {confirmRemove && !readOnly ? (
         <div className="student-actions" role="group" aria-label={`Remove ${row.name}`}>
           <button type="button" className="ink-btn" aria-label={`Confirm remove ${row.name}`} onClick={onRemove}>
@@ -781,62 +625,8 @@ function CheckpointCard({
           </button>
         </div>
       ) : null}
-      <button
-        type="button"
-        className={row.met === true ? 'student-choice is-on' : 'student-choice'}
-        aria-pressed={row.met === true}
-        aria-label={row.met === true ? `${row.name} benchmark met` : `Mark ${row.name} benchmark met`}
-        onClick={() => onMark(row.met !== true, row.note)}
-      >
-        {row.met === true ? 'Benchmark met' : 'Mark benchmark met'}
-      </button>
-      <label>
-        <span className="ink__label">Note</span>
-        <input
-          aria-label={`${row.name} note`}
-          defaultValue={row.note}
-          key={`${row.id}-${row.note}`}
-          readOnly={readOnly}
-          onBlur={(event) => {
-            if (readOnly || event.target.value === row.note) return;
-            onMark(row.met === true, event.target.value);
-          }}
-        />
-      </label>
-      {names.length ? <p className="student-quiet">{names.join(', ')}</p> : null}
-      {hint ? <p className="student-quiet">{hint}</p> : null}
-      {noGi ? <p className="student-quiet">{noGi}</p> : null}
-      {fromFundamentals ? <p>Counted from your fundamentals.</p> : null}
-      {row.rulebook ? (
-        <a href={IBJJF_RULEBOOK_URL} target="_blank" rel="noreferrer">
-          IBJJF rule book
-        </a>
-      ) : null}
-      {written.map((item) => (
-        <CriterionEditor
-          key={item.id}
-          row={item}
-          fromFundamentals={criterionFromFundamentals(item, learned)}
-          onSave={(met, date, note) => onCriterion(item.id, met, date, note)}
-        />
-      ))}
-      {done ? <p className="student-quiet">Filled.</p> : null}
     </section>
   );
-}
-
-function visibleNames(row: RubricCheckpoint, training: TrainingStyle): string[] {
-  const names: string[] = [];
-  for (const criterion of row.criteria) {
-    if (criterion.requirement.trim()) continue;
-    for (const ref of criterion.techniqueRefs) {
-      const style = ref.style ?? 'both';
-      if (training === 'gi' && style === 'nogi') continue;
-      if (training === 'nogi' && style === 'gi') continue;
-      if (ref.name) names.push(ref.name);
-    }
-  }
-  return names;
 }
 
 function DegreePanel({ report }: { report: StudentProgressReport }) {
@@ -891,123 +681,40 @@ function DegreePanel({ report }: { report: StudentProgressReport }) {
   );
 }
 
-function CriterionEditor({
-  row,
-  fromFundamentals,
-  onSave,
-}: {
-  row: RubricCriterion;
-  fromFundamentals: boolean;
-  onSave: (met: boolean, date: string, note: string) => void;
-}) {
-  const parsed = splitMarkNote(row.note);
-  const [date, setDate] = useState(parsed.date);
-  const [note, setNote] = useState(parsed.text);
-  useEffect(() => {
-    const next = splitMarkNote(row.note);
-    setDate(next.date);
-    setNote(next.text);
-  }, [row.note]);
-  const met = row.met === true;
-  return (
-    <div className="criterion">
-      <p>{row.requirement}</p>
-      <p className="student-quiet">{row.techniqueRefs.map((item) => item.name).join(', ')}</p>
-      {fromFundamentals ? <p>Counted from your fundamentals.</p> : null}
-      <button
-        type="button"
-        className={met ? 'student-choice is-on' : 'student-choice'}
-        aria-pressed={met}
-        aria-label={met ? `${row.requirement} met` : `Mark ${row.requirement} met`}
-        onClick={() => onSave(!met, date, note)}
-      >
-        {met ? 'Met' : 'Mark met'}
-      </button>
-      <label>
-        <span className="ink__label">Date</span>
-        <input
-          type="date"
-          aria-label={`${row.requirement} date`}
-          value={date}
-          onChange={(event) => setDate(event.target.value)}
-          onBlur={(event) => onSave(met, event.target.value, note)}
-        />
-      </label>
-      <label>
-        <span className="ink__label">Note</span>
-        <input
-          aria-label={`${row.requirement} note`}
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          onBlur={(event) => onSave(met, date, event.target.value)}
-        />
-      </label>
-    </div>
-  );
-}
-
 function GoalsSection({
   goals,
   personal,
-  showForm,
   prompts,
   onPrompt,
   onDismiss,
-  onAdd,
+  onAddAnother,
   onUpdate,
   onMet,
   onRemove,
 }: {
   goals: StudentGoal[];
   personal: boolean;
-  showForm: boolean;
   prompts: readonly string[];
   onPrompt: (name: string) => void;
   onDismiss: (name: string) => void;
-  onAdd: (name: string, note: string) => void;
+  onAddAnother: () => void;
   onUpdate: (id: string, name: string, note: string) => void;
   onMet: (id: string, met: boolean) => void;
   onRemove?: (id: string) => void;
 }) {
-  const [name, setName] = useState('');
-  const [note, setNote] = useState('');
-  const nameLabel = personal ? 'Personal goal' : 'Goal';
-  const nameAria = personal ? 'Personal goal name' : 'Goal name';
-  const noteAria = personal ? 'Personal goal note' : 'Goal note';
   return (
     <section className="goals-block" aria-label={personal ? PERSONAL_GOALS_HEADING : 'Goals'}>
       <h2>{personal ? PERSONAL_GOALS_HEADING : 'Goals'}</h2>
       {personal ? <p className="student-quiet">{PERSONAL_GOALS_LINE}</p> : null}
-      {personal && !showForm ? (
-        <OpenGoals prompts={prompts} onPrompt={onPrompt} onDismiss={onDismiss} onAdd={(value) => onAdd(value, '')} />
-      ) : null}
-      {showForm ? (
-        <form
-          className="ink"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onAdd(name, note);
-            setName('');
-            setNote('');
-          }}
-        >
-          <label>
-            <span className="ink__label">{nameLabel}</span>
-            <input aria-label={nameAria} value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
-          <label>
-            <span className="ink__label">Note</span>
-            <input aria-label={noteAria} value={note} onChange={(event) => setNote(event.target.value)} />
-          </label>
-          <button type="submit" className="ink-btn">
-            {personal ? 'Add personal goal' : 'Add goal'}
-          </button>
-        </form>
-      ) : null}
-      {personal && goals.length === 0 ? <p>{NO_PERSONAL_GOALS}</p> : null}
+      {personal && prompts.length ? <OpenGoals prompts={prompts} onPrompt={onPrompt} onDismiss={onDismiss} /> : null}
+      <p className="belt-count" aria-label="Personal goals count">
+        {addedMetLine('goal', goals.length, goals.filter((goal) => goal.met === true).length)}
+      </p>
       {goals.map((goal) => (
         <GoalRow key={goal.id} goal={goal} personal={personal} onUpdate={onUpdate} onMet={onMet} onRemove={onRemove} />
       ))}
+      <AddAnother label={personal ? 'Add another personal goal' : 'Add another goal'} onAdd={onAddAnother} />
+      <p className="student-quiet">{SEED_LINE}</p>
     </section>
   );
 }

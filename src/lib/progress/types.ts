@@ -376,6 +376,8 @@ export type RubricLevel = {
    * Stops an empty list from being filled again. Missing on older files.
    */
   starterAck?: boolean;
+  /** The three editable seed prompts were added once. Deleting one never brings it back. */
+  promptsSeeded?: boolean;
 };
 
 /**
