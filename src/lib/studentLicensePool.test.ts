@@ -96,6 +96,10 @@ test('join links use /join/student and signed or hex codes are accepted', () => 
     studentInviteJoinUrl('https://advantagebjjtimer.com/', signed, 'North Gym'),
     `https://advantagebjjtimer.com/join/student?${new URLSearchParams({ code: signed, gym: 'North Gym' }).toString()}`,
   );
+  assert.equal(
+    studentInviteJoinUrl('https://advantagebjjtimer.com/', signed, 'North Gym', 'marty@gym.test'),
+    `https://advantagebjjtimer.com/join/student?${new URLSearchParams({ code: signed, gym: 'North Gym', email: 'marty@gym.test' }).toString()}`,
+  );
   assert.equal(STUDENT_JOIN_PATH, '/join/student');
   assert.equal(STUDENT_INVITE_TYP, 'student-invite');
   assert.equal(STUDENT_LICENSE_GIVE, 'Invite a student (Student Edition only)');
@@ -117,6 +121,12 @@ test('a student claim does not overwrite a higher seat or license already on the
 test('the Pro invite panel and public join page are wired to Student Edition only', () => {
   const panel = readFileSync(new URL('../components/InstructorInvitePanel.tsx', import.meta.url), 'utf8');
   assert.match(panel, /StudentLicenseOwnerPanel/);
+  assert.match(panel, />\s*Email\s*</);
+  assert.match(panel, /Issue invite/);
+  assert.match(panel, /STUDENT_LICENSE_GIVE/);
+  assert.match(panel, /isInviteEmail/);
+  assert.match(panel, /hideIssue/);
+  assert.doesNotMatch(panel, /Instructor email/);
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   assert.match(app, /path="\/join\/student"/);
   const share = readFileSync(new URL('../components/StudentLicenseShare.tsx', import.meta.url), 'utf8');

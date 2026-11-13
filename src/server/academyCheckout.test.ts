@@ -190,7 +190,7 @@ test('Pro purchase creates one 100-use promotion code and does not charge the fr
   const issued = await handleStudentLicenseIssue(
     new Request('http://localhost/api/student-licenses/issue', {
       method: 'POST',
-      body: JSON.stringify({ token: owner }),
+      body: JSON.stringify({ token: owner, email: 'student@gym.test' }),
     }),
     { ENTITLEMENT_SIGNING_KEY: pair.secret, CODE_HASH_PEPPER: PEPPER },
     db,
@@ -292,7 +292,7 @@ test('Instructor Edition creates one 25-use code and a seat does not', async () 
   assert.equal(body.left, 0);
   assert.equal(body.cap, 0);
   const issued = await handleStudentLicenseIssue(
-    new Request('http://localhost/api/student-licenses/issue', { method: 'POST', body: JSON.stringify({ token }) }),
+    new Request('http://localhost/api/student-licenses/issue', { method: 'POST', body: JSON.stringify({ token, email: 'student@gym.test' }) }),
     { ENTITLEMENT_SIGNING_KEY: pair.secret, CODE_HASH_PEPPER: PEPPER },
     db,
     () => NOW,

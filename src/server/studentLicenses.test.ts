@@ -13,6 +13,7 @@ import {
   handleStudentLicenseClaim,
   handleStudentLicenseIssue,
   handleStudentLicenseList,
+  handleStudentLicenseReset,
   handleStudentLicenseRevoke,
 } from './studentLicenses.ts';
 import { sqliteD1 } from './sqliteD1.ts';
@@ -71,8 +72,8 @@ function post(url: string, body: unknown): Request {
   return new Request(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 }
 
-async function issue(db: D1Database, secret: string, token: string) {
-  const response = await handleStudentLicenseIssue(post('http://localhost/api/student-licenses/issue', { token }), envOf(secret), db, () => NOW);
+async function issue(db: D1Database, secret: string, token: string, email = 'student@gym.test') {
+  const response = await handleStudentLicenseIssue(post('http://localhost/api/student-licenses/issue', { token, email }), envOf(secret), db, () => NOW);
   const body = (await response.json()) as { ok?: boolean; code?: string; left?: number; cap?: number; error?: string };
   return { status: response.status, body };
 }
@@ -598,3 +599,101 @@ test('the owner alpha license issues from a pool of 25, and a regular Pro licens
   assert.equal(sixth.body.left, 0);
 });
 
+
+test('issuing a student license requires an email and stores only the hash', async () => {
+  const pair = await keys();
+  const db = sqliteD1();
+  const gym = 'gym-license-email';
+  const token = await ownerToken(pair.secret, gym);
+  const missing = await issue(db, pair.secret, token, '');
+  assert.equal(missing.status, 400);
+  assert.equal(missing.body.error, "Enter the student's email.");
+  const occupied = await db
+    .prepare(`SELECT COUNT(*) AS total FROM student_codes WHERE license_id = ?`)
+    .bind(gym)
+    .first<{ total: number }>();
+  assert.equal(Number(occupied?.total), 0);
+
+  const issued = await issue(db, pair.secret, token, 'Marty@Gym.test');
+  assert.equal(issued.status, 200);
+  const row = await db
+    .prepare(`SELECT email_hash AS emailHash FROM student_codes WHERE code = ?`)
+    .bind(issued.body.code ?? '')
+    .first<{ emailHash: string | null }>();
+  assert.ok(row?.emailHash);
+  assert.equal(row.emailHash.includes('@'), false);
+  assert.equal(/marty@gym\.test/i.test(JSON.stringify(issued.body)), false);
+});
+
+test('the issue-time email and a different claim email both restore after claim', async () => {
+  const pair = await keys();
+  const db = sqliteD1();
+  const gym = 'gym-license-both-emails';
+  const token = await ownerToken(pair.secret, gym);
+  const issued = await issue(db, pair.secret, token, 'owner-issued@gym.test');
+  const code = issued.body.code ?? '';
+  const claimed = await claim(db, pair.secret, code, 'phone-a', 'student-entered@gym.test');
+  assert.equal(claimed.status, 200);
+  const sender = memoryEmailSender();
+  const restoreEnv = { ...envOf(pair.secret), TURNSTILE_SECRET_KEY: 'turnstile-test' };
+  const fetchOk = (async () => new Response(JSON.stringify({ success: true }), { status: 200 })) as typeof fetch;
+  const first = await handleRestoreRequest(
+    post('http://localhost/api/restore/request', { email: 'owner-issued@gym.test', turnstileToken: 'ok' }),
+    restoreEnv,
+    db,
+    sender,
+    fetchOk,
+    () => NOW,
+  );
+  assert.equal(first.status, 200);
+  assert.equal(sender.sent.length, 1);
+  const second = await handleRestoreRequest(
+    post('http://localhost/api/restore/request', { email: 'student-entered@gym.test', turnstileToken: 'ok' }),
+    restoreEnv,
+    db,
+    sender,
+    fetchOk,
+    () => NOW,
+  );
+  assert.equal(second.status, 200);
+  assert.equal(sender.sent.length, 2);
+});
+
+test('the owner can reset a claimed student code for a new device without using another license', async () => {
+  const pair = await keys();
+  const db = sqliteD1();
+  const gym = 'gym-license-reset';
+  const token = await ownerToken(pair.secret, gym);
+  const issued = await issue(db, pair.secret, token, 'marty@gym.test');
+  const code = issued.body.code ?? '';
+  const first = await claim(db, pair.secret, code, 'phone-a', 'marty@gym.test');
+  assert.equal(first.status, 200);
+  const taken = await claim(db, pair.secret, code, 'phone-b', 'marty@gym.test');
+  assert.equal(taken.status, 409);
+  const reset = await handleStudentLicenseReset(
+    post('http://localhost/api/student-licenses/reset', { token, code }),
+    envOf(pair.secret),
+    db,
+  );
+  const resetBody = (await reset.json()) as { ok?: boolean; left?: number; status?: string; invite?: string };
+  assert.equal(reset.status, 200);
+  assert.equal(resetBody.ok, true);
+  assert.equal(resetBody.left, 4);
+  assert.equal(resetBody.status, 'claimed');
+  const second = await claim(db, pair.secret, code, 'phone-b', 'marty@gym.test');
+  assert.equal(second.status, 200);
+  const occupied = await db
+    .prepare(`SELECT COUNT(*) AS total FROM student_codes WHERE license_id = ? AND status IN ('issued', 'claimed')`)
+    .bind(gym)
+    .first<{ total: number }>();
+  assert.equal(Number(occupied?.total), 1);
+  const grants = await db.prepare(`SELECT COUNT(*) AS total FROM grants WHERE source_ref = ?`).bind(`student-code:${code}`).first<{ total: number }>();
+  assert.equal(Number(grants?.total), 1);
+  const unclaimed = await issue(db, pair.secret, token, 'other@gym.test');
+  const early = await handleStudentLicenseReset(
+    post('http://localhost/api/student-licenses/reset', { token, code: unclaimed.body.code }),
+    envOf(pair.secret),
+    db,
+  );
+  assert.equal(early.status, 409);
+});

@@ -84,10 +84,12 @@ export function isStudentInviteValue(value: string): boolean {
  * Public join page. Prefer the signed invite token in ?code=.
  * The gym name is a label, not the secret.
  */
-export function studentInviteJoinUrl(origin: string, inviteOrCode: string, gymName = ''): string {
+export function studentInviteJoinUrl(origin: string, inviteOrCode: string, gymName = '', email = ''): string {
   const params = new URLSearchParams({ code: inviteOrCode });
   const name = gymName.trim().slice(0, 80);
   if (name) params.set('gym', name);
+  const address = email.trim().slice(0, 320);
+  if (address && address.includes('@') && !/\s/.test(address)) params.set('email', address);
   return `${origin.replace(/\/$/, '')}${STUDENT_JOIN_PATH}?${params.toString()}`;
 }
 

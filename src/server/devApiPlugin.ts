@@ -22,6 +22,7 @@ import {
   handleStudentLicenseClaim,
   handleStudentLicenseIssue,
   handleStudentLicenseList,
+  handleStudentLicenseReset,
   handleStudentLicenseRevoke,
 } from './studentLicenses.ts';
 import { handleTokenRefresh } from './tokenRefresh.ts';
@@ -44,6 +45,7 @@ import {
   API_STUDENT_LICENSES_CLAIM_PATH,
   API_STUDENT_LICENSES_ISSUE_PATH,
   API_STUDENT_LICENSES_LIST_PATH,
+  API_STUDENT_LICENSES_RESET_PATH,
   API_STUDENT_LICENSES_REVOKE_PATH,
   API_ENTITLEMENT_PATH,
   API_OWNER_TEST_PATH,
@@ -234,6 +236,7 @@ function attach(
       path === API_STUDENT_LICENSES_ISSUE_PATH ||
       path === API_STUDENT_LICENSES_LIST_PATH ||
       path === API_STUDENT_LICENSES_REVOKE_PATH ||
+      path === API_STUDENT_LICENSES_RESET_PATH ||
       path === API_STUDENT_LICENSES_CLAIM_PATH;
     if (!api) {
       next();
@@ -289,6 +292,8 @@ function attach(
                                   ? await handleStudentLicenseList(request, env, devDb)
                                   : path === API_STUDENT_LICENSES_REVOKE_PATH
                                     ? await handleStudentLicenseRevoke(request, env, devDb)
+                                    : path === API_STUDENT_LICENSES_RESET_PATH
+                                      ? await handleStudentLicenseReset(request, env, devDb)
                                     : path === API_STUDENT_LICENSES_CLAIM_PATH
                                       ? await handleStudentLicenseClaim(request, env, devDb)
                                       : path === API_RESTORE_REQUEST_PATH
