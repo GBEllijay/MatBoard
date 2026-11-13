@@ -493,7 +493,7 @@ test('a gym brand file still imports the name and logo and leaves the coach plan
   assert.equal(imported.shelf.feedback, null);
   assert.ok(imported.report.journal.some((entry) => entry.body.includes('only on this phone')));
   assert.deepEqual(imported.report.rubric, planned.report.rubric);
-  assert.match(imported.message, /Gym name and logo are on this phone/);
+  assert.match(imported.message, /Gym name and logo are stored on this phone/);
   assert.match(imported.message, /journal was not changed/);
 
   const named = structuredClone(imported.report);

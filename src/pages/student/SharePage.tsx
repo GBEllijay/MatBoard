@@ -198,7 +198,7 @@ export function SharePage() {
               This takes a coach plan or coach feedback file. That is the JSON file a coach sends back to you. It is not the progress file from Make a file for my coach. A rank update file also imports here and waits for Accept or Dismiss.
             </p>
             <p>
-              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. A gym name or logo in the file is added when it is there, and ignored when an older file does not have one. You can replace or remove the logo on My profile. You can still merge a progress file into the journal on this phone after you confirm. A student packet, or an older JSON backup, restores from Connections.
+              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. A gym name or logo in the file is still stored when it is there, and ignored when an older file does not have one. Student screens no longer show a gym logo. You can still merge a progress file into the journal on this phone after you confirm. A student packet, or an older JSON backup, restores from Connections.
             </p>
             <button type="button" className="ink-btn ink-btn--save" onClick={downloadSample}>
               Download a sample coach file

@@ -10,41 +10,24 @@ import { PHOTO_PICKER_ACCEPT } from '../../lib/mediaPicker';
 import { headerVisibility, readProfileMarks, writeProfileMark, type ProfileMark } from '../../lib/profileMarks';
 import { localPhotoError } from '../../lib/localPhotoError';
 import { clearProfilePortrait, portraitFromFile, readProfilePortrait, saveProfilePortrait } from '../../lib/profilePortrait';
-import {
-  chooseStudentLogo,
-  clearStudentGymLogo,
-  readGymLogoSync,
-  readStudentGymLogo,
-  saveStudentGymLogoFile,
-  studentLogoChoice,
-} from '../../lib/studentGymMark';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { useStudentPath } from './chrome';
 import { SaveConfirm } from './SaveConfirm';
 
 const PORTRAIT_CAPTURE = 'profile-portrait-capture';
 const PORTRAIT_LIBRARY = 'profile-portrait-library';
-const LOGO_CAPTURE = 'profile-logo-capture';
-const LOGO_LIBRARY = 'profile-logo-library';
-
 /**
- * Optional photo and gym logo on My profile.
- * The photo stays on this phone. The gym logo can be replaced or removed.
- * The pictures themselves sit in the top-right corner. These controls stay in the cards.
+ * Optional photo on My profile. The photo stays on this phone.
+ * Gym logo upload was removed (owner, Nov 13 2026); saved logo data is left unused.
+ * The picture sits in the top-right corner. These controls stay in the cards.
  */
 export function useProfileMedia() {
   const portraitCapture = useRef<HTMLInputElement>(null);
   const portraitLibrary = useRef<HTMLInputElement>(null);
-  const logoCapture = useRef<HTMLInputElement>(null);
-  const logoLibrary = useRef<HTMLInputElement>(null);
   const [portrait, setPortrait] = useState<string | null>(() => readProfilePortrait());
-  const [logo, setLogo] = useState<string | null>(() => readStudentGymLogo());
   const [portraitNote, setPortraitNote] = useState('');
   const [portraitSaved, setPortraitSaved] = useState(0);
   const [portraitError, setPortraitError] = useState('');
-  const [logoNote, setLogoNote] = useState('');
-  const [logoSaved, setLogoSaved] = useState(0);
-  const [logoError, setLogoError] = useState('');
 
   const onPortrait = async (files: readonly File[]) => {
     const file = files[0];
@@ -67,31 +50,10 @@ export function useProfileMedia() {
     }
   };
 
-  const onLogo = async (files: readonly File[]) => {
-    const file = files[0];
-    setLogoNote('');
-    setLogoSaved(0);
-    if (!file) {
-      setLogoError('No logo photo was selected. Choose a logo and try again.');
-      return;
-    }
-    try {
-      const saved = await saveStudentGymLogoFile(file);
-      setLogo(saved);
-      setLogoError('');
-      setLogoNote('Gym logo saved on this phone.');
-      setLogoSaved((pulse) => pulse + 1);
-    } catch (err) {
-      setLogoSaved(0);
-      setLogoError(localPhotoError(err, 'logo'));
-    }
-  };
 
   return {
     portrait,
-    logo,
     onPortrait,
-    onLogo,
     removePortrait: () => {
       void clearProfilePortrait();
       setPortrait(null);
@@ -99,40 +61,13 @@ export function useProfileMedia() {
       setPortraitSaved(0);
       setPortraitNote('Photo removed from this phone.');
     },
-    removeLogo: () => {
-      clearStudentGymLogo();
-      chooseStudentLogo('default');
-      setLogo(null);
-      setLogoError('');
-      setLogoSaved(0);
-      setLogoNote('Gym logo removed from this phone.');
-    },
-    /** Shown when the gym has sent a logo. Reverts to it at any time. */
-    gymLogoAvailable: Boolean(readGymLogoSync().latest),
-    logoChoice: studentLogoChoice(),
-    useGymLogo: () => {
-      chooseStudentLogo('gym');
-      setLogo(readStudentGymLogo());
-      setLogoError('');
-      setLogoNote('Showing your gym logo.');
-    },
-    useAdvantageDefault: () => {
-      chooseStudentLogo('default');
-      setLogo(null);
-      setLogoError('');
-      setLogoNote('Showing the Advantage logo.');
-    },
     portraitNote,
     portraitSaved,
     portraitError,
-    logoNote,
-    logoSaved,
-    logoError,
     portraitCapture,
     portraitLibrary,
-    logoCapture,
-    logoLibrary,
   };
+
 }
 
 /** Small circle at the top right: the photo, or a kid's gym name. Never a logo on the student card. */
@@ -169,11 +104,10 @@ function FieldAlert({ id, message }: { id: string; message: string }) {
 }
 
 export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof useProfileMedia>; kids?: boolean }) {
-  const { portrait, logo, onPortrait, onLogo, removePortrait, removeLogo } = media;
+  const { portrait, onPortrait, removePortrait } = media;
   const noPhotos = useStudentNoPhotos();
   const rights = useImageRightsConfirm();
   const pickPortrait = rights.interceptFiles(onPortrait);
-  const pickLogo = rights.interceptFiles(onLogo);
   return (
     <div className="profile-identity">
       <section
@@ -220,47 +154,6 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
         )}
       </section>
 
-      <section
-        className="profile-card profile-logo"
-        aria-label="Gym logo"
-        aria-describedby={media.logoError ? 'profile-logo-error' : undefined}
-      >
-        <div className="profile-photo__copy">
-          <h2>Gym logo</h2>
-          <p>From your coach, or one you choose. You can replace or remove it.</p>
-        </div>
-        <div className="profile-photo__actions">
-          <label className="profile-action" htmlFor={LOGO_CAPTURE}>
-            Take logo photo
-          </label>
-          <label className="profile-action" htmlFor={LOGO_LIBRARY}>
-            Choose logo
-          </label>
-          {logo ? (
-            <button type="button" className="profile-action profile-action--quiet" onClick={removeLogo}>
-              Remove logo
-            </button>
-          ) : null}
-          {media.gymLogoAvailable && media.logoChoice !== 'gym' ? (
-            <button type="button" className="profile-action profile-action--quiet" onClick={media.useGymLogo}>
-              Use my gym logo
-            </button>
-          ) : null}
-          {logo ? (
-            <button type="button" className="profile-action profile-action--quiet" onClick={media.useAdvantageDefault}>
-              Use Advantage logo
-            </button>
-          ) : null}
-        </div>
-        {media.logoError ? <FieldAlert id="profile-logo-error" message={media.logoError} /> : null}
-        {media.logoSaved && media.logoNote ? (
-          <SaveConfirm message={media.logoNote} token={media.logoSaved} />
-        ) : media.logoNote ? (
-          <p className="student-quiet" role="status">
-            {media.logoNote}
-          </p>
-        ) : null}
-      </section>
       {typeof document === 'undefined'
         ? null
         : createPortal(
@@ -277,19 +170,6 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
                 inputRef={media.portraitLibrary}
                 accept={PHOTO_PICKER_ACCEPT}
                 onFiles={pickPortrait}
-              />
-              <DeviceMediaInput
-                id={LOGO_CAPTURE}
-                inputRef={media.logoCapture}
-                accept={PHOTO_PICKER_ACCEPT}
-                capture="environment"
-                onFiles={pickLogo}
-              />
-              <DeviceMediaInput
-                id={LOGO_LIBRARY}
-                inputRef={media.logoLibrary}
-                accept={PHOTO_PICKER_ACCEPT}
-                onFiles={pickLogo}
               />
             </>,
             document.body,
@@ -326,12 +206,6 @@ export function ProfileSwitches({ report }: { report: StudentProgressReport }) {
             : 'Off until you turn it on. Adult reports only.'
         }
         onToggle={() => toggle('selfie')}
-      />
-      <ProfileSwitch
-        on={visible.logo}
-        label="Gym logo on reports and backups"
-        note="The gym name stays on the report. The logo file is included only while this is on."
-        onToggle={() => toggle('logo')}
       />
       {note ? (
         <p className="student-quiet profile-switch-status" role="status">

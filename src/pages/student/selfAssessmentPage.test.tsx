@@ -56,10 +56,12 @@ import { ASSESSMENT_STORAGE_KEY, MINDSET_GOALS, type AssessmentScores } from '..
 import { selfAssessmentLines } from '../../lib/studentReport.ts';
 import { clearStudentDemoOverlay, installStudentMockGuard, resetStudentMockGuardForTests } from '../../lib/studentDemo.ts';
 import { STUDENT_BACKUP_STAMP_KEY } from '../../lib/studentBackupStamp.ts';
-import { blankStudentReport, saveStudentReport, setFundamentalLevel, todayIso } from '../../lib/studentEdition.ts';
+import { blankStudentReport, saveStudentReport, setFundamentalLevel, setStudentProfile, todayIso } from '../../lib/studentEdition.ts';
 import { withStarterRubric } from '../../lib/studentTools.ts';
 import { CompetitorPage } from './CompetitorPage.tsx';
 import { PrintReportPage } from './PrintReportPage.tsx';
+import { writeStudentGymLogo } from '../../lib/studentGymMark.ts';
+import { writeProfileMark } from '../../lib/profileMarks.ts';
 import { CardRadar } from './StudentCardLayout.tsx';
 import { SelfAssessmentPage } from './SelfAssessmentPage.tsx';
 import { withLegacySavedRubric } from '../../lib/testFixtures/legacySavedRubric.ts';
@@ -438,6 +440,22 @@ test('the print route still shows the self-assessment report', () => {
   control(host, 'button', 'Print');
   control(host, 'button', 'Download PDF');
   assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student/backup?student=1');
+  unmount(mounted);
+});
+
+test('the progress print report keeps the gym name and never draws a gym logo', () => {
+  localStorage.clear();
+  const logo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  writeStudentGymLogo(logo);
+  writeProfileMark('adult', 'logo', true);
+  saveStudentReport(localStorage, setStudentProfile(blankStudentReport(8), { displayName: 'Ada Cruz', gymName: 'Northridge Academy' }, 9));
+  const mounted = mount(<PrintReportPage kind="progress" />, '/student/print/progress?student=1');
+  const { host } = mounted;
+  assert.match(host.textContent ?? '', /Progress report/);
+  assert.match(host.textContent ?? '', /Northridge Academy/);
+  assert.match(host.textContent ?? '', /Ada Cruz/);
+  assert.equal(host.querySelector('.report-hero__logo, img[alt="Gym logo"]'), null);
+  assert.equal(host.querySelector(`img[src="${logo}"]`), null);
   unmount(mounted);
 });
 

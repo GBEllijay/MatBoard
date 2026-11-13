@@ -167,9 +167,6 @@ export function CoachClipboardCard(props: ClipboardCardProps) {
               ) : null}
             </div>
             <div className="clipboard__crest">
-              {props.mode === 'student' ? null : (
-                <img src={props.gymLogo || ADVANTAGE_MARK_SRC} alt={props.gymLogo ? `${props.gymName || 'Gym'} logo` : 'Advantage'} />
-              )}
               <small>{props.gymName || 'Gym not set'}</small>
             </div>
             <div className="clipboard__brow">

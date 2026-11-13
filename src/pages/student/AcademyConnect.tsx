@@ -34,7 +34,6 @@ import {
 } from '../../lib/academyPathway';
 import {
   ACADEMY_STALE_COPY,
-  LEAVE_LOGO_PROMPT,
   forgetAcademyFolder,
   gymIdsFor,
   joinAcademy,
@@ -54,7 +53,6 @@ import { driveAccountEmail, driveSignInFailureCopy, requestDriveConsent } from '
 import { dismissOneDriveResume, oneDriveSignInFailureCopy } from '../../lib/oneDrive';
 import { requestOneDriveConsent } from '../../lib/oneDriveAuth';
 import { ACADEMY_STALE_EVENT } from '../../lib/studentDriveCopy';
-import { STUDENT_GYM_LOGO_KEY, STUDENT_GYM_LOGO_SYNC_KEY, readStudentGymLogo } from '../../lib/studentGymMark';
 
 export const LEAVE_ACADEMY_LABEL = 'Leave academy';
 export const SWITCH_GYM_LABEL = 'Scan new gym QR';
@@ -120,9 +118,8 @@ export function AcademyStaleBanner({ onRescan, rescanHref }: { onRescan?: () => 
 }
 
 type Sheet =
-  | { kind: 'leave'; step: 'confirm' | 'logo' }
-  | { kind: 'switch'; next: AcademyPathway; step: 'confirm' | 'logo' }
-  | { kind: 'old-gym'; step: 'logo' }
+  | { kind: 'leave' }
+  | { kind: 'switch'; next: AcademyPathway }
   | null;
 
 export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }) {
@@ -182,7 +179,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
     const current = loadAcademyLink(localStorage);
     if (current && !sameAcademy(parsed, current, localStorage)) {
       setPathway(null);
-      setSheet({ kind: 'switch', next: parsed, step: 'confirm' });
+      setSheet({ kind: 'switch', next: parsed });
       setStatus('');
       return;
     }
@@ -190,15 +187,12 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
     setStatus(`${parsed.folderName} on ${providerLabel(parsed.provider)}. ${ACADEMY_FREE_NOTE}`);
   };
 
-  // Any gym logo kept on this phone, shown or not, gets the question.
-  const hasLogo = () => Boolean(localStorage.getItem(STUDENT_GYM_LOGO_KEY) || localStorage.getItem(STUDENT_GYM_LOGO_SYNC_KEY));
-
-  const finish = async (next: AcademyPathway, leaving?: { removeLogo: boolean }) => {
+  const finish = async (next: AcademyPathway, leaving = false) => {
     setBusy(true);
     setError('');
     const connect = (saved: Omit<StudentDriveLink, 'role'> & { accountLabel: string | null }) => {
       // Leave only after the new folder answered, so a failed sign-in keeps the old gym.
-      if (leaving) leaveAcademy(localStorage, leaving);
+      if (leaving) leaveAcademy(localStorage, { removeLogo: false });
       const link = saveStudentDriveLink(localStorage, { ...saved, role: 'academy' });
       joinAcademy(localStorage, {
         folderId: next.folderId,
@@ -283,24 +277,22 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const leave = (removeLogo: boolean) => {
-    const result = leaveAcademy(localStorage, { removeLogo });
+  const leave = () => {
+    // Keep any stored gym logo. Student screens no longer show it (owner, Nov 13 2026).
+    const result = leaveAcademy(localStorage, { removeLogo: false });
     setSheet(null);
     setLinked(null);
     setPathway(null);
     setShowId(false);
     setTick((n) => n + 1);
-    setStatus(
-      `You left ${result.left || 'your academy'}. Your journal, reports, and student ID stay on this phone.` +
-        (removeLogo ? ' The old gym logo was removed.' : ''),
-    );
+    setStatus(`You left ${result.left || 'your academy'}. Your journal, reports, and student ID stay on this phone.`);
   };
 
-  const removeOld = (removeLogo: boolean) => {
-    const result = removePreviousGym(localStorage, { removeLogo });
+  const removeOld = () => {
+    const result = removePreviousGym(localStorage, { removeLogo: false });
     setSheet(null);
     setTick((n) => n + 1);
-    setStatus(`Removed ${result.left || 'the old gym'}. Files from it are not accepted.` + (removeLogo ? ' The old gym logo was removed.' : ''));
+    setStatus(`Removed ${result.left || 'the old gym'}. Files from it are not accepted.`);
   };
 
   const membership = readMembership(localStorage);
@@ -313,7 +305,6 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
       ? membership.current?.name || 'your academy'
       : '';
   const since = sinceLabel(membership.current?.since ?? 0);
-  const logo = linked ? readStudentGymLogo(localStorage) : null;
 
   const pasteBlock = (
     <>
@@ -344,25 +335,10 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
     </>
   );
 
-  const logoStep = (onChoice: (removeLogo: boolean) => void) => (
-    <>
-      <h2>{LEAVE_LOGO_PROMPT}</h2>
-      <p>The old gym logo is on your journal. You can keep it or remove it.</p>
-      <div className="am-two">
-        <button type="button" className={BTN} onClick={() => onChoice(false)}>
-          Keep logo
-        </button>
-        <button type="button" className={DANGER} onClick={() => onChoice(true)}>
-          Remove logo
-        </button>
-      </div>
-    </>
-  );
-
   return (
     <section className="am" aria-label={ACADEMY_CONNECT_LABEL}>
       {showHeading ? <h2 className="am-title">{ACADEMY_CONNECT_LABEL}</h2> : null}
-      {previousGym && sheet?.kind !== 'old-gym' ? (
+      {previousGym ? (
         <div className="am-card am-old-gym" role="alert" aria-label="Old gym">
           <span className="am-tag am-tag--warn">Old gym</span>
           <h2>{OLD_GYM_PROMPT(previousGym.name)}</h2>
@@ -379,7 +355,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
             >
               Keep
             </button>
-            <button type="button" className={DANGER} onClick={() => (hasLogo() ? setSheet({ kind: 'old-gym', step: 'logo' }) : removeOld(false))}>
+            <button type="button" className={DANGER} onClick={() => removeOld()}>
               {REMOVE_OLD_GYM_LABEL}
             </button>
           </div>
@@ -413,7 +389,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
             note="One tap: your coach gets your student ID, name, and belt to link your roster card."
           />
           <ShareCardWithCoach buttonClassName={BTN} />
-          <button type="button" className={DANGER} onClick={() => setSheet({ kind: 'leave', step: 'confirm' })}>
+          <button type="button" className={DANGER} onClick={() => setSheet({ kind: 'leave' })}>
             {LEAVE_ACADEMY_LABEL}
           </button>
         </div>
@@ -447,7 +423,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
           <div className="am-card">
             <span className="am-tag am-tag--on">● Connected</span>
             <div className="am-gym">
-              {logo ? <img className="am-crest am-crest--img" src={logo} alt="" /> : <div className="am-crest" aria-hidden="true">{initials(gymName)}</div>}
+              <div className="am-crest" aria-hidden="true">{initials(gymName)}</div>
               <div>
                 <h2>{gymName}</h2>
                 <div className="am-kv">
@@ -516,7 +492,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
             >
               Disconnect academy folder
             </button>
-            <button type="button" className={DANGER} onClick={() => setSheet({ kind: 'leave', step: 'confirm' })}>
+            <button type="button" className={DANGER} onClick={() => setSheet({ kind: 'leave' })}>
               {LEAVE_ACADEMY_LABEL}
             </button>
           </div>
@@ -535,9 +511,8 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
         </div>
       )}
       {sheet ? (
-        <div className="am-sheet" role="dialog" aria-modal="false" aria-label={sheet.kind === 'leave' ? 'Leave academy' : sheet.kind === 'old-gym' ? 'Remove old gym' : 'Switch gyms'}>
-          {sheet.kind === 'old-gym' ? logoStep(removeOld) : null}
-          {sheet.kind === 'leave' && sheet.step === 'confirm' ? (
+        <div className="am-sheet" role="dialog" aria-modal="false" aria-label={sheet.kind === 'leave' ? 'Leave academy' : 'Switch gyms'}>
+          {sheet.kind === 'leave' ? (
             <>
               <h2>Leave {gymName || 'your academy'}?</h2>
               <p>
@@ -547,18 +522,13 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
                 <button type="button" className={BTN} autoFocus onClick={() => setSheet(null)}>
                   Keep connected
                 </button>
-                <button
-                  type="button"
-                  className={DANGER}
-                  onClick={() => (hasLogo() ? setSheet({ kind: 'leave', step: 'logo' }) : leave(false))}
-                >
+                <button type="button" className={DANGER} onClick={() => leave()}>
                   {LEAVE_ACADEMY_LABEL}
                 </button>
               </div>
             </>
           ) : null}
-          {sheet.kind === 'leave' && sheet.step === 'logo' ? logoStep(leave) : null}
-          {sheet.kind === 'switch' && sheet.step === 'confirm' ? (
+          {sheet.kind === 'switch' ? (
             <>
               <h2>Switch to {sheet.next.gymName || sheet.next.folderName}?</h2>
               <p>This replaces {gymName || 'your academy'}. Only one academy can be connected at a time. Your journal stays on this phone.</p>
@@ -571,13 +541,9 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
                   className={PRIMARY}
                   disabled={busy}
                   onClick={() => {
-                    if (hasLogo()) {
-                      setSheet({ ...sheet, step: 'logo' });
-                      return;
-                    }
                     const next = sheet.next;
                     setSheet(null);
-                    void finish(next, { removeLogo: false });
+                    void finish(next, true);
                   }}
                 >
                   Switch gyms
@@ -585,13 +551,6 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
               </div>
             </>
           ) : null}
-          {sheet.kind === 'switch' && sheet.step === 'logo'
-            ? logoStep((removeLogo) => {
-                const next = sheet.next;
-                setSheet(null);
-                void finish(next, { removeLogo });
-              })
-            : null}
         </div>
       ) : null}
       {status ? <p role="status">{status}</p> : null}

@@ -39,7 +39,7 @@ import { dismissGoalPrompt } from './studentTools.ts';
 import { pdfImageFromRgb } from './pdfRaster.ts';
 import { readProfilePortrait, writeProfilePortraitSync } from './profilePortrait.ts';
 import { StorageQuotaError } from './storageQuota.ts';
-import { readStudentGymLogo } from './studentGymMark.ts';
+import { readStudentGymLogo, writeStudentGymLogo } from './studentGymMark.ts';
 import type { StudentFilm } from './studentFilm.ts';
 
 /** Top-right header mark. PDF origin is the bottom left; 596,778 is the corner inset. */
@@ -419,7 +419,7 @@ test('an older backup splits a clear division and weight class and keeps an uncl
   assert.equal(unclear.file.report.competition?.tournaments[0].weightClass, '');
 });
 
-test('selfie and gym logo are in the backup and progress PDF only when their switches are on', async () => {
+test('selfie follows its switch; new backups and progress PDFs never include the gym logo', async () => {
   const selfie = 'data:image/jpeg;base64,AAAA';
   const logo = 'data:image/png;base64,BBBB';
   const report = setStudentProfile(blankStudentReport(3), { displayName: 'Ada', gymName: 'GB Ellijay' }, 4);
@@ -442,6 +442,7 @@ test('selfie and gym logo are in the backup and progress PDF only when their swi
   assert.equal(off.file.portrait, undefined);
   assert.equal(off.file.gymLogo, undefined);
   assert.equal(JSON.parse(off.json).portrait, undefined);
+  assert.equal(JSON.parse(off.json).gymLogo, undefined);
   assert.equal(pdfToText(off.progressPdf).includes('/Selfie'), false);
   assert.equal(pdfToText(off.progressPdf).includes('/GymLogo'), false);
 
@@ -456,17 +457,15 @@ test('selfie and gym logo are in the backup and progress PDF only when their swi
     marks: { includeSelfie: true, includeLogo: true, selfie, gymLogo: logo, art },
   });
   assert.equal(on.file.portrait, selfie);
-  assert.equal(on.file.gymLogo, logo);
+  assert.equal(on.file.gymLogo, undefined);
+  assert.equal(JSON.parse(on.json).gymLogo, undefined);
   assert.equal(pdfToText(on.progressPdf).includes('/Selfie Do'), true);
+  assert.equal(pdfToText(on.progressPdf).includes('/GymLogo'), false);
   assert.equal(pdfIncludes(on.progressPdf, 'GB Ellijay'), true);
   const adultPhoto = headerMark(on.progressPdf, 'Selfie');
-  const adultLogo = headerMark(on.progressPdf, 'GymLogo');
-  assert.equal(adultPhoto.y, adultLogo.y);
-  assert.ok(adultPhoto.x > adultLogo.x);
   assert.equal(adultPhoto.x + adultPhoto.w, 596);
   assert.equal(adultPhoto.y + adultPhoto.h, 778);
   assert.ok(adultPhoto.clipped);
-  assert.ok(adultLogo.clipped);
 
   const kidsReport = setBeltMode(
     setStudentProfile(blankStudentReport(5), { displayName: 'Sam', gymName: 'GB Ellijay' }, 6),
@@ -479,15 +478,11 @@ test('selfie and gym logo are in the backup and progress PDF only when their swi
     marks: { includeSelfie: false, includeLogo: true, selfie, gymLogo: logo, art },
   });
   assert.equal(kids.file.portrait, undefined);
-  assert.equal(kids.file.gymLogo, logo);
+  assert.equal(kids.file.gymLogo, undefined);
   assert.equal(pdfIncludes(kids.progressPdf, 'Sam'), true);
   assert.equal(pdfIncludes(kids.progressPdf, 'GB Ellijay'), true);
   assert.equal(pdfToText(kids.progressPdf).includes('/Selfie'), false);
-  assert.equal(pdfToText(kids.progressPdf).includes('/GymLogo Do'), true);
-  const kidsLogo = headerMark(kids.progressPdf, 'GymLogo');
-  assert.equal(kidsLogo.x, adultPhoto.x);
-  assert.equal(kidsLogo.y, adultPhoto.y);
-  assert.ok(kidsLogo.clipped);
+  assert.equal(pdfToText(kids.progressPdf).includes('/GymLogo'), false);
 
   const legacy = parseStudentBackup(off.json);
   assert.equal(legacy.ok, true);
@@ -504,14 +499,32 @@ test('selfie and gym logo are in the backup and progress PDF only when their swi
   assert.equal(ignored.file.gymLogo, undefined);
   assert.equal(ignored.file.report.profile.displayName, 'Ada');
 
+  // An old backup that still carries gymLogo must parse, and restore must ignore it.
+  const oldJson = JSON.parse(on.json) as { gymLogo?: string; portrait?: string };
+  oldJson.gymLogo = logo;
+  const oldBackup = parseStudentBackup(JSON.stringify(oldJson));
+  assert.equal(oldBackup.ok, true);
+  if (!oldBackup.ok) return;
+  assert.equal(oldBackup.file.gymLogo, logo);
+
+  const existing = 'data:image/png;base64,CCCC';
   const storage = memory();
-  applyBackupToMemory(storage, on.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
+  writeStudentGymLogo(existing, storage);
+  applyBackupToMemory(storage, oldBackup.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
   assert.equal(readProfilePortrait(storage), selfie);
-  assert.equal(readStudentGymLogo(storage), logo);
-  clearStudentMemory(storage);
-  assert.equal(readProfilePortrait(storage), null);
-  assert.equal(readStudentGymLogo(storage), null);
+  assert.equal(readStudentGymLogo(storage), existing, 'restore does not overwrite a logo already on this phone');
+
+  const empty = memory();
+  applyBackupToMemory(empty, oldBackup.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
+  assert.equal(readStudentGymLogo(empty), null, 'restore does not write the ignored gymLogo field');
+  assert.equal(readProfilePortrait(empty), selfie);
+
+  writeStudentGymLogo(existing, empty);
+  clearStudentMemory(empty);
+  assert.equal(readProfilePortrait(empty), null);
+  assert.equal(readStudentGymLogo(empty), null);
 });
+
 
 test('a profile photo rides in a backup only with the switch, and merge does not replace one already here', async () => {
   const selfie = 'data:image/jpeg;base64,AAAA';

@@ -3,7 +3,7 @@
  * Not connected: Scan gym QR, Take a photo of the QR, Paste invite link,
  * Use this academy link → Sign in, Show my student ID, Save inbox code.
  * Connected: Send my ID to coach, Share my card, Disconnect academy folder,
- * Leave academy (confirm sheet + logo prompt), Changing gyms (switch sheet),
+ * Leave academy (confirm sheet), Changing gyms (switch sheet),
  * stale-link banner with Rescan. One page title, no journal skin.
  */
 import assert from 'node:assert/strict';
@@ -31,7 +31,7 @@ installGlobal('indexedDB', view.indexedDB);
 
 const { AcademyConnectPage, ConnectionsPage } = await import('./ConnectionsPage.tsx');
 const { academyPathwayUrl, loadAcademyLink, saveStudentDriveLink } = await import('../../lib/academyPathway.ts');
-const { joinAcademy, markAcademyStale, readMembership, ACADEMY_STALE_COPY, LEAVE_LOGO_PROMPT } = await import('../../lib/academyMembership.ts');
+const { joinAcademy, markAcademyStale, readMembership, ACADEMY_STALE_COPY } = await import('../../lib/academyMembership.ts');
 const { STUDENT_GYM_LOGO_KEY } = await import('../../lib/studentGymMark.ts');
 const { ACADEMY_LICENSE_KEY } = await import('../../lib/studentInboxClient.ts');
 const { addJournalEntry, blankStudentReport, loadStudentReport, saveStudentReport } = await import('../../lib/studentEdition.ts');
@@ -114,7 +114,7 @@ test('not connected: one title, scan first, paste second, student ID card, all c
   unmount(page);
 });
 
-test('connected: gym card, what is shared, Send my ID, Leave with confirm and logo prompt', async () => {
+test('connected: gym card uses initials not a logo, Leave confirms without a logo question, stored logo stays', async () => {
   localStorage.clear();
   saveStudentReport(
     localStorage,
@@ -127,6 +127,10 @@ test('connected: gym card, what is shared, Send my ID, Leave with confirm and lo
   assert.match(host.textContent ?? '', /North Side BJJ/);
   assert.match(host.textContent ?? '', /Connected since .*2026 · Google Drive/);
   assert.match(host.textContent ?? '', /Coach updates & notes/);
+  assert.equal(host.querySelector('img.am-crest, .am-crest--img'), null, 'linked academy card has no gym logo image');
+  const crest = host.querySelector('.am-crest');
+  assert.ok(crest);
+  assert.equal(crest?.textContent?.trim(), 'NS');
   for (const name of ['Send my ID to coach', 'Share my card with my coach', 'Disconnect academy folder', 'Leave academy', 'Scan new gym QR', 'Paste invite link']) {
     assert.ok(buttons(host).includes(name), name);
   }
@@ -140,12 +144,11 @@ test('connected: gym card, what is shared, Send my ID, Leave with confirm and lo
   await click(button(host, 'Leave academy'));
   const sheet = host.querySelector('[role="dialog"]') as HTMLElement;
   await click(button(sheet, 'Leave academy'));
-  assert.match(host.textContent ?? '', new RegExp(LEAVE_LOGO_PROMPT.replace('?', '\\?')));
-  await click(button(host, 'Keep logo'));
+  assert.doesNotMatch(host.textContent ?? '', /Remove old gym logo|Keep logo|Remove logo/);
   assert.equal(loadAcademyLink(localStorage), null);
   assert.equal(localStorage.getItem(ACADEMY_LICENSE_KEY), null);
   assert.equal(readMembership(localStorage).current, null);
-  assert.ok(localStorage.getItem(STUDENT_GYM_LOGO_KEY));
+  assert.ok(localStorage.getItem(STUDENT_GYM_LOGO_KEY), 'leaving does not wipe the stored gym logo');
   assert.equal(loadStudentReport(localStorage).journal.length, 1);
   assert.match(host.textContent ?? '', /You left North Side BJJ/);
   assert.ok(buttons(host).includes('Scan gym QR'));
@@ -238,12 +241,12 @@ test('owner answer 5: old-gym alert after disconnect + a different gym; Keep and
   localStorage.setItem(STUDENT_GYM_LOGO_KEY, 'data:image/png;base64,AAAA');
   page = mount(<AcademyConnectPage />, '/student/academy?student=1');
   act(() => button(page.host, 'Remove old gym').click());
-  assert.match(page.host.textContent ?? '', new RegExp(LEAVE_LOGO_PROMPT.replace(/[?]/g, '\\?')));
-  act(() => button(page.host, 'Remove logo').click());
+  assert.doesNotMatch(page.host.textContent ?? '', /Remove old gym logo|Keep logo|Remove logo/);
   assert.equal(readPreviousGym(localStorage), null);
   assert.deepEqual(readMembership(localStorage).left.map((row) => row.name), ['Old Gym']);
   assert.equal(localStorage.getItem(ACADEMY_LICENSE_KEY), 'lic-new-5678');
   assert.equal(loadAcademyLink(localStorage)?.folderId, 'folder-new');
+  assert.ok(localStorage.getItem(STUDENT_GYM_LOGO_KEY), 'removing the old gym does not wipe the stored logo');
   assert.match(page.host.textContent ?? '', /Removed Old Gym/);
   unmount(page);
 });

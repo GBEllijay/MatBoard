@@ -67,8 +67,6 @@ export type { LearnedIndex };
 import { beltModeOf, currentKidsBelt, seedKidsBelt } from './beltBook.ts';
 import { isGymBrandFile } from './coachGymFile.ts';
 import { readTravelingGym } from './coachGymFit.ts';
-import { headerVisibility, readProfileMarks } from './profileMarks.ts';
-import { readStudentGymLogo } from './studentGymMark.ts';
 import { setStudentProfile, todayIso } from './studentEdition.ts';
 import { setRankBelt } from './studentRank.ts';
 import { loadRankPictures, picturesFromStore } from './rankPhotos.ts';
@@ -1262,7 +1260,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       report: withGymName(report, gym, true),
       shelf,
       message: gym
-        ? 'Gym name and logo are on this phone. Your journal was not changed. You can replace or remove the logo on My profile.'
+        ? 'Gym name and logo are stored on this phone. Your journal was not changed. Student screens no longer show a gym logo.'
         : 'That gym file did not include a name or logo. Your journal was not changed.',
       error: '',
       gym,
@@ -1409,20 +1407,10 @@ export function sampleCoachPlanFile(studentId: string, now = Date.now()): { name
   return { name: progressHandoffFileName(packet), json: exportProgressPacket(packet) };
 }
 
-function storageGet(storage: Pick<Storage, 'getItem'> | null | undefined): Pick<Storage, 'getItem'> | null {
-  if (storage) return storage;
-  try {
-    if (typeof localStorage === 'undefined') return null;
-    return localStorage;
-  } catch {
-    return null;
-  }
-}
-
 export function progressReportFiles(
   report: StudentProgressReport,
   pictures = picturesFromStore(loadRankPictures()),
-  storage?: Pick<Storage, 'getItem'> | null,
+  _storage?: Pick<Storage, 'getItem'> | null,
 ): {
   jsonName: string;
   json: string;
@@ -1434,15 +1422,7 @@ export function progressReportFiles(
   const withPhotos = report.rank && pictures.length ? { ...report, rank: { ...report.rank, pictures } } : report;
   const fitted = fitRankPictures(withPhotos);
   const jsonName = progressHandoffFileName(fitted);
-  let json = exportProgressPacket(fitted);
-  const store = storageGet(storage);
-  const visibility = headerVisibility(beltModeOf(fitted), readProfileMarks(store));
-  const logo = visibility.logo ? readStudentGymLogo(store) : null;
-  if (logo) {
-    const parsed = JSON.parse(json) as Record<string, unknown>;
-    parsed.gym = { name: fitted.profile.gymName, logo };
-    json = JSON.stringify(parsed);
-  }
+  const json = exportProgressPacket(fitted);
   const csvName = jsonName.replace(/\.json$/, '.csv');
   const csv = exportProgressCsv(fitted);
   const body = `The progress file ${jsonName} is on this phone. Attach that JSON. Advantage does not host the file.`;

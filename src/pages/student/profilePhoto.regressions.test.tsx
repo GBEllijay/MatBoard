@@ -94,7 +94,7 @@ async function acknowledgeAndUse() {
   });
 }
 
-test('a rejected photo and logo say so beside their own controls and keep the saved picture', async () => {
+test('a rejected photo says so beside its control, the gym logo upload is hidden, and saved pictures stay', async () => {
   localStorage.clear();
   writeProfilePortraitSync(KEPT);
   writeStudentGymLogo(KEPT_LOGO);
@@ -111,21 +111,14 @@ test('a rejected photo and logo say so beside their own controls and keep the sa
     const photoAlert = photo()?.querySelector('#profile-portrait-error');
     assert.match(photoAlert?.textContent ?? '', /That file is not a photo/);
     assert.equal(photoAlert?.getAttribute('role'), 'alert');
-    assert.equal(logo()?.querySelector('#profile-portrait-error'), null);
     assert.equal(photo()?.querySelector('img')?.getAttribute('src'), KEPT);
     assert.equal(readProfilePortrait(), KEPT);
     const photoText = photo()?.textContent ?? '';
     assert.ok(photoText.indexOf('Choose photo') < photoText.indexOf('That file is not a photo'));
 
-    await choose('profile-logo-library', new File(['mark'], 'notes.txt', { type: 'text/plain' }));
-    assert.ok(document.querySelector('[data-testid="image-rights-confirm"]'));
-    assert.equal(readStudentGymLogo(), KEPT_LOGO);
-    await acknowledgeAndUse();
-    const logoAlert = logo()?.querySelector('#profile-logo-error');
-    assert.match(logoAlert?.textContent ?? '', /That file is not a logo photo/);
-    assert.equal(photo()?.querySelector('#profile-logo-error'), null);
-    assert.match(photo()?.querySelector('#profile-portrait-error')?.textContent ?? '', /That file is not a photo/);
-    assert.equal(readStudentGymLogo(), KEPT_LOGO);
+    assert.equal(logo(), null, 'gym logo upload is hidden');
+    assert.equal(document.getElementById('profile-logo-library'), null, 'logo file input is gone');
+    assert.equal(readStudentGymLogo(), KEPT_LOGO, 'saved logo data is kept');
     assert.equal(readProfilePortrait(), KEPT);
     const direct = [...(page.host.querySelector('.profile-identity')?.children ?? [])].some(
       (node) => node.getAttribute('role') === 'alert',
@@ -199,26 +192,24 @@ test('the rights checkbox is absent on the profile view until a file is picked, 
   const page = mount();
   try {
     const photo = page.host.querySelector('[aria-label="Profile photo"]');
-    const logo = page.host.querySelector('[aria-label="Gym logo"]');
     assert.equal(photo?.textContent?.includes('I own the rights'), false);
-    assert.equal(logo?.textContent?.includes('I own the rights'), false);
     assert.equal(document.querySelector('[data-testid="image-rights-confirm"]'), null);
-    assert.match(logo?.textContent ?? '', /Choose logo/);
+    assert.equal(page.host.querySelector('[aria-label="Gym logo"]'), null);
     assert.match(photo?.textContent ?? '', /Choose photo/);
 
-    await choose('profile-logo-library', new File([new Uint8Array([1, 2, 3])], 'crest.png', { type: 'image/png' }));
+    await choose('profile-portrait-library', new File([new Uint8Array([1, 2, 3])], 'me.png', { type: 'image/png' }));
     assert.ok(document.querySelector('[data-testid="image-rights-confirm"]'));
     assert.match(document.querySelector('[data-testid="image-rights-confirm"]')?.textContent ?? '', /I own the rights to this image or have permission to use it/);
     assert.equal(rightsUse().disabled, true);
-    assert.equal(readStudentGymLogo(), null);
+    assert.equal(readProfilePortrait(), null);
 
     await act(async () => {
       const cancel = [...document.querySelectorAll('.sheet--image-rights button')].find((node) => node.textContent === 'Cancel') as HTMLButtonElement;
       cancel?.click();
     });
     assert.equal(document.querySelector('[data-testid="image-rights-confirm"]'), null);
-    assert.equal(readStudentGymLogo(), null);
-    assert.equal(logo?.textContent?.includes('I own the rights'), false);
+    assert.equal(readProfilePortrait(), null);
+    assert.equal(photo?.textContent?.includes('I own the rights'), false);
   } finally {
     act(() => page.root.unmount());
     page.host.remove();
