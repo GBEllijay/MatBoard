@@ -1,0 +1,28 @@
+.sheet.sheet--image-rights .sheet__panel {
+  max-height: min(72dvh, calc(100dvh - env(safe-area-inset-top, 0px) - 0.5rem));
+}
+
+.image-rights__preview {
+  display: block;
+  width: min(100%, 220px);
+  height: 220px;
+  margin: 0 auto;
+  object-fit: contain;
+  background: rgba(8, 16, 28, 0.55);
+  border-radius: 12px;
+}
+
+.image-rights__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.image-rights__check input {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+}

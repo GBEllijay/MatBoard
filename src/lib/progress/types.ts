@@ -155,6 +155,8 @@ export type BeltBook = {
   earlier?: boolean;
   /** Practical benchmarks on kids belts. Empty until the student adds one. */
   benchmarks?: KidsBenchmark[];
+  /** Kids belt ids that already got their starter prompts once. Never seeded again. */
+  promptsSeeded?: string[];
   /** Custom templates for a later editor. Reorder by array order. */
   templates?: BeltTemplateRecord[];
 };
@@ -376,6 +378,8 @@ export type RubricLevel = {
    * Stops an empty list from being filled again. Missing on older files.
    */
   starterAck?: boolean;
+  /** The three editable seed prompts were added once. Deleting one never brings it back. */
+  promptsSeeded?: boolean;
 };
 
 /**

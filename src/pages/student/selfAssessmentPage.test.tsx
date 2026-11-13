@@ -62,6 +62,7 @@ import { CompetitorPage } from './CompetitorPage.tsx';
 import { PrintReportPage } from './PrintReportPage.tsx';
 import { CardRadar } from './StudentCardLayout.tsx';
 import { SelfAssessmentPage } from './SelfAssessmentPage.tsx';
+import { withLegacySavedRubric } from '../../lib/testFixtures/legacySavedRubric.ts';
 
 const dom = new Window({ url: 'http://localhost/student/self-assessment' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -102,6 +103,16 @@ function mount(node: ReactNode, initialEntry = '/student/self-assessment'): { ro
     root.render(<MemoryRouter initialEntries={[initialEntry]}>{node}</MemoryRouter>);
   });
   return { root, host };
+}
+
+/** Reads the spider behind the Radar fallback, then puts the D8 back. */
+function radarShapePoints(host: HTMLElement): string | null | undefined {
+  const shape = host.querySelector('[data-testid="assess-shape"]') as HTMLElement;
+  act(() => control(shape, 'button', 'Radar').click());
+  const points = shape.querySelector('polygon.assess-chart__shape')?.getAttribute('points');
+  act(() => control(shape, 'button', 'Diamond').click());
+  assert.equal(shape.getAttribute('data-shape'), 'diamond');
+  return points;
 }
 
 function unmount(mounted: { root: Root; host: HTMLElement }) {
@@ -196,14 +207,14 @@ test('the self-assessment page keeps every control and Back returns to Rank & Pr
     }
     assert.equal(host.querySelector(`#assess-${id}`)?.id, `assess-${id}`);
   }
-  const shape = host.querySelector('svg.assess-chart');
+  const shape = host.querySelector('[data-testid="assess-shape"]');
+  assert.equal(shape?.getAttribute('data-shape'), 'diamond', 'Shape opens on the D8, like the Profile card');
   assert.equal(shape?.getAttribute('aria-label'), selfAssessmentShapeLabel(null));
+  assert.ok(shape?.querySelector('[data-testid="sheet-diamond"]'), 'the Profile D8');
   assert.equal(host.querySelectorAll('polygon.assess-chart__shape').length, 0);
   assert.ok(host.querySelector('[aria-label^="Self-assessment trend"]'));
-  assert.equal(
-    host.querySelector('a[href="/student/rubric?student=1#checkpoint.white.s1-positions"]')?.textContent,
-    'Open: Name the four basic control positions and hold each against a cooperative partner: closed guard, side control, mount, back control. benchmark',
-  );
+  // A new file has no practical benchmarks, so no area links one.
+  assert.equal(host.querySelectorAll('a[href*="/student/rubric"]').length, 0);
   assert.equal(host.textContent?.includes('Open: Conditioning benchmark'), false);
   assert.equal(host.querySelector('[aria-label="Division"]'), null);
   assert.equal(host.querySelector('[aria-label="Weight class"]'), null);
@@ -230,22 +241,22 @@ test('Back returns to the page that opened self-assessment', () => {
 
 test('a check-in saves, updates, and a white belt links only that belt', () => {
   localStorage.clear();
-  saveStudentReport(localStorage, withStarterRubric(blankStudentReport()));
+  saveStudentReport(localStorage, withStarterRubric(withLegacySavedRubric(blankStudentReport())));
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
   assert.equal(
-    host.querySelector('a[href="/student/rubric#checkpoint.white.s1-positions"]')?.textContent,
-    'Open: Name the four basic control positions and hold each against a cooperative partner: closed guard, side control, mount, back control. benchmark',
+    host.querySelector('a[href="/student/rubric#checkpoint.white.s1-guard-attack"]')?.textContent,
+    'Open: Saved white benchmark s1-guard-attack benchmark',
   );
   assert.equal(
     host.querySelector('a[href="/student/rubric#checkpoint.white.s1-pass"]')?.textContent,
-    'Open: Open closed guard from the top and pass it one way in drilling. benchmark',
+    'Open: Saved white benchmark s1-pass benchmark',
   );
   assert.equal(
-    host.querySelector('a[href="/student/rubric#checkpoint.white.s2-escape-resist"]')?.textContent,
-    'Open: Escape mount and side control with two different options each against a partner who starts to resist. benchmark',
+    host.querySelector('a[href="/student/rubric#checkpoint.white.s1-escapes"]')?.textContent,
+    'Open: Saved white benchmark s1-escapes benchmark',
   );
-  assert.ok(host.querySelector('a[href="/student/rubric#checkpoint.white.promo-standing"]'));
+  assert.ok(host.querySelector('a[href="/student/rubric#checkpoint.white.s4-back-choke"]'));
   assert.equal(host.textContent?.includes('Open: Conditioning benchmark'), false);
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.blue')),
@@ -273,9 +284,8 @@ test('a check-in saves, updates, and a white belt links only that belt', () => {
     conditioning: 4,
     mindset: 4,
   };
-  const shape = host.querySelector('svg.assess-chart');
-  assert.equal(shape?.getAttribute('aria-label'), selfAssessmentShapeLabel(filled));
-  assert.equal(shape?.querySelector('polygon.assess-chart__shape')?.getAttribute('points'), radarPoints([4, 4, 4, 4, 4, 4, 4, 4]));
+  assert.equal(host.querySelector('[data-testid="assess-shape"]')?.getAttribute('aria-label'), selfAssessmentShapeLabel(filled));
+  assert.equal(radarShapePoints(host), radarPoints([4, 4, 4, 4, 4, 4, 4, 4]));
   act(() => {
     control(host, 'button', 'Save self-assessment').click();
   });
@@ -319,22 +329,22 @@ test('a check-in saves, updates, and a white belt links only that belt', () => {
 
 test('a blue belt links the benchmarks on blue', () => {
   localStorage.clear();
-  const report = withStarterRubric(blankStudentReport());
+  const report = withStarterRubric(withLegacySavedRubric(blankStudentReport()));
   report.profile.belt = 'blue';
   saveStudentReport(localStorage, report);
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
   assert.equal(
-    host.querySelector('a[href="/student/rubric#checkpoint.blue.s1-half-bottom"]')?.textContent,
-    'Open: Keep your guard from being passed. Half guard from the bottom: a way to recover, a sweep and a back take. benchmark',
+    host.querySelector('a[href="/student/rubric#checkpoint.blue.s2-your-guard"]')?.textContent,
+    'Open: Saved blue benchmark s2-your-guard benchmark',
   );
   assert.equal(
     host.querySelector('a[href="/student/rubric#checkpoint.blue.s4-takedowns"]')?.textContent,
-    'Open: Takedowns: connect a single leg, a double leg, and an arm drag or hip throw to a finish. benchmark',
+    'Open: Saved blue benchmark s4-takedowns benchmark',
   );
   assert.equal(
-    host.querySelector('a[href="/student/rubric#checkpoint.blue.s1-defend"]')?.textContent,
-    'Open: Defend submissions early (arm locks, triangle, chokes) before they are tight, stay calm, and escape them. benchmark',
+    host.querySelector('a[href="/student/rubric#checkpoint.blue.s1-escapes"]')?.textContent,
+    'Open: Saved blue benchmark s1-escapes benchmark',
   );
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.white')),
@@ -433,7 +443,7 @@ test('the print route still shows the self-assessment report', () => {
 
 test('with no earlier check-in, fundamentals levels show on the chart without retyping, and a saved day is kept', () => {
   localStorage.clear();
-  let report = withStarterRubric(blankStudentReport());
+  let report = withStarterRubric(withLegacySavedRubric(blankStudentReport()));
   const mark = (catalogItemId: string, categoryId: string, name: string, level: 0 | 1 | 2 | 3 | 4 | 5, now: number) => {
     report = setFundamentalLevel(report, { catalogItemId, categoryId, name }, level, now);
   };
@@ -461,12 +471,11 @@ test('with no earlier check-in, fundamentals levels show on the chart without re
   for (const score of [1, 2, 3, 4, 5]) {
     assert.equal(labeled(host, `Mindset ${score}`).getAttribute('aria-pressed'), 'false');
   }
-  const shape = host.querySelector('svg.assess-chart');
   assert.equal(
-    shape?.getAttribute('aria-label'),
+    host.querySelector('[data-testid="assess-shape"]')?.getAttribute('aria-label'),
     selfAssessmentShapeLabel({ guard: 4, passing: 2, sweeps: 4, takedowns: 5, escapes: 3, submissions: 1, conditioning: 4 }),
   );
-  assert.equal(shape?.querySelector('polygon.assess-chart__shape')?.getAttribute('points'), radarPoints([4, 2, 4, 5, 3, 1, 4, 0]));
+  assert.equal(radarShapePoints(host), radarPoints([4, 2, 4, 5, 3, 1, 4, 0]));
   assert.match(host.textContent ?? '', /Mindset is not on the Fundamentals list/);
   assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY), null, 'opening the page writes nothing');
 
@@ -518,7 +527,7 @@ test('with no earlier check-in, fundamentals levels show on the chart without re
 
 test('a new day carries all eight faces, Sweeps included, from the last check-in', () => {
   localStorage.clear();
-  let report = withStarterRubric(blankStudentReport());
+  let report = withStarterRubric(withLegacySavedRubric(blankStudentReport()));
   report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 5, 10);
   report = setFundamentalLevel(report, { catalogItemId: 'td.double-leg', categoryId: 'takedowns', name: 'Double leg' }, 5, 11);
   saveStudentReport(localStorage, report);
@@ -560,7 +569,7 @@ test('a new day carries all eight faces, Sweeps included, from the last check-in
 
 test('a new day after an old seven-value check-in leaves Sweeps blank and asks for it', () => {
   localStorage.clear();
-  saveStudentReport(localStorage, withStarterRubric(blankStudentReport()));
+  saveStudentReport(localStorage, withStarterRubric(withLegacySavedRubric(blankStudentReport())));
   storeRaw([
     {
       id: 'assess.seven',
@@ -748,6 +757,47 @@ test('technique ratings and mindset goals stay off the generic check-in', () => 
   const cardsAfterGenericReturn = localStorage.getItem(INDEX_CARDS_STORAGE_KEY) ?? '';
   assert.match(cardsAfterGenericReturn, /"id":"pos.closed-guard"/);
   assert.match(cardsAfterGenericReturn, /"rating":4/);
+  unmount(mounted);
+});
+
+function d8FaceScore(host: HTMLElement, label: string): string {
+  const shape = host.querySelector('[data-testid="assess-shape"]') as HTMLElement;
+  act(() => (shape.querySelector('.sheet-diamond__expand') as HTMLButtonElement).click());
+  const dialog = labeled(document.body, 'Assessment diamond');
+  const row = [...dialog.querySelectorAll('.d8sf-face-scores li')].find((li) => li.querySelector('span')?.textContent === label);
+  assert.ok(row, label);
+  const score = row.querySelectorAll('span')[1]?.textContent ?? '';
+  act(() => control(dialog, 'button', 'Close').click());
+  return score;
+}
+
+test('the Shape D8 follows Generic face scores and Technique-based ratings live, and stores nothing new', () => {
+  freshPhone();
+  resetIndexCardStoreForTests();
+  const mounted = mount(<SelfAssessmentPage />);
+  const { host } = mounted;
+  const shape = host.querySelector('[data-testid="assess-shape"]') as HTMLElement;
+  assert.match(shape.textContent ?? '', /Your D8\. A line you have not rated stays at 3\./);
+  assert.equal(d8FaceScore(host, 'Guard/Control'), '3.0 / 5');
+
+  rateAll(host, 4);
+  assert.match(shape.textContent ?? '', /takes your check-in score for that face, or 3/);
+  assert.equal(d8FaceScore(host, 'Guard/Control'), '4.0 / 5', 'Generic face score shapes the face before saving');
+  assert.equal(d8FaceScore(host, 'Sweeps'), '4.0 / 5');
+
+  act(() => control(host, 'button', 'Technique-based').click());
+  act(() => labeled(host, 'Closed Guard 1').click());
+  // Six Guard/Control lines: the rated one is 1, the other five take the face score 4.
+  assert.equal(d8FaceScore(host, 'Guard/Control'), '3.5 / 5', 'a technique rating moves the same D8');
+  assert.equal(d8FaceScore(host, 'Sweeps'), '4.0 / 5');
+
+  assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY), null, 'the D8 saves no check-in');
+  const cards = JSON.parse(localStorage.getItem(INDEX_CARDS_STORAGE_KEY) ?? '{}') as { cards: { id: string; rating?: number }[] };
+  assert.deepEqual(
+    cards.cards.map((card) => [card.id, card.rating]),
+    [['pos.closed-guard', 1]],
+    'only the tapped technique is written; the baseline is display only',
+  );
   unmount(mounted);
 });
 

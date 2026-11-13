@@ -1,5 +1,5 @@
 /**
- * Bake Record for Review drawings into a clip, then hand that file to the
+ * Bake replay drawings into a clip, then hand that file to the
  * save the coach already uses (device download, Advantage Cloud, Google Drive,
  * OneDrive). This file does not open a new send path and does not change
  * saveReplayClip.

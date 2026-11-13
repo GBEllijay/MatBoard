@@ -21,6 +21,7 @@ import {
   type StudentProfileRecord,
   type StudentProfileRegistry,
 } from '../../lib/studentProfiles';
+import { RowIcon } from './hubArt';
 
 function reloadStudentEdition(): void {
   notifyStudentJournal();
@@ -60,10 +61,14 @@ function initial(name: string): string {
   return letter ? letter.toUpperCase() : '?';
 }
 
+export const ADD_ADDITIONAL_PROFILES_LABEL = 'Add additional profiles';
+export const EXISTING_PROFILES_HEADING = 'Existing profiles';
+
 /** Switch, add, rename, and delete family profiles on this phone. */
 export function StudentProfileSwitcher({ detail = false }: { detail?: boolean }) {
   const [registry, setRegistry] = useState<StudentProfileRegistry>(() => readStudentProfiles(localStorage));
   const [panel, setPanel] = useState<'closed' | 'add' | 'pay' | 'rename' | 'delete'>('closed');
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [renameId, setRenameId] = useState('');
   const [deleteId, setDeleteId] = useState('');
   const [name, setName] = useState('');
@@ -198,36 +203,44 @@ export function StudentProfileSwitcher({ detail = false }: { detail?: boolean })
 
   const pendingDelete = registry.profiles.find((profile) => profile.id === deleteId) ?? null;
 
-  return (
-    <section className="s-profiles" aria-label="Profiles" data-testid="student-profile-switcher">
-      <h2>Profiles</h2>
-      <ul>
-        {registry.profiles.map((profile) => (
-          <ProfileRow
-            key={profile.id}
-            profile={profile}
-            current={profile.id === registry.activeId}
-            detail={detail}
-            onOpen={() => {
-              if (profile.id === registry.activeId) return;
-              if (!switchStudentProfile(localStorage, profile.id)) return;
-              reloadStudentEdition();
-            }}
-            onRename={() => {
-              setRenameId(profile.id);
-              setName(profile.name);
-              setError('');
-              setPanel('rename');
-            }}
-            onDelete={() => {
-              setDeleteId(profile.id);
-              setError('');
-              setPanel('delete');
-            }}
-            onPortrait={(file) => void savePortrait(file)}
-          />
-        ))}
-      </ul>
+  const closeSheet = () => {
+    setSheetOpen(false);
+    setPanel('closed');
+    setError('');
+  };
+
+  const profileList = (
+    <ul>
+      {registry.profiles.map((profile) => (
+        <ProfileRow
+          key={profile.id}
+          profile={profile}
+          current={profile.id === registry.activeId}
+          detail={detail}
+          onOpen={() => {
+            if (profile.id === registry.activeId) return;
+            if (!switchStudentProfile(localStorage, profile.id)) return;
+            reloadStudentEdition();
+          }}
+          onRename={() => {
+            setRenameId(profile.id);
+            setName(profile.name);
+            setError('');
+            setPanel('rename');
+          }}
+          onDelete={() => {
+            setDeleteId(profile.id);
+            setError('');
+            setPanel('delete');
+          }}
+          onPortrait={(file) => void savePortrait(file)}
+        />
+      ))}
+    </ul>
+  );
+
+  const addOrForms = (
+    <>
       {panel === 'closed' ? (
         <button type="button" className="s-profiles__add" data-testid="student-profile-add" onClick={openAdd}>
           {needsPurchase(registry) ? `Add a profile — ${EXTRA_PROFILE_PRICE_LABEL}` : ADD_PROFILE_LABEL}
@@ -325,9 +338,67 @@ export function StudentProfileSwitcher({ detail = false }: { detail?: boolean })
           </div>
         </div>
       ) : null}
+    </>
+  );
+
+  if (detail) {
+    return (
+      <section className="s-profiles" aria-label="Profiles" data-testid="student-profile-switcher">
+        <h2>Profiles</h2>
+        {profileList}
+        {addOrForms}
+      </section>
+    );
+  }
+
+  const count = registry.profiles.length;
+  const status = count === 1 ? '1 profile' : `${count} profiles`;
+
+  return (
+    <section className="s-profiles-entry" data-testid="student-profile-switcher">
+      <button
+        type="button"
+        className="s-ghost"
+        data-testid="student-profiles-entry"
+        aria-label={ADD_ADDITIONAL_PROFILES_LABEL}
+        aria-haspopup="dialog"
+        aria-expanded={sheetOpen}
+        onClick={() => {
+          setError('');
+          setPanel('closed');
+          setSheetOpen(true);
+        }}
+      >
+        <RowIcon label={ADD_ADDITIONAL_PROFILES_LABEL} />
+        <span className="s-ghost__label">{ADD_ADDITIONAL_PROFILES_LABEL}</span>
+        <span className="s-ghost__status">{status}</span>
+      </button>
+      {sheetOpen ? (
+        <div className="s-profiles-sheet">
+          <button type="button" className="s-profiles-sheet__backdrop" aria-label="Close profiles" onClick={closeSheet} />
+          <section
+            className="s-profiles s-profiles--sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="existing-profiles-heading"
+            data-testid="student-profiles-sheet"
+          >
+            <div className="s-profiles__sheet-head">
+              <h2 id="existing-profiles-heading">{EXISTING_PROFILES_HEADING}</h2>
+              <button type="button" className="s-profiles__close" onClick={closeSheet}>
+                Close
+              </button>
+            </div>
+            {profileList}
+            <hr className="s-profiles__divider" data-testid="student-profiles-divider" />
+            {addOrForms}
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }
+
 
 function ProfileRow({
   profile,

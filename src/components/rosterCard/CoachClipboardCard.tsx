@@ -14,6 +14,11 @@ import type { WornBeltPreview } from '../../lib/studentRank';
 import { ADVANTAGE_MARK_SRC } from '../../lib/gymLogo';
 import { WornBeltMark } from '../../pages/student/wornBelt';
 import { DEFAULT_CARD_LOOK, type CardLook } from '../../lib/cardLook';
+import { TopoStage } from '../../preview/crystallineSweeps/TopoStage';
+import { buildTopo } from '../../preview/crystallineSweeps/topo';
+import { factorsFromRatings } from '../../preview/crystallineSweeps/overlay';
+import { selfAssessmentShapeLabel } from '../../lib/radarChart';
+import '../../preview/crystallineSweeps/crystallineSweeps.css';
 import '../../pages/student/beltWeave.css';
 import './coachClipboard.css';
 
@@ -51,7 +56,7 @@ export type ClipboardCardProps = {
   name: string;
   photo: CardPhotoView;
   gymName: string;
-  /** Gym logo data URL, or null for the Advantage mark. */
+  /** Gym logo data URL, or null for the Advantage mark. Coach mode only: the student card shows no logo. */
   gymLogo: string | null;
   belt: WornBeltPreview;
   onEditBelt?: () => void;
@@ -162,7 +167,9 @@ export function CoachClipboardCard(props: ClipboardCardProps) {
               ) : null}
             </div>
             <div className="clipboard__crest">
-              <img src={props.gymLogo || ADVANTAGE_MARK_SRC} alt={props.gymLogo ? `${props.gymName || 'Gym'} logo` : 'Advantage'} />
+              {props.mode === 'student' ? null : (
+                <img src={props.gymLogo || ADVANTAGE_MARK_SRC} alt={props.gymLogo ? `${props.gymName || 'Gym'} logo` : 'Advantage'} />
+              )}
               <small>{props.gymName || 'Gym not set'}</small>
             </div>
             <div className="clipboard__brow">
@@ -316,7 +323,7 @@ function AssessmentColumn(props: ClipboardCardProps) {
       </h3>
       {any ? (
         <>
-          <div className="clipboard__as">
+          <div className={(props.look ?? DEFAULT_CARD_LOOK).style === 'fighter' ? 'clipboard__as' : 'clipboard__as clipboard__as--diamond'}>
             <div>
               {(props.look ?? DEFAULT_CARD_LOOK).style === 'fighter' ? (
                 <CardBars
@@ -324,7 +331,7 @@ function AssessmentColumn(props: ClipboardCardProps) {
                   self={showSelf ? assessment.selfLatest?.scores ?? null : null}
                 />
               ) : (
-                <CardRadar
+                <CardDiamond
                   coach={showCoach ? assessment.coachLatest?.scores ?? null : null}
                   self={showSelf ? assessment.selfLatest?.scores ?? null : null}
                 />
@@ -529,6 +536,49 @@ function point(index: number, value: number): string {
 function shape(scores: Record<string, AssessmentScore> | null): string {
   if (!scores) return '';
   return ASSESSMENT_FORM_AREAS.map((area, index) => point(index, scores[area.id] ?? 0)).join(' ');
+}
+
+const CARD_D8 = buildTopo(() => null);
+
+/**
+ * The card's D8: the same eight-face diamond as Profile and Scouting, drawn from the
+ * eight area scores. Coach is the solid blue layer, Student self the dashed orange
+ * layer; Both draws the two together, like the Scouting overlay. Display only.
+ */
+export function CardDiamond({ coach, self }: { coach: Record<string, AssessmentScore> | null; self: Record<string, AssessmentScore> | null }) {
+  const factors = { self: factorsFromRatings(coach), opponent: factorsFromRatings(self) };
+  const parts = [
+    coach ? `Coach: ${selfAssessmentShapeLabel(coach)}` : null,
+    self ? `Student self: ${selfAssessmentShapeLabel(self)}` : null,
+  ].filter(Boolean);
+  return (
+    <div
+      className="clipboard__d8"
+      data-testid="card-d8"
+      data-layers={[coach ? 'coach' : null, self ? 'self' : null].filter(Boolean).join(' ')}
+      role="img"
+      aria-label={`Assessment D8. ${parts.join(' ')}`}
+    >
+      <TopoStage
+        model={CARD_D8}
+        style="pyramid"
+        focus={-1}
+        selected={-1}
+        comparison
+        pair={false}
+        compareFactors={factors}
+        links={[]}
+        drillPath={[]}
+        relief={1}
+        hue={1}
+        chrome="bare"
+        spin={false}
+        onFocus={() => {}}
+        onSelect={() => {}}
+        onDrill={() => {}}
+      />
+    </div>
+  );
 }
 
 export function CardRadar({ coach, self }: { coach: Record<string, AssessmentScore> | null; self: Record<string, AssessmentScore> | null }) {

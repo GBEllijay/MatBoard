@@ -11,8 +11,6 @@ import {
   loggedMinutesTotal,
   sampleClasses,
   sampleEstimate,
-  sampleUpdates,
-  teachingTallies,
   teachingYears,
 } from './model';
 import './instructorProfile.css';
@@ -24,8 +22,6 @@ import './instructorProfile.css';
 export function InstructorIdentityCard() {
   const classes = useMemo(() => sampleClasses(), []);
   const estimate = useMemo(() => sampleEstimate(), []);
-  const updates = useMemo(() => sampleUpdates(), []);
-  const tallies = useMemo(() => teachingTallies(updates), [updates]);
   const loggedTotal = loggedMinutesTotal(classes);
   const years = teachingYears(estimate.teachingAroundYear);
   const classEstimate = estimatedClasses(estimate);
@@ -90,16 +86,12 @@ export function InstructorIdentityCard() {
           <span>Classes / week</span>
           <strong>3+</strong>
         </div>
-        <p data-testid="stripes-given">
-          <span>Stripes given</span>
-          <strong>{tallies.stripes}</strong>
-        </p>
-        <p data-testid="belts-given">
-          <span>Promotions given</span>
-          <strong>{tallies.belts}</strong>
+        <p data-testid="teaching-years">
+          <span>Length of time teaching</span>
+          <strong>{years} years</strong>
+          <small>c. {INSTRUCTOR.teachingAroundYear} to {PREVIEW_YEAR}. Official start {INSTRUCTOR.officialStartYear} is later.</small>
         </p>
       </div>
-      <p className="ip-quiet">Completed only. Pending and declined are not counted. Fictional totals from the instructor profile preview.</p>
     </section>
   );
 }

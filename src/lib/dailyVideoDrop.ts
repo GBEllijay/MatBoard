@@ -4,7 +4,7 @@
  * Daily Videos folder, `videos/daily/{date}/`. Instructors open that folder
  * from Daily Training Videos and add the clip to their own lesson plan.
  *
- * This does not open lesson plans and it is not Record for Review.
+ * This does not open lesson plans.
  * There is no approval step for daily videos on main, so a send goes
  * straight to the folder, the same as a Coach upload.
  *

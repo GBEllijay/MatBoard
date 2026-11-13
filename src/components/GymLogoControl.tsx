@@ -2,6 +2,7 @@ import { useRef, useState, useSyncExternalStore } from 'react';
 import { coachGymIds } from '../lib/coachGymIdentity';
 import { createPortal } from 'react-dom';
 import { DeviceMediaInput } from './DeviceMediaInput';
+import { ImageRightsGate, useImageRightsConfirm } from './ImageRightsConfirm';
 import { OpenMyDrive } from './OpenMyDrive';
 import { MediaSourceSheet } from './VideoSourceSheet';
 import { buildGymBrandFile, GYM_BRAND_FILE_NAME } from '../lib/coachGymFile';
@@ -35,17 +36,22 @@ export function GymLogoControl() {
   const [driveNote, setDriveNote] = useState('');
   const [driveBusy, setDriveBusy] = useState(false);
   const driveFolder = useSyncExternalStore(subscribeDriveBinding, getDriveBindingSnapshot, () => null);
+  const rights = useImageRightsConfirm();
 
-  const onFiles = async (files: readonly File[]) => {
+  const savePickedLogo = async (files: readonly File[]) => {
     const file = files[0];
     if (!file) return;
-    setChooserOpen(false);
     try {
       await saveGymLogoFile(file);
       setNote('');
     } catch (error) {
       setNote(quotaAddNote(error) ?? 'That file is not a photo this logo can keep.');
     }
+  };
+
+  const onFiles = (files: readonly File[]) => {
+    if (files[0]) setChooserOpen(false);
+    rights.interceptFiles(savePickedLogo)(files);
   };
 
   const clear = () => {
@@ -159,6 +165,7 @@ export function GymLogoControl() {
             </>,
             document.body,
           )}
+      <ImageRightsGate rights={rights} />
     </section>
   );
 }

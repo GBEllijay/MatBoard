@@ -24,7 +24,7 @@ test('screen-edge starts stay with the browser', () => {
   assert.equal(swipeStartsInBrowserEdge(80, 400), false);
 });
 
-test('a Record for Review stroke is not a swipe to Daily Training Videos', () => {
+test('a replay-player stroke is not a swipe to Daily Training Videos', () => {
   assert.match(SWIPE_BLOCK_SELECTOR, /\.replay-player/);
   assert.match(SWIPE_BLOCK_SELECTOR, /data-coach-no-swipe/);
   assert.equal(coachSwipeTarget('/notes', 'left'), '/techniques');

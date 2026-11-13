@@ -1,0 +1,24 @@
+import { spawnSync } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { build } from 'esbuild';
+import { paidChunksStub } from './paidChunksStub.mjs';
+
+mkdirSync('node_modules/.cache', { recursive: true });
+const outfile = resolve('node_modules/.cache/student-license-home.test.mjs');
+await build({
+  entryPoints: ['src/pages/studentLicenseHome.regressions.test.tsx'],
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  outfile,
+  packages: 'external',
+  external: ['node:test', 'node:assert', 'node:assert/strict'],
+  jsx: 'automatic',
+  loader: { '.css': 'empty' },
+  logLevel: 'silent',
+  plugins: [paidChunksStub],
+});
+
+const result = spawnSync(process.execPath, ['--test', '--test-force-exit', '--test-timeout=20000', ...process.argv.slice(2), outfile], { stdio: 'inherit' });
+process.exit(result.status ?? 1);

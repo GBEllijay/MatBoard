@@ -227,7 +227,6 @@ export function ProgressMenu() {
         </span>
       </section>
       <ProfileCard />
-      <StudentProfileSwitcher />
       <MenuList label={RANK_GROUP_LABEL}>
         {links.map((item) => (
           <MenuRow

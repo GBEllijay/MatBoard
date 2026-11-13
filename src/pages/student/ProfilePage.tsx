@@ -13,14 +13,18 @@ import { StudentProfileSwitcher } from './StudentProfileSwitcher';
 import { BodyScanSetting } from './BodyScan';
 import './profile.css';
 
-/** Name, gym, start date, birth year, Kid or Adult, optional photo, and gym logo. Saved on this phone. */
+/**
+ * Name, gym, start date, birth year, Kid or Adult, and optional photo. Saved on this phone.
+ * The student card shows no logo (owner, Nov 13 2026). The Gym logo control below still
+ * feeds reports and backups when that switch is on.
+ */
 export function ProfilePage() {
   const { report, commit } = useStudentFile();
   const media = useProfileMedia();
   const kids = beltModeOf(report) === 'kids';
   const showPhoto = Boolean(media.portrait);
   const gymName = report.profile.gymName.trim();
-  const marked = Boolean(showPhoto || media.logo || (kids && gymName));
+  const marked = Boolean(showPhoto || (kids && gymName));
   const to = useStudentPath();
   const needsFirstProfile = !report.profile.displayName.trim();
   const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null);
@@ -39,8 +43,7 @@ export function ProfilePage() {
           </div>
           <ProfileCornerMarks
             portrait={showPhoto ? media.portrait : null}
-            logo={media.logo}
-            name={kids && !media.logo && !showPhoto ? gymName : ''}
+            name={kids && !showPhoto ? gymName : ''}
           />
         </header>
         {needsFirstProfile ? (
@@ -49,7 +52,7 @@ export function ProfilePage() {
           </p>
         ) : null}
         <StudentProfileSwitcher detail />
-        <StudentCardLayout portrait={showPhoto ? media.portrait : null} logo={media.logo} to={to} />
+        <StudentCardLayout portrait={showPhoto ? media.portrait : null} to={to} />
         <div className="profile-stack">
           <ProfileMedia media={media} kids={kids} />
           <KidAdultFields report={report} commit={commit} />
@@ -86,7 +89,6 @@ export function ProfilePage() {
           open={preview}
           report={report}
           portrait={showPhoto ? media.portrait : null}
-          logo={media.logo}
           onClose={() => setPreview(false)}
           to={to}
         />

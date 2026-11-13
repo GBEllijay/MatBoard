@@ -73,9 +73,9 @@ test('film a move, connections, backup, and print stay beside the link library',
 
   const downloads: string[] = [];
   page.on('download', (download) => downloads.push(download.suggestedFilename()));
-  await page.getByRole('button', { name: 'Back up my journal (.json)' }).click();
+  await page.getByRole('button', { name: 'Download student packet (.advantage)' }).click();
   await expect.poll(() => downloads.length).toBe(1);
-  expect(downloads[0]).toMatch(/\.json$/);
+  expect(downloads[0]).toMatch(/\.advantage$/);
   await page.getByRole('button', { name: 'Download spreadsheet (.csv)' }).click();
   await expect.poll(() => downloads.length).toBe(2);
   await page.getByRole('button', { name: 'Download progress report (.pdf)' }).click();
@@ -86,7 +86,7 @@ test('film a move, connections, backup, and print stay beside the link library',
   expect(downloads.filter((name) => name.endsWith('.pdf')).length).toBe(2);
   await page.screenshot({ path: '/opt/cursor/artifacts/student-connections.png', fullPage: true });
 
-  const backup = page.getByRole('button', { name: 'Back up my journal (.json)' });
+  const backup = page.getByRole('button', { name: 'Download student packet (.advantage)' });
   const clear = page.getByRole('button', { name: 'Clear all Student Edition data' });
   const backupBox = await backup.boundingBox();
   const clearBox = await clear.boundingBox();
