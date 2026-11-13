@@ -6,19 +6,19 @@
  * email is stored only as the existing identities hash so Restore can find it.
  * Revoke sets status to revoked and, once claimed, inactivates that grant.
  * That ends academy access for the code. The student's own journal, photos, and backup stay theirs.
- * A revoked code stays revoked. The seat returns to the pool of 5 either way.
+ * A revoked code stays revoked. The seat returns to the free pool either way.
  */
 
 import { appVersionOf } from '../lib/appCapability.ts';
 import { readSignedJson, signJson, verifyToken, type EntitlementClaims } from '../lib/entitlementToken.ts';
 import {
-  FREE_STUDENT_LICENSES,
   STUDENT_LICENSE_EMPTY,
   STUDENT_LICENSE_OWNER_ONLY,
   STUDENT_INVITE_TYP,
   STUDENT_LICENSE_PRESET,
   STUDENT_LICENSE_REVOKED_MESSAGE,
   STUDENT_LICENSE_TAKEN_MESSAGE,
+  freeStudentLicensesForLicense,
   freeStudentLicensesLeft,
   isStudentLicenseCode,
   studentLicenseSourceRef,
@@ -311,8 +311,13 @@ async function halfOffForOwner(db: D1Database, licenseId: string): Promise<{ cod
   };
 }
 
-function poolBody(occupied: number): { left: number; cap: number } {
-  return { left: freeStudentLicensesLeft(occupied), cap: FREE_STUDENT_LICENSES };
+function poolCap(licenseId: string): number {
+  return freeStudentLicensesForLicense(licenseId);
+}
+
+function poolBody(occupied: number, licenseId: string): { left: number; cap: number } {
+  const cap = poolCap(licenseId);
+  return { left: freeStudentLicensesLeft(occupied, cap), cap };
 }
 
 export async function handleStudentLicenseIssue(
@@ -341,14 +346,14 @@ export async function handleStudentLicenseIssue(
            WHERE license_id = ? AND status IN ('issued', 'claimed')
          ) < ?`,
       )
-      .bind(code, caller.licenseId, stamp, caller.licenseId, FREE_STUDENT_LICENSES)
+      .bind(code, caller.licenseId, stamp, caller.licenseId, poolCap(caller.licenseId))
       .run();
     const occupied = await occupiedCount(db, caller.licenseId);
     if (!inserted.meta.changes) {
-      return json(409, { ok: false, error: STUDENT_LICENSE_EMPTY, ...poolBody(occupied) });
+      return json(409, { ok: false, error: STUDENT_LICENSE_EMPTY, ...poolBody(occupied, caller.licenseId) });
     }
     const invite = await signStudentInvite(env, { code, gym: caller.licenseId });
-    return json(200, { ok: true, code, invite: invite ?? undefined, typ: STUDENT_INVITE_TYP, status: 'issued', ...poolBody(occupied) });
+    return json(200, { ok: true, code, invite: invite ?? undefined, typ: STUDENT_INVITE_TYP, status: 'issued', ...poolBody(occupied, caller.licenseId) });
   } catch (error) {
     if (missingStudentCodes(error)) return json(503, { ok: false, error: SETUP_MESSAGE, setup: true });
     throw error;
@@ -404,7 +409,7 @@ export async function handleStudentLicenseList(
     return json(200, {
       ok: true,
       role: caller.role,
-      ...poolBody(occupied),
+      ...poolBody(occupied, caller.licenseId),
       claims,
       ...(caller.role === 'owner' ? { halfOff } : {}),
     });
@@ -456,7 +461,7 @@ export async function handleStudentLicenseRevoke(
     if (!updated.meta.changes) return json(409, { ok: false, error: ALREADY_REVOKED });
     if (claimed) await revokeGrant(db, code, now());
     const occupied = await occupiedCount(db, caller.licenseId);
-    return json(200, { ok: true, status: 'revoked', claimed, ...poolBody(occupied) });
+    return json(200, { ok: true, status: 'revoked', claimed, ...poolBody(occupied, caller.licenseId) });
   } catch (error) {
     if (missingStudentCodes(error)) return json(503, { ok: false, error: SETUP_MESSAGE, setup: true });
     throw error;

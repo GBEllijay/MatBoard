@@ -136,6 +136,7 @@ export function AcademyHalfOffShare() {
 function useLicenseList() {
   const [rows, setRows] = useState<StudentLicenseRow[]>([]);
   const [left, setLeft] = useState<number | null>(null);
+  const [cap, setCap] = useState(FREE_STUDENT_LICENSES);
   const [halfOff, setHalfOff] = useState<HalfOffPointer | null>(null);
   const [role, setRole] = useState<'owner' | 'seat' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -148,13 +149,14 @@ function useLicenseList() {
     setError(null);
     setRows(listed.claims);
     setLeft(listed.left);
+    if (typeof listed.cap === 'number' && listed.cap > 0) setCap(listed.cap);
     setRole(listed.role);
     setHalfOff(listed.halfOff ?? null);
   };
   useEffect(() => {
     void reload();
   }, []);
-  return { rows, left, halfOff, role, error, reload, setError, setLeft };
+  return { rows, left, cap, halfOff, role, error, reload, setError, setLeft, setCap };
 }
 
 function IssuedCode({
@@ -200,7 +202,7 @@ function IssuedCode({
 }
 
 export function StudentLicenseOwnerPanel() {
-  const { rows, left, halfOff, error, reload, setError, setLeft } = useLicenseList();
+  const { rows, left, cap, halfOff, error, reload, setError, setLeft, setCap } = useLicenseList();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const issue = async () => {
@@ -215,6 +217,7 @@ export function StudentLicenseOwnerPanel() {
       return;
     }
     setLeft(issued.left);
+    if (typeof issued.cap === 'number' && issued.cap > 0) setCap(issued.cap);
     setNote('Code issued. The student scans it, enters their email, then adds Advantage to their Home Screen.');
     await reload();
   };
@@ -228,6 +231,7 @@ export function StudentLicenseOwnerPanel() {
       return;
     }
     setLeft(result.left);
+    if (typeof result.cap === 'number' && result.cap > 0) setCap(result.cap);
     setNote(
       result.claimed
         ? 'Revoked. That student lost this free Student Edition, and the seat is back in your pool. The code is dead.'
@@ -240,10 +244,10 @@ export function StudentLicenseOwnerPanel() {
     <section className="student-license" aria-label="Free Student licenses" data-student-license="owner">
       <h2>{STUDENT_LICENSE_GIVE}</h2>
       <p className="license-share__ticker" data-ticker="student-license">
-        {left === null ? 'Checking free Student licenses…' : freeStudentLicenseTicker(occupiedFromLeft(left))}
+        {left === null ? 'Checking free Student licenses…' : freeStudentLicenseTicker(Math.max(0, cap - left), cap)}
       </p>
       <p className="student-license__note">
-        One scan uses one of your 5 free Student Edition licenses. The link is single-use and does not expire until it
+        One scan uses one of your {cap} free Student Edition licenses. The link is single-use and does not expire until it
         is claimed or you revoke it. It opens Student Edition only, and never an instructor seat. The student enters an
         email so the home screen app can restore this Student Edition.
       </p>
@@ -261,10 +265,6 @@ export function StudentLicenseOwnerPanel() {
       ))}
     </section>
   );
-}
-
-function occupiedFromLeft(left: number): number {
-  return Math.max(0, FREE_STUDENT_LICENSES - left);
 }
 
 export function StudentLicenseSeatShow() {

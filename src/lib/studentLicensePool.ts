@@ -15,9 +15,12 @@
 
 import { STUDENT_CLAIM_PAYLOAD, claimsWouldDowngrade } from './passDowngrade.ts';
 
-import { FREE_STUDENT_LICENSES } from './proBundleMath.ts';
+import {
+  FREE_STUDENT_LICENSES,
+  freeStudentLicensesForLicense,
+} from './proBundleMath.ts';
 
-export { FREE_STUDENT_LICENSES };
+export { FREE_STUDENT_LICENSES, freeStudentLicensesForLicense };
 
 export const STUDENT_LICENSE_PRESET = 'student-license';
 export const STUDENT_LICENSE_SOURCE_PREFIX = 'student-code:';
@@ -44,14 +47,16 @@ export const ADD_TO_HOME_EMAIL = 'then sign in with this same email inside the a
 
 const CODE_RE = /^[a-f0-9]{64}$/;
 
-export function freeStudentLicensesLeft(occupied: number): number {
+export function freeStudentLicensesLeft(occupied: number, cap = FREE_STUDENT_LICENSES): number {
   const used = Number.isFinite(occupied) ? Math.floor(occupied) : 0;
-  return Math.max(0, FREE_STUDENT_LICENSES - Math.max(0, used));
+  const limit = Number.isFinite(cap) && cap > 0 ? Math.floor(cap) : FREE_STUDENT_LICENSES;
+  return Math.max(0, limit - Math.max(0, used));
 }
 
-export function freeStudentLicenseTicker(occupied: number): string {
-  const left = freeStudentLicensesLeft(occupied);
-  return `${left} of ${FREE_STUDENT_LICENSES} free Student licenses left`;
+export function freeStudentLicenseTicker(occupied: number, cap = FREE_STUDENT_LICENSES): string {
+  const limit = Number.isFinite(cap) && cap > 0 ? Math.floor(cap) : FREE_STUDENT_LICENSES;
+  const left = freeStudentLicensesLeft(occupied, limit);
+  return `${left} of ${limit} free Student licenses left`;
 }
 
 export function halfOffPoolNote(usesLeft: number, maxUses = 100): string {

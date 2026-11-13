@@ -5,13 +5,15 @@ import { SITE_FEEDBACK_EMAIL } from '../lib/siteFooter';
 import { DriveHandoffGuide, useDriveConnected } from './DriveHandoffGuide';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { entitlementSnapshot } from '../lib/entitlement';
+import { freeStudentLicensesForLicense } from '../lib/proBundleMath';
 import { inviteBlockedAsSeat } from '../lib/ownerPassRank';
 import {
   INSTRUCTOR_PERMISSION_FIELDS,
   INSTRUCTOR_PRESETS,
-  PRO_INSTRUCTOR_SEAT_CAP,
   PRO_SEAT_CAP_REQUEST_NOTE,
   countOpenInstructorSeats,
+  currentInstructorSeatAllowance,
+  currentLicenseId,
   defaultInstructorPermissions,
   instructorInviteLink,
   instructorPresetPermissions,
@@ -73,7 +75,7 @@ function issueError(failure: { reason: IssueInviteFailure; detail?: string }): s
   if (failure.detail) return failure.detail;
   if (failure.reason === 'duplicate') return 'That email already has an open seat.';
   if (failure.reason === 'storage') return 'This device could not save the seat.';
-  if (failure.reason === 'cap') return proSeatCapBlockedCopy();
+  if (failure.reason === 'cap') return proSeatCapBlockedCopy(currentInstructorSeatAllowance());
   if (failure.reason === 'owner') return 'Only the gym owner can issue invites.';
   if (failure.reason === 'unavailable') return 'This device could not issue an invite. Nothing was sent.';
   return "Enter the instructor's email.";
@@ -159,7 +161,9 @@ export function InstructorInvitePanel() {
   const openSeats = seats.filter((seat) => seat.status === 'invited' || seat.status === 'active');
   const revokedSeats = seats.filter((seat) => seat.status === 'revoked');
   const seatsUsed = countOpenInstructorSeats(seats);
-  const atCap = seatsUsed >= PRO_INSTRUCTOR_SEAT_CAP;
+  const allowance = currentInstructorSeatAllowance();
+  const studentCap = freeStudentLicensesForLicense(currentLicenseId());
+  const atCap = seatsUsed >= allowance;
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
 
   const copyLink = async (id: string, link: string) => {
@@ -216,15 +220,15 @@ export function InstructorInvitePanel() {
           <GalleryPendingLink />
           <strong>Generate instructor invite</strong>
           <span className="invite-form__note">
-            Pro includes 5 free instructor seats and 5 free Student Edition licenses.
+            Pro includes {allowance} free instructor seats and {studentCap} free Student Edition licenses.
             Pick a role, then change any switch for this person. The role chooses which menus
             open. Inside those menus, cloud and sharing match the owner. The link stays on this
             device until the gym Google Drive folder carries it. Nothing is emailed or billed.
           </span>
           {gymName ? <span className="invite-gym">Gym · {gymName}</span> : null}
           <div className="invite-seat-cap" role="status" aria-live="polite">
-            <p className="invite-seat-cap__count">{proSeatUsageLabel(seatsUsed)}</p>
-            <p className="invite-seat-cap__remaining">{proSeatRemainingLabel(seatsUsed)}</p>
+            <p className="invite-seat-cap__count">{proSeatUsageLabel(seatsUsed, allowance)}</p>
+            <p className="invite-seat-cap__remaining">{proSeatRemainingLabel(seatsUsed, allowance)}</p>
             <SeatCapRequestNote />
           </div>
           {issued ? (
@@ -321,7 +325,7 @@ export function InstructorInvitePanel() {
           <p className="binder-list__seats">
             {proSeatUsageLabel(seatsUsed)} · {proSeatRemainingLabel(seatsUsed)}
           </p>
-          {proSeatCapNear(seatsUsed) ? <SeatCapRequestNote /> : null}
+          {proSeatCapNear(seatsUsed, allowance) ? <SeatCapRequestNote /> : null}
         </div>
         {openSeats.length ? (
           <ul className="invite-seats">
