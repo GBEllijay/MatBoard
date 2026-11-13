@@ -1,5 +1,6 @@
 import { readSignedJson, signJson, verifyToken, type Door, type SubscriptionClaim } from '../lib/entitlementToken.ts';
 import { SEAT_SUNSET_ENDS_AT } from '../lib/seatSunset.ts';
+import { keyedHash, normalizeEmail } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
 import { expandGrants } from './grantMatrix.ts';
 import { INSTRUCTOR_SEAT_CAP } from './paywallDecisions.ts';
@@ -28,7 +29,7 @@ export type SeatEnv = StripeRuntimeEnv & {
   SEAT_SUNSET_ENDS_AT?: string;
 };
 
-type SeatRow = {
+export type SeatRow = {
   id: string;
   gymLicenseId: string;
   preset: string | null;
@@ -432,4 +433,102 @@ export async function refreshSeat(
   const entitled = access ? access.access.entitled : true;
   const subs = access ? claimForAccess(access.access) : { state: 'active' as const };
   return { doors: seatDoors(entitled), subs };
+}
+
+
+function preferOpenSeat(matches: SeatRow[]): SeatRow | null {
+  if (!matches.length) return null;
+  const rank = (row: SeatRow) => {
+    const claimed = row.status === 'claimed' || Boolean(row.claimedDevice) ? 1 : 0;
+    const stamp = Date.parse(row.claimedAt || row.createdAt) || 0;
+    return { claimed, stamp };
+  };
+  return [...matches].sort((left, right) => {
+    const a = rank(left);
+    const b = rank(right);
+    if (a.claimed !== b.claimed) return b.claimed - a.claimed;
+    return b.stamp - a.stamp;
+  })[0] ?? null;
+}
+
+const OPEN_SEAT_SQL = `SELECT ${SEAT_COLUMNS} FROM seats
+   WHERE revoked_at IS NULL AND status IN ('pending', 'claimed')
+     AND email_label IS NOT NULL AND trim(email_label) != ''`;
+
+/** Open instructor seat whose saved label matches this address, after the same email normalization restore uses. */
+export async function openSeatForEmail(db: D1Database, email: string): Promise<SeatRow | null> {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return null;
+  const rows = await db.prepare(OPEN_SEAT_SQL).all<SeatRow>();
+  const matches = (rows.results ?? []).filter((row) => normalizeEmail(row.emailLabel ?? '') === normalized);
+  return preferOpenSeat(matches);
+}
+
+/** Same lookup from a restore challenge email hash. The pepper is used only to hash labels; it is not stored. */
+export async function openSeatForEmailHash(db: D1Database, emailHash: string, pepper: string): Promise<SeatRow | null> {
+  if (!emailHash || !pepper) return null;
+  const rows = await db.prepare(OPEN_SEAT_SQL).all<SeatRow>();
+  const matches: SeatRow[] = [];
+  for (const row of rows.results ?? []) {
+    const hash = await keyedHash(normalizeEmail(row.emailLabel ?? ''), pepper, 'email');
+    if (hash === emailHash) matches.push(row);
+  }
+  return preferOpenSeat(matches);
+}
+
+export type ReissuedSeat = {
+  token: string;
+  seatId: string;
+  gymId: string;
+  preset: string;
+  deviceId: string;
+  grants: Door[];
+  subs: SubscriptionClaim;
+};
+
+/**
+ * Move this open seat onto a new device and sign the same seat pass an invite accept would issue.
+ * The previous claimed device can no longer refresh. No new seat or license is created.
+ */
+export async function reissueSeatToDevice(
+  db: D1Database,
+  env: SeatEnv,
+  seat: SeatRow,
+  deviceId: string,
+  now: Date,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ReissuedSeat | { error: 'signing' } | { error: 'revoked' }> {
+  if (seat.revokedAt || seat.status === 'revoked') return { error: 'revoked' };
+  const access = await ownerAccess(db, env, seat.gymLicenseId, now, fetchImpl);
+  const entitled = access ? access.access.entitled : true;
+  const subs = access ? claimForAccess(access.access) : { state: 'active' as const };
+  const token = await issueSeatToken(env, {
+    gym: seat.gymLicenseId,
+    sid: seat.id,
+    preset: seat.preset ?? '',
+    deviceId,
+    now,
+    subs,
+    entitled,
+  });
+  if (!token) return { error: 'signing' };
+  const stamp = now.toISOString();
+  const moved = await db
+    .prepare(
+      `UPDATE seats
+       SET status = 'claimed', claimed_device = ?, claimed_at = ?
+       WHERE id = ? AND revoked_at IS NULL AND status IN ('pending', 'claimed')`,
+    )
+    .bind(deviceId, stamp, seat.id)
+    .run();
+  if (!moved.meta.changes) return { error: 'revoked' };
+  return {
+    token,
+    seatId: seat.id,
+    gymId: seat.gymLicenseId,
+    preset: seat.preset ?? '',
+    deviceId,
+    grants: seatDoors(entitled),
+    subs,
+  };
 }

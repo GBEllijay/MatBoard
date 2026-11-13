@@ -19,6 +19,7 @@ import {
 } from './purchaseRecords.ts';
 import { appVersionOf } from '../lib/appCapability.ts';
 import { cloudAccessForLicense } from './cloudSubscription.ts';
+import { openSeatForEmail, openSeatForEmailHash, reissueSeatToDevice, type SeatEnv } from './seats.ts';
 import { freeStudentRestoreShape } from './studentLicenses.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
 
@@ -145,8 +146,9 @@ export async function handleRestoreRequest(
   if (licenseId) {
     await ensureAccountForLicense(db, { licenseId, email, pepper, now: stamp });
   }
+  const seat = await openSeatForEmail(db, email);
   const challengeId = crypto.randomUUID();
-  if (licenseId) {
+  if (licenseId || seat) {
     const code = restoreCode();
     const codeHash = await keyedHash(code, pepper, 'restore');
     const expires = new Date(stamp.getTime() + CODE_TTL_MS).toISOString();
@@ -170,6 +172,7 @@ export async function handleRestoreVerify(
   env: RestoreEnv,
   db: D1Database | null,
   now: () => Date = () => new Date(),
+  fetchImpl: typeof fetch = fetch,
 ): Promise<Response> {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed.' });
   if (!db || !env.CODE_HASH_PEPPER?.trim()) return json(503, { ok: false, error: RESTORE_UNAVAILABLE });
@@ -224,13 +227,62 @@ export async function handleRestoreVerify(
         .bind(row.emailHash)
         .first<{ licenseId: string }>();
   const licenseId = fromAccount ?? identity?.licenseId ?? '';
-  if (!licenseId) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  const linked = await ensureAccountForLicense(db, { licenseId, pepper, now: now() });
-  const grants = await grantsForLicense(db, licenseId, now());
-  const doors = expandGrants(doorsFromStored(grants)) as Door[];
-  if (!doors.length) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  const ownerAcademy = grants.some((grant) => isPerpetualOwnerAcademyGrant(grant) && grant.product === 'advantage-pro');
+  const seat = await openSeatForEmailHash(db, row.emailHash, pepper);
+  const stamp = now();
   const deviceId = typeof body.deviceId === 'string' && body.deviceId.trim() ? body.deviceId.trim().slice(0, 80) : crypto.randomUUID();
+
+  const seatPayload = async () => {
+    if (!seat) return null;
+    const reissued = await reissueSeatToDevice(db, env as SeatEnv, seat, deviceId, stamp, fetchImpl);
+    if ('error' in reissued) return reissued;
+    return reissued;
+  };
+
+  if (!licenseId) {
+    const reissued = await seatPayload();
+    if (!reissued || 'error' in reissued) {
+      const status = reissued && 'error' in reissued && reissued.error === 'signing' ? 503 : 400;
+      return json(status, {
+        ok: false,
+        error: status === 503 ? RESTORE_UNAVAILABLE : RESTORE_CODE_FAILURE,
+      });
+    }
+    return json(200, {
+      ok: true,
+      entitled: true,
+      grants: reissued.grants,
+      token: reissued.token,
+      deviceId,
+      seatId: reissued.seatId,
+      gymId: reissued.gymId,
+      ...(reissued.preset ? { preset: reissued.preset } : {}),
+      subs: reissued.subs,
+    });
+  }
+
+  const linked = await ensureAccountForLicense(db, { licenseId, pepper, now: stamp });
+  const grants = await grantsForLicense(db, licenseId, stamp);
+  const doors = expandGrants(doorsFromStored(grants)) as Door[];
+  if (!doors.length) {
+    if (seat) {
+      const reissued = await seatPayload();
+      if (reissued && !('error' in reissued)) {
+        return json(200, {
+          ok: true,
+          entitled: true,
+          grants: reissued.grants,
+          token: reissued.token,
+          deviceId,
+          seatId: reissued.seatId,
+          gymId: reissued.gymId,
+          ...(reissued.preset ? { preset: reissued.preset } : {}),
+          subs: reissued.subs,
+        });
+      }
+    }
+    return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
+  }
+  const ownerAcademy = grants.some((grant) => isPerpetualOwnerAcademyGrant(grant) && grant.product === 'advantage-pro');
   const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
   const accountId = linked?.accountId ?? account?.id ?? '';
   const extraProfileSlots = accountId ? await countExtraProfileSlots(db, accountId) : 0;
@@ -277,7 +329,7 @@ export async function handleRestoreVerify(
     tier: ownerAcademy ? 'owner' : studentClaim ? 'student' : tierForGrants(doors, pro ? 'stripe' : 'code'),
     src: ownerAcademy ? 'owner' : studentClaim ? 'free' : pro ? 'stripe' : 'code',
     deviceId,
-    now: now(),
+    now: stamp,
     kind: ownerAcademy ? 'owner-test' : studentClaim ? 'onetime' : pro ? 'pro' : 'onetime',
     ownerTestSeconds: ownerAcademy ? OWNER_SESSION_SECONDS : undefined,
     emailHint: row.emailHash.slice(0, 16),
@@ -288,6 +340,16 @@ export async function handleRestoreVerify(
     appVersion: appVersionOf(request),
   }, env.ENTITLEMENT_KEY_ID);
   if (!token) return json(503, { ok: false, error: RESTORE_UNAVAILABLE });
+  const reissued = await seatPayload();
+  const seatFields =
+    reissued && !('error' in reissued)
+      ? {
+          seatToken: reissued.token,
+          seatId: reissued.seatId,
+          gymId: reissued.gymId,
+          ...(reissued.preset ? { preset: reissued.preset } : {}),
+        }
+      : {};
   return json(200, {
     ok: true,
     entitled: true,
@@ -297,6 +359,7 @@ export async function handleRestoreVerify(
     ...(accountId ? { accountId } : {}),
     ...(extraProfileSlots ? { extraProfileSlots } : {}),
     ...(studentClaim?.studentPass ? { studentPass: studentClaim.studentPass } : {}),
+    ...seatFields,
   });
 }
 

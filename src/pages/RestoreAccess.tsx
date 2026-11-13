@@ -8,6 +8,7 @@ import { SecretField } from '../components/SecretField';
 import { SiteFooter } from '../components/SiteFooter';
 import { devicePublicJwk } from '../lib/deviceKey';
 import { clearEntitlementToken, entitlementSnapshot, readDeviceId } from '../lib/entitlement';
+import { installAcceptedSeat, type InstructorPresetId } from '../lib/instructorSeats';
 import { acceptRestoredToken } from '../lib/restoreAccept';
 import { clearRestoreChallenge, readRestoreChallenge, saveRestoreChallenge } from '../lib/restoreChallenge';
 import { fetchRestoreCheckConfig, loadTurnstile, type RestoreCheckConfig, type TurnstileApi } from '../lib/turnstile';
@@ -188,6 +189,8 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
         grants?: string[];
         accountId?: string;
         extraProfileSlots?: number;
+        seatId?: string;
+        preset?: string | null;
       };
       if (!response.ok || !body.ok || !body.token) {
         setError(body.error || "That code didn't work.");
@@ -201,6 +204,21 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
       if (typeof body.extraProfileSlots === 'number') writeExtraProfileSlots(localStorage, body.extraProfileSlots);
       const accepted = await acceptRestoredToken(body.token);
       if (accepted) {
+        if (typeof body.seatId === 'string' && body.seatId) {
+          const preset: InstructorPresetId | null =
+            body.preset === 'assistant-coach' ||
+            body.preset === 'coach' ||
+            body.preset === 'program-director' ||
+            body.preset === 'instructors'
+              ? body.preset
+              : null;
+          installAcceptedSeat({
+            id: body.seatId,
+            email: email || 'instructor',
+            presetId: preset,
+            inviteToken: body.seatId,
+          });
+        }
         clearRestoreChallenge();
         setChallengeId('');
         setCode('');
@@ -246,16 +264,16 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
         <HomeMark to="/" />
         <article className="buy">
           <header className="buy__card">
-            <h2>Restore a purchase</h2>
+            <h2>Restore access</h2>
             <p>
-              Type the email from checkout. If it matches a purchase, we email a one-time code. Enter the code here and
-              press Confirm. It expires in 15 minutes and works once.
+              Type the email from checkout, or the email on an instructor seat. If it matches, we email a one-time code.
+              Enter the code here and press Confirm. It expires in 15 minutes and works once.
             </p>
             {snapshot.message ? <p className="buy__status">{snapshot.message}</p> : null}
           </header>
           <form className="buy__card" onSubmit={(event) => void onRequest(event)}>
             <label className="buy__field">
-              <span>Purchase email</span>
+              <span>Email</span>
               <input
                 type="email"
                 name="email"
