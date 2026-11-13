@@ -50,9 +50,9 @@ import {
   OPEN_GOAL_LINE,
   openGoalBelt,
   PERSONAL_GOALS_HEADING,
-  PERSONAL_GOALS_LINE,
+  BELT_PAGE_GOALS_LINE,
   PRACTICAL_BENCHMARKS_HEADING,
-  PRACTICAL_BENCHMARKS_LINE,
+  BELT_PAGE_BENCHMARKS_LINE,
   removeCheckpoint,
   removeGoal,
   SEED_LINE,
@@ -158,7 +158,7 @@ export function BeltPage() {
           <section className="belt-benchmarks" aria-label={PRACTICAL_BENCHMARKS_HEADING}>
             <h2>{PRACTICAL_BENCHMARKS_HEADING}</h2>
             <BenchmarkDisclaimer />
-            <p className="student-quiet">{PRACTICAL_BENCHMARKS_LINE}</p>
+            <p className="student-quiet belt-list-line">{BELT_PAGE_BENCHMARKS_LINE}</p>
             {timeBased ? <p>{TIME_BASED_PROGRESS}</p> : null}
             <p className="belt-count" aria-label="Practical benchmarks count">
               {benchmarkCount}
@@ -314,7 +314,7 @@ function KidsBenchmarks({
       <section className="belt-benchmarks" aria-label={PRACTICAL_BENCHMARKS_HEADING}>
         <h2>{PRACTICAL_BENCHMARKS_HEADING}</h2>
         <BenchmarkDisclaimer />
-        <p className="student-quiet">{PRACTICAL_BENCHMARKS_LINE}</p>
+        <p className="student-quiet belt-list-line">{BELT_PAGE_BENCHMARKS_LINE}</p>
         <p className="belt-count" aria-label="Practical benchmarks count">
           {addedMetLine('benchmark', rows.length, rows.filter((row) => row.met === true).length)}
         </p>
@@ -709,7 +709,7 @@ function GoalsSection({
   return (
     <section className="goals-block" aria-label={personal ? PERSONAL_GOALS_HEADING : 'Goals'}>
       <h2>{personal ? PERSONAL_GOALS_HEADING : 'Goals'}</h2>
-      {personal ? <p className="student-quiet">{PERSONAL_GOALS_LINE}</p> : null}
+      {personal ? <p className="student-quiet belt-list-line">{BELT_PAGE_GOALS_LINE}</p> : null}
       {personal && prompts.length ? <OpenGoals prompts={prompts} onPrompt={onPrompt} onDismiss={onDismiss} /> : null}
       <p className="belt-count" aria-label="Personal goals count">
         {addedMetLine('goal', goals.length, goals.filter((goal) => goal.met === true).length)}

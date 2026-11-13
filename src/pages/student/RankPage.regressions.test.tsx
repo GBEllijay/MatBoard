@@ -991,7 +991,7 @@ test('fundamentals at live level fill the white belt checkpoint count', async ()
     assert.equal(document.body.textContent?.includes('Closed guard, Scissor sweep'), false);
     assert.equal(document.body.textContent?.includes('Hold closed guard.'), false);
     assert.equal(labeled('Practical Benchmarks').tagName, 'SECTION');
-    assert.match(document.body.textContent ?? '', /Skills the coach or template expects before the next belt/);
+    assert.match(document.body.textContent ?? '', /These are the techniques and positions that your instructor or coach has indicated are expected\./);
     await click(buttonNamed('Mark Guard benchmark met'));
     assert.equal(labeled('Practical benchmarks count').textContent, '3 practical benchmarks added, 1 met.');
     assert.equal(document.querySelector('[aria-label="Personal goal name"]'), null);
@@ -1011,7 +1011,7 @@ test('brown tap-to-add goals can be edited and removed without becoming checkpoi
     assert.ok(document.querySelector('[aria-label="Tap to add"]'));
     assert.ok(buttonNamed('Add another personal goal'));
     assert.equal(document.querySelector('[aria-label="Goal name"]'), null);
-    assert.match(document.body.textContent ?? '', /Your own goals, which never affect belt or degree milestones/);
+    assert.match(document.body.textContent ?? '', /These are the goals that you're setting for yourself and hope to achieve before your next promotion\./);
     assert.equal(document.body.textContent?.includes('not on this page yet'), false);
     await click(buttonNamed('Teaching: lead a class'));
     const added = loadStudentReport(localStorage);
@@ -1288,6 +1288,39 @@ test('black belt shows the Practical benchmarks section with one blank card that
     assert.equal(loadStudentReport(localStorage).profile.belt, 'black');
   } finally {
     unmount(again);
+  }
+});
+
+test('each list on Belt progress opens with its own line under the heading, on adult, kids and black belt', async () => {
+  const BENCH = 'These are the techniques and positions that your instructor or coach has indicated are expected.';
+  const GOALS = "These are the goals that you're setting for yourself and hope to achieve before your next promotion.";
+  const files = [
+    ['adult', blankStudentReport(700)],
+    ['kids', setBeltMode(blankStudentReport(710), 'kids', 711)],
+    ['black', setRankBelt(blankStudentReport(720), 'black', 721)],
+  ] as const;
+  for (const [name, file] of files) {
+    saveStudentReport(localStorage, file);
+    const mounted = mount(<BeltPage />);
+    try {
+      const bench = labeled('Practical Benchmarks');
+      const goals = labeled('Personal Goals');
+      const benchLine = [...bench.querySelectorAll('p')].find((p) => p.textContent === BENCH);
+      const goalLine = [...goals.querySelectorAll('p')].find((p) => p.textContent === GOALS);
+      assert.ok(benchLine, `${name}: benchmarks line`);
+      assert.ok(goalLine, `${name}: goals line`);
+      assert.equal(goals.querySelector('h2')?.nextElementSibling, goalLine, `${name}: goals line sits right under the heading`);
+      const text = document.body.textContent ?? '';
+      assert.equal(text.split(BENCH).length - 1, 1, `${name}: one benchmarks line`);
+      assert.equal(text.split(GOALS).length - 1, 1, `${name}: one goals line`);
+      assert.equal(text.includes('Skills the coach or template expects before the next belt.'), false, `${name}: old line replaced`);
+      assert.equal(text.includes('Your own goals, which never affect belt or degree milestones.'), false, `${name}: old line replaced`);
+      // The line comes before the count and the cards.
+      const count = labeled('Practical benchmarks count');
+      assert.ok(benchLine!.compareDocumentPosition(count) & Node.DOCUMENT_POSITION_FOLLOWING);
+    } finally {
+      unmount(mounted);
+    }
   }
 });
 

@@ -597,6 +597,9 @@ export const PRACTICAL_BENCHMARKS_HEADING = 'Practical Benchmarks';
 export const PRACTICAL_BENCHMARKS_LINE = 'Skills the coach or template expects before the next belt.';
 export const PERSONAL_GOALS_HEADING = 'Personal Goals';
 export const PERSONAL_GOALS_LINE = 'Your own goals, which never affect belt or degree milestones.';
+/** Belt progress screen only. The printed report and coach card keep the two lines above. */
+export const BELT_PAGE_BENCHMARKS_LINE = 'These are the techniques and positions that your instructor or coach has indicated are expected.';
+export const BELT_PAGE_GOALS_LINE = "These are the goals that you're setting for yourself and hope to achieve before your next promotion.";
 export const NO_PRACTICAL_BENCHMARKS = 'No practical benchmarks yet.';
 export const NO_PRACTICAL_BENCHMARKS_HINT = 'Add the ones your instructor gives you.';
 export const NO_PERSONAL_GOALS = 'No personal goals yet.';
