@@ -134,22 +134,19 @@ export function useProfileMedia() {
   };
 }
 
-/** Small circles at the top right. One mark sits alone. Two sit side by side. */
+/** Small circle at the top right: the photo, or a kid's gym name. Never a logo on the student card. */
 export function ProfileCornerMarks({
   portrait,
-  logo,
   name = '',
 }: {
   portrait: string | null;
-  logo: string | null;
   name?: string;
 }) {
-  if (!portrait && !logo && !name) return null;
+  if (!portrait && !name) return null;
   return (
     <div className="profile-corner">
-      {logo ? <img src={logo} alt="Gym logo" /> : null}
       {portrait ? <img src={portrait} alt="Profile photo" /> : null}
-      {!logo && !portrait && name ? <span className="profile-corner__name">{name}</span> : null}
+      {!portrait && name ? <span className="profile-corner__name">{name}</span> : null}
     </div>
   );
 }

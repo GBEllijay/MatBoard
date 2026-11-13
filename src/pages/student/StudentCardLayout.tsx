@@ -345,7 +345,7 @@ export function WinsZone({ report, to }: { report: StudentProgressReport; to: (p
 }
 
 /** The whole card column on the profile page. `home` = the /student order with `streak` beside mat hours. */
-export function StudentCardLayout({ portrait, logo, to, home = false, bodyScan }: { portrait: string | null; logo: string | null; to: (path: string) => string; home?: boolean; bodyScan?: React.ReactNode }) {
+export function StudentCardLayout({ portrait, to, home = false, bodyScan }: { portrait: string | null; to: (path: string) => string; home?: boolean; bodyScan?: React.ReactNode }) {
   const { report, commit } = useStudentFile();
   const [adding, setAdding] = useState(false);
   if (home) {
@@ -353,7 +353,7 @@ export function StudentCardLayout({ portrait, logo, to, home = false, bodyScan }
       <div className="cs-sheet student-card-layout student-card-layout--home" data-testid="student-card-layout" role="group" aria-label="Character sheet">
         <section className="sheet-zone sheet-zone--identity" data-testid="sheet-zone" data-zone="identity" aria-label="Identity">
           <h3 className="sheet-cap">Identity</h3>
-          <ProfileCardFace report={report} portrait={portrait} logo={logo} to={to} editHref={to('/student/profile')} />
+          <ProfileCardFace report={report} portrait={portrait} to={to} editHref={to('/student/profile')} />
         </section>
         <section className="sheet-zone sheet-zone--stats" data-testid="sheet-zone" data-zone="stats" aria-label="Stats">
           <SheetStats report={report} to={to} onAdd={() => setAdding(true)} />
@@ -381,7 +381,6 @@ export function StudentCardLayout({ portrait, logo, to, home = false, bodyScan }
       <ProfileCardFace
         report={report}
         portrait={portrait}
-        logo={logo}
         to={to}
         beltStat={
           <div className="mh-row" data-testid="mat-hours-row">
