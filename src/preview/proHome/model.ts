@@ -145,12 +145,11 @@ const INSTRUCTOR_NOTES: Record<string, { note: string; mark: InstructorCard['mar
   'Daily Training Videos': { note: 'Warm-up, technique, and cool-down clips.', mark: 'video' },
   [TECHNIQUE_TREE_LABEL]: { note: 'Positions, branches, and counters.', mark: 'tree' },
   [STUDENT_ROSTER_LABEL]: { note: 'Names and belts on this phone.', mark: 'roster' },
-  'Record for Review': { note: 'Film a move for later.', mark: 'record' },
   Scoreboard: { note: 'Match controller. Back returns to Instructor.', mark: 'board' },
   'Round Timer': { note: 'Rounds controller. Back returns to Instructor.', mark: 'timer' },
 };
 
-/** Same seven tools and destinations as Coach Unlimited. No belt rail in this concept. */
+/** Same tools and destinations as Coach Unlimited. No belt rail in this concept. */
 export type MediaPreviewCard = {
   title: string;
   to: string;
