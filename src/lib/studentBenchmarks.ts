@@ -239,7 +239,8 @@ export function benchmarkVisible(row: RubricCheckpoint, view: BenchmarkView): bo
 }
 
 export function checkpointsForProgress(rows: readonly RubricCheckpoint[], view: BenchmarkView): RubricCheckpoint[] {
-  return rows.filter((row) => row.optional !== true && benchmarkVisible(row, view));
+  // A blank card has not been added yet, so it is not counted anywhere.
+  return rows.filter((row) => row.optional !== true && row.name.trim() !== '' && benchmarkVisible(row, view));
 }
 
 export function benchmarkGroups(rows: readonly RubricCheckpoint[], belt: ProgressBelt): BenchmarkGroup[] {

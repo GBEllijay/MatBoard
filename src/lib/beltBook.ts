@@ -352,6 +352,26 @@ export function kidsBenchmarksOf(report: StudentProgressReport, beltId: string):
   return (report.beltBook?.benchmarks ?? []).filter((row) => row.beltId === beltId).map((row) => ({ ...row }));
 }
 
+/**
+ * Seed a kids belt's practical benchmarks once. A belt that already has rows only gets marked as seeded,
+ * so saved rows stay as they are, and a deleted prompt never comes back.
+ * Returns null when this belt was already seeded.
+ */
+export function seedKidsBelt(report: StudentProgressReport, beltId: string, names: readonly string[]): { book: BeltBook; seeded: boolean } | null {
+  if (report.beltBook?.promptsSeeded?.includes(beltId)) return null;
+  const book = cloneBook(report.beltBook);
+  const benchmarks = book.benchmarks ?? [];
+  const empty = !benchmarks.some((row) => row.beltId === beltId);
+  if (empty && benchmarks.length + names.length <= 100) {
+    book.benchmarks = [
+      ...benchmarks,
+      ...names.map((name, index) => ({ id: `kids.seed.${beltId}.${index + 1}`, beltId, name, met: null, note: '' })),
+    ];
+  }
+  book.promptsSeeded = [...(book.promptsSeeded ?? []), beltId];
+  return { book: cleanBook(book), seeded: empty };
+}
+
 export function addKidsBenchmark(report: StudentProgressReport, beltId: string, name: string, now = Date.now()): StudentProgressReport {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Add a practical benchmark name.');
@@ -576,6 +596,11 @@ export function readBeltBook(value: unknown): { book?: BeltBook; errors: string[
   if (record.earlier === true) book.earlier = true;
   else if (record.earlier != null && record.earlier !== false) errors.push('Earlier belts must be yes or no.');
   if (record.benchmarks != null) book.benchmarks = readBenchmarks(record.benchmarks, errors);
+  if (record.promptsSeeded != null) {
+    if (!Array.isArray(record.promptsSeeded) || record.promptsSeeded.some((id) => typeof id !== 'string' || !id || id.length > 80)) {
+      errors.push('Seeded kids belts must be a list of belt ids.');
+    } else if (record.promptsSeeded.length) book.promptsSeeded = [...new Set(record.promptsSeeded as string[])].slice(0, 100);
+  }
   if (record.templates != null) book.templates = readTemplates(record.templates, errors);
   if (!hasBookFields(book)) return { errors };
   return { book, errors };
@@ -594,6 +619,7 @@ export function mergeBeltBooks(local?: BeltBook, incoming?: BeltBook): { book?: 
   if (!local.templateId && incoming.templateId) book.templateId = incoming.templateId;
   if (!local.kidsTemplateId && incoming.kidsTemplateId) book.kidsTemplateId = incoming.kidsTemplateId;
   if (incoming.earlier) book.earlier = true;
+  if (incoming.promptsSeeded?.length) book.promptsSeeded = [...new Set([...(local.promptsSeeded ?? []), ...incoming.promptsSeeded])];
   if ((!local.benchmarks || local.benchmarks.length === 0) && incoming.benchmarks?.length) book.benchmarks = incoming.benchmarks.map((row) => ({ ...row }));
   else if (local.benchmarks?.length && incoming.benchmarks?.length && JSON.stringify(local.benchmarks) !== JSON.stringify(incoming.benchmarks)) {
     conflicts.push('Kids benchmarks were kept.');
@@ -776,6 +802,7 @@ function cleanBook(book: BeltBook): BeltBook {
   if (book.kids) next.kids = cloneKids(book.kids);
   if (book.earlier) next.earlier = true;
   if (book.benchmarks?.length) next.benchmarks = book.benchmarks.map((row) => ({ ...row }));
+  if (book.promptsSeeded?.length) next.promptsSeeded = [...book.promptsSeeded];
   if (book.templates?.length) next.templates = book.templates.map(cloneTemplate);
   return next;
 }
@@ -824,6 +851,7 @@ function hasBookFields(book: BeltBook): boolean {
       book.kids ||
       book.earlier ||
       book.benchmarks?.length ||
+      book.promptsSeeded?.length ||
       book.templates?.length,
   );
 }

@@ -63,7 +63,7 @@ import {
 
 export { criterionCounts, criterionFromFundamentals };
 export type { LearnedIndex };
-import { beltModeOf } from './beltBook.ts';
+import { beltModeOf, currentKidsBelt, seedKidsBelt } from './beltBook.ts';
 import { isGymBrandFile } from './coachGymFile.ts';
 import { readTravelingGym } from './coachGymFit.ts';
 import { headerVisibility, readProfileMarks } from './profileMarks.ts';
@@ -455,6 +455,14 @@ export function withStarterRubric(report: StudentProgressReport, now = Date.now(
   let changed = missing.length > 0;
   let goals = report.goals;
   const levels = (missing.length ? [...report.rubric.levels, ...structuredClone(missing)] : report.rubric.levels).map((row) => {
+    if (TIME_BASED_BELTS.has(row.belt)) {
+      // Black belt and up: one blank practical benchmark to fill in, plus the personal-goal prompts. Once.
+      if (row.promptsSeeded) return row;
+      changed = true;
+      goals = withGoalSeeds(goals, row.belt);
+      if (row.checkpoints.length) return { ...row, promptsSeeded: true };
+      return { ...row, checkpoints: [{ id: `checkpoint.${row.belt}.blank-1`, name: '', met: null, note: '', criteria: [] }], promptsSeeded: true };
+    }
     if (!SEEDED_ADULT.has(row.belt)) return row;
     if (row.promptsSeeded || row.starterAck) return row;
     changed = true;
@@ -466,17 +474,38 @@ export function withStarterRubric(report: StudentProgressReport, now = Date.now(
       note: '',
       criteria: [],
     }));
-    const beltGoals = goals.filter((goal) => !goal.kidsBeltId && (!goal.belt || goal.belt === row.belt));
-    if (!beltGoals.length && goals.length + STARTER_GOAL_PROMPTS.length <= PROGRESS_GOALS_MAX) {
-      goals = [
-        ...goals,
-        ...STARTER_GOAL_PROMPTS.map((name, index) => ({ id: `goal.seed.${row.belt}.${index + 1}`, name, note: '', met: false, belt: row.belt })),
-      ];
-    }
+    goals = withGoalSeeds(goals, row.belt);
     return { ...row, checkpoints, starterAck: true, promptsSeeded: true };
   });
+  let beltBook = report.beltBook;
+  if (beltModeOf(report) === 'kids') {
+    const beltId = currentKidsBelt(report).beltId;
+    const kids = seedKidsBelt(report, beltId, STARTER_BENCHMARK_PROMPTS);
+    if (kids) {
+      changed = true;
+      beltBook = kids.book;
+      if (!goals.some((goal) => goal.kidsBeltId === beltId) && goals.length + STARTER_GOAL_PROMPTS.length <= PROGRESS_GOALS_MAX) {
+        goals = [
+          ...goals,
+          ...STARTER_GOAL_PROMPTS.map((name, index) => ({ id: `goal.seed.kids.${beltId}.${index + 1}`, name, note: '', met: false, kidsBeltId: beltId })),
+        ];
+      }
+    }
+  }
   if (!changed) return report;
-  return touch({ ...report, goals, rubric: { ...report.rubric, levels } }, now);
+  return touch({ ...report, goals, rubric: { ...report.rubric, levels }, ...(beltBook ? { beltBook } : {}) }, now);
+}
+
+const TIME_BASED_BELTS = new Set<ProgressBelt>(['black', 'coral', 'redWhite', 'red']);
+
+/** The three personal-goal prompts for one adult belt, only when that belt has no goals yet. */
+function withGoalSeeds(goals: StudentGoal[], belt: ProgressBelt): StudentGoal[] {
+  const beltGoals = goals.filter((goal) => !goal.kidsBeltId && (!goal.belt || goal.belt === belt));
+  if (beltGoals.length || goals.length + STARTER_GOAL_PROMPTS.length > PROGRESS_GOALS_MAX) return goals;
+  return [
+    ...goals,
+    ...STARTER_GOAL_PROMPTS.map((name, index) => ({ id: `goal.seed.${belt}.${index + 1}`, name, note: '', met: false, belt })),
+  ];
 }
 
 /** "3 practical benchmarks added, 1 met." Met is the student's own mark. */

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { FocusEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   blackBeltClock,
@@ -203,7 +204,7 @@ export function BeltPage() {
           {adultPath ? (
             <section className="ink belt-more" aria-label="Add a practical benchmark">
               <AddAnother label="Add another practical benchmark" onAdd={() => run(addCheckpoint(report, belt, NEW_BENCHMARK_NAME))} />
-              <p className="student-quiet">{SEED_LINE}</p>
+              {timeBased ? null : <p className="student-quiet">{SEED_LINE}</p>}
               <p className="student-quiet">{INSTRUCTOR_FINAL_SAY}</p>
             </section>
           ) : null}
@@ -361,7 +362,7 @@ function KidsBenchmarkRow({
     >
       <label>
         <span className="ink__label">Practical benchmark</span>
-        <input aria-label={`Edit ${row.name}`} value={name} onChange={(event) => setName(event.target.value)} />
+        <NameField label={`Edit ${row.name}`} value={name} onChange={setName} />
       </label>
       <label>
         <span className="ink__label">Note</span>
@@ -548,7 +549,9 @@ function CheckpointCard({
 }) {
   const [draft, setDraft] = useState(row.name);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const shown = benchmarkDisplayName(row, training);
+  // A blank card (black belt and up start with one) is named for screen readers but never counted.
+  const label = row.name.trim() ? row.name : 'blank practical benchmark';
+  const shown = row.name.trim() ? benchmarkDisplayName(row, training) : 'New practical benchmark';
   const title = row.source === 'coach' && row.edited === true ? `${shown}*` : shown;
   const met = row.met === true;
   useEffect(() => {
@@ -564,10 +567,11 @@ function CheckpointCard({
       ) : (
         <label>
           <span className="ink__label">Practical benchmark</span>
-          <input
-            aria-label={`Edit ${row.name}`}
+          <NameField
+            label={`Edit ${label}`}
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Name this practical benchmark"
+            onChange={setDraft}
             onBlur={(event) => {
               const next = event.target.value.trim();
               if (!next) {
@@ -583,7 +587,7 @@ function CheckpointCard({
       <label>
         <span className="ink__label">Note</span>
         <input
-          aria-label={`${row.name} note`}
+          aria-label={`${label} note`}
           defaultValue={row.note}
           key={`${row.id}-${row.note}`}
           readOnly={readOnly}
@@ -597,30 +601,30 @@ function CheckpointCard({
         type="button"
         className={met ? 'ink-btn ink-btn--save student-choice is-on' : 'ink-btn ink-btn--save student-choice'}
         aria-pressed={met}
-        aria-label={met ? `${row.name} benchmark met` : `Mark ${row.name} benchmark met`}
+        aria-label={met ? `${label} benchmark met` : `Mark ${label} benchmark met`}
         onClick={() => onMark(!met, row.note)}
       >
         {met ? 'Benchmark met' : 'Mark benchmark met'}
       </button>
       {readOnly ? null : (
         <div className="belt-edit">
-          <button type="button" className="ink-btn" aria-label={`Move ${row.name} up`} disabled={index === 0} onClick={() => onMove(-1)}>
+          <button type="button" className="ink-btn" aria-label={`Move ${label} up`} disabled={index === 0} onClick={() => onMove(-1)}>
             Move up
           </button>
-          <button type="button" className="ink-btn" aria-label={`Move ${row.name} down`} disabled={index === count - 1} onClick={() => onMove(1)}>
+          <button type="button" className="ink-btn" aria-label={`Move ${label} down`} disabled={index === count - 1} onClick={() => onMove(1)}>
             Move down
           </button>
-          <button type="button" className="ink-btn" aria-label={`Remove ${row.name}`} onClick={() => setConfirmRemove(true)}>
+          <button type="button" className="ink-btn" aria-label={`Remove ${label}`} onClick={() => setConfirmRemove(true)}>
             Remove
           </button>
         </div>
       )}
       {confirmRemove && !readOnly ? (
-        <div className="student-actions" role="group" aria-label={`Remove ${row.name}`}>
-          <button type="button" className="ink-btn" aria-label={`Confirm remove ${row.name}`} onClick={onRemove}>
+        <div className="student-actions" role="group" aria-label={`Remove ${label}`}>
+          <button type="button" className="ink-btn" aria-label={`Confirm remove ${label}`} onClick={onRemove}>
             Confirm remove
           </button>
-          <button type="button" className="ink-btn" aria-label={`Keep ${row.name}`} onClick={() => setConfirmRemove(false)}>
+          <button type="button" className="ink-btn" aria-label={`Keep ${label}`} onClick={() => setConfirmRemove(false)}>
             Keep
           </button>
         </div>
@@ -749,7 +753,7 @@ function GoalRow({
     >
       <label>
         <span className="ink__label">{personal ? 'Personal goal' : 'Goal'}</span>
-        <input aria-label={`Edit ${goal.name}`} value={name} onChange={(event) => setName(event.target.value)} />
+        <NameField label={`Edit ${goal.name}`} value={name} onChange={setName} />
       </label>
       <label>
         <span className="ink__label">Note</span>
@@ -775,5 +779,56 @@ function GoalRow({
         ) : null}
       </div>
     </form>
+  );
+}
+
+/**
+ * A one-line name that wraps on a narrow phone instead of cutting off.
+ * Enter saves (submits the card's form, or blurs to save on blur) and newlines are never stored.
+ */
+function NameField({
+  label,
+  value,
+  placeholder,
+  onChange,
+  onBlur,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+  onBlur?: (event: FocusEvent<HTMLTextAreaElement>) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const field = ref.current;
+    if (!field) return;
+    const fit = () => {
+      field.style.height = 'auto';
+      if (field.scrollHeight > 0) field.style.height = `${field.scrollHeight}px`;
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      className="name-field"
+      rows={1}
+      aria-label={label}
+      value={value}
+      placeholder={placeholder}
+      enterKeyHint="done"
+      onChange={(event) => onChange(event.target.value.replace(/[\r\n]+/g, ' '))}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        const field = event.currentTarget;
+        field.form?.requestSubmit();
+        field.blur();
+      }}
+      onBlur={onBlur}
+    />
   );
 }

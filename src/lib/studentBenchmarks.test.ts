@@ -21,7 +21,7 @@ import {
   stripeHeading,
   visibleTechniqueNames,
 } from './studentBenchmarks.ts';
-import { setBeltMode, setBirthYear } from './beltBook.ts';
+import { currentKidsBelt, kidsBenchmarksOf, removeKidsBenchmark, setBeltMode, setBirthYear } from './beltBook.ts';
 import { blankStudentReport, fundamentalsBoard, setFundamentalLevel, setTechniquePolicy, setTrainingStyle } from './studentEdition.ts';
 import { setRankBelt } from './studentRank.ts';
 import {
@@ -33,6 +33,7 @@ import {
   removeCheckpoint,
   removeGoal,
   goalsForBelt,
+  goalsForKidsBelt,
   addedMetLine,
   SEED_LINE,
   STARTER_BENCHMARK_PROMPTS,
@@ -51,7 +52,7 @@ const LEGACY_IDS = [
 
 /** A row shaped like one an older build saved into a student's file. Test data only. */
 function savedRow(
-  belt: 'white' | 'blue' | 'purple' | 'brown',
+  belt: 'white' | 'blue' | 'purple' | 'brown' | 'black',
   slug: string,
   stage: BenchmarkStage | undefined,
   extra: Partial<RubricCheckpoint> = {},
@@ -118,7 +119,7 @@ test('a new file gets three editable seed cards and three goal seeds once, never
     assert.ok(level?.checkpoints.every((row) => row.met === null && row.criteria.length === 0 && !row.stage));
     assert.deepEqual(goalsForBelt(fresh, belt).map((goal) => goal.name), [...STARTER_GOAL_PROMPTS], `${belt} goal seeds`);
   }
-  for (const belt of ['black', 'coral', 'redWhite', 'red', 'grey', 'yellow', 'orange', 'green'] as const) {
+  for (const belt of ['grey', 'yellow', 'orange', 'green'] as const) {
     assert.equal(beltLevel(fresh, belt)?.checkpoints.length, 0, `${belt} stays empty`);
   }
   for (const text of [...STARTER_BENCHMARK_PROMPTS, ...STARTER_GOAL_PROMPTS, SEED_LINE]) assert.doesNotMatch(text, /stripe/i);
@@ -187,7 +188,8 @@ test('saved benchmarks are never reseeded, replaced or rewritten on load', () =>
   for (const belt of ['white', 'blue', 'purple', 'brown'] as const) {
     assert.deepEqual(beltLevel(settledLoad, belt)?.checkpoints, beltLevel(settledFile, belt)?.checkpoints);
   }
-  assert.equal(settledLoad.goals.length, 0);
+  // Settled adult belts get no goal seeds. The black-and-up levels the file was missing get theirs once.
+  assert.deepEqual([...new Set(settledLoad.goals.map((goal) => goal.belt))], ['black', 'coral', 'redWhite', 'red']);
 
   // A round trip through the saved file format keeps every row too.
   const parsed = parseProgressPacket(exportProgressPacket(loaded));
@@ -367,4 +369,61 @@ test('a benchmark hash names the belt and the card, including the short blue tur
   assert.equal(benchmarkAnchorFromHash(''), null);
   assert.equal(benchmarkAnchorFromHash('#assess-guard'), null);
   assert.equal(benchmarkAnchorFromHash('#checkpoint.not-a-belt.s1-turtle'), null);
+});
+
+test('black belt and up: one blank practical benchmark that is not counted, three goal prompts, seeded once', () => {
+  const fresh = withStarterRubric(blankStudentReport(400), 400);
+  for (const belt of ['black', 'coral', 'redWhite', 'red'] as const) {
+    const level = beltLevel(fresh, belt);
+    assert.deepEqual(level?.checkpoints.map((row) => row.name), [''], `${belt} gets one blank card`);
+    assert.equal(level?.promptsSeeded, true);
+    assert.deepEqual(goalsForBelt(fresh, belt).map((goal) => goal.name), [...STARTER_GOAL_PROMPTS], `${belt} goal prompts`);
+    assert.equal(level?.checkpoints.some((row) => STARTER_BENCHMARK_PROMPTS.includes(row.name as never)), false);
+  }
+  const black = setRankBelt(fresh, 'black', 401);
+  const view = benchmarkView(black);
+  assert.equal(checkpointsForProgress(beltLevel(black, 'black')!.checkpoints, view).length, 0, 'a blank card is not added');
+  // Reload keeps one blank card; deleting it never brings it back.
+  const parsed = parseProgressPacket(exportProgressPacket(black));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  assert.equal(withStarterRubric(parsed.value, 402), parsed.value);
+  const blank = beltLevel(black, 'black')!.checkpoints[0]!;
+  const cleared = removeCheckpoint(black, blank.id, 403);
+  assert.equal(beltLevel(cleared, 'black')?.checkpoints.length, 0);
+  assert.equal(withStarterRubric(cleared, 404), cleared);
+  // A saved black-belt list is left exactly as it was: no blank card on top.
+  const saved = blankStudentReport(410);
+  saved.rubric.levels = [{ id: 'level.black', name: 'Black', belt: 'black', checkpoints: [savedRow('black', 'mine', undefined)] }];
+  const loaded = withStarterRubric(saved, 411);
+  assert.deepEqual(beltLevel(loaded, 'black')?.checkpoints, saved.rubric.levels[0]!.checkpoints);
+});
+
+test('kids belts get the three practical benchmark and goal prompts once, in the kids belt book', () => {
+  const kids = setBeltMode(blankStudentReport(500), 'kids', 501);
+  const beltId = currentKidsBelt(kids).beltId;
+  const seeded = withStarterRubric(kids, 502);
+  assert.deepEqual(kidsBenchmarksOf(seeded, beltId).map((row) => row.name), [...STARTER_BENCHMARK_PROMPTS]);
+  assert.deepEqual(goalsForKidsBelt(seeded, beltId).map((goal) => goal.name), [...STARTER_GOAL_PROMPTS]);
+  assert.deepEqual(seeded.beltBook?.promptsSeeded, [beltId]);
+  assert.equal(withStarterRubric(seeded, 503), seeded);
+  // Reload through the file format: no duplicates.
+  const parsed = parseProgressPacket(exportProgressPacket(seeded));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok || parsed.value.kind !== 'student-progress-report') return;
+  const reloaded = withStarterRubric(parsed.value, 504);
+  assert.equal(kidsBenchmarksOf(reloaded, beltId).length, 3);
+  assert.equal(goalsForKidsBelt(reloaded, beltId).length, 3);
+  // Delete every prompt: nothing comes back.
+  let cleared = reloaded;
+  for (const row of kidsBenchmarksOf(reloaded, beltId)) cleared = removeKidsBenchmark(cleared, row.id, 505);
+  for (const goal of goalsForKidsBelt(reloaded, beltId)) cleared = removeGoal(cleared, goal.id, 506);
+  assert.equal(withStarterRubric(cleared, 507), cleared);
+  assert.equal(kidsBenchmarksOf(cleared, beltId).length, 0);
+  // Saved kids rows are kept as they are: the belt is only marked seeded.
+  const saved = setBeltMode(blankStudentReport(510), 'kids', 511);
+  saved.beltBook = { ...saved.beltBook, benchmarks: [{ id: 'kids.mine', beltId, name: 'Breakfall', met: true, note: 'kept' }] };
+  const loaded = withStarterRubric(saved, 512);
+  assert.deepEqual(kidsBenchmarksOf(loaded, beltId), [{ id: 'kids.mine', beltId, name: 'Breakfall', met: true, note: 'kept' }]);
+  assert.deepEqual(loaded.beltBook?.promptsSeeded, [beltId]);
 });
