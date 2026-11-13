@@ -69,7 +69,6 @@ import { StudentHoursPreview } from './preview/studentRecord/StudentHoursPreview
 import { CoachPage } from './pages/Coach';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
-import { CardPage } from './pages/Card';
 import { HalfOffPage } from './pages/HalfOff';
 import { ComingSoonPage } from './pages/ComingSoon';
 import { CompetitionManagementPage } from './pages/CompetitionManagement';
@@ -823,7 +822,7 @@ export default function App() {
       <Route path="/preview/2036-instructor" element={<Future2036Page place="instructor" />} />
       <Route path="/preview/2036-academy" element={<Future2036Page place="academy" />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
-      <Route path="/card" element={<CardPage />} />
+      <Route path="/card" element={<Navigate to="/" replace />} />
       <Route path="/half-off" element={<HalfOffPage />} />
       <Route path="/faq" element={<FaqPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
