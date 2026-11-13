@@ -7,6 +7,9 @@
 
 import { glossaryTermById, matchGlossary, type ExtraName, type GlossaryTerm } from './glossaryMatch.ts';
 import { termKey } from './indexCards.ts';
+import type { JournalClip } from './progress/types.ts';
+import type { StudentFilm } from './studentFilm.ts';
+import { clearClipJournal, clearFilmJournal, videosForCard } from './videoAssociation.ts';
 import { cleanJournalCardVideo, cleanVideoLink } from './progress/cardVideos.ts';
 import {
   JOURNAL_CARD_VIDEOS_MAX,
@@ -26,8 +29,8 @@ export const CARD_VIDEO_NOTE_ERROR = `That note is longer than ${PROGRESS_NOTE_M
 export const CARD_VIDEO_MISSING_CARD = 'That card is not on this device.';
 
 export type CardVideoDraft =
-  | { source: 'link'; url: string; term: JournalVideoTerm | null; note: string }
-  | { source: 'phone'; fileName: string; mime: string; size: number; term: JournalVideoTerm | null; note: string };
+  | { source: 'link'; url: string; term: JournalVideoTerm | null; note: string; clipId?: string }
+  | { source: 'phone'; fileName: string; mime: string; size: number; term: JournalVideoTerm | null; note: string; filmId?: string };
 
 /** The card's videos, oldest first. Older cards have none. */
 export function journalCardVideos(entry: Pick<JournalEntry, 'videos'> | null | undefined): JournalCardVideo[] {
@@ -110,8 +113,8 @@ export function buildCardVideo(draft: CardVideoDraft, id: string, now = Date.now
   if (error) throw new Error(error);
   const raw =
     draft.source === 'link'
-      ? { id, source: 'link', url: draft.url.trim(), term: draft.term, note: draft.note, createdAt: now, updatedAt: now }
-      : { id, source: 'phone', fileName: draft.fileName, mime: draft.mime, size: draft.size, term: draft.term, note: draft.note, createdAt: now, updatedAt: now };
+      ? { id, source: 'link', url: draft.url.trim(), clipId: draft.clipId, term: draft.term, note: draft.note, createdAt: now, updatedAt: now }
+      : { id, source: 'phone', filmId: draft.filmId, fileName: draft.fileName, mime: draft.mime, size: draft.size, term: draft.term, note: draft.note, createdAt: now, updatedAt: now };
   const video = cleanJournalCardVideo(raw);
   if (!video) throw new Error(draft.source === 'link' ? CARD_VIDEO_LINK_ERROR : CARD_VIDEO_TERM_ERROR);
   return video;
@@ -206,4 +209,139 @@ export function cardVideoPlace(video: JournalCardVideo): string {
 /** Short label for a video row: its glossary term, then where it lives. */
 export function cardVideoLabel(video: JournalCardVideo): string {
   return `${video.term.name} · ${cardVideoPlace(video)}`;
+}
+
+/**
+ * A video attached to this card by the older Videos section (a Video library film or a saved link
+ * that names this card as its original class), or one that shares a technique this card names.
+ * Shown in the Class videos list until it is tagged; nothing about the library item changes.
+ */
+export type OlderCardVideo = {
+  kind: 'film' | 'link';
+  /** Film id or clip id. */
+  id: string;
+  label: string;
+  url: string;
+  /** Films: where the bytes live. Only `phone` plays here. */
+  where: StudentFilm['where'] | '';
+  fileName: string;
+  mime: string;
+  size: number;
+  /** True when this card is the video's original class. */
+  originHere: boolean;
+  originId: string;
+  originDate: string;
+  /** The technique the older video named, offered as its tag. */
+  suggested: JournalVideoTerm | null;
+};
+
+/**
+ * Older videos for this card that the new list does not already hold.
+ * `here`: saved on this card by the older section (untagged; show "tag this").
+ * `elsewhere`: saved on another class for a technique this card names.
+ */
+export function olderCardVideos(
+  report: StudentProgressReport,
+  clips: readonly JournalClip[],
+  films: readonly StudentFilm[],
+  entryId: string,
+  mine: readonly ExtraName[] = [],
+): { here: OlderCardVideo[]; elsewhere: OlderCardVideo[] } {
+  const entry = report.journal.find((row) => row.id === entryId);
+  const held = journalCardVideos(entry);
+  const heldFilms = new Set(held.map((video) => video.filmId).filter(Boolean));
+  const heldClips = new Set(held.map((video) => video.clipId).filter(Boolean));
+  const filmById = new Map(films.map((film) => [film.id, film]));
+  const clipById = new Map(clips.map((clip) => [clip.id, clip]));
+  const here: OlderCardVideo[] = [];
+  const elsewhere: OlderCardVideo[] = [];
+  for (const shown of videosForCard(report, clips, films, entryId)) {
+    if (shown.kind === 'film' ? heldFilms.has(shown.id) : heldClips.has(shown.id)) continue;
+    const film = shown.kind === 'film' ? filmById.get(shown.id) : undefined;
+    const clip = shown.kind === 'link' ? clipById.get(shown.id) : undefined;
+    const anchorName = film?.techniqueAnchor?.name ?? clip?.techniqueAnchor?.name ?? '';
+    const row: OlderCardVideo = {
+      kind: shown.kind,
+      id: shown.id,
+      label: shown.label,
+      url: shown.url,
+      where: film?.where ?? '',
+      fileName: film?.fileName ?? '',
+      mime: film?.mime ?? '',
+      size: film?.size ?? 0,
+      originHere: shown.originHere,
+      originId: shown.originId,
+      originDate: shown.originDate,
+      suggested: cardVideoTerm(anchorName || film?.technique || '', mine),
+    };
+    (shown.originHere ? here : elsewhere).push(row);
+  }
+  return { here, elsewhere };
+}
+
+/** The draft that puts an older or saved video on this card, tagged. The library item is referenced, not copied. */
+export function draftFromOlder(older: Pick<OlderCardVideo, 'kind' | 'id' | 'url' | 'fileName' | 'mime' | 'size'>, term: JournalVideoTerm | null, note: string): CardVideoDraft {
+  if (older.kind === 'link') return { source: 'link', url: older.url, clipId: older.id, term, note };
+  return { source: 'phone', filmId: older.id, fileName: older.fileName, mime: older.mime, size: older.size, term, note };
+}
+
+export function draftFromFilm(film: StudentFilm, term: JournalVideoTerm | null, note: string): CardVideoDraft {
+  return { source: 'phone', filmId: film.id, fileName: film.fileName, mime: film.mime, size: film.size, term, note };
+}
+
+export function draftFromClip(clip: JournalClip, term: JournalVideoTerm | null, note: string): CardVideoDraft {
+  return { source: 'link', url: clip.url, clipId: clip.id, term, note };
+}
+
+/** Saved videos (library films and links) that this card does not show yet, for "Choose a saved video". */
+export function savedVideoChoices(
+  report: StudentProgressReport,
+  clips: readonly JournalClip[],
+  films: readonly StudentFilm[],
+  entryId: string,
+): { kind: 'film' | 'link'; id: string; label: string }[] {
+  const entry = report.journal.find((row) => row.id === entryId);
+  const held = journalCardVideos(entry);
+  const older = olderCardVideos(report, clips, films, entryId);
+  const taken = new Set([
+    ...held.flatMap((video) => (video.filmId ? [`film-${video.filmId}`] : video.clipId ? [`link-${video.clipId}`] : [])),
+    ...older.here.map((row) => `${row.kind}-${row.id}`),
+  ]);
+  return [
+    ...films.filter((film) => !taken.has(`film-${film.id}`)).map((film) => ({ kind: 'film' as const, id: film.id, label: film.technique.trim() || film.fileName || 'Filmed move' })),
+    ...clips.filter((clip) => !taken.has(`link-${clip.id}`)).map((clip) => ({ kind: 'link' as const, id: clip.id, label: clip.description.trim() || clip.url })),
+  ];
+}
+
+/**
+ * Remove a video from this card.
+ * A video stored for this card alone has its bytes removed (`deleteBlobId`).
+ * A Video library film or saved link stays in the library; only its tie to this card is cleared.
+ */
+export function removeCardVideoFully(
+  report: StudentProgressReport,
+  films: readonly StudentFilm[],
+  entryId: string,
+  videoId: string,
+  now = Date.now(),
+): { report: StudentProgressReport; films: StudentFilm[]; deleteBlobId: string; filmsChanged: boolean } {
+  const entry = report.journal.find((row) => row.id === entryId);
+  const video = journalCardVideos(entry).find((row) => row.id === videoId);
+  let next = removeCardVideo(report, entryId, videoId, now);
+  let nextFilms = [...films];
+  let filmsChanged = false;
+  if (video?.clipId && report.clips?.some((clip) => clip.id === video.clipId && clip.journalEntryId === entryId)) {
+    next = clearClipJournal(next, video.clipId, now);
+  }
+  if (video?.filmId && films.some((film) => film.id === video.filmId && film.journalEntryId === entryId)) {
+    nextFilms = clearFilmJournal(films, video.filmId, now);
+    filmsChanged = true;
+  }
+  const deleteBlobId = video && video.source === 'phone' && !video.filmId ? video.id : '';
+  return { report: next, films: nextFilms, deleteBlobId, filmsChanged };
+}
+
+/** The film store key that holds a phone video's bytes. */
+export function cardVideoBlobId(video: Pick<JournalCardVideo, 'id' | 'filmId'>): string {
+  return video.filmId || video.id;
 }

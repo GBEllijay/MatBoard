@@ -580,7 +580,7 @@ export type JournalVideoTerm = { id: string; name: string };
 
 /**
  * One video on one journal card.
- * `phone`: a file picked on this device; the bytes are in the local film store under `id`.
+ * `phone`: a file filmed or picked on this device; the bytes are in the local film store under `filmId ?? id`.
  * `link`: an http(s) link (YouTube, Instagram, Drive, …) the student pasted.
  */
 export type JournalCardVideo = {
@@ -588,6 +588,13 @@ export type JournalCardVideo = {
   source: 'phone' | 'link';
   /** Link videos only. */
   url?: string;
+  /** Link videos only: the clip in the student's link list this came from, when chosen from saved videos. */
+  clipId?: string;
+  /**
+   * Phone videos only: the Video library film whose bytes this plays, when chosen from saved videos
+   * or tagged from an older card. Absent: the bytes are stored for this card under `id`.
+   */
+  filmId?: string;
   /** Phone videos only: original file name, type, and size, for the label. */
   fileName?: string;
   mime?: string;

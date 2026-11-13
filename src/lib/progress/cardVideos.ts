@@ -72,7 +72,9 @@ export function cleanJournalCardVideo(value: unknown): JournalCardVideo | null {
     const url = cleanVideoLink(record.url);
     if (!url) return null;
     video.url = url;
+    if (typeof record.clipId === 'string' && ID_RE.test(record.clipId)) video.clipId = record.clipId;
   } else {
+    if (typeof record.filmId === 'string' && ID_RE.test(record.filmId)) video.filmId = record.filmId;
     const fileName = text(record.fileName, FILE_NAME_MAX);
     if (fileName) video.fileName = fileName;
     if (typeof record.mime === 'string' && MIME_RE.test(record.mime)) video.mime = record.mime.toLowerCase();

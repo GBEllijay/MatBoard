@@ -180,3 +180,35 @@ test('the public demo journal card keeps the same id on every read, so it opens'
   assert.equal(first.value.journal[0].id, 'card.demo.1');
   assert.equal(second.value.journal[0].id, first.value.journal[0].id);
 });
+
+test('older videos attached by the old section show as untagged until tagged, then by reference only', async () => {
+  const { olderCardVideos, draftFromOlder, removeCardVideoFully } = await import('./journalCardVideos.ts');
+  const { setClipJournal } = await import('./videoAssociation.ts');
+  const { addJournalClip } = await import('./studentEdition.ts');
+  const { report: base, id } = withCard();
+  let report = addJournalClip(base, 'https://x.test/old', 'Old kimura clip', 11);
+  const clipId = report.clips?.[0]?.id ?? '';
+  report = setClipJournal(report, clipId, id, 12);
+  const film = {
+    id: 'film.old', fileName: 'old.mp4', date: '2026-11-12', technique: 'Kimura', note: '', mime: 'video/mp4', size: 9,
+    createdAt: 1, updatedAt: 1, where: 'phone' as const, provider: '' as const, driveFileId: '', dateFolder: '2026-11-12', journalEntryId: id,
+  };
+  const before = olderCardVideos(report, report.clips ?? [], [film], id);
+  assert.deepEqual(before.here.map((row) => `${row.kind}:${row.id}`).sort(), [`film:film.old`, `link:${clipId}`]);
+  assert.deepEqual(before.here.find((row) => row.kind === 'film')?.suggested, { id: 'gl.kimura', name: 'Kimura' });
+  const older = before.here.find((row) => row.kind === 'film')!;
+  const tagged = addCardVideo(report, id, draftFromOlder(older, older.suggested, ''), { id: 'jvid.old', now: 20 }).report;
+  const row = tagged.journal[0].videos?.[0];
+  assert.equal(row?.filmId, 'film.old');
+  assert.equal(parse(tagged).journal[0].videos?.[0]?.filmId, 'film.old');
+  const after = olderCardVideos(tagged, tagged.clips ?? [], [film], id);
+  assert.deepEqual(after.here.map((item) => item.kind), ['link']);
+  // Removing a referenced library film keeps its bytes and clears its tie to this card.
+  const removed = removeCardVideoFully(tagged, [film], id, 'jvid.old', 30);
+  assert.equal(removed.deleteBlobId, '');
+  assert.equal(removed.films[0].journalEntryId, undefined);
+  assert.equal(removed.filmsChanged, true);
+  // A video stored for this card alone has its bytes removed.
+  const own = addCardVideo(report, id, { source: 'phone', fileName: 'm.mp4', mime: 'video/mp4', size: 5, term: cardVideoTerm('Kimura'), note: '' }, { id: 'jvid.own', now: 40 }).report;
+  assert.equal(removeCardVideoFully(own, [film], id, 'jvid.own', 50).deleteBlobId, 'jvid.own');
+});

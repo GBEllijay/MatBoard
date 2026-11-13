@@ -33,7 +33,6 @@ import { SelfAssessmentPage } from './student/SelfAssessmentPage';
 import { RankPage } from './student/RankPage';
 import { ResultsPage } from './student/ResultsPage';
 import { ScoutingPage } from './student/ScoutingPage';
-import { JournalVideos } from './student/JournalVideos';
 import { JournalCardVideos } from './student/JournalCardVideos';
 import { VideoLibraryPage } from './student/VideoLibraryPage';
 import { WeightPage } from './student/WeightPage';
@@ -711,8 +710,7 @@ function JournalCardPage({ id }: { id: string }) {
           ) : (
             <>
               <CardBody card={card} query={params.get('q') ?? ''} />
-              <JournalCardVideos entryId={card.id} date={card.date} techniqueNames={card.techniques.map((row) => row.name)} />
-              <JournalVideos entryId={card.id} date={card.date} techniques={card.techniques} />
+              <JournalCardVideos entryId={card.id} date={card.date} techniques={card.techniques} />
             </>
           )}
           <Amendments card={card} />
@@ -993,7 +991,6 @@ function JournalEditor({
       <section className="adv-card adv-card--drills journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
         <h2 className="ink__label journal-techniques__title">Techniques drilled · optional</h2>
         <TechniqueLines idPrefix="Edit " report={report} rows={techniques} onChange={setTechniques} onReport={commit} />
-        <JournalVideos entryId={card.id} date={date} techniques={techniques} />
       </section>
       {error ? <p role="alert">{error}</p> : null}
       <div className="student-card__actions journal-actions">
