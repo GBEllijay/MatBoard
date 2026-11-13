@@ -100,7 +100,7 @@ import {
 } from '../lib/advantageCloudMedia';
 import { decideLessonOpen, readLessonSource, writeLessonSource, type LessonPlanSource } from '../lib/lessonPlanCopies';
 import { LessonPlanSourceBar } from '../components/LessonPlanSourceBar';
-import { REVIEW_SUBMIT, REVIEW_SUBMITTED, REVIEW_VERSION_LEAD, listPlanVersions, submitForReview } from '../lib/reviewInbox';
+import { REVIEW_SUBMIT, reviewSubmitMessage, REVIEW_VERSION_LEAD, listPlanVersions, submitForReview } from '../lib/reviewInbox';
 import {
   isLiveSeat,
   menuCloudSharing,
@@ -133,8 +133,6 @@ import {
 } from '../lib/lessonTemplates';
 import { ADD_REPLAY_LABEL, MAX_REPLAYS, replayHeading } from '../lib/replayAnalysis';
 import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
-import { ReviewSlotControls } from '../components/ReviewSlotControls';
-import { blockOffersReviewToggle } from '../lib/competitionCurriculum';
 import { COACH_BOARD_FROM, INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
 import { classHistoryHref } from '../lib/submenuNav';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
@@ -1225,8 +1223,9 @@ export function TrainingNotesPage() {
                         plan,
                         photoId: photo?.id ?? '',
                         photoName: photo?.name ?? '',
+                        actor: isLiveSeat(seat) ? 'seat' : 'owner',
                       });
-                      setReviewNote(REVIEW_SUBMITTED);
+                      setReviewNote(reviewSubmitMessage(submitted.status));
                       void publishReviewToGym(submitted);
                     });
                   }}>
@@ -1896,20 +1895,6 @@ export function TrainingNotesPage() {
                       onChange={(event) => commit({ ...plan, intro: event.target.value })}
                     />
                   </div>
-                  {blockOffersReviewToggle('intro') ? (
-                    <ReviewSlotControls
-                      id={`${plan.id}-intro`}
-                      heading="Intro"
-                      slot={plan.introReview}
-                      dateKey={viewKey}
-                      readOnly={!editingToday}
-                      canCapture={canCaptureReplay}
-                      onChange={(introReview) => {
-                        const { introReview: _drop, ...rest } = plan;
-                        commit(introReview ? { ...rest, introReview } : rest);
-                      }}
-                    />
-                  ) : null}
                 </section>
               ) : null}
               {block.kind === 'warmup' ? (
@@ -1971,22 +1956,6 @@ export function TrainingNotesPage() {
                   onExpected={(specificExpected) => commit({ ...plan, specificExpected })}
                 />
               ) : null}
-              {block.kind === 'specific' && blockOffersReviewToggle('specific') ? (
-                <div className="notes__card notes__review-slot" data-review-slot="specific">
-                  <ReviewSlotControls
-                    id={`${plan.id}-specific`}
-                    heading="Specific Training / Rounds"
-                    slot={plan.specificReview}
-                    dateKey={viewKey}
-                    readOnly={!editingToday}
-                    canCapture={canCaptureReplay}
-                    onChange={(specificReview) => {
-                      const { specificReview: _drop, ...rest } = plan;
-                      commit(specificReview ? { ...rest, specificReview } : rest);
-                    }}
-                  />
-                </div>
-              ) : null}
               {block.kind === 'cooldown' ? (
                 <NoteSection
                   id="notes-cooldown"
@@ -2021,20 +1990,6 @@ export function TrainingNotesPage() {
                       onChange={(event) => commit({ ...plan, closing: event.target.value })}
                     />
                   </div>
-                  {blockOffersReviewToggle('closing') ? (
-                    <ReviewSlotControls
-                      id={`${plan.id}-closing`}
-                      heading="Closing"
-                      slot={plan.closingReview}
-                      dateKey={viewKey}
-                      readOnly={!editingToday}
-                      canCapture={canCaptureReplay}
-                      onChange={(closingReview) => {
-                        const { closingReview: _drop, ...rest } = plan;
-                        commit(closingReview ? { ...rest, closingReview } : rest);
-                      }}
-                    />
-                  ) : null}
                 </section>
               ) : null}
               {editingToday ? (
@@ -2115,8 +2070,9 @@ export function TrainingNotesPage() {
                     plan,
                     photoId: photo?.id ?? '',
                     photoName: photo?.name ?? '',
+                    actor: isLiveSeat(seat) ? 'seat' : 'owner',
                   });
-                  setReviewNote(REVIEW_SUBMITTED);
+                  setReviewNote(reviewSubmitMessage(submitted.status));
                   setHandoffChecked(false);
                   void publishReviewToGym(submitted).then((sent) => {
                     setHandoffNote(sent === 'saved' ? DRIVE_HANDOFF_SAVED : '');

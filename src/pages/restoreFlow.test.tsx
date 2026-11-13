@@ -190,7 +190,12 @@ test('/restore renders Turnstile, sends its token, stores the challenge, and res
       ? { ok: true, message: "If that address has a purchase, we've emailed a code.", challengeId: 'challenge-abc' }
       : {};
   const mounted = await mount(
-    <RestoreAccessPage deps={{ fetchSiteKey: async () => 'site-key-1', loadTurnstile: async () => turnstile.api }} />,
+    <RestoreAccessPage
+      deps={{
+        fetchConfig: async () => ({ ok: true, siteKey: 'site-key-1', restoreAvailable: true }),
+        loadTurnstile: async () => turnstile.api,
+      }}
+    />,
     '/restore',
   );
   const { host } = mounted;
@@ -220,7 +225,12 @@ test('Confirm uses the stored challenge id with no URL parameter', async () => {
   saveRestoreChallenge('stored-challenge');
   respond = (url) => (url.includes('/api/restore/verify') ? { ok: false, error: "That code didn't work." } : {});
   const mounted = await mount(
-    <RestoreAccessPage deps={{ fetchSiteKey: async () => null, loadTurnstile: async () => null }} />,
+    <RestoreAccessPage
+      deps={{
+        fetchConfig: async () => ({ ok: true, siteKey: null, restoreAvailable: false }),
+        loadTurnstile: async () => null,
+      }}
+    />,
     '/restore',
   );
   const { host } = mounted;
@@ -240,7 +250,12 @@ test('Confirm uses the stored challenge id with no URL parameter', async () => {
 test('old ?challenge= links still fill in the code box', async () => {
   respond = () => ({ ok: false, error: "That code didn't work." });
   const mounted = await mount(
-    <RestoreAccessPage deps={{ fetchSiteKey: async () => null, loadTurnstile: async () => null }} />,
+    <RestoreAccessPage
+      deps={{
+        fetchConfig: async () => ({ ok: true, siteKey: null, restoreAvailable: false }),
+        loadTurnstile: async () => null,
+      }}
+    />,
     '/restore?challenge=link-challenge',
   );
   const { host } = mounted;
@@ -256,7 +271,12 @@ test('old ?challenge= links still fill in the code box', async () => {
 test('a missing site key keeps the page usable and says so', async () => {
   respond = () => ({ ok: false, error: 'Confirm you are a person and try again.' });
   const mounted = await mount(
-    <RestoreAccessPage deps={{ fetchSiteKey: async () => null, loadTurnstile: async () => null }} />,
+    <RestoreAccessPage
+      deps={{
+        fetchConfig: async () => ({ ok: true, siteKey: null, restoreAvailable: false }),
+        loadTurnstile: async () => null,
+      }}
+    />,
     '/restore',
   );
   const { host } = mounted;
@@ -265,6 +285,21 @@ test('a missing site key keeps the page usable and says so', async () => {
   await submit(button(host, 'Email me a code').closest('form') as HTMLFormElement);
   assert.ok(calls.some((call) => call.url.includes('/api/restore/request')));
   assert.ok(host.textContent?.includes('Confirm you are a person and try again.'));
+  unmount(mounted);
+});
+
+test('a failed config fetch shows an error and does not send without a person check', async () => {
+  const mounted = await mount(
+    <RestoreAccessPage deps={{ fetchConfig: async () => ({ ok: false }), loadTurnstile: async () => null }} />,
+    '/restore',
+  );
+  const { host } = mounted;
+  assert.ok(host.textContent?.includes("The person check didn't load. Refresh the page and try again."));
+  const send = button(host, 'Email me a code');
+  assert.equal(send.disabled, true);
+  await setInput(host.querySelector('input[name="email"]') as HTMLInputElement, 'buyer@gym.test');
+  await submit(send.closest('form') as HTMLFormElement);
+  assert.equal(calls.some((call) => call.url.includes('/api/restore/request')), false);
   unmount(mounted);
 });
 

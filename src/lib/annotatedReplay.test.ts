@@ -37,7 +37,7 @@ test('annotated file names stay beside the existing replay name', () => {
   assert.equal(fileNameForMime('annotated-replay-2026-11-04-round-2-eplay1.mp4', 'video/webm'), 'annotated-replay-2026-11-04-round-2-eplay1.webm');
 });
 
-test('send to a student still uses the existing gate; Record for Review does not add a video send', () => {
+test('send to a student still uses the existing gate; replay analysis does not add a video send', () => {
   assert.equal(syncSendGate({ guestId: 'guest-1', linkedStudentId: 'stu-1', coachSync: 'on' }, 'owner'), 'guest');
   assert.equal(syncSendGate({ linkedStudentId: '', coachSync: 'on' }, 'owner'), 'unlinked');
   assert.equal(syncSendGate({ linkedStudentId: 'stu-1', coachSync: 'off' }, 'owner'), 'sync-off');

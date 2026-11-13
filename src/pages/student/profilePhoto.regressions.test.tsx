@@ -54,6 +54,11 @@ function reactProps(node: Element): Record<string, (event: unknown) => void> | n
   return key ? (node as unknown as Record<string, Record<string, (event: unknown) => void>>)[key] : null;
 }
 
+if (typeof URL.createObjectURL !== 'function') {
+  URL.createObjectURL = () => 'blob:image-rights-preview';
+  URL.revokeObjectURL = () => {};
+}
+
 async function choose(id: string, file: File) {
   const input = document.getElementById(id) as HTMLInputElement;
   assert.ok(input, id);
@@ -64,7 +69,32 @@ async function choose(id: string, file: File) {
   });
 }
 
-test('a rejected photo and logo say so beside their own controls and keep the saved picture', async () => {
+function rightsBox(): HTMLInputElement {
+  return document.querySelector('[data-testid="image-rights-owned"]') as HTMLInputElement;
+}
+
+function rightsUse(): HTMLButtonElement {
+  return document.querySelector('[data-testid="image-rights-use"]') as HTMLButtonElement;
+}
+
+async function acknowledgeAndUse() {
+  const box = rightsBox();
+  assert.ok(box, 'expected rights checkbox after a file pick');
+  assert.equal(rightsUse().disabled, true);
+  await act(async () => {
+    box.click();
+    const props = reactProps(box);
+    props?.onChange?.({ target: { checked: true } });
+  });
+  assert.equal(box.checked, true);
+  assert.equal(rightsUse().disabled, false);
+  await act(async () => {
+    rightsUse().click();
+    await new Promise((resolve) => setTimeout(resolve, 40));
+  });
+}
+
+test('a rejected photo says so beside its control, the gym logo upload is hidden, and saved pictures stay', async () => {
   localStorage.clear();
   writeProfilePortraitSync(KEPT);
   writeStudentGymLogo(KEPT_LOGO);
@@ -75,21 +105,20 @@ test('a rejected photo and logo say so beside their own controls and keep the sa
     assert.equal(photo()?.querySelector('img')?.getAttribute('src'), KEPT);
 
     await choose('profile-portrait-library', new File(['hello'], 'notes.txt', { type: 'text/plain' }));
+    assert.ok(document.querySelector('[data-testid="image-rights-confirm"]'));
+    assert.equal(readProfilePortrait(), KEPT);
+    await acknowledgeAndUse();
     const photoAlert = photo()?.querySelector('#profile-portrait-error');
     assert.match(photoAlert?.textContent ?? '', /That file is not a photo/);
     assert.equal(photoAlert?.getAttribute('role'), 'alert');
-    assert.equal(logo()?.querySelector('#profile-portrait-error'), null);
     assert.equal(photo()?.querySelector('img')?.getAttribute('src'), KEPT);
     assert.equal(readProfilePortrait(), KEPT);
     const photoText = photo()?.textContent ?? '';
     assert.ok(photoText.indexOf('Choose photo') < photoText.indexOf('That file is not a photo'));
 
-    await choose('profile-logo-library', new File(['mark'], 'notes.txt', { type: 'text/plain' }));
-    const logoAlert = logo()?.querySelector('#profile-logo-error');
-    assert.match(logoAlert?.textContent ?? '', /That file is not a logo photo/);
-    assert.equal(photo()?.querySelector('#profile-logo-error'), null);
-    assert.match(photo()?.querySelector('#profile-portrait-error')?.textContent ?? '', /That file is not a photo/);
-    assert.equal(readStudentGymLogo(), KEPT_LOGO);
+    assert.equal(logo(), null, 'gym logo upload is hidden');
+    assert.equal(document.getElementById('profile-logo-library'), null, 'logo file input is gone');
+    assert.equal(readStudentGymLogo(), KEPT_LOGO, 'saved logo data is kept');
     assert.equal(readProfilePortrait(), KEPT);
     const direct = [...(page.host.querySelector('.profile-identity')?.children ?? [])].some(
       (node) => node.getAttribute('role') === 'alert',
@@ -136,6 +165,10 @@ test('a camera photo that encodes is saved from the Choose photo control', async
   const page = mount();
   try {
     await choose('profile-portrait-library', new File([new Uint8Array(2_000_000)], 'IMG_4032.JPG', { type: 'image/jpeg' }));
+    assert.equal(readProfilePortrait(), KEPT);
+    assert.ok(document.querySelector('[data-testid="image-rights-confirm"]'));
+    assert.equal(rightsUse().disabled, true);
+    await acknowledgeAndUse();
     const photo = page.host.querySelector('[aria-label="Profile photo"]');
     const savedNote = photo?.querySelector('.save-confirm');
     assert.match(savedNote?.textContent ?? '', /Saved on this phone/);
@@ -149,6 +182,35 @@ test('a camera photo that encodes is saved from the Choose photo control', async
   } finally {
     globalThis.createImageBitmap = previousBitmap;
     document.createElement = realCreate;
+    act(() => page.root.unmount());
+    page.host.remove();
+  }
+});
+
+test('the rights checkbox is absent on the profile view until a file is picked, and Cancel does not save', async () => {
+  localStorage.clear();
+  const page = mount();
+  try {
+    const photo = page.host.querySelector('[aria-label="Profile photo"]');
+    assert.equal(photo?.textContent?.includes('I own the rights'), false);
+    assert.equal(document.querySelector('[data-testid="image-rights-confirm"]'), null);
+    assert.equal(page.host.querySelector('[aria-label="Gym logo"]'), null);
+    assert.match(photo?.textContent ?? '', /Choose photo/);
+
+    await choose('profile-portrait-library', new File([new Uint8Array([1, 2, 3])], 'me.png', { type: 'image/png' }));
+    assert.ok(document.querySelector('[data-testid="image-rights-confirm"]'));
+    assert.match(document.querySelector('[data-testid="image-rights-confirm"]')?.textContent ?? '', /I own the rights to this image or have permission to use it/);
+    assert.equal(rightsUse().disabled, true);
+    assert.equal(readProfilePortrait(), null);
+
+    await act(async () => {
+      const cancel = [...document.querySelectorAll('.sheet--image-rights button')].find((node) => node.textContent === 'Cancel') as HTMLButtonElement;
+      cancel?.click();
+    });
+    assert.equal(document.querySelector('[data-testid="image-rights-confirm"]'), null);
+    assert.equal(readProfilePortrait(), null);
+    assert.equal(photo?.textContent?.includes('I own the rights'), false);
+  } finally {
     act(() => page.root.unmount());
     page.host.remove();
   }

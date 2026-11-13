@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ReliefScore } from './geometry.ts';
-import { TOPO_LEVEL, TOPO_REVISION, reliefScale, tileToneFor, toneForName, topoWords, type TileTone, type TopoModel, type Vec } from './topo.ts';
+import { TOPO_LEVEL, TOPO_REVISION, faceCentroid, reliefScale, tileToneFor, toneForName, topoWords, type TileTone, type TopoModel, type Vec } from './topo.ts';
 import {
   EXAMPLE_OPPONENT_FACTORS,
   EXAMPLE_OPPONENT_SWEEPS,
@@ -726,7 +726,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
       if (!paired) {
         model.faceCorners.forEach((corners, faceIndex) => {
           const points = corners.map((index) => rot(model.vertices[index]));
-          const center: Vec = [0, 1, 2].map((axis) => (points[0][axis] + points[1][axis] + points[2][axis]) / 3) as Vec;
+          const center = faceCentroid(points);
           const u: Vec = [points[1][0] - points[0][0], points[1][1] - points[0][1], points[1][2] - points[0][2]];
           const v: Vec = [points[2][0] - points[0][0], points[2][1] - points[0][1], points[2][2] - points[0][2]];
           const nrm: Vec = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
@@ -771,7 +771,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
       });
       if (!paired) model.faceCorners.forEach((corners, faceIndex) => {
         const points = corners.map((index) => rot(model.vertices[index]));
-        const center: Vec = [0, 1, 2].map((axis) => (points[0][axis] + points[1][axis] + points[2][axis]) / 3) as Vec;
+        const center = faceCentroid(points);
         const u: Vec = [points[1][0] - points[0][0], points[1][1] - points[0][1], points[1][2] - points[0][2]];
         const v: Vec = [points[2][0] - points[0][0], points[2][1] - points[0][1], points[2][2] - points[0][2]];
         const n: Vec = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
@@ -937,16 +937,18 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
       if (state.separateLabels) {
         const font = labelFontPx(state.height);
         if (labelsRef.current) labelsRef.current.style.fontSize = `${font}px`;
-        const measure = (text: string, kind: 'face' | 'technique') => ({
-          w: Math.min(Math.max(48, state.width * 0.46), Math.max(52, text.length * font * 0.56 + 14)),
-          h: font + (kind === 'face' ? 12 : 10),
-        });
+        const measure = (text: string, kind: 'face' | 'technique') => {
+          const natural = text.length * font * 0.56 + 14;
+          const w = Math.min(Math.max(48, state.width * 0.46), Math.max(52, natural));
+          const lines = Math.max(1, Math.ceil(natural / w));
+          return { w, h: font + (kind === 'face' ? 12 : 10) + (lines > 1 ? font * 1.2 * (lines - 1) : 0) };
+        };
         const pending: DiamondLabel[] = [];
         model.faceCorners.forEach((corners, faceIndex) => {
           const node = faceNodes[faceIndex];
           if (!node) return;
           const points = corners.map((index) => rot(model.vertices[index]));
-          const center: Vec = [0, 1, 2].map((axis) => (points[0][axis] + points[1][axis] + points[2][axis]) / 3) as Vec;
+          const center = faceCentroid(points);
           const u: Vec = [points[1][0] - points[0][0], points[1][1] - points[0][1], points[1][2] - points[0][2]];
           const v: Vec = [points[2][0] - points[0][0], points[2][1] - points[0][1], points[2][2] - points[0][2]];
           const nrm: Vec = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];

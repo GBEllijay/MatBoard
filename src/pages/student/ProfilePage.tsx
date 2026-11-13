@@ -15,8 +15,8 @@ import './profile.css';
 
 /**
  * Name, gym, start date, birth year, Kid or Adult, and optional photo. Saved on this phone.
- * The student card shows no logo (owner, Nov 13 2026). The Gym logo control below still
- * feeds reports and backups when that switch is on.
+ * The student card, My profile, printed reports, and backups no longer show or export
+ * a gym logo (owner, Nov 13 2026). Saved logo data is left in place and unused.
  */
 export function ProfilePage() {
   const { report, commit } = useStudentFile();

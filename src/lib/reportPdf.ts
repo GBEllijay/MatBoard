@@ -313,10 +313,9 @@ function chrome(pageNumber: number, pageCount: number, kind: string, art?: Repor
   const mark = 36;
   let right = PAGE_W - 16;
   const selfie = art?.selfie ?? null;
-  const gymLogo = art?.gymLogo ?? null;
   const y = PAGE_H - 14 - mark;
-  // Rightmost first, so a single mark sits in the corner and a pair sits side by side.
-  for (const image of [selfie, gymLogo]) {
+  // Rightmost first. Progress reports no longer draw a gym logo in this header.
+  for (const image of [selfie]) {
     if (!image) continue;
     right -= mark;
     const x = right;
@@ -327,8 +326,8 @@ function chrome(pageNumber: number, pageCount: number, kind: string, art?: Repor
     });
     right -= 8;
   }
-  const kindX = selfie || gymLogo ? 62 : PAGE_W - MARGIN_X - measure(kind, 8, true);
-  const kindY = selfie || gymLogo ? PAGE_H - 58 : PAGE_H - 36;
+  const kindX = selfie ? 62 : PAGE_W - MARGIN_X - measure(kind, 8, true);
+  const kindY = selfie ? PAGE_H - 58 : PAGE_H - 36;
   draws.push(
     { op: 'text', text: 'ADVANTAGE', x: 62, y: PAGE_H - 30, size: 13, font: 'bold', color: WHITE },
     { op: 'text', text: 'STUDENT EDITION', x: 62, y: PAGE_H - 46, size: 8, font: 'regular', color: [0.78, 0.84, 0.9] },
@@ -646,7 +645,7 @@ export function progressReportPdf(
   drawIdentity(state, 'Progress report', identity, issuedOn);
   drawWornBelt(state, report);
   drawBlocks(state, progressReportBlocks(report, assessment, extra));
-  const images = [art.gymLogo, art.selfie].filter((image): image is PdfImageAsset => Boolean(image));
+  const images = [art.selfie].filter((image): image is PdfImageAsset => Boolean(image));
   return renderReportPages(finish(state, 'PROGRESS', art), images);
 }
 

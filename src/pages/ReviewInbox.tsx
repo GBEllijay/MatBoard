@@ -18,6 +18,7 @@ import { listLessonRevisions } from '../lib/lessonDrive';
 import { addFolderFiles } from '../lib/photoStore';
 import {
   REVIEW_APPROVE,
+  REVIEW_CHANGE_DECISION,
   REVIEW_CHANGES,
   REVIEW_GALLERY,
   REVIEW_GALLERY_DONE,
@@ -41,6 +42,7 @@ export function ReviewInboxPage() {
   const [galleryNote, setGalleryNote] = useState('');
   const [handoffNote, setHandoffNote] = useState('');
   const [handoffChecked, setHandoffChecked] = useState(false);
+  const [editingDecision, setEditingDecision] = useState(false);
   const driveConnected = useDriveConnected();
   const revisions = useMemo(() => listLessonRevisions(), [tick]);
   const inbox = useMemo(() => latestReviewSubmissions(), [tick]);
@@ -61,6 +63,10 @@ export function ReviewInboxPage() {
     setNote(submission?.instructorNote ?? '');
   }, [submission?.id, submission?.instructorNote]);
 
+  useEffect(() => {
+    setEditingDecision(false);
+  }, [submission?.id]);
+
   const openSubmission = (): ReviewSubmission | null => {
     if (submission) return submission;
     if (!revision) return null;
@@ -76,6 +82,7 @@ export function ReviewInboxPage() {
     const current = openSubmission();
     if (!current) return;
     const decided = decideReview(current.id, status, note);
+    setEditingDecision(false);
     setGalleryNote('');
     setTick((value) => value + 1);
     if (decided) {
@@ -109,6 +116,9 @@ export function ReviewInboxPage() {
   const shown = submission;
   const planIntro = shown?.intro || revision?.plan.intro || '';
   const planClosing = shown?.closing || revision?.plan.closing || '';
+  const status = shown?.status ?? 'pending';
+  const decided = status === 'approved' || status === 'changes' || status === 'rejected';
+  const showDecisionControls = !decided || editingDecision;
 
   return (
     <main className="home home--pro">
@@ -142,44 +152,58 @@ export function ReviewInboxPage() {
             <article className="plan-card" aria-label="This submission">
               <strong>{shown?.coachName || revision?.coachName || 'Coach'}</strong>
               <span>{shown?.planLabel || revision?.dateKey}</span>
-              <p>{reviewStatusLabel(shown?.status ?? 'pending')}</p>
+              {decided ? (
+                <p className={`review-status-badge review-status-badge--${status}`} role="status">
+                  {reviewStatusLabel(status)}
+                </p>
+              ) : (
+                <p>{reviewStatusLabel(status)}</p>
+              )}
               {planIntro ? <p>{planIntro}</p> : null}
               {planClosing ? <p>{planClosing}</p> : null}
               {shown?.photoName ? <p>Photo: {shown.photoName}</p> : <p>No class photo was submitted with this plan.</p>}
               {shown?.instructorNote ? <p role="status">{shown.instructorNote}</p> : null}
-              <label className="notes__field" htmlFor="review-note">
-                Note to the coach
-                <textarea
-                  id="review-note"
-                  value={note}
-                  maxLength={500}
-                  rows={3}
-                  onChange={(event) => setNote(event.target.value)}
-                />
-              </label>
-              <div className="review-inbox__actions">
-                <button
-                  type="button"
-                  className={`btn${shown?.status === 'approved' ? ' review-decision--on' : ''}`}
-                  onClick={() => decide('approved')}
-                >
-                  {REVIEW_APPROVE}
+              {showDecisionControls ? (
+                <>
+                  <label className="notes__field" htmlFor="review-note">
+                    Note to the coach
+                    <textarea
+                      id="review-note"
+                      value={note}
+                      maxLength={500}
+                      rows={3}
+                      onChange={(event) => setNote(event.target.value)}
+                    />
+                  </label>
+                  <div className="review-inbox__actions">
+                    <button
+                      type="button"
+                      className={`btn${shown?.status === 'approved' ? ' review-decision--on' : ''}`}
+                      onClick={() => decide('approved')}
+                    >
+                      {REVIEW_APPROVE}
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn--ghost${shown?.status === 'changes' ? ' review-decision--on' : ''}`}
+                      onClick={() => decide('changes')}
+                    >
+                      {REVIEW_CHANGES}
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn--ghost${shown?.status === 'rejected' ? ' review-decision--on' : ''}`}
+                      onClick={() => decide('rejected')}
+                    >
+                      {REVIEW_REJECT}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button type="button" className="review-change-decision" onClick={() => setEditingDecision(true)}>
+                  {REVIEW_CHANGE_DECISION}
                 </button>
-                <button
-                  type="button"
-                  className={`btn btn--ghost${shown?.status === 'changes' ? ' review-decision--on' : ''}`}
-                  onClick={() => decide('changes')}
-                >
-                  {REVIEW_CHANGES}
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn--ghost${shown?.status === 'rejected' ? ' review-decision--on' : ''}`}
-                  onClick={() => decide('rejected')}
-                >
-                  {REVIEW_REJECT}
-                </button>
-              </div>
+              )}
               {canAddApprovedPhoto(shown) ? (
                 <button type="button" className="btn" onClick={() => void addToGallery()}>
                   {REVIEW_GALLERY}

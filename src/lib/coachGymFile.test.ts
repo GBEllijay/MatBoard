@@ -87,27 +87,27 @@ test('a gym logo that is missing or unusable does not block an older coach file'
   assert.equal(refused.ok, false);
 });
 
-test('make a file for my coach includes the gym logo only when that switch is on, and never the photo', () => {
+test('make a file for my coach never includes the gym logo or the photo', () => {
   const storage = memory();
   writeStudentGymLogo(LOGO, storage);
   writeProfilePortraitSync(SELFIE, storage);
   const adult = setStudentProfile(blankStudentReport(4), { displayName: 'Ada', gymName: 'GB Ellijay' }, 5);
   const withLogo = progressReportFiles(adult, [], storage);
-  const gym = readTravelingGym(JSON.parse(withLogo.json));
-  assert.equal(gym?.name, 'GB Ellijay');
-  assert.equal(gym?.logo, LOGO);
+  assert.equal(readTravelingGym(JSON.parse(withLogo.json)), null);
+  assert.equal(withLogo.json.includes(LOGO), false);
   assert.equal(withLogo.json.includes(SELFIE), false);
 
-  writeProfileMark('adult', 'logo', false, storage);
+  writeProfileMark('adult', 'logo', true, storage);
   writeProfileMark('adult', 'selfie', true, storage);
-  const hidden = progressReportFiles(adult, [], storage);
-  assert.equal(readTravelingGym(JSON.parse(hidden.json)), null);
-  assert.equal(hidden.json.includes(SELFIE), false);
+  const stillHidden = progressReportFiles(adult, [], storage);
+  assert.equal(readTravelingGym(JSON.parse(stillHidden.json)), null);
+  assert.equal(stillHidden.json.includes(SELFIE), false);
 
   const kids = setBeltMode(adult, 'kids', 6);
   writeProfileMark('kids', 'logo', true, storage);
   assert.equal(headerVisibility('kids', { version: 1, adult: { selfie: true, logo: false }, kids: { selfie: false, logo: true } }).selfie, false);
   const kidFile = progressReportFiles(kids, [], storage);
-  assert.equal(readTravelingGym(JSON.parse(kidFile.json))?.logo, LOGO);
+  assert.equal(readTravelingGym(JSON.parse(kidFile.json)), null);
+  assert.equal(kidFile.json.includes(LOGO), false);
   assert.equal(kidFile.json.includes(SELFIE), false);
 });

@@ -472,7 +472,6 @@ export function profilePolicyLines(): { label: string; on: boolean; note: string
     { label: 'Heel hooks', on: policy.heelHooks, note: 'Off until turned on. No-gi only, and a brown or black choice in the live list.' },
     { label: 'Competition prompt', on: policy.competition, note: 'Off until added. It does not count toward a stripe or a promotion.' },
     { label: 'Photo on reports and backups', on: marks.selfie, note: 'Off for an adult until it is turned on.' },
-    { label: 'Gym logo on reports and backups', on: marks.logo, note: 'On unless it is turned off. The gym name stays either way.' },
   ];
 }
 
