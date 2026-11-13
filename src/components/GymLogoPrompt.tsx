@@ -11,7 +11,7 @@ import {
 /**
  * Non-blocking note when the gym sent a newer logo. Update shows it.
  * Ignore keeps the current logo and hides this note until the next new logo.
- * The student can change the logo at any time in Profile.
+ * Accepting still stores the gym-sent logo for surfaces that read it (the academy page).
  */
 export function GymLogoPrompt() {
   const [due, setDue] = useState(() => gymLogoPromptDue(localStorage));

@@ -64,7 +64,7 @@ async function choose(id: string, file: File) {
   });
 }
 
-test('a rejected photo and logo say so beside their own controls and keep the saved picture', async () => {
+test('a rejected photo says so beside its control, the gym logo upload is hidden, and saved pictures stay', async () => {
   localStorage.clear();
   writeProfilePortraitSync(KEPT);
   writeStudentGymLogo(KEPT_LOGO);
@@ -78,18 +78,14 @@ test('a rejected photo and logo say so beside their own controls and keep the sa
     const photoAlert = photo()?.querySelector('#profile-portrait-error');
     assert.match(photoAlert?.textContent ?? '', /That file is not a photo/);
     assert.equal(photoAlert?.getAttribute('role'), 'alert');
-    assert.equal(logo()?.querySelector('#profile-portrait-error'), null);
     assert.equal(photo()?.querySelector('img')?.getAttribute('src'), KEPT);
     assert.equal(readProfilePortrait(), KEPT);
     const photoText = photo()?.textContent ?? '';
     assert.ok(photoText.indexOf('Choose photo') < photoText.indexOf('That file is not a photo'));
 
-    await choose('profile-logo-library', new File(['mark'], 'notes.txt', { type: 'text/plain' }));
-    const logoAlert = logo()?.querySelector('#profile-logo-error');
-    assert.match(logoAlert?.textContent ?? '', /That file is not a logo photo/);
-    assert.equal(photo()?.querySelector('#profile-logo-error'), null);
-    assert.match(photo()?.querySelector('#profile-portrait-error')?.textContent ?? '', /That file is not a photo/);
-    assert.equal(readStudentGymLogo(), KEPT_LOGO);
+    assert.equal(logo(), null, 'gym logo upload is hidden');
+    assert.equal(document.getElementById('profile-logo-library'), null, 'logo file input is gone');
+    assert.equal(readStudentGymLogo(), KEPT_LOGO, 'saved logo data is kept');
     assert.equal(readProfilePortrait(), KEPT);
     const direct = [...(page.host.querySelector('.profile-identity')?.children ?? [])].some(
       (node) => node.getAttribute('role') === 'alert',

@@ -18,7 +18,7 @@ import { assessmentReportPdf, progressReportPdf } from './reportPdf.ts';
 import { pdfToText, type PdfImageAsset } from './simplePdf.ts';
 import { clearProfileMarks } from './profileMarks.ts';
 import { clearProfilePortrait, portraitFits, readProfilePortrait, writeProfilePortraitSync } from './profilePortrait.ts';
-import { clearStudentGymLogo, writeStudentGymLogo } from './studentGymMark.ts';
+import { clearStudentGymLogo } from './studentGymMark.ts';
 import { coachGymLogoFits } from './coachGymFit.ts';
 import {
   ASSESSMENT_AREAS,
@@ -314,7 +314,7 @@ export async function buildStudentBackup(input: {
   stampStorage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null;
   /** Name and id written into the file. Defaults to the profile open on stampStorage. */
   profile?: { id: string; name: string };
-  /** Selfie and gym logo ride along only when their switches are on. */
+  /** Selfie rides along when its switch is on. Gym logo is no longer exported. */
   marks?: BackupMarkImages;
 }): Promise<{ file: StudentBackupFile; json: string; csv: string; progressPdf: Uint8Array; assessmentPdf: Uint8Array }> {
   const when = input.now ?? new Date();
@@ -336,7 +336,7 @@ export async function buildStudentBackup(input: {
   const profile = input.profile ?? readActiveStudentProfile(input.stampStorage);
   if (profile?.id && profile.name) file.profile = { id: profile.id, name: profile.name };
   if (marks?.includeSelfie && marks.selfie && portraitFits(marks.selfie)) file.portrait = marks.selfie;
-  if (marks?.includeLogo && marks.gymLogo && coachGymLogoFits(marks.gymLogo)) file.gymLogo = marks.gymLogo;
+  // Gym logo is no longer written into new backups. Old files may still carry the field.
   if (input.includeVideos) {
     const blobs = input.blobs ?? [];
     let total = 0;
@@ -368,7 +368,7 @@ export async function buildStudentBackup(input: {
     csv: studentTemplatesCsv(input),
     progressPdf: progressReportPdf(input.report, input.assessment, { scouting: input.scouting, films }, issuedOn, {
       selfie: marks?.includeSelfie ? marks.art?.selfie ?? null : null,
-      gymLogo: marks?.includeLogo ? marks.art?.gymLogo ?? null : null,
+      gymLogo: null,
     }),
     assessmentPdf: assessmentReportPdf(input.report, input.assessment, issuedOn),
   };
@@ -657,13 +657,8 @@ export function applyBackupToMemory(
   if (file.portrait && (mode === 'replace' || !readProfilePortrait(scoped))) {
     writeProfilePortraitSync(file.portrait, scoped);
   }
-  if (file.gymLogo) {
-    try {
-      writeStudentGymLogo(file.gymLogo, scoped);
-    } catch {
-      /* a logo that no longer fits stays off this phone */
-    }
-  }
+  // Old backups may still include gymLogo. Ignore that field on restore: do not
+  // write it and do not clear a logo already stored on this phone.
   const base =
     mode === 'replace'
       ? 'The backup replaced the journal on this phone. Saved on this phone.'

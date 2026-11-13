@@ -13,7 +13,7 @@ export type ProfileMark = 'selfie' | 'logo';
 export type ProfileModeMarks = {
   /** Selfie on the progress report and in the backup file. Default off. */
   selfie: boolean;
-  /** Gym logo on the progress report and in the backup file. Default on. */
+  /** Kept in storage for older installs. No longer read for reports or backups. Default was on. */
   logo: boolean;
 };
 
