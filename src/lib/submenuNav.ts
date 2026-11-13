@@ -118,7 +118,7 @@ export function submenuBackTarget(input: SubmenuNavInput): string | null {
     return '/competition';
   }
 
-  if (path === '/notes' || path === '/record-for-review') {
+  if (path === '/notes') {
     if (from === 'academy') return academyProfileHome(params.get('home'));
     if (from === COACH_BOARD_FROM) return '/coach';
     if (unlimited || input.proUnlocked) return COACH_UNLIMITED_PATH;

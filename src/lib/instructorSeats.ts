@@ -64,7 +64,7 @@ export type InstructorPermissions = {
   /**
    * Media Console: record or pick a video and send it to the day's Daily
    * Videos folder (`videos/daily/{date}/`) for instructors to add to their
-   * own lesson plans. Does not open lesson plans or Record for Review.
+   * own lesson plans. Does not open lesson plans.
    */
   dailyVideoUpload: boolean;
 };
@@ -397,7 +397,7 @@ export function menuCloudSharing(
 
 /**
  * Coach hub links. No seat shows every tool. A signed-in seat hides Daily
- * Lesson Plan, Record for Review, or Daily Training Videos when that switch
+ * Lesson Plan or Daily Training Videos when that switch
  * is off. Technique Tree and the folder hubs stay.
  */
 export function coachToolVisible(
@@ -406,7 +406,7 @@ export function coachToolVisible(
 ): boolean {
   if (!seat) return true;
   const path = to.split('?')[0];
-  if (path === '/notes' || path === '/record-for-review') return seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
+  if (path === '/notes') return seatPermissionAllows(seat.permissions, 'dailyLessonPlanAccess');
   if (path === '/techniques') return seatPermissionAllows(seat.permissions, 'downloadTodaysVideos');
   return true;
 }
@@ -428,7 +428,7 @@ export function visibleCoachControl(
 export type ReplayCaptureAccess = 'direct' | 'pending' | 'none';
 
 /**
- * Record for Review / replay clips only. Owner, Coach and Instructors save
+ * Replay clips only. Owner, Coach and Instructors save
  * directly. Assistant coach and Program director record, and their Cloud saves
  * wait for the head coach. A revoked seat records nothing. Presets and
  * `uploadForDistribution` are not changed by this.

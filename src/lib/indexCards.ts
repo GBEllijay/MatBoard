@@ -6,7 +6,7 @@
  * or a self-assessment.
  */
 
-import type { AssessmentScore } from './studentAssessment.ts';
+import type { AssessmentScore, AssessmentScores } from './studentAssessment.ts';
 import { journalFields } from './journalIndex.ts';
 import type { JournalEntry } from './progress/types.ts';
 
@@ -460,6 +460,55 @@ export function withCustomCard(
 function upsert(file: IndexCardFile, card: StoredIndexCard): IndexCardFile {
   const rest = file.cards.filter((item) => item.id !== card.id);
   return normalizeFile({ version: 1, cards: [...rest, card] });
+}
+
+/**
+ * A per-face starting score for lines the student has not rated: the daily check-in
+ * (Generic) score for that face. Display only. Nothing here is written to the card file.
+ */
+export type FaceBaseline = Partial<Record<IndexFaceId, AssessmentScore>>;
+
+const AREA_FACE: Record<keyof AssessmentScores, IndexFaceId> = {
+  guard: 'guard-control',
+  passing: 'passing',
+  sweeps: 'sweeps',
+  takedowns: 'takedowns',
+  escapes: 'escapes-defense',
+  submissions: 'submissions',
+  conditioning: 'conditioning',
+  mindset: 'mindset',
+};
+
+/** Check-in area scores keyed by D8 face. Areas with no score stay off, so their lines stay at 3. */
+export function faceBaselineFromScores(scores: Partial<AssessmentScores> | null | undefined): FaceBaseline {
+  const out: FaceBaseline = {};
+  if (!scores) return out;
+  for (const area of Object.keys(AREA_FACE) as (keyof AssessmentScores)[]) {
+    const value = scores[area];
+    if (isAssessmentScore(value)) out[AREA_FACE[area]] = value;
+  }
+  return out;
+}
+
+export function hasFaceBaseline(baseline: FaceBaseline | null | undefined): boolean {
+  return Boolean(baseline && Object.keys(baseline).length);
+}
+
+/**
+ * Lines the student rated keep their rating. An unrated line takes the check-in score
+ * for its face; with no check-in score it stays at the neutral 3. Returns the same
+ * array when nothing changes.
+ */
+export function withFaceBaseline(cards: LiveCard[], baseline: FaceBaseline | null | undefined): LiveCard[] {
+  if (!hasFaceBaseline(baseline)) return cards;
+  let changed = false;
+  const next = cards.map((card) => {
+    const base = baseline?.[card.faceId];
+    if (card.touched || !isAssessmentScore(base) || card.rating === base) return card;
+    changed = true;
+    return { ...card, rating: base };
+  });
+  return changed ? next : cards;
 }
 
 export function faceCards(cards: readonly LiveCard[], faceId: IndexFaceId): LiveCard[] {
