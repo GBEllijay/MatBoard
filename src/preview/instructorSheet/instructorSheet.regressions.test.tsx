@@ -12,8 +12,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { ASSESSMENT_STORAGE_KEY } from '../../lib/studentAssessment.ts';
 import { PREVIEW_STORAGE_KEYS } from '../instructorProfile/model.ts';
 import { InstructorSheetPreviewPage } from './InstructorSheetPreview.tsx';
-import { INSTRUCTOR_D10_FACES, d10AxesFromScores, d10SubmetricsForFace } from '../../lib/instructorD10.ts';
-import { INSTRUCTOR_D10_SAMPLE, INSTRUCTOR_SHEET_PATH, STUDENT_PROFILE_D8, d8FaceRows, teachingLengthLabel } from './model.ts';
+import { INSTRUCTOR_D12_FACES, d12AxesFromScores } from '../../lib/instructorD12.ts';
+import { INSTRUCTOR_D12_SAMPLE, INSTRUCTOR_SHEET_PATH, STUDENT_PROFILE_D8, d8FaceRows, teachingLengthLabel } from './model.ts';
 
 const dom = new Window({ url: 'http://localhost/preview/instructor-sheet' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -92,32 +92,38 @@ test('the character sheet reuses the identity card and hides promotion counters'
   assert.deepEqual(snapshotStorage(), before);
 });
 
-test('the Instructor D10 has ten faces in order and nests class growth under retention', () => {
+test('the Instructor D12 has twelve named faces in order and no sub-scores', () => {
   const mounted = mount(<InstructorSheetPreviewPage />);
-  const labels = [...mounted.host.querySelectorAll('[data-testid="d10-scores"] li:not([data-submetric])')].map(
+  const labels = [...mounted.host.querySelectorAll('[data-testid="d12-scores"] li')].map(
     (row) => row.querySelector('span')?.textContent,
   );
-  const values = [...mounted.host.querySelectorAll('[data-testid="d10-scores"] li:not([data-submetric]) strong')].map(
+  const values = [...mounted.host.querySelectorAll('[data-testid="d12-scores"] li strong')].map(
     (row) => row.textContent,
   );
-  assert.ok(mounted.host.querySelector('[data-testid="instructor-d10"]'));
-  assert.ok(mounted.host.querySelector('[data-testid="instructor-d10-visual"]'));
-  assert.ok(mounted.host.querySelector('[data-testid="instructor-d10-visual"] .topo-stage'));
-  const factors = [...mounted.host.querySelectorAll('[data-testid="instructor-d10-visual"] .topo-legend button')].map(
+  assert.ok(mounted.host.querySelector('[data-testid="instructor-d12"]'));
+  assert.ok(mounted.host.querySelector('[data-testid="instructor-d12-visual"]'));
+  assert.ok(mounted.host.querySelector('[data-testid="instructor-d12-visual"] .topo-stage'));
+  const factors = [...mounted.host.querySelectorAll('[data-testid="instructor-d12-visual"] .topo-legend button')].map(
     (button) => button.textContent,
   );
-  assert.equal(factors.length, 10);
-  assert.match(factors[0] ?? '', /Public speaking/);
-  assert.match(factors[9] ?? '', /Student retention/);
-  assert.deepEqual(labels, INSTRUCTOR_D10_FACES.map((face) => face.label));
-  assert.deepEqual(values, d10AxesFromScores(INSTRUCTOR_D10_SAMPLE).map((face) => String(face.value)));
-  const sub = mounted.host.querySelector('[data-testid="d10-retention-subs"]');
-  assert.equal(sub?.getAttribute('data-submetric'), 'class-growth');
-  assert.match(sub?.textContent ?? '', /Class growth/);
-  assert.match(sub?.textContent ?? '', /3/);
-  assert.equal(d10SubmetricsForFace('student-retention', INSTRUCTOR_D10_SAMPLE)[0]?.value, 3);
-  assert.equal((mounted.host.querySelector('[data-testid="d10-scores"]')?.textContent ?? '').includes('Class growth'), true);
-  assert.equal(labels.includes('Class growth'), false);
+  assert.equal(factors.length, 12);
+  assert.match(factors[0] ?? '', /Public Speaking/);
+  assert.match(factors[5] ?? '', /Class Growth/);
+  assert.match(factors[6] ?? '', /Student Leadership Development/);
+  assert.match(factors[9] ?? '', /Student Retention/);
+  assert.match(factors[11] ?? '', /Time Management/);
+  assert.equal(factors.filter((text) => (text ?? '').includes('Student Retention')).length, 1);
+  assert.deepEqual(labels, INSTRUCTOR_D12_FACES.map((face) => face.label));
+  assert.deepEqual(values, d12AxesFromScores(INSTRUCTOR_D12_SAMPLE).map((face) => String(face.value)));
+  assert.equal(mounted.host.querySelector('[data-submetric]'), null);
+  assert.equal(mounted.host.querySelector('[data-testid="d12-class-growth-subs"]'), null);
+  const scoreText = mounted.host.querySelector('[data-testid="d12-scores"]')?.textContent ?? '';
+  assert.equal(scoreText.includes('Student Retention'), true);
+  assert.equal(scoreText.includes('Class Growth'), true);
+  assert.equal(scoreText.includes('Open slot'), false);
+  assert.equal(scoreText.includes('Under '), false);
+  assert.equal(labels.includes('Student Retention'), true);
+  assert.equal(labels[labels.length - 1], 'Time Management');
   unmount(mounted);
 });
 
@@ -156,8 +162,9 @@ test('the preview route is registered and the page does not write storage keys',
   assert.match(app, /path="\/preview\/instructor-sheet"/);
   assert.match(page, /InstructorIdentityCard/);
   assert.match(page, /StaticDiamond/);
-  assert.match(page, /LiveD10/);
+  assert.match(page, /LiveD12/);
   assert.equal(page.includes('StaticD10'), false);
+  assert.equal(page.includes('LiveD10'), false);
   assert.equal(page.includes('localStorage'), false);
   assert.equal(page.includes('sessionStorage'), false);
 });

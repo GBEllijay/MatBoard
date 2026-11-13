@@ -1,19 +1,19 @@
 /* Character-sheet extras on top of the instructor identity-card styles. */
 .ip-d8,
-.ip-d10 {
+.ip-d12 {
   display: grid;
   gap: 10px;
 }
 
 .ip-d8 .assess-visual,
-.ip-d10 .assess-visual {
+.ip-d12 .assess-visual {
   margin: 0;
   padding: 8px 0 0;
   color: var(--ip-ink, #f5f1e8);
 }
 
 .ip-d8 .assess-visual h3,
-.ip-d10 .assess-visual h3 {
+.ip-d12 .assess-visual h3 {
   margin: 0 0 8px;
   color: var(--ip-blue, #6ea8ff);
   font-size: 12px;
@@ -23,14 +23,14 @@
 }
 
 .ip-d8 .student-quiet,
-.ip-d10 .student-quiet {
+.ip-d12 .student-quiet {
   margin: 8px 0 0;
   color: rgba(245, 241, 232, 0.72);
   font-size: 12px;
 }
 
 .ip-d8 .report-diamond__svg,
-.ip-d10 .report-diamond__svg {
+.ip-d12 .report-diamond__svg {
   display: block;
   width: 100%;
   max-width: 34rem;
@@ -40,13 +40,13 @@
 }
 
 .ip-d8 .report-diamond__label,
-.ip-d10 .report-diamond__label {
+.ip-d12 .report-diamond__label {
   font: 400 10px Inter, Helvetica, Arial, sans-serif;
   fill: #1d1d1f;
 }
 
 .ip-d8 .report-diamond__score,
-.ip-d10 .report-diamond__score {
+.ip-d12 .report-diamond__score {
   font: 700 13px Inter, Helvetica, Arial, sans-serif;
 }
 
@@ -69,17 +69,6 @@
   border-radius: 6px;
 }
 
-.ip-d10-scores li[data-submetric] {
-  grid-column: 1 / -1;
-  margin-left: 12px;
-  padding-left: 16px;
-}
-
-.ip-d10-scores li[data-submetric] span::before {
-  content: "Under Student retention · ";
-  font-weight: 400;
-  opacity: 0.8;
-}
 
 .ip-rec {
   margin: 0 0 16px;
@@ -95,7 +84,7 @@
   border-top: 1px solid var(--ip-line, rgba(110, 168, 255, 0.35));
 }
 
-.ip-d10-live .topo-stage {
+.ip-d12-live .topo-stage {
   height: min(420px, 70vh);
   min-height: 260px;
   border: 2px solid #1c140e;
@@ -106,18 +95,18 @@
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
 }
 
-.ip-d10-live .topo-controls,
-.ip-d10-live .topo-legend {
+.ip-d12-live .topo-controls,
+.ip-d12-live .topo-legend {
   gap: 6px;
 }
 
-.ip-d10-live .topo-legend {
+.ip-d12-live .topo-legend {
   display: flex;
   flex-wrap: wrap;
 }
 
-.ip-d10-live .topo-controls button,
-.ip-d10-live .topo-legend button {
+.ip-d12-live .topo-controls button,
+.ip-d12-live .topo-legend button {
   min-height: 36px;
   border: 2px solid #1c140e;
   border-radius: 999px;
@@ -127,12 +116,26 @@
   font-weight: 700;
 }
 
-.ip-d10-live .topo-legend button[aria-pressed='true'] {
+.ip-d12-live .topo-legend button[aria-pressed='true'] {
   background: #004eba;
   color: #f4f0e4;
 }
 
-.ip-d10-live .topo-label,
-.ip-d10-live button.topo-label-face {
+.ip-d12-live .topo-label,
+.ip-d12-live button.topo-label-face {
   color: #f2f4f7;
+}
+
+.ip-d12-scores li span {
+  overflow-wrap: break-word;
+}
+
+
+.ip-d12-live button.topo-label-face,
+.ip-d12-live .topo-label-face {
+  white-space: normal;
+  text-align: center;
+  max-width: 9.6rem;
+  line-height: 1.15;
+  overflow-wrap: break-word;
 }

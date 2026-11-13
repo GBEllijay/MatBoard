@@ -937,10 +937,12 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
       if (state.separateLabels) {
         const font = labelFontPx(state.height);
         if (labelsRef.current) labelsRef.current.style.fontSize = `${font}px`;
-        const measure = (text: string, kind: 'face' | 'technique') => ({
-          w: Math.min(Math.max(48, state.width * 0.46), Math.max(52, text.length * font * 0.56 + 14)),
-          h: font + (kind === 'face' ? 12 : 10),
-        });
+        const measure = (text: string, kind: 'face' | 'technique') => {
+          const natural = text.length * font * 0.56 + 14;
+          const w = Math.min(Math.max(48, state.width * 0.46), Math.max(52, natural));
+          const lines = Math.max(1, Math.ceil(natural / w));
+          return { w, h: font + (kind === 'face' ? 12 : 10) + (lines > 1 ? font * 1.2 * (lines - 1) : 0) };
+        };
         const pending: DiamondLabel[] = [];
         model.faceCorners.forEach((corners, faceIndex) => {
           const node = faceNodes[faceIndex];

@@ -5,9 +5,9 @@
  */
 import { useMemo, useState } from 'react';
 import { BeltHeader } from '../../components/BeltHeader';
-import { LiveD10 } from '../../components/LiveD10';
+import { LiveD12 } from '../../components/LiveD12';
 import { StaticDiamond } from '../../components/StaticDiamond';
-import { d10AxesFromScores, d10SubmetricsForFace } from '../../lib/instructorD10';
+import { d12AxesFromScores } from '../../lib/instructorD12';
 import { InstructorIdentityCard } from '../instructorProfile/InstructorIdentityCard';
 import {
   INSTRUCTOR,
@@ -21,7 +21,7 @@ import {
 } from '../instructorProfile/model';
 import '../instructorProfile/instructorProfile.css';
 import {
-  INSTRUCTOR_D10_SAMPLE,
+  INSTRUCTOR_D12_SAMPLE,
   INSTRUCTOR_SHEET_BANNER,
   INSTRUCTOR_SHEET_PATH,
   STUDENT_PROFILE_D8,
@@ -43,8 +43,7 @@ export function InstructorSheetPreviewPage() {
   const week = weekMinutes(classes, SAMPLE_WEEK_START);
   const days = weekDays(SAMPLE_WEEK_START);
   const faces = d8FaceRows(STUDENT_PROFILE_D8.scores);
-  const d10Faces = d10AxesFromScores(INSTRUCTOR_D10_SAMPLE);
-  const retentionSubs = d10SubmetricsForFace('student-retention', INSTRUCTOR_D10_SAMPLE);
+  const d12Faces = d12AxesFromScores(INSTRUCTOR_D12_SAMPLE);
   const hasStudentProfile = STUDENT_PROFILE_D8.hasStudentProfile;
   // Product default is off. This sample starts on so the D8 is visible.
   const [showOwnD8, setShowOwnD8] = useState(true);
@@ -60,7 +59,7 @@ export function InstructorSheetPreviewPage() {
         {INSTRUCTOR_SHEET_PATH}
       </p>
       <p className="ip-rec" data-testid="d8-recommendation">
-        The Instructor D10 is this sheet’s teaching shape. If an instructor also has a student profile, their own student
+        The Instructor D12 is this sheet’s teaching shape. If an instructor also has a student profile, their own student
         D8 can be shown under it. Read that D8 from the student profile and do not copy it. Keep the student D8 off until
         they turn it on.
       </p>
@@ -148,25 +147,18 @@ export function InstructorSheetPreviewPage() {
         </ol>
       </section>
 
-      <section className="ip-card" aria-label="Instructor D10" data-testid="instructor-d10">
-        <h2>Instructor D10</h2>
+      <section className="ip-card" aria-label="Instructor D12" data-testid="instructor-d12">
+        <h2>Instructor D12</h2>
         <p className="ip-quiet">
-          Ten teaching faces, scored 1–5 the same way as the student D8. Class growth sits under Student retention. It is
-          not a face. Fictional sample. Nothing is saved.
+          Twelve teaching faces, scored 1–5 the same way as the student D8. Fictional sample. Nothing is saved.
         </p>
-        <div className="ip-d10">
-          <LiveD10 scores={INSTRUCTOR_D10_SAMPLE} />
-          <ul className="ip-d8-scores ip-d10-scores" data-testid="d10-scores">
-            {d10Faces.map((face) => (
+        <div className="ip-d12">
+          <LiveD12 scores={INSTRUCTOR_D12_SAMPLE} />
+          <ul className="ip-d8-scores ip-d12-scores" data-testid="d12-scores">
+            {d12Faces.map((face) => (
               <li key={face.id}>
                 <span>{face.label}</span>
                 <strong>{face.value ?? '–'}</strong>
-              </li>
-            ))}
-            {retentionSubs.map((row) => (
-              <li key={row.id} data-submetric={row.id} data-testid="d10-retention-subs">
-                <span>{row.label}</span>
-                <strong>{row.value ?? '–'}</strong>
               </li>
             ))}
           </ul>

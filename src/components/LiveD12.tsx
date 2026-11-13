@@ -1,23 +1,23 @@
 /**
- * Live instructor D10. Same stage, auto-turn, drag, pinch/wheel zoom, and
- * chrome as LiveD8 / TopoStage, with the ten-faced trapezohedron instead of
+ * Live instructor D12. Same stage, auto-turn, drag, pinch/wheel zoom, and
+ * chrome as LiveD8 / TopoStage, with the twelve-faced dodecahedron instead of
  * the student octahedron. Does not write storage or open student-card drafts.
  */
 import { useMemo, useState } from 'react';
-import { buildD10Topo } from '../lib/instructorD10Topo';
-import type { InstructorD10Scores } from '../lib/instructorD10';
+import { buildD12Topo } from '../lib/instructorD12Topo';
+import type { InstructorD12Scores } from '../lib/instructorD12';
 import { TopoStage } from '../preview/crystallineSweeps/TopoStage';
 import '../preview/crystallineSweeps/crystallineSweeps.css';
 
 type Props = {
-  scores: InstructorD10Scores | null;
+  scores: InstructorD12Scores | null;
 };
 
-export function LiveD10({ scores }: Props) {
-  const model = useMemo(() => buildD10Topo(scores), [scores]);
+export function LiveD12({ scores }: Props) {
+  const model = useMemo(() => buildD12Topo(scores), [scores]);
   const [focus, setFocus] = useState(-1);
   return (
-    <div className="ip-d10-live" data-testid="instructor-d10-visual">
+    <div className="ip-d12-live" data-testid="instructor-d12-visual">
       <TopoStage
         model={model}
         style="pyramid"
