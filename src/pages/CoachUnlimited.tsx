@@ -69,7 +69,6 @@ export function CoachUnlimitedPage() {
     'Daily Training Videos': 'video',
     [TECHNIQUE_TREE_LABEL]: 'tree',
     [STUDENT_ROSTER_LABEL]: 'roster',
-    'Record for Review': 'record',
     Scoreboard: 'board',
     'Round Timer': 'timer',
   };

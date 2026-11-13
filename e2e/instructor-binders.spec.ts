@@ -155,7 +155,7 @@ test('an issued invite keeps the picked role, seat count, and permission edit', 
   await page.goto('/instructors');
   await expect(page.locator('.invite-seat-cap__count')).toHaveText('0 of 5 free instructor seats used');
 
-  await page.getByLabel('Instructor email').fill('coach@gym.test');
+  await page.getByLabel('Email').fill('coach@gym.test');
   await page.getByRole('radio', { name: ROLES[2].radio }).click();
   await page.getByRole('switch', { name: /Gallery upload/ }).click();
   await page.getByRole('button', { name: 'Issue invite' }).click();
@@ -172,7 +172,7 @@ test('an issued invite keeps the picked role, seat count, and permission edit', 
     { email: 'lead@gym.test', role: ROLES[3] },
   ];
   for (const [index, item] of others.entries()) {
-    await page.getByLabel('Instructor email').fill(item.email);
+    await page.getByLabel('Email').fill(item.email);
     await page.getByRole('radio', { name: item.role.radio }).click();
     await page.getByRole('button', { name: 'Issue invite' }).click();
     await expect(page.locator('.invite-seat-cap__count')).toHaveText(`${index + 2} of 5 free instructor seats used`);
@@ -305,7 +305,7 @@ test('role binders read Assistant, Program Director, Coach, then Instructor', as
   }
 
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByLabel('Instructor email').fill('order@gym.test');
+  await page.getByLabel('Email').fill('order@gym.test');
   await page.getByRole('radio', { name: ROLES[0].radio }).click();
   await page.getByRole('button', { name: 'Issue invite' }).click();
   await page.locator('.seat-card', { hasText: 'order@gym.test' }).getByRole('button', { name: 'Edit permissions' }).click();

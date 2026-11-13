@@ -67,3 +67,5 @@ export const API_STUDENT_LICENSES_LIST_PATH = '/api/student-licenses/list';
 export const API_STUDENT_LICENSES_REVOKE_PATH = '/api/student-licenses/revoke';
 
 export const API_STUDENT_LICENSES_CLAIM_PATH = '/api/student-licenses/claim';
+
+export const API_STUDENT_LICENSES_RESET_PATH = '/api/student-licenses/reset';

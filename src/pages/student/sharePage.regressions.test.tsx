@@ -340,7 +340,7 @@ test('a gym brand file still imports the name and logo on the share page', async
   const logo = 'data:image/png;base64,BBBB';
   const file = buildGymBrandFile({ name: 'GB Ellijay', logo, issuedOn: '2026-10-26', now: 30 });
   await chooseFile(picker, 'advantage-gym-file.json', file);
-  assert.match(page.host.textContent ?? '', /Gym name and logo are on this phone/);
+  assert.match(page.host.textContent ?? '', /Gym name and logo are stored on this phone/);
   assert.match(page.host.textContent ?? '', /journal was not changed/);
   assert.equal(readStudentGymLogo(localStorage), logo);
   const savedReport = loadStudentReport(localStorage);

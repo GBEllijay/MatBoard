@@ -72,12 +72,15 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  * A chart score is the average of the started moves in that area, rounded to
  * the nearest whole number from 1 to 5.
  *
- * Guard: guard positions (closed, open, half, butterfly); guard retention.
+ * Each line lands on the same face as the D8 technique catalog (the Technique-based
+ * self-assessment), so a row's "Open: {face} self-assessment" link and its seed agree.
+ * Guard/Control: guard positions (closed, open, half, butterfly) and the control
+ *   positions (mount, side control, knee on belly, north-south, scarf hold, back control).
  * Sweeps: the Sweeps list. Sweeps is its own D8 face, so it no longer counts toward Guard.
- * Passing: passes; mount, side control, knee on belly, north-south, scarf hold.
+ * Passing: the Passes list.
  * Takedowns: takedowns; standing; sprawl.
- * Escapes: escapes; turtle; submission defense.
- * Submissions: submissions; back control.
+ * Escapes/Defense: escapes; turtle; guard retention; submission defense.
+ * Submissions: the Submissions list.
  * Conditioning: the Movement list (breakfalls, shrimp, bridge, technical stand-up),
  *   including a custom movement line.
  * Mindset: no fundamentals list. It is rated only on Self-assessment.
@@ -101,15 +104,17 @@ const ITEM_AREA: Record<string, string> = {
   'pos.open-guard': 'guard',
   'pos.half-guard': 'guard',
   'pos.butterfly-guard': 'guard',
-  'pos.mount': 'passing',
-  'pos.side-control': 'passing',
-  'pos.knee-on-belly': 'passing',
-  'pos.north-south': 'passing',
-  'pos.scarf-hold': 'passing',
-  'pos.back-control': 'submissions',
+  // Control positions sit on Guard/Control, as on the D8 catalog.
+  'pos.mount': 'guard',
+  'pos.side-control': 'guard',
+  'pos.knee-on-belly': 'guard',
+  'pos.north-south': 'guard',
+  'pos.scarf-hold': 'guard',
+  'pos.back-control': 'guard',
   'pos.standing': 'takedowns',
   'pos.turtle': 'escapes',
-  'def.guard-retention': 'guard',
+  // The D8 catalog keeps Guard Retention on Escapes/Defense.
+  'def.guard-retention': 'escapes',
   'def.submission-defense': 'escapes',
   'def.sprawl': 'takedowns',
 };
@@ -207,13 +212,14 @@ export function assessmentAreaForMove(categoryId: string, name: string, catalogI
 
 function areaFromName(name: string): string {
   const text = name.trim().toLowerCase();
+  if (/\bretention\b/.test(text)) return 'escapes';
   if (/\bguard\b/.test(text)) return 'guard';
   if (/\bsprawl\b/.test(text)) return 'takedowns';
   if (/\bturtle\b/.test(text)) return 'escapes';
   if (/\bstanding\b/.test(text)) return 'takedowns';
   if (/submission defense/.test(text)) return 'escapes';
-  if (/\b(mount|scarf)\b/.test(text) || /side control|knee on belly|north-south|north south/.test(text)) return 'passing';
-  if (/\bback\b/.test(text)) return 'submissions';
+  if (/\b(mount|scarf)\b/.test(text) || /side control|knee on belly|north-south|north south/.test(text)) return 'guard';
+  if (/\bback\b/.test(text)) return 'guard';
   return '';
 }
 

@@ -1,6 +1,7 @@
 /**
  * My profile: the student's card face, in the gym's card look.
- * Shows what is saved on this phone (photo, gym logo, name, gym, start date, trains, belt).
+ * Shows what is saved on this phone (photo, name, gym, start date, trains, belt).
+ * No logo on the student card: name and rank lead (owner, Nov 13 2026).
  * Each part jumps to the field below that fills it in; the belt opens My rank.
  * Read-only: nothing here saves. Save profile stays last on the page.
  */
@@ -14,7 +15,6 @@ import { readCoachOverlay } from '../../lib/coachSync';
 import { studentCardLook } from '../../lib/cardLook';
 import { readStudentNoPhotos } from '../../lib/studentPhotoFlag';
 import type { StudentProgressReport } from '../../lib/progress/types';
-import { ADVANTAGE_MARK_SRC } from '../../lib/gymLogo';
 import '../../components/rosterCard/coachClipboard.css';
 
 export const TRAINS_LABELS: Record<string, string> = { gi: 'Gi', nogi: 'No-Gi', both: 'Gi and No-Gi' };
@@ -22,7 +22,6 @@ export const TRAINS_LABELS: Record<string, string> = { gi: 'Gi', nogi: 'No-Gi', 
 /** Selectors for the field each face part fills in. Exported for tests. */
 export const FACE_TARGETS = {
   photo: 'section[aria-label="Profile photo"]',
-  logo: 'section[aria-label="Gym logo"]',
   name: 'form[aria-label="My profile"] input[aria-label="Name"]',
   gym: 'form[aria-label="My profile"] input[aria-label="Gym"]',
   began: 'form[aria-label="My profile"] input[aria-label="Training start date"]',
@@ -49,7 +48,6 @@ export function jumpToField(target: FaceTarget, doc: Document = document): boole
 export function ProfileCardFace({
   report,
   portrait,
-  logo,
   to,
   stats,
   beltStat,
@@ -57,7 +55,6 @@ export function ProfileCardFace({
 }: {
   report: StudentProgressReport;
   portrait: string | null;
-  logo: string | null;
   to: (path: string) => string;
   /** Optional card stats (e.g. mat hours), shown under the rows on the face. */
   stats?: ReactNode;
@@ -100,10 +97,6 @@ export function ProfileCardFace({
                   </Link>
                 ) : null}
               </div>
-              <button type="button" className="profile-face__crest" onClick={() => jumpToField(logo ? 'gym' : 'logo')}>
-                <img src={logo || ADVANTAGE_MARK_SRC} alt="" />
-                <span className="profile-face__hint">{logo ? 'Logo' : 'Add logo'}</span>
-              </button>
             </div>
             <div className="profile-face__rows">
               <button type="button" className="profile-face__row" onClick={() => jumpToField('gym')}>

@@ -7,9 +7,15 @@
   justify-self: stretch;
 }
 
-/* The center mark is fixed. Keep the academy profile under it, above the belt. */
+/* The Home mark is in the document flow, not fixed. Do not reserve --mark-home
+   above it: that leftover clearance is the large empty forehead on Instructor,
+   suite, competitors, Media, and other home--pro pages. Match the Pro menu. */
 .home--pro .home__inner {
-  padding-top: calc(var(--mark-home) + 1rem + var(--safe-t));
+  padding-top: calc(0.5rem + var(--safe-t));
+}
+
+.home--pro .play-exit {
+  margin-top: 0.35rem;
 }
 
 .gym-pulse {

@@ -133,10 +133,6 @@ export function StudentHub({ sheet }: { sheet?: React.ReactNode } = {}) {
             <span className="s-meter" aria-hidden="true">
               <i style={{ width: `${worn.percent}%` }} />
             </span>
-            <span className="s-rank__cap">
-              <span>{worn.nextLabel}</span>
-              <span>{`${worn.percent}%`}</span>
-            </span>
           </div>
           {competitor ? (
             <Link className="s-tile s-navy s-compete" to={to('/student/compete')} aria-label={COMPETE_GROUP_LABEL}>
@@ -221,19 +217,16 @@ export function ProgressMenu() {
   const { report } = useStudentFile();
   const links = progressLinks(report.profile.belt);
   const worn = wornBeltPreview(report);
-  const next = worn.nextLabel === 'Next stripe' ? `Next stripe ${worn.percent}%` : worn.nextLabel;
   return (
     <GroupFrame title={RANK_GROUP_LABEL}>
       <section className="s-rank-summary" aria-label="Belt summary">
         <span>{worn.summary}</span>
-        <span>{next}</span>
         <WornBeltMark preview={worn} />
         <span className="s-meter" aria-hidden="true">
           <i style={{ width: `${worn.percent}%` }} />
         </span>
       </section>
       <ProfileCard />
-      <StudentProfileSwitcher />
       <MenuList label={RANK_GROUP_LABEL}>
         {links.map((item) => (
           <MenuRow

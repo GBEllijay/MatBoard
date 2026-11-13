@@ -17,7 +17,8 @@ import {
 } from '../lib/instructorAssessmentClient';
 import type { InstructorAssessmentItem } from '../lib/instructorAssessments';
 import { readCloudBearer } from '../lib/advantageCloudMedia';
-import { updateRosterCard } from '../lib/rosterCardStore';
+import { readRosterCard, updateRosterCard } from '../lib/rosterCardStore';
+import { AssessmentCompareD8, assessmentEntryFromScores } from './AssessmentCompareD8';
 import { downloadJsonFile } from './rosterCard/fileSave';
 import type { Student } from '../lib/rosterStore';
 import { ASSESSMENT_FORM_AREAS, type AssessmentScores } from '../lib/studentAssessment';
@@ -94,6 +95,12 @@ export function AssessmentsWaiting({ roster }: { roster: readonly Student[] }) {
       {open.length === 0 ? <p>No assessments waiting.</p> : null}
       {open.map((item) => {
         const card = roster.find((row) => row.linkedStudentId === item.submission.studentId && !row.guestId) ?? null;
+        const self = assessmentEntryFromScores(
+          item.id,
+          item.submission.date,
+          item.submission.scores,
+          item.submission.note,
+        );
         return (
           <div key={item.id} data-assessment-item={item.id}>
             <p>
@@ -107,6 +114,13 @@ export function AssessmentsWaiting({ roster }: { roster: readonly Student[] }) {
                 return score ? <li key={area.id}>{`${area.label} ${score}`}</li> : null;
               })}
             </ul>
+            {self ? (
+              <AssessmentCompareD8
+                mode="compact"
+                coachEntries={card ? readRosterCard(card.id).coachAssessments : []}
+                selfEntries={[self]}
+              />
+            ) : null}
             {item.submission.note ? <p>{`Note: ${item.submission.note}`}</p> : null}
             {!card ? <p>Accept this student&apos;s card first, then reply.</p> : null}
             <button type="button" className="btn" disabled={!card} onClick={() => setReplying(replying === item.id ? null : item.id)}>

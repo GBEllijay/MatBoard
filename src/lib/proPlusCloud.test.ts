@@ -208,7 +208,8 @@ test('Pro and Pro + Cloud show the academy profile under the belt', () => {
   assert.doesNotMatch(pro, /AdvantageCloudHome/);
   assert.doesNotMatch(pro, /Navigate to=\{PRO_PLUS_CLOUD_PATH\}/);
   const css = readFileSync(new URL('../components/gymSheet.css', import.meta.url), 'utf8');
-  assert.match(css, /\.home--pro \.home__inner \{\s*padding-top: calc\(var\(--mark-home\) \+ 1rem \+ var\(--safe-t\)\);/);
+  assert.match(css, /\.home--pro \.home__inner \{\s*padding-top: calc\(0\.5rem \+ var\(--safe-t\)\);/);
+  assert.doesNotMatch(css, /padding-top:\s*calc\(var\(--mark-home\)/);
 });
 
 test('the public Pro + Cloud belt is the alpha page, not the console', () => {

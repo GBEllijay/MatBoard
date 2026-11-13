@@ -189,7 +189,7 @@ test('an owner code is one academy with no end, and an expired pass refreshes on
     const issued = await handleStudentLicenseIssue(
       new Request('http://localhost/api/student-licenses/issue', {
         method: 'POST',
-        body: JSON.stringify({ token: first.token }),
+        body: JSON.stringify({ token: first.token, email: `student-${index}@example.com` }),
       }),
       env,
       db,
@@ -200,7 +200,7 @@ test('an owner code is one academy with no end, and an expired pass refreshes on
   const sixthStudent = await handleStudentLicenseIssue(
     new Request('http://localhost/api/student-licenses/issue', {
       method: 'POST',
-      body: JSON.stringify({ token: first.token }),
+      body: JSON.stringify({ token: first.token, email: 'student-sixth@example.com' }),
     }),
     env,
     db,

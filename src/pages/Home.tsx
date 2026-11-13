@@ -17,7 +17,7 @@ import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
-import { studentDemoMode, studentEditionEntitled, studentEditionOpen } from '../lib/studentEdition';
+import { studentDemoMode, studentEditionEntitled, studentEditionOpen, studentHomeEntryPath } from '../lib/studentEdition';
 import {
   COACH_HOME_DESCRIPTION,
   COACH_UNLIMITED_PATH,
@@ -80,7 +80,7 @@ export function HomePage() {
   };
   const studentOpen = studentEditionOpen(params, studentOwner);
   const studentDemo = studentDemoMode(params, studentOwner) || !studentEditionEntitled(studentOwner);
-  const studentTo = studentPreview || !studentEditionEntitled(studentOwner) ? '/student?student=1' : '/student';
+  const studentTo = studentPreview || !studentEditionEntitled(studentOwner) ? '/student?student=1' : studentHomeEntryPath(true);
   const cloudOpen = useProPlusCloudUnlocked();
   const settled = useEntitlementSettled();
   const proTo = ownerEditionTarget({
@@ -276,7 +276,7 @@ function StudentHomeCard({
   }
   return (
     <article className="mode-card mode-card--student mode-card--locked">
-      <Link className="mode-card__hit" to={TIER_BUY_PATHS.student} aria-label={`Advantage Student Edition, ${ALPHA_PRODUCT_STATUS}`} />
+      <Link className="mode-card__hit" to={studentHomeEntryPath(false)} aria-label={`Advantage Student Edition, ${ALPHA_PRODUCT_STATUS}`} />
       {body}
       <p className="mode-card__price">{STUDENT_PRICE_LINE}</p>
       <div className="mode-card__actions">

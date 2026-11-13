@@ -54,6 +54,7 @@ const { toggleCompetitor, toggleStudentCheckIn, setPersonCheckedIn, personChecke
 const { competitorCards } = await import('../../lib/rosterStore.ts');
 const { checkedInCompetitors, competitorsForBracketFill, orderCheckedInByRanking } = await import('../../lib/checkInSeeds.ts');
 const { RankBelt } = await import('./RankBelt.tsx');
+const { CardDiamond } = await import('./CoachClipboardCard.tsx');
 const { CheckInFillSheet } = await import('../CheckInFillSheet.tsx');
 const { studentCheckInFor } = await import('../../pages/Roster.tsx');
 const { RosterIndex } = await import('./RosterIndex.tsx');
@@ -63,6 +64,8 @@ const { rosterIndexTopPx } = await import('../../lib/rosterIndex.ts');
 const { blankStudentReport, saveStudentReport } = await import('../../lib/studentEdition.ts');
 const { STUDENT_NO_PHOTOS_KEY } = await import('../../lib/studentPhotoFlag.ts');
 const { saveStudentDriveLink } = await import('../../lib/academyPathway.ts');
+const { readStudentGymLogo, writeStudentGymLogo } = await import('../../lib/studentGymMark.ts');
+const { readGymLogo, writeGymLogo } = await import('../../lib/gymLogo.ts');
 type Student = import('../../lib/rosterStore.ts').Student;
 
 type Mounted = { root: Root; host: HTMLElement };
@@ -141,7 +144,18 @@ test('all four looks render every card field, and the look comes from the gym se
     assert.ok(text().includes('Assessment'), 'assessment');
     assert.ok(buttons('Coach').length && buttons('Both').length, 'Coach / Self / Both toggle');
     if (look.style === 'fighter') assert.ok(document.querySelector('.clipboard__bars'), 'fighter uses bars');
-    else assert.ok(document.querySelector('.clipboard__radar'), 'clipboard uses radar');
+    else {
+      // The spider is replaced by the same D8 as Profile, Student Home, and Scouting.
+      assert.equal(document.querySelector('.clipboard__radar'), null, 'no spider on the clipboard');
+      const d8 = document.querySelector('[data-testid="card-d8"]');
+      assert.ok(d8?.querySelector('.topo-stage'), 'clipboard uses the D8');
+      assert.equal(d8?.getAttribute('data-layers'), 'coach', 'Coach view draws the coach layer');
+      click(buttons('Both')[0]);
+      assert.equal(document.querySelector('[data-testid="card-d8"]')?.getAttribute('data-layers'), 'coach', 'Both with no self check-in');
+      click(buttons('Student self')[0]);
+      assert.equal(document.querySelector('[data-testid="card-d8"]'), null, 'no self check-in yet');
+      click(buttons('Coach')[0]);
+    }
     click(buttons(/^Benchmarks/)[0]);
     assert.ok(text().includes('Sync with student app'), 'sync switch');
     unmount(m);
@@ -261,6 +275,54 @@ test('My profile: Save profile is the last control and stays on the editable car
   click(buttons('Close preview')[0]);
   assert.equal(document.querySelector('[data-testid="student-card-preview"]'), null, 'dismissed');
   assert.ok(document.querySelector('[data-testid="profile-card-face"]'), 'back on the editable card');
+  unmount(m);
+});
+
+test('My profile: the student card shows name and rank only, never a logo (saved logo data stays)', () => {
+  seedStudent();
+  const LOGO = 'data:image/png;base64,TE9HTw==';
+  writeStudentGymLogo(LOGO, localStorage);
+  const m = mount(<ProfilePage />, '/student/profile?student=1');
+  const face = document.querySelector('[data-testid="profile-card-face"]') as HTMLElement;
+  assert.ok(face, 'card face');
+  assert.equal(face.querySelector('.profile-face__crest'), null, 'no logo crest on the card face');
+  assert.equal(face.querySelector(`img[src="${LOGO}"]`), null, 'saved logo is not drawn on the card');
+  assert.equal(face.querySelectorAll('img').length, 0, 'no images on the face without a photo');
+  assert.doesNotMatch(face.textContent ?? '', /Add logo|\bLogo\b/, 'no logo hint on the card');
+  assert.equal(face.querySelector('button.profile-face__name')?.textContent?.trim(), 'Ana Lima', 'name shown');
+  assert.ok((face.querySelector('.profile-face__belt-text')?.textContent ?? '').trim(), 'rank shown');
+  assert.equal(document.querySelector('.profile-corner img[alt="Gym logo"]'), null, 'no logo in the header corner');
+  assert.equal(document.querySelector(`main img[src="${LOGO}"]`), null, 'logo not drawn anywhere on My profile');
+  assert.equal(readStudentGymLogo(localStorage), LOGO, 'saved logo data is kept');
+  assert.equal(document.querySelector('section[aria-label="Gym logo"]'), null, 'gym logo upload is hidden');
+  assert.doesNotMatch(document.body.textContent ?? '', /Gym logo on reports and backups/, 'logo report switch is gone');
+  submitProfile();
+  click(buttons('Preview my card')[0]);
+  const preview = document.querySelector('[data-testid="student-card-preview"]') as HTMLElement;
+  assert.ok(preview, 'preview open');
+  assert.equal(preview.querySelector('.clipboard__crest img'), null, 'no logo or Advantage mark on the student card preview');
+  assert.equal(preview.querySelector(`img[src="${LOGO}"]`), null);
+  assert.match(preview.querySelector('.clipboard__crest')?.textContent ?? '', /Advantage/, 'gym name still in the crest');
+  assert.match(preview.textContent ?? '', /Ana Lima/, 'name on the preview');
+  click(buttons('Close preview')[0]);
+  unmount(m);
+});
+
+test('instructor roster card: name and rank stay, no gym logo or crest image (saved logo stays)', () => {
+  localStorage.clear();
+  resetRoster();
+  const LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  writeGymLogo(LOGO);
+  const card = studentCard();
+  const m = mount(sheet(card));
+  const root = document.querySelector('.clipboard') as HTMLElement;
+  assert.ok(root, 'clipboard card');
+  assert.equal(root.querySelector('.clipboard__crest img'), null, 'no gym logo or Advantage mark in the crest');
+  assert.equal(root.querySelector(`img[src="${LOGO}"]`), null, 'saved gym logo is not drawn on the card');
+  assert.match(root.querySelector('.clipboard__crest')?.textContent ?? '', /Advantage|Gym not set|[A-Za-z]/, 'gym name still in the crest');
+  assert.match(root.textContent ?? '', /Ana Lima/, 'student name stays');
+  assert.ok(root.querySelector('.clipboard__belt'), 'rank / belt stays');
+  assert.equal(readGymLogo(), LOGO, 'saved gym logo data is kept');
   unmount(m);
 });
 
@@ -1304,4 +1366,24 @@ test('Competition card: approved opponent cards sit beside opponents faced and o
   const nextCage = cards[0].querySelector('[data-testid="scout-cage"] svg');
   assert.match(nextCage?.getAttribute('aria-label') ?? '', /Sweeps 1/);
   unmount(m);
+});
+
+test('Assessment D8: Coach, Student self, and Both draw the layers they name', () => {
+  const coach = Object.fromEntries(ASSESSMENT_FORM_AREAS.map((a, i) => [a.id, ((i % 5) + 1) as 1 | 2 | 3 | 4 | 5]));
+  const self = Object.fromEntries(ASSESSMENT_FORM_AREAS.map((a) => [a.id, 4 as const]));
+  for (const [c, v, layers] of [
+    [coach, null, 'coach'],
+    [null, self, 'self'],
+    [coach, self, 'coach self'],
+  ] as const) {
+    const m = mount(<CardDiamond coach={c} self={v} />);
+    const d8 = m.host.querySelector('[data-testid="card-d8"]');
+    assert.equal(d8?.getAttribute('data-layers'), layers);
+    assert.ok(d8?.querySelector('.topo-stage'), 'drawn on the shared D8 stage');
+    assert.equal(m.host.querySelector('.topo-stage')?.getAttribute('data-comparison'), 'on');
+    assert.match(d8?.getAttribute('aria-label') ?? '', /^Assessment D8\./);
+    if (c) assert.match(d8?.getAttribute('aria-label') ?? '', /Coach:/);
+    if (v) assert.match(d8?.getAttribute('aria-label') ?? '', /Student self:/);
+    unmount(m);
+  }
 });

@@ -23,6 +23,7 @@ import {
   studentDemoRequested,
 } from './studentDemo.ts';
 import { amnestyStillOpen } from './entitlement.ts';
+import { TIER_BUY_PATHS } from './tierBuyPages.ts';
 import { clearStudentEditionRelock, isStudentEditionRelocked, isStudentEditionUnlocked } from './studentUnlock.ts';
 import { searchJournalIndex } from './journalIndex.ts';
 import { exportProgressPacket, parseProgressPacket, searchJournal, searchJournalClips, techniqueDrilledLabel } from './progress/format.ts';
@@ -215,6 +216,11 @@ export function studentEditionOpen(
 ): boolean {
   if (studentDemoMode(search, owner)) return true;
   return studentEditionEntitled(owner);
+}
+
+/** Home and storefront: an entitled Student Edition opens /student, never the buy page. */
+export function studentHomeEntryPath(entitled: boolean): '/student' | typeof TIER_BUY_PATHS.student {
+  return entitled ? '/student' : TIER_BUY_PATHS.student;
 }
 
 export function demoStudentPacket(): string {

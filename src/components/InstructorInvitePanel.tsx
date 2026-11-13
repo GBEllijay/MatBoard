@@ -16,6 +16,7 @@ import {
   currentLicenseId,
   defaultInstructorPermissions,
   instructorInviteLink,
+  isInviteEmail,
   instructorPresetPermissions,
   instructorPresetPlan,
   instructorSeatBinderLabel,
@@ -33,6 +34,8 @@ import {
   type IssueInviteFailure,
   type SeatStatus,
 } from '../lib/instructorSeats';
+import { STUDENT_LICENSE_GIVE } from '../lib/studentLicensePool';
+import { issueStudentLicense } from '../lib/studentLicenseClient';
 import { issueSeatWithServer, syncLegacySeats } from '../lib/seatClient';
 import { GalleryApprovalSwitch } from './GalleryApprovalSwitch';
 import { GalleryPendingLink } from './GalleryPendingNotice';
@@ -131,6 +134,8 @@ export function InstructorInvitePanel() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyFailedId, setCopyFailedId] = useState<string | null>(null);
   const [handoffNote, setHandoffNote] = useState<string | null>(null);
+  const [studentBusy, setStudentBusy] = useState(false);
+  const [studentReload, setStudentReload] = useState(0);
   const driveConnected = useDriveConnected();
   const issuedRef = useRef<HTMLDivElement>(null);
 
@@ -211,6 +216,29 @@ export function InstructorInvitePanel() {
     })();
   };
 
+  const submitStudent = () => {
+    void (async () => {
+      const trimmed = email.trim();
+      if (!isInviteEmail(trimmed)) {
+        setIssued(null);
+        setError("Enter the student's email.");
+        return;
+      }
+      setStudentBusy(true);
+      const result = await issueStudentLicense(trimmed);
+      setStudentBusy(false);
+      if (!result.ok) {
+        setIssued(null);
+        setError(result.error);
+        return;
+      }
+      setError(null);
+      setEmail('');
+      setIssued(null);
+      setStudentReload((count) => count + 1);
+    })();
+  };
+
   return (
     <div className="invite-panel">
       <form className="invite-stack" onSubmit={submitInvite}>
@@ -263,7 +291,7 @@ export function InstructorInvitePanel() {
           {driveConnected ? null : <DriveHandoffGuide />}
           </div>
           <label className="invite-field invite-field--lead" htmlFor={`${formId}-email`}>
-            Instructor email
+            Email
             <input
               id={`${formId}-email`}
               type="email"
@@ -272,13 +300,15 @@ export function InstructorInvitePanel() {
               maxLength={254}
               placeholder="name@gym.com"
               value={email}
+              aria-label="Email"
               onChange={(event) => {
                 setEmail(event.target.value);
                 setError(null);
               }}
             />
             <span className="invite-field__hint">
-              Advantage does not send email. Copy the invite link after you issue it.
+              Advantage does not send email. Copy the invite link after you issue it. A Student
+              Edition invite uses this email so the student can restore later.
             </span>
           </label>
           <RoleOptions
@@ -304,6 +334,7 @@ export function InstructorInvitePanel() {
               {error}
             </p>
           ) : null}
+          <div className="invite-actions">
           <button
             type="submit"
             className="btn"
@@ -312,10 +343,19 @@ export function InstructorInvitePanel() {
           >
             Issue invite
           </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={studentBusy}
+            onClick={submitStudent}
+          >
+            {STUDENT_LICENSE_GIVE}
+          </button>
+          </div>
           </div>
       </form>
 
-      <StudentLicenseOwnerPanel />
+      <StudentLicenseOwnerPanel hideIssue reloadKey={studentReload} />
 
       <CoachConnectQrPanel />
 

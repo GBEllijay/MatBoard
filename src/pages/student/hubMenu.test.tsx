@@ -25,7 +25,11 @@ import {
 import { DRIVE_BINDING_KEY } from '../../lib/googleDrive.ts';
 import { BackupMenu, ClearStudentMenu } from './BackupMenu.tsx';
 import { CoachMenu, CompeteMenu, ProgressMenu, StudentHub, TrainingMenu } from './StudentMenus.tsx';
-import { StudentProfileSwitcher } from './StudentProfileSwitcher.tsx';
+import {
+  ADD_ADDITIONAL_PROFILES_LABEL,
+  EXISTING_PROFILES_HEADING,
+  StudentProfileSwitcher,
+} from './StudentProfileSwitcher.tsx';
 import { ADD_PROFILE_LABEL, EXTRA_PROFILE_FIXTURE_KEY, readActiveStudentProfile, readStudentProfiles } from '../../lib/studentProfiles.ts';
 import { WhitePage } from '../White.tsx';
 
@@ -112,13 +116,95 @@ test('the hub is five groups and has no Menu card', () => {
   unmount(hub);
 });
 
-test('the hub Profiles card sits below Backup & Print and above FAQ', () => {
+test('the hub Add additional profiles bar sits below Backup & Print and above FAQ', () => {
   const hub = mount(<StudentHub />, '/student?student=1');
-  const switcher = hub.host.querySelector('[data-testid="student-profile-switcher"]');
-  assert.ok(switcher);
-  assert.match(switcher?.previousElementSibling?.getAttribute('aria-label') ?? '', /^Backup & Print/);
-  assert.equal(switcher?.nextElementSibling?.getAttribute('aria-label'), 'FAQ');
+  const entry = hub.host.querySelector('[data-testid="student-profile-switcher"]');
+  assert.ok(entry);
+  assert.match(entry?.previousElementSibling?.getAttribute('aria-label') ?? '', /^Backup & Print/);
+  assert.equal(entry?.nextElementSibling?.getAttribute('aria-label'), 'FAQ');
+  const bar = hub.host.querySelector('[data-testid="student-profiles-entry"]');
+  assert.ok(bar);
+  assert.equal(bar?.getAttribute('aria-label'), ADD_ADDITIONAL_PROFILES_LABEL);
+  assert.match(bar?.textContent ?? '', /Add additional profiles/);
+  assert.match(bar?.textContent ?? '', /1 profile/);
+  assert.equal(bar?.textContent?.includes('$'), false);
+  assert.equal(bar?.textContent?.includes('Add a profile'), false);
+  assert.equal(bar?.querySelector('.s-profiles__row'), null);
+  assert.equal(hub.host.querySelector('[data-testid="student-profiles-sheet"]'), null);
   unmount(hub);
+});
+
+test('Rank & Progress keeps My profile and has no profiles control', () => {
+  const progress = mount(<ProgressMenu />, '/student/progress?student=1');
+  try {
+    assert.ok(progress.host.querySelector('a[aria-label="My profile"]'));
+    assert.equal(progress.host.querySelector('[data-testid="student-profile-switcher"]'), null);
+    assert.equal(progress.host.querySelector('[data-testid="student-profiles-entry"]'), null);
+    assert.equal(progress.host.textContent?.includes('Add a profile'), false);
+    assert.equal(progress.host.textContent?.includes(ADD_ADDITIONAL_PROFILES_LABEL), false);
+  } finally {
+    unmount(progress);
+  }
+});
+
+test('the hub profiles sheet lists existing profiles above the add button', () => {
+  localStorage.clear();
+  localStorage.setItem(EXTRA_PROFILE_FIXTURE_KEY, '1');
+  const hub = mount(<StudentHub />, '/student?student=1');
+  const openSheet = () => {
+    const bar = hub.host.querySelector('[data-testid="student-profiles-entry"]');
+    assert.ok(bar);
+    act(() => {
+      (bar as HTMLElement).click();
+    });
+  };
+  openSheet();
+  const sheet = hub.host.querySelector('[data-testid="student-profiles-sheet"]');
+  assert.ok(sheet);
+  const heading = sheet.querySelector('#existing-profiles-heading');
+  const list = sheet.querySelector('ul');
+  const divider = sheet.querySelector('[data-testid="student-profiles-divider"]');
+  const add = sheet.querySelector('[data-testid="student-profile-add"]');
+  assert.equal(heading?.textContent, EXISTING_PROFILES_HEADING);
+  assert.ok(list);
+  assert.ok(divider);
+  assert.ok(add);
+  assert.match(list?.textContent ?? '', /My profile/);
+  const order = [...sheet.querySelectorAll('h2, ul, [data-testid="student-profiles-divider"], [data-testid="student-profile-add"]')].map(
+    (node) => (node instanceof view.HTMLHeadingElement ? 'heading' : node instanceof view.HTMLUListElement ? 'list' : node.getAttribute('data-testid') ?? node.tagName),
+  );
+  assert.deepEqual(order, ['heading', 'list', 'student-profiles-divider', 'student-profile-add']);
+
+  act(() => {
+    (add as HTMLElement).click();
+  });
+  const name = hub.host.querySelector('input[aria-label="Profile name"]');
+  assert.ok(name instanceof view.HTMLInputElement);
+  act(() => {
+    const set = Object.getOwnPropertyDescriptor(view.HTMLInputElement.prototype, 'value')?.set;
+    set?.call(name, 'Sam');
+    const key = Object.keys(name).find((item) => item.startsWith('__reactProps'));
+    const props = key ? (name as unknown as Record<string, { onChange?: (event: unknown) => void }>)[key] : null;
+    props?.onChange?.({ target: name, currentTarget: name });
+  });
+  const confirm = [...hub.host.querySelectorAll('button')].find((node) => node.textContent?.trim() === 'Add profile');
+  assert.ok(confirm);
+  act(() => {
+    confirm.click();
+  });
+  const after = hub.host.querySelector('[data-testid="student-profiles-sheet"]');
+  assert.ok(after);
+  const afterList = after.querySelector('ul');
+  const afterAdd = after.querySelector('[data-testid="student-profile-add"]');
+  assert.match(afterList?.textContent ?? '', /Sam/);
+  assert.ok(afterAdd);
+  const afterOrder = [...after.querySelectorAll('h2, ul, [data-testid="student-profiles-divider"], [data-testid="student-profile-add"]')].map(
+    (node) => (node instanceof view.HTMLHeadingElement ? 'heading' : node instanceof view.HTMLUListElement ? 'list' : node.getAttribute('data-testid') ?? node.tagName),
+  );
+  assert.deepEqual(afterOrder, ['heading', 'list', 'student-profiles-divider', 'student-profile-add']);
+  assert.equal(readStudentProfiles(localStorage).profiles.some((profile) => profile.name === 'Sam'), true);
+  unmount(hub);
+  localStorage.clear();
 });
 
 test('the hub header shows a profile photo that stays on this phone', () => {
@@ -426,6 +512,70 @@ test('the main menu belt and the hub current-belt link follow My rank', () => {
   unmount(cleared);
 });
 
+test('the hub rank tile and progress belt summary omit the next-stripe line in every state', () => {
+  localStorage.clear();
+  const fresh = mount(<StudentHub />, '/student?student=1');
+  assert.equal(fresh.host.querySelector('.s-rank__cap'), null);
+  assert.ok(fresh.host.querySelector('.s-rank .s-meter'));
+  assert.equal(fresh.host.textContent?.includes('Next stripe'), false);
+  assert.equal(fresh.host.querySelector('.s-rank')?.textContent?.includes('0%'), false);
+  assert.equal(fresh.host.textContent?.includes('White · 0 stripes'), true);
+  unmount(fresh);
+
+  const zeroProgress = mount(<ProgressMenu />, '/student/progress?student=1');
+  const zeroSummary = zeroProgress.host.querySelector('[aria-label="Belt summary"]');
+  assert.ok(zeroSummary);
+  assert.equal(zeroSummary?.textContent?.includes('White belt · 0 stripes'), true);
+  assert.equal(zeroSummary?.textContent?.includes('Next stripe'), false);
+  assert.equal(zeroSummary?.textContent?.includes('0%'), false);
+  assert.ok(zeroSummary?.querySelector('.s-meter'));
+  assert.ok(zeroSummary?.querySelector('.s-belt-mark'));
+  unmount(zeroProgress);
+
+  act(() => {
+    wear(setRankTapeCount(setRankBelt(blankStudentReport(2), 'blue', 3), 2, 4));
+  });
+  const midHub = mount(<StudentHub />, '/student?student=1');
+  assert.equal(midHub.host.querySelector('.s-rank__cap'), null);
+  assert.equal(midHub.host.textContent?.includes('Next stripe'), false);
+  assert.equal(midHub.host.querySelector('.s-rank')?.textContent?.includes('50%'), false);
+  assert.equal(midHub.host.textContent?.includes('Blue · 2 stripes'), true);
+  assert.ok(midHub.host.querySelector('.s-rank .s-meter'));
+  unmount(midHub);
+
+  const midProgress = mount(<ProgressMenu />, '/student/progress?student=1');
+  const midSummary = midProgress.host.querySelector('[aria-label="Belt summary"]');
+  assert.equal(midSummary?.textContent?.includes('Blue belt · 2 stripes'), true);
+  assert.equal(midSummary?.textContent?.includes('Next stripe'), false);
+  assert.equal(midSummary?.textContent?.includes('50%'), false);
+  assert.ok(midSummary?.querySelector('.s-meter'));
+  unmount(midProgress);
+
+  act(() => {
+    wear(setRankTapeCount(setRankBelt(blankStudentReport(3), 'blue', 3), 4, 4));
+  });
+  const maxHub = mount(<StudentHub />, '/student?student=1');
+  assert.equal(maxHub.host.querySelector('.s-rank__cap'), null);
+  assert.equal(maxHub.host.textContent?.includes('All four stripes'), false);
+  assert.equal(maxHub.host.textContent?.includes('Blue · 4 stripes'), true);
+  unmount(maxHub);
+
+  const maxProgress = mount(<ProgressMenu />, '/student/progress?student=1');
+  const maxSummary = maxProgress.host.querySelector('[aria-label="Belt summary"]');
+  assert.equal(maxSummary?.textContent?.includes('All four stripes'), false);
+  assert.equal(maxSummary?.textContent?.includes('Blue belt · 4 stripes'), true);
+  unmount(maxProgress);
+
+  wear(setRankBelt(blankStudentReport(10), 'red', 11));
+  const finalProgress = mount(<ProgressMenu />, '/student/progress?student=1');
+  const finalSummary = finalProgress.host.querySelector('[aria-label="Belt summary"]');
+  assert.equal(finalSummary?.textContent?.includes('Final rank'), false);
+  assert.equal(finalSummary?.textContent?.includes('Red belt · 9 degrees'), true);
+  unmount(finalProgress);
+
+  localStorage.clear();
+});
+
 test('kids stripes and the adult switch repaint the same belt mark', () => {
   localStorage.clear();
   let report = setBeltMode(blankStudentReport(20), 'kids', 21);
@@ -576,7 +726,12 @@ test('a profile can be added and switched from the hub, then deleted after confi
       button.click();
     });
   };
-  const switcher = hub.host.querySelector('[data-testid="student-profile-switcher"]');
+  const bar = hub.host.querySelector('[data-testid="student-profiles-entry"]');
+  assert.ok(bar);
+  act(() => {
+    (bar as HTMLElement).click();
+  });
+  const switcher = hub.host.querySelector('[data-testid="student-profiles-sheet"]');
   assert.equal(switcher?.textContent?.includes('$'), false);
   click(hub.host, ADD_PROFILE_LABEL);
   const name = hub.host.querySelector('input[aria-label="Profile name"]');
@@ -614,6 +769,12 @@ test('a profile can be added and switched from the hub, then deleted after confi
 test('adding a second profile offers the $5.99 checkout unless the fixture is on', () => {
   localStorage.clear();
   const page = mount(<StudentProfileSwitcher />, '/student/profile');
+  const bar = page.host.querySelector('[data-testid="student-profiles-entry"]');
+  assert.ok(bar);
+  assert.equal(bar?.textContent?.includes('$'), false);
+  act(() => {
+    (bar as HTMLElement).click();
+  });
   const add = [...page.host.querySelectorAll('button')].find((node) => node.textContent?.includes('$5.99'));
   assert.ok(add);
   act(() => {

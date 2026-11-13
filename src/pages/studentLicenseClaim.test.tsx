@@ -55,7 +55,7 @@ async function mount(node: ReactNode) {
 
 test('claim page asks for the restore email before it claims', async () => {
   const page = await mount(<StudentLicenseClaimPage code={CODE} gymName="North Gym" />);
-  assert.match(page.host.textContent ?? '', /Enter the email/);
+  assert.match(page.host.textContent ?? '', /Confirm the email/);
   assert.equal(page.host.querySelector('input[aria-label="Email"]') instanceof view.HTMLInputElement, true);
   assert.equal(page.host.textContent?.includes(ADD_TO_HOME_TITLE), false);
   const broken = await mount(<StudentLicenseClaimPage code="not-a-code" gymName="" />);
@@ -77,5 +77,12 @@ test('after a claim, the page tells the student how to add the home screen app a
   assert.match(text, /Coach lesson files, private coach notes, and other students stay closed/);
   const restore = page.host.querySelector('a[href^="/restore"]');
   assert.equal(restore?.getAttribute('href'), '/restore?email=student%40gym.test');
+  page.done();
+});
+
+test('claim page prefills the issue-time email from the invite link', async () => {
+  const page = await mount(<StudentLicenseClaimPage code={CODE} gymName="North Gym" initialEmail="marty@gym.test" />);
+  const input = page.host.querySelector('input[aria-label="Email"]') as HTMLInputElement | null;
+  assert.equal(input?.value, 'marty@gym.test');
   page.done();
 });

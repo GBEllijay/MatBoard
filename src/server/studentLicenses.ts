@@ -2,8 +2,9 @@
  * Owner-issued free Student Edition licenses.
  *
  * One row in student_codes (migrations/0003_pro_bundle.sql, already in production).
- * No new table and no new column. The claim code is the primary key. The student's
- * email is stored only as the existing identities hash so Restore can find it.
+ * Issue requires an email. The address is stored only as email_hash
+ * (migrations/0008_student_code_email.sql) and, after claim, as the existing
+ * identities hash so Restore can find it. No plaintext email is stored.
  * Revoke sets status to revoked and, once claimed, inactivates that grant.
  * That ends academy access for the code. The student's own journal, photos, and backup stay theirs.
  * A revoked code stays revoked. The seat returns to the free pool either way.
@@ -24,7 +25,9 @@ import {
   studentLicenseSourceRef,
 } from '../lib/studentLicensePool.ts';
 import { grantRowOpensPlusCloud } from '../lib/advantageCloudMedia.ts';
+import { keyedHash } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
+import { normalizeEmail } from './entitlements.ts';
 import { isCloudGrantProduct } from './cloudSubscription.ts';
 import { expandGrants } from './grantMatrix.ts';
 import { API_PRODUCT_STUDENT } from './routes.ts';
@@ -40,6 +43,9 @@ const JSON_HEADERS = {
 const SETUP_MESSAGE = 'Free Student licenses are not set up on this site yet.';
 const RESTORE_EMAIL_MESSAGE = 'This site cannot save a restore email yet.';
 const EMAIL_REQUIRED = 'Enter the email you will use inside the installed app.';
+const STUDENT_ISSUE_EMAIL_REQUIRED = "Enter the student's email.";
+const EMAIL_COLUMN_MESSAGE = 'Apply the student invite email migration before issuing.';
+const RESET_NOT_CLAIMED = 'Only a claimed Student license can be reset for a new device.';
 const SIGNING_MESSAGE = 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY.';
 const STORAGE_MESSAGE = 'Entitlement storage is not set up yet. Bind ENTITLEMENTS_DB.';
 const INVALID_CODE = 'This link is not a free Student license.';
@@ -57,7 +63,10 @@ type CodeRow = {
   status: string;
   claimedDevice: string | null;
   createdAt: string;
+  emailHash: string | null;
 };
+
+const CODE_COLUMNS = `code, license_id AS licenseId, status, claimed_device AS claimedDevice, created_at AS createdAt, email_hash AS emailHash`;
 
 type Caller = { role: 'owner' | 'seat'; licenseId: string };
 
@@ -68,6 +77,38 @@ function json(status: number, body: unknown): Response {
 function missingStudentCodes(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /no such table/i.test(message) && message.includes('student_codes');
+}
+
+function missingEmailColumn(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /no such column/i.test(message) && message.includes('email_hash');
+}
+
+async function hashEmail(email: string, pepper: string): Promise<string | null> {
+  const normalized = normalizeEmail(email);
+  if (!normalized || !pepper) return null;
+  return keyedHash(normalized, pepper, 'email');
+}
+
+/** Attach a second restore email to this license. An existing hash is left on the license it already has. */
+async function linkEmailHashToLicense(db: D1Database, licenseId: string, emailHash: string, now: Date): Promise<void> {
+  const existing = await db
+    .prepare(`SELECT license_id AS licenseId FROM identities WHERE email_hash = ? LIMIT 1`)
+    .bind(emailHash)
+    .first<{ licenseId: string }>();
+  if (existing) return;
+  await db
+    .prepare(`INSERT INTO identities (license_id, email_hash, created_at) VALUES (?, ?, ?)`)
+    .bind(licenseId, emailHash, now.toISOString())
+    .run();
+}
+
+async function linkIssueEmail(db: D1Database, env: StudentLicenseEnv, row: CodeRow, studentLicenseId: string, claimEmail: string, now: Date): Promise<void> {
+  if (!row.emailHash) return;
+  const pepper = env.CODE_HASH_PEPPER?.trim() ?? '';
+  const claimHash = claimEmail && pepper ? await hashEmail(claimEmail, pepper) : null;
+  if (claimHash && claimHash === row.emailHash) return;
+  await linkEmailHashToLicense(db, studentLicenseId, row.emailHash, now);
 }
 
 async function readBody(request: Request, limit: number): Promise<Record<string, unknown> | Response> {
@@ -186,10 +227,7 @@ async function occupiedCount(db: D1Database, licenseId: string): Promise<number>
 
 async function readCode(db: D1Database, code: string): Promise<CodeRow | null> {
   return db
-    .prepare(
-      `SELECT code, license_id AS licenseId, status, claimed_device AS claimedDevice, created_at AS createdAt
-       FROM student_codes WHERE code = ?`,
-    )
+    .prepare(`SELECT ${CODE_COLUMNS} FROM student_codes WHERE code = ?`)
     .bind(code)
     .first<CodeRow>();
 }
@@ -335,18 +373,24 @@ export async function handleStudentLicenseIssue(
   try {
     const caller = await readCaller(verified, db, false);
     if (caller instanceof Response) return caller;
+    const email = cleanEmail(body.email) ?? '';
+    if (!email) return json(400, { ok: false, error: STUDENT_ISSUE_EMAIL_REQUIRED });
+    const pepper = env.CODE_HASH_PEPPER?.trim() ?? '';
+    if (!pepper) return json(503, { ok: false, error: RESTORE_EMAIL_MESSAGE });
+    const emailKey = await hashEmail(email, pepper);
+    if (!emailKey) return json(400, { ok: false, error: STUDENT_ISSUE_EMAIL_REQUIRED });
     const stamp = now().toISOString();
     const code = mintCode();
     const inserted = await db
       .prepare(
-        `INSERT INTO student_codes (code, license_id, issuing_seat_id, status, claimed_device, created_at)
-         SELECT ?, ?, NULL, 'issued', NULL, ?
+        `INSERT INTO student_codes (code, license_id, issuing_seat_id, status, claimed_device, created_at, email_hash)
+         SELECT ?, ?, NULL, 'issued', NULL, ?, ?
          WHERE (
            SELECT COUNT(*) FROM student_codes
            WHERE license_id = ? AND status IN ('issued', 'claimed')
          ) < ?`,
       )
-      .bind(code, caller.licenseId, stamp, caller.licenseId, poolCap(caller.licenseId))
+      .bind(code, caller.licenseId, stamp, emailKey, caller.licenseId, poolCap(caller.licenseId))
       .run();
     const occupied = await occupiedCount(db, caller.licenseId);
     if (!inserted.meta.changes) {
@@ -356,6 +400,7 @@ export async function handleStudentLicenseIssue(
     return json(200, { ok: true, code, invite: invite ?? undefined, typ: STUDENT_INVITE_TYP, status: 'issued', ...poolBody(occupied, caller.licenseId) });
   } catch (error) {
     if (missingStudentCodes(error)) return json(503, { ok: false, error: SETUP_MESSAGE, setup: true });
+    if (missingEmailColumn(error)) return json(503, { ok: false, error: EMAIL_COLUMN_MESSAGE, setup: true });
     throw error;
   }
 }
@@ -379,10 +424,7 @@ export async function handleStudentLicenseList(
       return json(200, { ok: true, role: 'owner', left: 0, cap: 0, claims: [], halfOff });
     }
     const rows = await db
-      .prepare(
-        `SELECT code, license_id AS licenseId, status, claimed_device AS claimedDevice, created_at AS createdAt
-         FROM student_codes WHERE license_id = ? ORDER BY created_at`,
-      )
+      .prepare(`SELECT ${CODE_COLUMNS} FROM student_codes WHERE license_id = ? ORDER BY created_at`)
       .bind(caller.licenseId)
       .all<CodeRow>();
     const occupied = rows.results.filter((row) => row.status === 'issued' || row.status === 'claimed').length;
@@ -392,14 +434,16 @@ export async function handleStudentLicenseList(
       const showCode =
         (caller.role === 'owner' && (row.status === 'issued' || row.status === 'claimed')) ||
         (caller.role === 'seat' && row.status === 'issued');
+      const deviceBound = row.status === 'claimed' && Boolean(row.claimedDevice);
       const invite =
-        showCode && row.status === 'issued' && row.code
+        showCode && row.code && (row.status === 'issued' || (row.status === 'claimed' && !deviceBound))
           ? await signStudentInvite(env, { code: row.code, gym: caller.licenseId })
           : null;
       claims.push({
         status: row.status,
         createdAt: row.createdAt,
         claimed: row.status === 'claimed',
+        deviceBound,
         // The owner needs the code to revoke a claimed license. A seat only
         // receives an unclaimed code, so they can show that QR.
         ...(showCode ? { code: row.code, ...(invite ? { invite } : {}) } : {}),
@@ -415,6 +459,7 @@ export async function handleStudentLicenseList(
     });
   } catch (error) {
     if (missingStudentCodes(error)) return json(503, { ok: false, error: SETUP_MESSAGE, setup: true });
+    if (missingEmailColumn(error)) return json(503, { ok: false, error: EMAIL_COLUMN_MESSAGE, setup: true });
     throw error;
   }
 }
@@ -493,7 +538,11 @@ export async function handleStudentLicenseClaim(
     if (row.status === 'claimed') {
       const studentLicenseId = await ensureGrant(db, env, code, email, stamp);
       if (!studentLicenseId) return json(403, { ok: false, error: STUDENT_LICENSE_REVOKED_MESSAGE });
-      return claimPayload(db, env, row, studentLicenseId, deviceId, stamp, request);
+      if (!row.claimedDevice || row.claimedDevice !== deviceId) {
+        await db.prepare(`UPDATE student_codes SET claimed_device = ? WHERE code = ? AND status = 'claimed'`).bind(deviceId, code).run();
+      }
+      await linkIssueEmail(db, env, row, studentLicenseId, email, stamp);
+      return claimPayload(db, env, { ...row, claimedDevice: deviceId }, studentLicenseId, deviceId, stamp, request);
     }
     if (row.status !== 'issued') return json(400, { ok: false, error: INVALID_CODE });
     if (!email) return json(400, { ok: false, error: EMAIL_REQUIRED });
@@ -512,15 +561,58 @@ export async function handleStudentLicenseClaim(
       if (again.status === 'claimed' && again.claimedDevice === deviceId) {
         const studentLicenseId = await ensureGrant(db, env, code, email, stamp);
         if (!studentLicenseId) return json(403, { ok: false, error: STUDENT_LICENSE_REVOKED_MESSAGE });
+        await linkIssueEmail(db, env, again, studentLicenseId, email, stamp);
         return claimPayload(db, env, again, studentLicenseId, deviceId, stamp, request);
       }
       return json(409, { ok: false, error: STUDENT_LICENSE_TAKEN_MESSAGE });
     }
     const studentLicenseId = await ensureGrant(db, env, code, email, stamp);
     if (!studentLicenseId) return json(503, { ok: false, error: RESTORE_EMAIL_MESSAGE });
+    await linkIssueEmail(db, env, row, studentLicenseId, email, stamp);
     return claimPayload(db, env, { ...row, status: 'claimed', claimedDevice: deviceId }, studentLicenseId, deviceId, stamp, request);
   } catch (error) {
     if (missingStudentCodes(error)) return json(503, { ok: false, error: SETUP_MESSAGE, setup: true });
+    if (missingEmailColumn(error)) return json(503, { ok: false, error: EMAIL_COLUMN_MESSAGE, setup: true });
+    throw error;
+  }
+}
+
+export async function handleStudentLicenseReset(
+  request: Request,
+  env: StudentLicenseEnv,
+  db: D1Database | null,
+): Promise<Response> {
+  if (request.method !== 'POST') return json(405, { error: 'Method not allowed.' });
+  if (!db) return json(503, { ok: false, error: STORAGE_MESSAGE });
+  const body = await readBody(request, 8_000);
+  if (body instanceof Response) return body;
+  const code = typeof body.code === 'string' && isStudentLicenseCode(body.code.trim().toLowerCase()) ? body.code.trim().toLowerCase() : '';
+  if (!code) return json(400, { ok: false, error: INVALID_CODE });
+  const verified = await verifyCaller(body.token, env);
+  if (verified instanceof Response) return verified;
+  try {
+    const caller = await readCaller(verified, db, false);
+    if (caller instanceof Response) return caller;
+    const row = await readCode(db, code);
+    if (!row || row.licenseId !== caller.licenseId) return json(404, { ok: false, error: 'That code was not found.' });
+    if (row.status === 'revoked') return json(409, { ok: false, error: ALREADY_REVOKED });
+    if (row.status !== 'claimed') return json(409, { ok: false, error: RESET_NOT_CLAIMED });
+    await db
+      .prepare(`UPDATE student_codes SET claimed_device = NULL WHERE code = ? AND license_id = ? AND status = 'claimed'`)
+      .bind(code, caller.licenseId)
+      .run();
+    const invite = await signStudentInvite(env, { code, gym: caller.licenseId });
+    const occupied = await occupiedCount(db, caller.licenseId);
+    return json(200, {
+      ok: true,
+      status: 'claimed',
+      code,
+      ...(invite ? { invite } : {}),
+      ...poolBody(occupied, caller.licenseId),
+    });
+  } catch (error) {
+    if (missingStudentCodes(error)) return json(503, { ok: false, error: SETUP_MESSAGE, setup: true });
+    if (missingEmailColumn(error)) return json(503, { ok: false, error: EMAIL_COLUMN_MESSAGE, setup: true });
     throw error;
   }
 }

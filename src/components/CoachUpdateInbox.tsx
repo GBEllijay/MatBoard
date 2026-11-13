@@ -62,6 +62,8 @@ import {
   type PhotoDecision,
 } from '../lib/studentInboxClient';
 import { useStudentFile } from '../pages/student/chrome';
+import { loadAssessments } from '../lib/studentAssessment';
+import { AssessmentCompareD8, assessmentEntryFromScores } from './AssessmentCompareD8';
 
 function matchingPackets(reportStudentId: string, packets: readonly CoachInboxPacket[]): CoachInboxPacket[] {
   const stable = readStableStudentId(localStorage);
@@ -339,6 +341,10 @@ export function CoachUpdateInbox() {
   const conflicts = packet?.kind === 'coach-competition-update' ? competitionConflicts(report, packet) : [];
   const changeLines = packet ? cardChangeLines(packet) : [];
   const moreWaiting = Math.max(0, allowedPackets.length - 1);
+  const pendingCoachEntry =
+    packet?.kind === 'coach-assessment-update'
+      ? assessmentEntryFromScores(packet.updateId, packet.assessment.date, packet.assessment.scores, packet.assessment.note)
+      : null;
   return (
     <>
     {cheerNode}
@@ -390,6 +396,9 @@ export function CoachUpdateInbox() {
           ))
         : null}
       {packet.kind === 'coach-assessment-update' && packet.assessment.note ? <p>{packet.assessment.note}</p> : null}
+      {packet.kind === 'coach-assessment-update' && pendingCoachEntry ? (
+        <AssessmentCompareD8 coachEntries={[pendingCoachEntry]} selfEntries={loadAssessments(localStorage).entries} />
+      ) : null}
       {packet.kind === 'coach-note-update' ? <p>{packet.coachNote.note}</p> : null}
       {packet.kind === 'coach-rank-update' && packet.rankUpdate.note ? <p>{packet.rankUpdate.note}</p> : null}
       {packet.kind === 'coach-competition-update'

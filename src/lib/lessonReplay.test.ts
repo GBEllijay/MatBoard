@@ -235,12 +235,10 @@ test('Private keeps replay cards across a switch', () => {
   assert.equal(templateAlreadyApplied(next, 'private'), true);
 });
 
-// ---------- Competition curriculum: Record for replay mode + Record for Review ----------
+// ---------- Competition curriculum: Record for replay mode ----------
 import {
   CURRICULUM_TIMINGS,
   CURRICULUM_TIMING_LABELS,
-  RECORD_FOR_REVIEW_LABEL,
-  blockOffersReviewToggle,
   blockWantsReplay,
   copyCurriculum,
   createCustomBlock,
@@ -254,21 +252,15 @@ test('curriculum modes: Timer only / Looping video / Record for replay', () => {
     CURRICULUM_TIMINGS.map((t) => CURRICULUM_TIMING_LABELS[t]),
     ['Timer only', 'Looping video', 'Record for replay'],
   );
-  assert.equal(RECORD_FOR_REVIEW_LABEL, 'Record for Review');
 });
 
-test('Record for Review (owner): sparring, added blocks, Specific Training, Intro and Closing; not cool down, warm-up, body movement or technique', () => {
-  for (const kind of ['live', 'custom', 'specific', 'intro', 'closing'] as const) {
-    assert.equal(blockOffersReviewToggle(kind), true, kind);
-  }
-  for (const kind of ['warmup', 'body', 'takedown', 'cooldown'] as const) {
-    assert.equal(blockOffersReviewToggle(kind), false, kind);
-  }
+test('the recorder opens only for Record for replay mode; a leftover Record for Review flag does not start it', () => {
   assert.equal(blockWantsReplay({ kind: 'warmup', timing: 'replay' }), true);
   assert.equal(blockWantsReplay({ kind: 'warmup', timing: 'timer', recordReview: true }), false);
-  assert.equal(blockWantsReplay({ kind: 'live', timing: 'timer', recordReview: true }), true);
+  assert.equal(blockWantsReplay({ kind: 'live', timing: 'timer', recordReview: true }), false, 'live has no mode picker and review is ignored');
   assert.equal(blockWantsReplay({ kind: 'live', timing: 'replay' }), false, 'live has no mode picker');
-  assert.equal(blockWantsReplay({ kind: 'custom', timing: 'timer', recordReview: true }), true);
+  assert.equal(blockWantsReplay({ kind: 'custom', timing: 'timer', recordReview: true }), false);
+  assert.equal(blockWantsReplay({ kind: 'custom', timing: 'replay' }), true);
   assert.equal(blockWantsReplay({ kind: 'custom', timing: 'timer' }), false);
 });
 
@@ -316,7 +308,7 @@ test('curriculum sanitize keeps replay mode, review toggle and clip ref; drops t
   assert.equal(broken.repaired, true);
 });
 
-test('a fresh curriculum is still empty; toggling Record for Review counts as content', () => {
+test('a fresh curriculum is still empty; a leftover Record for Review flag still counts as content', () => {
   const plan = emptyCurriculum();
   assert.equal(curriculumHasContent(plan), false);
   const live = plan.blocks.findIndex((b) => b.kind === 'live');
