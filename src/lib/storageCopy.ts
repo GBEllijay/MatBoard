@@ -21,6 +21,13 @@ export function connectWithBody(cloudOn: boolean, deviceBody: string): string {
   return cloudOn ? CLOUD_CONNECT_BODY : deviceBody;
 }
 
+/** Instructor Edition collapsed line when the gym already has Advantage Cloud. */
+export const CLOUD_CONNECT_COLLAPSE_LABEL = 'Also save to Google Drive or OneDrive ›';
+
+/** Instructor Edition expanded Connect with body when the gym already has Advantage Cloud. */
+export const CLOUD_CONNECT_OPTIONAL =
+  'Optional. Also save lesson plans, photos, and videos to a Google Drive or OneDrive folder your gym owns. That folder stays in your account.';
+
 /** Daily Training Videos connect button when Advantage Cloud is on. */
 export const TRAINING_DRIVE_CONNECT_LABEL_CLOUD = 'Connect Google Drive (optional)';
 

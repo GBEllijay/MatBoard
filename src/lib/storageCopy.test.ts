@@ -11,7 +11,9 @@ import { cloudStorageChoices } from './cloudStorage.ts';
 import {
   ACADEMY_NO_FOLDER_CLOUD,
   CLOUD_CONNECT_BODY,
+  CLOUD_CONNECT_COLLAPSE_LABEL,
   CLOUD_CONNECT_NOTE,
+  CLOUD_CONNECT_OPTIONAL,
   CLOUD_STUDENT_LICENSE_HINT,
   PLAYING_FROM_PHONE_CLOUD,
   ROSTER_CLOUD_HINT,
@@ -84,4 +86,13 @@ test('home no longer promises Dropbox, which is not connectable', () => {
 
 test('the Instructor Edition flow is labeled Instructor Edition, not Advantage Coach Unlimited', () => {
   assert.equal(INSTRUCTOR_COACH_ENTRY, 'Instructor Edition');
+});
+
+test('Cloud gyms collapse Connect with to one optional line, with short expanded copy', () => {
+  assert.equal(CLOUD_CONNECT_COLLAPSE_LABEL, 'Also save to Google Drive or OneDrive ›');
+  assert.equal(
+    CLOUD_CONNECT_OPTIONAL,
+    'Optional. Also save lesson plans, photos, and videos to a Google Drive or OneDrive folder your gym owns. That folder stays in your account.',
+  );
+  assert.doesNotMatch(CLOUD_CONNECT_OPTIONAL, /This gym has Advantage Cloud/);
 });
