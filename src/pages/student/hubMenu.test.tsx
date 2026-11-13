@@ -121,6 +121,17 @@ test('the hub Profiles card sits below Backup & Print and above FAQ', () => {
   unmount(hub);
 });
 
+test('Rank & Progress keeps My profile and has no Profiles switcher', () => {
+  const progress = mount(<ProgressMenu />, '/student/progress?student=1');
+  try {
+    assert.ok(progress.host.querySelector('a[aria-label="My profile"]'));
+    assert.equal(progress.host.querySelector('[data-testid="student-profile-switcher"]'), null);
+    assert.equal(progress.host.textContent?.includes('Add a profile'), false);
+  } finally {
+    unmount(progress);
+  }
+});
+
 test('the hub header shows a profile photo that stays on this phone', () => {
   const portrait = 'data:image/jpeg;base64,AAAA';
   localStorage.setItem('matboard.studentPortrait.v1', JSON.stringify({ version: 1, dataUrl: portrait }));
