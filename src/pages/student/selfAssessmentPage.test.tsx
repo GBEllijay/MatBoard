@@ -62,6 +62,7 @@ import { CompetitorPage } from './CompetitorPage.tsx';
 import { PrintReportPage } from './PrintReportPage.tsx';
 import { CardRadar } from './StudentCardLayout.tsx';
 import { SelfAssessmentPage } from './SelfAssessmentPage.tsx';
+import { withLegacySavedRubric } from '../../lib/testFixtures/legacySavedRubric.ts';
 
 const dom = new Window({ url: 'http://localhost/student/self-assessment' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -212,10 +213,8 @@ test('the self-assessment page keeps every control and Back returns to Rank & Pr
   assert.ok(shape?.querySelector('[data-testid="sheet-diamond"]'), 'the Profile D8');
   assert.equal(host.querySelectorAll('polygon.assess-chart__shape').length, 0);
   assert.ok(host.querySelector('[aria-label^="Self-assessment trend"]'));
-  assert.equal(
-    host.querySelector('a[href="/student/rubric?student=1#checkpoint.white.s1-positions"]')?.textContent,
-    'Open: Name the four basic control positions and hold each against a cooperative partner: closed guard, side control, mount, back control. benchmark',
-  );
+  // A new file has no practical benchmarks, so no area links one.
+  assert.equal(host.querySelectorAll('a[href*="/student/rubric"]').length, 0);
   assert.equal(host.textContent?.includes('Open: Conditioning benchmark'), false);
   assert.equal(host.querySelector('[aria-label="Division"]'), null);
   assert.equal(host.querySelector('[aria-label="Weight class"]'), null);
@@ -242,22 +241,22 @@ test('Back returns to the page that opened self-assessment', () => {
 
 test('a check-in saves, updates, and a white belt links only that belt', () => {
   localStorage.clear();
-  saveStudentReport(localStorage, withStarterRubric(blankStudentReport()));
+  saveStudentReport(localStorage, withStarterRubric(withLegacySavedRubric(blankStudentReport())));
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
   assert.equal(
-    host.querySelector('a[href="/student/rubric#checkpoint.white.s1-positions"]')?.textContent,
-    'Open: Name the four basic control positions and hold each against a cooperative partner: closed guard, side control, mount, back control. benchmark',
+    host.querySelector('a[href="/student/rubric#checkpoint.white.s1-guard-attack"]')?.textContent,
+    'Open: Saved white benchmark s1-guard-attack benchmark',
   );
   assert.equal(
     host.querySelector('a[href="/student/rubric#checkpoint.white.s1-pass"]')?.textContent,
-    'Open: Open closed guard from the top and pass it one way in drilling. benchmark',
+    'Open: Saved white benchmark s1-pass benchmark',
   );
   assert.equal(
-    host.querySelector('a[href="/student/rubric#checkpoint.white.s2-escape-resist"]')?.textContent,
-    'Open: Escape mount and side control with two different options each against a partner who starts to resist. benchmark',
+    host.querySelector('a[href="/student/rubric#checkpoint.white.s1-escapes"]')?.textContent,
+    'Open: Saved white benchmark s1-escapes benchmark',
   );
-  assert.ok(host.querySelector('a[href="/student/rubric#checkpoint.white.promo-standing"]'));
+  assert.ok(host.querySelector('a[href="/student/rubric#checkpoint.white.s4-back-choke"]'));
   assert.equal(host.textContent?.includes('Open: Conditioning benchmark'), false);
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.blue')),
@@ -330,22 +329,22 @@ test('a check-in saves, updates, and a white belt links only that belt', () => {
 
 test('a blue belt links the benchmarks on blue', () => {
   localStorage.clear();
-  const report = withStarterRubric(blankStudentReport());
+  const report = withStarterRubric(withLegacySavedRubric(blankStudentReport()));
   report.profile.belt = 'blue';
   saveStudentReport(localStorage, report);
   const mounted = mount(<SelfAssessmentPage />);
   const { host } = mounted;
   assert.equal(
-    host.querySelector('a[href="/student/rubric#checkpoint.blue.s1-half-bottom"]')?.textContent,
-    'Open: Keep your guard from being passed. Half guard from the bottom: a way to recover, a sweep and a back take. benchmark',
+    host.querySelector('a[href="/student/rubric#checkpoint.blue.s2-your-guard"]')?.textContent,
+    'Open: Saved blue benchmark s2-your-guard benchmark',
   );
   assert.equal(
     host.querySelector('a[href="/student/rubric#checkpoint.blue.s4-takedowns"]')?.textContent,
-    'Open: Takedowns: connect a single leg, a double leg, and an arm drag or hip throw to a finish. benchmark',
+    'Open: Saved blue benchmark s4-takedowns benchmark',
   );
   assert.equal(
-    host.querySelector('a[href="/student/rubric#checkpoint.blue.s1-defend"]')?.textContent,
-    'Open: Defend submissions early (arm locks, triangle, chokes) before they are tight, stay calm, and escape them. benchmark',
+    host.querySelector('a[href="/student/rubric#checkpoint.blue.s1-escapes"]')?.textContent,
+    'Open: Saved blue benchmark s1-escapes benchmark',
   );
   assert.equal(
     [...host.querySelectorAll('a')].some((link) => link.getAttribute('href')?.includes('checkpoint.white')),
@@ -444,7 +443,7 @@ test('the print route still shows the self-assessment report', () => {
 
 test('with no earlier check-in, fundamentals levels show on the chart without retyping, and a saved day is kept', () => {
   localStorage.clear();
-  let report = withStarterRubric(blankStudentReport());
+  let report = withStarterRubric(withLegacySavedRubric(blankStudentReport()));
   const mark = (catalogItemId: string, categoryId: string, name: string, level: 0 | 1 | 2 | 3 | 4 | 5, now: number) => {
     report = setFundamentalLevel(report, { catalogItemId, categoryId, name }, level, now);
   };
@@ -528,7 +527,7 @@ test('with no earlier check-in, fundamentals levels show on the chart without re
 
 test('a new day carries all eight faces, Sweeps included, from the last check-in', () => {
   localStorage.clear();
-  let report = withStarterRubric(blankStudentReport());
+  let report = withStarterRubric(withLegacySavedRubric(blankStudentReport()));
   report = setFundamentalLevel(report, { catalogItemId: 'sweep.scissor', categoryId: 'sweeps', name: 'Scissor sweep' }, 5, 10);
   report = setFundamentalLevel(report, { catalogItemId: 'td.double-leg', categoryId: 'takedowns', name: 'Double leg' }, 5, 11);
   saveStudentReport(localStorage, report);
@@ -570,7 +569,7 @@ test('a new day carries all eight faces, Sweeps included, from the last check-in
 
 test('a new day after an old seven-value check-in leaves Sweeps blank and asks for it', () => {
   localStorage.clear();
-  saveStudentReport(localStorage, withStarterRubric(blankStudentReport()));
+  saveStudentReport(localStorage, withStarterRubric(withLegacySavedRubric(blankStudentReport())));
   storeRaw([
     {
       id: 'assess.seven',

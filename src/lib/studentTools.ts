@@ -21,7 +21,6 @@ import {
   parseProgressPacket,
   progressHandoffFileName,
   sharedCheckpointId,
-  sharedCriterionId,
 } from './progress/format.ts';
 import {
   PROGRESS_BENCHMARK_MAX,
@@ -65,7 +64,7 @@ import {
 
 export { criterionCounts, criterionFromFundamentals };
 export type { LearnedIndex };
-import { beltModeOf } from './beltBook.ts';
+import { beltModeOf, currentKidsBelt, seedKidsBelt } from './beltBook.ts';
 import { isGymBrandFile } from './coachGymFile.ts';
 import { readTravelingGym } from './coachGymFit.ts';
 import { headerVisibility, readProfileMarks } from './profileMarks.ts';
@@ -403,131 +402,118 @@ export function gymClassesOnDate(raw: string | null, iso: string): string[] {
   return [...classes, ...specials];
 }
 
-function criterion(belt: ProgressBelt, slug: string, requirement: string, techniqueId: string, techniqueName: string): RubricCriterion {
-  return {
-    id: sharedCriterionId(belt, slug),
-    requirement,
-    techniqueRefs: [{ id: techniqueId, name: techniqueName }],
-    met: null,
-    note: '',
-  };
-}
-
-function checkpoint(belt: ProgressBelt, slug: string, name: string, criteria: RubricCriterion[]): RubricCheckpoint {
-  return { id: sharedCheckpointId(belt, slug), name, met: null, note: '', criteria };
-}
-
-function level(belt: ProgressBelt, name: string, checkpoints: RubricCheckpoint[]): RubricLevel {
-  return { id: `level.${belt}`, name, belt, checkpoints };
+function level(belt: ProgressBelt, name: string): RubricLevel {
+  return { id: `level.${belt}`, name, belt, checkpoints: [] };
 }
 
 /**
- * Brown used to arrive with a technique list. That list is not a default anymore.
- * An unmarked copy of it is cleared. A mark, a note, or a renamed row stays.
- */
-const LEGACY_BROWN_CHECKPOINTS: RubricCheckpoint[] = [
-  checkpoint('brown', 'top', 'Top', [
-    criterion('brown', 'mount', 'Hold mount.', 'pos.mount', 'Mount'),
-    criterion('brown', 'knee on belly', 'Hold knee on belly.', 'pos.knee-on-belly', 'Knee on belly'),
-  ]),
-  checkpoint('brown', 'standing', 'Standing', [
-    criterion('brown', 'standing', 'Work standing.', 'pos.standing', 'Standing'),
-    criterion('brown', 'double leg', 'Finish a double leg.', 'td.double-leg', 'Double leg'),
-    criterion('brown', 'hip throw', 'Finish a hip throw.', 'td.hip-throw', 'Hip throw'),
-  ]),
-  checkpoint('brown', 'chokes', 'Chokes', [
-    criterion('brown', 'guillotine', 'Finish a guillotine.', 'sub.guillotine', 'Guillotine'),
-    criterion('brown', 'cross collar', 'Finish a cross collar choke.', 'sub.cross-collar', 'Cross collar choke'),
-  ]),
-];
-
-/**
- * White through brown carry the suggested stripe lists.
- * Black and above stay empty. Kids belts keep their short lists.
+ * Every belt starts with an empty practical-benchmark list.
+ * Advantage ships no benchmark content: the student adds what their instructor
+ * gives them. Kids belts keep their own list in the belt book, also empty.
  */
 export const STARTER_RUBRIC_LEVELS: RubricLevel[] = [
   ...adultStarterLevels(),
-  level('black', 'Black', []),
-  level('coral', 'Coral', []),
-  level('redWhite', 'Red and white', []),
-  level('red', 'Red', []),
-  level('grey', 'Grey', [
-    checkpoint('grey', 'positions', 'Positions', [
-      criterion('grey', 'closed guard', 'Hold closed guard.', 'pos.closed-guard', 'Closed guard'),
-      criterion('grey', 'mount', 'Hold mount.', 'pos.mount', 'Mount'),
-    ]),
-  ]),
-  level('yellow', 'Yellow', [
-    checkpoint('yellow', 'sweeps', 'Sweeps', [
-      criterion('yellow', 'hip bump', 'Finish a hip bump sweep.', 'sweep.hip-bump', 'Hip bump sweep'),
-      criterion('yellow', 'pendulum', 'Finish a pendulum sweep.', 'sweep.pendulum', 'Pendulum sweep'),
-    ]),
-  ]),
-  level('orange', 'Orange', [
-    checkpoint('orange', 'escapes', 'Escapes', [
-      criterion('orange', 'mount escape', 'Escape mount.', 'escape.mount', 'Mount escape'),
-      criterion('orange', 'headlock', 'Escape a headlock.', 'escape.headlock', 'Headlock escape'),
-    ]),
-  ]),
-  level('green', 'Green', [
-    checkpoint('green', 'takedowns', 'Takedowns', [
-      criterion('green', 'double leg', 'Finish a double leg.', 'td.double-leg', 'Double leg'),
-      criterion('green', 'single leg', 'Finish a single leg.', 'td.single-leg', 'Single leg'),
-    ]),
-  ]),
+  level('black', 'Black'),
+  level('coral', 'Coral'),
+  level('redWhite', 'Red and white'),
+  level('red', 'Red'),
+  level('grey', 'Grey'),
+  level('yellow', 'Yellow'),
+  level('orange', 'Orange'),
+  level('green', 'Green'),
 ];
-
-function criterionUntouched(row: RubricCriterion, starter: RubricCriterion): boolean {
-  if (row.id !== starter.id || row.requirement !== starter.requirement || row.met != null || row.note.trim()) return false;
-  if (row.techniqueRefs.length !== starter.techniqueRefs.length) return false;
-  return row.techniqueRefs.every((ref, index) => ref.id === starter.techniqueRefs[index]?.id && ref.name === starter.techniqueRefs[index]?.name);
-}
-
-/** True when brown still has the old prefilled list and the student has not edited it. */
-export function isUntouchedLegacyBrown(level: RubricLevel): boolean {
-  if (level.belt !== 'brown' || level.checkpoints.length !== LEGACY_BROWN_CHECKPOINTS.length) return false;
-  return level.checkpoints.every((row, index) => {
-    const starter = LEGACY_BROWN_CHECKPOINTS[index];
-    if (!starter || row.id !== starter.id || row.name !== starter.name || row.met != null || row.note.trim()) return false;
-    if (row.criteria.length !== starter.criteria.length) return false;
-    return row.criteria.every((item, criterionIndex) => criterionUntouched(item, starter.criteria[criterionIndex]!));
-  });
-}
 
 const SEEDED_ADULT = new Set<ProgressBelt>(['white', 'blue', 'purple', 'brown']);
 
+/** Editable seed cards for a new adult belt list. Not requirements. */
+export const STARTER_BENCHMARK_PROMPTS = [
+  'Techniques your instructor calls out in class',
+  'Positions your coach wants you working',
+  'Whatever they name before your next promotion',
+] as const;
+
+export const STARTER_GOAL_PROMPTS = [
+  'How often you want to train',
+  'One thing you want to feel confident in',
+  'Anything else on your mind',
+] as const;
+
+export const SEED_LINE =
+  "These are seeds, not requirements — add what your instructor actually said, or your own words, and delete what doesn't fit.";
+
 /**
- * Add any starter level this file does not already have.
- * A list that already has benchmarks is kept.
- * An emptied white, blue, or purple list stays empty.
- * An old empty brown list, and an untouched legacy brown list, receive the suggested prompts once.
+ * Add any belt level this file does not already have.
+ * A new white, blue, purple or brown list gets the three seed cards once, and that
+ * belt gets the three personal goal seeds when it has no goals. promptsSeeded and
+ * starterAck stop them coming back after a delete or a reload.
+ * Benchmarks and goals already saved in the file are never removed, replaced or
+ * reseeded, including lists that came from an older built-in starter. A level that
+ * an older build already settled (starterAck) gets no seeds.
  */
 export function withStarterRubric(report: StudentProgressReport, now = Date.now()): StudentProgressReport {
   const present = new Set(report.rubric.levels.map((item) => item.id));
   const missing = STARTER_RUBRIC_LEVELS.filter((item) => !present.has(item.id));
   let changed = missing.length > 0;
+  let goals = report.goals;
   const levels = (missing.length ? [...report.rubric.levels, ...structuredClone(missing)] : report.rubric.levels).map((row) => {
-    const next = settleStarterLevel(row);
-    if (next !== row) changed = true;
-    return next;
+    if (TIME_BASED_BELTS.has(row.belt)) {
+      // Black belt and up: one blank practical benchmark to fill in, plus the personal-goal prompts. Once.
+      if (row.promptsSeeded) return row;
+      changed = true;
+      goals = withGoalSeeds(goals, row.belt);
+      if (row.checkpoints.length) return { ...row, promptsSeeded: true };
+      return { ...row, checkpoints: [{ id: `checkpoint.${row.belt}.blank-1`, name: '', met: null, note: '', criteria: [] }], promptsSeeded: true };
+    }
+    if (!SEEDED_ADULT.has(row.belt)) return row;
+    if (row.promptsSeeded || row.starterAck) return row;
+    changed = true;
+    if (row.checkpoints.length) return { ...row, starterAck: true };
+    const checkpoints: RubricCheckpoint[] = STARTER_BENCHMARK_PROMPTS.map((name, index) => ({
+      id: `checkpoint.${row.belt}.seed-${index + 1}`,
+      name,
+      met: null,
+      note: '',
+      criteria: [],
+    }));
+    goals = withGoalSeeds(goals, row.belt);
+    return { ...row, checkpoints, starterAck: true, promptsSeeded: true };
   });
+  let beltBook = report.beltBook;
+  if (beltModeOf(report) === 'kids') {
+    const beltId = currentKidsBelt(report).beltId;
+    const kids = seedKidsBelt(report, beltId, STARTER_BENCHMARK_PROMPTS);
+    if (kids) {
+      changed = true;
+      beltBook = kids.book;
+      if (!goals.some((goal) => goal.kidsBeltId === beltId) && goals.length + STARTER_GOAL_PROMPTS.length <= PROGRESS_GOALS_MAX) {
+        goals = [
+          ...goals,
+          ...STARTER_GOAL_PROMPTS.map((name, index) => ({ id: `goal.seed.kids.${beltId}.${index + 1}`, name, note: '', met: false, kidsBeltId: beltId })),
+        ];
+      }
+    }
+  }
   if (!changed) return report;
-  return touch({ ...report, rubric: { ...report.rubric, levels } }, now);
+  return touch({ ...report, goals, rubric: { ...report.rubric, levels }, ...(beltBook ? { beltBook } : {}) }, now);
 }
 
-function settleStarterLevel(row: RubricLevel): RubricLevel {
-  if (isUntouchedLegacyBrown(row)) {
-    const starter = STARTER_RUBRIC_LEVELS.find((item) => item.belt === 'brown');
-    return starter ? structuredClone(starter) : { ...row, checkpoints: [], starterAck: true };
-  }
-  if (!SEEDED_ADULT.has(row.belt)) return row;
-  if (row.checkpoints.length > 0) return row.starterAck ? row : { ...row, starterAck: true };
-  if (row.starterAck) return row;
-  if (row.belt === 'brown') {
-    const starter = STARTER_RUBRIC_LEVELS.find((item) => item.belt === 'brown');
-    return starter ? structuredClone(starter) : { ...row, starterAck: true };
-  }
-  return { ...row, starterAck: true };
+const TIME_BASED_BELTS = new Set<ProgressBelt>(['black', 'coral', 'redWhite', 'red']);
+
+/** The three personal-goal prompts for one adult belt, only when that belt has no goals yet. */
+function withGoalSeeds(goals: StudentGoal[], belt: ProgressBelt): StudentGoal[] {
+  const beltGoals = goals.filter((goal) => !goal.kidsBeltId && (!goal.belt || goal.belt === belt));
+  if (beltGoals.length || goals.length + STARTER_GOAL_PROMPTS.length > PROGRESS_GOALS_MAX) return goals;
+  return [
+    ...goals,
+    ...STARTER_GOAL_PROMPTS.map((name, index) => ({ id: `goal.seed.${belt}.${index + 1}`, name, note: '', met: false, belt })),
+  ];
+}
+
+/** "3 practical benchmarks added, 1 met." Met is the student's own mark. */
+export function addedMetLine(kind: 'benchmark' | 'goal', added: number, met: number): string {
+  const noun = kind === 'benchmark' ? 'practical benchmark' : 'personal goal';
+  if (!added) return `No ${noun}s added yet.`;
+  return `${added} ${noun}${added === 1 ? '' : 's'} added, ${met} met.`;
 }
 
 export function learnedCatalogIds(report: StudentProgressReport): Set<string> {
@@ -612,7 +598,11 @@ export const PRACTICAL_BENCHMARKS_HEADING = 'Practical Benchmarks';
 export const PRACTICAL_BENCHMARKS_LINE = 'Skills the coach or template expects before the next belt.';
 export const PERSONAL_GOALS_HEADING = 'Personal Goals';
 export const PERSONAL_GOALS_LINE = 'Your own goals, which never affect belt or degree milestones.';
+/** Belt progress screen only. The printed report and coach card keep the two lines above. */
+export const BELT_PAGE_BENCHMARKS_LINE = 'These are the techniques and positions that your instructor or coach has indicated are expected.';
+export const BELT_PAGE_GOALS_LINE = "These are the goals that you're setting for yourself and hope to achieve before your next promotion.";
 export const NO_PRACTICAL_BENCHMARKS = 'No practical benchmarks yet.';
+export const NO_PRACTICAL_BENCHMARKS_HINT = 'Add the ones your instructor gives you.';
 export const NO_PERSONAL_GOALS = 'No personal goals yet.';
 
 export { OPEN_GOAL_PROMPTS };
@@ -868,45 +858,6 @@ export function removeCheckpoint(report: StudentProgressReport, checkpointId: st
   if (!found) return report;
   const acked = levels.map((row) => (row.checkpoints.length === 0 && SEEDED_ADULT.has(row.belt) ? { ...row, starterAck: true } : row));
   return touch({ ...report, rubric: { ...report.rubric, levels: acked } }, now);
-}
-
-/** Put the suggested list back. Marks on matching items stay. Added items are removed unless a coach locked them. */
-export function restoreStarterBenchmarks(report: StudentProgressReport, belt: ProgressBelt, now = Date.now()): StudentProgressReport {
-  const starter = STARTER_RUBRIC_LEVELS.find((item) => item.belt === belt);
-  if (!starter?.checkpoints.length) throw new Error('This belt has no suggested list.');
-  const prepared = ensureBeltLevel(report, belt);
-  const current = beltLevel(prepared, belt);
-  if (!current) return prepared;
-  const previous = new Map(current.checkpoints.map((row) => [row.id, row]));
-  const checkpoints = starter.checkpoints.map((item) => {
-    const old = previous.get(item.id);
-    if (!old) return structuredClone(item);
-    if (checkpointReadOnly(prepared, old)) return old;
-    return mergeStarterMarks(structuredClone(item), old);
-  });
-  for (const row of current.checkpoints) {
-    if (checkpointReadOnly(prepared, row) && !checkpoints.some((item) => item.id === row.id)) checkpoints.push(row);
-  }
-  const acked = {
-    ...prepared,
-    rubric: {
-      ...prepared.rubric,
-      levels: prepared.rubric.levels.map((row) => (row.belt === belt ? { ...row, starterAck: true } : row)),
-    },
-  };
-  return replaceBeltCheckpoints(acked, belt, checkpoints, now);
-}
-
-function mergeStarterMarks(starter: RubricCheckpoint, old: RubricCheckpoint): RubricCheckpoint {
-  const next: RubricCheckpoint = { ...starter, met: old.met, note: old.note };
-  if (old.source) next.source = old.source;
-  if (old.edited) next.edited = true;
-  next.criteria = starter.criteria.map((item) => {
-    const prev = old.criteria.find((row) => row.id === item.id);
-    if (!prev) return item;
-    return { ...item, met: prev.met, note: prev.note };
-  });
-  return next;
 }
 
 /** Move a checkpoint one place. `-1` is up, `1` is down. The ends stay put. */
