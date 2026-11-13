@@ -10,13 +10,17 @@ import { todayIso } from '../../lib/studentEdition';
 const OTHER_EXPORTS: readonly StudentExportKind[] = ['csv', 'progressPdf', 'assessmentPdf'];
 
 /**
- * Backup downloads one JSON file. The other three exports are their own buttons.
+ * The packet is the file that restores the phone.
+ * Spreadsheet and PDF buttons stay for Excel and for a printed page.
  * `arena` is the Backup & Print page. `paper` is the older Connections page.
  */
 export function ExportChoices({
   variant,
   includeVideos,
   onIncludeVideos,
+  includeAllProfiles,
+  onIncludeAllProfiles,
+  profileCount,
   locked,
   busyKind,
   stamp,
@@ -26,6 +30,9 @@ export function ExportChoices({
   variant: 'arena' | 'paper';
   includeVideos: boolean;
   onIncludeVideos: (included: boolean) => void;
+  includeAllProfiles: boolean;
+  onIncludeAllProfiles: (included: boolean) => void;
+  profileCount: number;
   locked: boolean;
   busyKind: StudentExportKind | null;
   stamp: string;
@@ -58,10 +65,24 @@ export function ExportChoices({
         </span>
         <span id={videoId}>{videoFilesLine(includeVideos)}</span>
       </p>
-      <button type="button" className={paper ? 'ink-btn ink-btn--save' : 's-cta'} disabled={locked} onClick={() => onExport('json')}>
-        {busyKind === 'json' ? studentExportBusyLabel('json') : studentExportLabel('json')}
+      <label className={paper ? 'student-export__check' : 's-backup__check'}>
+        <input
+          type="checkbox"
+          checked={includeAllProfiles}
+          disabled={locked}
+          onChange={(event) => onIncludeAllProfiles(event.target.checked)}
+        />
+        <span>Include every profile on this phone</span>
+      </label>
+      <p className={paper ? 'student-export__note' : 's-export__note'}>
+        {includeAllProfiles
+          ? `The packet includes all ${profileCount} profiles saved on this phone.`
+          : 'The packet includes the open profile. Turn this on to include every family profile.'}
+      </p>
+      <button type="button" className={paper ? 'ink-btn ink-btn--save' : 's-cta'} disabled={locked} onClick={() => onExport('packet')}>
+        {busyKind === 'packet' ? studentExportBusyLabel('packet') : studentExportLabel('packet')}
       </button>
-      <p className={paper ? 'student-export__note' : 's-export__note'}>{studentExportDetail('json', day)}</p>
+      <p className={paper ? 'student-export__note' : 's-export__note'}>{studentExportDetail('packet', day)}</p>
       {paper ? <h3 className="student-export__kicker">Other exports</h3> : <h2 className="s-kicker">Other exports</h2>}
       <ul className={paper ? 'student-export__list' : 's-export-list'}>
         {OTHER_EXPORTS.map((kind) => (

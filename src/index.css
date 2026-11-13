@@ -19663,7 +19663,7 @@ a.plan-pick {
   margin-top: 0.8rem;
 }
 
-/* Replay recorder inside a Competition block (Record for replay / Record for Review). */
+/* Replay recorder inside a Competition block (Record for replay). */
 .replay-card--embedded {
   margin-top: 0.75rem;
   padding-top: 0.75rem;

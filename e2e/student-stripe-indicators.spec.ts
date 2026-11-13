@@ -199,23 +199,37 @@ test('an undated stripe counts, can gain and lose a date, and survives backup', 
     downloads.push(download);
   });
   await page.goto('/student/connections?student=1');
-  await page.getByRole('button', { name: 'Back up my journal (.json)', exact: true }).click();
+  await page.getByRole('button', { name: 'Download student packet (.advantage)', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Saved on this phone');
   await expect.poll(() => downloads.length).toBe(1);
   await page.getByRole('button', { name: 'Download spreadsheet (.csv)', exact: true }).click();
   await expect.poll(() => downloads.length).toBe(2);
-  const json = downloads.find((download) => download.suggestedFilename().endsWith('.json'));
+  const packetDownload = downloads.find((download) => download.suggestedFilename().endsWith('.advantage'));
   const csv = downloads.find((download) => download.suggestedFilename().endsWith('.csv'));
-  expect(json && csv).toBeTruthy();
+  expect(packetDownload && csv).toBeTruthy();
   const csvBody = readFileSync(await csv!.path(), 'utf8');
   expect(csvBody).not.toContain('Invalid Date');
   expect(csvBody).not.toContain('No date');
   expect(csvBody).toContain('white');
-  const backup = JSON.parse(readFileSync(await json!.path(), 'utf8')) as {
-    report: { rank?: { tapeCount?: number; tapeDates?: string[] } };
+  const packet = JSON.parse(readFileSync(await packetDownload!.path(), 'utf8')) as {
+    createdAt: string;
+    sections: {
+      'bundle:default': {
+        journal: { rank?: { tapeCount?: number; tapeDates?: string[] } };
+        assessment: unknown;
+        scouting: unknown;
+        rankPhotos: unknown;
+        bracketPhotos: unknown;
+        coachPlan: unknown;
+        coachFeedback: unknown;
+        films: unknown;
+        profile: { id: string; name: string };
+      };
+    };
   };
-  expect(backup.report.rank?.tapeCount).toBe(1);
-  expect(backup.report.rank?.tapeDates?.[0]).toBe('');
+  const bundle = packet.sections['bundle:default'];
+  expect(bundle.journal.rank?.tapeCount).toBe(1);
+  expect(bundle.journal.rank?.tapeDates?.[0]).toBe('');
 
   await page.goto('/student/rank?student=1');
   await page.getByRole('button', { name: 'Stripe 1', exact: true }).click();
@@ -223,7 +237,7 @@ test('an undated stripe counts, can gain and lose a date, and survives backup', 
   await expect(page.getByRole('button', { name: 'Stripe 1', exact: true })).toHaveAttribute('aria-pressed', 'false');
 
   await page.goto('/student/connections?student=1');
-  await page.getByLabel('Restore from backup').setInputFiles(await json!.path());
+  await page.getByLabel('Restore from backup').setInputFiles(await packetDownload!.path());
   await page.getByRole('button', { name: 'Replace this phone', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('replaced');
   await page.goto('/student/rank?student=1');
@@ -232,9 +246,25 @@ test('an undated stripe counts, can gain and lose a date, and survives backup', 
   await expect(page.getByText('1 stripe of 4')).toBeVisible();
   await expect(page.getByText('Invalid Date')).toHaveCount(0);
 
-  delete backup.report.rank?.tapeDates;
+  delete bundle.journal.rank?.tapeDates;
   const olderPath = '/tmp/older-undated-stripe-backup.json';
-  writeFileSync(olderPath, JSON.stringify(backup));
+  writeFileSync(
+    olderPath,
+    JSON.stringify({
+      advantage: 'student-journal-backup',
+      version: 1,
+      exportedAt: packet.createdAt,
+      report: bundle.journal,
+      assessment: bundle.assessment,
+      scouting: bundle.scouting,
+      rankPhotos: bundle.rankPhotos,
+      bracketPhotos: bundle.bracketPhotos,
+      coachPlan: bundle.coachPlan,
+      coachFeedback: bundle.coachFeedback,
+      films: bundle.films,
+      profile: bundle.profile,
+    }),
+  );
   await page.goto('/student/connections?student=1');
   await page.getByLabel('Restore from backup').setInputFiles(olderPath);
   await page.getByRole('button', { name: 'Replace this phone', exact: true }).click();
