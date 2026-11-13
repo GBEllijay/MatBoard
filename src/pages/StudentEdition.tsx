@@ -36,6 +36,7 @@ import { JournalCardVideos } from './student/JournalCardVideos';
 import { VideoLibraryPage } from './student/VideoLibraryPage';
 import { WeightPage } from './student/WeightPage';
 import { CoachUpdateInbox } from '../components/CoachUpdateInbox';
+import { StudentToast } from '../components/StudentToast';
 import { GymLogoPrompt } from '../components/GymLogoPrompt';
 import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './student/chrome';
 import { studentScreen } from '../lib/studentHubMenu';
@@ -184,6 +185,7 @@ export function StudentEditionPage() {
       <CoachUpdateInbox />
       <GymLogoPrompt />
       {screen}
+      <StudentToast />
     </>
   );
 }

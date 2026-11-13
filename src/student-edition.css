@@ -783,6 +783,192 @@ button.student-book .student-mark__press {
   gap: 0.5rem;
 }
 
+/* ---- Student alerts: card polish, badge, toast, photo notice ---- */
+.coach-updates {
+  display: grid;
+  scroll-margin-top: 0.75rem;
+}
+
+.coach-update {
+  box-shadow: 0 6px 18px rgba(60, 30, 6, 0.12);
+}
+
+.coach-update h2 {
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.coach-update__kicker {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a4b00;
+}
+
+.coach-update__changes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coach-update__changes li {
+  padding: 0.22rem 0.6rem;
+  border: 1px solid rgba(92, 48, 12, 0.25);
+  border-radius: 999px;
+  background: #fffdf6;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.coach-update--photo {
+  border-left-width: 6px;
+}
+
+.coach-update--ok {
+  border-left-color: #2f7d3a;
+}
+
+.coach-update--ok .coach-update__kicker {
+  color: #2f7d3a;
+}
+
+.coach-update--declined {
+  border-left-color: #a8551c;
+}
+
+.student-alert-badge {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 0.6rem);
+  right: 0.75rem;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 36px;
+  padding: 0.3rem 0.75rem 0.3rem 0.5rem;
+  border: 1px solid rgba(92, 48, 12, 0.4);
+  border-radius: 999px;
+  background: rgba(255, 248, 230, 0.98);
+  color: #2a1c0e;
+  font: inherit;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(40, 20, 4, 0.25);
+  cursor: pointer;
+}
+
+.coach-update .ink-btn {
+  min-height: 44px;
+  padding: 0.25rem 1rem;
+  border: 2px solid #2a1c0e;
+  border-radius: 999px;
+  background: #fffdf6;
+  color: #2a1c0e;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.coach-update .ink-btn--save {
+  border-color: #1f4fa3;
+  background: #1f4fa3;
+  color: #fff;
+}
+
+.coach-update .ink-btn--save:disabled {
+  border-color: #64748b;
+  background: #e4ebf4;
+  color: #334155;
+  cursor: not-allowed;
+}
+
+.coach-update .ink-btn:focus-visible {
+  outline: 3px solid #1f4fa3;
+  outline-offset: 2px;
+}
+
+/* Demo banner holds Exit demo at top right; sit the badge just under it. */
+body:has(.student-demo-banner) .student-alert-badge {
+  top: calc(env(safe-area-inset-top, 0px) + 5.9rem);
+}
+
+.student-alert-badge__bell {
+  display: inline-grid;
+  place-items: center;
+  color: #8a4b00;
+}
+
+.student-alert-badge__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.student-alert-badge:focus-visible {
+  outline: 3px solid #1f4fa3;
+  outline-offset: 2px;
+}
+
+.student-toast-region {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  z-index: 70;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.student-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  background: #2a1c0e;
+  color: #fff8e6;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  animation: student-toast-in 220ms ease-out;
+}
+
+.student-toast__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #6fcf7a;
+}
+
+@keyframes student-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-toast {
+    animation: none;
+  }
+}
+
 .coach-update .blue-belt-confirm {
   display: grid;
   gap: 0.5rem;

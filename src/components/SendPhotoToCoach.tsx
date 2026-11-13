@@ -3,6 +3,7 @@ import { parentGateOn, readParentGate } from '../lib/parentGate';
 import { createPhotoSubmission, parentApprovePhoto } from '../lib/rosterPhotoApproval';
 import { readInboxPass, studentIdFromInboxPass, submitStudentPhoto } from '../lib/studentInboxClient';
 import { readStudentNoPhotos } from '../lib/studentPhotoFlag';
+import { recordPhotoSent, showStudentToast } from '../lib/studentAlerts';
 
 /**
  * Student → head coach profile photo. When Parent approvals is on, a parent
@@ -38,9 +39,14 @@ export function SendPhotoToCoach({ portrait }: { portrait: string | null }) {
         submission = stamped.submission;
       }
       const sent = await submitStudentPhoto(pass, submission);
+      if (sent.ok) {
+        // Lets the photo notice show this profile when the coach decides.
+        recordPhotoSent(localStorage, submission.photoId);
+        showStudentToast('Photo sent to your coach');
+      }
       setNote(
         sent.ok
-          ? 'Sent. Your head coach approves it before it shows on your card.'
+          ? 'Sent. Your head coach approves it before it shows on your card. You’ll see a note here when they decide.'
           : sent.reason === 'unbound' || sent.reason === 'offline'
             ? 'Advantage Cloud is not connected. Try again later.'
             : 'Your coach’s gym could not take this photo.',

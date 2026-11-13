@@ -414,3 +414,42 @@ test('student → coach: tournament registration and card share are narrow and n
   assert.deepEqual(after.shares, []);
   assert.equal(bucket.objects.has(`groups/${LICENSE}/card-shares/share-1.json`), true);
 });
+
+test('photo decisions: a student pass reads only its own decided markers, with no image bytes', async () => {
+  const { TEST_LOGO } = await import('../lib/testPackets.ts');
+  const keys = await pair();
+  const bucket = memoryBucket();
+  const owner = await token(keys.secret, { tier: 'pro', src: 'stripe', kind: 'pro' });
+  const url = 'https://advantage.test/api/gym/inbox';
+  const passFor = async (studentId: string) =>
+    ((await (await call(bucket, keys.secret, 'POST', url, { action: 'pass', license: LICENSE, studentId }, owner)).json()) as {
+      studentPass: string;
+    }).studentPass;
+  const alexPass = await passFor(STUDENT);
+  const otherPass = await passFor('stu-other');
+  const submit = (studentId: string, photoId: string, bearer: string) =>
+    call(bucket, keys.secret, 'POST', url, {
+      action: 'photo-submit',
+      license: LICENSE,
+      studentId,
+      submission: { schemaVersion: 1, kind: 'student-photo-submission', studentId, submittedAt: 5, image: TEST_LOGO, photoId, parent: { required: false } },
+    }, bearer);
+  assert.equal((await submit(STUDENT, 'photo-a1', alexPass)).status, 200);
+  assert.equal((await submit(STUDENT, 'photo-a2', alexPass)).status, 200);
+  assert.equal((await submit('stu-other', 'photo-o1', otherPass)).status, 200);
+  const decide = (studentId: string, photoId: string, decision: string) =>
+    call(bucket, keys.secret, 'POST', url, { action: 'photo-decide', license: LICENSE, studentId, photoId, decision }, owner);
+  assert.equal((await decide(STUDENT, 'photo-a1', 'decline')).status, 200);
+  assert.equal((await decide('stu-other', 'photo-o1', 'approve')).status, 200);
+
+  const list = (studentId: string, bearer: string) =>
+    call(bucket, keys.secret, 'GET', `${url}?license=${LICENSE}&studentId=${studentId}`, undefined, bearer);
+  const alex = (await (await list(STUDENT, alexPass)).json()) as { photoDecisions: { photoId: string; decision: string }[] };
+  assert.deepEqual(alex.photoDecisions.map((row) => [row.photoId, row.decision]), [['photo-a1', 'decline']]);
+  assert.equal(JSON.stringify(alex).includes('data:image'), false);
+  const other = (await (await list('stu-other', otherPass)).json()) as { photoDecisions: { photoId: string; decision: string }[] };
+  assert.deepEqual(other.photoDecisions.map((row) => [row.photoId, row.decision]), [['photo-o1', 'approve']]);
+  // One student's pass cannot read another student's decisions.
+  assert.equal((await list('stu-other', alexPass)).status, 403);
+  assert.equal((await list(STUDENT, otherPass)).status, 403);
+});

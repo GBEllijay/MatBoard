@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { GrandmasterCheer } from './GrandmasterCheer';
 import {
   acceptCoachBlueBelt,
@@ -24,7 +24,6 @@ import {
   readCoachQueue,
   readUpdateLedger,
   removeQueuedUpdate,
-  rankUpdateSentence,
   writeUpdateLedger,
   type CoachInboxPacket,
 } from '../lib/coachRankUpdate';
@@ -38,16 +37,39 @@ import {
 } from '../lib/coachSync';
 import { writeStudentGymLogo } from '../lib/studentGymMark';
 import { assignStudentId, readStableStudentId } from '../lib/studentIdentity';
-import { clearStudentInboxItem, downloadFromInstructor, pullStudentInbox, readInboxPass } from '../lib/studentInboxClient';
+import {
+  alertIds,
+  arrivalToast,
+  cardChangeLines,
+  coachUpdateHeading,
+  createInboxPoller,
+  dismissPhotoNotices,
+  markAlertsSeen,
+  PHOTO_NOTICE_DISMISSED_KEY,
+  PHOTO_SENT_KEY,
+  photoNoticeToShow,
+  readIdSet,
+  ALERTS_SEEN_KEY,
+  showStudentToast,
+  takeFreshArrivals,
+  type PullOutcome,
+} from '../lib/studentAlerts';
+import {
+  clearStudentInboxItem,
+  downloadFromInstructor,
+  pullStudentInbox,
+  readInboxPass,
+  type PhotoDecision,
+} from '../lib/studentInboxClient';
 import { useStudentFile } from '../pages/student/chrome';
 import { loadAssessments } from '../lib/studentAssessment';
 import { AssessmentCompareD8, assessmentEntryFromScores } from './AssessmentCompareD8';
 
-function matchingPacket(reportStudentId: string, packets: readonly CoachInboxPacket[]): CoachInboxPacket | null {
+function matchingPackets(reportStudentId: string, packets: readonly CoachInboxPacket[]): CoachInboxPacket[] {
   const stable = readStableStudentId(localStorage);
   const studentId = reportStudentId === 'student-local' ? stable : reportStudentId;
-  if (!studentId) return null;
-  return packets.find((packet) => packet.studentId === studentId) ?? null;
+  if (!studentId) return [];
+  return packets.filter((packet) => packet.studentId === studentId);
 }
 
 /**
@@ -58,6 +80,9 @@ export function CoachUpdateInbox() {
   const { report, commit } = useStudentFile();
   const [packets, setPackets] = useState<CoachInboxPacket[]>(() => readCoachQueue(localStorage));
   const [fromInstructor, setFromInstructor] = useState<{ name: string; path: string; dateKey: string }[]>([]);
+  const [photoDecisions, setPhotoDecisions] = useState<PhotoDecision[]>([]);
+  // Bumped when seen/dismissed markers change so the badge and notice re-read them.
+  const [markerTick, setMarkerTick] = useState(0);
   const [choices, setChoices] = useState<Record<number, MatchKeep>>({});
   const [note, setNote] = useState('');
   // Kids belt → Blue from the coach: confirm the belt and birth year first.
@@ -78,9 +103,13 @@ export function CoachUpdateInbox() {
     const pass = readInboxPass(localStorage);
     if (!pass) return;
     let alive = true;
-    void pullStudentInbox(pass).then((result) => {
-      if (!alive || !result.ok) return;
+    let logoToast = false;
+    const pull = async (): Promise<PullOutcome> => {
+      const result = await pullStudentInbox(pass);
+      if (!alive) return 'stop';
+      if (!result.ok) return result.reason === 'denied' ? 'stop' : 'error';
       setFromInstructor(result.fromInstructor);
+      setPhotoDecisions(result.photoDecisions);
       for (const item of result.packets) {
         const received = receiveSyncPacket(localStorage, item);
         // A gym logo is not an accept card. Once recorded, clear it from the inbox list.
@@ -88,19 +117,89 @@ export function CoachUpdateInbox() {
         if ((received === 'logo-started' || received === 'logo-prompt') && typeof updateId === 'string') {
           void clearStudentInboxItem(pass, updateId);
         }
+        if (received === 'logo-started') logoToast = true;
       }
+      if (logoToast) {
+        logoToast = false;
+        showStudentToast('Gym logo updated');
+      }
+      return 'ok';
+    };
+    const poller = createInboxPoller({
+      pull,
+      isVisible: () => typeof document === 'undefined' || document.visibilityState !== 'hidden',
+      now: () => Date.now(),
+      setTimer: (fn, ms) => window.setTimeout(fn, ms),
+      clearTimer: (handle) => window.clearTimeout(handle as number),
     });
+    const nudge = () => poller.nudge();
+    document.addEventListener('visibilitychange', nudge);
+    window.addEventListener('focus', nudge);
+    window.addEventListener('online', nudge);
+    poller.start();
     return () => {
       alive = false;
+      poller.stop();
+      document.removeEventListener('visibilitychange', nudge);
+      window.removeEventListener('focus', nudge);
+      window.removeEventListener('online', nudge);
     };
   }, []);
 
-  const packet = sample
-    ? sample.packet
-    : matchingPacket(
-        report.studentId,
-        packets.filter((item) => gymPacketAllowed(localStorage, item)),
-      );
+  const allowedPackets = useMemo(
+    () => (sample ? [sample.packet] : matchingPackets(report.studentId, packets.filter((item) => gymPacketAllowed(localStorage, item)))),
+    [sample, report.studentId, packets],
+  );
+  const packet = allowedPackets[0] ?? null;
+  const photoNotice = useMemo(
+    () =>
+      sample
+        ? null
+        : photoNoticeToShow(photoDecisions, {
+            sent: readIdSet(localStorage, PHOTO_SENT_KEY),
+            dismissed: readIdSet(localStorage, PHOTO_NOTICE_DISMISSED_KEY),
+            now: Date.now(),
+          }),
+    // markerTick re-reads the dismissed marker after Got it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sample, photoDecisions, markerTick],
+  );
+  const ids = useMemo(
+    () =>
+      alertIds({
+        packets: allowedPackets,
+        photoNotices: photoNotice ? [photoNotice] : [],
+        files: fromInstructor,
+      }),
+    [allowedPackets, photoNotice, fromInstructor],
+  );
+  const unread = useMemo(() => {
+    const seen = readIdSet(localStorage, ALERTS_SEEN_KEY);
+    return ids.filter((id) => !seen.has(id)).length;
+    // markerTick re-reads the seen marker after a tap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ids, markerTick]);
+
+  // Toast each new arrival once per profile, so a new update never just blinks in.
+  useEffect(() => {
+    if (sample || !ids.length) return;
+    const fresh = takeFreshArrivals(localStorage, ids);
+    if (fresh.length) showStudentToast(arrivalToast(fresh.length));
+  }, [ids, sample]);
+
+  const openUpdates = useCallback(() => {
+    const node = document.getElementById('coach-updates');
+    if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!sample) markAlertsSeen(localStorage, ids);
+    setMarkerTick((tick) => tick + 1);
+  }, [ids, sample]);
+
+  const dismissPhoto = () => {
+    if (!photoNotice) return;
+    dismissPhotoNotices(localStorage, photoDecisions, photoNotice);
+    markAlertsSeen(localStorage, [`photo:${photoNotice.photoId}`]);
+    setMarkerTick((tick) => tick + 1);
+  };
   const fileReport = sample ? sample.report : report;
   const kidsToBlue = packet ? isKidsToBlueUpdate(fileReport, packet) : false;
   const downloadInstructorFile = (path: string, name: string) => {
@@ -120,7 +219,53 @@ export function CoachUpdateInbox() {
   const cheerNode = cheer ? (
     <GrandmasterCheer lines={BLUE_BELT_CHEER_LINES} onDismiss={() => setCheer(false)} />
   ) : null;
-  if (!packet && fromInstructor.length === 0) return cheerNode;
+  const badgeNode =
+    unread > 0 ? (
+      <button
+        type="button"
+        className="student-alert-badge"
+        aria-label={`${unread} new from your coach. Show updates`}
+        onClick={openUpdates}
+      >
+        <span className="student-alert-badge__bell" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" focusable="false">
+            <path
+              d="M12 3a6 6 0 0 0-6 6v3.6L4.3 15.4A1 1 0 0 0 5.2 17h13.6a1 1 0 0 0 .9-1.6L18 12.6V9a6 6 0 0 0-6-6Zm0 19a2.6 2.6 0 0 0 2.5-2h-5a2.6 2.6 0 0 0 2.5 2Z"
+              fill="currentColor"
+            />
+          </svg>
+        </span>
+        <span className="student-alert-badge__count">{unread}</span>
+        <span className="student-alert-badge__label">new</span>
+      </button>
+    ) : null;
+  const photoNode = photoNotice ? (
+    <section
+      className={`coach-update coach-update--photo coach-update--${photoNotice.decision === 'approve' ? 'ok' : 'declined'}`}
+      aria-label={photoNotice.title}
+    >
+      <p className="coach-update__kicker">Profile photo</p>
+      <h2>{photoNotice.title}</h2>
+      <p>{photoNotice.body}</p>
+      <div className="coach-update__actions">
+        <button type="button" className="ink-btn ink-btn--save" onClick={dismissPhoto}>
+          Got it
+        </button>
+      </div>
+    </section>
+  ) : null;
+  if (!packet && fromInstructor.length === 0) {
+    if (!photoNode && !badgeNode) return cheerNode;
+    return (
+      <>
+        {cheerNode}
+        {badgeNode}
+        <div id="coach-updates" className="coach-updates">
+          {photoNode}
+        </div>
+      </>
+    );
+  }
 
   const openBlueStep = () => {
     const saved = fileReport.beltBook?.birthYear;
@@ -185,6 +330,7 @@ export function CoachUpdateInbox() {
     setNote('');
     setBlueStep(false);
     if (cheerNow) setCheer(true);
+    showStudentToast(accepted ? 'Saved to your card' : 'Dismissed');
   };
 
   const blueBirthYear = cleanBirthYear(blueYear);
@@ -193,6 +339,8 @@ export function CoachUpdateInbox() {
     : [];
 
   const conflicts = packet?.kind === 'coach-competition-update' ? competitionConflicts(report, packet) : [];
+  const changeLines = packet ? cardChangeLines(packet) : [];
+  const moreWaiting = Math.max(0, allowedPackets.length - 1);
   const pendingCoachEntry =
     packet?.kind === 'coach-assessment-update'
       ? assessmentEntryFromScores(packet.updateId, packet.assessment.date, packet.assessment.scores, packet.assessment.note)
@@ -200,6 +348,9 @@ export function CoachUpdateInbox() {
   return (
     <>
     {cheerNode}
+    {badgeNode}
+    <div id="coach-updates" className="coach-updates">
+    {photoNode}
     {fromInstructor.length ? (
       <section className="coach-update" aria-label="From your instructor">
         <h2>From your instructor</h2>
@@ -219,14 +370,23 @@ export function CoachUpdateInbox() {
     ) : null}
     {packet ? (
     <section className="coach-update" aria-label="Coach update">
-      <h2>From your coach</h2>
-      <p>
-        {packet.kind === 'coach-rank-update'
-          ? rankUpdateSentence(packet)
-          : packet.kind === 'coach-competition-update'
-            ? competitionUpdateSentence(packet)
-            : coachSyncSentence(packet)}
+      <p className="coach-update__kicker">
+        {moreWaiting ? `1 of ${allowedPackets.length} updates` : 'New update'}
       </p>
+      <h2>{coachUpdateHeading(packet)}</h2>
+      {changeLines.length ? (
+        <ul className="coach-update__changes" aria-label="What changed">
+          {changeLines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      ) : null}
+      {/* Rank and belt progress read fully from the change list above. */}
+      {packet.kind === 'coach-rank-update' || packet.kind === 'coach-belt-progress-update' ? null : (
+        <p>
+          {packet.kind === 'coach-competition-update' ? competitionUpdateSentence(packet) : coachSyncSentence(packet)}
+        </p>
+      )}
       {packet.kind === 'coach-belt-progress-update'
         ? packet.beltProgress.benchmarks.map((mark) => (
             <p key={mark.targetId}>
@@ -337,6 +497,7 @@ export function CoachUpdateInbox() {
       )}
     </section>
     ) : null}
+    </div>
     </>
   );
 }

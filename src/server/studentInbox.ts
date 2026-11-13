@@ -15,7 +15,9 @@
  *
  * Student profile photos: the student pass submits to photos/pending/. Only the
  * head coach (owner or Instructors seat) lists, decides (photos/decided/), and
- * publishes (photos/approved/). Approval never publishes on its own.
+ * publishes (photos/approved/). Approval never publishes on its own. The
+ * student's own inbox read returns only that student's decided markers
+ * (photo id, approve/decline, time) so the phone can say what happened.
  */
 
 import { readSignedJson, signJson, verifyToken, type EntitlementClaims } from '../lib/entitlementToken.ts';
@@ -81,6 +83,7 @@ const JSON_HEADERS = {
 
 const LICENSE_RE = /^[A-Za-z0-9_-]{8,80}$/;
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/;
+const PHOTO_DECISIONS_MAX = 10;
 const PASS_SECONDS = 180 * 24 * 60 * 60;
 const MAX_PACKET_CHARS = 400_000;
 
@@ -736,7 +739,31 @@ export async function handleStudentInbox(
       const parts = relative.split('/');
       fromInstructor.push({ name: parts[4] ?? relative, path: relative, dateKey: parts[3] ?? '' });
     }
-    return json(200, { ok: true, packets, fromInstructor });
+    // This student's own photo decisions (approved or declined), newest first.
+    // Read only, under the same student pass. No image bytes, no other student.
+    const decidedPrefix = photoKey(license, studentId, 'decided', '').slice(0, -'.json'.length);
+    const photoDecisions: { photoId: string; decision: 'approve' | 'decline'; decidedAt: number }[] = [];
+    for (const object of (await bucket.list({ prefix: decidedPrefix })).objects) {
+      const rest = object.key.slice(decidedPrefix.length);
+      if (!rest.endsWith('.json') || rest.includes('/')) continue;
+      const stored = await bucket.get(object.key);
+      if (!stored) continue;
+      try {
+        const row = JSON.parse(await objectText(stored)) as { photoId?: unknown; decision?: unknown; decidedAt?: unknown };
+        const photoId = rest.slice(0, -'.json'.length);
+        if (row.decision !== 'approve' && row.decision !== 'decline') continue;
+        if (!ID_RE.test(photoId)) continue;
+        photoDecisions.push({
+          photoId,
+          decision: row.decision,
+          decidedAt: typeof row.decidedAt === 'number' ? row.decidedAt : 0,
+        });
+      } catch {
+        /* a corrupt marker is skipped */
+      }
+    }
+    photoDecisions.sort((a, b) => b.decidedAt - a.decidedAt);
+    return json(200, { ok: true, packets, fromInstructor, photoDecisions: photoDecisions.slice(0, PHOTO_DECISIONS_MAX) });
   }
 
   return json(405, { ok: false, error: 'Method not allowed.' });
