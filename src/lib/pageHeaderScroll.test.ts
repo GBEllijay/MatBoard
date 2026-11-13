@@ -72,6 +72,17 @@ test('page home and back marks scroll with the document', () => {
   assert.match(videos, /backdrop-filter:\s*none/);
 });
 
+test('home--pro pages do not reserve a fixed-logo band above the in-flow mark', () => {
+  const sheet = readFileSync(new URL('../components/gymSheet.css', import.meta.url), 'utf8');
+  const proInner = block(sheet, '.home--pro .home__inner {');
+  assert.match(proInner, /padding-top:\s*calc\(0\.5rem \+ var\(--safe-t\)\)/);
+  assert.doesNotMatch(proInner, /--mark-home/);
+  assert.doesNotMatch(sheet, /padding-top:\s*calc\(var\(--mark-home\)/);
+  const back = block(sheet, '.home--pro .play-exit {');
+  assert.match(back, /margin-top:\s*0\.35rem/);
+  assert.doesNotMatch(back, /--safe-t/);
+});
+
 test('sheet close behavior is unchanged', () => {
   assert.match(sheet, /onPointerUp=\{\(event\) => \{\s*closeFromPointer\(event\);/);
 });
