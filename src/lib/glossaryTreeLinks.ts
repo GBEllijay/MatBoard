@@ -19,12 +19,12 @@ import { SHEET_AXIS_IDS, type AxisId } from '../preview/assessmentRadar/model.ts
 
 export const TREE_D8_MIN_ZOOM = 0.55;
 export const TREE_D8_MAX_ZOOM = 5;
-export const TREE_D8_RADIUS = 72;
+export const TREE_D8_RADIUS = 62;
 export const TREE_D8_VIEW_WIDTH = 400;
-export const TREE_D8_VIEW_HEIGHT = 196;
+export const TREE_D8_VIEW_HEIGHT = 230;
 
-const FRONT_CENTER = { x: 100, y: 110 };
-const BACK_CENTER = { x: 300, y: 110 };
+const FRONT_CENTER = { x: 100, y: 124 };
+const BACK_CENTER = { x: 300, y: 124 };
 
 export type TreeD8FaceAnchor = {
   id: AxisId;
@@ -64,6 +64,31 @@ export function treeD8FaceAnchors(): TreeD8FaceAnchor[] {
 export function treeD8AnchorFor(faceId: string): TreeD8FaceAnchor | null {
   return treeD8FaceAnchors().find((face) => face.id === faceId) ?? null;
 }
+
+/** Put the face name just outside the triangle so neighboring labels do not collide. */
+export function treeD8LabelPoint(face: TreeD8FaceAnchor): { x: number; y: number; anchor: 'start' | 'middle' | 'end' } {
+  const origin = face.side === 'front' ? FRONT_CENTER : BACK_CENTER;
+  const mid = {
+    x: (face.triangle[1].x + face.triangle[2].x) / 2,
+    y: (face.triangle[1].y + face.triangle[2].y) / 2,
+  };
+  const dx = mid.x - origin.x;
+  const dy = mid.y - origin.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const nudge = 18;
+  return {
+    x: mid.x + (dx / length) * nudge,
+    y: mid.y + (dy / length) * nudge + 3,
+    anchor: 'middle',
+  };
+}
+
+export function treeD8LabelLines(label: string): string[] {
+  if (label.includes('/')) return label.split('/').map((part) => part.trim());
+  if (label === 'Escapes/Defense' || label === 'Guard/Control') return label.split('/');
+  return [label];
+}
+
 
 export type CatalogLinkSegment = {
   id: string;

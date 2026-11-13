@@ -18,6 +18,8 @@ import {
   TREE_D8_VIEW_HEIGHT,
   TREE_D8_VIEW_WIDTH,
   treeD8FaceAnchors,
+  treeD8LabelLines,
+  treeD8LabelPoint,
   visibleCatalogLinkSegments,
   wheelTreeD8View,
   type TreeD8View,
@@ -221,13 +223,21 @@ export function TechniqueTreeDiamond({
                   }}
                 />
                 <text
-                  x={face.center.x}
-                  y={face.center.y + 4}
-                  textAnchor="middle"
+                  x={treeD8LabelPoint(face).x}
+                  y={treeD8LabelPoint(face).y}
+                  textAnchor={treeD8LabelPoint(face).anchor}
                   className="tree-d8__label"
                   style={{ pointerEvents: 'none' }}
                 >
-                  {shortFaceLabel(face.label)}
+                  {treeD8LabelLines(face.label).map((line, index, lines) => (
+                    <tspan
+                      key={line}
+                      x={treeD8LabelPoint(face).x}
+                      dy={index === 0 ? (lines.length > 1 ? '-0.4em' : '0.35em') : '1.1em'}
+                    >
+                      {line}
+                    </tspan>
+                  ))}
                 </text>
               </g>
             );
@@ -269,10 +279,6 @@ export function TechniqueTreeDiamond({
 
 const FRONT_LABEL_X = 100;
 const BACK_LABEL_X = 300;
-
-function shortFaceLabel(label: string): string {
-  return label.replace('/', '/\n');
-}
 
 function isGlossaryFace(faceId: string | null): faceId is GlossaryBaseFaceId {
   return (
