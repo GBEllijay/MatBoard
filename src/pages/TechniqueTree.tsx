@@ -45,6 +45,18 @@ import {
   type TechniqueTreeDoc,
   type TreeChildKind,
 } from '../lib/techniqueTreeStore';
+import {
+  emptyGlossaryPanelView,
+  ensureGlossaryBaseCards,
+  linksFrom,
+  saveGlossaryBaseCatalog,
+  viewForCard,
+  viewForFace,
+  type GlossaryBaseCatalog,
+  type GlossaryPanelView,
+} from '../lib/glossaryBaseCards';
+import { TechniqueTreeDiamond } from './TechniqueTreeDiamond';
+import { GlossaryBaseCardsPanel, GlossaryLinkList, TreeConnectField } from './TechniqueTreeGlossary';
 
 export function TechniqueTreePage() {
   const navigate = useNavigate();
@@ -60,6 +72,10 @@ export function TechniqueTreePage() {
     [roster],
   );
   const [archive, setArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
+  const [glossaryCatalog, setGlossaryCatalog] = useState<GlossaryBaseCatalog>(
+    () => ensureGlossaryBaseCards(loadTechniqueArchive()).catalog,
+  );
+  const [glossaryView, setGlossaryView] = useState<GlossaryPanelView>(emptyGlossaryPanelView);
   const doc = activeTree(archive);
   const [note, setNote] = useState('');
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -75,6 +91,10 @@ export function TechniqueTreePage() {
   useEffect(() => {
     if (!nameFocused.current) setName(doc.name);
   }, [doc.name]);
+
+  useEffect(() => {
+    setGlossaryCatalog(ensureGlossaryBaseCards(archive).catalog);
+  }, [archive]);
 
   useEffect(() => {
     if (!requestedTreeId) return;
@@ -313,6 +333,40 @@ export function TechniqueTreePage() {
         </p>
       ) : null}
 
+      <TechniqueTreeDiamond
+        catalog={glossaryCatalog}
+        activeFaceId={glossaryView.faceId}
+        openCardId={glossaryView.openId}
+        onOpenFace={(faceId) => {
+          setGlossaryView(viewForFace(faceId));
+          window.requestAnimationFrame(() => {
+            document.getElementById('tree-glossary-panel')?.scrollIntoView({ block: 'start' });
+          });
+        }}
+        onOpenCard={(cardId) => {
+          setGlossaryView((current) => viewForCard(glossaryCatalog, cardId, current));
+          window.requestAnimationFrame(() => {
+            document.getElementById('tree-glossary-panel')?.scrollIntoView({ block: 'start' });
+          });
+        }}
+      />
+
+      <GlossaryBaseCardsPanel
+        catalog={glossaryCatalog}
+        view={glossaryView}
+        onViewChange={setGlossaryView}
+        onShowOnDiamond={(_faceId, cardId) => {
+          setGlossaryView((current) => viewForCard(glossaryCatalog, cardId, current));
+          window.requestAnimationFrame(() => {
+            document.getElementById('tree-d8')?.scrollIntoView({ block: 'start' });
+          });
+        }}
+        onCatalogChange={(next) => {
+          const saved = saveGlossaryBaseCatalog(next);
+          setGlossaryCatalog(saved.catalog);
+        }}
+      />
+
       <div className="tree__plan">
         {showLibrary ? (
           <section className="tree__library" aria-label="Trees on this phone">
@@ -460,6 +514,8 @@ export function TechniqueTreePage() {
             <TreeNodeView
               node={doc.root}
               doc={doc}
+              catalog={glossaryCatalog}
+              onOpenGlossaryCard={(cardId) => setGlossaryView((current) => viewForCard(glossaryCatalog, cardId, current))}
               confirmId={confirmId}
               focusId={focusId}
               pinnedId={requestedNodeId}
@@ -473,6 +529,10 @@ export function TechniqueTreePage() {
                 commit(removeNode(doc, id));
                 setConfirmId(null);
               }}
+              onCatalogChange={(next) => {
+                const saved = saveGlossaryBaseCatalog(next);
+                setGlossaryCatalog(saved.catalog);
+              }}
             />
           </ul>
         ) : null}
@@ -484,6 +544,7 @@ export function TechniqueTreePage() {
 function TreeNodeView({
   node,
   doc,
+  catalog,
   confirmId,
   focusId,
   pinnedId,
@@ -494,9 +555,12 @@ function TreeNodeView({
   onDelete,
   onCancelDelete,
   onConfirmDelete,
+  onCatalogChange,
+  onOpenGlossaryCard,
 }: {
   node: TechniqueNode;
   doc: TechniqueTreeDoc;
+  catalog: GlossaryBaseCatalog;
   confirmId: string | null;
   focusId: string | null;
   pinnedId: string | null;
@@ -507,6 +571,8 @@ function TreeNodeView({
   onDelete: (node: TechniqueNode) => void;
   onCancelDelete: () => void;
   onConfirmDelete: (id: string) => void;
+  onCatalogChange: (catalog: GlossaryBaseCatalog) => void;
+  onOpenGlossaryCard?: (cardId: string) => void;
 }) {
   const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -583,6 +649,18 @@ function TreeNodeView({
           </p>
         ) : null}
 
+        <TreeConnectField
+          catalog={catalog}
+          from={{ type: 'tree', treeId: doc.id, nodeId: node.id, slotId: node.slotId, title: node.title }}
+          onCatalogChange={onCatalogChange}
+        />
+        <GlossaryLinkList
+          catalog={catalog}
+          links={linksFrom(catalog, { type: 'tree', treeId: doc.id, nodeId: node.id, slotId: node.slotId, title: node.title })}
+          onCatalogChange={onCatalogChange}
+          onOpenCard={onOpenGlossaryCard}
+        />
+
         <div className="tree-node__actions">
           <button type="button" className="btn" disabled={!canAdd} onClick={() => onAdd(node.id, 'branch')}>
             + Branch
@@ -620,6 +698,8 @@ function TreeNodeView({
               key={child.id}
               node={child}
               doc={doc}
+              catalog={catalog}
+              onOpenGlossaryCard={onOpenGlossaryCard}
               confirmId={confirmId}
               focusId={focusId}
               pinnedId={pinnedId}
@@ -630,6 +710,7 @@ function TreeNodeView({
               onDelete={onDelete}
               onCancelDelete={onCancelDelete}
               onConfirmDelete={onConfirmDelete}
+              onCatalogChange={onCatalogChange}
             />
           ))}
         </ul>
