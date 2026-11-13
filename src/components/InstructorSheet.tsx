@@ -16,7 +16,6 @@ import {
   gymViewFor,
   netClasses,
   promotionEvents,
-  stripesGiven,
   studentLabel,
 } from '../lib/gymEvents.ts';
 import { getGymEventsSnapshot, readGymEvents, readGymMeta, subscribeGymEvents } from '../lib/gymEventLog.ts';
@@ -72,13 +71,10 @@ export function InstructorSheet() {
     ensureGymBackfill();
     void syncGymEvents();
   }, []);
-  const year = new Date().getFullYear();
   const view = gymViewFor({ seatId: seat?.id ?? null, preset: seat?.presetId ?? null, optedIn: false });
   if (view.kind === 'hidden') return null;
   const split = eventsForView(events, view);
   const classes = netClasses(split.detail);
-  const stripes = stripesGiven(split.detail);
-  const stripesYear = stripesGiven(split.detail, year);
   const promotions = promotionEvents(split.detail);
   const belts = beltsPromoted(split.detail);
   const maxBelt = belts.reduce((peak, row) => Math.max(peak, row.count), 0);
@@ -117,14 +113,6 @@ export function InstructorSheet() {
               <small>h</small>
             </span>
             <span>Hours taught</span>
-          </p>
-          <p className="sheet-stat">
-            <span className="sheet-stat__num">{promotions.length}</span>
-            <span>Promotions awarded</span>
-          </p>
-          <p className="sheet-stat">
-            <span className="sheet-stat__num">{stripes}</span>
-            <span>Stripes given · {stripesYear} this year</span>
           </p>
         </div>
       </div>
