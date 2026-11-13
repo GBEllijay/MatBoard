@@ -5,8 +5,8 @@
  * list, or another student does not pick up someone else's pictures.
  * Same shrink as a belt photo: longest edge 960, JPEG quality 0.62, at most
  * 48,000 characters. At most 8 pictures on one result, the same cap as photos
- * on one belt. They are not written into the progress file, the coach file,
- * or a backup.
+ * on one belt. They are not written into the progress file or the coach file.
+ * A student packet includes them when they are saved on this phone.
  */
 
 import { localPhotoError } from './localPhotoError.ts';

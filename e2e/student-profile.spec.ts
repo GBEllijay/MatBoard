@@ -82,12 +82,12 @@ test('my profile saves name, gym, and an optional start date at 390px', async ({
   await expect(page.locator('main.student')).toHaveCSS('font-family', /Inter/);
   await expect(page.getByRole('textbox', { name: 'Class', exact: true })).toHaveCSS('font-family', /Patrick Hand/);
 
-  const backupPath = '/tmp/student-profile-backup.json';
+  const backupPath = '/tmp/student-profile-backup.advantage';
   page.on('download', async (download) => {
-    if (download.suggestedFilename().startsWith('advantage-student-backup-')) await download.saveAs(backupPath);
+    if (download.suggestedFilename().startsWith('advantage-student-packet-')) await download.saveAs(backupPath);
   });
   await page.goto('/student/backup?student=1');
-  await page.getByRole('button', { name: 'Back up my journal' }).click();
+  await page.getByRole('button', { name: 'Download student packet (.advantage)' }).click();
   await expect.poll(async () => {
     try {
       const text = await readFile(backupPath, 'utf8');
