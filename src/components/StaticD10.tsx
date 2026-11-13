@@ -14,12 +14,14 @@ import {
   type InstructorD10Scores,
 } from '../lib/instructorD10';
 
-const R = 64;
+const R = 60;
 const OUTER = R / Math.cos(Math.PI / 5);
-const LABEL = 58;
+const LABEL = 102;
 const WIDTH = (OUTER + LABEL) * 2;
-const POLE = 22 + OUTER * 2 + 26;
-const GAP = 18;
+const HEAD = 32;
+const FOOT = 32;
+const POLE = HEAD + OUTER * 2 + FOOT;
+const GAP = 12;
 const HEIGHT = POLE * 2 + GAP;
 
 function labelLines(label: string): string[] {
@@ -34,7 +36,7 @@ function labelLines(label: string): string[] {
 export function StaticD10({ scores }: { scores: InstructorD10Scores | null }) {
   const faces = d10Faces(scores);
   const cx = WIDTH / 2;
-  const poles: Record<D10Side, number> = { front: 22 + OUTER, back: 22 + OUTER + POLE + GAP };
+  const poles: Record<D10Side, number> = { front: HEAD + OUTER, back: POLE + GAP + HEAD + OUTER };
   return (
     <div className="assess-visual report-diamond ip-d10-visual" data-testid="instructor-d10-visual">
       <h3>Shape</h3>
@@ -44,7 +46,7 @@ export function StaticD10({ scores }: { scores: InstructorD10Scores | null }) {
           const center = { x: cx, y: cy };
           return (
             <g key={side} data-d10-side={side}>
-              <text x={cx} y={11} textAnchor="middle" className="report-diamond__caption">
+              <text x={cx} y={cy - OUTER - 16} textAnchor="middle" className="report-diamond__caption">
                 {side === 'front' ? 'Front' : 'Back (turned over)'}
               </text>
               {faces
@@ -53,9 +55,12 @@ export function StaticD10({ scores }: { scores: InstructorD10Scores | null }) {
                   const kite = d10Kite(center, R, face.sector);
                   const shade = diamondShade(face.axis.value);
                   const mid = d10KiteCentroid(kite);
-                  const tip = d10Polar(center, OUTER + 14, face.sector * 72);
+                  const tip = d10Polar(center, OUTER + 12, face.sector * 72);
                   const lines = labelLines(face.axis.label);
+                  const below = tip.y >= cy + 4;
                   const anchor = tip.x > cx + 6 ? 'start' : tip.x < cx - 6 ? 'end' : 'middle';
+                  const labelX = Math.min(WIDTH - 8, Math.max(8, tip.x));
+                  const labelY = below ? tip.y + 10 : tip.y - 4 - (lines.length - 1) * 10;
                   return (
                     <g key={face.axis.id} data-area={face.axis.id}>
                       <polygon
@@ -75,13 +80,13 @@ export function StaticD10({ scores }: { scores: InstructorD10Scores | null }) {
                         {face.axis.value ?? '–'}
                       </text>
                       <text
-                        x={tip.x}
-                        y={tip.y + (tip.y >= cy ? 8 : -2)}
+                        x={labelX}
+                        y={labelY}
                         textAnchor={anchor}
                         className="report-diamond__label"
                       >
                         {lines.map((line, index) => (
-                          <tspan key={line} x={tip.x} dy={index === 0 ? 0 : 10}>
+                          <tspan key={line} x={labelX} dy={index === 0 ? 0 : 10}>
                             {line}
                           </tspan>
                         ))}
