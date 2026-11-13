@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { SHEET_AXIS_IDS } from '../preview/assessmentRadar/model.ts';
+import { TOPO_R, buildTopo, faceCentroid, type Vec } from '../preview/crystallineSweeps/topo.ts';
 import { DIAMOND_LAYOUT, diamondFaces } from './staticDiamond.ts';
+import { buildD10Topo, kiteVolume } from './instructorD10Topo.ts';
 import {
   D10_LAYOUT,
   D10_SECTORS,
@@ -135,4 +137,71 @@ test('the student D8 face count, order, and diamond layout are unchanged', () =>
   assert.deepEqual(DIAMOND_LAYOUT.front, { 'top-right': 0, 'bottom-right': 2, 'top-left': 4, 'bottom-left': 6 });
   assert.deepEqual(DIAMOND_LAYOUT.back, { 'top-left': 1, 'bottom-left': 3, 'top-right': 5, 'bottom-right': 7 });
   assert.equal(d10Faces(SAMPLE).length, 10);
+});
+
+test('the student D8 topo still has eight triangular faces and the same vertices', () => {
+  const model = buildTopo(() => 3);
+  assert.equal(model.vertices.length, 6);
+  assert.deepEqual(model.vertices, [
+    [TOPO_R, 0, 0],
+    [-TOPO_R, 0, 0],
+    [0, TOPO_R, 0],
+    [0, -TOPO_R, 0],
+    [0, 0, TOPO_R],
+    [0, 0, -TOPO_R],
+  ]);
+  const faceCorners: number[][] = [];
+  for (const sx of [0, 1]) {
+    for (const sy of [2, 3]) {
+      for (const sz of [4, 5]) {
+        const odd = (sx + sy - 2 + sz - 4) % 2;
+        faceCorners.push(odd ? [sx, sz, sy] : [sx, sy, sz]);
+      }
+    }
+  }
+  assert.equal(model.faces.length, 8);
+  assert.equal(model.faceCorners.length, 8);
+  assert.ok(model.faceCorners.every((corners) => corners.length === 3));
+  assert.deepEqual(model.faceCorners, faceCorners);
+  assert.deepEqual(
+    model.faces.map((face) => face.id),
+    [...SHEET_AXIS_IDS],
+  );
+  const mid = faceCentroid([
+    [3, 0, 0],
+    [0, 3, 0],
+    [0, 0, 3],
+  ]);
+  assert.deepEqual(mid, [1, 1, 1]);
+});
+
+test('the instructor D10 topo is a ten-faced trapezohedron in approved face order', () => {
+  const model = buildD10Topo(SAMPLE);
+  assert.equal(model.vertices.length, 12);
+  assert.equal(model.faces.length, 10);
+  assert.equal(model.faceCorners.length, 10);
+  assert.equal(model.tiles.length, 20);
+  assert.ok(model.faceCorners.every((corners) => corners.length === 4));
+  assert.deepEqual(
+    model.faces.map((face) => face.id),
+    [...INSTRUCTOR_D10_FACE_IDS],
+  );
+  assert.equal(model.faces.some((face) => face.id === 'class-growth' || face.name === 'Class growth'), false);
+  for (let index = 0; index < 10; index += 1) {
+    const corners = model.faceCorners[index]!.map((vertex) => model.vertices[vertex]!);
+    assert.ok(Math.abs(kiteVolume(corners)) < 1e-8, `face ${index} should be planar`);
+    const onFace = model.tiles.filter((tile) => tile.faceIndex === index);
+    assert.equal(onFace.length, 2);
+    assert.ok(onFace.every((tile) => tile.move?.id === INSTRUCTOR_D10_FACE_IDS[index]));
+  }
+  const mid = faceCentroid([
+    [0, 0, 0],
+    [4, 0, 0],
+    [4, 4, 0],
+    [0, 4, 0],
+  ] as Vec[]);
+  assert.deepEqual(mid, [2, 2, 0]);
+  const empty = buildD10Topo(null);
+  assert.equal(empty.faces.length, 10);
+  assert.ok(empty.tiles.every((tile) => tile.move == null && tile.apex == null));
 });

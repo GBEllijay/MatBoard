@@ -94,3 +94,45 @@
   padding-top: 12px;
   border-top: 1px solid var(--ip-line, rgba(110, 168, 255, 0.35));
 }
+
+.ip-d10-live .topo-stage {
+  height: min(420px, 70vh);
+  min-height: 260px;
+  border: 2px solid #1c140e;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(28, 78, 160, 0.45), rgba(8, 18, 36, 0.15) 46%, transparent 72%),
+    rgba(12, 35, 68, 0.78);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+}
+
+.ip-d10-live .topo-controls,
+.ip-d10-live .topo-legend {
+  gap: 6px;
+}
+
+.ip-d10-live .topo-legend {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.ip-d10-live .topo-controls button,
+.ip-d10-live .topo-legend button {
+  min-height: 36px;
+  border: 2px solid #1c140e;
+  border-radius: 999px;
+  background: rgba(244, 240, 228, 0.94);
+  color: #1c140e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ip-d10-live .topo-legend button[aria-pressed='true'] {
+  background: #004eba;
+  color: #f4f0e4;
+}
+
+.ip-d10-live .topo-label,
+.ip-d10-live button.topo-label-face {
+  color: #f2f4f7;
+}

@@ -5,7 +5,7 @@
  */
 import { useMemo, useState } from 'react';
 import { BeltHeader } from '../../components/BeltHeader';
-import { StaticD10 } from '../../components/StaticD10';
+import { LiveD10 } from '../../components/LiveD10';
 import { StaticDiamond } from '../../components/StaticDiamond';
 import { d10AxesFromScores, d10SubmetricsForFace } from '../../lib/instructorD10';
 import { InstructorIdentityCard } from '../instructorProfile/InstructorIdentityCard';
@@ -155,7 +155,7 @@ export function InstructorSheetPreviewPage() {
           not a face. Fictional sample. Nothing is saved.
         </p>
         <div className="ip-d10">
-          <StaticD10 scores={INSTRUCTOR_D10_SAMPLE} />
+          <LiveD10 scores={INSTRUCTOR_D10_SAMPLE} />
           <ul className="ip-d8-scores ip-d10-scores" data-testid="d10-scores">
             {d10Faces.map((face) => (
               <li key={face.id}>

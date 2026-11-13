@@ -102,6 +102,13 @@ test('the Instructor D10 has ten faces in order and nests class growth under ret
   );
   assert.ok(mounted.host.querySelector('[data-testid="instructor-d10"]'));
   assert.ok(mounted.host.querySelector('[data-testid="instructor-d10-visual"]'));
+  assert.ok(mounted.host.querySelector('[data-testid="instructor-d10-visual"] .topo-stage'));
+  const factors = [...mounted.host.querySelectorAll('[data-testid="instructor-d10-visual"] .topo-legend button')].map(
+    (button) => button.textContent,
+  );
+  assert.equal(factors.length, 10);
+  assert.match(factors[0] ?? '', /Public speaking/);
+  assert.match(factors[9] ?? '', /Student retention/);
   assert.deepEqual(labels, INSTRUCTOR_D10_FACES.map((face) => face.label));
   assert.deepEqual(values, d10AxesFromScores(INSTRUCTOR_D10_SAMPLE).map((face) => String(face.value)));
   const sub = mounted.host.querySelector('[data-testid="d10-retention-subs"]');
@@ -149,7 +156,8 @@ test('the preview route is registered and the page does not write storage keys',
   assert.match(app, /path="\/preview\/instructor-sheet"/);
   assert.match(page, /InstructorIdentityCard/);
   assert.match(page, /StaticDiamond/);
-  assert.match(page, /StaticD10/);
+  assert.match(page, /LiveD10/);
+  assert.equal(page.includes('StaticD10'), false);
   assert.equal(page.includes('localStorage'), false);
   assert.equal(page.includes('sessionStorage'), false);
 });
