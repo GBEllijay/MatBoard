@@ -7,7 +7,7 @@ import { handleGymCloud, type GymMediaBucket } from './gymCloud.ts';
 import { handleGymRoster } from './gymRoster.ts';
 import { recordPurchase } from './purchaseRecords.ts';
 import { handleRestoreRequest, handleRestoreVerify } from './restoreAccess.ts';
-import { ensureHalfOffCode } from './proBundle.ts';
+import { OWNER_ALPHA_LICENSE_ID, ensureHalfOffCode } from './proBundle.ts';
 import { handleStudentInbox, type InboxBucket } from './studentInbox.ts';
 import {
   handleStudentLicenseClaim,
@@ -73,7 +73,7 @@ function post(url: string, body: unknown): Request {
 
 async function issue(db: D1Database, secret: string, token: string) {
   const response = await handleStudentLicenseIssue(post('http://localhost/api/student-licenses/issue', { token }), envOf(secret), db, () => NOW);
-  const body = (await response.json()) as { ok?: boolean; code?: string; left?: number; error?: string };
+  const body = (await response.json()) as { ok?: boolean; code?: string; left?: number; cap?: number; error?: string };
   return { status: response.status, body };
 }
 
@@ -125,6 +125,7 @@ test('owner issues from a pool of 5, a seat cannot, and one claim is single-use'
   const first = await issue(db, pair.secret, token);
   assert.equal(first.status, 200);
   assert.equal(first.body.left, 4);
+  assert.equal(first.body.cap, 5);
   assert.match(first.body.code ?? '', /^[a-f0-9]{64}$/);
 
   const seat = await seatToken(pair.secret, gym, 'seat-1');
@@ -565,5 +566,35 @@ test('signed student-invite links claim Student Edition only, and a sixth issue 
   const sixth = await issue(db, pair.secret, token);
   assert.equal(sixth.status, 409);
   assert.equal(sixth.body.left, 0);
+  assert.equal(sixth.body.cap, 5);
   assert.equal(sixth.body.error, 'No free Student licenses left.');
 });
+
+test('the owner alpha license issues from a pool of 25, and a regular Pro license still stops at 5', async () => {
+  const pair = await keys();
+  const db = sqliteD1();
+  const ownerTokenValue = await ownerToken(pair.secret, OWNER_ALPHA_LICENSE_ID);
+  for (let index = 0; index < 25; index += 1) {
+    const issued = await issue(db, pair.secret, ownerTokenValue);
+    assert.equal(issued.status, 200, String(issued.body.error));
+    assert.equal(issued.body.cap, 25);
+    assert.equal(issued.body.left, 24 - index);
+  }
+  const twentySixth = await issue(db, pair.secret, ownerTokenValue);
+  assert.equal(twentySixth.status, 409);
+  assert.equal(twentySixth.body.left, 0);
+  assert.equal(twentySixth.body.cap, 25);
+  assert.equal(twentySixth.body.error, 'No free Student licenses left.');
+
+  const paid = await ownerToken(pair.secret, 'paid-pro-license');
+  for (let index = 0; index < 5; index += 1) {
+    const issued = await issue(db, pair.secret, paid);
+    assert.equal(issued.status, 200, String(issued.body.error));
+    assert.equal(issued.body.cap, 5);
+  }
+  const sixth = await issue(db, pair.secret, paid);
+  assert.equal(sixth.status, 409);
+  assert.equal(sixth.body.cap, 5);
+  assert.equal(sixth.body.left, 0);
+});
+

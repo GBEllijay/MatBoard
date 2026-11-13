@@ -9,6 +9,7 @@ export const JOURNAL_PARTNERS_LABEL = 'Training partners';
 export const JOURNAL_DRILLS_LABEL = 'Drills';
 export const JOURNAL_ROLLS_LABEL = 'Rolls';
 export const JOURNAL_NOTES_LABEL = 'Drill notes';
+/** Older cards only. Stop doing now folds into How it went; no screen shows this label. */
 export const JOURNAL_STOP_LABEL = 'Stop doing';
 export const JOURNAL_SAVED_TOAST = 'Entry saved';
 export const JOURNAL_SEE_CARD = 'See saved card';

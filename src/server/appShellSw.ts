@@ -2,14 +2,14 @@
  * Navigation rules pasted into the generated service worker.
  * The functions are self-contained: the worker build copies their source and
  * does not bundle this module. /api and /paid never receive the app shell.
- * /card and /half-off are separate pages, not the installed app.
+ * /half-off is a separate page, not the installed app.
  */
 
 export const APP_NAV_SHELL_BODY = String.raw`
 const path = pathname;
 if (path === "/api" || path.startsWith("/api/")) return false;
 if (path === "/paid" || path.startsWith("/paid/")) return false;
-if (/^\/(?:card|half-off)(?:\/|\.html)?$/.test(path)) return false;
+if (/^\/half-off(?:\/|\.html)?$/.test(path)) return false;
 return true;
 `;
 

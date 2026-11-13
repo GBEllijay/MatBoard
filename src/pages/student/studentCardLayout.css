@@ -189,3 +189,11 @@
   .sheet-zone--wins { grid-column: 2; grid-row: 2; }
   .sheet-zone--body { grid-column: 1 / -1; }
 }
+
+/* Self-assessment Shape: the Profile D8 with the Radar fallback, one heading. */
+.assess-shape { display: grid; gap: 8px; min-width: 0; }
+.assess-shape .sheet-diamond { display: grid; gap: 8px; min-width: 0; }
+.assess-shape .sheet-diamond .topo-stage { height: 260px; }
+.assess-shape .sheet-diamond__expand { justify-self: start; }
+.assess-shape > .assess-visual { margin: 0; padding: 0; background: none; border-radius: 0; }
+.assess-shape > .assess-visual > h3:first-child { display: none; }

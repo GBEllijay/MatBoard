@@ -56,8 +56,6 @@ export const CURRICULUM_TIMING_LABELS: Record<CurriculumTiming, string> = {
   video: 'Looping video',
   replay: 'Record for replay',
 };
-export const RECORD_FOR_REVIEW_LABEL = 'Record for Review';
-
 export type CurriculumBlock = {
   id: string;
   kind: CurriculumKind;
@@ -76,7 +74,7 @@ export type CurriculumBlock = {
   mediaName: string;
   treeId?: string;
   rounds: number;
-  /** Sparring and added blocks: keep the timer and also record a clip for review. */
+  /** Kept when a saved plan still has Record for Review on. Ignored by the UI. */
   recordReview?: boolean;
   /** Replay clip on this device (plus where a copy was saved). Only the ref is stored here. */
   replayClip?: ReplayClipRef;
@@ -90,7 +88,7 @@ export type CurriculumPlan = {
   classTime: string;
   blocks: CurriculumBlock[];
   closing: string;
-  /** Record for Review on the Closing section. Absent when off with no clip. */
+  /** Legacy Record for Review on Closing. Still loaded and saved; the UI ignores it. */
   closingReview?: ReviewSlot;
   locked: boolean;
 };
@@ -152,23 +150,18 @@ export function blockOffersClock(kind: CurriculumKind): boolean {
   return kind === 'warmup' || kind === 'body' || kind === 'takedown' || kind === 'specific' || kind === 'custom';
 }
 
-/** Lesson sections that can carry "Record for Review": curriculum kinds plus the Intro and Closing (outro) sections. */
-export type ReviewToggleKind = CurriculumKind | 'intro' | 'closing';
-
 /**
- * "Record for Review" switch (owner decision): sparring (Live Rounds), added
- * blocks such as Bag Work or Cardio, Specific Training, Intro, and Closing
- * (the outro block in every template). Not on Cool down, warm-up, body
- * movement, or technique/takedown blocks.
+ * Kinds that used to carry a "Record for Review" switch. Kept only so saved
+ * plans that still have `recordReview: true` load without dropping the field.
+ * The switch itself is gone; this does not show a recorder.
  */
-export function blockOffersReviewToggle(kind: ReviewToggleKind): boolean {
+function legacyReviewToggleKind(kind: string): boolean {
   return kind === 'live' || kind === 'custom' || kind === 'specific' || kind === 'intro' || kind === 'closing';
 }
 
-/** The block shows the replay recorder: its mode is "Record for replay", or Record for Review is on. */
+/** The block shows the replay recorder when its mode is "Record for replay". */
 export function blockWantsReplay(block: Pick<CurriculumBlock, 'kind' | 'timing' | 'recordReview'>): boolean {
-  if (blockOffersClock(block.kind) && block.timing === 'replay') return true;
-  return blockOffersReviewToggle(block.kind) && block.recordReview === true;
+  return blockOffersClock(block.kind) && block.timing === 'replay';
 }
 
 export function blockOffersTree(kind: CurriculumKind): boolean {
@@ -313,7 +306,7 @@ function sanitizeBlock(value: unknown): { block: CurriculumBlock; repaired: bool
   }
   const rounds = clampRounds(raw?.rounds);
   if (raw && raw.rounds !== rounds) repaired = true;
-  const recordReview = blockOffersReviewToggle(kind) && raw?.recordReview === true;
+  const recordReview = legacyReviewToggleKind(kind) && raw?.recordReview === true;
   if (raw && raw.recordReview != null && raw.recordReview !== recordReview) repaired = true;
   let replayClip: ReplayClipRef | undefined;
   if (raw && raw.replayClip != null) {

@@ -5,7 +5,10 @@ import { useSeatDoor } from '../hooks/useSeatDoor';
 import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
 import { ownerEditionTarget } from '../lib/ownerHome';
 import { UpdateToLatestButton } from '../components/UpdateToLatestButton';
+import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { studentHomeEntryPath } from '../lib/studentEdition';
+import { whiteEntryPath } from '../lib/whiteUnlock';
 import {
   SITE_ALPHA_LINE,
   SITE_FEEDBACK_EMAIL,
@@ -34,6 +37,7 @@ import './storefront.css';
 
 export function StorefrontPage() {
   const unlocked = useWhiteUnlocked();
+  const studentUnlocked = useStudentEditionUnlocked();
   const [params] = useSearchParams();
   const belts = beltsVariantOf(params.get('belts'));
   const door = useSeatDoor();
@@ -71,7 +75,7 @@ export function StorefrontPage() {
         </div>
       </header>
 
-      <StorefrontHero unlocked={unlocked} />
+      <StorefrontHero unlocked={unlocked} studentUnlocked={studentUnlocked} />
 
       <section className="sf-band" id="scoreboard" aria-label="Scoreboard">
         <div className="sf-tex" aria-hidden="true" />
@@ -120,7 +124,18 @@ export function StorefrontPage() {
                 key={rung.id}
                 step={rung}
                 belts={belts}
-                to={rung.id === 'pro' ? editionTo.pro : rung.id === 'pro-cloud' ? editionTo['pro-cloud'] : undefined}
+                to={
+                  rung.id === 'pro'
+                    ? editionTo.pro
+                    : rung.id === 'pro-cloud'
+                      ? editionTo['pro-cloud']
+                      : rung.id === 'white'
+                        ? whiteEntryPath(unlocked)
+                        : rung.id === 'student'
+                          ? studentHomeEntryPath(studentUnlocked)
+                          : undefined
+                }
+                showLearn={rung.id === 'white' ? !unlocked : rung.id === 'student' ? !studentUnlocked : true}
               />
             ))}
           </div>
@@ -180,7 +195,7 @@ function Woodblock({
   );
 }
 
-function ProgressStep({ step, belts, to }: { step: BeltRung; belts: BeltsVariant; to?: string }) {
+function ProgressStep({ step, belts, to, showLearn = true }: { step: BeltRung; belts: BeltsVariant; to?: string; showLearn?: boolean }) {
   const dest = to ?? step.to;
   const body = (
     <>
@@ -198,7 +213,7 @@ function ProgressStep({ step, belts, to }: { step: BeltRung; belts: BeltsVariant
           <h3>{step.title}</h3>
           <p>{step.blurb}</p>
           {step.detail ? <p className="sf-step-detail">{step.detail}</p> : null}
-          {step.learnLabel && (step.learnTo ?? step.to) ? (
+          {showLearn && step.learnLabel && (step.learnTo ?? step.to) ? (
             <Link className="sf-learn" to={step.learnTo ?? step.to ?? ''}>
               {step.learnLabel}
             </Link>
@@ -217,7 +232,7 @@ function ProgressStep({ step, belts, to }: { step: BeltRung; belts: BeltsVariant
   );
 
   const className = `sf-step${step.id === 'white' ? ' sf-step--live' : ''} sf-step--${step.id}`;
-  if (step.learnLabel && (step.learnTo ?? step.to)) {
+  if (showLearn && step.learnLabel && (step.learnTo ?? step.to)) {
     // The Learn more control is the button. The rest of the tile opens `to` when it has one.
     return (
       <article className={className}>

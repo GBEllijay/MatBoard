@@ -564,6 +564,45 @@ export type JournalEntry = {
   };
   /** Marks a hiatus/break. Starts on `start` (the card date by default). Empty `end` means still on break. */
   hiatus?: { reason: 'medical' | 'other'; start: string; end: string };
+  /**
+   * Videos for this one class card, each tagged with the glossary term it shows.
+   * Absent on older cards: read as no videos. A phone video keeps only its id here;
+   * the bytes stay in this phone's film store (IndexedDB), never in this file or the cloud.
+   */
+  videos?: JournalCardVideo[];
+};
+
+/** Most videos one journal card keeps. */
+export const JOURNAL_CARD_VIDEOS_MAX = 20;
+
+/** The glossary term a card video shows. `id` is `gl.<key>` (core glossary), `mine.<key>` (the student's own move), or blank for a free name. */
+export type JournalVideoTerm = { id: string; name: string };
+
+/**
+ * One video on one journal card.
+ * `phone`: a file filmed or picked on this device; the bytes are in the local film store under `filmId ?? id`.
+ * `link`: an http(s) link (YouTube, Instagram, Drive, …) the student pasted.
+ */
+export type JournalCardVideo = {
+  id: string;
+  source: 'phone' | 'link';
+  /** Link videos only. */
+  url?: string;
+  /** Link videos only: the clip in the student's link list this came from, when chosen from saved videos. */
+  clipId?: string;
+  /**
+   * Phone videos only: the Video library film whose bytes this plays, when chosen from saved videos
+   * or tagged from an older card. Absent: the bytes are stored for this card under `id`.
+   */
+  filmId?: string;
+  /** Phone videos only: original file name, type, and size, for the label. */
+  fileName?: string;
+  mime?: string;
+  size?: number;
+  term: JournalVideoTerm;
+  note: string;
+  createdAt: number;
+  updatedAt: number;
 };
 
 /**

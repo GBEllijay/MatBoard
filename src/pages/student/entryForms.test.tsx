@@ -126,9 +126,11 @@ test('journal controls stay, save confirms in place, and the card still edits an
   assert.equal(labeled(host, 'Home').getAttribute('href'), '/products?student=1');
   assert.equal((field(host, 'Date') as HTMLInputElement).value, '2026-10-11');
   assert.match(host.textContent ?? '', /October 11, 2026/);
-  for (const name of ['Class', 'Technique drilled #1', 'Technique drilled #2', 'Technique drilled #3', 'Training partners', 'Drills', 'Rolls', 'Drill notes', 'Stop doing']) {
+  for (const name of ['Class', 'Technique drilled #1', 'Technique drilled #2', 'Technique drilled #3', 'Training partners', 'Drills', 'Rolls', 'Drill notes', 'How it went']) {
     field(host, name);
   }
+  // Stop doing folded into How it went: no separate field.
+  assert.equal(host.querySelector('[aria-label="Stop doing"]'), null);
   assert.equal(host.querySelector('[aria-label="Technique drilled #4"]'), null);
   for (const name of ['Pick Technique drilled #1 from fundamentals', 'Pick Technique drilled #2 from fundamentals', 'Pick Technique drilled #3 from fundamentals']) {
     labeled(host, name);
@@ -155,7 +157,7 @@ test('journal controls stay, save confirms in place, and the card still edits an
   typeInto(field(host, 'Drills'), 'hip escapes');
   typeInto(field(host, 'Rolls'), '5 rounds');
   typeInto(field(host, 'Drill notes'), 'grip the collar deeper');
-  typeInto(field(host, 'Stop doing'), 'posting the near hand');
+  typeInto(field(host, 'How it went'), 'posting the near hand');
   click(control(host, 'button', 'Save entry'));
 
   assert.equal(host.querySelector('h1')?.textContent, 'Journal');
@@ -166,14 +168,15 @@ test('journal controls stay, save confirms in place, and the card still edits an
   assert.equal((field(host, 'Drills') as HTMLTextAreaElement).value, '');
   assert.equal((field(host, 'Rolls') as HTMLTextAreaElement).value, '');
   assert.equal((field(host, 'Drill notes') as HTMLTextAreaElement).value, '');
-  assert.equal((field(host, 'Stop doing') as HTMLTextAreaElement).value, '');
+  assert.equal((field(host, 'How it went') as HTMLTextAreaElement).value, '');
   assert.equal((field(host, 'Date') as HTMLInputElement).value, '2026-10-11');
   assert.equal(host.querySelector('[aria-label="Technique drilled #4"]'), null);
   const stored = loadStudentReport(localStorage).journal;
   assert.equal(stored.length, 1);
   assert.match(stored[0]?.body ?? '', /Technique drilled #1: Scissor sweep/);
   assert.match(stored[0]?.body ?? '', /Drill notes|grip the collar deeper/);
-  assert.match(stored[0]?.body ?? '', /Stop doing/);
+  assert.match(stored[0]?.body ?? '', /How it went: posting the near hand/);
+  assert.doesNotMatch(stored[0]?.body ?? '', /Stop doing/);
   const seen = control(host, 'a', JOURNAL_SEE_CARD);
   assert.equal(seen.getAttribute('href'), `/student/cards/${stored[0]?.id}?student=1`);
   click(seen);
@@ -191,7 +194,8 @@ test('journal controls stay, save confirms in place, and the card still edits an
   assert.match(host.textContent ?? '', /Drills: hip escapes/);
   assert.match(host.textContent ?? '', /Rolls: 5 rounds/);
   assert.match(host.textContent ?? '', /Drill notes: grip the collar deeper/);
-  assert.match(host.textContent ?? '', /Stop doing: posting the near hand/);
+  assert.match(host.textContent ?? '', /How it went: posting the near hand/);
+  assert.doesNotMatch(host.textContent ?? '', /Stop doing/);
   assert.equal(host.querySelector('[aria-label="Amendment"]') instanceof HTMLTextAreaElement, true);
   assert.match(host.textContent ?? '', /Later notes/);
   assert.match(host.textContent ?? '', /Add note to an earlier card/);
@@ -211,7 +215,8 @@ test('journal controls stay, save confirms in place, and the card still edits an
   assert.equal(field(host, 'Edit Drills') instanceof HTMLTextAreaElement, true);
   assert.equal((field(host, 'Edit Rolls') as HTMLTextAreaElement).value, '5 rounds');
   assert.equal((field(host, 'Edit Drill notes') as HTMLTextAreaElement).value, 'grip the collar deeper');
-  assert.equal((field(host, 'Edit Stop doing') as HTMLTextAreaElement).value, 'posting the near hand');
+  assert.equal((field(host, 'Edit How it went') as HTMLTextAreaElement).value, 'posting the near hand');
+  assert.equal(host.querySelector('[aria-label="Edit Stop doing"]'), null);
   assert.ok(control(host, 'button', 'Save card'));
   assert.ok(control(host, 'button', 'Cancel edit'));
   click(control(host, 'button', 'Cancel edit'));
@@ -300,7 +305,8 @@ test('cards list labels, search, and competition hits stay, and two same-day car
   assert.match(host.textContent ?? '', /Technique drilled #1: Scissor sweep/);
   assert.match(host.textContent ?? '', /Technique drilled #1: Armbar/);
   assert.match(host.textContent ?? '', /Drill notes: grip the collar deeper/);
-  assert.match(host.textContent ?? '', /Stop doing: posting the near hand/);
+  assert.match(host.textContent ?? '', /How it went: posting the near hand/);
+  assert.doesNotMatch(host.textContent ?? '', /Stop doing/);
   assert.match(host.textContent ?? '', /Training partners: Alex/);
   assert.match(host.textContent ?? '', /Training partners: Sam/);
 

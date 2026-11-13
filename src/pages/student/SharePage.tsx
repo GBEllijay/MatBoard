@@ -9,7 +9,7 @@ import {
   SEND_TO_COACH_MERGE_PROMPT,
   SHARE_SUBJECT,
 } from '../../lib/studentTools';
-import { COACH_FILE_HINT, COACH_FILE_LABEL } from '../../lib/studentHubMenu';
+import { COACH_FILE_LABEL } from '../../lib/studentHubMenu';
 import { setStudentProfile } from '../../lib/studentEdition';
 import {
   buildCoachUpdateFile,
@@ -21,10 +21,31 @@ import {
   type CoachUpdateSection,
 } from '../../lib/coachProgressFile';
 import { loadAssessments } from '../../lib/studentAssessment';
+import { readCoachOverlay } from '../../lib/coachSync';
+import { AssessmentCompareD8, entriesFromScoreRows } from '../../components/AssessmentCompareD8';
 import { readStableStudentId } from '../../lib/studentIdentity';
 
-export const COACH_UPDATE_FILE_COPY =
-  'The file stays on this device until you send it. Advantage does not host it. It has what changed since your last file: profile, belt and stripes, A/B/C game, tournaments you entered (not ones you are considering), new self-assessments, opponent cards, and weight updates when you turn on sharing below. Opponent cards stay on unless you turn that section off, and a card that has not changed is not sent again. Each card sends the name, gym, group, style, class, belt, eight ratings including sweeps, strengths, weaknesses, record, and notes. It never has promotion photos or any photo, your journal, or move permissions, and it never has another student\'s private notes. Your coach adds it to your card; belt and stripes wait for your coach to approve. Opponent cards wait for that same approval. For a full copy of your journal, use Back up my journal or the spreadsheet in Connections.';
+export const COACH_CARD_CLOUD_COPY =
+  'Share my card with my coach and your photos go to your coach through Advantage Cloud. They land in New student cards on the coach\'s Student Roster. Belt and stripes wait for your coach to approve.';
+
+export const COACH_FILE_LEAD_COPY =
+  'This file is optional. It stays on this phone until you send it. Your coach imports it on Student Roster with Import a student file, after accepting your card.';
+
+export const COACH_FILE_CONTENTS_COPY =
+  'It has what changed since your last file: profile, belt and stripes, A/B/C game, tournaments you entered (not ones you are considering), new self-assessments, opponent cards, and weight updates when you turn those on below. Opponent cards stay on unless you turn that section off, and a card that has not changed is not sent again. Each opponent card includes the name, gym, group, style, class, belt, eight ratings including sweeps, strengths, weaknesses, record, and notes. The file never includes photos, your journal, move permissions, or another student\'s private notes. For a full copy of your journal, use Download student packet or the spreadsheet in Connections.';
+
+export const EMAIL_FILE_LABEL = 'Open email (attach the file yourself)';
+
+export const EMAIL_FILE_NOTE =
+  'This opens your mail app with a note. It does not make the file, and it does not attach it. Make the file first, then attach it in your mail app before you send.';
+
+export const EMAIL_FILE_MAILTO_BODY =
+  'My update file for you is on my phone. Please attach that JSON. After you accept my card, import it on Student Roster with Import a student file.';
+
+export const COACH_FILE_SHARED_NOTE = 'Your coach imports it on Student Roster with Import a student file, after accepting your card.';
+
+export const COACH_FILE_DOWNLOADED_NOTE =
+  'Attach it in email or put it in the gym Drive folder. Your coach imports it on Student Roster with Import a student file, after accepting your card.';
 
 function sectionLabel(section: CoachUpdateSection): string {
   return {
@@ -61,9 +82,7 @@ export function SharePage() {
   const [pendingOwn, setPendingOwn] = useState<StudentProgressReport | null>(null);
   const [pendingGym, setPendingGym] = useState<CoachGymBrand | null>(null);
   const files = {
-    mailto: `mailto:?subject=${encodeURIComponent(SHARE_SUBJECT)}&body=${encodeURIComponent(
-      'My update file for you is on my phone. I will attach that JSON. Advantage does not host the file.',
-    )}`,
+    mailto: `mailto:?subject=${encodeURIComponent(SHARE_SUBJECT)}&body=${encodeURIComponent(EMAIL_FILE_MAILTO_BODY)}`,
   };
 
   const mergeOwn = () => {
@@ -100,7 +119,7 @@ export function SharePage() {
       try {
         await nav.share({ files: sharedFiles, title: SHARE_SUBJECT, text: 'Update for my coach' });
         markCoachFileSent(localStorage, built);
-        setSendNote(`Shared from this device. ${what} Advantage does not host the file.`);
+        setSendNote(`Shared from this device. ${what} ${COACH_FILE_SHARED_NOTE}`);
         return;
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -108,7 +127,7 @@ export function SharePage() {
     }
     downloadText(built.name, built.json, 'application/json');
     markCoachFileSent(localStorage, built);
-    setSendNote(`Downloaded the file on this device. ${what} Email it from your mail app, or put it in the gym Drive folder.`);
+    setSendNote(`Downloaded the file on this device. ${what} ${COACH_FILE_DOWNLOADED_NOTE}`);
   };
 
   const downloadSample = () => {
@@ -129,8 +148,12 @@ export function SharePage() {
         <div className="student-sheet">
           <section className="student-share-card" aria-label={COACH_FILE_LABEL}>
             <h2>{COACH_FILE_LABEL}</h2>
-            <p>{COACH_FILE_HINT}</p>
-            <p>{COACH_UPDATE_FILE_COPY}</p>
+            <p>{COACH_CARD_CLOUD_COPY}</p>
+            <p>{COACH_FILE_LEAD_COPY}</p>
+            <details className="student-share-contents">
+              <summary>What&apos;s in the file</summary>
+              <p>{COACH_FILE_CONTENTS_COPY}</p>
+            </details>
             <label className="student-share-check">
               <input
                 type="checkbox"
@@ -153,15 +176,19 @@ export function SharePage() {
               />
               <span>Share my weight updates with my coach</span>
             </label>
+            <AssessmentCompareD8
+              coachEntries={entriesFromScoreRows(readCoachOverlay(localStorage).assessments)}
+              selfEntries={loadAssessments(localStorage).entries}
+            />
             <button type="button" className="ink-btn ink-btn--save" onClick={() => void send()}>
               {COACH_FILE_LABEL}
             </button>
             {sendNote ? <p role="status">{sendNote}</p> : null}
             <div className="student-share-other" role="group" aria-label="Different action">
               <p className="student-share-other__label">Different action</p>
-              <p>This opens your mail app with a note about the file. It does not make the file, and it does not attach it.</p>
+              <p>{EMAIL_FILE_NOTE}</p>
               <a className="ink-btn" href={files.mailto}>
-                Email the file
+                {EMAIL_FILE_LABEL}
               </a>
             </div>
           </section>
@@ -171,7 +198,7 @@ export function SharePage() {
               This takes a coach plan or coach feedback file. That is the JSON file a coach sends back to you. It is not the progress file from Make a file for my coach. A rank update file also imports here and waits for Accept or Dismiss.
             </p>
             <p>
-              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. A gym name or logo in the file is added when it is there, and ignored when an older file does not have one. You can replace or remove the logo on My profile. You can still merge a progress file into the journal on this phone after you confirm. A backup from Back up my journal restores from Connections.
+              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. A gym name or logo in the file is added when it is there, and ignored when an older file does not have one. You can replace or remove the logo on My profile. You can still merge a progress file into the journal on this phone after you confirm. A student packet, or an older JSON backup, restores from Connections.
             </p>
             <button type="button" className="ink-btn ink-btn--save" onClick={downloadSample}>
               Download a sample coach file

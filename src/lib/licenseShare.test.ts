@@ -22,6 +22,7 @@ import {
   shareableInvites,
   studentShareLinks,
 } from './licenseShare.ts';
+import { OWNER_ALPHA_LICENSE_ID } from './proBundleMath.ts';
 
 function seat(id: string, status: InstructorSeat['status']): InstructorSeat {
   return {
@@ -69,6 +70,11 @@ test('instructor link is the existing seat invite link for an issued, unclaimed 
 test('seat ticker reads the local archive against the seat cap', () => {
   assert.equal(instructorSeatTicker([]), '5 of 5 coach seats left');
   assert.equal(instructorSeatTicker([seat('a', 'active'), seat('b', 'invited'), seat('c', 'revoked')]), '3 of 5 coach seats left');
+  assert.equal(instructorSeatTicker([], OWNER_ALPHA_LICENSE_ID), '20 of 20 coach seats left');
+  assert.equal(
+    instructorSeatTicker([seat('a', 'active'), seat('b', 'invited'), seat('c', 'revoked')], OWNER_ALPHA_LICENSE_ID),
+    '18 of 20 coach seats left',
+  );
 });
 
 test('student link is the existing academy pathway for each connected folder', () => {

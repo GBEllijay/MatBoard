@@ -12,6 +12,7 @@ import { ADVANTAGE_MARK_SRC } from './gymLogo.ts';
 import { academyPathway, academyPathwayUrl, type AcademyPathway, type AcademyProvider } from './academyPathway.ts';
 import {
   countOpenInstructorSeats,
+  currentLicenseId,
   instructorInviteLink,
   proSeatsRemaining,
   type InstructorSeat,
@@ -76,9 +77,12 @@ export function instructorShareLink(seat: Pick<InstructorSeat, 'inviteToken'>, o
   return instructorInviteLink(seat.inviteToken, origin);
 }
 
-/** "N of 5 left" from the local seat archive. No server call. */
-export function instructorSeatTicker(seats: readonly Pick<InstructorSeat, 'status'>[]): string {
-  const allowance = instructorSeatAllowance(0);
+/** "N of 5 left" from the local seat archive. No server call. Owner alpha uses 20. */
+export function instructorSeatTicker(
+  seats: readonly Pick<InstructorSeat, 'status'>[],
+  licenseId?: string | null,
+): string {
+  const allowance = instructorSeatAllowance(0, licenseId ?? currentLicenseId());
   const left = proSeatsRemaining(countOpenInstructorSeats(seats), allowance);
   return `${left} of ${allowance} coach seats left`;
 }

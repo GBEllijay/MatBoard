@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DeviceMediaInput } from './DeviceMediaInput';
+import { ImageRightsGate, useImageRightsConfirm } from './ImageRightsConfirm';
 import { useGymLogo } from '../hooks/useGymBrand';
 import { useEffectiveTimerBackdrop, useTimerBackgroundUrl } from '../hooks/useTimerBackdrop';
 import { saveGymLogoFile } from '../lib/gymLogo';
@@ -33,6 +34,7 @@ export function TimerBackdropOptions() {
   const logoRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
+  const rights = useImageRightsConfirm();
   const canStore = timerBackgroundStorageAvailable();
   const hasBg = prefs.backgroundStamp != null;
 
@@ -55,7 +57,7 @@ export function TimerBackdropOptions() {
     }
   };
 
-  const onLogo = async (files: readonly File[]) => {
+  const savePickedLogo = async (files: readonly File[]) => {
     const file = files[0];
     if (!file) return;
     setNote('');
@@ -66,6 +68,8 @@ export function TimerBackdropOptions() {
       setNote(quotaAddNote(error) ?? 'That file is not a photo this logo can keep.');
     }
   };
+
+  const onLogo = rights.interceptFiles(savePickedLogo);
 
   // No Media door (White, Student): the section is not shown at all. No lock, no upsell.
   if (!unlocked) return null;
@@ -181,6 +185,7 @@ export function TimerBackdropOptions() {
             </>,
             document.body,
           )}
+      <ImageRightsGate rights={rights} />
     </fieldset>
   );
 }

@@ -4,6 +4,7 @@
  * one and vanish on the other.
  */
 
+import { foldStopDoing } from './journalNotes.ts';
 import { resultClassLine, tournamentClassLine } from './divisionFields.ts';
 import { competitionOf } from './progress/competition.ts';
 import { checklistLevelLine, fundamentalLevelOf, proficiencySummary } from './fundamentals.ts';
@@ -23,7 +24,6 @@ import {
   JOURNAL_NOTES_LABEL,
   JOURNAL_PARTNERS_LABEL,
   JOURNAL_ROLLS_LABEL,
-  JOURNAL_STOP_LABEL,
   formatJournalDate,
 } from './journalCopy.ts';
 import { techniqueDrilledLabel } from './progress/format.ts';
@@ -172,14 +172,13 @@ export function journalReportLine(entry: JournalEntry): string {
     const note = (lines.find((row) => row.startsWith(notePrefix)) ?? '').slice(notePrefix.length).trim();
     parts.push(`${techniqueDrilledLabel(index)}: ${name}${note ? ` — What I learned: ${note}` : ''}`);
   });
-  const howItWent = (lines.find((row) => row.startsWith('How it went:')) ?? '').slice('How it went:'.length).trim();
-  if (howItWent) parts.push(`How it went: ${howItWent}`);
   if (decoded.partners.trim()) parts.push(`${JOURNAL_PARTNERS_LABEL}: ${decoded.partners.trim()}`);
   if (decoded.drills.trim()) parts.push(`${JOURNAL_DRILLS_LABEL}: ${decoded.drills.trim()}`);
   if (decoded.rolls.trim()) parts.push(`${JOURNAL_ROLLS_LABEL}: ${decoded.rolls.trim()}`);
   if (decoded.notes.trim()) parts.push(`${JOURNAL_NOTES_LABEL}: ${decoded.notes.trim()}`);
-  const stopDoing = decoded.stopDoing?.trim() ?? '';
-  if (stopDoing) parts.push(`${JOURNAL_STOP_LABEL}: ${stopDoing}`);
+  // One reflection field: an older card's stop-doing text reads as part of How it went.
+  const howItWent = foldStopDoing(decoded.howItWent ?? '', decoded.stopDoing ?? '').replace(/\s*\n\s*/g, ' / ');
+  if (howItWent) parts.push(`How it went: ${howItWent}`);
   const extra = entry.amendments.map((item) => item.body.trim()).filter(Boolean);
   if (extra.length) parts.push(extra[extra.length - 1] ?? '');
   return parts.filter(Boolean).join(' · ');

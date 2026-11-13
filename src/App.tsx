@@ -56,6 +56,7 @@ import { CRYSTAL_PREVIEW_PATH, CrystallineSweepsPreview } from './preview/crysta
 import { D8_SUBFACTORS_PATH, D8SubfactorsPreview } from './preview/d8Subfactors/D8SubfactorsPreview';
 import { D8_GRID_PREVIEW_PATH, D8GridPreview } from './indexCards/D8GridPreview';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
+import { InstructorSheetPreviewPage } from './preview/instructorSheet/InstructorSheetPreview';
 import { ConnectCoachPreviewPage } from './preview/proHome/ConnectCoachPreview';
 import { InstructorCardsPreviewPage } from './preview/proHome/InstructorCardsPreview';
 import { ProHomePreviewPage } from './preview/proHome/ProHomePreview';
@@ -69,7 +70,6 @@ import { StudentHoursPreview } from './preview/studentRecord/StudentHoursPreview
 import { CoachPage } from './pages/Coach';
 import { CoachingToolsPage } from './pages/CoachingTools';
 import { CompetitionCurriculumPage } from './pages/CompetitionCurriculum';
-import { CardPage } from './pages/Card';
 import { HalfOffPage } from './pages/HalfOff';
 import { ComingSoonPage } from './pages/ComingSoon';
 import { CompetitionManagementPage } from './pages/CompetitionManagement';
@@ -107,7 +107,6 @@ import { TermsPage } from './pages/Terms';
 import { RankingsPage } from './pages/Rankings';
 import { TournamentPage } from './pages/Tournament';
 import { TournamentSuitePage } from './pages/TournamentSuite';
-import { RecordForReviewPage } from './pages/RecordForReview';
 import { TrainingNotesPage } from './pages/TrainingNotes';
 import { TrainingControllerPage } from './pages/TrainingController';
 import { TrainingPage } from './pages/Training';
@@ -721,14 +720,6 @@ export default function App() {
         }
       />
       <Route
-        path="/record-for-review"
-        element={
-          <CoachRoute>
-            <RecordForReviewPage />
-          </CoachRoute>
-        }
-      />
-      <Route
         path="/competition-curriculum"
         element={
           <CoachRoute>
@@ -801,6 +792,8 @@ export default function App() {
       <Route path="/preview/lineage-line" element={<ExpandedLineageLine />} />
       {/* Isolated instructor-sheet concept. Not in edition menus, and it does not write a profile. */}
       <Route path="/preview/instructor-profile" element={<InstructorProfilePreviewPage />} />
+      {/* Isolated instructor character sheet. Fills the gap between the student profile and the owner identity card. Nothing is saved. */}
+      <Route path="/preview/instructor-sheet" element={<InstructorSheetPreviewPage />} />
       {/* Isolated Pro hub preview. Live /pro is unchanged. */}
       <Route path="/preview/pro-home" element={<ProHomePreviewPage />} />
       {/* Isolated White hub. Live /white and /match stay on their current paths. */}
@@ -823,7 +816,7 @@ export default function App() {
       <Route path="/preview/2036-instructor" element={<Future2036Page place="instructor" />} />
       <Route path="/preview/2036-academy" element={<Future2036Page place="academy" />} />
       <Route path="/coming-soon" element={<ComingSoonPage />} />
-      <Route path="/card" element={<CardPage />} />
+      <Route path="/card" element={<Navigate to="/" replace />} />
       <Route path="/half-off" element={<HalfOffPage />} />
       <Route path="/faq" element={<FaqPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />

@@ -74,14 +74,23 @@ function legacyBrown(): RubricCheckpoint[] {
 }
 
 test('starter lists keep the approved sentences, links, and kids belts', () => {
-  assert.equal(BENCHMARK_DISCLAIMER_SHORT, 'Suggested benchmarks are general guidance, reviewed by black belts. Always review them with your coach, who has the final say.');
-  assert.match(BENCHMARK_DISCLAIMER_MEDIUM, /starting point, not a requirement or a promotion standard/);
+  assert.equal(BENCHMARK_DISCLAIMER_SHORT, 'General guidelines only.');
+  assert.equal(
+    BENCHMARK_DISCLAIMER_MEDIUM,
+    'General guidelines only. Advantage does not set requirements. Your federation and your instructor decide all actual requirements, stripes and promotions. These suggestions are based on commonly taught jiu-jitsu and are a starting point to review with your instructor.',
+  );
   assert.equal(BLACK_BELT_AGE_NOTE, 'Age 19+. An Adult Brown Belt World Champion may be promoted at 18.');
   const white = adultStarterLevels().find((level) => level.belt === 'white');
   assert.ok(white);
   assert.equal(white.checkpoints[0]?.name.startsWith('Name the four basic control positions'), true);
   const movement = starterCheckpoint('white', 's2-movement');
   const defense = starterCheckpoint('white', 's3-defense');
+  assert.equal(movement?.id, 'checkpoint.white.s2-movement');
+  assert.equal(defense?.id, 'checkpoint.white.s3-defense');
+  assert.equal(movement?.name, 'Body movement. Show breakfalls, shrimping, bridging and a technical lift/stand-up.');
+  assert.equal(defense?.name, 'Defensive movement. Show guard retention, submission defense and sprawl.');
+  assert.equal(movement?.name.includes('One requirement'), false);
+  assert.equal(defense?.name.includes('due before the'), false);
   assert.equal(movement?.criteria[0]?.match, 'all');
   assert.equal(defense?.criteria[0]?.match, 'all');
   assert.equal(starterCheckpoint('white', 's1-guard-attack')?.criteria[0]?.match, undefined);

@@ -43,6 +43,20 @@ const CITED_UNMAPPED = [
 
 export type Vec = [number, number, number];
 
+/** Average of a face's mesh or projected corners. Same result for a triangle as averaging its first three points. */
+export function faceCentroid(points: readonly Vec[]): Vec {
+  if (!points.length) return [0, 0, 0];
+  const acc: Vec = [0, 0, 0];
+  for (const point of points) {
+    acc[0] += point[0];
+    acc[1] += point[1];
+    acc[2] += point[2];
+  }
+  const n = points.length;
+  return [acc[0] / n, acc[1] / n, acc[2] / n];
+}
+
+
 export type TopoMove = {
   id: string;
   name: string;
