@@ -343,6 +343,37 @@ export function deleteStudentProfile(storage: StudentKeyStore, id: string): bool
   return true;
 }
 
+/**
+ * Make sure a profile id from a packet exists on this device.
+ * Does not switch the open profile. Replace can rename it to the name in the file.
+ */
+export function ensureStudentProfileRecord(
+  storage: StudentKeyStore,
+  input: { id: string; name: string },
+  options?: { rename?: boolean },
+): boolean {
+  if (!isStudentProfileId(input.id)) return false;
+  const name = cleanStudentProfileName(input.name);
+  if (!name) return false;
+  const registry = ensureStudentProfiles(storage);
+  const existing = registry.profiles.find((profile) => profile.id === input.id);
+  if (existing) {
+    if (options?.rename && existing.name !== name) {
+      writeRegistry(storage, {
+        ...registry,
+        profiles: registry.profiles.map((profile) => (profile.id === input.id ? { ...profile, name } : profile)),
+      });
+    }
+    return true;
+  }
+  if (registry.profiles.length >= MAX_PROFILES) return false;
+  writeRegistry(storage, {
+    ...registry,
+    profiles: [...registry.profiles, { id: input.id, name, createdAt: nowIso() }],
+  });
+  return true;
+}
+
 export function backupProfileFromUnknown(value: unknown): { id: string; name: string } | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const row = value as { id?: unknown; name?: unknown };

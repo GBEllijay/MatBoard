@@ -1,0 +1,183 @@
+/* Standalone Both D8 for send, accept, and inbox rows. Works on light student
+   paper and on the instructor inbox. 390px stays one column. */
+.assess-compare {
+  --ac-ink: #122033;
+  --ac-muted: #4d5b70;
+  --ac-line: #d5dbe6;
+  --ac-well: #eef2f7;
+  --ac-on: #004eba;
+  --ac-coach: #1c7a8c;
+  --ac-self: #c56a12;
+  margin: 12px 0;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--ac-ink);
+  font-size: 14px;
+}
+.assess-compare *,
+.assess-compare *::before,
+.assess-compare *::after {
+  box-sizing: border-box;
+}
+.assess-compare--full,
+.assess-compare--compact {
+  border: 1px solid var(--ac-line);
+  border-radius: 10px;
+  background: #fff;
+}
+.assess-compare--full {
+  padding: 10px;
+}
+.assess-compare--compact {
+  padding: 0 10px 0;
+}
+.assess-compare__toggle {
+  cursor: pointer;
+  font: 650 14px/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
+  color: inherit;
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+  padding: 10px 2px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.assess-compare__toggle::before {
+  content: '';
+  width: 0.45em;
+  height: 0.45em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  margin-right: 8px;
+  flex: none;
+}
+.assess-compare--compact.is-open .assess-compare__toggle::before {
+  transform: rotate(45deg);
+  margin-top: -2px;
+}
+.assess-compare__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding-bottom: 8px;
+}
+.assess-compare__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.assess-compare__seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--ac-well);
+  box-shadow: inset 0 0 0 1px rgba(15, 30, 55, 0.12);
+  gap: 2px;
+}
+.assess-compare__seg button {
+  border: 0;
+  background: none;
+  padding: 8px 11px;
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 8px;
+  font: 600 12px/1.1 Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--ac-ink);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.assess-compare__seg button.on {
+  background: var(--ac-on);
+  color: #fff;
+}
+.assess-compare__expand {
+  margin-left: auto;
+  border: 1px solid var(--ac-line);
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-height: 44px;
+  font: 600 12px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--ac-ink);
+  cursor: pointer;
+}
+.assess-compare .clipboard__d8 {
+  width: 100%;
+  min-width: 0;
+  border-radius: 10px;
+  background: #071018;
+  overflow: hidden;
+}
+.assess-compare--compact:not(:has(.is-expanded)) .clipboard__d8 .topo-stage,
+.assess-compare--compact .assess-compare__body:not(.is-expanded) .clipboard__d8 .topo-stage {
+  height: 140px;
+  margin: 0;
+}
+.assess-compare--full .clipboard__d8 .topo-stage,
+.assess-compare--compact .assess-compare__body.is-expanded .clipboard__d8 .topo-stage {
+  height: 220px;
+  margin: 0;
+}
+.assess-compare__legend {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ac-muted);
+  flex-wrap: wrap;
+}
+.assess-compare__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.assess-compare__legend i {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.assess-compare__legend i.coach {
+  background: #76eaff;
+}
+.assess-compare__legend i.self {
+  background: repeating-linear-gradient(90deg, #ffb05a 0 4px, transparent 4px 7px);
+}
+.assess-compare__note,
+.assess-compare__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ac-muted);
+}
+.assess-compare__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.assess-compare__table th,
+.assess-compare__table td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--ac-line);
+  vertical-align: top;
+}
+.assess-compare__table th:not(:first-child),
+.assess-compare__table td:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+  width: 3.5em;
+}
+
+@media (max-width: 390px) {
+  .assess-compare__seg button {
+    padding: 8px 8px;
+  }
+  .assess-compare--full .clipboard__d8 .topo-stage {
+    height: 200px;
+  }
+}

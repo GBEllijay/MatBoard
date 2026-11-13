@@ -1,0 +1,141 @@
+/* Character-sheet extras on top of the instructor identity-card styles. */
+.ip-d8,
+.ip-d12 {
+  display: grid;
+  gap: 10px;
+}
+
+.ip-d8 .assess-visual,
+.ip-d12 .assess-visual {
+  margin: 0;
+  padding: 8px 0 0;
+  color: var(--ip-ink, #f5f1e8);
+}
+
+.ip-d8 .assess-visual h3,
+.ip-d12 .assess-visual h3 {
+  margin: 0 0 8px;
+  color: var(--ip-blue, #6ea8ff);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.ip-d8 .student-quiet,
+.ip-d12 .student-quiet {
+  margin: 8px 0 0;
+  color: rgba(245, 241, 232, 0.72);
+  font-size: 12px;
+}
+
+.ip-d8 .report-diamond__svg,
+.ip-d12 .report-diamond__svg {
+  display: block;
+  width: 100%;
+  max-width: 34rem;
+  height: auto;
+  background: #f5f1e8;
+  border-radius: 8px;
+}
+
+.ip-d8 .report-diamond__label,
+.ip-d12 .report-diamond__label {
+  font: 400 10px Inter, Helvetica, Arial, sans-serif;
+  fill: #1d1d1f;
+}
+
+.ip-d8 .report-diamond__score,
+.ip-d12 .report-diamond__score {
+  font: 700 13px Inter, Helvetica, Arial, sans-serif;
+}
+
+.ip-d8-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ip-d8-scores li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--ip-line, rgba(110, 168, 255, 0.35));
+  border-radius: 6px;
+}
+
+
+.ip-rec {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--ip-line, rgba(110, 168, 255, 0.35));
+  border-radius: 8px;
+  background: rgba(8, 18, 36, 0.55);
+}
+
+.ip-card [data-testid="own-training"] {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ip-line, rgba(110, 168, 255, 0.35));
+}
+
+.ip-d12-live .topo-stage {
+  height: min(420px, 70vh);
+  min-height: 260px;
+  border: 2px solid #1c140e;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(28, 78, 160, 0.45), rgba(8, 18, 36, 0.15) 46%, transparent 72%),
+    rgba(12, 35, 68, 0.78);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+}
+
+.ip-d12-live .topo-controls,
+.ip-d12-live .topo-legend {
+  gap: 6px;
+}
+
+.ip-d12-live .topo-legend {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.ip-d12-live .topo-controls button,
+.ip-d12-live .topo-legend button {
+  min-height: 36px;
+  border: 2px solid #1c140e;
+  border-radius: 999px;
+  background: rgba(244, 240, 228, 0.94);
+  color: #1c140e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ip-d12-live .topo-legend button[aria-pressed='true'] {
+  background: #004eba;
+  color: #f4f0e4;
+}
+
+.ip-d12-live .topo-label,
+.ip-d12-live button.topo-label-face {
+  color: #f2f4f7;
+}
+
+.ip-d12-scores li span {
+  overflow-wrap: break-word;
+}
+
+
+.ip-d12-live button.topo-label-face,
+.ip-d12-live .topo-label-face {
+  white-space: normal;
+  text-align: center;
+  max-width: 9.6rem;
+  line-height: 1.15;
+  overflow-wrap: break-word;
+}
