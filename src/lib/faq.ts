@@ -196,16 +196,16 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     category: 'Backups',
     question: 'How do I back up, and how do I move to another phone?',
     paragraphs: [
-      'Open Backup & Print or Connections. Back up my journal (.json) is the file that can restore this phone. After you choose that file, pick Merge with this phone or Replace this phone. Merge keeps notes that exist only on this phone. Replace removes the journal on this phone and uses the file.',
-      'A spreadsheet or a PDF is for reading or printing. Those files do not restore the journal.',
-      'The journal lives on this device. Another phone, or a cleared browser, does not have it until you restore a JSON file. Clear all Student Edition data affects only Student Edition on this device. Back up first. Unlock codes and drive connections stay.',
-      'You can connect Google Drive or OneDrive and copy the JSON into that folder when you export. That copy happens because you exported. The app does not sync the journal on its own. Google Photos is not a backup folder in this build.',
+      'Open Backup & Print or Connections. Download student packet (.advantage) is the file that can restore this phone. It holds the journal, self-assessment, ranks, index cards, and a spreadsheet. After you choose that file, pick Merge with this phone or Replace this phone. Merge keeps notes that exist only on this phone. Replace removes the journal on this phone and uses the file. An older JSON backup still restores the same way.',
+      'A spreadsheet or a PDF is for reading or printing. Those files do not restore the journal. The spreadsheet is also inside the packet.',
+      'The journal lives on this device. Another phone, or a cleared browser, does not have it until you restore a packet. Clear all Student Edition data affects only Student Edition on this device. Back up first. Unlock codes and drive connections stay.',
+      'You can connect Google Drive or OneDrive and copy the packet into that folder when you export. That copy happens because you exported. The app does not sync the journal on its own. Google Photos is not a backup folder in this build.',
     ],
     links: [
       { label: 'Backup & Print', to: '/student/backup' },
       { label: 'Connections', to: '/student/connections' },
     ],
-    keywords: 'json csv pdf restore import google drive onedrive local storage',
+    keywords: 'json csv pdf packet advantage restore import google drive onedrive local storage',
   },
   {
     id: 'backup-vs-restore-vs-cloud',
@@ -213,7 +213,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     question: 'What is the difference between a backup, Restore a purchase, and Cloud?',
     paragraphs: [
       'They are three different tools.',
-      'A JSON backup is your journal, rank, and the related notes in that file.',
+      'A student packet is your journal, self-assessment, rank, index cards, and the related notes in that file. An older JSON backup is the same idea in the previous file.',
       'Restore a purchase uses the email from checkout. Advantage emails a one-time code. Confirm puts the purchase on this device. It does not bring journal entries back. The code expires and works once.',
       'A Google Drive or OneDrive folder is a place you connect. The academy folder is one your coach shared. You sign in with your own account. Advantage Cloud, when a gym has it, is hosted sharing for that gym’s cloud tools. It is not a hosted copy of your personal journal. If Cloud sharing pauses, the screen can show the days left to download the gym folder. The journal on the phone is separate.',
       'Buying an edition does not upload the journal. Work you type in the Student Edition demo on this phone can be saved into Student Edition when the purchase opens that edition and the real file is empty. Student, Media, Instructor, and Pro include Student Edition. White does not, so that demo stays on this phone and is not opened.',
@@ -251,7 +251,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     category: 'Purchases and access',
     question: 'Will my journal last from white belt to instructor?',
     paragraphs: [
-      'You can keep the same Student Edition file while your belt changes. Rank, journal, and fundamentals stay in that file on the device, and in the JSON backup you save. Keep a backup when you change phones.',
+      'You can keep the same Student Edition file while your belt changes. Rank, journal, and fundamentals stay in that file on the device, and in the student packet you save. Keep a backup when you change phones.',
       'Advantage does not promise a fixed number of years of support, and it does not promise that every future version will migrate every file. The backup file you keep is the copy you control.',
     ],
     links: [{ label: 'Backup & Print', to: '/student/backup' }],
