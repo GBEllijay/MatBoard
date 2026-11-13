@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RadarChart } from '../../components/RadarChart';
+import { selfAssessmentShapeLabel } from '../../lib/radarChart';
 import { catalogLines, commitIndexCards, getIndexCardFile, useLiveCards } from '../../indexCards/store';
 import { fundamentalAssessmentScores } from '../../lib/fundamentals';
-import { withRating, type IndexFaceId, type LiveCard } from '../../lib/indexCards';
+import { faceBaselineFromScores, withRating, type IndexFaceId, type LiveCard } from '../../lib/indexCards';
+import { SheetDiamond } from './StudentCardLayout';
 import type { StudentProgressReport } from '../../lib/progress/types';
 import { subscribeStudentJournal } from '../../lib/studentDemo';
 import { fundamentalsBoard, todayIso } from '../../lib/studentEdition';
@@ -193,10 +195,7 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
       ) : null}
 
       <div className="assess-visuals">
-        <RadarChart
-          scores={radarScores}
-          note={mindsetOpen ? 'Mindset is not on the Fundamentals list. Rate it here, then save this day.' : undefined}
-        />
+        <ShapeVisual scores={radarScores} mindsetOpen={mindsetOpen} />
         <Trend points={trend} />
       </div>
 
@@ -366,6 +365,41 @@ export function SendToInstructor({ entry, studentName }: { entry: AssessmentEntr
       {!entry ? <p className="student-quiet">Save this day first, then send it.</p> : null}
       {sent && !status ? <p className="student-quiet">{`Sent ${new Date(sent.sentAt).toLocaleDateString()}. Their answer shows in From your coach.`}</p> : null}
       {status ? <p role={status.error ? 'alert' : 'status'}>{status.text}</p> : null}
+    </div>
+  );
+}
+
+const MINDSET_OPEN_NOTE = 'Mindset is not on the Fundamentals list. Rate it here, then save this day.';
+
+/**
+ * Shape on this page is the same D8 as the Profile card (Diamond, default), with the
+ * old spider kept behind Radar like the Profile toggle. The diamond reads the index
+ * cards (Technique-based ratings) live, and every line you have not rated takes this
+ * page's face score (the Generic ratings shown above, live) as its baseline. The
+ * Profile D8 uses the same rule with the latest saved check-in, so the two agree once
+ * this day is saved. Nothing new is stored.
+ */
+function ShapeVisual({ scores, mindsetOpen }: { scores: Partial<AssessmentScores> | null; mindsetOpen: boolean }) {
+  const [shape, setShape] = useState<'diamond' | 'radar'>('diamond');
+  return (
+    <div className="assess-visual assess-shape" data-testid="assess-shape" data-shape={shape} role="group" aria-label={selfAssessmentShapeLabel(scores)}>
+      <h3>Shape</h3>
+      <div className="sheet-shape-toggle" role="group" aria-label="Shape drawing">
+        <button type="button" aria-pressed={shape === 'diamond'} onClick={() => setShape('diamond')}>
+          Diamond
+        </button>
+        <button type="button" aria-pressed={shape === 'radar'} onClick={() => setShape('radar')}>
+          Radar
+        </button>
+      </div>
+      {shape === 'diamond' ? (
+        <>
+          <SheetDiamond baseline={faceBaselineFromScores(scores)} />
+          {mindsetOpen ? <p className="student-quiet">{MINDSET_OPEN_NOTE}</p> : null}
+        </>
+      ) : (
+        <RadarChart scores={scores} note={mindsetOpen ? MINDSET_OPEN_NOTE : undefined} />
+      )}
     </div>
   );
 }

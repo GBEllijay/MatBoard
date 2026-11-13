@@ -54,6 +54,7 @@ const { toggleCompetitor, toggleStudentCheckIn, setPersonCheckedIn, personChecke
 const { competitorCards } = await import('../../lib/rosterStore.ts');
 const { checkedInCompetitors, competitorsForBracketFill, orderCheckedInByRanking } = await import('../../lib/checkInSeeds.ts');
 const { RankBelt } = await import('./RankBelt.tsx');
+const { CardDiamond } = await import('./CoachClipboardCard.tsx');
 const { CheckInFillSheet } = await import('../CheckInFillSheet.tsx');
 const { studentCheckInFor } = await import('../../pages/Roster.tsx');
 const { RosterIndex } = await import('./RosterIndex.tsx');
@@ -141,7 +142,18 @@ test('all four looks render every card field, and the look comes from the gym se
     assert.ok(text().includes('Assessment'), 'assessment');
     assert.ok(buttons('Coach').length && buttons('Both').length, 'Coach / Self / Both toggle');
     if (look.style === 'fighter') assert.ok(document.querySelector('.clipboard__bars'), 'fighter uses bars');
-    else assert.ok(document.querySelector('.clipboard__radar'), 'clipboard uses radar');
+    else {
+      // The spider is replaced by the same D8 as Profile, Student Home, and Scouting.
+      assert.equal(document.querySelector('.clipboard__radar'), null, 'no spider on the clipboard');
+      const d8 = document.querySelector('[data-testid="card-d8"]');
+      assert.ok(d8?.querySelector('.topo-stage'), 'clipboard uses the D8');
+      assert.equal(d8?.getAttribute('data-layers'), 'coach', 'Coach view draws the coach layer');
+      click(buttons('Both')[0]);
+      assert.equal(document.querySelector('[data-testid="card-d8"]')?.getAttribute('data-layers'), 'coach', 'Both with no self check-in');
+      click(buttons('Student self')[0]);
+      assert.equal(document.querySelector('[data-testid="card-d8"]'), null, 'no self check-in yet');
+      click(buttons('Coach')[0]);
+    }
     click(buttons(/^Benchmarks/)[0]);
     assert.ok(text().includes('Sync with student app'), 'sync switch');
     unmount(m);
@@ -1304,4 +1316,24 @@ test('Competition card: approved opponent cards sit beside opponents faced and o
   const nextCage = cards[0].querySelector('[data-testid="scout-cage"] svg');
   assert.match(nextCage?.getAttribute('aria-label') ?? '', /Sweeps 1/);
   unmount(m);
+});
+
+test('Assessment D8: Coach, Student self, and Both draw the layers they name', () => {
+  const coach = Object.fromEntries(ASSESSMENT_FORM_AREAS.map((a, i) => [a.id, ((i % 5) + 1) as 1 | 2 | 3 | 4 | 5]));
+  const self = Object.fromEntries(ASSESSMENT_FORM_AREAS.map((a) => [a.id, 4 as const]));
+  for (const [c, v, layers] of [
+    [coach, null, 'coach'],
+    [null, self, 'self'],
+    [coach, self, 'coach self'],
+  ] as const) {
+    const m = mount(<CardDiamond coach={c} self={v} />);
+    const d8 = m.host.querySelector('[data-testid="card-d8"]');
+    assert.equal(d8?.getAttribute('data-layers'), layers);
+    assert.ok(d8?.querySelector('.topo-stage'), 'drawn on the shared D8 stage');
+    assert.equal(m.host.querySelector('.topo-stage')?.getAttribute('data-comparison'), 'on');
+    assert.match(d8?.getAttribute('aria-label') ?? '', /^Assessment D8\./);
+    if (c) assert.match(d8?.getAttribute('aria-label') ?? '', /Coach:/);
+    if (v) assert.match(d8?.getAttribute('aria-label') ?? '', /Student self:/);
+    unmount(m);
+  }
 });
