@@ -1,11 +1,11 @@
 /**
  * Journal index: searches every field the student types (class, how it went,
  * technique names and their "What I learned" notes, partners, drills, rolls,
- * notes, stop doing, amendments). Typo-tolerant: case- and accent-insensitive,
+ * notes, how it went (with older stop-doing text), amendments). Typo-tolerant: case- and accent-insensitive,
  * and each query word may be a small edit away from a word in the entry.
  */
 import type { JournalClip, JournalEntry, StudentProgressReport } from './progress/types.ts';
-import { JOURNAL_DRILLS_LABEL, JOURNAL_NOTES_LABEL, JOURNAL_PARTNERS_LABEL, JOURNAL_ROLLS_LABEL, JOURNAL_STOP_LABEL } from './journalCopy.ts';
+import { JOURNAL_DRILLS_LABEL, JOURNAL_NOTES_LABEL, JOURNAL_PARTNERS_LABEL, JOURNAL_ROLLS_LABEL } from './journalCopy.ts';
 import { techniqueDrilledLabel, viewJournalEntry } from './studentEdition.ts';
 
 export function foldText(text: string): string {
@@ -66,7 +66,6 @@ export function journalFields(entry: JournalEntry): JournalField[] {
     { label: JOURNAL_DRILLS_LABEL, text: card.drills },
     { label: JOURNAL_ROLLS_LABEL, text: card.rolls },
     { label: JOURNAL_NOTES_LABEL, text: card.notes },
-    { label: JOURNAL_STOP_LABEL, text: card.stopDoing ?? '' },
     ...entry.amendments.map((item) => ({ label: 'Added later', text: item.body })),
   );
   return fields.filter((field) => field.text.trim());

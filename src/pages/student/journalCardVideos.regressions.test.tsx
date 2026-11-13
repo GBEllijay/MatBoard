@@ -137,12 +137,13 @@ test('paste a link, tag it from the glossary, save, then remove with confirm', a
   act(() => root.unmount());
 });
 
-test('the public demo offers links only', () => {
+test('the public demo offers every add source and keeps filmed videos in memory', () => {
   const id = seed();
   const { host, root } = mount(<JournalCardVideos entryId={id} date="2026-11-12" techniques={[]} />, '/student/cards/card?student=1');
   button(host, 'Paste a video link');
   button(host, 'Choose a saved video');
-  assert.equal([...host.querySelectorAll('label')].some((item) => item.textContent === 'Film a move'), false);
+  label(host, 'Film a move');
+  assert.match(host.textContent ?? '', /not saved to this phone/);
   act(() => root.unmount());
 });
 

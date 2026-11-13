@@ -6,7 +6,7 @@
 import { beltModeOf, withBeltTemplate } from './beltBook.ts';
 import { fundamentalLevelOf, FUNDAMENTAL_LIVE_LEVEL, isFundamentalLevel, type FundamentalLevel } from './fundamentals.ts';
 import { ageIllegalTechniques } from './studentBenchmarks.ts';
-import { joinJournalNotes, splitJournalNotes } from './journalNotes.ts';
+import { HOW_IT_WENT_PREFIX, encodeHowItWentLines, foldStopDoing, joinJournalNotes, readHowItWentLines, splitJournalNotes } from './journalNotes.ts';
 import { DEFAULT_EVALUATION_OMITTED_IDS, FUNDAMENTALS_CATALOG } from './progress/catalog.ts';
 import { emptyCompetition, matchingGameTags } from './progress/competition.ts';
 import { emptyRank } from './studentRank.ts';
@@ -121,8 +121,8 @@ export type JournalDraft = {
   /** What you drilled and what to remember. Older cards stored this with stop-doing notes. */
   notes: string;
   /**
-   * Mistakes to stop making. Omitted on older cards.
-   * A missing value is empty. Text that lived in `notes` is still read from there.
+   * Older cards only: the separate "Stop doing" note. The journal forms no longer write it;
+   * a card's view folds it into `howItWent`, and saving the card writes it there and clears this.
    */
   stopDoing?: string;
   /** Time on the mat in minutes. 0 or missing saves an untimed card. Missing on edit keeps the saved time. */
@@ -365,7 +365,6 @@ export function setTechniquePolicy(
 }
 
 export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techniques' | 'partners' | 'drills' | 'rolls' | 'notes' | 'stopDoing' | 'howItWent'>): string {
-  const howItWent = (draft.howItWent ?? '').replace(/\s*\n\s*/g, ' ').trim();
   const lines = draft.techniques.filter((item) => item.name.trim());
   const techniques = lines.map((item) => item.name.trim());
   return [
@@ -378,13 +377,13 @@ export function encodeJournalBody(draft: Pick<JournalDraft, 'className' | 'techn
     `Training partners: ${draft.partners.trim()}`,
     `Drills: ${draft.drills.trim()}`,
     `Rolls: ${draft.rolls.trim()}`,
-    ...(howItWent ? [`${HOW_IT_WENT_PREFIX} ${howItWent}`] : []),
+    ...encodeHowItWentLines(draft.howItWent ?? ''),
     'Notes:',
     joinJournalNotes(draft.notes, draft.stopDoing ?? ''),
   ].join('\n');
 }
 
-export const HOW_IT_WENT_PREFIX = 'How it went:';
+export { HOW_IT_WENT_PREFIX };
 
 /** Body line holding a technique line's note, e.g. `What I learned #1: keep the knee shield`. */
 export function techniqueNoteLabel(index: number): string {
@@ -410,7 +409,7 @@ export function decodeJournalBody(body: string): Pick<JournalDraft, 'className' 
     partners: take('Training partners:'),
     drills: take('Drills:'),
     rolls: take('Rolls:'),
-    howItWent: notesAt >= 0 ? (lines.slice(0, notesAt).find((row) => row.startsWith(HOW_IT_WENT_PREFIX)) ?? '').slice(HOW_IT_WENT_PREFIX.length).trim() : '',
+    howItWent: notesAt >= 0 ? readHowItWentLines(lines.slice(0, notesAt)) : '',
     notes: split.notes,
     stopDoing: split.stopDoing,
   };
@@ -439,13 +438,14 @@ export function viewJournalEntry(entry: JournalEntry): JournalCardView {
     drills: decoded.drills,
     rolls: decoded.rolls,
     notes: decoded.notes,
-    stopDoing: decoded.stopDoing,
+    // Stop doing folds into How it went. The old text moves into How it went only when the card is saved.
+    stopDoing: '',
     amendments: entry.amendments,
     createdAt: entry.createdAt,
     minutes: clampMinutes(entry.minutes),
     session: sessionOf(entry),
     sessionOther: entry.sessionOther ?? '',
-    howItWent: decoded.howItWent ?? '',
+    howItWent: foldStopDoing(decoded.howItWent ?? '', decoded.stopDoing ?? ''),
     injury: entry.injury ?? null,
     hiatus: entry.hiatus ?? null,
   };

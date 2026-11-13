@@ -49,14 +49,25 @@ type Mode =
  * Nothing here uploads to Advantage Cloud. Videos the older Videos section attached still show, with "Tag this".
  */
 /** Where phone videos are kept. This phone's film store (IndexedDB). Tests pass a memory store. */
-export type CardVideoStore = { put: (id: string, blob: Blob) => Promise<void>; remove: (id: string) => Promise<void> };
-const PHONE_STORE: CardVideoStore = { put: (id, blob) => putFilmBlob(id, blob), remove: (id) => deleteFilmBlob(id) };
+export type CardVideoStore = {
+  put: (id: string, blob: Blob) => Promise<void>;
+  remove: (id: string) => Promise<void>;
+  get?: (id: string) => Promise<Blob | null>;
+};
+const PHONE_STORE: CardVideoStore = { put: (id, blob) => putFilmBlob(id, blob), remove: (id) => deleteFilmBlob(id), get: (id) => getFilmBlob(id) };
+/** The public demo keeps filmed videos in memory for this visit only. Nothing is written to the phone. */
+const demoBlobs = new Map<string, Blob>();
+const DEMO_STORE: CardVideoStore = {
+  put: async (id, blob) => void demoBlobs.set(id, blob),
+  remove: async (id) => void demoBlobs.delete(id),
+  get: async (id) => demoBlobs.get(id) ?? null,
+};
 
 export function JournalCardVideos({
   entryId,
   date,
   techniques,
-  store = PHONE_STORE,
+  store: storeProp,
 }: {
   entryId: string;
   date: string;
@@ -67,6 +78,7 @@ export function JournalCardVideos({
   const to = useStudentPath();
   const [params] = useSearchParams();
   const demo = params.get('student') === '1' || params.has('demo');
+  const store = storeProp ?? (demo ? DEMO_STORE : PHONE_STORE);
   const entry = report.journal.find((row) => row.id === entryId);
   const videos = journalCardVideos(entry);
   const [films, setFilms] = useState<StudentFilm[]>(() => loadFilms(localStorage));
@@ -237,16 +249,12 @@ export function JournalCardVideos({
             {preview ? <video className="journal-card-videos__player" controls playsInline src={preview} aria-label="Preview filmed move" /> : null}
             <p className="journal-card-videos__file">{picked ? picked.name : 'No video yet.'}</p>
             <div className="journal-videos__actions">
-              {demo ? null : (
-                <label className="ink-btn" htmlFor={recordId}>
-                  Retry
-                </label>
-              )}
-              {demo ? null : (
-                <label className="ink-btn" htmlFor={galleryId}>
-                  Pick a different video
-                </label>
-              )}
+              <label className="ink-btn" htmlFor={recordId}>
+                Retry
+              </label>
+              <label className="ink-btn" htmlFor={galleryId}>
+                Pick a different video
+              </label>
             </div>
           </div>
         ) : null}
@@ -319,7 +327,7 @@ export function JournalCardVideos({
                 {`Open ${video.term.name} link`}
               </a>
             ) : (
-              <PhoneVideo blobId={cardVideoBlobId(video)} label={video.term.name} libraryId={video.filmId ?? ''} />
+              <PhoneVideo blobId={cardVideoBlobId(video)} label={video.term.name} libraryId={video.filmId ?? ''} read={video.filmId ? getFilmBlob : store.get ?? getFilmBlob} />
             )}
             {confirmRemove === video.id ? (
               <div className="student-card__confirm" role="group" aria-label={`Remove ${video.term.name} video`}>
@@ -376,16 +384,12 @@ export function JournalCardVideos({
       </ul>
       {mode.kind === 'closed' || mode.kind === 'older' ? (
         <div className="journal-videos__actions journal-card-videos__add" aria-label="Add a class video">
-          {demo ? null : (
-            <label className="ink-btn ink-btn--save" htmlFor={recordId}>
-              Film a move
-            </label>
-          )}
-          {demo ? null : (
-            <label className="ink-btn" htmlFor={galleryId}>
-              Pick from gallery
-            </label>
-          )}
+          <label className="ink-btn ink-btn--save" htmlFor={recordId}>
+            Film a move
+          </label>
+          <label className="ink-btn" htmlFor={galleryId}>
+            Pick from gallery
+          </label>
           <button type="button" className="ink-btn" onClick={() => open({ kind: 'link' }, quick.length === 1 ? quick[0] : null)}>
             Paste a video link
           </button>
@@ -395,12 +399,10 @@ export function JournalCardVideos({
         </div>
       ) : null}
       {mode.kind !== 'closed' && mode.kind !== 'older' ? form : null}
-      {demo ? null : (
-        <p className="student-quiet">Film a move opens this phone&apos;s camera when the browser allows it. Some phones open the gallery instead. Nothing is saved until you tap Save.</p>
-      )}
+      <p className="student-quiet">Film a move opens this phone&apos;s camera when the browser allows it. Some phones open the gallery instead. Nothing is saved until you tap Save.</p>
       <DeviceMediaInput id={recordId} inputRef={recordRef} accept="video/*" capture={VIDEO_CAPTURE} onFiles={take} />
       <DeviceMediaInput id={galleryId} inputRef={galleryRef} accept="video/*" onFiles={take} />
-      {demo ? <p className="student-quiet">The demo keeps links only. Filming and phone videos open on a Student Edition phone.</p> : null}
+      {demo ? <p className="student-quiet">Demo: filmed videos play during this visit only and are not saved to this phone.</p> : null}
       {status ? <p role="status">{status}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
       {older.elsewhere.length || anchors.length ? (
@@ -496,7 +498,17 @@ function LibraryLink({ id, label }: { id: string; label: string }) {
 }
 
 /** A phone video plays here, from this phone's film store. */
-function PhoneVideo({ blobId, label, libraryId }: { blobId: string; label: string; libraryId: string }) {
+function PhoneVideo({
+  blobId,
+  label,
+  libraryId,
+  read = getFilmBlob,
+}: {
+  blobId: string;
+  label: string;
+  libraryId: string;
+  read?: (id: string) => Promise<Blob | null>;
+}) {
   const [src, setSrc] = useState('');
   const [missing, setMissing] = useState(false);
   const [open, setOpen] = useState(false);
@@ -504,7 +516,7 @@ function PhoneVideo({ blobId, label, libraryId }: { blobId: string; label: strin
     if (!open) return;
     let alive = true;
     let made = '';
-    void getFilmBlob(blobId)
+    void read(blobId)
       .then((blob) => {
         if (!alive) return;
         if (!blob) {
@@ -521,7 +533,7 @@ function PhoneVideo({ blobId, label, libraryId }: { blobId: string; label: strin
       alive = false;
       if (made) URL.revokeObjectURL(made);
     };
-  }, [open, blobId]);
+  }, [open, blobId, read]);
   if (!open) {
     return (
       <button type="button" className="ink-btn" onClick={() => setOpen(true)}>

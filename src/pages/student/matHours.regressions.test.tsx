@@ -138,7 +138,7 @@ test('log sheet: session chips, quick chips, stepper, clear, how it went and mar
   const mounted = mount(<StudentEditionPage />, '/student/journal?date=2026-10-11&student=1');
   const { host } = mounted;
   // Existing controls still there.
-  for (const name of ['Class', 'Training partners', 'Drills', 'Rolls', 'Drill notes', 'Stop doing']) field(host, name);
+  for (const name of ['Class', 'Training partners', 'Drills', 'Rolls', 'Drill notes', 'How it went']) field(host, name);
   assert.ok(control(host, 'button', 'Save entry'));
   const kinds = labeled(host, 'Session type');
   assert.equal(control(kinds, 'button', 'Class').getAttribute('aria-pressed'), 'true');
@@ -436,8 +436,11 @@ test('journal page: techniques drilled sits last; lines carry What I learned and
   const { host } = mounted;
   const section = host.querySelector('[data-testid="journal-techniques"]') as HTMLElement;
   assert.ok(section);
-  const stop = field(host, 'Stop doing');
-  assert.ok(stop.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING, 'techniques after Stop doing');
+  const how = field(host, 'How it went');
+  assert.ok(how.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING, 'techniques after How it went');
+  // How it went sits at the bottom of the session fields, after Rolls.
+  assert.ok(field(host, 'Rolls').compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING, 'How it went after Rolls');
+  assert.equal(host.querySelector('[aria-label="Stop doing"]'), null);
   assert.equal(section.querySelectorAll('[data-testid="technique-line"]').length, 3);
   typeInto(field(section, 'Technique drilled #1'), 'Zorbo pass');
   typeInto(field(section, 'What I learned #1'), 'Angle off the hip');
