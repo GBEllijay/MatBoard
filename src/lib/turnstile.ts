@@ -59,14 +59,30 @@ export function loadTurnstile(timeoutMs = 15_000): Promise<TurnstileApi | null> 
   return loading;
 }
 
-/** The public site key, or null when /api/config does not have one. */
-export async function fetchTurnstileSiteKey(fetchImpl: typeof fetch = fetch): Promise<string | null> {
+export type RestoreCheckConfig =
+  | { ok: true; siteKey: string | null; restoreAvailable: boolean }
+  | { ok: false };
+
+/**
+ * Reads /api/config for the restore person check.
+ * ok: false means the request failed (network, blocked, or a bad response).
+ * A successful response with a missing site key is ok: true and siteKey: null.
+ */
+export async function fetchRestoreCheckConfig(fetchImpl: typeof fetch = fetch): Promise<RestoreCheckConfig> {
   try {
     const response = await fetchImpl('/api/config', { headers: { accept: 'application/json' } });
-    if (!response.ok) return null;
-    const body = (await response.json()) as { turnstileSiteKey?: unknown };
-    return typeof body.turnstileSiteKey === 'string' && body.turnstileSiteKey.trim() ? body.turnstileSiteKey.trim() : null;
+    if (!response.ok) return { ok: false };
+    const body = (await response.json()) as { turnstileSiteKey?: unknown; restoreAvailable?: unknown };
+    const siteKey =
+      typeof body.turnstileSiteKey === 'string' && body.turnstileSiteKey.trim() ? body.turnstileSiteKey.trim() : null;
+    return { ok: true, siteKey, restoreAvailable: body.restoreAvailable === true };
   } catch {
-    return null;
+    return { ok: false };
   }
+}
+
+/** The public site key, or null when /api/config does not have one or cannot be reached. */
+export async function fetchTurnstileSiteKey(fetchImpl: typeof fetch = fetch): Promise<string | null> {
+  const config = await fetchRestoreCheckConfig(fetchImpl);
+  return config.ok ? config.siteKey : null;
 }
