@@ -14,32 +14,33 @@ import {
   type InstructorD10Scores,
 } from '../lib/instructorD10';
 
-const R = 58;
+const R = 64;
 const OUTER = R / Math.cos(Math.PI / 5);
-const LABEL = 52;
-const HALF_W = OUTER + LABEL;
-const WIDTH = HALF_W * 4 + 16;
-const HEIGHT = 18 + OUTER * 2 + 28;
+const LABEL = 58;
+const WIDTH = (OUTER + LABEL) * 2;
+const POLE = 22 + OUTER * 2 + 26;
+const GAP = 18;
+const HEIGHT = POLE * 2 + GAP;
 
 function labelLines(label: string): string[] {
-  if (label.length <= 12) return [label];
-  const dash = label.indexOf('-');
-  if (dash > 0 && dash < label.length - 1) return [label.slice(0, dash), label.slice(dash + 1)];
-  const space = label.lastIndexOf(' ', Math.ceil(label.length / 2));
+  if (label.length <= 11) return [label];
+  const space = label.lastIndexOf(' ');
   if (space > 0) return [label.slice(0, space), label.slice(space + 1)];
+  const dash = label.lastIndexOf('-');
+  if (dash > 0) return [label.slice(0, dash), label.slice(dash + 1)];
   return [label];
 }
 
 export function StaticD10({ scores }: { scores: InstructorD10Scores | null }) {
   const faces = d10Faces(scores);
-  const cy = 18 + OUTER;
-  const centers: Record<D10Side, number> = { front: HALF_W, back: WIDTH - HALF_W };
+  const cx = WIDTH / 2;
+  const poles: Record<D10Side, number> = { front: 22 + OUTER, back: 22 + OUTER + POLE + GAP };
   return (
     <div className="assess-visual report-diamond ip-d10-visual" data-testid="instructor-d10-visual">
       <h3>Shape</h3>
       <svg className="report-diamond__svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={d10Summary(scores)}>
         {(['front', 'back'] as const).map((side) => {
-          const cx = centers[side];
+          const cy = poles[side];
           const center = { x: cx, y: cy };
           return (
             <g key={side} data-d10-side={side}>
