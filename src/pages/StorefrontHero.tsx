@@ -54,23 +54,32 @@ function Copy() {
   );
 }
 
-function Cta({ unlocked }: { unlocked: boolean }) {
+function Cta({ unlocked, studentUnlocked = false }: { unlocked: boolean; studentUnlocked?: boolean }) {
   return (
     <div className="sfh-cta">
-      <Link className="sf-buy sfh-buy" to={STOREFRONT_BUY_PATH}>
-        <span>{STOREFRONT_BUY_LABEL}</span>
-        <svg className="sfh-chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-          <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </Link>
+      {unlocked ? (
+        <Link className="sf-buy sfh-buy" to="/white">
+          <span>Open White</span>
+          <svg className="sfh-chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+      ) : (
+        <Link className="sf-buy sfh-buy" to={STOREFRONT_BUY_PATH}>
+          <span>{STOREFRONT_BUY_LABEL}</span>
+          <svg className="sfh-chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+      )}
       <p className="sfh-fine">{STOREFRONT_HERO.fine}</p>
       <div className="sfh-links">
         <a className="sfh-more" href="#scoreboard">
           See how it works ↓
         </a>
-        {unlocked ? (
-          <Link className="sf-open sfh-more" to="/white">
-            Open White
+        {studentUnlocked ? (
+          <Link className="sf-open sfh-more" to="/student">
+            Open Student Edition
           </Link>
         ) : null}
       </div>
@@ -86,7 +95,7 @@ function Shot({ shot, alt, className = '' }: { shot: typeof SCOREBOARD; alt: str
   );
 }
 
-export function StorefrontHero({ unlocked }: { unlocked: boolean }) {
+export function StorefrontHero({ unlocked, studentUnlocked = false }: { unlocked: boolean; studentUnlocked?: boolean }) {
   const [params] = useSearchParams();
   const variant = heroVariantOf(params.get('hero'));
 
@@ -98,7 +107,7 @@ export function StorefrontHero({ unlocked }: { unlocked: boolean }) {
           <div className="sfh-text">
             <Brand />
             <Copy />
-            <Cta unlocked={unlocked} />
+            <Cta unlocked={unlocked} studentUnlocked={studentUnlocked} />
           </div>
           <div className="sfh-stage">
             <Shot shot={SCOREBOARD} alt="Advantage scoreboard with two competitors and a 05:00 match clock" />
@@ -123,7 +132,7 @@ export function StorefrontHero({ unlocked }: { unlocked: boolean }) {
             </figure>
             <div className="sfh-floor" aria-hidden="true" />
           </div>
-          <Cta unlocked={unlocked} />
+          <Cta unlocked={unlocked} studentUnlocked={studentUnlocked} />
         </div>
       ) : null}
       {variant === 'c' ? (
@@ -131,7 +140,7 @@ export function StorefrontHero({ unlocked }: { unlocked: boolean }) {
           <div className="sfh-text">
             <Brand />
             <Copy />
-            <Cta unlocked={unlocked} />
+            <Cta unlocked={unlocked} studentUnlocked={studentUnlocked} />
           </div>
           <div className="sfh-stage">
             <Card shot={JOURNAL_LIVE} className="sfh-card--journal" />
@@ -165,7 +174,7 @@ export function StorefrontHero({ unlocked }: { unlocked: boolean }) {
           </div>
           <div className="sfh-after">
             <RevealCopy />
-            <Cta unlocked={unlocked} />
+            <Cta unlocked={unlocked} studentUnlocked={studentUnlocked} />
           </div>
         </div>
       ) : null}
@@ -174,7 +183,7 @@ export function StorefrontHero({ unlocked }: { unlocked: boolean }) {
           <div className="sfh-text">
             <Brand />
             <Copy />
-            <Cta unlocked={unlocked} />
+            <Cta unlocked={unlocked} studentUnlocked={studentUnlocked} />
           </div>
           <div className="sfh-stage">
             <div className="sfh-block">
