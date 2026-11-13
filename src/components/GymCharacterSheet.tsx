@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CloudUsageMetric } from './AdvantageCloudHome';
-import { ImageRightsConfirm, useImageRightsConfirm } from './ImageRightsConfirm';
+import { ImageRightsGate, useImageRightsConfirm } from './ImageRightsConfirm';
 import { useCurrentSeat } from './SeatSessionBar';
 import {
   academyInstructorsHref,
@@ -328,14 +328,7 @@ export function GymCharacterSheet() {
           <CloudUsageMetric />
         </div>
       ) : null}
-      <ImageRightsConfirm
-        pending={rights.pending}
-        preview={rights.preview}
-        owned={rights.owned}
-        onOwnedChange={rights.setOwned}
-        onCancel={rights.cancel}
-        onUse={rights.confirm}
-      />
+      <ImageRightsGate rights={rights} />
     </section>
   );
 }

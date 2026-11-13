@@ -1,13 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { build } from 'esbuild';
 import { paidChunksStub } from './paidChunksStub.mjs';
 
-const cacheDir = resolve(tmpdir(), 'matboard-image-rights-tests');
-mkdirSync(cacheDir, { recursive: true });
-const outfile = resolve(cacheDir, 'image-rights.regressions.test.mjs');
+// Bundle inside node_modules/.cache so external packages (react, happy-dom) resolve.
+mkdirSync('node_modules/.cache', { recursive: true });
+const outfile = resolve('node_modules/.cache/image-rights.regressions.test.mjs');
 await build({
   entryPoints: ['src/components/imageRightsConfirm.test.tsx'],
   bundle: true,

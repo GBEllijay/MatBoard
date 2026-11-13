@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DeviceMediaInput } from './DeviceMediaInput';
-import { ImageRightsConfirm, useImageRightsConfirm } from './ImageRightsConfirm';
+import { ImageRightsGate, useImageRightsConfirm } from './ImageRightsConfirm';
 import { useGymLogo } from '../hooks/useGymBrand';
 import { useEffectiveTimerBackdrop, useTimerBackgroundUrl } from '../hooks/useTimerBackdrop';
 import { saveGymLogoFile } from '../lib/gymLogo';
@@ -185,14 +185,7 @@ export function TimerBackdropOptions() {
             </>,
             document.body,
           )}
-      <ImageRightsConfirm
-        pending={rights.pending}
-        preview={rights.preview}
-        owned={rights.owned}
-        onOwnedChange={rights.setOwned}
-        onCancel={rights.cancel}
-        onUse={rights.confirm}
-      />
+      <ImageRightsGate rights={rights} />
     </fieldset>
   );
 }

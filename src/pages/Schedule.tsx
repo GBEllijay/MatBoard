@@ -14,7 +14,7 @@ import {
   type FullscreenRequestResult,
 } from '../lib/fullscreen';
 import { LESSON_COVER_HOME_HINT } from '../lib/lessonScreenCover';
-import { ImageRightsConfirm, useImageRightsConfirm } from '../components/ImageRightsConfirm';
+import { ImageRightsGate, useImageRightsConfirm } from '../components/ImageRightsConfirm';
 import { Sheet } from '../components/Sheet';
 import { useGymLogo, useGymName } from '../hooks/useGymBrand';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
@@ -627,7 +627,7 @@ function LevelPicker({
   );
 }
 
-function ScheduleEditor({
+export function ScheduleEditor({
   open,
   onClose,
   logoUrl,
@@ -1136,14 +1136,7 @@ function ScheduleEditor({
         }}
       />
     </Sheet>
-    <ImageRightsConfirm
-      pending={rights.pending}
-      preview={rights.preview}
-      owned={rights.owned}
-      onOwnedChange={rights.setOwned}
-      onCancel={rights.cancel}
-      onUse={rights.confirm}
-    />
+    <ImageRightsGate rights={rights} />
     </>
   );
 }

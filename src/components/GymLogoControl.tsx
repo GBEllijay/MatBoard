@@ -2,7 +2,7 @@ import { useRef, useState, useSyncExternalStore } from 'react';
 import { coachGymIds } from '../lib/coachGymIdentity';
 import { createPortal } from 'react-dom';
 import { DeviceMediaInput } from './DeviceMediaInput';
-import { ImageRightsConfirm, useImageRightsConfirm } from './ImageRightsConfirm';
+import { ImageRightsGate, useImageRightsConfirm } from './ImageRightsConfirm';
 import { OpenMyDrive } from './OpenMyDrive';
 import { MediaSourceSheet } from './VideoSourceSheet';
 import { buildGymBrandFile, GYM_BRAND_FILE_NAME } from '../lib/coachGymFile';
@@ -165,14 +165,7 @@ export function GymLogoControl() {
             </>,
             document.body,
           )}
-      <ImageRightsConfirm
-        pending={rights.pending}
-        preview={rights.preview}
-        owned={rights.owned}
-        onOwnedChange={rights.setOwned}
-        onCancel={rights.cancel}
-        onUse={rights.confirm}
-      />
+      <ImageRightsGate rights={rights} />
     </section>
   );
 }

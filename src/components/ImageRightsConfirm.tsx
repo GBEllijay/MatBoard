@@ -122,3 +122,20 @@ export function ImageRightsConfirm({ pending, preview, owned, onOwnedChange, onC
     </Sheet>
   );
 }
+
+/**
+ * The one rights gate every logo upload point renders. Pass the hook result as-is so the
+ * checkbox, copy, and Use / Cancel behavior stay identical across the app.
+ */
+export function ImageRightsGate({ rights }: { rights: ImageRightsConfirmState }) {
+  return (
+    <ImageRightsConfirm
+      pending={rights.pending}
+      preview={rights.preview}
+      owned={rights.owned}
+      onOwnedChange={rights.setOwned}
+      onCancel={rights.cancel}
+      onUse={rights.confirm}
+    />
+  );
+}

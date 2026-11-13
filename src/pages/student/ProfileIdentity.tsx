@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { DeviceMediaInput } from '../../components/DeviceMediaInput';
-import { ImageRightsConfirm, useImageRightsConfirm } from '../../components/ImageRightsConfirm';
+import { ImageRightsGate, useImageRightsConfirm } from '../../components/ImageRightsConfirm';
 import { SendPhotoToCoach } from '../../components/SendPhotoToCoach';
 import { useStudentNoPhotos } from '../../components/rosterCard/StudentNoPhotos';
 import { beltModeOf } from '../../lib/beltBook';
@@ -297,14 +297,7 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
             </>,
             document.body,
           )}
-      <ImageRightsConfirm
-        pending={rights.pending}
-        preview={rights.preview}
-        owned={rights.owned}
-        onOwnedChange={rights.setOwned}
-        onCancel={rights.cancel}
-        onUse={rights.confirm}
-      />
+      <ImageRightsGate rights={rights} />
     </div>
   );
 }
