@@ -1,16 +1,19 @@
 /* Character-sheet extras on top of the instructor identity-card styles. */
-.ip-d8 {
+.ip-d8,
+.ip-d10 {
   display: grid;
   gap: 10px;
 }
 
-.ip-d8 .assess-visual {
+.ip-d8 .assess-visual,
+.ip-d10 .assess-visual {
   margin: 0;
   padding: 8px 0 0;
   color: var(--ip-ink, #f5f1e8);
 }
 
-.ip-d8 .assess-visual h3 {
+.ip-d8 .assess-visual h3,
+.ip-d10 .assess-visual h3 {
   margin: 0 0 8px;
   color: var(--ip-blue, #6ea8ff);
   font-size: 12px;
@@ -19,13 +22,15 @@
   text-transform: uppercase;
 }
 
-.ip-d8 .student-quiet {
+.ip-d8 .student-quiet,
+.ip-d10 .student-quiet {
   margin: 8px 0 0;
   color: rgba(245, 241, 232, 0.72);
   font-size: 12px;
 }
 
-.ip-d8 .report-diamond__svg {
+.ip-d8 .report-diamond__svg,
+.ip-d10 .report-diamond__svg {
   display: block;
   width: 100%;
   max-width: 34rem;
@@ -34,12 +39,14 @@
   border-radius: 8px;
 }
 
-.ip-d8 .report-diamond__label {
+.ip-d8 .report-diamond__label,
+.ip-d10 .report-diamond__label {
   font: 400 10px Inter, Helvetica, Arial, sans-serif;
   fill: #1d1d1f;
 }
 
-.ip-d8 .report-diamond__score {
+.ip-d8 .report-diamond__score,
+.ip-d10 .report-diamond__score {
   font: 700 13px Inter, Helvetica, Arial, sans-serif;
 }
 
@@ -62,10 +69,28 @@
   border-radius: 6px;
 }
 
+.ip-d10-scores li[data-submetric] {
+  grid-column: 1 / -1;
+  margin-left: 12px;
+  padding-left: 16px;
+}
+
+.ip-d10-scores li[data-submetric] span::before {
+  content: "Under Student retention · ";
+  font-weight: 400;
+  opacity: 0.8;
+}
+
 .ip-rec {
   margin: 0 0 16px;
   padding: 10px 12px;
   border: 1px solid var(--ip-line, rgba(110, 168, 255, 0.35));
   border-radius: 8px;
   background: rgba(8, 18, 36, 0.55);
+}
+
+.ip-card [data-testid="own-training"] {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ip-line, rgba(110, 168, 255, 0.35));
 }

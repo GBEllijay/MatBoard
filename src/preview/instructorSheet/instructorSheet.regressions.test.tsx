@@ -12,7 +12,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { ASSESSMENT_STORAGE_KEY } from '../../lib/studentAssessment.ts';
 import { PREVIEW_STORAGE_KEYS } from '../instructorProfile/model.ts';
 import { InstructorSheetPreviewPage } from './InstructorSheetPreview.tsx';
-import { INSTRUCTOR_SHEET_PATH, STUDENT_PROFILE_D8, d8FaceRows, teachingLengthLabel } from './model.ts';
+import { INSTRUCTOR_D10_FACES, d10AxesFromScores, d10SubmetricsForFace } from '../../lib/instructorD10.ts';
+import { INSTRUCTOR_D10_SAMPLE, INSTRUCTOR_SHEET_PATH, STUDENT_PROFILE_D8, d8FaceRows, teachingLengthLabel } from './model.ts';
 
 const dom = new Window({ url: 'http://localhost/preview/instructor-sheet' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -91,6 +92,28 @@ test('the character sheet reuses the identity card and hides promotion counters'
   assert.deepEqual(snapshotStorage(), before);
 });
 
+test('the Instructor D10 has ten faces in order and nests class growth under retention', () => {
+  const mounted = mount(<InstructorSheetPreviewPage />);
+  const labels = [...mounted.host.querySelectorAll('[data-testid="d10-scores"] li:not([data-submetric])')].map(
+    (row) => row.querySelector('span')?.textContent,
+  );
+  const values = [...mounted.host.querySelectorAll('[data-testid="d10-scores"] li:not([data-submetric]) strong')].map(
+    (row) => row.textContent,
+  );
+  assert.ok(mounted.host.querySelector('[data-testid="instructor-d10"]'));
+  assert.ok(mounted.host.querySelector('[data-testid="instructor-d10-visual"]'));
+  assert.deepEqual(labels, INSTRUCTOR_D10_FACES.map((face) => face.label));
+  assert.deepEqual(values, d10AxesFromScores(INSTRUCTOR_D10_SAMPLE).map((face) => String(face.value)));
+  const sub = mounted.host.querySelector('[data-testid="d10-retention-subs"]');
+  assert.equal(sub?.getAttribute('data-submetric'), 'class-growth');
+  assert.match(sub?.textContent ?? '', /Class growth/);
+  assert.match(sub?.textContent ?? '', /3/);
+  assert.equal(d10SubmetricsForFace('student-retention', INSTRUCTOR_D10_SAMPLE)[0]?.value, 3);
+  assert.equal((mounted.host.querySelector('[data-testid="d10-scores"]')?.textContent ?? '').includes('Class growth'), true);
+  assert.equal(labels.includes('Class growth'), false);
+  unmount(mounted);
+});
+
 test('the sample shows the student-profile D8, and the switch only hides it', () => {
   const before = snapshotStorage();
   const mounted = mount(<InstructorSheetPreviewPage />);
@@ -126,6 +149,7 @@ test('the preview route is registered and the page does not write storage keys',
   assert.match(app, /path="\/preview\/instructor-sheet"/);
   assert.match(page, /InstructorIdentityCard/);
   assert.match(page, /StaticDiamond/);
+  assert.match(page, /StaticD10/);
   assert.equal(page.includes('localStorage'), false);
   assert.equal(page.includes('sessionStorage'), false);
 });
