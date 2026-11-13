@@ -6,6 +6,7 @@
  */
 
 import { FUNDAMENTALS_REQUIRED_FOR_BELT } from './fundamentalsConfig.ts';
+import { PACKET_FORMAT } from './packets/core.ts';
 import { classesOnDay, formatClassTime, normalizeGymCalendar, WEEKDAY_LABELS, weekdayFromJsDay } from './gymCalendar.ts';
 import { competitionOf } from './progress/competition.ts';
 import { addTournament, removeTournament, updateTournament } from './studentCompetition.ts';
@@ -1123,6 +1124,9 @@ export const SEND_TO_COACH_MERGE_PROMPT =
 export const BACKUP_PICKER_MESSAGE =
   'This is a Student Edition backup from Back up my journal. Restore it from Connections. It is not a coach plan or coach feedback file.';
 
+export const PACKET_PICKER_MESSAGE =
+  'This is a Student Edition packet. Restore it from Backup & Print or Connections. It is not a coach plan or coach feedback file.';
+
 export const SPREADSHEET_PICKER_MESSAGE =
   'This is a spreadsheet. The spreadsheet from Make a file for my coach is not a coach file. Import from coach takes a coach plan or coach feedback JSON file.';
 
@@ -1174,8 +1178,9 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       `This JSON file is not a coach plan or coach feedback file. ${COACH_IMPORT_TAKES}`,
     );
   }
-  const record = raw as { advantage?: unknown; kind?: unknown; inboxPass?: unknown };
+  const record = raw as { advantage?: unknown; format?: unknown; kind?: unknown; inboxPass?: unknown };
   const gym = readTravelingGym(raw);
+  if (record.format === PACKET_FORMAT) return refusedCoachFile(report, shelf, PACKET_PICKER_MESSAGE);
   if (record.advantage === 'student-journal-backup') return refusedCoachFile(report, shelf, BACKUP_PICKER_MESSAGE);
   if (record.kind === 'student-progress-report') {
     const parsed = parseProgressPacket(text);

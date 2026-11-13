@@ -175,7 +175,7 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   assert.doesNotMatch(`${COACHING_TOOLS_DETAIL}\n${COACHING_TOOLS_LEAD}`, /student/i);
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Record for Review', 'Competitor Roster', 'Mock Tournament'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Competitor Roster', 'Mock Tournament'],
   );
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.to),
@@ -184,17 +184,16 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
       '/techniques?from=coach',
       '/technique-tree?from=coach',
       '/roster?from=students',
-      '/record-for-review?from=coach',
       '/roster?from=coach',
       '/tournament?from=coach',
     ],
   );
   assert.equal(COACH_HUBS[3].title, 'Student Roster');
-  assert.equal(COACH_HUBS[4].title, 'Record for Review');
-  assert.equal(COACH_HUBS.findIndex((hub) => hub.title === 'Record for Review'), COACH_HUBS.findIndex((hub) => hub.title === 'Student Roster') + 1);
+  assert.equal(COACH_HUBS[4].title, 'Competitor Roster');
+  assert.ok(!COACH_HUBS.some((hub) => hub.title === 'Record for Review'));
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.belt),
-    ['coach', 'coach', 'coach', 'coach', 'coach', 'tournament', 'tournament'],
+    ['coach', 'coach', 'coach', 'coach', 'tournament', 'tournament'],
   );
   assert.ok(!COACH_HUBS.some((hub) => hub.title === 'Coaching Tools' || hub.title === COMPETITION_MANAGEMENT_LABEL));
   assert.ok(!COACH_HUBS.some((hub) => /curriculum/i.test(hub.title)));
@@ -262,26 +261,25 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_ROSTER_PATH, '/roster?from=competitors');
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Record for Review', 'Scoreboard', 'Round Timer'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Scoreboard', 'Round Timer'],
   );
-  assert.equal(COACH_UNLIMITED_TOOLS[5].to, withHubFrom(MATCH_CONTROLLER_PATH, 'unlimited'));
-  assert.equal(COACH_UNLIMITED_TOOLS[6].to, withHubFrom(ROUND_CONTROLLER_PATH, 'unlimited'));
+  assert.equal(COACH_UNLIMITED_TOOLS[4].to, withHubFrom(MATCH_CONTROLLER_PATH, 'unlimited'));
+  assert.equal(COACH_UNLIMITED_TOOLS[5].to, withHubFrom(ROUND_CONTROLLER_PATH, 'unlimited'));
+  assert.equal(COACH_UNLIMITED_TOOLS[4].belt, 'black');
   assert.equal(COACH_UNLIMITED_TOOLS[5].belt, 'black');
-  assert.equal(COACH_UNLIMITED_TOOLS[6].belt, 'black');
-  assert.equal(COACH_UNLIMITED_TOOLS[5].clearBout, true);
+  assert.equal(COACH_UNLIMITED_TOOLS[4].clearBout, true);
   assert.equal(COACH_UNLIMITED_TOOLS[3].title, 'Student Roster');
-  assert.equal(COACH_UNLIMITED_TOOLS[4].title, 'Record for Review');
-  assert.equal(COACH_UNLIMITED_TOOLS[4].to, '/record-for-review?from=unlimited');
+  assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => tool.title === 'Record for Review'));
   assert.equal(COACH_UNLIMITED_TOOLS[0].to, UNLIMITED_LESSON_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[1].to, UNLIMITED_VIDEOS_PATH);
   assert.equal(COACH_UNLIMITED_TOOLS[2].to, UNLIMITED_TREE_PATH);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.belt),
-    ['brown', 'brown', 'brown', 'brown', 'brown', 'black', 'black'],
+    ['brown', 'brown', 'brown', 'brown', 'black', 'black'],
   );
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => ('stripes' in tool ? tool.stripes : null)),
-    [0, 1, 2, 3, null, null, null],
+    [0, 1, 2, 3, null, null],
   );
   assert.equal(COACH_UNLIMITED_TOOLS[3].to, '/student-roster');
   assert.equal(isCoachStudentRoster('/student-roster', null), true);

@@ -1,11 +1,11 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AlphaAccessNote } from './AlphaAccessNote';
 import { LEARN_MORE } from '../lib/learnMore';
 import { PRO_PLUS_CLOUD_DESCRIPTION, PRO_PLUS_CLOUD_INFO_PATH, PRO_PLUS_CLOUD_NAME } from '../lib/productNames';
 import { EDITION_ALPHA_NOTE, EDITION_EMAIL_DISPLAY, PRO_PLUS_CLOUD_PRICE_LINE } from '../lib/productPrices';
 import { higherTiers, type TierBelt, type TierBuyEntry, type TierId } from '../lib/tierBuyPages';
-import { restoreWhiteByEmail } from '../lib/whiteUnlock';
+import { restoreHref } from '../lib/whiteUnlock';
 import '../pages/buyTiers.css';
 
 /**
@@ -108,31 +108,15 @@ export function HigherTierList({
   );
 }
 
-/** Email restore on the tier buy pages. restoreWhiteByEmail restores every purchase on that email. /buy sends people to /restore instead. */
+/** Already-purchased entry on the tier buy pages. The person check lives on /restore, so this card only sends people there. */
 export function TierRestoreCard({ label }: { label: string }) {
   const [email, setEmail] = useState('');
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
-
-  async function onRestore(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending) return;
-    setError(null);
-    setNote(null);
-    setPending(true);
-    const result = await restoreWhiteByEmail(email);
-    if (!result.ok) setError(result.error);
-    else setNote(result.message);
-    setPending(false);
-  }
-
   return (
-    <form className="buy__card buy__restore" onSubmit={(event) => void onRestore(event)}>
+    <section className="buy__card buy__restore" aria-label="Already purchased">
       <h3>Already purchased?</h3>
       <p>
-        Enter the email from checkout. If it matches a purchase, we email a one-time code. This page does not say
-        whether that address bought anything. <Link to="/restore">Open the restore page</Link>.
+        Enter the email from checkout, then open the restore page. That page has the person check and emails a
+        one-time code. This page does not say whether that address bought anything.
       </p>
       <label className="buy__field">
         <span>Purchase email</span>
@@ -142,25 +126,12 @@ export function TierRestoreCard({ label }: { label: string }) {
           autoComplete="email"
           inputMode="email"
           value={email}
-          onChange={(event) => {
-            setEmail(event.target.value);
-            if (error) setError(null);
-          }}
+          onChange={(event) => setEmail(event.target.value)}
         />
       </label>
-      {error ? (
-        <p className="buy__status buy__status--bad" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {note ? (
-        <p className="buy__status buy__status--ok" role="status">
-          {note}
-        </p>
-      ) : null}
-      <button className="btn btn--ghost" type="submit" disabled={pending}>
-        {pending ? 'Checking…' : label}
-      </button>
-    </form>
+      <Link className="btn btn--ghost" to={restoreHref(email)}>
+        {label}
+      </Link>
+    </section>
   );
 }

@@ -10,14 +10,14 @@ import { devicePublicJwk } from '../lib/deviceKey';
 import { clearEntitlementToken, entitlementSnapshot, readDeviceId } from '../lib/entitlement';
 import { acceptRestoredToken } from '../lib/restoreAccept';
 import { clearRestoreChallenge, readRestoreChallenge, saveRestoreChallenge } from '../lib/restoreChallenge';
-import { fetchTurnstileSiteKey, loadTurnstile, type TurnstileApi } from '../lib/turnstile';
+import { fetchRestoreCheckConfig, loadTurnstile, type RestoreCheckConfig, type TurnstileApi } from '../lib/turnstile';
 import { writeExtraProfileSlots } from '../lib/studentProfiles';
 import { isWhiteRestoreEmail, restoreWhiteByEmail } from '../lib/whiteUnlock';
 
 type PersonCheck = 'loading' | 'waiting' | 'ready' | 'error' | 'off';
 
 export type RestoreDeps = {
-  fetchSiteKey?: () => Promise<string | null>;
+  fetchConfig?: () => Promise<RestoreCheckConfig>;
   loadTurnstile?: () => Promise<TurnstileApi | null>;
 };
 
@@ -42,7 +42,7 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
   const widgetHost = useRef<HTMLDivElement | null>(null);
   const widget = useRef<{ api: TurnstileApi; id: string } | null>(null);
   const snapshot = entitlementSnapshot();
-  const fetchSiteKey = deps.fetchSiteKey ?? fetchTurnstileSiteKey;
+  const fetchConfig = deps.fetchConfig ?? fetchRestoreCheckConfig;
   const loader = deps.loadTurnstile ?? loadTurnstile;
 
   useEffect(() => {
@@ -52,12 +52,19 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const siteKey = await fetchSiteKey();
+      const config = await fetchConfig();
       if (cancelled) return;
-      if (!siteKey) {
-        setCheck('off');
+      if (!config.ok) {
+        // /api/config did not load. This is not the same as a site with no key.
+        setCheck('error');
         return;
       }
+      if (!config.siteKey) {
+        // Restore is marked available but has no public key, so the checkbox cannot run.
+        setCheck(config.restoreAvailable ? 'error' : 'off');
+        return;
+      }
+      const siteKey = config.siteKey;
       const api = await loader();
       if (cancelled) return;
       if (!api || !widgetHost.current) {
@@ -272,7 +279,7 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
             <button
               className="btn btn--white"
               type="submit"
-              disabled={pending}
+              disabled={pending || check === 'loading' || check === 'error'}
             >
               {pending ? 'Sending…' : 'Email me a code'}
             </button>

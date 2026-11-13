@@ -10,6 +10,9 @@ import {
   latestReviewSubmissions,
   listPlanVersions,
   listReviewSubmissions,
+  REVIEW_SUBMITTED,
+  REVIEW_SUBMITTED_OWNER,
+  reviewSubmitMessage,
   submitForReview,
   versionChangeLines,
 } from './reviewInbox.ts';
@@ -144,6 +147,9 @@ test('Sunday review rows open the inbox and the lesson plan can submit', () => {
   const notes = readFileSync(new URL('../pages/TrainingNotes.tsx', import.meta.url), 'utf8');
   assert.match(notes, /Submit for review/);
   assert.match(notes, /submitForReview/);
+  assert.match(notes, /actor: isLiveSeat\(seat\) \? 'seat' : 'owner'/);
+  assert.match(notes, /reviewSubmitMessage\(submitted\.status\)/);
+  assert.equal((notes.match(/actor: isLiveSeat/g) ?? []).length, 2);
   assert.match(notes, /listClassPhotoPromotions/);
   assert.match(notes, /LessonVersionHistory/);
   assert.match(notes, /REVIEW_VERSION_LEAD/);
@@ -151,6 +157,9 @@ test('Sunday review rows open the inbox and the lesson plan can submit', () => {
   assert.match(review, /REVIEW_APPROVE/);
   assert.match(review, /REVIEW_CHANGES/);
   assert.match(review, /REVIEW_REJECT/);
+  assert.match(review, /REVIEW_CHANGE_DECISION/);
+  assert.match(review, /review-status-badge/);
+  assert.match(review, /showDecisionControls/);
   assert.match(review, /REVIEW_GALLERY/);
   assert.match(review, /REVIEW_GALLERY_MISSING/);
   assert.match(review, /addFolderFiles\(\[file\], 'gallery'\)/);
@@ -161,7 +170,53 @@ test('Sunday review rows open the inbox and the lesson plan can submit', () => {
   assert.match(history, /versionChangeLines/);
   const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
   assert.match(css, /\.home--pro \.review-inbox__actions \.review-decision--on[\s\S]*background:\s*var\(--logo-blue\)/);
+  assert.match(css, /\.review-status-badge--approved[\s\S]*background:\s*#16a34a/);
+  assert.match(css, /\.review-status-badge--changes[\s\S]*background:\s*#d97706/);
+  assert.match(css, /\.review-status-badge--rejected[\s\S]*background:\s*#b42318/);
   assert.match(css, /\.notes \.lesson-version--on[\s\S]*background:\s*var\(--logo-blue\)/);
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   assert.match(app, /path="\/review"/);
+});
+
+test('the gym owner auto-approves their own plan and a seated coach still waits for review', () => {
+  storage.clear();
+  const plan = emptyPlan();
+  plan.coachName = 'Professor Justin Geis';
+  plan.classDesignation = 'Tiny Champions';
+  plan.classTime = '5:00 PM';
+  const owner = submitForReview({
+    revisionId: lessonDraftRevisionId('2026-11-12', 'Professor Justin Geis', plan.id),
+    dateKey: '2026-11-12',
+    coachName: 'Professor Justin Geis',
+    plan,
+    submittedAt: 10,
+    actor: 'owner',
+  });
+  assert.equal(owner.status, 'approved');
+  assert.equal(owner.instructorNote, '');
+  assert.equal(reviewSubmitMessage(owner.status), REVIEW_SUBMITTED_OWNER);
+  assert.doesNotMatch(reviewSubmitMessage(owner.status), /Waiting for review|Sent for review/);
+
+  const coachPlan = emptyPlan();
+  coachPlan.id = 'coach-plan';
+  coachPlan.coachName = 'Coach Paige';
+  const coach = submitForReview({
+    revisionId: lessonDraftRevisionId('2026-11-12', 'Coach Paige', coachPlan.id),
+    dateKey: '2026-11-12',
+    coachName: 'Coach Paige',
+    plan: coachPlan,
+    submittedAt: 20,
+    actor: 'seat',
+  });
+  assert.equal(coach.status, 'pending');
+  assert.equal(reviewSubmitMessage(coach.status), REVIEW_SUBMITTED);
+
+  const inferred = submitForReview({
+    revisionId: lessonDraftRevisionId('2026-11-12', 'Coach Paige', 'other'),
+    dateKey: '2026-11-12',
+    coachName: 'Coach Paige',
+    plan: { ...emptyPlan(), id: 'other', coachName: 'Coach Paige' },
+    submittedAt: 30,
+  });
+  assert.equal(inferred.status, 'pending', 'omitting actor keeps the plan waiting for review');
 });

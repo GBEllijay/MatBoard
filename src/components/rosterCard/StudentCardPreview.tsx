@@ -40,14 +40,12 @@ export function StudentCardPreview({
   open,
   report,
   portrait,
-  logo,
   onClose,
   to,
 }: {
   open: boolean;
   report: StudentProgressReport;
   portrait: string | null;
-  logo: string | null;
   onClose: () => void;
   /** Student path builder (keeps ?student=). */
   to: (path: string) => string;
@@ -90,7 +88,7 @@ export function StudentCardPreview({
             noPhotos: noPhotos.on ? { on: true, setBy: 'family', locked: true } : undefined,
           }}
           gymName={gymName}
-          gymLogo={logo}
+          gymLogo={null}
           belt={belt}
           beltLine={belt.meta}
           dates={dates}

@@ -1171,8 +1171,9 @@ test('stripe lists show the disclaimer, no-gi line, and brown prompts', async ()
     assert.equal(labeled('Stripe 1, open').tagName, 'LI');
     assert.match(document.body.textContent ?? '', /Stripe 1 — First safe positions/);
     assert.match(document.body.textContent ?? '', /No-gi uses underhooks/);
-    await click(buttonNamed(BENCHMARK_DISCLAIMER_SHORT));
-    assert.match(document.body.textContent ?? '', new RegExp(BENCHMARK_DISCLAIMER_MEDIUM.slice(0, 40).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.equal((document.body.textContent ?? '').includes(BENCHMARK_DISCLAIMER_MEDIUM), true);
+    assert.equal(document.querySelector('.belt-disclaimer button'), null);
+    assert.equal(document.querySelector('.belt-disclaimer[role="note"]')?.getAttribute('aria-label'), 'Benchmark guidelines');
     assert.equal(
       [...document.querySelectorAll('a')].find((link) => link.textContent?.trim() === 'Terms of Service')?.getAttribute('href'),
       '/terms?student=1#practical-benchmarks',
@@ -1215,7 +1216,7 @@ test('Terms contain the Practical Benchmarks section', () => {
     );
     assert.equal(
       BENCHMARK_DISCLAIMER_MEDIUM,
-      'These Practical Benchmarks are general suggestions based on commonly accepted jiu-jitsu training, and they have been reviewed by black belts. They are a starting point, not a requirement or a promotion standard. Every academy and coach sees things differently, so review and adjust them with your coach, who has the final say on your progress.',
+      'General guidelines only. Advantage does not set requirements. Your federation and your instructor decide all actual requirements, stripes and promotions. These suggestions are based on commonly taught jiu-jitsu and are a starting point to review with your instructor.',
     );
     assert.match(document.body.textContent ?? '', /Last updated: October 27, 2026/);
   } finally {

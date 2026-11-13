@@ -482,25 +482,27 @@
   line-height: 1.35;
 }
 
-.student.student--arena.student--belt .belt-disclaimer button {
-  width: 100%;
-  min-height: 56px;
+.student.student--arena.student--belt .belt-disclaimer {
   margin: 0;
-  padding: 12px 2px;
-  border: 0;
-  background: transparent;
-  color: #c7c7cc;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.35;
-  text-align: left;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 18px;
+  background: #2c2c2e;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px rgba(0, 0, 0, 0.28);
 }
 
 .student.student--arena.student--belt .belt-disclaimer p {
   color: #f5f5f7;
-  font-size: 15px;
-  line-height: 1.4;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.student.student--arena.student--belt .belt-disclaimer__lead {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .student.student--arena.student--rank input.student-file {

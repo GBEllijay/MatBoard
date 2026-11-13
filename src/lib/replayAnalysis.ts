@@ -381,8 +381,9 @@ export function replayFileName(dateKey: string, title: string, mime: string, id:
 }
 
 /**
- * "Record for Review" on a fixed lesson section such as Intro or Closing (the
- * outro block). Only the switch and a clip reference are stored.
+ * Legacy Record for Review slot on a fixed lesson section such as Intro or
+ * Closing. Only the leftover switch and a clip reference are stored. The UI
+ * no longer reads this.
  */
 export type ReviewSlot = { recordReview?: boolean; replayClip?: ReplayClipRef };
 
