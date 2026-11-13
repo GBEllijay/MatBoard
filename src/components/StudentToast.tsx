@@ -29,8 +29,11 @@ export function StudentToast() {
     return () => window.clearTimeout(handle);
   }, [toast]);
 
+  // aria-live without role="status": this region is always mounted (so the
+  // first toast is announced), and an always-present empty status role
+  // shadows each screen's own status line (e.g. Journal "Saved").
   return (
-    <div className="student-toast-region" role="status" aria-live="polite">
+    <div className="student-toast-region" aria-live="polite" aria-atomic="true">
       {toast ? (
         <p key={toast.key} className="student-toast">
           <span className="student-toast__dot" aria-hidden="true" />

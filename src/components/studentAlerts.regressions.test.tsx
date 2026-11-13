@@ -167,8 +167,27 @@ test('the toast shows a short line and clears itself', async () => {
     window.dispatchEvent(new CustomEvent(STUDENT_TOAST_EVENT, { detail: { text: 'Saved to your card' } }));
   });
   assert.equal(host.querySelector('.student-toast')?.textContent, 'Saved to your card');
-  assert.equal(host.querySelector('[role="status"]')?.getAttribute('aria-live'), 'polite');
+  assert.equal(host.querySelector('.student-toast-region')?.getAttribute('aria-live'), 'polite');
   unmount();
+});
+
+test('the always-mounted toast region is not a status role, so a screen status line stays the only one', () => {
+  // Compare counts and strings, never DOM nodes: a failed assert on a happy-dom
+  // node tries to print it and runs the test process out of memory.
+  const idle = mount(<StudentToast />);
+  assert.equal(idle.host.querySelectorAll('[role="status"]').length, 0);
+  assert.equal(idle.host.querySelectorAll('.student-toast-region[aria-live="polite"]').length, 1);
+  idle.unmount();
+
+  const withScreen = mount(
+    <>
+      <p role="status">Saved</p>
+      <StudentToast />
+    </>,
+  );
+  const statuses = [...withScreen.host.querySelectorAll('[role="status"]')].map((node) => node.textContent);
+  assert.deepEqual(statuses, ['Saved']);
+  withScreen.unmount();
 });
 
 test('first open: the arrival toast still shows when the toast mounts after the inbox', () => {
