@@ -73,6 +73,7 @@ export function GlossaryBaseCardsPanel({
             onClick={() => {
               setFaceId(id);
               setOpenId(null);
+              setQuery('');
             }}
           >
             {glossaryBaseFaceLabel(id)}
@@ -132,18 +133,16 @@ function GlossaryCard({
     <li>
       <article className="tree-glossary__card" aria-labelledby={titleId}>
         <button type="button" className="tree-glossary__open" onClick={onToggle} aria-expanded={open}>
-          <span>
-            <span className="tree-glossary__title" id={titleId}>
-              {card.title}
-            </span>
-            {card.aliases.length ? (
-              <span className="tree-glossary__aliases">Also called {card.aliases.join(', ')}</span>
-            ) : null}
+          <span className="tree-glossary__title" id={titleId}>
+            {card.title}
           </span>
           <span className="tree-chip tree-chip--base">{glossaryBaseFaceLabel(card.faceId)}</span>
         </button>
         {open ? (
           <>
+            {card.aliases.length ? (
+              <p className="tree-glossary__aliases">Also called {card.aliases.join(', ')}</p>
+            ) : null}
             {card.definition ? <p className="tree-glossary__definition">{card.definition}</p> : null}
             {card.subFactor ? <p className="tree-glossary__meta">{card.subFactor}</p> : null}
             {collisions.map((row) => (

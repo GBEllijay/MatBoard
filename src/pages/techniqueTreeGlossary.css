@@ -143,8 +143,10 @@
 
 .tree-glossary__aliases,
 .tree-glossary__meta {
+  display: block;
   color: rgba(159, 223, 240, 0.95);
   font-size: 0.82rem;
+  line-height: 1.3;
 }
 
 .tree-glossary__card .tree-chip {
