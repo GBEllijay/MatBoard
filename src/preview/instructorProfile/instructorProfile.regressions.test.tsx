@@ -225,8 +225,11 @@ test('the preview page keeps logged hours, the estimate, and approval status apa
   assert.match(mounted.host.querySelector('[data-testid="teaching-since"]')?.textContent ?? '', /c\. 2013/);
   assert.equal((mounted.host.querySelector('[data-testid="teaching-since"]')?.textContent ?? '').includes('2014-03-01'), false);
   assert.match(text, /Training start 2014-03-01/);
-  assert.equal(mounted.host.querySelector('[data-testid="stripes-given"] strong')?.textContent, '24');
-  assert.equal(mounted.host.querySelector('[data-testid="belts-given"] strong')?.textContent, '7');
+  assert.equal(mounted.host.querySelector('[data-testid="stripes-given"]'), null);
+  assert.equal(mounted.host.querySelector('[data-testid="belts-given"]'), null);
+  assert.equal((mounted.host.querySelector('[data-testid="stat-card"]')?.textContent ?? '').includes('Stripes given'), false);
+  assert.equal((mounted.host.querySelector('[data-testid="stat-card"]')?.textContent ?? '').includes('Promotions given'), false);
+  assert.match(mounted.host.querySelector('[data-testid="teaching-years"]')?.textContent ?? '', /13 years/);
   assert.equal(mounted.host.querySelector('[data-testid="combined-hours"]')?.textContent, '2,064 h');
   assert.equal(mounted.host.querySelector('[data-testid="logged-hours"]')?.textContent, '36');
   assert.match(mounted.host.querySelector('[data-testid="week-total"]')?.textContent ?? '', /180 min/);
@@ -270,4 +273,19 @@ test('the preview page keeps logged hours, the estimate, and approval status apa
 
   for (const key of PREVIEW_STORAGE_KEYS) assert.equal(localStorage.getItem(key), null, key);
   unmount(mounted);
+});
+
+test('the live instructor identity card no longer displays promotions or stripes given', () => {
+  const sheet = readFileSync('src/components/InstructorSheet.tsx', 'utf8');
+  const identity = readFileSync('src/preview/instructorProfile/InstructorIdentityCard.tsx', 'utf8');
+  assert.match(sheet, /Classes taught/);
+  assert.match(sheet, /Hours taught/);
+  assert.equal(sheet.includes('Promotions awarded'), false);
+  assert.equal(sheet.includes('Stripes given'), false);
+  assert.equal(identity.includes('Stripes given'), false);
+  assert.equal(identity.includes('Promotions given'), false);
+  assert.match(identity, /Length of time teaching/);
+  // Stored tallies and the promotion log stay in the model and sheet.
+  assert.match(sheet, /Promotion log/);
+  assert.match(readFileSync('src/preview/instructorProfile/model.ts', 'utf8'), /export function teachingTallies/);
 });

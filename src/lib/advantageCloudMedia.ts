@@ -1041,7 +1041,7 @@ export async function resetMyCloudLessonPlan(input: {
 }
 
 /**
- * Replay clips only (Record for replay / Record for Review). Owner, Coach and
+ * Replay clips only (Record for replay). Owner, Coach and
  * Instructors upload straight to lesson media. Assistant coaches and program
  * directors upload as pending: only the uploader and the owner see it until
  * the owner approves. This does not change `cloudMediaAccess` or any preset.
