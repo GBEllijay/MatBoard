@@ -22,7 +22,6 @@ import {
   JOURNAL_ROLLS_LABEL,
   JOURNAL_SAVED_TOAST,
   JOURNAL_SEE_CARD,
-  JOURNAL_STOP_LABEL,
   formatJournalDate,
   journalActionLabel,
 } from '../lib/journalCopy';
@@ -33,7 +32,7 @@ import { SelfAssessmentPage } from './student/SelfAssessmentPage';
 import { RankPage } from './student/RankPage';
 import { ResultsPage } from './student/ResultsPage';
 import { ScoutingPage } from './student/ScoutingPage';
-import { JournalVideos } from './student/JournalVideos';
+import { JournalCardVideos } from './student/JournalCardVideos';
 import { VideoLibraryPage } from './student/VideoLibraryPage';
 import { WeightPage } from './student/WeightPage';
 import { CoachUpdateInbox } from '../components/CoachUpdateInbox';
@@ -81,7 +80,7 @@ import { pageLabel, paginateJournal } from '../lib/journalPages';
 import { TechniqueLines, blankTechniqueLines, techniqueLinesFrom } from './student/TechniqueLines';
 import { GlossaryField } from '../glossary/GlossaryField';
 import { hiddenGlossaryTerms } from '../lib/glossaryMatch';
-import { EMPTY_EXTRAS, MatTimeField, SessionExtras, extrasDraft, extrasFromCard, matTimeLine, type SessionExtrasValue } from './student/MatTime';
+import { EMPTY_EXTRAS, HowItWentField, MatTimeField, SessionExtras, extrasDraft, extrasFromCard, matTimeLine, type SessionExtrasValue } from './student/MatTime';
 import type { JournalSession } from '../lib/progress/types';
 
 function firstTechnique(card: JournalCardView): string {
@@ -105,10 +104,16 @@ function journalFieldLines(card: JournalCardView): string[] {
     `${JOURNAL_PARTNERS_LABEL}: ${card.partners || '—'}`,
     `${JOURNAL_DRILLS_LABEL}: ${card.drills || '—'}`,
     `${JOURNAL_ROLLS_LABEL}: ${card.rolls || '—'}`,
-    ...(card.howItWent ? [`How it went: ${card.howItWent}`] : []),
     `${JOURNAL_NOTES_LABEL}: ${card.notes || '—'}`,
-    `${JOURNAL_STOP_LABEL}: ${card.stopDoing || '—'}`,
+    // One reflection field. An older card's stop-doing text is already folded into howItWent.
+    ...howItWentLines(card.howItWent),
   ];
+}
+
+/** How it went on the saved card. Each written line keeps its own row. */
+function howItWentLines(text: string): string[] {
+  const rows = text.split('\n').map((row) => row.trim()).filter(Boolean);
+  return rows.map((row, index) => (index === 0 ? `How it went: ${row}` : row));
 }
 
 function EntrySavedToast({ open }: { open: boolean }) {
@@ -352,7 +357,6 @@ function JournalToday() {
   const [drills, setDrills] = useState('');
   const [rolls, setRolls] = useState('');
   const [notes, setNotes] = useState('');
-  const [stopDoing, setStopDoing] = useState('');
   const [error, setError] = useState('');
   const hiddenTerms = hiddenGlossaryTerms(report);
   const [savedId, setSavedId] = useState('');
@@ -370,7 +374,6 @@ function JournalToday() {
           drills,
           rolls,
           notes,
-          stopDoing,
           session,
           sessionOther,
           minutes,
@@ -388,7 +391,6 @@ function JournalToday() {
       setDrills('');
       setRolls('');
       setNotes('');
-      setStopDoing('');
       setError('');
       setSavedId(id);
       setSavedToast(true);
@@ -451,13 +453,7 @@ function JournalToday() {
               blockedNames={hiddenTerms.names}
               testId="journal-notes"
             />
-            <label className="ink ink--wobble journal-note">
-              <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
-              <span className="student-quiet" aria-hidden="true">
-                Mistakes to stop making.
-              </span>
-              <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={JOURNAL_STOP_LABEL} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
-            </label>
+            <HowItWentField idPrefix="" report={report} value={extras} onChange={setExtras} />
           </section>
           <section className="adv-card adv-card--mat" aria-label="Mat time">
             <h2>Mat time</h2>
@@ -620,6 +616,7 @@ function JournalList() {
                 {card.amendments.map((item) =>
                   item.body.trim() ? <span key={item.id}>{item.body.trim()}</span> : null,
                 )}
+                <CardVideoCount count={report.journal.find((row) => row.id === card.id)?.videos?.length ?? 0} />
               </Link>
               <div className="student-card__actions">
                 <Link className="ink-btn" to={to(`/student/cards/${card.id}?edit=1`)}>
@@ -654,6 +651,12 @@ function JournalList() {
       </div>
     </main>
   );
+}
+
+/** How many class videos a card has, on the list of cards. */
+function CardVideoCount({ count }: { count: number }) {
+  if (!count) return null;
+  return <span className="journal-card-videos__count">{count === 1 ? '1 class video' : `${count} class videos`}</span>;
 }
 
 function JournalCardPage({ id }: { id: string }) {
@@ -703,7 +706,7 @@ function JournalCardPage({ id }: { id: string }) {
           ) : (
             <>
               <CardBody card={card} query={params.get('q') ?? ''} />
-              <JournalVideos entryId={card.id} date={card.date} techniques={card.techniques} />
+              <JournalCardVideos entryId={card.id} date={card.date} techniques={card.techniques} />
             </>
           )}
           <Amendments card={card} />
@@ -910,7 +913,6 @@ function JournalEditor({
   const [drills, setDrills] = useState(card.drills);
   const [rolls, setRolls] = useState(card.rolls);
   const [notes, setNotes] = useState(card.notes);
-  const [stopDoing, setStopDoing] = useState(card.stopDoing ?? '');
   const [error, setError] = useState('');
   const hiddenTerms = hiddenGlossaryTerms(report);
 
@@ -921,7 +923,7 @@ function JournalEditor({
       onSubmit={(event) => {
         event.preventDefault();
         try {
-          onSave({ date, className, techniques, partners, drills, rolls, notes, stopDoing, session, sessionOther, minutes, ...extrasDraft(extras, date) });
+          onSave({ date, className, techniques, partners, drills, rolls, notes, stopDoing: '', session, sessionOther, minutes, ...extrasDraft(extras, date) });
           setError('');
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Could not save this card.');
@@ -966,13 +968,7 @@ function JournalEditor({
           blockedIds={hiddenTerms.ids}
           blockedNames={hiddenTerms.names}
         />
-        <label className="ink ink--wobble journal-note">
-          <span className="ink__label">{JOURNAL_STOP_LABEL}</span>
-          <span className="student-quiet" aria-hidden="true">
-            Mistakes to stop making.
-          </span>
-          <textarea spellCheck autoCorrect="on" autoCapitalize="sentences" aria-label={`Edit ${JOURNAL_STOP_LABEL}`} rows={3} value={stopDoing} onChange={(event) => setStopDoing(event.target.value)} />
-        </label>
+        <HowItWentField idPrefix="Edit " report={report} value={extras} onChange={setExtras} />
       </section>
       <section className="adv-card adv-card--mat" aria-label="Mat time">
         <h2>Mat time</h2>
@@ -984,7 +980,6 @@ function JournalEditor({
       <section className="adv-card adv-card--drills journal-techniques" aria-label="Techniques drilled (optional fundamentals add-on)" data-testid="journal-techniques">
         <h2 className="ink__label journal-techniques__title">Techniques drilled · optional</h2>
         <TechniqueLines idPrefix="Edit " report={report} rows={techniques} onChange={setTechniques} onReport={commit} />
-        <JournalVideos entryId={card.id} date={date} techniques={techniques} />
       </section>
       {error ? <p role="alert">{error}</p> : null}
       <div className="student-card__actions journal-actions">

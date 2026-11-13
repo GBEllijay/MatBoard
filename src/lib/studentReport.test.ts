@@ -281,7 +281,9 @@ test('a journal line uses the card labels and the written date', () => {
   assert.match(line, /Drills: hip escapes/);
   assert.match(line, /Rolls: 5 rounds/);
   assert.match(line, /Drill notes: grip the collar deeper/);
-  assert.match(line, /Stop doing: posting the near hand/);
+  // Older stop-doing text folds into How it went; there is no separate Stop doing line.
+  assert.match(line, /How it went: posting the near hand/);
+  assert.doesNotMatch(line, /Stop doing/);
   const pdf = progressReportPdf(report, { entries: [] }, {}, '2026-10-11');
   const text = extractPdfText(pdf);
   assert.match(text, /Technique drilled #1: Scissor sweep/);

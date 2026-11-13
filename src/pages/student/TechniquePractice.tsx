@@ -35,7 +35,7 @@ export function TechniquePractice({
         latest.id === currentId ? (
           <p>This is the latest saved practice, {latest.date}.</p>
         ) : (
-          <Link className="ink-btn" to={to(`/student/cards/${latest.id}#journal-videos`)}>
+          <Link className="ink-btn" to={to(`/student/cards/${latest.id}#class-videos`)}>
             {`Latest practice · ${latest.date}`}
           </Link>
         )
@@ -55,7 +55,7 @@ export function TechniquePractice({
         </label>
       ) : null}
       {earlier.map((hit) => (
-        <Link key={hit.id} className="ink-btn" to={to(`/student/cards/${hit.id}#journal-videos`)}>
+        <Link key={hit.id} className="ink-btn" to={to(`/student/cards/${hit.id}#class-videos`)}>
           {`Earlier practice · ${hit.date} · ${hit.name}`}
         </Link>
       ))}
@@ -69,7 +69,7 @@ export function OriginalClass({ report, entryId }: { report: StudentProgressRepo
   const entry = report.journal.find((item) => item.id === entryId);
   if (!entry) return <p className="student-quiet">Original class card is no longer on this device.</p>;
   return (
-    <Link className="ink-btn" to={to(`/student/cards/${entry.id}#journal-videos`)}>
+    <Link className="ink-btn" to={to(`/student/cards/${entry.id}#class-videos`)}>
       {`Original class · ${entry.date}`}
     </Link>
   );

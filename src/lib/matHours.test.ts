@@ -168,17 +168,18 @@ test('saved 1–5 ratings migrate to "How it went" text on load; nothing is lost
   if (!parsed.ok) return;
   const [a, b] = parsed.value.journal;
   assert.equal(a.quality, undefined);
-  assert.equal(howItWentOf(a), 'Learned something');
+  // The rating becomes How it went; the older stop-doing note reads after it (one field).
+  assert.equal(howItWentOf(a), 'Learned something\nflailing');
   const view = viewJournalEntry(a);
-  assert.equal(view.howItWent, 'Learned something');
+  assert.equal(view.howItWent, 'Learned something\nflailing');
   assert.equal(view.notes, 'keep elbows in');
-  assert.equal(view.stopDoing, 'flailing');
+  assert.equal(view.stopDoing, '');
   assert.equal(howItWentOf(b), 'Mine wins');
   assert.equal(b.quality, undefined);
   // Idempotent, and an unrated card is untouched.
   assert.equal(migrateQualityToNote(a, 'white'), a);
   // Kids wording for a kids belt book.
-  assert.equal(howItWentOf(migrateQualityToNote({ ...a, body: report.journal[0].body, quality: 4 }, 'kids')), 'Great');
+  assert.equal(howItWentOf(migrateQualityToNote({ ...a, body: report.journal[0].body, quality: 4 }, 'kids')), 'Great\nflailing');
 });
 
 test('status comes from journal cards: current break, injury history', () => {
