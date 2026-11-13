@@ -255,3 +255,43 @@
     flex: 1 1 calc(33.33% - 0.4rem);
   }
 }
+
+.tree-glossary__card.is-focus {
+  border-color: var(--logo-yellow, #fcc000);
+  box-shadow: 0 0 0 2px rgba(252, 192, 0, 0.4);
+}
+
+.tree-glossary__trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.2rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.tree-glossary__trail button,
+.tree-glossary__link,
+.tree-glossary__on-diamond {
+  min-height: 44px;
+  padding: 0.25rem 0.45rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--logo-yellow, #fcc000);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.tree-glossary__trail-sep {
+  padding: 0 0.15rem;
+  color: rgba(244, 251, 255, 0.7);
+}
+
+.tree-glossary__links--in li {
+  color: rgba(159, 223, 240, 0.95);
+}

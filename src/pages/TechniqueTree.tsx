@@ -46,11 +46,16 @@ import {
   type TreeChildKind,
 } from '../lib/techniqueTreeStore';
 import {
+  emptyGlossaryPanelView,
   ensureGlossaryBaseCards,
   linksFrom,
   saveGlossaryBaseCatalog,
+  viewForCard,
+  viewForFace,
   type GlossaryBaseCatalog,
+  type GlossaryPanelView,
 } from '../lib/glossaryBaseCards';
+import { TechniqueTreeDiamond } from './TechniqueTreeDiamond';
 import { GlossaryBaseCardsPanel, GlossaryLinkList, TreeConnectField } from './TechniqueTreeGlossary';
 
 export function TechniqueTreePage() {
@@ -70,6 +75,7 @@ export function TechniqueTreePage() {
   const [glossaryCatalog, setGlossaryCatalog] = useState<GlossaryBaseCatalog>(
     () => ensureGlossaryBaseCards(loadTechniqueArchive()).catalog,
   );
+  const [glossaryView, setGlossaryView] = useState<GlossaryPanelView>(emptyGlossaryPanelView);
   const doc = activeTree(archive);
   const [note, setNote] = useState('');
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -327,8 +333,34 @@ export function TechniqueTreePage() {
         </p>
       ) : null}
 
+      <TechniqueTreeDiamond
+        catalog={glossaryCatalog}
+        activeFaceId={glossaryView.faceId}
+        openCardId={glossaryView.openId}
+        onOpenFace={(faceId) => {
+          setGlossaryView(viewForFace(faceId));
+          window.requestAnimationFrame(() => {
+            document.getElementById('tree-glossary-panel')?.scrollIntoView({ block: 'start' });
+          });
+        }}
+        onOpenCard={(cardId) => {
+          setGlossaryView((current) => viewForCard(glossaryCatalog, cardId, current));
+          window.requestAnimationFrame(() => {
+            document.getElementById('tree-glossary-panel')?.scrollIntoView({ block: 'start' });
+          });
+        }}
+      />
+
       <GlossaryBaseCardsPanel
         catalog={glossaryCatalog}
+        view={glossaryView}
+        onViewChange={setGlossaryView}
+        onShowOnDiamond={(_faceId, cardId) => {
+          setGlossaryView((current) => viewForCard(glossaryCatalog, cardId, current));
+          window.requestAnimationFrame(() => {
+            document.getElementById('tree-d8')?.scrollIntoView({ block: 'start' });
+          });
+        }}
         onCatalogChange={(next) => {
           const saved = saveGlossaryBaseCatalog(next);
           setGlossaryCatalog(saved.catalog);
@@ -483,6 +515,7 @@ export function TechniqueTreePage() {
               node={doc.root}
               doc={doc}
               catalog={glossaryCatalog}
+              onOpenGlossaryCard={(cardId) => setGlossaryView((current) => viewForCard(glossaryCatalog, cardId, current))}
               confirmId={confirmId}
               focusId={focusId}
               pinnedId={requestedNodeId}
@@ -523,6 +556,7 @@ function TreeNodeView({
   onCancelDelete,
   onConfirmDelete,
   onCatalogChange,
+  onOpenGlossaryCard,
 }: {
   node: TechniqueNode;
   doc: TechniqueTreeDoc;
@@ -538,6 +572,7 @@ function TreeNodeView({
   onCancelDelete: () => void;
   onConfirmDelete: (id: string) => void;
   onCatalogChange: (catalog: GlossaryBaseCatalog) => void;
+  onOpenGlossaryCard?: (cardId: string) => void;
 }) {
   const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -623,6 +658,7 @@ function TreeNodeView({
           catalog={catalog}
           links={linksFrom(catalog, { type: 'tree', treeId: doc.id, nodeId: node.id, slotId: node.slotId, title: node.title })}
           onCatalogChange={onCatalogChange}
+          onOpenCard={onOpenGlossaryCard}
         />
 
         <div className="tree-node__actions">
@@ -663,6 +699,7 @@ function TreeNodeView({
               node={child}
               doc={doc}
               catalog={catalog}
+              onOpenGlossaryCard={onOpenGlossaryCard}
               confirmId={confirmId}
               focusId={focusId}
               pinnedId={pinnedId}

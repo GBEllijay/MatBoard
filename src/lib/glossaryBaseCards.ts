@@ -565,3 +565,62 @@ export function ensureGlossaryBaseCards(
   const write = writeCatalog(merged);
   return { catalog: merged, created, reused, written: write.saved, quota: write.quota };
 }
+
+export function linksTo(catalog: GlossaryBaseCatalog, cardId: string): GlossaryBaseLink[] {
+  return catalog.links.filter((link) => link.toCardId === cardId);
+}
+
+export function linkSourceLabel(catalog: GlossaryBaseCatalog, from: GlossaryBaseLinkSource): string {
+  if (from.type === 'card') {
+    return findBaseCard(catalog, from.cardId)?.title ?? 'a removed card';
+  }
+  const title = from.title.trim();
+  return title || 'a tree step';
+}
+
+/** Follow a link, or jump back if the card is already on the path. */
+export function pushGlossaryTrail(
+  trail: readonly string[],
+  fromCardId: string | null,
+  toCardId: string,
+): string[] {
+  const existing = trail.indexOf(toCardId);
+  if (existing >= 0) return trail.slice(0, existing + 1);
+  if (fromCardId && trail.includes(fromCardId)) {
+    return [...trail.slice(0, trail.indexOf(fromCardId) + 1), toCardId];
+  }
+  if (fromCardId) return [fromCardId, toCardId];
+  return trail.length ? [...trail, toCardId] : [toCardId];
+}
+
+export type GlossaryPanelView = {
+  faceId: GlossaryBaseFaceId;
+  openId: string | null;
+  query: string;
+  trail: string[];
+};
+
+export function emptyGlossaryPanelView(faceId: GlossaryBaseFaceId = 'guard-control'): GlossaryPanelView {
+  return { faceId, openId: null, query: '', trail: [] };
+}
+
+/** Open a face's card list. The find box is cleared so every card on the face is visible. */
+export function viewForFace(faceId: GlossaryBaseFaceId): GlossaryPanelView {
+  return { faceId, openId: null, query: '', trail: [] };
+}
+
+/** Open a glossary card, switching face if needed, and extend the trail when following a link. */
+export function viewForCard(
+  catalog: GlossaryBaseCatalog,
+  cardId: string,
+  current: GlossaryPanelView = emptyGlossaryPanelView(),
+): GlossaryPanelView {
+  const card = findBaseCard(catalog, cardId);
+  if (!card || !isGlossaryBaseFace(card.faceId)) return current;
+  return {
+    faceId: card.faceId,
+    openId: card.id,
+    query: '',
+    trail: pushGlossaryTrail(current.trail, current.openId, card.id),
+  };
+}

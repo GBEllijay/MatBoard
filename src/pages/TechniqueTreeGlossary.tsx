@@ -7,16 +7,23 @@ import {
   GLOSSARY_BASE_FACE_IDS,
   cardsForFace,
   countCardsByFace,
+  emptyGlossaryPanelView,
   findBaseCard,
   glossaryBaseFaceLabel,
+  isGlossaryBaseFace,
   linksFrom,
+  linksTo,
+  linkSourceLabel,
   pickGlossaryBaseSuggestion,
   removeGlossaryBaseLink,
+  viewForCard,
+  viewForFace,
   type GlossaryBaseCard,
   type GlossaryBaseCatalog,
   type GlossaryBaseFaceId,
   type GlossaryBaseLink,
   type GlossaryBaseLinkSource,
+  type GlossaryPanelView,
 } from '../lib/glossaryBaseCards.ts';
 import {
   GLOSSARY_DEBOUNCE_MS,
@@ -34,47 +41,79 @@ const EXCLUDED_TERM_IDS = GLOSSARY.filter((term) =>
 export function GlossaryBaseCardsPanel({
   catalog,
   onCatalogChange,
+  view,
+  onViewChange,
+  onShowOnDiamond,
 }: {
   catalog: GlossaryBaseCatalog;
   onCatalogChange: (catalog: GlossaryBaseCatalog) => void;
+  view?: GlossaryPanelView;
+  onViewChange?: (view: GlossaryPanelView) => void;
+  onShowOnDiamond?: (faceId: GlossaryBaseFaceId, cardId: string) => void;
 }) {
-  const [faceId, setFaceId] = useState<GlossaryBaseFaceId>('guard-control');
-  const [query, setQuery] = useState('');
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [internal, setInternal] = useState<GlossaryPanelView>(emptyGlossaryPanelView());
+  const current = view ?? internal;
+  const setCurrent = (next: GlossaryPanelView) => {
+    if (view === undefined) setInternal(next);
+    onViewChange?.(next);
+  };
   const counts = useMemo(() => countCardsByFace(catalog.cards), [catalog.cards]);
   const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return cardsForFace(catalog.cards, faceId).filter((card) => {
+    const needle = current.query.trim().toLowerCase();
+    return cardsForFace(catalog.cards, current.faceId).filter((card) => {
       if (!needle) return true;
       if (card.title.toLowerCase().includes(needle)) return true;
       if (card.aliases.some((alias) => alias.toLowerCase().includes(needle))) return true;
       if (card.subFactor.toLowerCase().includes(needle)) return true;
       return false;
     });
-  }, [catalog.cards, faceId, query]);
+  }, [catalog.cards, current.faceId, current.query]);
+  const trailCards = current.trail
+    .map((id) => findBaseCard(catalog, id))
+    .filter((card): card is GlossaryBaseCard => !!card);
+
+  useEffect(() => {
+    if (!current.openId) return;
+    document.getElementById(`tree-gbase-card-${current.openId}`)?.scrollIntoView({ block: 'nearest' });
+  }, [current.openId, current.faceId]);
+
+  const openCard = (cardId: string) => setCurrent(viewForCard(catalog, cardId, current));
 
   return (
-    <section className="tree-glossary" aria-label="Glossary base cards">
+    <section className="tree-glossary" id="tree-glossary-panel" aria-label="Glossary base cards">
       <div className="tree-glossary__head">
         <h2>Glossary base cards</h2>
         <p className="tree-glossary__lead">
           {GLOSSARY_BASE_CARD_TOTAL} solo cards from the glossary, one for each term on six D8 faces.
-          They start with no links. Your own trees stay separate, even when a name matches.
+          They start with no links. Tap a link to open that card and add the next connection. Your own
+          trees stay separate, even when a name matches.
         </p>
       </div>
+      {trailCards.length > 1 ? (
+        <nav className="tree-glossary__trail" aria-label="Path through linked cards" data-testid="tree-glossary-trail">
+          {trailCards.map((card, index) => (
+            <span key={`${card.id}-${index}`}>
+              {index > 0 ? <span className="tree-glossary__trail-sep" aria-hidden="true">›</span> : null}
+              {index === trailCards.length - 1 ? (
+                <span>{card.title}</span>
+              ) : (
+                <button type="button" onClick={() => openCard(card.id)}>
+                  {card.title}
+                </button>
+              )}
+            </span>
+          ))}
+        </nav>
+      ) : null}
       <fieldset className="tree-glossary__faces">
         <legend>D8 face</legend>
         {GLOSSARY_BASE_FACE_IDS.map((id) => (
           <button
             key={id}
             type="button"
-            className={id === faceId ? 'tree-glossary__face is-on' : 'tree-glossary__face'}
-            aria-pressed={id === faceId}
-            onClick={() => {
-              setFaceId(id);
-              setOpenId(null);
-              setQuery('');
-            }}
+            className={id === current.faceId ? 'tree-glossary__face is-on' : 'tree-glossary__face'}
+            aria-pressed={id === current.faceId}
+            onClick={() => setCurrent(viewForFace(id))}
           >
             {glossaryBaseFaceLabel(id)}
             <small>{counts[id]}</small>
@@ -85,11 +124,11 @@ export function GlossaryBaseCardsPanel({
         Find a card on this face
         <input
           id="tree-glossary-find"
-          value={query}
+          value={current.query}
           autoComplete="off"
           autoCapitalize="sentences"
           placeholder="Closed Guard"
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => setCurrent({ ...current, query: event.target.value })}
         />
       </label>
       {visible.length === 0 ? (
@@ -101,8 +140,16 @@ export function GlossaryBaseCardsPanel({
               key={card.id}
               card={card}
               catalog={catalog}
-              open={openId === card.id}
-              onToggle={() => setOpenId((current) => (current === card.id ? null : card.id))}
+              open={current.openId === card.id}
+              onToggle={() =>
+                setCurrent(
+                  current.openId === card.id
+                    ? { ...current, openId: null }
+                    : viewForCard(catalog, card.id, { ...current, openId: null, trail: [] }),
+                )
+              }
+              onOpenCard={openCard}
+              onShowOnDiamond={onShowOnDiamond}
               onCatalogChange={onCatalogChange}
             />
           ))}
@@ -117,21 +164,32 @@ function GlossaryCard({
   catalog,
   open,
   onToggle,
+  onOpenCard,
+  onShowOnDiamond,
   onCatalogChange,
 }: {
   card: GlossaryBaseCard;
   catalog: GlossaryBaseCatalog;
   open: boolean;
   onToggle: () => void;
+  onOpenCard: (cardId: string) => void;
+  onShowOnDiamond?: (faceId: GlossaryBaseFaceId, cardId: string) => void;
   onCatalogChange: (catalog: GlossaryBaseCatalog) => void;
 }) {
   const collisions = catalog.collisions.filter((row) => row.glossaryTermId === card.glossaryTermId);
   const source: GlossaryBaseLinkSource = { type: 'card', cardId: card.id };
   const links = linksFrom(catalog, source);
+  const incoming = linksTo(catalog, card.id);
   const titleId = `tree-gbase-${card.termKey}`;
   return (
     <li>
-      <article className="tree-glossary__card" aria-labelledby={titleId}>
+      <article
+        className={open ? 'tree-glossary__card is-focus' : 'tree-glossary__card'}
+        aria-labelledby={titleId}
+        id={`tree-gbase-card-${card.id}`}
+        data-card-id={card.id}
+        data-face-id={card.faceId}
+      >
         <button type="button" className="tree-glossary__open" onClick={onToggle} aria-expanded={open}>
           <span className="tree-glossary__title" id={titleId}>
             {card.title}
@@ -145,6 +203,16 @@ function GlossaryCard({
             ) : null}
             {card.definition ? <p className="tree-glossary__definition">{card.definition}</p> : null}
             {card.subFactor ? <p className="tree-glossary__meta">{card.subFactor}</p> : null}
+            {onShowOnDiamond && isGlossaryBaseFace(card.faceId) ? (
+              <button
+                type="button"
+                className="btn btn--ghost tree-glossary__on-diamond"
+                data-testid="tree-glossary-on-diamond"
+                onClick={() => onShowOnDiamond(card.faceId, card.id)}
+              >
+                Show on the D8 Shape
+              </button>
+            ) : null}
             {collisions.map((row) => (
               <p key={`${row.treeId}-${row.nodeId}`} className="tree-glossary__collision">
                 A step named {row.nodeTitle} already exists in {row.treeName}. This glossary card stays
@@ -157,7 +225,8 @@ function GlossaryCard({
               blockedIds={[card.glossaryTermId]}
               onCatalogChange={onCatalogChange}
             />
-            <GlossaryLinkList catalog={catalog} links={links} onCatalogChange={onCatalogChange} />
+            <GlossaryIncomingList catalog={catalog} links={incoming} onOpenCard={onOpenCard} />
+            <GlossaryLinkList catalog={catalog} links={links} onCatalogChange={onCatalogChange} onOpenCard={onOpenCard} />
           </>
         ) : null}
       </article>
@@ -165,14 +234,47 @@ function GlossaryCard({
   );
 }
 
+function GlossaryIncomingList({
+  catalog,
+  links,
+  onOpenCard,
+}: {
+  catalog: GlossaryBaseCatalog;
+  links: readonly GlossaryBaseLink[];
+  onOpenCard?: (cardId: string) => void;
+}) {
+  if (!links.length) return null;
+  return (
+    <ul className="tree-glossary__links tree-glossary__links--in" aria-label="Comes from" data-testid="tree-glossary-comes-from">
+      {links.map((link) => {
+        const name = linkSourceLabel(catalog, link.from);
+        const fromId = link.from.type === 'card' ? link.from.cardId : null;
+        return (
+          <li key={link.id}>
+            {fromId && onOpenCard ? (
+              <button type="button" className="tree-glossary__link" onClick={() => onOpenCard(fromId)}>
+                Comes from {name}
+              </button>
+            ) : (
+              <span>Comes from {name}</span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export function GlossaryLinkList({
   catalog,
   links,
   onCatalogChange,
+  onOpenCard,
 }: {
   catalog: GlossaryBaseCatalog;
   links: readonly GlossaryBaseLink[];
   onCatalogChange: (catalog: GlossaryBaseCatalog) => void;
+  onOpenCard?: (cardId: string) => void;
 }) {
   if (!links.length) return null;
   return (
@@ -182,10 +284,22 @@ export function GlossaryLinkList({
         const name = target?.title ?? 'a removed card';
         return (
           <li key={link.id}>
-            <span>
-              {link.relation} {name}
-              {link.label ? ` · ${link.label}` : ''}
-            </span>
+            {target && onOpenCard ? (
+              <button
+                type="button"
+                className="tree-glossary__link"
+                data-testid="tree-glossary-branch"
+                onClick={() => onOpenCard(target.id)}
+              >
+                {link.relation} {name}
+                {link.label ? ` · ${link.label}` : ''}
+              </button>
+            ) : (
+              <span>
+                {link.relation} {name}
+                {link.label ? ` · ${link.label}` : ''}
+              </span>
+            )}
             <button
               type="button"
               className="btn btn--ghost"
