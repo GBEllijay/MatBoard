@@ -32,6 +32,7 @@ installGlobal('document', view.document);
 installGlobal('localStorage', view.localStorage);
 installGlobal('sessionStorage', view.sessionStorage);
 installGlobal('HTMLElement', view.HTMLElement);
+installGlobal('HTMLInputElement', view.HTMLInputElement);
 installGlobal('navigator', view.navigator);
 installGlobal('Event', view.Event);
 installGlobal('CustomEvent', view.CustomEvent);
@@ -96,6 +97,53 @@ function setValue(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
   const key = Object.keys(el).find((name) => name.startsWith('__reactProps'));
   const props = key ? (el as unknown as Record<string, { onChange?: (event: unknown) => void }>)[key] : null;
   act(() => props?.onChange?.({ target: el, currentTarget: el }));
+}
+
+if (typeof URL.createObjectURL !== 'function') {
+  URL.createObjectURL = () => 'blob:image-rights-preview';
+  URL.revokeObjectURL = () => {};
+}
+
+const TINY_PNG = Uint8Array.from(
+  Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  ),
+);
+
+function reactProps(node: Element): Record<string, (event: unknown) => void> | null {
+  const key = Object.keys(node).find((name) => name.startsWith('__reactProps'));
+  return key ? (node as unknown as Record<string, Record<string, (event: unknown) => void>>)[key] : null;
+}
+
+async function pickAcademyLogo(host: ParentNode, file: File) {
+  const input = host.querySelector('.gym-id__file') as HTMLInputElement;
+  assert.ok(input);
+  const props = reactProps(input);
+  await act(async () => {
+    const target = { files: [file], value: file.name };
+    props?.onChange?.({ target, currentTarget: target });
+  });
+}
+
+function rightsUse(): HTMLButtonElement {
+  return document.querySelector('[data-testid="image-rights-use"]') as HTMLButtonElement;
+}
+
+async function acknowledgeAndUse() {
+  const box = document.querySelector('[data-testid="image-rights-owned"]') as HTMLInputElement;
+  assert.ok(box, 'expected rights checkbox after a file pick');
+  assert.equal(rightsUse().disabled, true);
+  await act(async () => {
+    box.click();
+    reactProps(box)?.onChange?.({ target: { checked: true } });
+  });
+  assert.equal(box.checked, true);
+  assert.equal(rightsUse().disabled, false);
+  await act(async () => {
+    rightsUse().click();
+    await new Promise((resolve) => setTimeout(resolve, 40));
+  });
 }
 
 test('academy name keeps a trailing space while typing and trims when the field blurs', async () => {
@@ -496,4 +544,47 @@ test('a non-Cloud owner and a signed-in seat do not get the Cloud metric', async
   await seated.unmount();
   signOutInstructorSeat();
   clearOwnerTestGrant();
+});
+
+test('academy logo upload asks for rights only after a file is picked, and Use stays off until the box is checked', async () => {
+  blankProfile();
+  const sheet = await renderSheet();
+  await openEditor(sheet.host);
+  assert.equal(sheet.host.textContent?.includes('I own the rights'), false);
+  assert.equal(document.querySelector('[data-testid="image-rights-confirm"]'), null);
+  assert.match(sheet.host.textContent ?? '', /Upload a gym logo/);
+  assert.match(sheet.host.textContent ?? '', /Tap to upload/);
+
+  await pickAcademyLogo(sheet.host, new File([TINY_PNG], 'crest.png', { type: 'image/png' }));
+  const confirm = document.querySelector('[data-testid="image-rights-confirm"]');
+  assert.ok(confirm);
+  assert.match(confirm?.textContent ?? '', /I own the rights to this image or have permission to use it/);
+  assert.equal(rightsUse().disabled, true);
+  assert.equal(readGymLogo(), null);
+  assert.match(sheet.host.textContent ?? '', /Upload a gym logo/);
+
+  await acknowledgeAndUse();
+  assert.equal(document.querySelector('[data-testid="image-rights-confirm"]'), null);
+  assert.equal(sheet.host.textContent?.includes('I own the rights'), false);
+  const saved = readGymLogo();
+  assert.ok(saved);
+  assert.match(saved ?? '', /^data:image\/png;base64,/);
+  assert.equal(sheet.host.querySelector('[data-gym-logo="set"] img')?.getAttribute('src'), saved);
+  await sheet.unmount();
+});
+
+test('canceling the academy logo rights sheet leaves the logo unsaved', async () => {
+  blankProfile();
+  const sheet = await renderSheet();
+  await openEditor(sheet.host);
+  await pickAcademyLogo(sheet.host, new File([TINY_PNG], 'crest.png', { type: 'image/png' }));
+  assert.ok(document.querySelector('[data-testid="image-rights-confirm"]'));
+  await act(async () => {
+    const cancel = [...document.querySelectorAll('.sheet--image-rights button')].find((node) => node.textContent === 'Cancel') as HTMLButtonElement;
+    cancel?.click();
+  });
+  assert.equal(document.querySelector('[data-testid="image-rights-confirm"]'), null);
+  assert.equal(readGymLogo(), null);
+  assert.match(sheet.host.textContent ?? '', /Upload a gym logo/);
+  await sheet.unmount();
 });
