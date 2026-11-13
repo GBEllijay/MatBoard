@@ -2684,8 +2684,8 @@ input.sr-only.student-film-file {
   cursor: pointer;
   font-weight: 600;
   min-height: 44px;
-  display: flex;
-  align-items: center;
+  display: list-item;
+  padding: 0.35rem 0;
 }
 
 .student-share-contents p {
