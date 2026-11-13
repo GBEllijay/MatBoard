@@ -45,6 +45,8 @@ import {
   type TechniqueTreeDoc,
   type TreeChildKind,
 } from '../lib/techniqueTreeStore';
+import { ensureGlossaryBaseCards, type GlossaryBaseCatalog } from '../lib/glossaryBaseCards';
+import { GlossaryBaseCardsPanel } from './TechniqueTreeGlossary';
 
 export function TechniqueTreePage() {
   const navigate = useNavigate();
@@ -60,6 +62,9 @@ export function TechniqueTreePage() {
     [roster],
   );
   const [archive, setArchive] = useState<TechniqueTreeArchive>(() => loadTechniqueArchive());
+  const [glossaryCatalog, setGlossaryCatalog] = useState<GlossaryBaseCatalog>(
+    () => ensureGlossaryBaseCards(loadTechniqueArchive()).catalog,
+  );
   const doc = activeTree(archive);
   const [note, setNote] = useState('');
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -75,6 +80,10 @@ export function TechniqueTreePage() {
   useEffect(() => {
     if (!nameFocused.current) setName(doc.name);
   }, [doc.name]);
+
+  useEffect(() => {
+    setGlossaryCatalog(ensureGlossaryBaseCards(archive).catalog);
+  }, [archive]);
 
   useEffect(() => {
     if (!requestedTreeId) return;
@@ -312,6 +321,8 @@ export function TechniqueTreePage() {
           {note}
         </p>
       ) : null}
+
+      <GlossaryBaseCardsPanel catalog={glossaryCatalog} />
 
       <div className="tree__plan">
         {showLibrary ? (
