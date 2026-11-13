@@ -36,8 +36,6 @@ test('connect suggestions filter by the typed prefix and include the face', () =
   assert.ok(matches.length <= 6);
   assert.ok(matches.some((match) => /triangle/i.test(match.term.name)));
   for (const match of matches) {
-    assert.notEqual(match.term.faceId, 'mindset');
-    assert.notEqual(match.term.faceId, 'conditioning');
     assert.match(match.term.id, /^gl\./);
   }
   const closed = suggestGlossaryBaseCards('closed gu');
@@ -51,7 +49,15 @@ test('connect suggestions filter by the typed prefix and include the face', () =
 
 test('an alias match offers the glossary headword and names the alias', () => {
   const gas = suggestGlossaryBaseCards('gas tank');
-  assert.deepEqual(gas, []);
+  assert.equal(gas[0].via, 'alias');
+  assert.equal(gas[0].term.name, 'Stamina');
+  assert.match(gas[0].matchedOn, /gas tank/i);
+  assert.equal(gas[0].term.faceId, 'conditioning');
+
+  const breath = suggestGlossaryBaseCards('breath control');
+  assert.equal(breath[0].via, 'alias');
+  assert.equal(breath[0].term.name, 'Breathing');
+  assert.equal(breath[0].term.faceId, 'mindset');
 
   const upa = suggestGlossaryBaseCards('upa');
   assert.equal(upa.length > 0, true);

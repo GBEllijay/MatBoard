@@ -165,3 +165,22 @@ test('diamond zoom stays in range and reset returns to the starting view', () =>
   assert.ok(wheeled.scale > 1);
   assert.deepEqual(resetTreeD8View(), start);
 });
+
+test('Mindset and Conditioning cards can be linked and drawn on the diamond', () => {
+  storage.clear();
+  const seeded = ensureGlossaryBaseCards();
+  const breath = findBaseCard(seeded.catalog, 'breathing');
+  const stamina = findBaseCard(seeded.catalog, 'stamina');
+  const closed = findBaseCard(seeded.catalog, 'closed guard');
+  assert.ok(breath && stamina && closed);
+  assert.equal(breath.faceId, 'mindset');
+  assert.equal(stamina.faceId, 'conditioning');
+  const first = addGlossaryBaseLink(seeded.catalog, { type: 'card', cardId: breath.id }, closed.id, 'branch');
+  const second = addGlossaryBaseLink(first.catalog, { type: 'card', cardId: closed.id }, stamina.id, 'branch');
+  assert.equal(second.status, 'linked');
+  const on = visibleCatalogLinkSegments(second.catalog, true);
+  assert.ok(on.some((line) => line.fromFaceId === 'mindset' && line.toFaceId === 'guard-control'));
+  assert.ok(on.some((line) => line.fromFaceId === 'guard-control' && line.toFaceId === 'conditioning'));
+  assert.equal(visibleCatalogLinkSegments(second.catalog, false).length, 0);
+  assert.ok(treeD8AnchorFor('mindset') && treeD8AnchorFor('conditioning'));
+});

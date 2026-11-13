@@ -8,6 +8,7 @@ import { useRef, useState, type PointerEvent, type WheelEvent } from 'react';
 import {
   cardsForFace,
   glossaryBaseFaceLabel,
+  isGlossaryBaseFace,
   type GlossaryBaseCatalog,
   type GlossaryBaseFaceId,
 } from '../lib/glossaryBaseCards.ts';
@@ -114,15 +115,12 @@ export function TechniqueTreeDiamond({
 
   const tapFace = (faceId: string) => {
     if (drag.current?.moved) return;
-    if (!isGlossaryFace(faceId)) {
-      setStatus(`${glossaryBaseFaceLabel(faceId)} has no glossary base cards in this catalog.`);
-      return;
-    }
+    if (!isGlossaryBaseFace(faceId)) return;
     setStatus('');
     onOpenFace(faceId);
   };
 
-  const faceCards = isGlossaryFace(activeFaceId) ? cardsForFace(catalog.cards, activeFaceId) : [];
+  const faceCards = activeFaceId && isGlossaryBaseFace(activeFaceId) ? cardsForFace(catalog.cards, activeFaceId) : [];
   const linkedOnFace = faceCards.filter((card) =>
     catalog.links.some(
       (link) =>
@@ -207,12 +205,12 @@ export function TechniqueTreeDiamond({
             return (
               <g key={face.id} data-area={face.id}>
                 <polygon
-                  className={on ? 'tree-d8__face is-on' : face.hasGlossaryCards ? 'tree-d8__face' : 'tree-d8__face is-empty'}
+                  className={on ? 'tree-d8__face is-on' : 'tree-d8__face'}
                   points={points}
                   data-testid={`tree-d8-face-${face.id}`}
                   role="button"
                   tabIndex={0}
-                  aria-label={`${face.label}${face.hasGlossaryCards ? '' : ', no glossary cards'}`}
+                  aria-label={face.label}
                   aria-pressed={on}
                   onClick={() => tapFace(face.id)}
                   onKeyDown={(event) => {
@@ -249,7 +247,7 @@ export function TechniqueTreeDiamond({
           {status}
         </p>
       ) : null}
-      {isGlossaryFace(activeFaceId) ? (
+      {activeFaceId && isGlossaryBaseFace(activeFaceId) ? (
         <div className="tree-d8__cards" data-testid="tree-d8-face-list">
           <p>
             {glossaryBaseFaceLabel(activeFaceId)} · {faceCards.length} cards. Tap a name to open it.
@@ -280,13 +278,3 @@ export function TechniqueTreeDiamond({
 const FRONT_LABEL_X = 100;
 const BACK_LABEL_X = 300;
 
-function isGlossaryFace(faceId: string | null): faceId is GlossaryBaseFaceId {
-  return (
-    faceId === 'guard-control' ||
-    faceId === 'passing' ||
-    faceId === 'sweeps' ||
-    faceId === 'takedowns' ||
-    faceId === 'escapes-defense' ||
-    faceId === 'submissions'
-  );
-}

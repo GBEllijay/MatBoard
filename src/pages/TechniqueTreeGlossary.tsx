@@ -1,8 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useGlossarySuggest } from '../glossary/useGlossarySuggest.ts';
-import { GLOSSARY } from '../lib/glossary.ts';
 import {
-  EXCLUDED_GLOSSARY_FACES,
   GLOSSARY_BASE_CARD_TOTAL,
   GLOSSARY_BASE_FACE_IDS,
   cardsForFace,
@@ -33,10 +31,6 @@ import {
   type GlossaryMatch,
 } from '../lib/glossaryMatch.ts';
 import './techniqueTreeGlossary.css';
-
-const EXCLUDED_TERM_IDS = GLOSSARY.filter((term) =>
-  (EXCLUDED_GLOSSARY_FACES as readonly string[]).includes(term.faceId),
-).map((term) => `gl.${term.key}`);
 
 export function GlossaryBaseCardsPanel({
   catalog,
@@ -84,7 +78,7 @@ export function GlossaryBaseCardsPanel({
       <div className="tree-glossary__head">
         <h2>Glossary base cards</h2>
         <p className="tree-glossary__lead">
-          {GLOSSARY_BASE_CARD_TOTAL} solo cards from the glossary, one for each term on six D8 faces.
+          {GLOSSARY_BASE_CARD_TOTAL} solo cards from the glossary, one for each term on all eight D8 faces.
           They start with no links. Tap a link to open that card and add the next connection. Your own
           trees stay separate, even when a name matches.
         </p>
@@ -335,7 +329,7 @@ export function TreeConnectField({
   const [ready, setReady] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [status, setStatus] = useState('');
-  const blocked = useMemo(() => [...EXCLUDED_TERM_IDS, ...blockedIds], [blockedIds]);
+  const blocked = useMemo(() => [...blockedIds], [blockedIds]);
   const suggestion = useGlossarySuggest(value, caret, blocked);
   const visible = suggestion && suggestion.query !== hiddenQuery ? suggestion : null;
   const span = glossaryQuerySpans(value, caret)[0];

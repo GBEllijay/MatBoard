@@ -1,9 +1,9 @@
 /**
  * Built-in Technique Tree glossary base cards.
  *
- * One solo card per glossary term on six D8 faces. Mindset and Conditioning
- * are left out. Cards start with no parents, children, or links. The instructor
- * adds links later, including by picking a glossary suggestion.
+ * One solo card per glossary term on all eight D8 faces. Cards start with no
+ * parents, children, or links. The instructor adds links later, including by
+ * picking a glossary suggestion.
  *
  * Storage key: `matboard.coach.techniqueTree.glossaryBase.v1`
  * This module never reads or writes `matboard.coach.techniqueTree.v1`, so the
@@ -26,6 +26,8 @@ export const GLOSSARY_BASE_FACE_IDS = [
   'takedowns',
   'escapes-defense',
   'submissions',
+  'mindset',
+  'conditioning',
 ] as const;
 
 export type GlossaryBaseFaceId = (typeof GLOSSARY_BASE_FACE_IDS)[number];
@@ -38,11 +40,11 @@ export const GLOSSARY_BASE_FACE_COUNTS: Record<GlossaryBaseFaceId, number> = {
   takedowns: 42,
   'escapes-defense': 28,
   submissions: 44,
+  mindset: 8,
+  conditioning: 6,
 };
 
-export const GLOSSARY_BASE_CARD_TOTAL = 231;
-
-export const EXCLUDED_GLOSSARY_FACES = ['mindset', 'conditioning'] as const;
+export const GLOSSARY_BASE_CARD_TOTAL = 245;
 
 export function isGlossaryBaseFace(faceId: string): faceId is GlossaryBaseFaceId {
   return (GLOSSARY_BASE_FACE_IDS as readonly string[]).includes(faceId);
@@ -203,9 +205,7 @@ export function buildGlossaryBaseCards(): GlossaryBaseBuild {
       continue;
     }
     if (!isGlossaryBaseFace(term.faceId)) {
-      if (!(EXCLUDED_GLOSSARY_FACES as readonly string[]).includes(term.faceId)) {
-        skipped.push({ term: name, faceId: term.faceId, reason: 'odd-face' });
-      }
+      skipped.push({ term: name, faceId: term.faceId, reason: 'odd-face' });
       continue;
     }
     if (!term.key || seenKeys.has(term.key)) {
@@ -237,6 +237,8 @@ export function countCardsByFace(cards: readonly GlossaryBaseCard[]): Record<Glo
     takedowns: 0,
     'escapes-defense': 0,
     submissions: 0,
+    mindset: 0,
+    conditioning: 0,
   } satisfies Record<GlossaryBaseFaceId, number>;
   for (const card of cards) {
     counts[card.faceId] += 1;
@@ -332,9 +334,9 @@ export function linksFrom(
 
 /**
  * Suggestions for the Technique Tree connect field.
- * Reuses matchGlossary (prefix, alias, and light fuzzy) on the 231 terms that
- * have a base card. Mindset and Conditioning are not offered, because there is
- * no card to link to. Limit and scoring stay the glossary defaults (6 results).
+ * Reuses matchGlossary (prefix, alias, and light fuzzy) on every glossary term
+ * that has a base card, including Mindset and Conditioning. Limit and scoring
+ * stay the glossary defaults (6 results).
  */
 export function suggestGlossaryBaseCards(
   query: string,

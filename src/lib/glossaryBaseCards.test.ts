@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { GLOSSARY } from './glossary.ts';
 import {
-  EXCLUDED_GLOSSARY_FACES,
   GLOSSARY_BASE_CARD_TOTAL,
   GLOSSARY_BASE_FACE_COUNTS,
   GLOSSARY_BASE_FACE_IDS,
@@ -43,7 +42,7 @@ Object.defineProperty(globalThis, 'localStorage', {
   configurable: true,
 });
 
-test('six faces have 75, 44, 42, 28, 21, and 21 glossary base cards', () => {
+test('eight faces have 75, 44, 42, 28, 21, 21, 8, and 6 glossary base cards', () => {
   const { cards, skipped } = buildGlossaryBaseCards();
   const counts = countCardsByFace(cards);
   assert.equal(cards.length, GLOSSARY_BASE_CARD_TOTAL);
@@ -53,33 +52,40 @@ test('six faces have 75, 44, 42, 28, 21, and 21 glossary base cards', () => {
   assert.equal(counts['escapes-defense'], 28);
   assert.equal(counts.passing, 21);
   assert.equal(counts.sweeps, 21);
+  assert.equal(counts.mindset, 8);
+  assert.equal(counts.conditioning, 6);
   assert.deepEqual(counts, GLOSSARY_BASE_FACE_COUNTS);
   assert.equal(
     GLOSSARY_BASE_FACE_IDS.reduce((sum, face) => sum + counts[face], 0),
-    231,
+    245,
   );
   assert.equal(skipped.length, 0);
 });
 
-test('Mindset and Conditioning terms never become base cards', () => {
+test('Mindset and Conditioning terms become solo base cards', () => {
   const { cards } = buildGlossaryBaseCards();
-  const excluded = GLOSSARY.filter((term) =>
-    (EXCLUDED_GLOSSARY_FACES as readonly string[]).includes(term.faceId),
-  );
-  assert.equal(excluded.length, 14);
-  assert.equal(excluded.filter((term) => term.faceId === 'mindset').length, 8);
-  assert.equal(excluded.filter((term) => term.faceId === 'conditioning').length, 6);
-  for (const term of excluded) {
-    assert.equal(
-      cards.some((card) => card.termKey === term.key || card.title === term.term),
-      false,
-      term.term,
-    );
+  const mindset = [
+    'Breathing',
+    'Coachability',
+    'Composure',
+    'Ego',
+    'Open mind',
+    'Game plan',
+    'Intentionality',
+    'Preparation',
+  ];
+  const conditioning = ['Flexibility', 'Power', 'Recovery', 'Speed', 'Stamina', 'Warm-Up'];
+  const mindsetCards = cards.filter((card) => card.faceId === 'mindset');
+  const conditioningCards = cards.filter((card) => card.faceId === 'conditioning');
+  assert.equal(mindsetCards.length, 8);
+  assert.equal(conditioningCards.length, 6);
+  assert.deepEqual(mindsetCards.map((card) => card.title).sort(), [...mindset].sort());
+  assert.deepEqual(conditioningCards.map((card) => card.title).sort(), [...conditioning].sort());
+  for (const card of [...mindsetCards, ...conditioningCards]) {
+    assert.equal(card.id, `gbase.${card.termKey}`);
+    assert.equal(card.glossaryTermId, `gl.${card.termKey}`);
+    assert.equal(card.subFactor, GLOSSARY.find((term) => term.key === card.termKey)?.subFactor);
   }
-  assert.equal(
-    cards.some((card) => card.faceId === 'mindset' || (card.faceId as string) === 'conditioning'),
-    false,
-  );
 });
 
 test('every built card is a solo base with a glossary id and face, and there are no edges', () => {
@@ -107,27 +113,27 @@ test('every built card is a solo base with a glossary id and face, and there are
   storage.clear();
   const seeded = ensureGlossaryBaseCards();
   assert.equal(seeded.catalog.links.length, 0);
-  assert.equal(seeded.created, 231);
+  assert.equal(seeded.created, 245);
 });
 
 test('seeding is idempotent and does not duplicate cards', () => {
   storage.clear();
   const first = ensureGlossaryBaseCards();
-  assert.equal(first.catalog.cards.length, 231);
-  assert.equal(first.created, 231);
+  assert.equal(first.catalog.cards.length, 245);
+  assert.equal(first.created, 245);
   assert.equal(first.reused, 0);
   assert.equal(first.written, true);
   const snapshot = localStorage.getItem(GLOSSARY_BASE_STORAGE_KEY);
   assert.ok(snapshot);
 
   const second = ensureGlossaryBaseCards();
-  assert.equal(second.catalog.cards.length, 231);
+  assert.equal(second.catalog.cards.length, 245);
   assert.equal(second.created, 0);
-  assert.equal(second.reused, 231);
+  assert.equal(second.reused, 245);
   assert.equal(second.written, false);
   assert.equal(localStorage.getItem(GLOSSARY_BASE_STORAGE_KEY), snapshot);
   assert.equal(second.catalog.cards[0].id, first.catalog.cards[0].id);
-  assert.equal(loadGlossaryBaseCatalog().cards.length, 231);
+  assert.equal(loadGlossaryBaseCatalog().cards.length, 245);
 });
 
 test('seeding leaves an existing user tree untouched and does not merge same-name steps', () => {
@@ -140,7 +146,7 @@ test('seeding leaves an existing user tree untouched and does not merge same-nam
   assert.ok(treeJson);
 
   const seeded = ensureGlossaryBaseCards(saved.archive);
-  assert.equal(seeded.catalog.cards.length, 231);
+  assert.equal(seeded.catalog.cards.length, 245);
   assert.equal(localStorage.getItem(TECHNIQUE_TREE_STORAGE_KEY), treeJson);
   const userAgain = JSON.parse(treeJson);
   assert.equal(userAgain.trees.length, 1);
@@ -189,13 +195,53 @@ test('a missing card is restored on the next seed without dropping instructor li
     label: 'keep me',
   };
   localStorage.setItem(GLOSSARY_BASE_STORAGE_KEY, JSON.stringify(trimmed));
-  assert.equal(loadGlossaryBaseCatalog().cards.length, 230);
+  assert.equal(loadGlossaryBaseCatalog().cards.length, 244);
 
   const restored = ensureGlossaryBaseCards();
-  assert.equal(restored.catalog.cards.length, 231);
+  assert.equal(restored.catalog.cards.length, 245);
   assert.equal(restored.created, 1);
   assert.ok(restored.catalog.cards.some((card) => card.termKey === target.termKey));
   assert.equal(restored.catalog.links.length, 1);
   assert.equal(restored.catalog.links[0].id, 'glink-keep');
   assert.equal(restored.catalog.links[0].label, 'keep me');
+});
+
+test('an older 231-card catalog gains the 14 Mindset and Conditioning cards without dropping links', () => {
+  storage.clear();
+  const built = buildGlossaryBaseCards();
+  const older = built.cards.filter((card) => card.faceId !== 'mindset' && card.faceId !== 'conditioning');
+  assert.equal(older.length, 231);
+  const from = older.find((card) => card.termKey === 'scissor-sweep');
+  const to = older.find((card) => card.termKey === 'mount');
+  assert.ok(from && to);
+  const kept = {
+    version: 1 as const,
+    cards: older,
+    links: [
+      {
+        id: 'glink-keep-chain',
+        from: { type: 'card' as const, cardId: from.id },
+        toCardId: to.id,
+        relation: 'branch' as const,
+        label: 'keep the chain',
+      },
+    ],
+    collisions: [],
+    skipped: [],
+  };
+  localStorage.setItem(GLOSSARY_BASE_STORAGE_KEY, JSON.stringify(kept));
+  assert.equal(loadGlossaryBaseCatalog().cards.length, 231);
+  assert.equal(loadGlossaryBaseCatalog().links.length, 1);
+
+  const next = ensureGlossaryBaseCards();
+  assert.equal(next.catalog.cards.length, 245);
+  assert.equal(next.created, 14);
+  assert.equal(next.catalog.cards.filter((card) => card.faceId === 'mindset').length, 8);
+  assert.equal(next.catalog.cards.filter((card) => card.faceId === 'conditioning').length, 6);
+  assert.equal(next.catalog.links.length, 1);
+  assert.equal(next.catalog.links[0].id, 'glink-keep-chain');
+  assert.equal(next.catalog.links[0].label, 'keep the chain');
+  assert.equal(next.catalog.links[0].from.type, 'card');
+  if (next.catalog.links[0].from.type === 'card') assert.equal(next.catalog.links[0].from.cardId, from.id);
+  assert.equal(next.catalog.links[0].toCardId, to.id);
 });

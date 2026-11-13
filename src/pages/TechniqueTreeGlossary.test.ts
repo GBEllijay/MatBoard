@@ -188,3 +188,42 @@ test('the technique-link toggle draws two lines for the scissor chain and none w
   assert.equal(after, before);
   unmount(page);
 });
+
+test('tapping the Mindset face lists its eight cards', () => {
+  view.localStorage.clear();
+  const seeded = ensureGlossaryBaseCards();
+  assert.equal(seeded.catalog.cards.filter((card) => card.faceId === 'mindset').length, 8);
+  let faceId = 'guard-control';
+  const page = mount(
+    createElement(TechniqueTreeDiamond, {
+      catalog: seeded.catalog,
+      activeFaceId: faceId,
+      openCardId: null,
+      onOpenFace: (id: string) => {
+        faceId = id;
+      },
+      onOpenCard: () => undefined,
+    }),
+  );
+  click(page.host, '[data-testid="tree-d8-face-mindset"]');
+  assert.equal(faceId, 'mindset');
+  act(() => {
+    page.root.render(
+      createElement(TechniqueTreeDiamond, {
+        catalog: seeded.catalog,
+        activeFaceId: 'mindset',
+        openCardId: null,
+        onOpenFace: (id: string) => {
+          faceId = id;
+        },
+        onOpenCard: () => undefined,
+      }),
+    );
+  });
+  const list = page.host.querySelector('[data-testid="tree-d8-face-list"]')?.textContent ?? '';
+  assert.match(list, /Mindset/);
+  assert.match(list, /8 cards/);
+  assert.match(list, /Breathing/);
+  assert.match(list, /Coachability/);
+  unmount(page);
+});
