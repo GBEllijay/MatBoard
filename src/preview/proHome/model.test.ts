@@ -68,7 +68,11 @@ test('preview hubs put White, then Student Edition, above the renamed purple hub
   assert.match(readFileSync('src/preview/proHome/proHome.css', 'utf8'), /\.php-pro \{[^}]*padding-top:\s*calc\(0\.5rem \+ var\(--safe-t/);
   assert.match(
     readFileSync('src/components/gymSheet.css', 'utf8'),
-    /\.home--pro \.home__inner \{[^}]*padding-top:\s*calc\(var\(--mark-home\)/,
+    /\.home--pro \.home__inner \{[^}]*padding-top:\s*calc\(0\.5rem \+ var\(--safe-t\)/,
+  );
+  assert.doesNotMatch(
+    readFileSync('src/components/gymSheet.css', 'utf8'),
+    /padding-top:\s*calc\(var\(--mark-home\)/,
   );
   assert.deepEqual(hubs.slice(3).map((hub) => hub.title), PRO_HUBS.slice(1).map((hub) => hub.title));
   assert.equal(referenceProHubs()[0]?.title, MEDIA_CONSOLE_NAME);
