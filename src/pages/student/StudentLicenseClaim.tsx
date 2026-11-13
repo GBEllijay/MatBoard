@@ -82,12 +82,14 @@ export function StudentLicenseClaimPage({
   code,
   gymName,
   showQr = false,
+  initialEmail = '',
 }: {
   code: string;
   gymName: string;
   showQr?: boolean;
+  initialEmail?: string;
 }) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail.trim());
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState<{ email: string; cloud: boolean; gym: string; keptHigher: boolean } | null>(null);
@@ -131,7 +133,10 @@ export function StudentLicenseClaimPage({
             />
           ) : (
             <form onSubmit={submit}>
-              <p>Your gym gave you a free Student Edition license. Enter the email you can open on this phone.</p>
+              <p>
+                Your gym gave you a free Student Edition license. Confirm the email you can open on this
+                phone. If you use a different address, both can restore this license.
+              </p>
               {showQr && valid ? <JoinQr link={joinLink} /> : null}
               {!valid ? <p role="alert">This link is not a free Student license.</p> : null}
               <label>
@@ -168,5 +173,6 @@ export function StudentJoinPage() {
   const [params] = useSearchParams();
   const code = params.get('code') ?? params.get('invite') ?? '';
   const gymName = params.get('gym') ?? '';
-  return <StudentLicenseClaimPage code={code} gymName={gymName} showQr />;
+  const initialEmail = params.get('email') ?? '';
+  return <StudentLicenseClaimPage code={code} gymName={gymName} showQr initialEmail={initialEmail} />;
 }

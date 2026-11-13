@@ -204,7 +204,7 @@ test('the owner issues an invite and the coach submits through the gym folder', 
     localStorage.removeItem('matboard.pro.instructorSeatSession.v1');
   });
   await page.goto('/instructors');
-  await page.getByLabel('Instructor email').fill('coach@gym.test');
+  await page.getByLabel('Email').fill('coach@gym.test');
   await page.getByRole('radio', { name: 'Coach, Coach Unlimited. Lesson plans, daily videos, and uploads' }).click();
   const selected = page.getByRole('radio', { name: 'Coach, Coach Unlimited. Lesson plans, daily videos, and uploads' });
   await expect(selected).toHaveClass(/binder-pick--on/);
@@ -217,7 +217,7 @@ test('the owner issues an invite and the coach submits through the gym folder', 
 
   await connectGymDrive(page);
   await page.reload();
-  await page.getByLabel('Instructor email').fill('second@gym.test');
+  await page.getByLabel('Email').fill('second@gym.test');
   await page.getByRole('button', { name: 'Issue invite' }).click();
   await expect(page.getByText('Saved in the gym Google Drive folder.')).toBeVisible();
   expect(uploads.some((body) => body.includes('"kind":"invite"') && !/blob|base64/.test(body))).toBe(true);

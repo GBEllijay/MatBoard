@@ -14,6 +14,7 @@ export type StudentLicenseRow = {
   status: string;
   createdAt: string;
   claimed: boolean;
+  deviceBound?: boolean;
   code?: string;
   invite?: string;
 };
@@ -86,12 +87,13 @@ export async function listStudentLicenses(fetcher: typeof fetch = fetch): Promis
 }
 
 export async function issueStudentLicense(
+  email: string,
   fetcher: typeof fetch = fetch,
 ): Promise<{ ok: true; code: string; invite?: string; left: number; cap: number } | StudentLicenseFailure> {
   const token = readToken();
   if (!token) return { ok: false, error: 'Sign in on this device to issue a free Student license.' };
   try {
-    const { status, body } = await postJson('/api/student-licenses/issue', { token }, fetcher);
+    const { status, body } = await postJson('/api/student-licenses/issue', { token, email }, fetcher);
     if (status >= 400 || body.ok !== true || typeof body.code !== 'string') {
       return failure(body, 'Could not issue a free Student license.');
     }
@@ -119,6 +121,26 @@ export async function revokeStudentLicense(
     return { ok: true, left: Number(body.left ?? 0), cap: Number(body.cap ?? 5), claimed: body.claimed === true };
   } catch {
     return { ok: false, error: 'Could not revoke that code.' };
+  }
+}
+
+export async function resetStudentLicense(
+  code: string,
+  fetcher: typeof fetch = fetch,
+): Promise<{ ok: true; left: number; cap: number; invite?: string } | StudentLicenseFailure> {
+  const token = readToken();
+  if (!token) return { ok: false, error: 'Sign in on this device to reset a free Student license.' };
+  try {
+    const { status, body } = await postJson('/api/student-licenses/reset', { token, code }, fetcher);
+    if (status >= 400 || body.ok !== true) return failure(body, 'Could not reset that code.');
+    return {
+      ok: true,
+      left: Number(body.left ?? 0),
+      cap: Number(body.cap ?? 5),
+      ...(typeof body.invite === 'string' ? { invite: body.invite } : {}),
+    };
+  } catch {
+    return { ok: false, error: 'Could not reset that code.' };
   }
 }
 

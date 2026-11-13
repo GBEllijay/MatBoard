@@ -3,6 +3,7 @@ import { useGymLogo, useGymName } from '../hooks/useGymBrand';
 import {
   issueStudentLicense,
   listStudentLicenses,
+  resetStudentLicense,
   revokeStudentLicense,
   type HalfOffPointer,
   type StudentLicenseRow,
@@ -163,21 +164,48 @@ function IssuedCode({
   row,
   canRevoke,
   onRevoke,
+  canReset,
+  onReset,
+  email = '',
 }: {
   row: StudentLicenseRow;
   canRevoke: boolean;
   onRevoke: (code: string) => void;
+  canReset?: boolean;
+  onReset?: (code: string) => void;
+  email?: string;
 }) {
   const gym = useGymName();
   const token = row.invite || row.code || '';
-  const link = token ? studentInviteJoinUrl(origin(), token, gym) : '';
-  const [confirm, setConfirm] = useState(false);
+  const link = token ? studentInviteJoinUrl(origin(), token, gym, email) : '';
+  const showQr = Boolean(link && (row.status === 'issued' || (row.status === 'claimed' && !row.deviceBound)));
+  const [confirm, setConfirm] = useState<'revoke' | 'reset' | null>(null);
   return (
     <div className="student-license__row">
-      <p>{row.status === 'claimed' ? 'Claimed' : row.status === 'revoked' ? 'Revoked' : 'Ready to scan'}</p>
-      {row.status === 'issued' && link ? <LicenseQr link={link} caption="Student Edition only" actions /> : null}
+      <p>{row.status === 'claimed' ? (row.deviceBound ? 'Claimed' : 'Claimed · ready for a new device') : row.status === 'revoked' ? 'Revoked' : 'Ready to scan'}</p>
+      {showQr ? <LicenseQr link={link} caption="Student Edition only" actions /> : null}
+      {canReset && row.status === 'claimed' && row.deviceBound && row.code ? (
+        confirm === 'reset' ? (
+          <div className="student-license__confirm">
+            <p>
+              Release this license from the current device? The student keeps Student Edition and can scan the same
+              code on a new phone. This does not use another license.
+            </p>
+            <button type="button" className="btn" onClick={() => onReset?.(row.code ?? '')} disabled={!row.code}>
+              Reset for a new device
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setConfirm(null)}>
+              Keep device
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="btn btn--ghost" onClick={() => setConfirm('reset')}>
+            Reset for a new device
+          </button>
+        )
+      ) : null}
       {canRevoke && row.status !== 'revoked' && (row.code || row.claimed) ? (
-        confirm ? (
+        confirm === 'revoke' ? (
           <div className="student-license__confirm">
             <p>
               {row.claimed
@@ -187,12 +215,12 @@ function IssuedCode({
             <button type="button" className="btn" onClick={() => onRevoke(row.code ?? '')} disabled={!row.code}>
               Revoke and return to the pool
             </button>
-            <button type="button" className="btn btn--ghost" onClick={() => setConfirm(false)}>
+            <button type="button" className="btn btn--ghost" onClick={() => setConfirm(null)}>
               Keep code
             </button>
           </div>
-        ) : (
-          <button type="button" className="btn btn--ghost" onClick={() => setConfirm(true)}>
+        ) : confirm === 'reset' ? null : (
+          <button type="button" className="btn btn--ghost" onClick={() => setConfirm('revoke')}>
             Revoke
           </button>
         )
@@ -201,14 +229,30 @@ function IssuedCode({
   );
 }
 
-export function StudentLicenseOwnerPanel() {
+export function StudentLicenseOwnerPanel({
+  hideIssue = false,
+  reloadKey = 0,
+}: {
+  hideIssue?: boolean;
+  reloadKey?: number;
+} = {}) {
   const { rows, left, cap, halfOff, error, reload, setError, setLeft, setCap } = useLicenseList();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [issuedEmail, setIssuedEmail] = useState<{ code: string; email: string } | null>(null);
+  useEffect(() => {
+    void reload();
+  }, [reloadKey]);
   const issue = async () => {
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes('@') || /\s/.test(trimmed)) {
+      setError("Enter the student's email.");
+      return;
+    }
     setBusy(true);
     setNote(null);
-    const issued = await issueStudentLicense();
+    const issued = await issueStudentLicense(trimmed);
     setBusy(false);
     if (!issued.ok) {
       setError(issued.error);
@@ -218,7 +262,11 @@ export function StudentLicenseOwnerPanel() {
     }
     setLeft(issued.left);
     if (typeof issued.cap === 'number' && issued.cap > 0) setCap(issued.cap);
-    setNote('Code issued. The student scans it, enters their email, then adds Advantage to their Home Screen.');
+    setIssuedEmail({ code: issued.code, email: trimmed });
+    setEmail('');
+    setNote(
+      `Code issued for ${trimmed}. The student scans it, confirms their email, then adds Advantage to their Home Screen.`,
+    );
     await reload();
   };
   const revoke = async (code: string) => {
@@ -239,6 +287,20 @@ export function StudentLicenseOwnerPanel() {
     );
     await reload();
   };
+  const reset = async (code: string) => {
+    if (!code) return;
+    setBusy(true);
+    const result = await resetStudentLicense(code);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setLeft(result.left);
+    if (typeof result.cap === 'number' && result.cap > 0) setCap(result.cap);
+    setNote('Reset. The student can scan this same code on a new phone. This did not use another license.');
+    await reload();
+  };
   const issued = rows.filter((row) => row.status === 'issued' || row.status === 'claimed');
   return (
     <section className="student-license" aria-label="Free Student licenses" data-student-license="owner">
@@ -248,8 +310,8 @@ export function StudentLicenseOwnerPanel() {
       </p>
       <p className="student-license__note">
         One scan uses one of your {cap} free Student Edition licenses. The link is single-use and does not expire until it
-        is claimed or you revoke it. It opens Student Edition only, and never an instructor seat. The student enters an
-        email so the home screen app can restore this Student Edition.
+        is claimed or you revoke it. It opens Student Edition only, and never an instructor seat. Enter the student's
+        email before you issue the code so they can restore this Student Edition later.
       </p>
       {left === 0 ? (
         <p role="status">{STUDENT_LICENSE_EMPTY}</p>
@@ -257,11 +319,42 @@ export function StudentLicenseOwnerPanel() {
       {halfOff?.code ? <HalfOffShare halfOff={halfOff} /> : null}
       {error ? <p role="alert">{error}</p> : null}
       {note ? <p role="status">{note}</p> : null}
-      <button type="button" className="btn" onClick={() => void issue()} disabled={busy || left === 0}>
-        {STUDENT_LICENSE_GIVE}
-      </button>
+      {hideIssue ? null : (
+        <>
+          <label className="invite-field invite-field--lead">
+            Email
+            <input
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              maxLength={254}
+              placeholder="name@gym.com"
+              value={email}
+              aria-label="Student email"
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setError(null);
+              }}
+            />
+            <span className="invite-field__hint">
+              Advantage does not send email. Copy the invite link after you issue it.
+            </span>
+          </label>
+          <button type="button" className="btn" onClick={() => void issue()} disabled={busy || left === 0}>
+            {STUDENT_LICENSE_GIVE}
+          </button>
+        </>
+      )}
       {issued.map((row) => (
-        <IssuedCode key={`${row.createdAt}-${row.status}-${row.code ?? 'claimed'}`} row={row} canRevoke onRevoke={(code) => void revoke(code)} />
+        <IssuedCode
+          key={`${row.createdAt}-${row.status}-${row.code ?? 'claimed'}`}
+          row={row}
+          canRevoke
+          onRevoke={(code) => void revoke(code)}
+          canReset
+          onReset={(code) => void reset(code)}
+          email={issuedEmail && row.code === issuedEmail.code ? issuedEmail.email : ''}
+        />
       ))}
     </section>
   );
