@@ -26,9 +26,6 @@ import {
   gymViewFor,
   instructorTallies,
   netClasses,
-  promotionEvents,
-  promotionsByYear,
-  stripesGiven,
   tenureStats,
   type InstructorTally,
 } from '../lib/gymEvents.ts';
@@ -96,12 +93,8 @@ export function GymCharacterSheet() {
   const split = eventsForView(events, view);
   const useRemote = cloud && view.kind === 'own' && remote;
   const classes = useRemote ? { count: remote.classes, minutes: remote.minutes } : netClasses(view.kind === 'owner' && cloud ? events : split.totals);
-  const promotions = useRemote ? remote.promotions : promotionEvents(view.kind === 'owner' && cloud ? events : split.totals).length;
-  const stripes = useRemote ? remote.stripes : stripesGiven(view.kind === 'owner' && cloud ? events : split.totals);
   const active = useRemote ? remote.activeStudents : activeStudentCount(view.kind === 'owner' && cloud ? events : split.totals);
   const tenure = useRemote && remote.tenure ? remote.tenure : tenureStats(view.kind === 'owner' && cloud ? events : split.totals);
-  const years = useRemote ? [] : promotionsByYear(view.kind === 'owner' && cloud ? events : split.totals);
-  const belts = useRemote ? remote.belts : years.flatMap((row) => row.belts);
   const instructors: InstructorTally[] = useRemote
     ? remote.instructors
     : view.kind === 'own'
@@ -252,52 +245,16 @@ export function GymCharacterSheet() {
       </div>
       <div className="sheet-zone sheet-zone--stats" data-zone="stats">
         <div className="sheet-stats">
-          <CountTile owner={owner} href={academyRosterHref(home)} label="Promotions" count={promotions} detail="Open the roster. Promotions are entered on a student card." />
-          <CountTile owner={owner} href={academyRosterHref(home)} label="Stripes given" count={stripes} detail="Open the roster. Stripes are entered on a student card." />
           <CountTile owner={owner} href={academyLessonHref(home)} label="Classes taught" count={classes.count} detail="Open the lesson plan. I taught this is what this count records." />
           <CountTile owner={owner} href={academyRosterHref(home)} label="Active students" count={active} detail="Open the roster. Students are added there." />
         </div>
-      </div>
-      <div className="sheet-zone sheet-zone--radar" data-zone="belts">
-        <h3 className="sheet-cap">Belts promoted over time</h3>
-        {years.length ? (
-          years.map((year) => (
-            <div key={year.year}>
-              <p className="gym-sheet__note">{year.year}</p>
-              <ul className="gym-bars">
-                {year.belts.map((row) => (
-                  <li key={`${year.year}-${row.belt}`}>
-                    <span>{row.belt}</span>
-                    <i />
-                    <b>
-                      {row.count}
-                      {row.estimate ? ` · ${row.estimate} est.` : ''}
-                    </b>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))
-        ) : belts.length ? (
-          <ul className="gym-bars">
-            {belts.map((row) => (
-              <li key={row.belt}>
-                <span>{row.belt}</span>
-                <i />
-                <b>{row.count}</b>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="gym-sheet__empty">No belt promotions yet.</p>
-        )}
       </div>
       <div className="sheet-zone sheet-zone--wins" data-zone="instructors">
         {owner ? (
           <Link
             className="gym-zone-link"
             to={academyInstructorsHref(home)}
-            aria-label="Open instructor invitation and access. These lines are classes and promotions, not seat assignments."
+            aria-label="Open instructor invitation and access. These lines are classes, not seat assignments."
           >
             <InstructorLines rows={collapsed} />
           </Link>
@@ -370,13 +327,13 @@ function InstructorLines({ rows }: { rows: readonly InstructorTally[] }) {
             <li key={row.seatId}>
               <b>{row.name}</b>
               <span>
-                {row.classes} {row.classes === 1 ? 'class' : 'classes'} · {row.stripes} stripes · {row.promotions} promotions
+                {row.classes} {row.classes === 1 ? 'class' : 'classes'}
               </span>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="gym-sheet__empty">No classes or promotions recorded yet.</p>
+        <p className="gym-sheet__empty">No classes recorded yet.</p>
       )}
     </>
   );

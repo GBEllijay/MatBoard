@@ -228,8 +228,8 @@ export function IndexCardHost() {
               }}
             />
             <div className="d8sf-add-actions">
-              <button type="submit">{draftNew ? 'Add new move' : 'Add'}</button>
-              <button type="button" onClick={closeIndexCard}>
+              <button type="submit" className="d8sf-add-submit">{draftNew ? 'Add new move' : 'Add'}</button>
+              <button type="button" className="d8sf-add-cancel" onClick={closeIndexCard}>
                 Cancel
               </button>
             </div>
@@ -408,8 +408,8 @@ function CardIdentity({ card }: { card: LiveCard }) {
           </label>
           <FacePicker value={face} onChange={(next) => { setFace(next); setError(null); }} label="Put it on" />
           <div className="d8sf-add-actions">
-            <button type="submit" data-testid="card-edit-save">Save</button>
-            <button type="button" onClick={() => setEditing(false)}>
+            <button type="submit" className="d8sf-add-submit" data-testid="card-edit-save">Save</button>
+            <button type="button" className="d8sf-add-cancel" onClick={() => setEditing(false)}>
               Cancel
             </button>
           </div>

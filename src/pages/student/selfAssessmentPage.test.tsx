@@ -684,6 +684,10 @@ test('an old seven-value check-in keeps Sweeps empty until that rating is saved'
   act(() => {
     control(card.host, 'button', 'Radar').click();
   });
+  assert.equal(card.host.querySelector('.assess-legend'), null);
+  act(() => {
+    control(card.host, 'button', 'Expand').click();
+  });
   assert.deepEqual(
     [...card.host.querySelectorAll('.assess-legend li')].map((node) => [...node.querySelectorAll('span')].map((span) => span.textContent).join(' ')),
     ['Guard/Control 5', 'Passing 3', 'Sweeps 1', 'Takedowns 4', 'Escapes/Defense 2', 'Submissions 4', 'Conditioning 2', 'Mindset 3'],

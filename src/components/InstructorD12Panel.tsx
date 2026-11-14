@@ -1,6 +1,8 @@
 /**
  * Instructor teaching-shape ratings on the live character sheet.
  * Empty until this instructor saves scores. Never shows sample data.
+ * After a save, the 1–5 rows sit behind New self-assessment, and the
+ * face score tiles sit behind Expand.
  */
 import { useState } from 'react';
 import { LiveD12 } from './LiveD12';
@@ -24,6 +26,8 @@ export function InstructorD12Panel({ seatId }: { seatId: string | null }) {
   const [draft, setDraft] = useState<InstructorD12Scores>(() => saved ?? {});
   const [status, setStatus] = useState('');
   const hasSaved = instructorD12HasRatings(saved);
+  const [assessing, setAssessing] = useState(() => !hasSaved);
+  const [scoresOpen, setScoresOpen] = useState(false);
 
   const setFace = (id: InstructorD12FaceId, value: InstructorD12Score) => {
     setDraft((current) => ({ ...current, [id]: value }));
@@ -32,9 +36,13 @@ export function InstructorD12Panel({ seatId }: { seatId: string | null }) {
 
   const onSave = () => {
     const next = saveInstructorD12Scores(draft, localStorage, seatKey);
-    setSaved(instructorD12HasRatings(next) ? next : null);
+    const ok = instructorD12HasRatings(next);
+    setSaved(ok ? next : null);
     setStatus('Saved.');
+    if (ok) setAssessing(false);
   };
+
+  const showForm = assessing || !hasSaved;
 
   return (
     <div className="ip-d12" data-testid="instructor-d12">
@@ -43,14 +51,25 @@ export function InstructorD12Panel({ seatId }: { seatId: string | null }) {
       {hasSaved ? (
         <>
           <LiveD12 scores={saved} />
-          <ul className="ip-d8-scores ip-d12-scores" data-testid="instructor-d12-scores">
-            {d12AxesFromScores(saved).map((face) => (
-              <li key={face.id}>
-                <span>{face.label}</span>
-                <strong>{face.value ?? '–'}</strong>
-              </li>
-            ))}
-          </ul>
+          <button
+            type="button"
+            className="ip-expand"
+            data-testid="instructor-d12-scores-expand"
+            aria-expanded={scoresOpen}
+            onClick={() => setScoresOpen((open) => !open)}
+          >
+            {scoresOpen ? 'Hide' : 'Expand'}
+          </button>
+          {scoresOpen ? (
+            <ul className="ip-d8-scores ip-d12-scores" data-testid="instructor-d12-scores">
+              {d12AxesFromScores(saved).map((face) => (
+                <li key={face.id}>
+                  <span>{face.label}</span>
+                  <strong>{face.value ?? '–'}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </>
       ) : (
         <p className="ip-quiet" data-testid="instructor-d12-empty">
@@ -58,31 +77,44 @@ export function InstructorD12Panel({ seatId }: { seatId: string | null }) {
           Sample scores are not shown.
         </p>
       )}
-      <div className="sheet-d12__form">
-        {INSTRUCTOR_D12_FACES.map((face) => (
-          <div key={face.id} className="sheet-d12__face">
-            <span>{face.label}</span>
-            <div className="sheet-d12__scale" role="group" aria-label={`${face.label} rating`}>
-              {SCALE.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={draft[face.id] === value ? 'sheet-d12__tap is-on' : 'sheet-d12__tap'}
-                  aria-pressed={draft[face.id] === value}
-                  aria-label={`${face.label} ${value}`}
-                  data-testid={`instructor-d12-${face.id}-${value}`}
-                  onClick={() => setFace(face.id, value)}
-                >
-                  {value}
-                </button>
-              ))}
+      {hasSaved && !showForm ? (
+        <button
+          type="button"
+          className="ip-new-assessment"
+          data-testid="instructor-d12-new-assessment"
+          onClick={() => setAssessing(true)}
+        >
+          New self-assessment
+        </button>
+      ) : (
+        <div className="sheet-d12__form" data-testid="instructor-d12-form">
+          {INSTRUCTOR_D12_FACES.map((face) => (
+            <div key={face.id} className="sheet-d12__face">
+              <span>{face.label}</span>
+              <div className="sheet-d12__scale" role="group" aria-label={`${face.label} rating`}>
+                {SCALE.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={draft[face.id] === value ? 'sheet-d12__tap is-on' : 'sheet-d12__tap'}
+                    aria-pressed={draft[face.id] === value}
+                    aria-label={`${face.label} ${value}`}
+                    data-testid={`instructor-d12-${face.id}-${value}`}
+                    onClick={() => setFace(face.id, value)}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-      <button type="button" className="ip-log-btn" data-testid="instructor-d12-save" onClick={onSave}>
-        Save teaching shape
-      </button>
+          ))}
+        </div>
+      )}
+      {showForm ? (
+        <button type="button" className="ip-log-btn" data-testid="instructor-d12-save" onClick={onSave}>
+          Save teaching shape
+        </button>
+      ) : null}
       {status ? (
         <p className="ip-quiet" role="status">
           {status}

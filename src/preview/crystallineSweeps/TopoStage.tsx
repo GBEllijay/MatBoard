@@ -67,6 +67,8 @@ type Props = {
   fitZoom?: boolean;
   /** Live D8: one face of technique names, no edge-on pile-up. */
   separateLabels?: boolean;
+  /** chips is the default factor buttons. select is a compact face dropdown for the Instructor D12. */
+  legend?: 'chips' | 'select';
 };
 
 type Proj = {
@@ -78,7 +80,7 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill, onEmptyTile, onZoom, meshHidden = false, zoomCommand = null, fitZoom = false, separateLabels = false }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill, onEmptyTile, onZoom, meshHidden = false, zoomCommand = null, fitZoom = false, separateLabels = false, legend = 'chips' }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
@@ -1346,19 +1348,43 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
           Reset view
         </button>
       </div>
-      <nav className="topo-legend" aria-label="Focus a factor">
-        {model.faces.map((face, index) => (
-          <button
-            key={face.id}
-            type="button"
-            data-face-button={face.id}
-            data-on-trail={marked.includes(index) ? 'true' : 'false'}
-            aria-pressed={focus === index}
-            onClick={() => focusFace(index, false)}
+      <nav className="topo-legend" aria-label="Focus a factor" data-legend={legend}>
+        {legend === 'select' ? (
+          <select
+            className="topo-legend__select"
+            data-testid="topo-face-select"
+            aria-label="Focus a factor"
+            value={focus >= 0 ? String(focus) : ''}
+            onChange={(event) => {
+              const next = event.target.value;
+              if (next === '') {
+                onFocus(-1);
+                return;
+              }
+              focusFace(Number(next), false);
+            }}
           >
-            {index + 1}. {face.name} ({face.moves.length})
-          </button>
-        ))}
+            <option value="">Choose a face</option>
+            {model.faces.map((face, index) => (
+              <option key={face.id} value={String(index)} data-face-button={face.id}>
+                {index + 1}. {face.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          model.faces.map((face, index) => (
+            <button
+              key={face.id}
+              type="button"
+              data-face-button={face.id}
+              data-on-trail={marked.includes(index) ? 'true' : 'false'}
+              aria-pressed={focus === index}
+              onClick={() => focusFace(index, false)}
+            >
+              {index + 1}. {face.name} ({face.moves.length})
+            </button>
+          ))
+        )}
       </nav>
       </>
       ) : null}

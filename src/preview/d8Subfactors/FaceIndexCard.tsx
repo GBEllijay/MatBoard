@@ -75,8 +75,8 @@ export function FaceIndexCard({
             />
           </label>
           <div className="d8sf-add-actions">
-            <button type="submit">Add</button>
-            <button type="button" onClick={onClose}>
+            <button type="submit" className="d8sf-add-submit">Add</button>
+            <button type="button" className="d8sf-add-cancel" onClick={onClose}>
               Cancel
             </button>
           </div>

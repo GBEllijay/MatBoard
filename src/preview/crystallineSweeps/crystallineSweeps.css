@@ -444,3 +444,21 @@ button.topo-label-face,
     scroll-behavior: auto !important;
   }
 }
+
+.topo-legend[data-legend='select'] {
+  display: block;
+}
+
+.topo-legend__select {
+  width: 100%;
+  max-width: 28rem;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid rgba(244, 240, 228, 0.45);
+  border-radius: 8px;
+  background: #f4f0e4;
+  color: #1c140e;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
