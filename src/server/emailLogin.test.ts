@@ -15,7 +15,10 @@ import {
 } from './loginAccount.ts';
 import { hashPassword, needsRehash, verifyPassword } from './password.ts';
 import { recordPurchase } from './purchaseRecords.ts';
-import { handleRestoreRequest } from './restoreAccess.ts';
+import { handleRestoreRequest, handleRestoreVerify } from './restoreAccess.ts';
+import { handleTokenRefresh } from './tokenRefresh.ts';
+import { claimsOpenPlusCloud } from '../lib/advantageCloudMedia.ts';
+import { proPlusCloudDoorOpen } from '../lib/proPlusCloud.ts';
 import { SEAT_ACCOUNT_BOUND, handleSeatAccept, handleSeatIssue, handleSeatPermissions, handleSeatRevoke, handleSeatSync, refreshSeat } from './seats.ts';
 import { handleStudentLicenseIssue, handleStudentLicenseRevoke } from './studentLicenses.ts';
 import { sqliteD1 } from './sqliteD1.ts';
@@ -458,4 +461,80 @@ test('sign-in endpoints refuse cross-site posts and report setup when unconfigur
   assert.equal(off.status, 503);
   const me = await handleLogin(new Request(`${ORIGIN}/api/login/me`), {}, null);
   assert.equal(((await me.json()) as { signedIn: boolean }).signedIn, false);
+});
+
+test('owner-code license (one undated owner advantage-pro row): sign-in reports Cloud on and signs an owner Pro + Cloud pass that keeps refreshing', async () => {
+  const f = await fixture();
+  const { licenseId } = await recordPurchase(f.db, {
+    email: 'owner-code@gym.test',
+    product: 'advantage-pro',
+    source: 'owner',
+    sourceRef: 'code:owner-0a218bba:2aaf5962-abc8-46a0-9a87-1afbe43f0667:pro',
+    sessionId: 'code:owner-0a218bba:2aaf5962-abc8-46a0-9a87-1afbe43f0667',
+    pepper: PEPPER,
+    now: NOW,
+  });
+  const { challengeId, code } = await restoreCode(f, 'owner-code@gym.test');
+  const signed = await call(f, post('/api/login/code', { email: 'owner-code@gym.test', challengeId, code, password: 'long enough pw', deviceId: 'owner-phone' }));
+  assert.equal(signed.status, 200);
+  const profile = signed.body.profile;
+  assert.equal(profile.role, 'owner');
+  assert.equal(profile.license.ownerAcademy, true);
+  assert.deepEqual(profile.cloud, { entitled: true, edition: 'pro', lapsedAt: null, owner: true });
+  const claims = await verifyToken(signed.body.pass.token, [{ kid: 'k1', jwk: f.publicJwk }]);
+  assert.equal(claims?.sub, licenseId);
+  assert.equal(claims?.src, 'owner');
+  assert.equal(claims?.tier, 'owner');
+  assert.ok(claims?.grants.includes('pro'));
+  assert.equal(claimsOpenPlusCloud(claims), true);
+  assert.equal(proPlusCloudDoorOpen(claims), true);
+
+  // Near the end of the first pass, refresh renews it past that end (the row has no end date).
+  const nearEnd = new Date(((claims?.exp ?? 0) - 3600) * 1000);
+  const refreshed = await handleTokenRefresh(
+    new Request(`${ORIGIN}/api/token/refresh`, { method: 'POST', body: JSON.stringify({ token: signed.body.pass.token }) }),
+    f.env,
+    f.db,
+    () => nearEnd,
+  );
+  assert.equal(refreshed.status, 200);
+  const next = (await refreshed.json()) as { token: string };
+  const nextClaims = await verifyToken(next.token, [{ kid: 'k1', jwk: f.publicJwk }]);
+  assert.equal(nextClaims?.src, 'owner');
+  assert.ok((nextClaims?.exp ?? 0) > (claims?.exp ?? 0), 'the owner pass renews instead of ending');
+
+  // Restore by email code gives the same owner pass.
+  const again = await restoreCode(f, 'owner-code@gym.test');
+  const restored = await handleRestoreVerify(
+    new Request(`${ORIGIN}/api/restore/verify`, { method: 'POST', body: JSON.stringify({ challengeId: again.challengeId, code: again.code, deviceId: 'owner-pc' }) }),
+    f.env,
+    f.db,
+    () => NOW,
+  );
+  const restoredBody = (await restored.json()) as { token: string };
+  const restoredClaims = await verifyToken(restoredBody.token, [{ kid: 'k1', jwk: f.publicJwk }]);
+  assert.equal(restoredClaims?.src, 'owner');
+  assert.equal(claimsOpenPlusCloud(restoredClaims), true);
+});
+
+test('alpha-pro code license signs in with Cloud on; paid Stripe Pro alone does not', async () => {
+  const f = await fixture();
+  await recordPurchase(f.db, { email: 'alpha@gym.test', product: 'advantage-pro', source: 'code', sourceRef: 'code:alpha-1:salt:pro', sessionId: 'code:alpha-1:salt', pepper: PEPPER, now: NOW });
+  const alphaCode = await restoreCode(f, 'alpha@gym.test');
+  const alpha = await call(f, post('/api/login/code', { email: 'alpha@gym.test', challengeId: alphaCode.challengeId, code: alphaCode.code, password: 'long enough pw', deviceId: 'a1' }));
+  assert.deepEqual(alpha.body.profile.cloud, { entitled: true, edition: 'pro', lapsedAt: null });
+  assert.equal(alpha.body.profile.license.ownerAcademy, false);
+  const alphaClaims = await verifyToken(alpha.body.pass.token, [{ kid: 'k1', jwk: f.publicJwk }]);
+  assert.equal(alphaClaims?.src, 'code');
+  assert.equal(proPlusCloudDoorOpen(alphaClaims), true);
+
+  const g = await fixture();
+  await ownerPro(g, 'paid@gym.test');
+  const paidCode = await restoreCode(g, 'paid@gym.test');
+  const paid = await call(g, post('/api/login/code', { email: 'paid@gym.test', challengeId: paidCode.challengeId, code: paidCode.code, password: 'long enough pw', deviceId: 'p1' }));
+  assert.equal(paid.body.profile.cloud, null);
+  const paidClaims = await verifyToken(paid.body.pass.token, [{ kid: 'k1', jwk: g.publicJwk }]);
+  assert.equal(paidClaims?.src, 'stripe');
+  assert.ok(paidClaims?.grants.includes('pro'));
+  assert.equal(proPlusCloudDoorOpen(paidClaims), false);
 });

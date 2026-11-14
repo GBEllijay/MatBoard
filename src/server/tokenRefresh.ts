@@ -6,7 +6,7 @@ import { claimForAccess } from './subscriptionAccess.ts';
 import { accessForLicense } from './subscriptionSync.ts';
 import { grantRowOpensPlusCloud, ownerCloudGrantOpen } from '../lib/advantageCloudMedia.ts';
 import { ensureAccountForLicense } from './accountId.ts';
-import { isPerpetualOwnerAcademyGrant, OWNER_SESSION_SECONDS } from './ownerCloudProvision.ts';
+import { isPerpetualOwnerGrant, OWNER_SESSION_SECONDS } from './ownerCloudProvision.ts';
 import { cloudAccessForLicense } from './cloudSubscription.ts';
 import { doorsFromStored, grantsForLicense, linkedCodeProLicense, type StoredGrant } from './purchaseRecords.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
@@ -120,7 +120,8 @@ export async function handleTokenRefresh(
     doors = doorsForRefresh(rows, proOpen ? true : null);
     subs = undefined;
     kind = 'owner-test';
-    const perpetual = rows.some((row) => isPerpetualOwnerAcademyGrant(row));
+    // Owner academy, or the undated owner-code Pro row sign-in now signs as owner.
+    const perpetual = rows.some((row) => isPerpetualOwnerGrant(row));
     if (!perpetual) {
       const ends = rows.reduce((latest, row) => {
         const at = row.endsAt ? Date.parse(row.endsAt) : Number.NaN;

@@ -8,7 +8,9 @@
 
 import { appVersionHeaders } from './appCapability.ts';
 import { devicePublicJwk } from './deviceKey.ts';
-import { acceptServerToken, entitlementSnapshot, readDeviceId } from './entitlement.ts';
+import { acceptServerToken, entitlementNowMs, entitlementSnapshot, readDeviceId } from './entitlement.ts';
+import { base64UrlToBytes } from './entitlementToken.ts';
+import { loginPassWouldDowngrade } from './passDowngrade.ts';
 import { rememberAccountReference } from './accountReference.ts';
 import { joinCloudAcademy } from './academyMembership.ts';
 import { saveCoachVia } from './instructorAssessmentClient.ts';
@@ -207,6 +209,17 @@ export async function endAccountSession(fetchImpl: typeof fetch = fetch): Promis
   }
 }
 
+function decodePass(token: string): Record<string, unknown> | null {
+  const part = token.split('.')[1];
+  if (!part) return null;
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(base64UrlToBytes(part))) as unknown;
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Put everything a sign-in restored onto this device, in one step:
  * the license pass (or the Student license with its gym and inbox pass), the instructor
@@ -232,7 +245,11 @@ export async function applyLoginPayload(payload: LoginPayload, store: Storage | 
       store,
     );
   } else if (pass?.token) {
-    await acceptRestoredToken(pass.token);
+    // Never swap a stronger live pass on this browser for a weaker sign-in pass.
+    const here = entitlementSnapshot().claims;
+    if (!loginPassWouldDowngrade(here, decodePass(pass.token), Math.floor(entitlementNowMs() / 1000))) {
+      await acceptRestoredToken(pass.token);
+    }
   }
   const seat = payload.seat;
   if (seat?.token) {

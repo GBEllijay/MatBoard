@@ -6,6 +6,7 @@
  * This does not read or write a student's journal, photos, or backup.
  */
 
+import { grantRowOpensPlusCloud, ownerCloudGrantOpen } from '../lib/advantageCloudMedia.ts';
 import { ensureAccountForLicense } from './accountId.ts';
 import type { D1Database } from './d1.ts';
 import { API_PRODUCT_PRO } from './routes.ts';
@@ -29,6 +30,23 @@ export function isPerpetualOwnerAcademyGrant(row: {
   endsAt: string | null;
 }): boolean {
   return isStableOwnerAcademyGrant(row) && !row.endsAt;
+}
+
+/**
+ * Open owner row with no end: the owner-academy rows, or the `source = 'owner'`
+ * Pro or Cloud row an owner code wrote before owner-academy existed
+ * (source_ref `code:owner-…`). Both open Plus Cloud in gymCloud.ts lookupPlusCloud,
+ * so sign-in, restore, and refresh treat them as the owner academy too.
+ * A dated owner-test grant and a `source = 'code'` alpha-pro row are not this.
+ */
+export function isPerpetualOwnerGrant(row: {
+  product: string;
+  source: string;
+  sourceRef: string | null;
+  endsAt: string | null;
+}): boolean {
+  if (row.source !== 'owner' || row.endsAt) return false;
+  return isStableOwnerAcademyGrant(row) || grantRowOpensPlusCloud(row) || ownerCloudGrantOpen(row);
 }
 
 async function existingOwnerLicense(db: D1Database): Promise<string | null> {
