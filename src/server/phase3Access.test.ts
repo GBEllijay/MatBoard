@@ -387,8 +387,30 @@ test('seats start at 5 free, inherit the owner status, and keep email as a label
     () => now,
   );
   assert.equal(accepted.status, 200);
-  const acceptedBody = (await accepted.json()) as { token: string; email: string };
+  const acceptedBody = (await accepted.json()) as { token: string; email: string; gymName: string };
   assert.equal(acceptedBody.email, 'coach3@gym.test');
+  assert.equal(acceptedBody.gymName, '', 'no Cloud bucket: no gym name, accept still works');
+  // With the Cloud bucket, the accept screen gets the gym name the owner set on the coach connect QR.
+  const named = await handleSeatAccept(
+    new Request('http://localhost/api/seats/accept', {
+      method: 'POST',
+      body: JSON.stringify({ invite: lastInvite, deviceId: 'device-a' }),
+    }),
+    {
+      ...signing,
+      GYM_MEDIA: {
+        get: async (key: string) =>
+          key.endsWith('/coach-connect/current.json') ? { text: async () => JSON.stringify({ key: 'K'.repeat(32), name: 'GB Ellijay' }) } : null,
+        put: async () => undefined,
+        delete: async () => undefined,
+        list: async () => ({ objects: [] }),
+      },
+    },
+    db,
+    stripeFetch,
+    () => now,
+  );
+  assert.equal(((await named.json()) as { gymName: string }).gymName, 'GB Ellijay');
   const seatClaims = await verifyToken(acceptedBody.token, [{ kid: 'k1', jwk: keys.publicJwk }]);
   assert.equal(seatClaims?.tier, 'seat');
   assert.equal(seatClaims?.subs?.state, 'grace');

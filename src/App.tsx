@@ -115,7 +115,8 @@ import { PaymentGraceBanner } from './components/PaymentGraceBanner';
 import { bootEntitlement, entitlementNowMs, entitlementReady, entitlementSnapshot, proAccessPaused, subscribeEntitlement } from './lib/entitlement';
 import { paidChunkMenuAgrees, type PaidChunkId } from './lib/paidChunkAccess';
 import { proPlusCloudStripePro } from './lib/proPlusCloud';
-import { acceptSignedSeat } from './lib/seatClient';
+import { acceptSignedSeatOnce } from './lib/seatClient';
+import { SeatInviteAccept } from './components/SeatInviteAccept';
 import { isSignedSeatInvite } from './lib/seatSunset';
 import { ProLockedPage } from './pages/ProLocked';
 import { BuyCoachPage, BuyMediaPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
@@ -150,13 +151,8 @@ function consumeInviteDoorNow(): void {
   const params = new URLSearchParams(window.location.search);
   const token = params.get('invite');
   if (token && isSignedSeatInvite(token)) {
-    void acceptSignedSeat(token).then((ok) => {
-      if (!ok) return;
-      const url = new URL(window.location.href);
-      url.pathname = PRODUCTS_PATH;
-      url.search = '';
-      window.history.replaceState(window.history.state, '', `${url.pathname}${url.hash}`);
-    });
+    // Start early; InviteDoor shows Checking, then You're in or why it failed.
+    void acceptSignedSeatOnce(token);
     return;
   }
   if (!token || peekInstructorInvite(token) !== 'open') return;
@@ -408,14 +404,7 @@ function InviteDoor({ children }: { children: ReactNode }) {
     );
   }, [token, open, navigate, setSearchParams]);
 
-  useEffect(() => {
-    if (!token || !signedInvite) return;
-    void acceptSignedSeat(token).then((ok) => {
-      if (ok) navigate(PRODUCTS_PATH, { replace: true });
-    });
-  }, [token, signedInvite, navigate]);
-
-  if (signedInvite) return null;
+  if (signedInvite && token) return <SeatInviteAccept token={token} />;
   if (token && peek === 'missing') return <InviteHandoffAccept token={token} />;
   if (open) return null;
   return children;

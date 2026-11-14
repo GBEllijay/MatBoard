@@ -97,6 +97,16 @@ async function readCurrent(bucket: InboxBucket, license: string): Promise<{ key:
   }
 }
 
+/** The gym name the owner set on the coach connect QR, or ''. Best effort; never throws. */
+export async function coachConnectGymName(bucket: InboxBucket | undefined | null, license: string): Promise<string> {
+  if (!bucket || !license) return '';
+  try {
+    return (await readCurrent(bucket, license))?.name ?? '';
+  } catch {
+    return '';
+  }
+}
+
 async function readCurrentKey(bucket: InboxBucket, license: string): Promise<string | null> {
   return (await readCurrent(bucket, license))?.key ?? null;
 }

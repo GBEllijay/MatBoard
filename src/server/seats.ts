@@ -8,6 +8,8 @@ import { claimForAccess } from './subscriptionAccess.ts';
 import { accessForLicense } from './subscriptionSync.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
+import { coachConnectGymName } from './coachConnect.ts';
+import type { InboxBucket } from './studentInbox.ts';
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -26,6 +28,8 @@ export type SeatEnv = StripeRuntimeEnv & {
   ENTITLEMENT_KEY_ID?: string;
   CODE_HASH_PEPPER?: string;
   SEAT_SUNSET_ENDS_AT?: string;
+  /** Advantage Cloud bucket: only read for the gym name on the accept screen. */
+  GYM_MEDIA?: InboxBucket;
 };
 
 type SeatRow = {
@@ -274,11 +278,13 @@ export async function handleSeatAccept(
     entitled,
   });
   if (!token) return json(503, { ok: false, error: 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY.' });
+  const gymName = await coachConnectGymName(env.GYM_MEDIA, row.gymLicenseId);
   return json(200, {
     ok: true,
     token,
     seatId: row.id,
     gymId: row.gymLicenseId,
+    gymName,
     preset: row.preset,
     email: row.emailLabel,
     status: 'claimed',
