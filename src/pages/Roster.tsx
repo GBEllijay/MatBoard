@@ -280,7 +280,10 @@ export function RosterPage() {
   };
 
   const csvTools = (
-    <div className="roster__csv">
+    <section className="roster__csv" aria-labelledby="roster-tools-heading">
+      <h2 id="roster-tools-heading" className="roster__csv-title">
+        Roster tools
+      </h2>
       <div className="roster__csv-bar">
         <div className="roster__csv-actions">
           <button
@@ -336,7 +339,7 @@ export function RosterPage() {
           event.target.value = '';
         }}
       />
-    </div>
+    </section>
   );
 
   return (
@@ -376,8 +379,6 @@ export function RosterPage() {
           </button>
         </div>
       ) : null}
-
-      {showCsv ? csvTools : null}
 
       {listed.length ? (
       <div className="roster__find">
@@ -637,6 +638,7 @@ export function RosterPage() {
       ) : (
         <GuestArchive />
       )}
+      {showCsv ? csvTools : null}
       <LinkStudentSheet key={linkTarget?.id ?? 'link'} student={linkTarget} onClose={() => setLinkTarget(null)} />
       <SendRankUpdateSheet
         key={sendTarget?.id ?? 'send'}
