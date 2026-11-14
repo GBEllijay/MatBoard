@@ -8,7 +8,7 @@
 
 import { appVersionHeaders } from './appCapability.ts';
 import { devicePublicJwk } from './deviceKey.ts';
-import { acceptServerToken, entitlementNowMs, entitlementSnapshot, readDeviceId } from './entitlement.ts';
+import { acceptServerToken, clearRelocksFor, entitlementNowMs, entitlementSnapshot, readDeviceId } from './entitlement.ts';
 import { base64UrlToBytes } from './entitlementToken.ts';
 import { loginPassWouldDowngrade } from './passDowngrade.ts';
 import { rememberAccountReference } from './accountReference.ts';
@@ -23,6 +23,27 @@ import { writeExtraProfileSlots } from './studentProfiles.ts';
 export const LOGIN_HINT_KEY = 'advantage.login.v1';
 export const LOGIN_EVENT = 'advantage-login-changed';
 export const ACCOUNT_PATH = '/account';
+
+/** `?return=home` on /account: after sign-in, go back to the products page. */
+export const ACCOUNT_RETURN_HOME = 'home';
+
+/** Account page for the homepage "Returning user?" prompt: Sign in tab, then back home. */
+export const ACCOUNT_SIGN_IN_FROM_HOME = `${ACCOUNT_PATH}?return=${ACCOUNT_RETURN_HOME}`;
+
+/**
+ * Where a successful sign-in on /account goes. An invite link or `?return=home` goes to the
+ * products page, where everything the account owns shows open. Only that one fixed page is
+ * allowed (never a path from the address), so the link can't send anyone off-site.
+ */
+export function accountReturnPath(params: URLSearchParams): '/products' | null {
+  if (params.get('invite') || params.get('code')) return '/products';
+  return params.get('return') === ACCOUNT_RETURN_HOME ? '/products' : null;
+}
+
+/** Account page in invite mode with this invite filled in. The invite link and QR open it. */
+export function accountInvitePath(invite: string): string {
+  return `${ACCOUNT_PATH}?${new URLSearchParams({ invite }).toString()}`;
+}
 
 export type InviteGrant = {
   kind: 'student-code' | 'seat';
@@ -261,7 +282,11 @@ export async function applyLoginPayload(payload: LoginPayload, store: Storage | 
       permissions: seat.permissions,
     });
     // Same rule as accepting an invite link: a seat never replaces an owner or Pro pass.
-    if (!ownerPassOutranksSeat(entitlementSnapshot().claims)) await acceptServerToken(seat.token);
+    // Like a restore, a seat sign-in reopens the doors its pass grants, so a Lock left on this
+    // browser (owner testing, a shared phone) does not make the instructor's editions look locked.
+    if (!ownerPassOutranksSeat(entitlementSnapshot().claims) && (await acceptServerToken(seat.token))) {
+      clearRelocksFor(entitlementSnapshot().claims?.grants ?? []);
+    }
   }
   const academy = payload.academy;
   if (academy && store) {

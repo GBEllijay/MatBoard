@@ -236,7 +236,8 @@ test('the paid screen offers a way back to products and the routes use the share
   assert.match(app, /paidDoorAgrees\('media-console', mediaConsoleDoorOpen\(door\)\)/);
   assert.match(app, /paidDoorAgrees\('coach-unlimited', coachUnlimitedDoorOpen\(door\)\)/);
   assert.match(app, /paidDoorAgrees\('lesson-cloud', open\)/);
-  const home = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8');
+  // The /products card rules live in productTiles.ts; Home.tsx renders them.
+  const home = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8') + readFileSync(new URL('./productTiles.ts', import.meta.url), 'utf8');
   assert.match(home, /proConsoleEntryOpen\(door, access\.claims/);
   const unlimited = readFileSync(new URL('../pages/CoachUnlimited.tsx', import.meta.url), 'utf8');
   assert.match(unlimited, /proConsoleEntryOpen\(door, access\.claims/);

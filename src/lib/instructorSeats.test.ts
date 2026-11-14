@@ -166,7 +166,7 @@ test('issuing an invite stores an invited seat and a copyable link', () => {
   assert.equal(issued.seat.status, 'invited');
   assert.equal(issued.seat.issuedAt, 1_700_000_000_000);
   assert.deepEqual(issued.seat.permissions, custom);
-  assert.equal(issued.inviteLink, 'https://advantage.test/instructors?invite=invite-token-1');
+  assert.equal(issued.inviteLink, 'https://advantage.test/account?invite=invite-token-1');
   assert.equal(instructorInviteLink('invite-token-1', 'https://advantage.test'), issued.inviteLink);
 
   const raw = storedSeats();
@@ -594,7 +594,8 @@ test('a valid invite is the door and does not write the owner purchase unlock', 
   assert.equal(issued.ok, true);
   if (!issued.ok) return;
   const link = new URL(issued.inviteLink);
-  assert.equal(link.pathname, '/instructors');
+  // The link opens the account invite screen (email + new password), not a silent accept.
+  assert.equal(link.pathname, '/account');
   assert.deepEqual([...link.searchParams.keys()], ['invite']);
   assert.equal(link.searchParams.get('invite'), 'door-token');
   assert.equal(peekInstructorInvite('door-token'), 'open');
@@ -907,7 +908,9 @@ test('a Program Director invite stores gallery, events, and Pro Shop even when p
   assert.equal(mediaConsoleDoorOpen(unlocked), true);
   assert.equal(homeConsoleLabel(unlocked), 'Open Media Console');
 
-  const home = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8');
+  // The /products card rules live in productTiles.ts; Home.tsx renders them.
+  const home =
+    readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8') + readFileSync(new URL('./productTiles.ts', import.meta.url), 'utf8');
   const pro = readFileSync(new URL('../pages/Pro.tsx', import.meta.url), 'utf8');
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   assert.match(home, /homeConsoleLabel\(door\)/);

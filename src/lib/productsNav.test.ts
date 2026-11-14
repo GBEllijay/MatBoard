@@ -55,7 +55,7 @@ test('/products cards follow the belt ladder order: White, Student, Media, Instr
     at('<StudentHomeCard'),
     at('<MediaHomeCard open={mediaEditionDoorOpen(door)} />'),
     at('<strong>{INSTRUCTOR_HOME_TITLE}</strong>'),
-    at('<ProHomeCopy />'),
+    at('<ProHomeCopy '),
   ];
   assert.deepEqual([...order].sort((a, b) => a - b), order);
 });
