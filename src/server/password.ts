@@ -4,9 +4,9 @@
  *
  * Format (versioned so the cost can be raised later without a migration):
  *   pbkdf2-sha256$<iterations>$<salt base64url>$<hash base64url>
- * 2,000 iterations keeps a sign-in well under the Workers Free plan's 10 ms
- * CPU limit (owner decision, Nov 14 2026). On Workers Paid this can be raised
- * toward PASSWORD_MAX_ITERATIONS (100,000, the most Workers' PBKDF2 accepts).
+ * 100,000 iterations, the most Workers' PBKDF2 accepts (PASSWORD_MAX_ITERATIONS).
+ * The account is on Workers Paid (owner upgraded Nov 14 2026), whose 30 s default
+ * CPU limit covers this easily; Workers Free's 10 ms limit would not.
  * A stored hash with fewer iterations than the current setting still verifies,
  * and `needsRehash` says to upgrade it at the next successful sign-in.
  */
@@ -14,7 +14,7 @@
 import { timingSafeEqual } from './codeCrypto.ts';
 
 export const PASSWORD_SCHEME = 'pbkdf2-sha256';
-export const PASSWORD_ITERATIONS = 2_000;
+export const PASSWORD_ITERATIONS = 100_000;
 /** Highest count a stored hash may carry (Workers' PBKDF2 ceiling). */
 export const PASSWORD_MAX_ITERATIONS = 100_000;
 export const PASSWORD_MIN_LENGTH = 8;
