@@ -18,8 +18,8 @@ export const STOREFRONT_BUY_LABEL = `Buy Advantage White — ${STOREFRONT_PRICE_
 
 export const STOREFRONT_HERO = {
   title: 'Win by Advantage.',
-  leadBeforeBreak: 'Your gym scoreboard, round timer, and management software.',
-  leadAfterBreak: 'Run it from your phone.',
+  leadBeforeBreak: "Your Gym's Scoreboard, Round Timer, and Academy Enhancement Software.",
+  leadAfterBreak: 'Cast to your TV from your phone or PC.',
   sub: 'Points, advantages and penalties big enough to read across the gym, on the TV or a second screen.',
   fine: 'One-time purchase. Yours to keep.',
   clock: '05:00',
