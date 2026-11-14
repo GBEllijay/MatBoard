@@ -1,6 +1,6 @@
-import { thumbprintJwk, verifyToken, type PublicJwk } from '../lib/entitlementToken.ts';
+import { thumbprintJwk, verifyToken, type EntitlementClaims, type PublicJwk } from '../lib/entitlementToken.ts';
 import type { Door } from '../lib/entitlementToken.ts';
-import { ensureAccountForLicense, licenseForVerifiedEmail, primaryLicenseForAccount } from './accountId.ts';
+import { accountEmail, accountEmailForLicense, ensureAccountForLicense, licenseForVerifiedEmail, primaryLicenseForAccount } from './accountId.ts';
 import { countExtraProfileSlots } from './profileSlots.ts';
 import { keyedHash, normalizeEmail } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
@@ -21,6 +21,7 @@ import { appVersionOf } from '../lib/appCapability.ts';
 import { cloudAccessForLicense } from './cloudSubscription.ts';
 import { freeStudentRestoreShape } from './studentLicenses.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
+import { maskEmail } from '../lib/maskEmail.ts';
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -30,6 +31,8 @@ const JSON_HEADERS = {
 export const RESTORE_GENERIC = "If that address has a purchase, we've emailed a code.";
 export const RESTORE_UNAVAILABLE = 'Restore is not available yet.';
 export const RESTORE_CODE_FAILURE = "That code didn't work.";
+export const RESTORE_SIGNED_IN = 'Check your email.';
+export const RESTORE_SESSION_INVALID = 'That session is not valid.';
 
 const HOUR = 60 * 60 * 1000;
 const EMAIL_LIMIT = 3;
@@ -100,10 +103,6 @@ async function turnstileOk(
   return parsed.success === true;
 }
 
-function ready(env: RestoreEnv, db: D1Database | null, sender: EmailSender | null): boolean {
-  return Boolean(db && sender && env.CODE_HASH_PEPPER?.trim() && env.TURNSTILE_SECRET_KEY?.trim());
-}
-
 export async function handleRestoreRequest(
   request: Request,
   env: RestoreEnv,
@@ -113,56 +112,143 @@ export async function handleRestoreRequest(
   now: () => Date = () => new Date(),
 ): Promise<Response> {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed.' });
-  if (!ready(env, db, sender) || !db || !sender) return json(503, { ok: false, error: RESTORE_UNAVAILABLE });
-  const pepper = env.CODE_HASH_PEPPER?.trim() ?? '';
+  if (!db || !sender || !env.CODE_HASH_PEPPER?.trim()) return json(503, { ok: false, error: RESTORE_UNAVAILABLE });
+  const pepper = env.CODE_HASH_PEPPER.trim();
   const raw = await request.text();
-  if (raw.length > 4_000) return json(400, { ok: false, error: 'Enter the email from your purchase.' });
-  let body: { email?: unknown; turnstileToken?: unknown } = {};
+  if (raw.length > 8_000) return json(400, { ok: false, error: 'Enter the email from your purchase.' });
+  let body: { email?: unknown; turnstileToken?: unknown; sessionToken?: unknown } = {};
   try {
-    body = raw.trim() ? (JSON.parse(raw) as { email?: unknown; turnstileToken?: unknown }) : {};
+    body = raw.trim() ? (JSON.parse(raw) as typeof body) : {};
   } catch {
     return json(400, { ok: false, error: 'Enter the email from your purchase.' });
   }
+  const sessionToken = typeof body.sessionToken === 'string' ? body.sessionToken.trim() : '';
+  if (sessionToken) {
+    return handleSignedInRestoreRequest({
+      request,
+      env,
+      db,
+      sender,
+      sessionToken,
+      providedEmail: typeof body.email === 'string' ? body.email : '',
+      now: now(),
+    });
+  }
+  if (!env.TURNSTILE_SECRET_KEY?.trim()) return json(503, { ok: false, error: RESTORE_UNAVAILABLE });
   const email = typeof body.email === 'string' ? body.email.trim() : '';
   if (!email || email.length > 320 || !email.includes('@') || /\s/.test(email)) {
     return json(400, { ok: false, error: 'Enter the email from your purchase.' });
   }
   const token = typeof body.turnstileToken === 'string' ? body.turnstileToken.trim() : '';
   const ip = clientIp(request);
-  const captcha = await turnstileOk(token, env.TURNSTILE_SECRET_KEY?.trim() ?? '', ip, fetchImpl);
+  const captcha = await turnstileOk(token, env.TURNSTILE_SECRET_KEY.trim(), ip, fetchImpl);
   if (!captcha) return json(400, { ok: false, error: 'Confirm you are a person and try again.' });
+  return sendRestoreCode({ db, sender, pepper, email, ip, stamp: now(), generic: true });
+}
 
-  const normalized = normalizeEmail(email);
-  const emailKey = await keyedHash(normalized, pepper, 'email');
-  const ipKey = await keyedHash(ip || 'unknown', pepper, 'ip');
-  const stamp = now();
-  const emailAllowed = await bumpRate(db, `restore-email:${emailKey}`, EMAIL_LIMIT, stamp.getTime(), HOUR);
-  const ipAllowed = await bumpRate(db, `restore-ip:${ipKey}`, IP_LIMIT, stamp.getTime(), HOUR);
+function sessionUsable(claims: EntitlementClaims, stamp: Date): boolean {
+  const seconds = Math.floor(stamp.getTime() / 1000);
+  if (seconds < claims.nbf) return false;
+  if (seconds >= claims.exp) return false;
+  return true;
+}
+
+async function handleSignedInRestoreRequest(input: {
+  request: Request;
+  env: RestoreEnv;
+  db: D1Database;
+  sender: EmailSender;
+  sessionToken: string;
+  providedEmail: string;
+  now: Date;
+}): Promise<Response> {
+  const material = signingMaterial(input.env.ENTITLEMENT_SIGNING_KEY, input.env.ENTITLEMENT_KEY_ID);
+  if (!material) return json(503, { ok: false, error: RESTORE_UNAVAILABLE });
+  const claims = await verifyToken(input.sessionToken, [{ kid: material.kid, jwk: material.publicJwk }]);
+  if (!claims || !sessionUsable(claims, input.now)) {
+    return json(400, { ok: false, error: RESTORE_SESSION_INVALID });
+  }
+  const pepper = input.env.CODE_HASH_PEPPER?.trim() ?? '';
+  const onFile = await accountEmailForLicense(input.db, claims.sub);
+  let email = onFile.email ?? '';
+  const provided = accountEmail(input.providedEmail);
+  if (email) {
+    // The session account address wins. A client-supplied address is not used.
+  } else if (provided && onFile.emailHash) {
+    const got = await keyedHash(provided, pepper, 'email');
+    if (got !== onFile.emailHash) {
+      return json(400, { ok: false, error: 'Enter the email from your purchase.', needsEmail: true });
+    }
+    email = provided;
+    await ensureAccountForLicense(input.db, {
+      licenseId: claims.sub,
+      email,
+      pepper,
+      now: input.now,
+    });
+  } else {
+    return json(400, { ok: false, error: 'Enter the email from your purchase.', needsEmail: true });
+  }
+  const hint = maskEmail(email);
+  const result = await sendRestoreCode({
+    db: input.db,
+    sender: input.sender,
+    pepper,
+    email,
+    ip: clientIp(input.request),
+    stamp: input.now,
+    generic: false,
+  });
+  if (result.status !== 200) return result;
+  const body = (await result.json()) as { ok?: boolean; message?: string; challengeId?: string };
+  return json(200, {
+    ok: true,
+    message: body.message ?? RESTORE_SIGNED_IN,
+    challengeId: body.challengeId,
+    ...(hint ? { emailHint: hint } : {}),
+  });
+}
+
+async function sendRestoreCode(input: {
+  db: D1Database;
+  sender: EmailSender;
+  pepper: string;
+  email: string;
+  ip: string;
+  stamp: Date;
+  generic: boolean;
+}): Promise<Response> {
+  const normalized = normalizeEmail(input.email);
+  const emailKey = await keyedHash(normalized, input.pepper, 'email');
+  const ipKey = await keyedHash(input.ip || 'unknown', input.pepper, 'ip');
+  const emailAllowed = await bumpRate(input.db, `restore-email:${emailKey}`, EMAIL_LIMIT, input.stamp.getTime(), HOUR);
+  const ipAllowed = await bumpRate(input.db, `restore-ip:${ipKey}`, IP_LIMIT, input.stamp.getTime(), HOUR);
   if (!emailAllowed || !ipAllowed) return json(429, { ok: false, error: 'Too many attempts. Wait an hour and try again.' });
 
-  const byAccount = await licenseForVerifiedEmail(db, email, pepper);
-  const licenseId = byAccount?.licenseId ?? (await licenseIdForEmail(db, email, pepper));
+  const byAccount = await licenseForVerifiedEmail(input.db, input.email, input.pepper);
+  const licenseId = byAccount?.licenseId ?? (await licenseIdForEmail(input.db, input.email, input.pepper));
   if (licenseId) {
-    await ensureAccountForLicense(db, { licenseId, email, pepper, now: stamp });
+    await ensureAccountForLicense(input.db, { licenseId, email: input.email, pepper: input.pepper, now: input.stamp });
   }
   const challengeId = crypto.randomUUID();
   if (licenseId) {
     const code = restoreCode();
-    const codeHash = await keyedHash(code, pepper, 'restore');
-    const expires = new Date(stamp.getTime() + CODE_TTL_MS).toISOString();
-    await db
+    const codeHash = await keyedHash(code, input.pepper, 'restore');
+    const expires = new Date(input.stamp.getTime() + CODE_TTL_MS).toISOString();
+    await input.db
       .prepare(
         `INSERT INTO restore_challenges (id, code_hash, email_hash, expires_at, attempts) VALUES (?, ?, ?, ?, 0)`,
       )
       .bind(challengeId, codeHash, emailKey, expires)
       .run();
-    await sender.send({
-      to: email,
+    await input.sender.send({
+      to: input.email,
       subject: 'Your Advantage restore code',
       text: restoreEmailText(code),
     });
   }
-  return genericOk(challengeId);
+  if (input.generic) return genericOk(challengeId);
+  return json(200, { ok: true, message: RESTORE_SIGNED_IN, challengeId });
 }
 
 export async function handleRestoreVerify(

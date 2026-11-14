@@ -204,6 +204,30 @@ async function linkSeats(db: D1Database, licenseId: string, accountId: string): 
  * stays on the account the phone already restored.
  * Does not insert a license.
  */
+/** Plaintext address and hash on file for this license. Null email when only a hash was stored. */
+export async function accountEmailForLicense(
+  db: D1Database,
+  licenseId: string,
+): Promise<{ email: string | null; emailHash: string | null }> {
+  const license = await db
+    .prepare(`SELECT account_id AS accountId FROM licenses WHERE id = ? LIMIT 1`)
+    .bind(licenseId)
+    .first<{ accountId: string | null }>();
+  if (license?.accountId) {
+    const account = await accountById(db, license.accountId);
+    if (account && (account.email || account.emailHash)) {
+      return { email: account.email, emailHash: account.emailHash };
+    }
+  }
+  const identity = await db
+    .prepare(
+      `SELECT email_hash AS emailHash FROM identities WHERE license_id = ? AND email_hash IS NOT NULL LIMIT 1`,
+    )
+    .bind(licenseId)
+    .first<{ emailHash: string }>();
+  return { email: null, emailHash: identity?.emailHash ?? null };
+}
+
 export async function ensureAccountByEmail(
   db: D1Database,
   input: { email?: string | null; pepper?: string; now: Date; accountId?: string | null },

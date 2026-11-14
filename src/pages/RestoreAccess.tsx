@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { AccountReference } from '../components/AccountReference';
 import { appVersionHeaders } from '../lib/appCapability';
 import { rememberAccountReference } from '../lib/accountReference';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { SecretField } from '../components/SecretField';
 import { SiteFooter } from '../components/SiteFooter';
@@ -12,7 +12,10 @@ import { acceptRestoredToken } from '../lib/restoreAccept';
 import { clearRestoreChallenge, readRestoreChallenge, saveRestoreChallenge } from '../lib/restoreChallenge';
 import { fetchRestoreCheckConfig, loadTurnstile, type RestoreCheckConfig, type TurnstileApi } from '../lib/turnstile';
 import { writeExtraProfileSlots } from '../lib/studentProfiles';
-import { isWhiteRestoreEmail, restoreWhiteByEmail } from '../lib/whiteUnlock';
+import { useRestoreSession } from '../hooks/useRestoreSession';
+import { requestRestoreCode, readSessionToken, sessionEmailHint } from '../lib/restorePurchase';
+import { readRestoreSessionEmail, rememberRestoreSessionEmail } from '../lib/restoreSessionEmail';
+import { isWhiteRestoreEmail } from '../lib/whiteUnlock';
 
 type PersonCheck = 'loading' | 'waiting' | 'ready' | 'error' | 'off';
 
@@ -42,14 +45,31 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
   const widgetHost = useRef<HTMLDivElement | null>(null);
   const widget = useRef<{ api: TurnstileApi; id: string } | null>(null);
   const snapshot = entitlementSnapshot();
+  const signedIn = useRestoreSession();
+  const location = useLocation();
+  const [needsEmail, setNeedsEmail] = useState(false);
+  const [emailHint, setEmailHint] = useState(() => sessionEmailHint());
   const fetchConfig = deps.fetchConfig ?? fetchRestoreCheckConfig;
   const loader = deps.loadTurnstile ?? loadTurnstile;
+  const showEmailField = !signedIn || needsEmail;
+  const skipPersonCheck = signedIn;
 
   useEffect(() => {
     if (linkChallenge) saveRestoreChallenge(linkChallenge);
   }, [linkChallenge]);
 
   useEffect(() => {
+    const state = location.state as { restoreSent?: boolean; message?: string; emailHint?: string } | null;
+    if (!state?.restoreSent) return;
+    if (state.message) setNote(`${state.message} Enter it below. It expires in 15 minutes.`);
+    if (state.emailHint) setEmailHint(state.emailHint);
+  }, [location.state]);
+
+  useEffect(() => {
+    if (signedIn) {
+      setCheck('off');
+      return;
+    }
     let cancelled = false;
     void (async () => {
       const config = await fetchConfig();
@@ -110,9 +130,13 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
         /* ignore */
       }
     };
-    // Load once per visit.
+    // Load once per visit. Signed-in sessions skip the widget in a separate effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (signedIn) setCheck('off');
+  }, [signedIn]);
 
   /** Tokens work once. Get a fresh one after every attempt. */
   const resetCheck = useCallback(() => {
@@ -132,11 +156,11 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
     if (pending) return;
     setError(null);
     setNote(null);
-    if (!isWhiteRestoreEmail(email)) {
+    if (showEmailField && !isWhiteRestoreEmail(email)) {
       setError('Enter the email from your purchase.');
       return;
     }
-    if (check !== 'off' && !turnstileToken) {
+    if (!skipPersonCheck && check !== 'off' && !turnstileToken) {
       setError(
         check === 'error'
           ? "The person check didn't load. Refresh the page and try again."
@@ -145,11 +169,16 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
       return;
     }
     setPending(true);
-    const result = await restoreWhiteByEmail(email, turnstileToken);
+    const result = await requestRestoreCode({
+      email: showEmailField || readRestoreSessionEmail() ? (email || readRestoreSessionEmail()) : undefined,
+      turnstileToken: skipPersonCheck ? undefined : turnstileToken,
+      sessionToken: signedIn ? readSessionToken() : undefined,
+    });
     setPending(false);
-    resetCheck();
+    if (!skipPersonCheck) resetCheck();
     if (!result.ok) {
       setError(result.error);
+      if (result.needsEmail) setNeedsEmail(true);
       return;
     }
     if (result.challengeId) {
@@ -157,6 +186,8 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
       setChallengeId(result.challengeId);
       setCode('');
     }
+    if (result.emailHint) setEmailHint(result.emailHint);
+    if (showEmailField && isWhiteRestoreEmail(email)) rememberRestoreSessionEmail(email);
     setNote(`${result.message} Enter it below. It expires in 15 minutes.`);
   }
 
@@ -201,6 +232,7 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
       if (typeof body.extraProfileSlots === 'number') writeExtraProfileSlots(localStorage, body.extraProfileSlots);
       const accepted = await acceptRestoredToken(body.token);
       if (accepted) {
+        if (isWhiteRestoreEmail(email)) rememberRestoreSessionEmail(email);
         clearRestoreChallenge();
         setChallengeId('');
         setCode('');
@@ -248,30 +280,34 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
           <header className="buy__card">
             <h2>Restore a purchase</h2>
             <p>
-              Type the email from checkout. If it matches a purchase, we email a one-time code. Enter the code here and
-              press Confirm. It expires in 15 minutes and works once.
+              {signedIn && !needsEmail
+                ? 'A one-time code will be emailed to the address on file for this session. Enter the code here and press Confirm. It expires in 15 minutes and works once.'
+                : 'Type the email from checkout. If it matches a purchase, we email a one-time code. Enter the code here and press Confirm. It expires in 15 minutes and works once.'}
             </p>
+            {signedIn && emailHint ? <p className="buy__status">We will email {emailHint}.</p> : null}
             {snapshot.message ? <p className="buy__status">{snapshot.message}</p> : null}
           </header>
           <form className="buy__card" onSubmit={(event) => void onRequest(event)}>
-            <label className="buy__field">
-              <span>Purchase email</span>
-              <input
-                type="email"
-                name="email"
-                autoComplete="email"
-                inputMode="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </label>
-            <div className="restore__turnstile" ref={widgetHost} data-testid="turnstile" />
-            {check === 'off' ? (
+            {showEmailField ? (
+              <label className="buy__field">
+                <span>Purchase email</span>
+                <input
+                  type="email"
+                  name="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </label>
+            ) : null}
+            {skipPersonCheck ? null : <div className="restore__turnstile" ref={widgetHost} data-testid="turnstile" />}
+            {!skipPersonCheck && check === 'off' ? (
               <p className="buy__status" role="status">
                 The person check is not set up on this site yet, so a code may not send. Try again later.
               </p>
             ) : null}
-            {check === 'error' ? (
+            {!skipPersonCheck && check === 'error' ? (
               <p className="buy__status buy__status--bad" role="alert">
                 The person check didn't load. Refresh the page and try again.
               </p>
@@ -279,7 +315,7 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
             <button
               className="btn btn--white"
               type="submit"
-              disabled={pending || check === 'loading' || check === 'error'}
+              disabled={pending || (!skipPersonCheck && (check === 'loading' || check === 'error'))}
             >
               {pending ? 'Sending…' : 'Email me a code'}
             </button>

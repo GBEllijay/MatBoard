@@ -11,6 +11,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { useRestoreSession } from '../hooks/useRestoreSession';
 import { settleDemoCarryover } from '../lib/demoCarryover';
 import { confirmCheckoutSession, withCheckoutNonce } from '../lib/codeRedeemClient';
 import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
@@ -27,7 +28,10 @@ import {
   WHITE_STRIPE_NOTE,
   formatUsdFromCents,
 } from '../lib/whitePurchase';
-import { rememberWhitePurchase, restoreHref } from '../lib/whiteUnlock';
+import { saveRestoreChallenge } from '../lib/restoreChallenge';
+import { startSignedInRestore } from '../lib/restorePurchase';
+import { rememberRestoreSessionEmail } from '../lib/restoreSessionEmail';
+import { isWhiteRestoreEmail, rememberWhitePurchase, restoreHref } from '../lib/whiteUnlock';
 
 /** The /buy restore panel. The email and the person check live on /restore. */
 export const BUY_RESTORE_COPY =
@@ -48,6 +52,7 @@ export function BuyWhitePage() {
   const [promoInput, setPromoInput] = useState('');
   const [accessEmail, setAccessEmail] = useState('');
   const navigate = useNavigate();
+  const signedIn = useRestoreSession();
   const [studentPending, setStudentPending] = useState(false);
   const [studentError, setStudentError] = useState<string | null>(null);
   const halfOff = useHalfOffArrival();
@@ -299,7 +304,26 @@ export function BuyWhitePage() {
           {unlocked ? null : (
             <section className="buy__card buy__restore" aria-label="Already purchased">
               <p>{BUY_RESTORE_COPY}</p>
-              <button className="btn btn--white" type="button" onClick={() => navigate(restoreHref(accessEmail))}>
+              <button
+                className="btn btn--white"
+                type="button"
+                onClick={() => {
+                  void (async () => {
+                    if (isWhiteRestoreEmail(accessEmail)) rememberRestoreSessionEmail(accessEmail);
+                    if (!signedIn) {
+                      navigate(restoreHref(accessEmail));
+                      return;
+                    }
+                    const result = await startSignedInRestore();
+                    if (result.ok && result.challengeId) saveRestoreChallenge(result.challengeId);
+                    navigate('/restore', {
+                      state: result.ok
+                        ? { restoreSent: true, message: result.message, emailHint: result.emailHint }
+                        : undefined,
+                    });
+                  })();
+                }}
+              >
                 Restore
               </button>
             </section>
