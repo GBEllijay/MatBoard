@@ -16,7 +16,7 @@ import {
 import { hashPassword, needsRehash, verifyPassword } from './password.ts';
 import { recordPurchase } from './purchaseRecords.ts';
 import { handleRestoreRequest } from './restoreAccess.ts';
-import { handleSeatIssue, handleSeatPermissions, handleSeatRevoke } from './seats.ts';
+import { handleSeatIssue, handleSeatPermissions, handleSeatRevoke, handleSeatSync } from './seats.ts';
 import { handleStudentLicenseIssue, handleStudentLicenseRevoke } from './studentLicenses.ts';
 import { sqliteD1 } from './sqliteD1.ts';
 import { issueToken } from './tokenIssue.ts';
@@ -384,6 +384,43 @@ test('seat issued before switches were stored: its preset menus restore, and a r
   const tried = await call(f, post('/api/login/invite', { email: 'late@gmail.com', code: revoked.invite, password: 'late pass 12' }));
   assert.equal(tried.status, 400);
   assert.equal(tried.body.error, INVITE_FAILED);
+});
+
+test("device-only seat invite (today's production case): owner sync stores it, then email + invite link signs in with the owner's switches", async () => {
+  const f = await fixture();
+  const owner = await ownerPro(f);
+  // Made on the owner's phone with no server seat (production has none today). The link carries this local token.
+  const localToken = crypto.randomUUID();
+  const allNine = {
+    galleryUpload: true,
+    dailyLessonPlanAccess: true,
+    rosterSubmit: true,
+    rosterPull: true,
+    downloadTodaysVideos: true,
+    uploadForDistribution: true,
+    eventsAccess: true,
+    proShopAccess: true,
+    dailyVideoUpload: true,
+  };
+  // Before the owner's device syncs, the invite is unknown to the server and cannot set a password.
+  const early = await call(f, post('/api/login/invite', { email: 'paigegbellijay@gmail.com', code: `${ORIGIN}/instructors?invite=${localToken}`, password: 'paige pass 1' }));
+  assert.equal(early.status, 400);
+  const synced = await handleSeatSync(
+    post('/api/seats/sync', { token: owner.token, seats: [{ id: 'local-seat-1', inviteToken: localToken, email: 'paigegbellijay@gmail.com', preset: 'instructors', status: 'invited' }] }),
+    f.env,
+    f.db,
+    () => NOW,
+  );
+  assert.equal(((await synced.json()) as { registered: number }).registered, 1);
+  const pushed = await handleSeatPermissions(post('/api/seats/permissions', { token: owner.token, seatId: localToken, preset: 'instructors', permissions: allNine }), f.env, f.db, () => NOW);
+  assert.equal(pushed.status, 200);
+  const first = await call(f, post('/api/login/invite', { email: 'paigegbellijay@gmail.com', code: `${ORIGIN}/instructors?invite=${localToken}`, password: 'paige pass 1', deviceId: 'paige-phone' }));
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  assert.deepEqual(first.body.seat.permissions, allNine);
+  assert.equal(first.body.seat.permissionsSource, 'stored');
+  assert.equal(first.body.academy.gym, owner.licenseId);
+  const daily = await call(f, post('/api/login/signin', { email: 'paigegbellijay@gmail.com', password: 'paige pass 1', deviceId: 'paige-pc' }));
+  assert.equal(daily.body.seat.gymId, owner.licenseId);
 });
 
 test('sign-in endpoints refuse cross-site posts and report setup when unconfigured', async () => {

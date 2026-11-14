@@ -152,14 +152,21 @@ export async function acceptSignedSeat(invite: string): Promise<boolean> {
  * on this device by syncSeatPermissions, so seats issued before switches were stored catch up.
  * Best effort: the local seat already saved.
  */
-export async function saveSeatPermissionsOnServer(seat: { id: string; presetId: InstructorPresetId | null; permissions: InstructorPermissions }): Promise<boolean> {
+export async function saveSeatPermissionsOnServer(seat: {
+  id: string;
+  inviteToken: string;
+  presetId: InstructorPresetId | null;
+  permissions: InstructorPermissions;
+}): Promise<boolean> {
   const token = readToken();
   if (!token) return false;
+  // A seat made on this device was registered by syncLegacySeats under its invite token.
+  const seatId = isSignedSeatInvite(seat.inviteToken) ? seat.id : seat.inviteToken || seat.id;
   try {
     const response = await fetch('/api/seats/permissions', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token, seatId: seat.id, preset: seat.presetId, permissions: seat.permissions }),
+      body: JSON.stringify({ token, seatId, preset: seat.presetId, permissions: seat.permissions }),
     });
     return response.ok;
   } catch {

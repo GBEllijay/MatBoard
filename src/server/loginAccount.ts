@@ -548,7 +548,7 @@ export async function handleLoginInvite(
   if (!matched) {
     let seatId: string | null = null;
     for (const candidate of candidates) {
-      seatId = await seatIdFromInvite(candidate, env);
+      seatId = await seatIdFromInvite(candidate, env, db);
       if (seatId) break;
     }
     if (!seatId) return fail();

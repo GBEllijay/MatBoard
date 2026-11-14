@@ -501,11 +501,18 @@ export async function seatEmailLabel(
   };
 }
 
-/** Seat id inside a signed seat invite, or the bare legacy id. Null when the signature is wrong. */
-export async function seatIdFromInvite(invite: string, env: SeatEnv): Promise<string | null> {
+/**
+ * Seat id inside a signed seat invite, or a legacy invite token. Legacy seats were made on the
+ * owner's device and registered by /api/seats/sync, which stores the invite token as the seat id;
+ * the same bare token is what Accept already takes. Null when neither matches.
+ */
+export async function seatIdFromInvite(invite: string, env: SeatEnv, db?: D1Database | null): Promise<string | null> {
   const signed = await readInvite(invite, env);
   if (signed && typeof signed.sid === 'string') return signed.sid;
-  return null;
+  const bare = invite.trim();
+  if (!db || bare.includes('.') || !/^[A-Za-z0-9_-]{8,120}$/.test(bare)) return null;
+  const row = await db.prepare(`SELECT id FROM seats WHERE id = ? AND legacy = 1 LIMIT 1`).bind(bare).first<{ id: string }>();
+  return row?.id ?? null;
 }
 
 /**
