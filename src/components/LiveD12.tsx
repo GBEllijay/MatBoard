@@ -33,6 +33,7 @@ export function LiveD12({ scores }: Props) {
         spin
         fitZoom
         separateLabels
+        legend="select"
         onFocus={setFocus}
         onSelect={() => undefined}
         onDrill={() => undefined}

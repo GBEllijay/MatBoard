@@ -135,6 +135,7 @@ export function SheetDiamond({ baseline }: { baseline?: FaceBaseline | null }) {
 
 export function CardRadar({ to }: { to: (path: string) => string }) {
   const [shape, setShape] = useState<'diamond' | 'radar'>('diamond');
+  const [legendOpen, setLegendOpen] = useState(false);
   const entries = typeof localStorage === 'undefined' ? [] : loadAssessments(localStorage).entries;
   const latest = entries[0];
   const axes = latest ? shapeAxesFromLegacy(latest.scores) : [];
@@ -153,14 +154,25 @@ export function CardRadar({ to }: { to: (path: string) => string }) {
       ) : latest ? (
         <>
           <ApprovedOctagonRadar values={shapeAxisValues(latest.scores)} label={shapeAxisLabel(latest.scores)} />
-          <ul className="assess-legend" aria-label="Area scores">
-            {axes.map((axis) => (
-              <li key={axis.id} data-area={axis.id}>
-                <span>{axis.label}</span>
-                <span>{axis.value == null ? 'Not rated' : axis.value}</span>
-              </li>
-            ))}
-          </ul>
+          <button
+            type="button"
+            className="sheet-diamond__expand"
+            data-testid="shape-radar-expand"
+            aria-expanded={legendOpen}
+            onClick={() => setLegendOpen((open) => !open)}
+          >
+            {legendOpen ? 'Hide' : 'Expand'}
+          </button>
+          {legendOpen ? (
+            <ul className="assess-legend" aria-label="Area scores">
+              {axes.map((axis) => (
+                <li key={axis.id} data-area={axis.id}>
+                  <span>{axis.label}</span>
+                  <span>{axis.value == null ? 'Not rated' : axis.value}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </>
       ) : (
         <div className="card-empty" data-testid="card-radar-empty">

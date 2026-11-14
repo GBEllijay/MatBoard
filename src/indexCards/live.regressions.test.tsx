@@ -632,3 +632,42 @@ test('journal notes suggest glossary names, insert the canonical one, and tag th
   act(() => mounted.root.unmount());
   mounted.host.remove();
 });
+
+test('Add is a gold primary action and Cancel is a quieter outline, apart from the face chips', () => {
+  const css = readFileSync('src/indexCards/liveD8.css', 'utf8');
+  const base = readFileSync('src/preview/d8Subfactors/d8Subfactors.css', 'utf8');
+  const host = readFileSync('src/indexCards/IndexCardHost.tsx', 'utf8');
+  const preview = readFileSync('src/preview/d8Subfactors/FaceIndexCard.tsx', 'utf8');
+  assert.match(css, /button\.d8sf-add-submit[\s\S]*background:\s*#e0b429/);
+  assert.match(css, /button\.d8sf-add-cancel[\s\S]*background:\s*transparent/);
+  assert.match(css, /\.d8sf-add-actions[\s\S]*border-top/);
+  assert.match(base, /\.d8sf-add-submit[\s\S]*background:\s*#e0b429/);
+  assert.match(base, /\.d8sf-add-cancel[\s\S]*background:\s*transparent/);
+  assert.match(host, /className="d8sf-add-submit"/);
+  assert.match(host, /className="d8sf-add-cancel"/);
+  assert.match(preview, /className="d8sf-add-submit"/);
+  assert.match(preview, /className="d8sf-add-cancel"/);
+
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  seedJournal();
+  const mounted = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  focusFace(mounted.host, 'sweeps');
+  click(mounted.host.querySelector('[data-empty-slot]'));
+  const card = mounted.host.querySelector('[data-testid="live-index-card"]');
+  const add = card?.querySelector('.d8sf-add-submit') as HTMLElement | null;
+  const cancel = card?.querySelector('.d8sf-add-cancel') as HTMLElement | null;
+  const chips = card?.querySelector('.gl-face-chips') as HTMLElement | null;
+  assert.ok(add && cancel && chips);
+  assert.match(add.textContent ?? '', /^Add/);
+  assert.equal(cancel.textContent?.trim(), 'Cancel');
+  assert.equal(add.getAttribute('type'), 'submit');
+  assert.equal(cancel.getAttribute('type'), 'button');
+  assert.equal(Boolean(chips.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING), true);
+  act(() => mounted.root.unmount());
+  mounted.host.remove();
+});

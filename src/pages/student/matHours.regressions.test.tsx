@@ -578,6 +578,8 @@ test('card radar reads the latest check-in; the self-assessment page is unchange
   const page = mount(<StudentEditionPage />, '/student/profile?student=1');
   click(control(page.host, 'button', 'Radar'));
   const radar = page.host.querySelector('[data-testid="card-radar"]') as HTMLElement;
+  assert.equal(radar.querySelector('.assess-legend'), null);
+  click(control(radar, 'button', 'Expand'));
   const cage = radar.querySelector('polygon.oct-cage');
   assert.equal(cage?.getAttribute('points')?.trim().split(/\s+/).length, 8);
   assert.equal(radar.querySelectorAll('line.cage-spoke').length, 8, 'eight spokes, one per factor');

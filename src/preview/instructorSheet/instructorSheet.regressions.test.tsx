@@ -103,9 +103,10 @@ test('the Instructor D12 has twelve named faces in order and no sub-scores', () 
   assert.ok(mounted.host.querySelector('[data-testid="instructor-d12"]'));
   assert.ok(mounted.host.querySelector('[data-testid="instructor-d12-visual"]'));
   assert.ok(mounted.host.querySelector('[data-testid="instructor-d12-visual"] .topo-stage'));
-  const factors = [...mounted.host.querySelectorAll('[data-testid="instructor-d12-visual"] .topo-legend button')].map(
-    (button) => button.textContent,
-  );
+  const select = mounted.host.querySelector('[data-testid="topo-face-select"]') as HTMLSelectElement | null;
+  assert.ok(select, 'expected a compact face dropdown instead of ivory chips');
+  assert.equal(mounted.host.querySelectorAll('[data-testid="instructor-d12-visual"] .topo-legend button').length, 0);
+  const factors = [...(select?.querySelectorAll('option') ?? [])].slice(1).map((option) => option.textContent);
   assert.equal(factors.length, 12);
   assert.match(factors[0] ?? '', /Public Speaking/);
   assert.match(factors[5] ?? '', /Class Growth/);

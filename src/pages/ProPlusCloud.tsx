@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { GalleryPendingBadge } from '../components/GalleryPendingNotice';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { GymCharacterSheet } from '../components/GymCharacterSheet';
-import { InstructorSheet } from '../components/InstructorSheet';
 import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
 import { BeltRail } from '../components/BeltRail';
@@ -24,7 +23,6 @@ import {
   PRO_PLUS_CLOUD_PATH,
   consoleHubs,
 } from '../lib/productNames';
-import { ownerIdentitySheetVisible } from '../lib/ownerIdentitySheet';
 import './proHomeMenu.css';
 
 /**
@@ -62,9 +60,6 @@ export function ProPlusCloudPage() {
         <nav className="home__modes" aria-label={PRO_PLUS_CLOUD_NAME}>
           <BeltHeader kind="black" worn title={PRO_PLUS_CLOUD_NAME} blurb={PRO_PLUS_CLOUD_BELT_BLURB} />
           <GymCharacterSheet />
-          {ownerIdentitySheetVisible({ page: 'pro-cloud', proUnlocked: door.proUnlocked, seated: door.seated }) ? (
-            <InstructorSheet />
-          ) : null}
           <PlusCloudConduct />
           {!seat ? <GalleryPendingBadge /> : null}
           <Link className="pro-hub" to="/white" data-pro-entry="white">

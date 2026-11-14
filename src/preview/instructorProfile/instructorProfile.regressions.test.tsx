@@ -285,7 +285,10 @@ test('the live instructor identity card no longer displays promotions or stripes
   assert.equal(identity.includes('Stripes given'), false);
   assert.equal(identity.includes('Promotions given'), false);
   assert.match(identity, /Length of time teaching/);
-  // Stored tallies and the promotion log stay in the model and sheet.
-  assert.match(sheet, /Promotion log/);
+  assert.doesNotMatch(sheet, /Promotion log/);
+  assert.doesNotMatch(sheet, /Belts promoted/);
+  assert.match(sheet, />Record</);
+  assert.match(sheet, /Mark past plans as taught/);
+  // Stored tallies stay in the model. The live sheet no longer shows a promotion log.
   assert.match(readFileSync('src/preview/instructorProfile/model.ts', 'utf8'), /export function teachingTallies/);
 });
