@@ -2,9 +2,9 @@
  * Instructor character sheet on Instructor Edition (and the unseated Pro
  * owner sheet). Same navy / logo-blue / cream paint as
  * /preview/instructor-sheet. Identity and teaching totals come from the
- * live seat and gym log. The student profile block reuses Student Edition
- * cards and stores (D8, belt, mat hours, medals, body scan). The Instructor
- * D12 sits in the Shape zone, immediately after the student D8.
+ * live seat and gym log, with the Instructor D12. The student profile block
+ * comes below that and reuses Student Edition cards and stores (D8, belt,
+ * mat hours, medals, body scan).
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { AccountReference } from './AccountReference';
@@ -123,27 +123,9 @@ export function InstructorSheet() {
         </div>
       </section>
 
-      <section className="ip-card" aria-label="My student profile" data-testid="instructor-student-profile">
-        <h2>My student profile</h2>
-        <p className="ip-quiet">
-          The same profile this browser uses in Student Edition, including your D8, belt, mat hours, and
-          other profile cards. Links open those Student Edition pages.
-        </p>
-        {!studentName ? (
-          <p className="ip-quiet" data-testid="instructor-student-empty">
-            No student profile is filled in yet. Add your name and ratings in Student Edition to see them
-            here. Nothing is filled in with sample data.
-          </p>
-        ) : null}
-        <div className="student instructor-student-profile__sheet">
-          <StudentCardLayout
-            home
-            portrait={media.portrait}
-            to={to}
-            shapeExtra={<InstructorD12Panel seatId={seat?.id ?? null} />}
-            bodyScan={<BodyScanSection report={report} commit={commit} to={to} />}
-          />
-        </div>
+      <section className="ip-card" aria-label="Instructor D12" data-testid="instructor-d12-card">
+        <h2>Instructor D12</h2>
+        <InstructorD12Panel seatId={seat?.id ?? null} />
       </section>
 
       <section className="ip-card" aria-label="Promotion log" data-testid="instructor-log">
@@ -211,6 +193,28 @@ export function InstructorSheet() {
               : 'No unmarked past plans.'}
           </p>
         ) : null}
+      </section>
+
+      <section className="ip-card" aria-label="My student profile" data-testid="instructor-student-profile">
+        <h2>My student profile</h2>
+        <p className="ip-quiet">
+          The same profile this browser uses in Student Edition, including your D8, belt, mat hours, and
+          other profile cards. Links open those Student Edition pages.
+        </p>
+        {!studentName ? (
+          <p className="ip-quiet" data-testid="instructor-student-empty">
+            No student profile is filled in yet. Add your name and ratings in Student Edition to see them
+            here. Nothing is filled in with sample data.
+          </p>
+        ) : null}
+        <div className="student instructor-student-profile__sheet">
+          <StudentCardLayout
+            home
+            portrait={media.portrait}
+            to={to}
+            bodyScan={<BodyScanSection report={report} commit={commit} to={to} />}
+          />
+        </div>
       </section>
     </div>
   );

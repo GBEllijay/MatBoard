@@ -99,7 +99,10 @@ test('Instructor Edition mounts the painted instructor sheet', () => {
   assert.match(sheet, /instructorProfile\.css/);
   assert.match(sheet, /instructorSheet\.css/);
   assert.match(sheet, /<StudentCardLayout/);
-  assert.match(sheet, /shapeExtra=\{<InstructorD12Panel/);
+  assert.match(sheet, /<InstructorD12Panel/);
+  assert.doesNotMatch(sheet, /shapeExtra/);
+  assert.ok(sheet.indexOf('<InstructorD12Panel') < sheet.indexOf('<StudentCardLayout'));
+  assert.ok(sheet.indexOf('data-testid="instructor-log"') < sheet.indexOf('data-testid="instructor-student-profile"'));
 });
 
 test('the instructor profile shows the student cards, an empty D12, and keeps saved scores', async () => {
@@ -109,14 +112,19 @@ test('the instructor profile shows the student cards, an empty D12, and keeps sa
   assert.ok(sheet, 'expected the instructor profile');
   assert.equal(sheet.classList.contains('ip-preview'), true);
   assert.ok(sheet.querySelector('.ip-sheet'), 'expected the preview identity-card paint');
-  assert.ok(first.host.querySelector('[data-testid="instructor-student-profile"]'));
+  const identity = first.host.querySelector('[data-testid="instructor-identity"]') as HTMLElement;
+  const d12 = first.host.querySelector('[data-testid="instructor-d12"]') as HTMLElement;
+  const log = first.host.querySelector('[data-testid="instructor-log"]') as HTMLElement;
+  const student = first.host.querySelector('[data-testid="instructor-student-profile"]') as HTMLElement;
+  assert.ok(identity && d12 && log && student);
   assert.ok(first.host.querySelector('[data-testid="student-card-layout"]'));
-  assert.ok(first.host.querySelector('[data-testid="card-radar"]'), 'expected the student D8 in the Shape zone');
-  const shape = first.host.querySelector('[data-zone="radar"]') as HTMLElement;
-  assert.ok(shape, 'expected the Shape zone');
-  assert.ok(shape.querySelector('[data-testid="card-radar"]'));
-  const d12 = shape.querySelector('[data-testid="instructor-d12"]') as HTMLElement;
-  assert.ok(d12, 'expected the Instructor D12 in the same Shape zone as the D8');
+  assert.ok(student.querySelector('[data-testid="card-radar"]'), 'expected the student D8 on the student card');
+  const following = Node.DOCUMENT_POSITION_FOLLOWING;
+  assert.equal(Boolean(identity.compareDocumentPosition(d12) & following), true);
+  assert.equal(Boolean(d12.compareDocumentPosition(log) & following), true);
+  assert.equal(Boolean(log.compareDocumentPosition(student) & following), true);
+  assert.equal(d12.closest('[data-testid="instructor-student-profile"]'), null);
+  assert.equal(student.querySelector('[data-testid="instructor-d12"]'), null);
   const empty = d12.querySelector('[data-testid="instructor-d12-empty"]');
   assert.ok(empty, 'expected a clear empty state when nothing is saved');
   assert.match(empty?.textContent ?? '', /No teaching shape ratings yet/);
