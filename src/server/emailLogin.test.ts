@@ -134,7 +134,7 @@ async function ownerPro(f: Fixture, email = 'owner@gym.test'): Promise<{ license
 test('passwords use versioned PBKDF2-SHA256 with a random salt and compare safely', async () => {
   const one = await hashPassword('correct horse');
   const two = await hashPassword('correct horse');
-  assert.match(one, /^pbkdf2-sha256\$100000\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/);
+  assert.match(one, /^pbkdf2-sha256\$2000\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/);
   assert.notEqual(one, two);
   assert.equal(await verifyPassword('correct horse', one), true);
   assert.equal(await verifyPassword('correct horsf', one), false);

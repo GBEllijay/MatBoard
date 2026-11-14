@@ -4,15 +4,19 @@
  *
  * Format (versioned so the cost can be raised later without a migration):
  *   pbkdf2-sha256$<iterations>$<salt base64url>$<hash base64url>
- * 100,000 iterations is the most Workers' PBKDF2 accepts. A stored hash with
- * fewer iterations still verifies, and `needsRehash` says to upgrade it at the
- * next successful sign-in.
+ * 2,000 iterations keeps a sign-in well under the Workers Free plan's 10 ms
+ * CPU limit (owner decision, Nov 14 2026). On Workers Paid this can be raised
+ * toward PASSWORD_MAX_ITERATIONS (100,000, the most Workers' PBKDF2 accepts).
+ * A stored hash with fewer iterations than the current setting still verifies,
+ * and `needsRehash` says to upgrade it at the next successful sign-in.
  */
 
 import { timingSafeEqual } from './codeCrypto.ts';
 
 export const PASSWORD_SCHEME = 'pbkdf2-sha256';
-export const PASSWORD_ITERATIONS = 100_000;
+export const PASSWORD_ITERATIONS = 2_000;
+/** Highest count a stored hash may carry (Workers' PBKDF2 ceiling). */
+export const PASSWORD_MAX_ITERATIONS = 100_000;
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 256;
 const SALT_BYTES = 16;
@@ -69,7 +73,7 @@ function parse(stored: string): Parsed | null {
   const parts = stored.split('$');
   if (parts.length !== 4 || parts[0] !== PASSWORD_SCHEME) return null;
   const iterations = Number(parts[1]);
-  if (!Number.isInteger(iterations) || iterations < 1 || iterations > PASSWORD_ITERATIONS) return null;
+  if (!Number.isInteger(iterations) || iterations < 1 || iterations > PASSWORD_MAX_ITERATIONS) return null;
   const salt = fromB64url(parts[2] ?? '');
   if (!salt || salt.length < 8) return null;
   return { iterations, salt, hash: parts[3] ?? '' };
