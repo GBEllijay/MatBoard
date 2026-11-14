@@ -2,6 +2,7 @@ import { ENTITLEMENT_TOKEN_KEY, acceptServerToken, entitlementSnapshot, readDevi
 import { ownerPassOutranksSeat } from './ownerPassRank.ts';
 import {
   acceptInstructorInvite,
+  instructorPreset,
   installAcceptedSeat,
   issueInstructorInvite,
   listInstructorSeats,
@@ -110,36 +111,112 @@ export async function syncLegacySeats(): Promise<void> {
   }
 }
 
-export async function acceptSignedSeat(invite: string): Promise<boolean> {
-  if (!isSignedSeatInvite(invite)) return acceptInstructorInvite(invite).ok;
+export type SeatAcceptReason = 'expired' | 'revoked' | 'claimed' | 'invalid' | 'offline' | 'unavailable';
+export type SeatAcceptResult =
+  | { ok: true; seatId: string; email: string; presetId: InstructorPresetId | null; gymName: string }
+  | { ok: false; reason: SeatAcceptReason; message: string };
+
+export const SEAT_ACCEPT_OFFLINE =
+  "This phone couldn't reach Advantage. Check your connection, then tap Try again.";
+export const SEAT_ACCEPT_UNAVAILABLE = "The invite couldn't be checked right now. Wait a minute, then tap Try again.";
+export const SEAT_ACCEPT_INVALID = 'This invite is not valid. Ask the owner for a new link.';
+export const SEAT_ACCEPT_NOT_SAVED = "The seat was accepted but this phone couldn't save its pass. Tap Try again.";
+
+/** Turn a refused /api/seats/accept answer into a reason and the words to show. Server text wins for 4xx. */
+export function seatAcceptFailure(status: number, error?: unknown): { ok: false; reason: SeatAcceptReason; message: string } {
+  const text = typeof error === 'string' ? error.trim() : '';
+  if (status >= 500 || status === 0) return { ok: false, reason: 'unavailable', message: SEAT_ACCEPT_UNAVAILABLE };
+  if (status === 409) return { ok: false, reason: 'claimed', message: text || 'This seat is already open on another device. The owner can reset it.' };
+  if (status === 403) return { ok: false, reason: 'revoked', message: text || 'This seat was revoked.' };
+  if (/expired/i.test(text)) return { ok: false, reason: 'expired', message: text };
+  return { ok: false, reason: 'invalid', message: text || SEAT_ACCEPT_INVALID };
+}
+
+function seatPreset(value: unknown): InstructorPresetId | null {
+  return value === 'assistant-coach' || value === 'coach' || value === 'program-director' || value === 'instructors' ? value : null;
+}
+
+/** Accept an invite link on this phone. Says why when it does not open. */
+export async function acceptSignedSeat(invite: string): Promise<SeatAcceptResult> {
+  if (!isSignedSeatInvite(invite)) {
+    const local = acceptInstructorInvite(invite);
+    if (local.ok) {
+      const seat = local.seat;
+      return { ok: true, seatId: seat.id, email: seat.email, presetId: seat.presetId, gymName: '' };
+    }
+    if (local.reason === 'revoked') return { ok: false, reason: 'revoked', message: 'This seat was revoked.' };
+    return { ok: false, reason: 'invalid', message: SEAT_ACCEPT_INVALID };
+  }
+  let response: Response;
   try {
-    const response = await fetch('/api/seats/accept', {
+    response = await fetch('/api/seats/accept', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ invite, deviceId: readDeviceId() }),
     });
-    const body = (await response.json()) as {
-      ok?: boolean;
-      token?: string;
-      seatId?: string;
-      email?: string | null;
-      preset?: string | null;
-    };
-    if (!response.ok || !body.ok || !body.token || !body.seatId) return false;
-    const preset =
-      body.preset === 'assistant-coach' || body.preset === 'coach' || body.preset === 'program-director' || body.preset === 'instructors'
-        ? body.preset
-        : null;
-    installAcceptedSeat({
-      id: body.seatId,
-      email: body.email || 'instructor',
-      presetId: preset,
-      inviteToken: invite,
-    });
-    // The seat stays signed in locally. It must not replace an owner or alpha-pro pass.
-    if (ownerPassOutranksSeat(entitlementSnapshot().claims)) return true;
-    return acceptServerToken(body.token);
   } catch {
-    return false;
+    return { ok: false, reason: 'offline', message: SEAT_ACCEPT_OFFLINE };
   }
+  let body: {
+    ok?: boolean;
+    error?: unknown;
+    token?: string;
+    seatId?: string;
+    email?: string | null;
+    preset?: string | null;
+    gymName?: unknown;
+  } = {};
+  try {
+    body = (await response.json()) as typeof body;
+  } catch {
+    return seatAcceptFailure(response.ok ? 500 : response.status);
+  }
+  if (!response.ok || !body.ok) return seatAcceptFailure(response.ok ? 400 : response.status, body.error);
+  if (!body.token || !body.seatId) return seatAcceptFailure(500);
+  const preset = seatPreset(body.preset);
+  const email = body.email || 'instructor';
+  installAcceptedSeat({
+    id: body.seatId,
+    email,
+    presetId: preset,
+    inviteToken: invite,
+  });
+  const ok: SeatAcceptResult = {
+    ok: true,
+    seatId: body.seatId,
+    email,
+    presetId: preset,
+    gymName: typeof body.gymName === 'string' ? body.gymName.trim() : '',
+  };
+  // The seat stays signed in locally. It must not replace an owner or alpha-pro pass.
+  if (ownerPassOutranksSeat(entitlementSnapshot().claims)) return ok;
+  try {
+    if (await acceptServerToken(body.token)) return ok;
+  } catch {
+    /* fall through */
+  }
+  return { ok: false, reason: 'unavailable', message: SEAT_ACCEPT_NOT_SAVED };
+}
+
+const acceptsInFlight = new Map<string, Promise<SeatAcceptResult>>();
+
+/** One accept per invite per page load (the early boot read and the screen share it). */
+export function acceptSignedSeatOnce(invite: string): Promise<SeatAcceptResult> {
+  const running = acceptsInFlight.get(invite);
+  if (running) return running;
+  const next = acceptSignedSeat(invite);
+  acceptsInFlight.set(invite, next);
+  return next;
+}
+
+/** Try again: forget the last answer for this invite. */
+export function forgetSeatAccept(invite: string): void {
+  acceptsInFlight.delete(invite);
+}
+
+/** "You're in" line: names the gym and the seat (preset label) when known. */
+export function seatWelcomeLine(result: Extract<SeatAcceptResult, { ok: true }>): string {
+  const gym = result.gymName || 'Your academy';
+  const seat = result.presetId ? instructorPreset(result.presetId).label : 'an instructor';
+  return `${gym} added you as ${seat}. This phone now opens the instructor screens the gym owner picked.`;
 }
