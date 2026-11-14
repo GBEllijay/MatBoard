@@ -7,6 +7,8 @@ import { instructorAllowanceForLicense, readHalfOffCode } from './proBundle.ts';
 import { claimForAccess } from './subscriptionAccess.ts';
 import { accessForLicense } from './subscriptionSync.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
+import { keyedHash, normalizeEmail } from './codeCrypto.ts';
+import { cleanFeatures, markInviteRedeemed, recordInviteSelection } from './inviteSelections.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
 
 const JSON_HEADERS = {
@@ -129,7 +131,7 @@ export async function handleSeatIssue(
   if (!db) return json(503, { ok: false, error: 'Entitlement storage is not set up yet. Bind ENTITLEMENTS_DB.' });
   const owner = await readOwner(request, env);
   if (owner instanceof Response) return owner;
-  const body = (await request.json()) as { email?: unknown; preset?: unknown };
+  const body = (await request.json()) as { email?: unknown; preset?: unknown; permissions?: unknown };
   const email = labelOf(body.email);
   if (!email) return json(400, { ok: false, error: "Enter the instructor's email." });
   const cap = await seatAllowance(db, owner.licenseId);
@@ -167,6 +169,19 @@ export async function handleSeatIssue(
   const used = await openSeatCount(db, owner.licenseId);
   const invite = await signInvite(env, { gym: owner.licenseId, sid: id, preset, nonce, exp });
   if (!invite) return json(503, { ok: false, error: 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY.' });
+  // Keep the owner's exact switches server-side so the instructor's email sign-in restores them.
+  const pepper = env.CODE_HASH_PEPPER?.trim() ?? '';
+  await recordInviteSelection(db, {
+    kind: 'seat',
+    ref: id,
+    gym: owner.licenseId,
+    issuerId: 'owner',
+    emailHash: pepper ? await keyedHash(normalizeEmail(email), pepper, 'email') : null,
+    preset: preset || null,
+    editions: seatDoors(true),
+    features: cleanFeatures(body.permissions),
+    now: stamp,
+  });
   return json(200, { ok: true, seatId: id, invite, email, preset, status: 'pending', used: used + 1, cap });
 }
 
@@ -274,6 +289,7 @@ export async function handleSeatAccept(
     entitled,
   });
   if (!token) return json(503, { ok: false, error: 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY.' });
+  await markInviteRedeemed(db, 'seat', row.id, null, stamp);
   return json(200, {
     ok: true,
     token,
@@ -432,4 +448,99 @@ export async function refreshSeat(
   const entitled = access ? access.access.entitled : true;
   const subs = access ? claimForAccess(access.access) : { state: 'active' as const };
   return { doors: seatDoors(entitled), subs };
+}
+
+/**
+ * Email sign-in for an instructor whose invite was sent to this (verified-by-password) address.
+ * Moves the seat to this device, so a seat is still open on one device at a time, and issues
+ * the same seat pass Accept would. A revoked or expired-unclaimed seat is not restored.
+ */
+export async function seatPassForLogin(
+  db: D1Database,
+  env: SeatEnv,
+  input: { seatId: string; deviceId: string; now: Date; fetchImpl?: typeof fetch },
+): Promise<{ token: string; seatId: string; gymId: string; preset: string | null; email: string | null; subs: SubscriptionClaim } | null> {
+  const row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(input.seatId).first<SeatRow>();
+  if (!row || row.revokedAt || row.status === 'revoked') return null;
+  if (row.status === 'pending' && row.inviteExpiresAt && Date.parse(row.inviteExpiresAt) <= input.now.getTime()) return null;
+  if (row.status !== 'pending' && row.status !== 'claimed' && row.status !== 'active') return null;
+  await db
+    .prepare(`UPDATE seats SET status = 'claimed', claimed_device = ?, claimed_at = COALESCE(claimed_at, ?) WHERE id = ? AND revoked_at IS NULL`)
+    .bind(input.deviceId, input.now.toISOString(), row.id)
+    .run();
+  const access = await ownerAccess(db, env, row.gymLicenseId, input.now, input.fetchImpl ?? fetch);
+  const entitled = access ? access.access.entitled : true;
+  const subs = access ? claimForAccess(access.access) : { state: 'active' as const };
+  const token = await issueSeatToken(env, {
+    gym: row.gymLicenseId,
+    sid: row.id,
+    preset: row.preset ?? '',
+    deviceId: input.deviceId,
+    now: input.now,
+    subs,
+    entitled,
+  });
+  if (!token) return null;
+  await markInviteRedeemed(db, 'seat', row.id, null, input.now);
+  return { token, seatId: row.id, gymId: row.gymLicenseId, preset: row.preset, email: row.emailLabel, subs };
+}
+
+/** The seat's invited address label, for matching a seat invite to the email typed at first sign-in. */
+export async function seatEmailLabel(
+  db: D1Database,
+  seatId: string,
+): Promise<{ gym: string; email: string | null; preset: string | null; status: string; revoked: boolean } | null> {
+  const row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(seatId).first<SeatRow>();
+  if (!row) return null;
+  return {
+    gym: row.gymLicenseId,
+    email: row.emailLabel,
+    preset: row.preset,
+    status: row.status,
+    revoked: Boolean(row.revokedAt) || row.status === 'revoked',
+  };
+}
+
+/** Seat id inside a signed seat invite, or the bare legacy id. Null when the signature is wrong. */
+export async function seatIdFromInvite(invite: string, env: SeatEnv): Promise<string | null> {
+  const signed = await readInvite(invite, env);
+  if (signed && typeof signed.sid === 'string') return signed.sid;
+  return null;
+}
+
+/**
+ * Owner: save a seat's permission switches server-side (Edit permissions, or a seat issued
+ * before switches were stored). Email sign-in restores exactly these on the instructor's device.
+ */
+export async function handleSeatPermissions(
+  request: Request,
+  env: SeatEnv,
+  db: D1Database | null,
+  now: () => Date = () => new Date(),
+): Promise<Response> {
+  if (request.method !== 'POST') return json(405, { error: 'Method not allowed.' });
+  if (!db) return json(503, { ok: false, error: 'Entitlement storage is not set up yet. Bind ENTITLEMENTS_DB.' });
+  const owner = await readOwner(request, env);
+  if (owner instanceof Response) return owner;
+  const body = (await request.json()) as { seatId?: unknown; permissions?: unknown; preset?: unknown };
+  const seatId = typeof body.seatId === 'string' ? body.seatId.trim() : '';
+  const row = seatId ? await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(seatId).first<SeatRow>() : null;
+  if (!row || row.gymLicenseId !== owner.licenseId) return json(404, { ok: false, error: 'That seat is not on this gym.' });
+  if (row.revokedAt || row.status === 'revoked') return json(409, { ok: false, error: 'This seat was revoked.' });
+  const preset = presetOf(body.preset) || row.preset || '';
+  const pepper = env.CODE_HASH_PEPPER?.trim() ?? '';
+  const saved = await recordInviteSelection(db, {
+    kind: 'seat',
+    ref: row.id,
+    gym: row.gymLicenseId,
+    issuerId: 'owner',
+    emailHash: pepper && row.emailLabel ? await keyedHash(normalizeEmail(row.emailLabel), pepper, 'email') : null,
+    preset: preset || null,
+    editions: seatDoors(true),
+    features: cleanFeatures(body.permissions),
+    now: now(),
+  });
+  if (!saved) return json(503, { ok: false, error: 'Apply migrations/0009_email_login.sql first.', setup: true });
+  if (preset && preset !== row.preset) await db.prepare(`UPDATE seats SET preset = ? WHERE id = ?`).bind(preset, row.id).run();
+  return json(200, { ok: true, seatId: row.id });
 }

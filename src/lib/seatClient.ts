@@ -3,6 +3,7 @@ import { ownerPassOutranksSeat } from './ownerPassRank.ts';
 import {
   acceptInstructorInvite,
   installAcceptedSeat,
+  instructorPresetPermissions,
   issueInstructorInvite,
   listInstructorSeats,
   type InstructorPermissions,
@@ -26,6 +27,7 @@ function readToken(): string {
 export async function requestServerSeat(input: {
   email: string;
   presetId: InstructorPresetId | null;
+  permissions?: Partial<InstructorPermissions>;
 }): Promise<{ invite: string; seatId: string } | { reason: 'cap' | 'owner' | 'closed' | 'offline'; detail?: string }> {
   const token = readToken();
   if (!token) return { reason: 'offline' };
@@ -33,7 +35,7 @@ export async function requestServerSeat(input: {
     const response = await fetch('/api/seats/issue', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token, email: input.email, preset: input.presetId }),
+      body: JSON.stringify({ token, email: input.email, preset: input.presetId, permissions: input.permissions }),
     });
     const body = (await response.json()) as { ok?: boolean; invite?: string; seatId?: string; reason?: string; error?: string };
     const failure = seatIssueClientFailure(response.status, body);
@@ -69,7 +71,8 @@ export async function issueSeatWithServer(input: {
   presetId?: InstructorPresetId | null;
   origin: string;
 }): Promise<IssueInviteResult> {
-  const server = await requestServerSeat({ email: input.email, presetId: input.presetId ?? null });
+  const permissions = input.permissions ?? (input.presetId ? instructorPresetPermissions(input.presetId) : undefined);
+  const server = await requestServerSeat({ email: input.email, presetId: input.presetId ?? null, permissions });
   if ('reason' in server && server.reason === 'cap') return { ok: false, reason: 'cap' };
   if ('reason' in server && server.reason === 'owner') {
     return { ok: false, reason: 'owner', ...(server.detail ? { detail: server.detail } : {}) };
@@ -141,5 +144,33 @@ export async function acceptSignedSeat(invite: string): Promise<boolean> {
     return acceptServerToken(body.token);
   } catch {
     return false;
+  }
+}
+
+/**
+ * Owner: save one seat's switches on the server (Edit permissions). Also run for every seat
+ * on this device by syncSeatPermissions, so seats issued before switches were stored catch up.
+ * Best effort: the local seat already saved.
+ */
+export async function saveSeatPermissionsOnServer(seat: { id: string; presetId: InstructorPresetId | null; permissions: InstructorPermissions }): Promise<boolean> {
+  const token = readToken();
+  if (!token) return false;
+  try {
+    const response = await fetch('/api/seats/permissions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token, seatId: seat.id, preset: seat.presetId, permissions: seat.permissions }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Owner device: push every open seat's switches to the server once (backfill for older invites). */
+export async function syncSeatPermissions(): Promise<void> {
+  for (const seat of listInstructorSeats()) {
+    if (seat.status === 'revoked') continue;
+    await saveSeatPermissionsOnServer(seat);
   }
 }

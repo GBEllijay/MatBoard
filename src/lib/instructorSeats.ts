@@ -983,6 +983,8 @@ export function installAcceptedSeat(input: {
   email: string;
   presetId: InstructorPresetId | null;
   inviteToken: string;
+  /** The owner's switches stored on the server (email sign-in). Replace whatever this device had. */
+  permissions?: Partial<InstructorPermissions> | null;
 }): { ok: true } | { ok: false; reason: 'storage' } {
   const archive = readArchive();
   const existing = archive.seats.find((row) => row.id === input.id || row.inviteToken === input.inviteToken);
@@ -993,9 +995,15 @@ export function installAcceptedSeat(input: {
     status: 'active',
     issuedAt: Date.now(),
     presetId: normalizeInstructorPresetId(input.presetId),
-    permissions: permissionsForInvite(normalizeInstructorPresetId(input.presetId)),
+    permissions: permissionsForInvite(
+      normalizeInstructorPresetId(input.presetId),
+      input.permissions && Object.keys(input.permissions).length ? input.permissions : undefined,
+    ),
     inviteToken: input.inviteToken,
   };
+  if (existing && input.permissions && Object.keys(input.permissions).length) {
+    seat.permissions = normalizeInstructorPermissions(input.permissions);
+  }
   seat.status = 'active';
   seat.inviteToken = input.inviteToken;
   if (!existing) archive.seats.push(seat);

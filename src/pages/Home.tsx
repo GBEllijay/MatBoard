@@ -9,6 +9,7 @@ import { HomeMark } from '../components/HomeMark';
 import { LearnMoreLink } from '../components/LearnMoreLink';
 import { OwnerTestSheet } from '../components/OwnerTestSheet';
 import { SignOutButton } from '../components/SignOutButton';
+import { AccountLink } from '../components/AccountLink';
 import { takeSignOutCleanupNotice } from '../lib/signOut';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
@@ -232,6 +233,8 @@ export function HomePage() {
             <button type="button" className="btn btn--ghost" onClick={() => setOwnerTestOpen(true)}>
               Owner test unlock
             </button>
+            {' '}
+            <AccountLink />
             {' '}
             <SignOutButton />
           </p>

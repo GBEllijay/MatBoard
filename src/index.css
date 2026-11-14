@@ -20388,3 +20388,24 @@ a.plan-pick {
   margin: 0;
   font-size: 0.85rem;
 }
+
+/* /account: email sign-in and profile. Reuses the buy-card look. */
+.account__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.account__features,
+.account__editions {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  line-height: 1.6;
+}
+.account__features {
+  list-style: none;
+  padding-left: 0;
+}
+.account__heading {
+  margin: 1rem 0 0.25rem;
+}

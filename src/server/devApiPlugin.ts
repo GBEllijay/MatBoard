@@ -6,6 +6,7 @@ import { emailSenderFromEnv } from './emailSender.ts';
 import { handleCheckout, handleEntitlement, handleWebhook } from './handlers.ts';
 import { handleOwnerTest } from './ownerTest.ts';
 import { handlePublicConfig } from './publicConfig.ts';
+import { handleLogin } from './loginAccount.ts';
 import { handleRestoreRequest, handleRestoreVerify, handleRevokeOtherDevices } from './restoreAccess.ts';
 import { handleSessionRedeem } from './sessionRedeem.ts';
 import { sqliteD1 } from './sqliteD1.ts';
@@ -17,6 +18,7 @@ import {
   handleSeatReset,
   handleSeatRevoke,
   handleSeatSync,
+  handleSeatPermissions,
 } from './seats.ts';
 import {
   handleStudentLicenseClaim,
@@ -42,6 +44,7 @@ import {
   API_SEATS_RESET_PATH,
   API_SEATS_REVOKE_PATH,
   API_SEATS_SYNC_PATH,
+  API_SEATS_PERMISSIONS_PATH,
   API_STUDENT_LICENSES_CLAIM_PATH,
   API_STUDENT_LICENSES_ISSUE_PATH,
   API_STUDENT_LICENSES_LIST_PATH,
@@ -238,6 +241,22 @@ function attach(
       path === API_STUDENT_LICENSES_REVOKE_PATH ||
       path === API_STUDENT_LICENSES_RESET_PATH ||
       path === API_STUDENT_LICENSES_CLAIM_PATH;
+    if (path === API_SEATS_PERMISSIONS_PATH) {
+      const request = await toWebRequest(req as NodeRequest);
+      await writeResponse(res as NodeResponse, await handleSeatPermissions(request, env, devDb));
+      return;
+    }
+    if (path.startsWith('/api/login/')) {
+      try {
+        const request = await toWebRequest(req as NodeRequest);
+        await writeResponse(res as NodeResponse, await handleLogin(request, env, devDb, () => new Date(), fetch));
+      } catch {
+        res.statusCode = 500;
+        res.setHeader('content-type', 'application/json; charset=utf-8');
+        res.end(JSON.stringify({ error: 'Sign-in API failed.' }));
+      }
+      return;
+    }
     if (!api) {
       next();
       return;
