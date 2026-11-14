@@ -16,7 +16,7 @@ export const COACH_TOOLS_TEASER =
 /** Two lines under the blue belt on basic Advantage Coach. */
 export const BASIC_COACH_BELT_LINES = [
   'Tools and Templates for Coaches.',
-  "Plan today's class, and loop training clips on the TV, run a mock tournament and maintain a student roster.",
+  "Plan today's class, and loop training clips on the TV, run tournament brackets and maintain a student roster.",
 ] as const;
 
 export const STUDENT_ROSTER_LABEL = 'Student Roster';
@@ -27,14 +27,14 @@ export const EMPTY_STUDENT_ROSTER_SEARCH = 'No students match that name, belt, o
 
 /** Short home-card line so Coming Soon and unlocked teasers both fit. */
 export const COACH_HOME_TEASER =
-  'Daily Lesson Plan, Daily Training Videos, Mock Tournament, Roster.';
+  'Daily Lesson Plan, Daily Training Videos, Tournaments, Roster.';
 
 export const COACH_AD_LEAD =
-  `Coach tools: write a ${TRAINING_NOTES_LABEL}, loop Daily Training Videos, build a ${TECHNIQUE_TREE_LABEL}, run a Mock Tournament, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
+  `Coach tools: write a ${TRAINING_NOTES_LABEL}, loop Daily Training Videos, build a ${TECHNIQUE_TREE_LABEL}, run Tournament Software brackets, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
 
 /** Feature list kept for copy checks. Not shown on the Coach hub card. */
 export const COACH_HUB_BLURB =
-  `${TRAINING_NOTES_LABEL}, Daily Training Videos, ${TECHNIQUE_TREE_LABEL}, run a Mock Tournament, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
+  `${TRAINING_NOTES_LABEL}, Daily Training Videos, ${TECHNIQUE_TREE_LABEL}, run Tournament Software brackets, and keep a ${COMPETITOR_ROSTER_LABEL}.`;
 
 export const EMPTY_ROSTER_TITLE = 'No competitors yet';
 export const EMPTY_ROSTER_BODY =
@@ -55,7 +55,7 @@ export const EMPTY_BRACKET_BODY =
 
 /** Gym Owner Console — local saves ship now; cloud is the next owner step. */
 export const OWNER_BRACKET_CLOUD_NOTE =
-  'Saved brackets stay on this device. Pro boards hold up to 64 competitors. Cloud sync comes later.';
+  'Saved brackets stay on this device. Brackets hold up to 64 competitors. Cloud sync comes later.';
 
 /** User-facing roster meaning on Competitor Management and the Pro roster. */
 export const COMPETITOR_ROSTER_DESCRIPTION =
@@ -106,7 +106,7 @@ export const GAME_PLAN_EMPTY =
 export const COMPETITOR_GYM_LABEL = 'Gym name / nickname';
 
 export const ROSTER_LEAD_COACH =
-  'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.';
+  'Competitor Roster with Names and Ranks for Single Matches and Tournament Brackets.';
 export const ROSTER_LEAD_PRO =
   'Save competitor names, belts, divisions, and notes for matches and in-house tournaments. CSV backup available.';
 

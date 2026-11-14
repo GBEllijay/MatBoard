@@ -55,7 +55,7 @@ export const COACH_PREVIEW_LABEL = INSTRUCTOR_HOME_TITLE;
 
 /** One line under that shot. The picture is the live Coach button list. */
 export const COACH_PREVIEW_NOTE =
-  'Daily Lesson Plan, training videos, Technique Tree, Student Roster, and a plain mock tournament.';
+  'Daily Lesson Plan, training videos, Technique Tree, Student Roster, and full tournament brackets.';
 
 /** Caption on the Pro Coming Soon shot of the unlocked console home. */
 export const PRO_CONSOLE_PREVIEW_LABEL = 'Advantage Pro';
@@ -96,7 +96,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
     lead: INSTRUCTOR_EDITION_LEAD,
     includes: INSTRUCTOR_EDITION_INCLUDES,
     aside:
-      'Instructor Edition does not include Competition Class Curriculum or Competition Team Management.',
+      'Instructor Edition includes Competition Class Curriculum and Competition Team Management.',
     features: [
       {
         title: TRAINING_NOTES_LABEL,
@@ -115,8 +115,8 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
         body: `Name, belt, other belt, Division, gym name or nickname, last promotion, and ${STUDENT_NOTES_LABEL}. No photo on Instructor Edition.`,
       },
       {
-        title: 'Mock Tournament',
-        body: 'A plain bracket on this phone. No skins and no rankings.',
+        title: 'Tournament Software',
+        body: 'Brackets up to 64 competitors, with bracket skins and the Competition class template. Brackets save on this phone.',
       },
     ],
     dismiss: 'Got it',
@@ -141,7 +141,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: TOURNAMENT_MANAGEMENT_PRO_LABEL,
-        body: 'Pro brackets, the scoreboard, and the round timer, with extra skins and animations.',
+        body: 'The same brackets, scoreboard, and round timer as Instructor Edition, opened from the Pro console.',
       },
     ],
     dismiss: 'Got it',

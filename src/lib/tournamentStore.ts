@@ -14,9 +14,9 @@ export type { BoutOutcome, DqReason, WinMethod };
 /** Default board size. Coach mock and a fresh Pro board both start here. */
 export const TOURNAMENT_SIZE = 16 as const;
 export const MIN_COMPETITORS = 2;
-/** Coach / Mock Tournament cap. */
+/** Retired practice-bracket cap. Kept for older saves and copy checks. */
 export const COACH_MAX_COMPETITORS = 16;
-/** Pro In-House Tournament Management Suite cap. */
+/** Full Tournament Software cap (Instructor Edition, Pro, seats). */
 export const PRO_MAX_COMPETITORS = 64;
 /** Storage ceiling. Coach UI passes COACH_MAX_COMPETITORS when it changes size. */
 export const MAX_COMPETITORS = PRO_MAX_COMPETITORS;
@@ -135,15 +135,15 @@ export const PHASE2_BOUT_LINK = {
 } as const;
 
 /**
- * Owner cloud sync of named brackets is intentionally out of this version.
- * Coach mock stays at 16. Pro suite boards save up to 64 on this device.
- * Cloud sync of those named division brackets comes later.
+ * Cloud sync of named brackets is intentionally out of this version, for every tier.
+ * Instructor Edition, Pro, and seats save up to 64 on this device (localStorage).
+ * There is no bracket upload path to the academy or Advantage Cloud yet.
  */
 export const OWNER_BRACKET_CLOUD = {
   status: 'planned' as const,
   coachSaves: 'local-only',
   ownerSaves: 'local-only',
-  next: 'cloud sync of named brackets; Pro already saves up to 64 locally',
+  next: 'cloud sync of named brackets; Instructor Edition and Pro already save up to 64 locally',
 };
 
 export function scoreboardSideToBracket(side: Side): MatchSide {
@@ -169,12 +169,17 @@ const listeners = new Set<() => void>();
 let library: TournamentLibrary = loadLibrary();
 let bracketSeq = 0;
 
-export function maxCompetitors(proUnlocked: boolean): number {
-  return proUnlocked ? PRO_MAX_COMPETITORS : COACH_MAX_COMPETITORS;
+/**
+ * Bracket cap. `competitionSuite` is competitionSuiteOpen (Instructor Edition, Pro,
+ * or a live seat), which all get the full 64. The 16 cap is the retired practice board.
+ */
+export function maxCompetitors(competitionSuite: boolean): number {
+  return competitionSuite ? PRO_MAX_COMPETITORS : COACH_MAX_COMPETITORS;
 }
 
-export function sizePresets(proUnlocked: boolean): readonly number[] {
-  return proUnlocked ? PRO_SIZE_PRESETS : SIZE_PRESETS;
+/** Size chips. The full suite (Instructor Edition, Pro, seats) gets 32 and 64 too. */
+export function sizePresets(competitionSuite: boolean): readonly number[] {
+  return competitionSuite ? PRO_SIZE_PRESETS : SIZE_PRESETS;
 }
 
 export function clampCompetitorCount(value: number, max = PRO_MAX_COMPETITORS): number {

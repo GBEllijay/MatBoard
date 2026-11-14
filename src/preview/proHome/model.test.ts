@@ -107,7 +107,8 @@ test('the instructor concept reuses the profile identity card and keeps the appr
 test('instructor concept cards keep the live destinations and add no belt', () => {
   const cards = instructorConceptCards();
   assert.deepEqual(cards.map((card) => card.to), COACH_UNLIMITED_TOOLS.map((tool) => tool.to));
-  assert.equal(cards.length, 6);
+  // Seven live tools now; the Competition card has its own live mark, so this draft preview reuses a generic one.
+  assert.equal(cards.length, 7);
   assert.equal(new Set(cards.map((card) => card.mark)).size, 6);
   assert.ok(!cards.some((card) => card.title === 'Record for Review'));
 });

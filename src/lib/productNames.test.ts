@@ -33,6 +33,7 @@ import {
   coachToolsOpen,
   coachUnlimitedDoorOpen,
   isBasicCoach,
+  competitionSuiteOpen,
   isCoachStudentRoster,
   isPlainCoachTournament,
   MEDIA_CONSOLE_ROUTES,
@@ -175,7 +176,7 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   assert.doesNotMatch(`${COACHING_TOOLS_DETAIL}\n${COACHING_TOOLS_LEAD}`, /student/i);
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Competitor Roster', 'Mock Tournament'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Competitor Roster', 'Tournament Software'],
   );
   assert.deepEqual(
     COACH_HUBS.map((hub) => hub.to),
@@ -222,7 +223,7 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   );
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.title),
-    ['Competitor Management System', 'Competitor Roster', 'Mock Tournament', 'Scoreboard', 'Round Timer'],
+    ['Competitor Management System', 'Competitor Roster', 'Tournament Software', 'Scoreboard', 'Round Timer'],
   );
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.to),
@@ -234,8 +235,8 @@ test('Coach hub is Coaching Tools then Competition Team Management', () => {
   assert.ok(!COMPETITION_MENU.some((item) => item.to === '/match'));
   assert.ok(!COMPETITION_MENU.some((item) => item.to.startsWith('/training/control')));
   const menuOrder = COMPETITION_MENU.map((item) => item.title);
-  assert.ok(menuOrder.indexOf('Competitor Management System') < menuOrder.indexOf('Mock Tournament'));
-  assert.ok(menuOrder.indexOf('Mock Tournament') < menuOrder.indexOf('Scoreboard'));
+  assert.ok(menuOrder.indexOf('Competitor Management System') < menuOrder.indexOf('Tournament Software'));
+  assert.ok(menuOrder.indexOf('Tournament Software') < menuOrder.indexOf('Scoreboard'));
   assert.ok(menuOrder.indexOf('Scoreboard') < menuOrder.indexOf('Round Timer'));
   assert.deepEqual(
     COMPETITION_MENU.map((item) => item.belt),
@@ -261,13 +262,17 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_ROSTER_PATH, '/roster?from=competitors');
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Scoreboard', 'Round Timer'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Competition and Tournament Management', 'Scoreboard', 'Round Timer'],
   );
-  assert.equal(COACH_UNLIMITED_TOOLS[4].to, withHubFrom(MATCH_CONTROLLER_PATH, 'unlimited'));
-  assert.equal(COACH_UNLIMITED_TOOLS[5].to, withHubFrom(ROUND_CONTROLLER_PATH, 'unlimited'));
-  assert.equal(COACH_UNLIMITED_TOOLS[4].belt, 'black');
+  // Instructor Edition competition card: after Student Roster, opens the existing /competition hub.
+  assert.equal(COACH_UNLIMITED_TOOLS[4].title, TOURNAMENT_MANAGEMENT_PRO_LABEL);
+  assert.equal(COACH_UNLIMITED_TOOLS[4].to, '/competition?from=unlimited');
+  assert.equal(COACH_UNLIMITED_TOOLS[4].belt, 'tournament');
+  assert.equal(COACH_UNLIMITED_TOOLS[5].to, withHubFrom(MATCH_CONTROLLER_PATH, 'unlimited'));
+  assert.equal(COACH_UNLIMITED_TOOLS[6].to, withHubFrom(ROUND_CONTROLLER_PATH, 'unlimited'));
   assert.equal(COACH_UNLIMITED_TOOLS[5].belt, 'black');
-  assert.equal(COACH_UNLIMITED_TOOLS[4].clearBout, true);
+  assert.equal(COACH_UNLIMITED_TOOLS[6].belt, 'black');
+  assert.equal(COACH_UNLIMITED_TOOLS[5].clearBout, true);
   assert.equal(COACH_UNLIMITED_TOOLS[3].title, 'Student Roster');
   assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => tool.title === 'Record for Review'));
   assert.equal(COACH_UNLIMITED_TOOLS[0].to, UNLIMITED_LESSON_PATH);
@@ -275,11 +280,11 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COACH_UNLIMITED_TOOLS[2].to, UNLIMITED_TREE_PATH);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.belt),
-    ['brown', 'brown', 'brown', 'brown', 'black', 'black'],
+    ['brown', 'brown', 'brown', 'brown', 'tournament', 'black', 'black'],
   );
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => ('stripes' in tool ? tool.stripes : null)),
-    [0, 1, 2, 3, null, null],
+    [0, 1, 2, 3, null, null, null],
   );
   assert.equal(COACH_UNLIMITED_TOOLS[3].to, '/student-roster');
   assert.equal(isCoachStudentRoster('/student-roster', null), true);
@@ -361,7 +366,7 @@ test('Suite origin stays on Suite links and leaves other paths alone', () => {
   assert.equal(withHubFrom('/match?bout=sf-0&kids=ocean', 'unlimited'), '/match?bout=sf-0&kids=ocean&from=unlimited');
 });
 
-test('Owner tournament tool is Tournament Software; Coach keeps Mock Tournament', () => {
+test('Tournament Software is the bracket for every competition-suite door; Mock Tournament is retired', () => {
   assert.equal(TOURNAMENT_SOFTWARE_NAME, 'Tournament Software');
   assert.equal(MOCK_TOURNAMENT_NAME, 'Mock Tournament');
   assert.equal(tournamentToolLabel(true), TOURNAMENT_SOFTWARE_NAME);
@@ -404,14 +409,14 @@ test('Pro unlock includes Coach tools and Coach-only unlock still stands alone',
   assert.equal(isBasicCoach(true, true), false);
   assert.equal(isBasicCoach(true, false), false);
   assert.equal(isBasicCoach(false, false), false);
-  assert.equal(isPlainCoachTournament('coach', false), true);
-  assert.equal(isPlainCoachTournament('coach', true), true);
-  assert.equal(isPlainCoachTournament(null, true), true);
+  // Second argument is competitionSuiteOpen. Instructor Edition, Pro, and seats get the full board.
+  assert.equal(isPlainCoachTournament('coach', true), false);
+  assert.equal(isPlainCoachTournament(null, true), false);
+  assert.equal(isPlainCoachTournament('unlimited', true), false);
   assert.equal(isPlainCoachTournament('suite', true), false);
   assert.equal(isPlainCoachTournament('suite', false), false);
-  assert.equal(isPlainCoachTournament(null, false), false);
-  assert.equal(isPlainCoachTournament('unlimited', false), false);
-  assert.equal(isPlainCoachTournament('unlimited', true), true);
+  assert.equal(isPlainCoachTournament('coach', false), true);
+  assert.equal(isPlainCoachTournament(null, false), true);
 });
 
 test('Footer states ownership, alpha testing, and the feedback email only', () => {
@@ -733,4 +738,32 @@ test('Pro Plus Cloud copy stays off the Advantage Pro blurb', () => {
     PRO_HUBS.map((hub) => hub.belt),
     ['purple', 'brown', 'black', 'tournament'],
   );
+});
+
+test('Instructor Edition opens the full competition suite; Pro Console and /suite stay Pro', () => {
+  // Owner, 14 Nov 2026: Instructor Edition includes the Competition and Tournament Management suite.
+  assert.equal(competitionSuiteOpen(false, true, false), true, 'Instructor Edition');
+  assert.equal(competitionSuiteOpen(true, false, false), true, 'Pro');
+  assert.equal(competitionSuiteOpen(true, true, false), true, 'Pro + Instructor');
+  assert.equal(competitionSuiteOpen(false, false, true), true, 'invited seat');
+  assert.equal(competitionSuiteOpen(false, false, false), false, 'White, Student, Media only');
+  const instructor = competitionSuiteOpen(false, true, false);
+  assert.equal(isPlainCoachTournament('coach', instructor), false);
+  assert.equal(isPlainCoachTournament(null, instructor), false);
+  assert.equal(tournamentToolLabel(instructor), TOURNAMENT_SOFTWARE_NAME);
+  const tournament = readFileSync(new URL('../pages/Tournament.tsx', import.meta.url), 'utf8');
+  assert.match(tournament, /competitionSuiteOpen\(useProUnlocked\(\), useCoachUnlocked\(\), useCurrentSeat\(\) !== null\)/);
+  assert.match(tournament, /maxCompetitors\(competitionSuite\)/);
+  assert.match(tournament, /sizePresets\(competitionSuite\)/);
+  assert.doesNotMatch(tournament, /isBasicCoach/);
+  // Every tier still saves brackets on the device only; the note must not promise cloud.
+  assert.match(tournament, /competitionSuite\s*\?\s*OWNER_BRACKET_CLOUD_NOTE/);
+  const notes = readFileSync(new URL('../pages/TrainingNotes.tsx', import.meta.url), 'utf8');
+  assert.match(notes, /const competitionAllowed = competitionSuiteOpen\(proUnlocked, coachUnlocked, seat !== null\) \|\| unlimitedPlan;/);
+  const board = readFileSync(new URL('../hooks/useMatchBoard.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(board, /isBasicCoach/);
+  // Unchanged Pro gates: the /suite hub and the Pro Console route.
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.match(app, /path="\/suite"\s*element=\{\s*<OwnerProRoute>/);
+  assert.match(app, /path="\/pro"\s*element=\{\s*<ProConsoleRoute>/);
 });

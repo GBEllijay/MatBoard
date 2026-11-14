@@ -151,9 +151,13 @@ export function kidsShowMascot(
   return mascot && !chromeHidden && kidsShowWin(enabled, championName);
 }
 
-/** Skin picker and wallpaper: Pro suite and Coach Unlimited. Plain Coach stays off. */
-export function kidsBracketSkinsAllowed(from: string | null): boolean {
-  return from === SUITE_FROM || from === UNLIMITED_FROM;
+/**
+ * Skin picker and wallpaper: Pro suite, Coach Unlimited, and any board opened by a
+ * browser with the competition suite (Instructor Edition, Pro, or a seat; see
+ * competitionSuiteOpen). Only the retired plain practice board stays off.
+ */
+export function kidsBracketSkinsAllowed(from: string | null, competitionSuite = false): boolean {
+  return from === SUITE_FROM || from === UNLIMITED_FROM || competitionSuite;
 }
 
 /** Wallpaper follows the device toggle once this hub allows kids skins. */

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../components/BeltRail';
 import { HomeMark } from '../components/HomeMark';
 import { PlayExitMark } from '../components/PlayExitMark';
@@ -10,14 +10,19 @@ import {
   COMPETITION_MANAGEMENT_LABEL,
   COMPETITION_MENU,
   COMPETITION_MENU_PRO,
+  COACH_UNLIMITED_PATH,
   PRODUCTS_PATH,
+  UNLIMITED_FROM,
 } from '../lib/productNames';
 
 export function CompetitionManagementPage() {
+  const [searchParams] = useSearchParams();
+  // Opened from the Instructor Edition tool card: Back returns to that list.
+  const backTo = searchParams.get('from') === UNLIMITED_FROM ? COACH_UNLIMITED_PATH : '/coach';
   return (
     <main className="home home--coach">
       <div className="home__inner">
-        <PlayExitMark to="/coach" />
+        <PlayExitMark to={backTo} />
         <HomeMark to={PRODUCTS_PATH} tagline={<TierLine tier="Instructor Edition" detail={COACH_TOOLS_TEASER} />} />
 
         <nav className="home__modes" aria-label={COMPETITION_MANAGEMENT_LABEL}>
