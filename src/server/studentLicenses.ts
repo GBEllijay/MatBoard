@@ -34,6 +34,8 @@ import { API_PRODUCT_STUDENT } from './routes.ts';
 import { grantOpen, grantsForLicense, recordPurchase, type StoredGrant } from './purchaseRecords.ts';
 import { readHalfOffCode } from './proBundle.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
+import { cleanEditions, cleanFeatures, markInviteRedeemed, recordInviteSelection } from './inviteSelections.ts';
+import { instructorIdFromClaims } from '../lib/instructorIdentity.ts';
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -151,7 +153,7 @@ async function signStudentInvite(env: StudentLicenseEnv, input: { code: string; 
 
 type StudentInvitePayload = { typ?: string; code?: string; gym?: string; v?: number };
 
-async function readStudentInviteCode(raw: unknown, env: StudentLicenseEnv): Promise<string | null> {
+export async function readStudentInviteCode(raw: unknown, env: StudentLicenseEnv): Promise<string | null> {
   if (typeof raw !== 'string') return null;
   const value = raw.trim();
   if (!value) return null;
@@ -317,6 +319,7 @@ async function claimPayload(
   now: Date,
   request: Request,
 ): Promise<Response> {
+  await markInviteRedeemed(db, 'student-code', row.code, studentLicenseId, now);
   const token = await issueStudentToken(env, {
     studentLicenseId,
     gymLicenseId: row.licenseId,
@@ -396,6 +399,18 @@ export async function handleStudentLicenseIssue(
     if (!inserted.meta.changes) {
       return json(409, { ok: false, error: STUDENT_LICENSE_EMPTY, ...poolBody(occupied, caller.licenseId) });
     }
+    // Keep exactly what the instructor picked so email sign-in can restore it (loginAccount.ts).
+    await recordInviteSelection(db, {
+      kind: 'student-code',
+      ref: code,
+      gym: caller.licenseId,
+      issuerId: instructorIdFromClaims(verified),
+      emailHash: emailKey,
+      preset: STUDENT_LICENSE_PRESET,
+      editions: cleanEditions(body.editions, ['student']),
+      features: cleanFeatures(body.features),
+      now: now(),
+    });
     const invite = await signStudentInvite(env, { code, gym: caller.licenseId });
     return json(200, { ok: true, code, invite: invite ?? undefined, typ: STUDENT_INVITE_TYP, status: 'issued', ...poolBody(occupied, caller.licenseId) });
   } catch (error) {

@@ -127,6 +127,8 @@ import { MediaEditionGate } from './components/MediaEditionGate';
 import { GuardRedirect } from './components/GuardRedirect';
 import { MEDIA_EDITION_OLD_PATH, MEDIA_EDITION_PATH } from './lib/mediaEdition';
 import { RestoreAccessPage } from './pages/RestoreAccess';
+import { AccountPage } from './pages/Account';
+import { InAppBrowserHint } from './components/InAppBrowserHint';
 import { WhitePage } from './pages/White';
 import { WhiteRosterPage } from './pages/WhiteRoster';
 
@@ -151,7 +153,12 @@ function consumeInviteDoorNow(): void {
   const token = params.get('invite');
   if (token && isSignedSeatInvite(token)) {
     void acceptSignedSeat(token).then((ok) => {
-      if (!ok) return;
+      if (!ok) {
+        // Already bound to an email account, taken, or offline: open sign-in with the invite filled in
+        // (first time sets the password) instead of leaving a blank or locked page.
+        if (window.location.pathname !== '/account') window.location.replace(`/account?invite=${encodeURIComponent(token)}`);
+        return;
+      }
       const url = new URL(window.location.href);
       url.pathname = PRODUCTS_PATH;
       url.search = '';
@@ -449,6 +456,7 @@ export default function App() {
   return (
     <IndexCardProvider>
     <SeatSessionChrome />
+    <InAppBrowserHint />
     <LegacyAccessNotice />
     <PaymentGraceBanner />
     <InviteDoor>
@@ -469,6 +477,7 @@ export default function App() {
       <Route path={MEDIA_EDITION_PATH} element={<MediaEditionRoute />} />
       <Route path={MEDIA_EDITION_OLD_PATH} element={<Navigate to={MEDIA_EDITION_PATH} replace />} />
       <Route path="/restore" element={<RestoreAccessPage />} />
+      <Route path="/account" element={<AccountPage />} />
       <Route path="/join/student" element={<StudentJoinPage />} />
       {/* Public tier buy pages (display + alpha line). The gated /buy/student, /buy/coach and /buy/pro checkouts are unchanged. */}
       <Route path="/editions/student" element={<BuyStudentEditionPage />} />

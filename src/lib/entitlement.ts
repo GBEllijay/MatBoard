@@ -534,18 +534,72 @@ export async function loadPublicConfig(): Promise<void> {
   }
 }
 
-async function reverifyStored(): Promise<void> {
+type ReverifyOutcome = 'none' | 'ok' | 'kept' | 'failed';
+
+function cannotReachServer(): boolean {
+  return offline || (typeof navigator !== 'undefined' && navigator.onLine === false);
+}
+
+/**
+ * Check the stored pass. A pass that fails is never dropped silently:
+ * - offline, or no public keys loaded: it stays stored ('kept') and is checked again next boot;
+ * - online: the caller first tries the email sign-in session (healFromSession), and only then
+ *   discards it ('failed').
+ */
+async function reverifyStored(): Promise<ReverifyOutcome> {
   const token = readItem(ENTITLEMENT_TOKEN_KEY);
   if (!token) {
     verified = null;
-    return;
+    return 'none';
   }
   if (!config.keys.length) {
     verified = null;
-    return;
+    return 'kept';
   }
   verified = await verifyToken(token, config.keys);
-  if (!verified) removeItem(ENTITLEMENT_TOKEN_KEY);
+  if (verified) return 'ok';
+  return cannotReachServer() ? 'kept' : 'failed';
+}
+
+/** Readable hint cookie set next to the HttpOnly session cookie (src/server/loginAccount.ts). */
+export function hasLoginSessionHint(cookie: string = typeof document === 'undefined' ? '' : document.cookie): boolean {
+  return /(?:^|;\s*)adv_login=1(?:;|$)/.test(cookie);
+}
+
+let healer: (() => Promise<boolean>) | null = null;
+
+/** Tests replace the session call. Production asks /api/login/me for this device's passes. */
+export function setSessionHealerForTests(fn: (() => Promise<boolean>) | null): void {
+  healer = fn;
+}
+
+/**
+ * Signed in with email on this browser but the pass is missing or bad (iOS split or wiped
+ * storage, an in-app browser, a rotated key): ask the session for fresh passes. True when a
+ * pass is verified afterwards.
+ */
+export async function healFromSession(): Promise<boolean> {
+  if (healer) return healer();
+  if (!hasLoginSessionHint() || cannotReachServer()) return false;
+  try {
+    const mod = await import('./emailLogin.ts');
+    const result = await mod.fetchAccount(true);
+    return result.signedIn && Boolean(verified);
+  } catch {
+    return false;
+  }
+}
+
+/** Boot step: verify, then self-heal from the session before anything is discarded. */
+export async function settleStoredPass(): Promise<ReverifyOutcome> {
+  const token = readItem(ENTITLEMENT_TOKEN_KEY);
+  const outcome = await reverifyStored();
+  if (outcome === 'ok' || outcome === 'kept') return outcome;
+  const healed = await healFromSession();
+  if (healed) return 'ok';
+  // Only drop the exact pass that failed; a heal or another tab may have written a new one.
+  if (outcome === 'failed' && token && readItem(ENTITLEMENT_TOKEN_KEY) === token) removeItem(ENTITLEMENT_TOKEN_KEY);
+  return outcome;
 }
 
 export function bootEntitlement(): void {
@@ -557,7 +611,7 @@ export function bootEntitlement(): void {
     try {
       await loadPublicConfig();
       retireLegacyUnlockFlags(nowMs(), config.legacyAmnestyEndsAt);
-      await reverifyStored();
+      await settleStoredPass();
       noteClock(nowMs());
       if (verified) {
         const claims = verified;
