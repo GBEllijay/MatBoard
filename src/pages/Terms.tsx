@@ -68,7 +68,7 @@ export function TermsPage() {
             sale.
           </li>
           <li>
-            Advantage Instructor Edition costs $29.99 as a one-time purchase, once it’s offered for sale.
+            Advantage Instructor Edition costs $49.99 as a one-time purchase, once it’s offered for sale.
           </li>
           <li>
             Advantage Pro costs $99.99 as a one-time purchase, plus a subscription of $5.99 per
