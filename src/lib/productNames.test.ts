@@ -429,7 +429,7 @@ test('Shared tools prefer Pro console, then Coach', () => {
   assert.equal(parentToolboxPath(false, true), '/coach');
   assert.equal(parentToolboxPath(false, false), '/products');
   assert.equal(toolEyebrow(true, false), GYM_CONSOLE_NAME);
-  assert.equal(toolEyebrow(false, true), 'Advantage Coach');
+  assert.equal(toolEyebrow(false, true), 'Advantage Instructor Edition');
 });
 
 test('a live seat opens Coach and leaves the owner Pro hubs closed', () => {
@@ -445,7 +445,7 @@ test('a live seat opens Coach and leaves the owner Pro hubs closed', () => {
   assert.equal(parentToolboxPath(false, false, true), '/coach');
   assert.equal(parentToolboxPath(true, false, true), '/pro');
   assert.equal(parentToolboxPath(false, false, true, true), '/pro');
-  assert.equal(toolEyebrow(false, false, true), 'Advantage Coach');
+  assert.equal(toolEyebrow(false, false, true), 'Advantage Instructor Edition');
   assert.equal(toolEyebrow(true, false, true), GYM_CONSOLE_NAME);
   assert.equal(coachToolsOpen(false, false), false);
 });
@@ -478,10 +478,10 @@ test('shared tools return to the hub that opened them', () => {
 });
 
 test('Daily Training Videos names a seated coach instead of the gym owner console', () => {
-  assert.equal(techniquesPageEyebrow(true, false, true), 'Advantage Coach');
+  assert.equal(techniquesPageEyebrow(true, false, true), 'Advantage Instructor Edition');
   assert.equal(techniquesPageEyebrow(true, false, false), GYM_CONSOLE_NAME);
-  assert.equal(techniquesPageEyebrow(false, true, false), 'Advantage Coach');
-  assert.equal(techniquesPageEyebrow(false, false, true), 'Advantage Coach');
+  assert.equal(techniquesPageEyebrow(false, true, false), 'Advantage Instructor Edition');
+  assert.equal(techniquesPageEyebrow(false, false, true), 'Advantage Instructor Edition');
   assert.equal(techniquesParentPath(true, false, true), '/coach');
   assert.equal(techniquesParentPath(true, false, false), '/pro');
   assert.equal(techniquesParentPath(false, true, false), '/coach');

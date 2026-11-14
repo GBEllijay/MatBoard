@@ -7,7 +7,7 @@ const TIERS = [
   ['all', 'All tiers'],
   ['white', 'White'],
   ['student', 'Student Edition'],
-  ['coach', 'Coach'],
+  ['coach', 'Instructor Edition'],
   ['pro', 'Pro'],
   ['media', 'Media Edition'],
   ['seat', 'Instructor seat'],

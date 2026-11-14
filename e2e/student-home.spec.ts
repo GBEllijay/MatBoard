@@ -261,11 +261,11 @@ test('a direct /student visit stays closed, and sign out still leaves the seat',
   await page.goto('/products');
   await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
   await expect(page.getByText('Signed in as')).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Instructor Edition', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Instructor Edition', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/buy');
 });
 
@@ -312,11 +312,11 @@ test('URL params do not unlock a tier', async ({ browser }) => {
     await page.goto(`/?${param}=1`);
     if (param === 'student') {
       await expect(page.getByRole('link', { name: 'Open demo', exact: true })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toHaveCount(0);
+      await expect(page.getByRole('link', { name: 'Open Instructor Edition', exact: true })).toHaveCount(0);
       await context.close();
       continue;
     }
-    await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Open Instructor Edition', exact: true })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Open demo', exact: true })).toHaveCount(0);
     await context.close();
   }

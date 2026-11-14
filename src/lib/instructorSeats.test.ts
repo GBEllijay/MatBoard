@@ -507,16 +507,16 @@ test('four binder presets fill the toggles and stay overridable', () => {
   assert.deepEqual(
     INSTRUCTOR_PRESETS.map((preset) => [preset.id, preset.plan]),
     [
-      ['assistant-coach', 'Coach Unlimited'],
+      ['assistant-coach', 'Instructor Edition'],
       ['program-director', 'Pro · Gallery'],
-      ['coach', 'Coach Unlimited'],
-      ['instructors', 'Coach Unlimited + Pro'],
+      ['coach', 'Instructor Edition'],
+      ['instructors', 'Instructor Edition + Pro'],
     ],
   );
-  assert.equal(instructorPresetPlan('assistant-coach'), 'Coach Unlimited');
-  assert.equal(instructorPresetPlan('coach'), 'Coach Unlimited');
+  assert.equal(instructorPresetPlan('assistant-coach'), 'Instructor Edition');
+  assert.equal(instructorPresetPlan('coach'), 'Instructor Edition');
   assert.equal(instructorPresetPlan('program-director'), 'Pro · Gallery');
-  assert.equal(instructorPresetPlan('instructors'), 'Coach Unlimited + Pro');
+  assert.equal(instructorPresetPlan('instructors'), 'Instructor Edition + Pro');
   assert.equal(instructorPresetPlan(null), null);
 
   reset();

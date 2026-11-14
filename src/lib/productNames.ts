@@ -478,7 +478,7 @@ export function parentToolboxPath(
 
 export function toolEyebrow(proUnlocked: boolean, coachUnlocked: boolean, seated = false): string {
   if (proUnlocked) return GYM_CONSOLE_NAME;
-  if (coachUnlocked || seated) return 'Advantage Coach';
+  if (coachUnlocked || seated) return 'Advantage Instructor Edition';
   return GYM_CONSOLE_NAME;
 }
 
@@ -492,7 +492,7 @@ export function techniquesPageEyebrow(
   coachUnlocked: boolean,
   seated = false,
 ): string {
-  if (seated) return 'Advantage Coach';
+  if (seated) return 'Advantage Instructor Edition';
   return toolEyebrow(proUnlocked, coachUnlocked, false);
 }
 

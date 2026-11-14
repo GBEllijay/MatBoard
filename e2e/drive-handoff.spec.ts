@@ -205,8 +205,8 @@ test('the owner issues an invite and the coach submits through the gym folder', 
   });
   await page.goto('/instructors');
   await page.getByLabel('Email').fill('coach@gym.test');
-  await page.getByRole('radio', { name: 'Coach, Coach Unlimited. Lesson plans, daily videos, and uploads' }).click();
-  const selected = page.getByRole('radio', { name: 'Coach, Coach Unlimited. Lesson plans, daily videos, and uploads' });
+  await page.getByRole('radio', { name: 'Coach, Instructor Edition. Lesson plans, daily videos, and uploads' }).click();
+  const selected = page.getByRole('radio', { name: 'Coach, Instructor Edition. Lesson plans, daily videos, and uploads' });
   await expect(selected).toHaveClass(/binder-pick--on/);
   await page.getByRole('button', { name: 'Issue invite' }).click();
   await expect(page.getByRole('textbox', { name: 'Invite link', exact: true })).toBeVisible();

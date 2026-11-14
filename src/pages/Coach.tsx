@@ -30,10 +30,10 @@ export function CoachPage() {
 
         <InviteAccept />
         <GymCoachPulse />
-        <nav className="home__modes" aria-label="Advantage Coach">
+        <nav className="home__modes" aria-label="Advantage Instructor Edition">
           <BeltHeader
             kind="brown"
-            title="Advantage - Coach"
+            title="Advantage - Instructor Edition"
             blurb={BASIC_COACH_BELT_LINES.join('\n')}
           />
           {tools.map((tool) => (
@@ -69,7 +69,7 @@ export function CoachPage() {
           )}
           {ownerOpen ? (
             <p className="home__soon">
-              Advantage Coach is on for this browser.{' '}
+              Advantage Instructor Edition is on for this browser.{' '}
               <Link className="home__text-btn" to={PRODUCTS_PATH}>
                 All products
               </Link>
@@ -82,7 +82,7 @@ export function CoachPage() {
                   navigate(PRODUCTS_PATH);
                 }}
               >
-                Lock Coach
+                Lock Instructor Edition
               </button>
             </p>
           ) : null}

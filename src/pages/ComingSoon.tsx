@@ -36,10 +36,10 @@ export function ComingSoonPage() {
   const tagline = proUnlocked
     ? 'Advantage Pro is on for this browser.'
     : coachUnlocked
-      ? 'Advantage Coach is on for this browser.'
+      ? 'Advantage Instructor Edition is on for this browser.'
       : seated
         ? 'This browser is signed in with an instructor seat.'
-        : 'This product is in alpha — Advantage Coach and Advantage Pro.';
+        : 'This product is in alpha — Advantage Instructor Edition and Advantage Pro.';
 
   return (
     <main className="home home--soon">
@@ -47,7 +47,7 @@ export function ComingSoonPage() {
         <HomeMark to={PRODUCTS_PATH} tagline={tagline} />
 
         {coachTools ? (
-          <nav className="home__soon-actions" aria-label={proUnlocked ? 'Pro' : 'Coach'}>
+          <nav className="home__soon-actions" aria-label={proUnlocked ? 'Pro' : 'Instructor Edition'}>
             {proHubs.length
               ? proHubs.map((hub) => (
                   <Link key={hub.to} className="btn btn--white" to={hub.to}>
@@ -58,7 +58,7 @@ export function ComingSoonPage() {
               : null}
             {coachTools ? (
               <Link className="btn" to="/coach">
-                Open Coach
+                Open Instructor Edition
               </Link>
             ) : null}
             {coachTools && !proUnlocked
@@ -83,7 +83,7 @@ export function ComingSoonPage() {
             ) : null}
             {coachUnlocked ? (
               <button type="button" className="btn btn--ghost" onClick={() => lockCoach()}>
-                Lock Coach
+                Lock Instructor Edition
               </button>
             ) : null}
             {door.mediaUnlocked ? (
@@ -98,8 +98,8 @@ export function ComingSoonPage() {
               {whiteUnlocked
                 ? 'Advantage White is ready on this browser — Live Bout and Rounds. '
                 : 'Advantage White is $9.99 — Live Bout and Rounds unlock after purchase. '}
-              Advantage Coach and Advantage Pro stay in alpha on home. Gym-owner tools stay off
-              until Coach or Pro is unlocked on this browser.
+              Advantage Instructor Edition and Advantage Pro stay in alpha on home. Gym-owner tools stay off
+              until Instructor Edition or Pro is unlocked on this browser.
             </p>
             <AlphaAccessNote />
             <Link className="btn" to={whiteEntryPath(whiteUnlocked)}>
@@ -109,7 +109,7 @@ export function ComingSoonPage() {
               Back to home
             </Link>
             <button type="button" className="btn btn--ghost" onClick={() => setUnlockOpen('coach')}>
-              Unlock Coach
+              Unlock Instructor Edition
             </button>
             <button type="button" className="btn btn--ghost" onClick={() => setUnlockOpen('pro')}>
               Unlock Pro

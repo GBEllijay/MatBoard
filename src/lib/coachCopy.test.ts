@@ -223,7 +223,7 @@ test('Coach CMS roster shows CSV and keeps manual roster language', () => {
 });
 
 test('Coach Daily Lesson Plan copy stays on this device and does not name a day count', () => {
-  assert.equal(COACH_LESSON_EYEBROW, 'Advantage Coach');
+  assert.equal(COACH_LESSON_EYEBROW, 'Advantage Instructor Edition');
   assert.equal(
     NOTES_LEAD,
     "Today's and yesterday's plans, and recent days, stay on this device.",

@@ -264,7 +264,7 @@ export function TournamentPage() {
       <PlayExitMark to={exitPath} onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
-          <p className="tournament__eyebrow">{plainCoach ? 'Advantage Coach' : parent.eyebrow}</p>
+          <p className="tournament__eyebrow">{plainCoach ? 'Advantage Instructor Edition' : parent.eyebrow}</p>
           <h1>{plainCoach ? MOCK_TOURNAMENT_NAME : tournamentToolLabel(proUnlocked)}</h1>
         </div>
       </header>

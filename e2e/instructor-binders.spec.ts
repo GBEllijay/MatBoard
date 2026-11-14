@@ -6,9 +6,9 @@ const NOTE =
 const ROLES = [
   {
     id: 'assistant-coach',
-    radio: 'Assistant Coach, Coach Unlimited. Lesson plans and daily videos',
+    radio: 'Assistant Coach, Instructor Edition. Lesson plans and daily videos',
     label: 'Assistant coach',
-    plan: 'Coach Unlimited',
+    plan: 'Instructor Edition',
     family: 'blue',
     on: ['Daily training lesson plan access', "Download today's videos", 'Upload for instructor distribution'],
   },
@@ -22,9 +22,9 @@ const ROLES = [
   },
   {
     id: 'coach',
-    radio: 'Coach, Coach Unlimited. Lesson plans, daily videos, and uploads',
+    radio: 'Coach, Instructor Edition. Lesson plans, daily videos, and uploads',
     label: 'Coach',
-    plan: 'Coach Unlimited',
+    plan: 'Instructor Edition',
     family: 'brown',
     on: [
       'Daily training lesson plan access',
@@ -36,9 +36,9 @@ const ROLES = [
   },
   {
     id: 'instructors',
-    radio: 'Instructor, Coach Unlimited + Pro. Lessons, uploads, events, Pro Shop, and gallery',
+    radio: 'Instructor, Instructor Edition + Pro. Lessons, uploads, events, Pro Shop, and gallery',
     label: 'Instructors',
-    plan: 'Coach Unlimited + Pro',
+    plan: 'Instructor Edition + Pro',
     family: 'black',
     on: [
       'Gallery upload',
@@ -160,7 +160,7 @@ test('an issued invite keeps the picked role, seat count, and permission edit', 
   await page.getByRole('switch', { name: /Gallery upload/ }).click();
   await page.getByRole('button', { name: 'Issue invite' }).click();
   await expect(page.getByRole('textbox', { name: 'Invite link', exact: true })).toBeVisible();
-  await expect(page.locator('.invite-link')).toContainText('Coach Unlimited');
+  await expect(page.locator('.invite-link')).toContainText('Instructor Edition');
   await expect(page.locator('.invite-seat-cap__count')).toHaveText('1 of 5 free instructor seats used');
   await expect(page.locator('.binder-list__seats')).toContainText('1 of 5 free instructor seats used');
   await expect(page.locator('.binder-list__seats')).toContainText('4 seats remaining');

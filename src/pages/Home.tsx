@@ -102,7 +102,7 @@ export function HomePage() {
   const openCloudHome = cloudOpen && cloudTo === '/pro-plus-cloud';
   const instructorUnlimited = coachUnlimitedDoorOpen(door);
   const instructorOpenTo = instructorUnlimited ? COACH_UNLIMITED_PATH : '/coach';
-  const instructorOpenLabel = instructorUnlimited ? 'Open Advantage Instructor Edition' : 'Open Coach';
+  const instructorOpenLabel = instructorUnlimited ? 'Open Advantage Instructor Edition' : 'Open Instructor Edition';
   const [ownerTestOpen, setOwnerTestOpen] = useState(false);
   const [signOutNotice] = useState(() => takeSignOutCleanupNotice());
 
