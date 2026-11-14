@@ -140,7 +140,7 @@ export function rosterCsvAvailable(proUnlocked: boolean, coachUnlocked: boolean)
 }
 
 /** Eyebrow on the paid Coach Daily Lesson Plan. Not the gym-owner console. */
-export const COACH_LESSON_EYEBROW = 'Advantage Coach';
+export const COACH_LESSON_EYEBROW = 'Advantage Instructor Edition';
 
 /**
  * Date-row line on Daily Lesson Plan.

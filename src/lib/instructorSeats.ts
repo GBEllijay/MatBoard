@@ -100,7 +100,7 @@ export const INSTRUCTOR_PERMISSION_FIELDS: readonly {
 export type InstructorPresetId = 'assistant-coach' | 'coach' | 'program-director' | 'instructors';
 
 /** Product plan behind a named invite tier. Not stored separately from the preset. */
-export type InstructorPlanName = 'Coach Unlimited' | 'Coach Unlimited + Pro' | 'Pro · Gallery';
+export type InstructorPlanName = 'Instructor Edition' | 'Instructor Edition + Pro' | 'Pro · Gallery';
 
 export type InstructorPreset = {
   id: InstructorPresetId;
@@ -126,7 +126,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'assistant-coach',
     label: 'Assistant coach',
-    plan: 'Coach Unlimited',
+    plan: 'Instructor Edition',
     detail: ['Lesson plans and daily videos', 'Full cloud and sharing in these menus'],
     permissions: {
       galleryUpload: false,
@@ -160,7 +160,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'coach',
     label: 'Coach',
-    plan: 'Coach Unlimited',
+    plan: 'Instructor Edition',
     detail: ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
     permissions: {
       galleryUpload: false,
@@ -177,7 +177,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'instructors',
     label: 'Instructors',
-    plan: 'Coach Unlimited + Pro',
+    plan: 'Instructor Edition + Pro',
     detail: [
       'Lessons, uploads, events, Pro Shop, and gallery',
       'Full cloud and sharing in these menus',

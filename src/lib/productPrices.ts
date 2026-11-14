@@ -97,4 +97,4 @@ export const COACH_ALPHA_ACCESS_NOTE = alphaAccessNote('Instructor Edition');
 export const PRO_ALPHA_ACCESS_NOTE = alphaAccessNote('Pro');
 
 /** Coming soon page, where Coach and Pro share one line. */
-export const ALPHA_ACCESS_NOTE = `Coach and Pro are in alpha testing. Email ${SITE_FEEDBACK_EMAIL} to request an alpha code.`;
+export const ALPHA_ACCESS_NOTE = `Instructor Edition and Pro are in alpha testing. Email ${SITE_FEEDBACK_EMAIL} to request an alpha code.`;

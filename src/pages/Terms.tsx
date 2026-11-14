@@ -53,7 +53,7 @@ export function TermsPage() {
         <p>
           Advantage provides tools that may include, without limitation, scoreboard and round-timer
           features, coaching and planning tools, competitor and event utilities, and media-related
-          features for gym use. Features may vary by product tier (for example, White, Coach, or
+          features for gym use. Features may vary by product tier (for example, White, Instructor Edition, or
           Pro) and may change over time.
         </p>
       </section>
@@ -68,7 +68,7 @@ export function TermsPage() {
             sale.
           </li>
           <li>
-            Advantage Coach costs $29.99 as a one-time purchase, once it’s offered for sale.
+            Advantage Instructor Edition costs $29.99 as a one-time purchase, once it’s offered for sale.
           </li>
           <li>
             Advantage Pro costs $99.99 as a one-time purchase, plus a subscription of $5.99 per
@@ -78,9 +78,9 @@ export function TermsPage() {
           </li>
         </ul>
         <p>
-          Advantage Coach includes everything in Advantage White. Advantage Pro includes everything
-          in Advantage Coach and Advantage White. Advantage Student Edition is a separate add-on. It
-          does not include Advantage Coach. It works best when connected to a valid Google Drive,
+          Advantage Instructor Edition includes everything in Advantage White. Advantage Pro includes everything
+          in Advantage Instructor Edition and Advantage White. Advantage Student Edition is a separate add-on. It
+          does not include Advantage Instructor Edition. It works best when connected to a valid Google Drive,
           OneDrive, or Google Photos account. Advantage App, LLC does not provide, manage, or back
           up that storage, and the account you connect is your own.
         </p>
@@ -99,7 +99,7 @@ export function TermsPage() {
       <section>
         <h3>4. Alpha Access</h3>
         <p>
-          Advantage Coach and Advantage Pro are currently in alpha testing and are not offered for
+          Advantage Instructor Edition and Advantage Pro are currently in alpha testing and are not offered for
           sale. We may provide free alpha access codes on request. To request one, email{' '}
           <SupportEmail />. Alpha features are provided “as is.” They may change, be incomplete,
           contain errors, or lose data, and we may end alpha access at any time. Alpha access does
@@ -110,7 +110,7 @@ export function TermsPage() {
       <section>
         <h3>5. Your Cloud Storage Account</h3>
         <p>
-          Advantage Student Edition, Advantage Coach Unlimited, and Advantage Pro save plans, photos,
+          Advantage Student Edition, Advantage Instructor Edition, and Advantage Pro save plans, photos,
           videos, and related files to a cloud storage account that you own and control. The cloud
           options are Google Drive, OneDrive, and Google Photos. Google Drive is available now.
           Google Photos can be connected so Media Console can pick albums and photos from the gym’s
@@ -130,7 +130,7 @@ export function TermsPage() {
           </li>
           <li>
             The app works best with a connected storage account. Without one, some Student Edition,
-            Coach Unlimited, and Pro features are limited.
+            Instructor Edition, and Pro features are limited.
           </li>
           <li>
             Advantage App, LLC is not responsible for files lost, deleted, or made unavailable
@@ -146,12 +146,12 @@ export function TermsPage() {
         </p>
         <h4>5.1 Purchase acknowledgment</h4>
         <p>
-          Buyers of Advantage Student Edition, Advantage Coach Unlimited, and Advantage Pro must
+          Buyers of Advantage Student Edition, Advantage Instructor Edition, and Advantage Pro must
           accept the statement below. The buy flow does not collect that acceptance yet. It will be
           required at checkout when those tiers go on sale:
         </p>
         <p>
-          “I understand that Advantage Student Edition, Advantage Coach Unlimited, and Advantage Pro
+          “I understand that Advantage Student Edition, Advantage Instructor Edition, and Advantage Pro
           work best when connected to a valid Google Drive, OneDrive, or Google Photos account.
           Advantage App, LLC does not provide, manage, or back up that storage, and the account I
           connect is my own, not one managed by Advantage App, LLC.”
@@ -170,7 +170,7 @@ export function TermsPage() {
           and we will work with you promptly.
         </p>
         <p>
-          Advantage Student Edition, Advantage Coach Unlimited, and Advantage Pro work best when
+          Advantage Student Edition, Advantage Instructor Edition, and Advantage Pro work best when
           connected to your own cloud storage account so they can save and open plans, photos, and
           videos. Google Drive is available now. Google Photos can be connected for Media Console.
           OneDrive connects when this build includes it. Setting up and connecting that account is

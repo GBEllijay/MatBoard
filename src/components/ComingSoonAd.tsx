@@ -99,7 +99,7 @@ function CoachPreview() {
     <figure className="soon-ad__preview">
       <img
         src="/coach-preview.png"
-        alt="Advantage Coach home with Daily Lesson Plan, Daily Training Videos, Technique Tree, Student Roster, and Mock Tournament"
+        alt="Advantage Instructor Edition home with Daily Lesson Plan, Daily Training Videos, Technique Tree, Student Roster, and Mock Tournament"
         width={840}
         height={2042}
       />

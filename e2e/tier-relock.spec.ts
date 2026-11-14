@@ -162,8 +162,8 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
 
   await page.goto('/coach');
-  await expect(page.getByRole('button', { name: 'Lock Coach' })).toHaveClass(/home__text-btn/);
-  await page.getByRole('button', { name: 'Lock Coach' }).click();
+  await expect(page.getByRole('button', { name: 'Lock Instructor Edition' })).toHaveClass(/home__text-btn/);
+  await page.getByRole('button', { name: 'Lock Instructor Edition' }).click();
   await page.goto('/products');
   await expect(page.getByRole('button', { name: 'Advantage Instructor Edition, This product is in alpha' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');

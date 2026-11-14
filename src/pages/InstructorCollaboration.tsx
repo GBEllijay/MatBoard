@@ -34,7 +34,7 @@ export function InstructorCollaborationPage() {
           <InstructorInvitePanel />
           {seat ? (
             <Link className="btn btn--white" to="/coach">
-              Open Coach
+              Open Instructor Edition
             </Link>
           ) : null}
         </section>

@@ -77,7 +77,7 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(student).toContainText('Advantage – Student Edition');
   await expect(student).toContainText('personal BJJ training journal');
   await expect(student).toContainText('This product is in alpha');
-  await expect(coach).toContainText('Advantage Coach');
+  await expect(coach).toContainText('Advantage Instructor Edition');
   await expect(coach).toContainText('This product is in alpha');
   await expect(pro).toContainText('Advantage Pro');
   await expect(pro).toContainText('$99.99 one-time');
@@ -100,7 +100,7 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await page.setViewportSize({ width: 1440, height: 900 });
   await coach.click();
   await expect(page).toHaveURL(/\/products$/);
-  await expect(page.getByRole('button', { name: 'Advantage Coach, This product is in alpha' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Advantage Instructor Edition, This product is in alpha' })).toBeVisible();
 });
 
 test('White card opens checkout; Student, Coach, Pro, and the heading open the picker', async ({ page }) => {
@@ -143,7 +143,7 @@ test('legacy student and owner-code home links still open the edition picker', a
 
   await page.goto('/editions?pro=1');
   await expect(page).toHaveURL(/\/products/);
-  await expect(page.getByRole('link', { name: 'Open Coach', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Open Instructor Edition', exact: true })).toHaveCount(0);
 });
 
 test('buy page shows an unlock or promo code field without printing launch codes', async ({ page }) => {

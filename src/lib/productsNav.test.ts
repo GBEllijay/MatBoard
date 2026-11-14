@@ -135,7 +135,7 @@ test('Locked product cards have Learn more; unlocked cards show only their Open 
   assert.match(home, /PRO_PLUS_CLOUD_OPEN_LABEL/);
   assert.match(home, /COACH_UNLIMITED_PATH/);
   assert.match(home, /: '\/coach'/);
-  assert.match(home, /: 'Open Coach'/);
+  assert.match(home, /: 'Open Instructor Edition'/);
   const unlockedCoach = home.slice(home.indexOf('mode-card mode-card--coach">'), home.indexOf('mode-card mode-card--coach mode-card--locked'));
   assert.doesNotMatch(unlockedCoach, /LearnMoreLink/);
   const unlockedPro = home.slice(home.indexOf('mode-card mode-card--pro">'), home.indexOf('mode-card mode-card--pro mode-card--locked'));

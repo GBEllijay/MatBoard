@@ -353,7 +353,7 @@ export function RosterPage() {
       <header className="roster__bar">
         <div className="roster__brand">
           <p className="roster__eyebrow">
-            {studentRoster || coachRoster ? 'Advantage Coach' : fromCompetitors ? COMPETITOR_SYSTEM_NAME : parent.eyebrow}
+            {studentRoster || coachRoster ? 'Advantage Instructor Edition' : fromCompetitors ? COMPETITOR_SYSTEM_NAME : parent.eyebrow}
           </p>
           <h1>{studentRoster ? STUDENT_ROSTER_LABEL : COMPETITOR_ROSTER_LABEL}</h1>
         </div>

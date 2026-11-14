@@ -106,7 +106,7 @@ export interface CloudStorageConnector {
 
 /** Earlier product note. Not half-built, and not on the launch list. */
 function reservedConnector(id: 'dropbox', displayName: string): CloudStorageConnector {
-  const message = `${displayName} is not on the Coach and Pro launch list.`;
+  const message = `${displayName} is not on the Instructor Edition and Pro launch list.`;
   return {
     id,
     displayName,

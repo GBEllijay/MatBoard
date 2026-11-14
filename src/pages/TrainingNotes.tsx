@@ -1032,7 +1032,7 @@ export function TrainingNotesPage() {
             </div>
           </div>
         ) : null}
-        {!competitionAllowed ? <p className="notes__when">Competition class is included with Coach Unlimited and Pro.</p> : null}
+        {!competitionAllowed ? <p className="notes__when">Competition class is included with Instructor Edition and Pro.</p> : null}
         {showCompetition ? (
           <>
             <CompetitionCurriculumPage embedded />
@@ -1461,7 +1461,7 @@ export function TrainingNotesPage() {
           </div>
         ) : null}
         {!competitionAllowed ? (
-          <p className="notes__when">Competition class is included with Coach Unlimited and Pro.</p>
+          <p className="notes__when">Competition class is included with Instructor Edition and Pro.</p>
         ) : null}
         {unlimitedPlan ? null : <OpenMyDrive />}
         {unlimitedPlan && !showDownload ? <OpenMyDrive /> : null}
