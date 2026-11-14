@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AcademyQrScanner } from '../../components/AcademyQrScanner';
+import { AcademyQrScanner, type ScanResult } from '../../components/AcademyQrScanner';
 import { GoogleDriveFolderTools } from '../../components/GoogleDriveFolderTools';
 import { StudentIdentityPanel } from '../../components/StudentIdentityPanel';
 import { ShareCardWithCoach } from '../../components/StudentToCoachShare';
@@ -131,6 +131,8 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  // A scan, pasted link, or invite in the URL: show its outcome right under the scanner.
+  const [nearScanner, setNearScanner] = useState(false);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [showId, setShowId] = useState(false);
   const [scanSignal, setScanSignal] = useState(0);
@@ -145,6 +147,8 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
   );
 
   const useCoachLink = async (invite: string) => {
+    setNearScanner(true);
+    setStatus('');
     setBusy(true);
     setError('');
     setPathway(null);
@@ -164,6 +168,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
   };
 
   const useLink = (value: string) => {
+    setNearScanner(true);
     const coachInvite = parseCoachConnectInput(value);
     if (coachInvite) {
       void useCoachLink(coachInvite);
@@ -188,6 +193,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
   };
 
   const finish = async (next: AcademyPathway, leaving = false) => {
+    setNearScanner(true);
     setBusy(true);
     setError('');
     const connect = (saved: Omit<StudentDriveLink, 'role'> & { accountLabel: string | null }) => {
@@ -285,6 +291,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
     setPathway(null);
     setShowId(false);
     setTick((n) => n + 1);
+    setNearScanner(false);
     setStatus(`You left ${result.left || 'your academy'}. Your journal, reports, and student ID stay on this phone.`);
   };
 
@@ -292,6 +299,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
     const result = removePreviousGym(localStorage, { removeLogo: false });
     setSheet(null);
     setTick((n) => n + 1);
+    setNearScanner(false);
     setStatus(`Removed ${result.left || 'the old gym'}. Files from it are not accepted.`);
   };
 
@@ -305,6 +313,19 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
       ? membership.current?.name || 'your academy'
       : '';
   const since = sinceLabel(membership.current?.since ?? 0);
+  const scanResult: ScanResult | null = !nearScanner
+    ? null
+    : busy
+      ? { kind: 'pending', text: 'Checking…' }
+      : error
+        ? { kind: 'error', text: error }
+        : status
+          ? { kind: pathway ? 'pending' : 'ok', text: status }
+          : null;
+  const clearScanResult = () => {
+    setError('');
+    setStatus('');
+  };
 
   const pasteBlock = (
     <>
@@ -350,6 +371,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
               onClick={() => {
                 keepPreviousGym(localStorage);
                 setTick((n) => n + 1);
+                setNearScanner(false);
                 setStatus(`Kept ${previousGym.name || 'the old gym'}.`);
               }}
             >
@@ -408,7 +430,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
                 <b>2</b>Scan it, then sign in to the gym's Drive folder
               </li>
             </ol>
-            <AcademyQrScanner onScan={useLink} scanLabel="Scan gym QR" scanClassName={PRIMARY} buttonClassName={BTN} startSignal={scanSignal} />
+            <AcademyQrScanner onScan={useLink} scanLabel="Scan gym QR" scanClassName={PRIMARY} buttonClassName={BTN} startSignal={scanSignal} result={scanResult} onStart={clearScanResult} />
             {pasteBlock}
           </div>
           <div className="am-card">
@@ -473,10 +495,12 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
                   });
                   moveAcademyFolder(localStorage, folder.id);
                   setLinked(saved);
+                  setNearScanner(false);
                   setStatus(`Connected to ${saved.folderName}. ${ACADEMY_FREE_NOTE}`);
                 }}
                 onDisconnected={() => {
                   setLinked(loadAcademyLink(localStorage));
+                  setNearScanner(false);
                   setStatus('Google Drive is disconnected on this device. Connect again to pick a folder or account.');
                 }}
               />
@@ -487,6 +511,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
               onClick={() => {
                 forgetAcademyFolder(localStorage);
                 setLinked(null);
+                setNearScanner(false);
                 setStatus('Academy folder disconnected on this phone. The folder itself is unchanged. Scan the gym QR to connect again.');
               }}
             >
@@ -500,7 +525,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
             <span className="am-tag">Changing gyms?</span>
             <h2>{SWITCH_GYM_LABEL}</h2>
             <p>Scanning a new academy QR replaces your current connection. Your journal stays on this device.</p>
-            <AcademyQrScanner onScan={useLink} scanLabel={SWITCH_GYM_LABEL} scanClassName={BTN} buttonClassName={BTN} startSignal={scanSignal} />
+            <AcademyQrScanner onScan={useLink} scanLabel={SWITCH_GYM_LABEL} scanClassName={BTN} buttonClassName={BTN} startSignal={scanSignal} result={scanResult} onStart={clearScanResult} />
             {pasteBlock}
             <div className="am-note">{gymName} will stop receiving your updates once you switch.</div>
           </div>
@@ -553,8 +578,8 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
           ) : null}
         </div>
       ) : null}
-      {status ? <p role="status">{status}</p> : null}
-      {error ? <p role="alert">{error}</p> : null}
+      {status && !nearScanner ? <p role="status">{status}</p> : null}
+      {error && !nearScanner ? <p role="alert">{error}</p> : null}
     </section>
   );
 }
