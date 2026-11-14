@@ -192,6 +192,39 @@ test('purchaser sets a first password with the restore code, then signs in with 
   assert.equal(setupMe.body.signedIn, true);
 });
 
+test('an account with a plain email and no email hash signs in with the restore code', async () => {
+  const f = await fixture();
+  const email = 'plainhash@gym.test';
+  const accountId = crypto.randomUUID();
+  const licenseId = crypto.randomUUID();
+  const stamp = NOW.toISOString();
+  await f.db
+    .prepare(`INSERT INTO accounts (id, email_normalized, email_hash, created_at, updated_at) VALUES (?, ?, NULL, ?, ?)`)
+    .bind(accountId, email, stamp, stamp)
+    .run();
+  await f.db.prepare(`INSERT INTO licenses (id, account_id, created_at) VALUES (?, ?, ?)`).bind(licenseId, accountId, stamp).run();
+  await f.db
+    .prepare(
+      `INSERT INTO grants (id, license_id, product, source, source_ref, status, created_at, ends_at)
+       VALUES (?, ?, 'advantage-white', 'stripe_payment', 'cs_plainhash', 'active', ?, NULL)`,
+    )
+    .bind(crypto.randomUUID(), licenseId, stamp)
+    .run();
+
+  const { challengeId, code } = await restoreCode(f, email);
+  assert.ok(code, 'request emailed a code');
+  // Request may backfill the hash. Leave the account as it was when the code was issued,
+  // so verify itself has to resolve the plaintext email.
+  await f.db.prepare(`UPDATE accounts SET email_hash = NULL WHERE id = ?`).bind(accountId).run();
+  await f.db.prepare(`DELETE FROM identities WHERE account_id = ? OR license_id = ?`).bind(accountId, licenseId).run();
+
+  const setup = await call(f, post('/api/login/code', { email, challengeId, code, password: 'long enough pw', deviceId: 'plain-phone' }));
+  assert.equal(setup.status, 200, JSON.stringify(setup.body));
+  assert.equal(setup.body.signedIn, true);
+  assert.ok(setup.body.pass?.token);
+  assert.equal(setup.body.profile?.license?.accountId, accountId);
+});
+
 test('wrong password, unknown email, and lockout give the same generic answers', async () => {
   const f = await fixture();
   await recordPurchase(f.db, { email: 'lock@gym.test', product: 'advantage-white', source: 'stripe_payment', sourceRef: 'cs_l', sessionId: 'cs_l', pepper: PEPPER, now: NOW });

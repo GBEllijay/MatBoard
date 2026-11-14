@@ -644,7 +644,7 @@ export async function handleLoginCode(
     new Request(new URL('/api/restore/verify', request.url), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ challengeId, code, deviceId: cleanDevice(body.deviceId), publicJwk: body.publicJwk }),
+      body: JSON.stringify({ challengeId, code, email, deviceId: cleanDevice(body.deviceId), publicJwk: body.publicJwk }),
     }),
     env,
     db,
