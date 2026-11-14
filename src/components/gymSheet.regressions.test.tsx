@@ -364,13 +364,19 @@ test('count tiles open the existing screens and do not change the saved profile'
   const sheet = await renderSheet('/pro-plus-cloud');
   const href = (label: string) =>
     [...sheet.host.querySelectorAll('a')].find((link) => link.textContent?.includes(label))?.getAttribute('href');
-  assert.equal(href('Promotions'), '/roster?from=academy&home=%2Fpro-plus-cloud');
-  assert.equal(href('Stripes given'), '/roster?from=academy&home=%2Fpro-plus-cloud');
+  assert.equal(href('Promotions'), undefined);
+  assert.equal(href('Stripes given'), undefined);
   assert.equal(href('Classes taught'), '/notes?plan=unlimited&from=academy&home=%2Fpro-plus-cloud');
   assert.equal(href('Active students'), '/roster?from=academy&home=%2Fpro-plus-cloud');
+  const body = sheet.host.textContent ?? '';
+  assert.equal(body.includes('Belts promoted over time'), false);
+  assert.equal(body.includes('No belt promotions yet'), false);
+  assert.equal(body.includes('stripes'), false);
+  assert.equal(body.includes('promotions'), false);
   const instructors = sheet.host.querySelector('[data-zone="instructors"] a');
   assert.equal(instructors?.getAttribute('href'), '/instructors?from=academy&home=%2Fpro-plus-cloud');
   assert.match(instructors?.getAttribute('aria-label') ?? '', /not seat assignments/);
+  assert.doesNotMatch(instructors?.textContent ?? '', /stripes|promotions/);
   await act(async () => {
     if (instructors instanceof view.HTMLElement) instructors.click();
   });

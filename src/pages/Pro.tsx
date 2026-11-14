@@ -20,13 +20,11 @@ import { cameraHubs } from '../lib/pdCamera';
 import { formatUsdFromCents } from '../lib/whitePurchase';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
 import { lockMedia } from '../lib/mediaUnlock';
-import { ownerIdentitySheetVisible } from '../lib/ownerIdentitySheet';
 import { lockPro } from '../lib/proUnlock';
 import { GalleryPendingBadge } from '../components/GalleryPendingNotice';
 import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
 import { CloudLapseNotice } from '../components/CloudLapseNotice';
 import { GymCharacterSheet } from '../components/GymCharacterSheet';
-import { InstructorSheet } from '../components/InstructorSheet';
 import { BeltRail } from '../components/BeltRail';
 import './proHomeMenu.css';
 
@@ -68,9 +66,6 @@ export function ProPage() {
             blurb={mediaSeat ? hubs.map((hub) => hub.title).join(', ') : PRO_LADDER_DETAIL}
           />
           <GymCharacterSheet />
-          {ownerIdentitySheetVisible({ page: 'pro', proUnlocked: door.proUnlocked, seated: door.seated }) ? (
-            <InstructorSheet />
-          ) : null}
           {!seat ? <GalleryPendingBadge /> : null}
           <Link className="pro-hub" to="/white" data-pro-entry="white">
             <BeltRail kind="white" />
