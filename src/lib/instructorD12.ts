@@ -4,7 +4,8 @@
  *
  * All twelve faces are named teaching factors. Class Growth and Student
  * Retention are each their own face. Neither has a sub-score.
- * Nothing here reads or writes storage. Student D8 types and scores are untouched.
+ * Student D8 types and scores are untouched. Saved teaching-shape ratings live in
+ * localStorage under INSTRUCTOR_D12_STORAGE_KEY, keyed by instructor seat.
  */
 import { isAssessmentScore, type AssessmentScore } from './studentAssessment.ts';
 
@@ -61,4 +62,77 @@ export function d12Summary(scores: InstructorD12Scores | null | undefined): stri
   if (!faces.some((face) => face.axis.value != null)) return 'Instructor D12. No ratings yet.';
   const bits = faces.map((face) => `${face.axis.label} ${face.axis.value ?? 'not rated'}`).join(', ');
   return `Instructor D12: ${bits}.`;
+}
+
+/** Per-browser teaching-shape ratings. Never seeded with sample scores. */
+export const INSTRUCTOR_D12_STORAGE_KEY = 'matboard.instructor.d12.v1';
+
+type InstructorD12File = {
+  v: 1;
+  scoresBySeat: Record<string, InstructorD12Scores>;
+};
+
+export function instructorD12SeatKey(seatId: string | null | undefined): string {
+  const id = seatId?.trim();
+  return id && id !== 'owner' ? id : 'owner';
+}
+
+export function instructorD12HasRatings(scores: InstructorD12Scores | null | undefined): boolean {
+  return d12AxesFromScores(scores).some((face) => face.value != null);
+}
+
+function cleanScores(raw: unknown): InstructorD12Scores {
+  const scores: InstructorD12Scores = {};
+  if (!raw || typeof raw !== 'object') return scores;
+  const record = raw as Record<string, unknown>;
+  for (const face of INSTRUCTOR_D12_FACES) {
+    const value = record[face.id];
+    if (isAssessmentScore(value)) scores[face.id] = value;
+  }
+  return scores;
+}
+
+function emptyFile(): InstructorD12File {
+  return { v: 1, scoresBySeat: {} };
+}
+
+function readFile(storage: Pick<Storage, 'getItem'>): InstructorD12File {
+  try {
+    const raw = storage.getItem(INSTRUCTOR_D12_STORAGE_KEY);
+    if (!raw) return emptyFile();
+    const parsed = JSON.parse(raw) as { v?: number; scoresBySeat?: Record<string, unknown> };
+    if (!parsed || parsed.v !== 1 || !parsed.scoresBySeat || typeof parsed.scoresBySeat !== 'object') {
+      return emptyFile();
+    }
+    return {
+      v: 1,
+      scoresBySeat: Object.fromEntries(
+        Object.entries(parsed.scoresBySeat).map(([key, value]) => [key, cleanScores(value)]),
+      ),
+    };
+  } catch {
+    return emptyFile();
+  }
+}
+
+/** Null when this seat has no saved ratings. Never returns sample data. */
+export function loadInstructorD12Scores(
+  storage: Pick<Storage, 'getItem'> = localStorage,
+  seatKey = 'owner',
+): InstructorD12Scores | null {
+  const scores = readFile(storage).scoresBySeat[seatKey];
+  return instructorD12HasRatings(scores) ? scores! : null;
+}
+
+export function saveInstructorD12Scores(
+  scores: InstructorD12Scores,
+  storage: Pick<Storage, 'getItem' | 'setItem'> = localStorage,
+  seatKey = 'owner',
+): InstructorD12Scores {
+  const file = readFile(storage);
+  const clean = cleanScores(scores);
+  if (instructorD12HasRatings(clean)) file.scoresBySeat[seatKey] = clean;
+  else delete file.scoresBySeat[seatKey];
+  storage.setItem(INSTRUCTOR_D12_STORAGE_KEY, JSON.stringify(file));
+  return clean;
 }

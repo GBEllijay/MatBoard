@@ -1,11 +1,14 @@
 /**
- * Instructor character sheet. Same zone frame as the student sheet:
- * identity, stat strip, a rank zone, a log zone, and a full-width record.
- * Shown on the instructor homepage when Pro is open. Coach without Pro keeps
- * the simpler count. No locked tiles.
+ * Instructor character sheet on Instructor Edition (and the unseated Pro
+ * owner sheet). Same navy / logo-blue / cream paint as
+ * /preview/instructor-sheet. Identity and teaching totals come from the
+ * live seat and gym log, with the Instructor D12. The student profile block
+ * comes below that and reuses Student Edition cards and stores (D8, belt,
+ * mat hours, medals, body scan).
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { AccountReference } from './AccountReference';
+import { InstructorD12Panel } from './InstructorD12Panel';
 import { readAccountReference } from '../lib/accountReference.ts';
 import { ensureGymBackfill, markPastPlansTaught } from '../lib/gymBackfill.ts';
 import { installGymActor } from '../lib/gymActor.ts';
@@ -19,36 +22,23 @@ import {
   studentLabel,
 } from '../lib/gymEvents.ts';
 import { getGymEventsSnapshot, readGymEvents, readGymMeta, subscribeGymEvents } from '../lib/gymEventLog.ts';
-import { ADVANTAGE_MARK_SRC } from '../lib/gymLogo.ts';
-import { useGymLogo, useGymName } from '../hooks/useGymBrand.ts';
+import { useGymName } from '../hooks/useGymBrand.ts';
 import { getRoster } from '../lib/rosterStore.ts';
+import { rankFaceLabel, wornBeltPreview } from '../lib/studentRank.ts';
 import { useCurrentSeat } from './SeatSessionBar';
+import { useStudentFile, useStudentPath } from '../pages/student/chrome';
+import { useProfileMedia } from '../pages/student/ProfileIdentity';
+import { BodyScanSection } from '../pages/student/BodyScan';
+import { StudentCardLayout } from '../pages/student/StudentCardLayout';
 import type { GymEvent } from '../lib/gymEvents.ts';
-import './gymSheet.css';
+import '../preview/instructorProfile/instructorProfile.css';
+import '../preview/instructorSheet/instructorSheet.css';
+import '../student-edition.css';
+import '../pages/student/profile.css';
+import './instructorSheetLive.css';
 
 function useEvents(): GymEvent[] {
   return useSyncExternalStore(subscribeGymEvents, getGymEventsSnapshot, getGymEventsSnapshot);
-}
-
-function CountUp({ value }: { value: number }) {
-  const [shown, setShown] = useState(value);
-  useEffect(() => {
-    const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) {
-      setShown(value);
-      return;
-    }
-    const start = performance.now();
-    let frame = 0;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / 700);
-      setShown(Math.round(value * (1 - (1 - t) * (1 - t))));
-      if (t < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [value]);
-  return <span className="sheet-stat__num">{shown}</span>;
 }
 
 function hoursLabel(minutes: number): string {
@@ -65,8 +55,10 @@ export function InstructorSheet() {
   const events = useEvents();
   const seat = useCurrentSeat();
   const [marked, setMarked] = useState<number | null>(null);
-  const logo = useGymLogo();
   const deviceGymName = useGymName();
+  const { report, commit } = useStudentFile();
+  const to = useStudentPath();
+  const media = useProfileMedia();
   useEffect(() => {
     ensureGymBackfill();
     void syncGymEvents();
@@ -84,40 +76,60 @@ export function InstructorSheet() {
   const name = seat ? seat.email.split('@')[0] || 'Instructor' : deviceGymName || 'Owner';
   const role = seat?.presetId === 'instructors' ? 'Instructors' : seat?.presetId === 'coach' ? 'Coach' : seat ? 'Instructor' : 'Owner';
   const log = [...promotions, ...split.detail.filter((event) => event.type === 'stripe.awarded')].sort((a, b) => (a.at < b.at ? 1 : -1));
+  const studentName = report.profile.displayName.trim();
+  const beltLabel = studentName || report.profile.belt ? rankFaceLabel(wornBeltPreview(report)) : '';
 
   return (
-    <section className="gym-sheet" aria-label="Instructor character sheet" data-testid="instructor-sheet">
-      <div className="sheet-zone sheet-zone--identity" data-zone="identity">
-        <h3 className="sheet-cap">Identity</h3>
-        <div className="gym-id">
-          <img className="gym-id__logo" src={logo || ADVANTAGE_MARK_SRC} alt="" />
-          <div>
-            <h2>{name}</h2>
+    <div className="ip-preview ip-preview--embedded" data-testid="instructor-sheet">
+      <section className="ip-sheet" aria-label="Instructor character sheet" data-testid="instructor-identity">
+        <header className="ip-sheet__head">
+          <p className="ip-kicker">Advantage · Instructor Edition</p>
+          <h1>{name}</h1>
+          <p className="ip-quiet">
+            {role}
+            {deviceGymName && seat ? ` · ${deviceGymName}` : ''} · {cloud ? 'Advantage Cloud' : 'This device'}
+          </p>
+          <AccountReference id={readAccountReference()} />
+        </header>
+        <div className="ip-id">
+          <p>
+            <span>Instructor name</span>
+            <strong>{name}</strong>
+          </p>
+          {deviceGymName ? (
             <p>
-              {role}
-              {deviceGymName && seat ? ` · ${deviceGymName}` : ''} · {cloud ? 'Advantage Cloud' : 'This device'}
+              <span>Academy</span>
+              <strong>{deviceGymName}</strong>
             </p>
-            <AccountReference id={readAccountReference()} />
+          ) : null}
+          {beltLabel ? (
+            <p>
+              <span>Belt</span>
+              <strong>{beltLabel}</strong>
+            </p>
+          ) : null}
+        </div>
+        <div className="ip-hours" data-testid="instructor-teaching-hours">
+          <div>
+            <span>Classes taught</span>
+            <strong>{classes.count}</strong>
+            <small>Logged in Advantage</small>
+          </div>
+          <div>
+            <span>Hours taught</span>
+            <strong>{hoursLabel(classes.minutes)} h</strong>
+            <small>From classes marked taught</small>
           </div>
         </div>
-      </div>
-      <div className="sheet-zone sheet-zone--stats" data-zone="stats">
-        <div className="sheet-stats">
-          <p className="sheet-stat">
-            <CountUp value={classes.count} />
-            <span>Classes taught</span>
-          </p>
-          <p className="sheet-stat">
-            <span className="sheet-stat__num">
-              {hoursLabel(classes.minutes)}
-              <small>h</small>
-            </span>
-            <span>Hours taught</span>
-          </p>
-        </div>
-      </div>
-      <div className="sheet-zone sheet-zone--radar" data-zone="belts">
-        <h3 className="sheet-cap">Belts promoted</h3>
+      </section>
+
+      <section className="ip-card" aria-label="Instructor D12" data-testid="instructor-d12-card">
+        <h2>Instructor D12</h2>
+        <InstructorD12Panel seatId={seat?.id ?? null} />
+      </section>
+
+      <section className="ip-card" aria-label="Promotion log" data-testid="instructor-log">
+        <h2>Belts promoted</h2>
         {belts.length ? (
           <ul className="gym-bars">
             {belts.map((row) => (
@@ -129,11 +141,9 @@ export function InstructorSheet() {
             ))}
           </ul>
         ) : (
-          <p className="gym-sheet__empty">No belt promotions yet.</p>
+          <p className="ip-quiet">No belt promotions yet.</p>
         )}
-      </div>
-      <div className="sheet-zone sheet-zone--wins" data-zone="log">
-        <h3 className="sheet-cap">Promotion log</h3>
+        <h3>Promotion log</h3>
         {log.length ? (
           <ul className="gym-log">
             {log.slice(0, 8).map((event) => (
@@ -154,31 +164,58 @@ export function InstructorSheet() {
             ))}
           </ul>
         ) : (
-          <p className="gym-sheet__empty">No promotions yet.</p>
+          <p className="ip-quiet">No promotions yet.</p>
         )}
-      </div>
-      <div className="sheet-zone sheet-zone--record" data-zone="record">
-        <h3 className="sheet-cap">Record</h3>
-        <p className="gym-sheet__note">
+        <h3>Record</h3>
+        <p className="ip-quiet">
           {cloud
             ? 'Academy totals include seats synced through Advantage Cloud.'
             : 'These numbers are this device. Full academy totals come with Advantage Cloud.'}
         </p>
         {cloud && academy && view.kind === 'own' && view.anonymousTotals ? (
-          <p className="gym-sheet__note">Academy: {academy.classes} classes, {academy.promotions} promotions, {academy.stripes} stripes. No student names.</p>
+          <p className="ip-quiet">
+            Academy: {academy.classes} classes, {academy.promotions} promotions, {academy.stripes} stripes. No student
+            names.
+          </p>
         ) : null}
         {split.detail.some((event) => event.source === 'backfill') ? (
-          <p className="gym-sheet__note">Roster and belt numbers already on this device are estimates. Stripes start when you give them.</p>
+          <p className="ip-quiet">
+            Roster and belt numbers already on this device are estimates. Stripes start when you give them.
+          </p>
         ) : null}
-        <button type="button" className="btn btn--ghost" onClick={() => setMarked(markPastPlansTaught())}>
+        <button type="button" className="ip-log-btn" onClick={() => setMarked(markPastPlansTaught())}>
           Mark past plans as taught
         </button>
         {marked !== null ? (
-          <p className="gym-sheet__note" role="status">
-            {marked ? `Marked ${marked} past ${marked === 1 ? 'plan' : 'plans'} as taught. Those counts are estimates.` : 'No unmarked past plans.'}
+          <p className="ip-quiet" role="status">
+            {marked
+              ? `Marked ${marked} past ${marked === 1 ? 'plan' : 'plans'} as taught. Those counts are estimates.`
+              : 'No unmarked past plans.'}
           </p>
         ) : null}
-      </div>
-    </section>
+      </section>
+
+      <section className="ip-card" aria-label="My student profile" data-testid="instructor-student-profile">
+        <h2>My student profile</h2>
+        <p className="ip-quiet">
+          The same profile this browser uses in Student Edition, including your D8, belt, mat hours, and
+          other profile cards. Links open those Student Edition pages.
+        </p>
+        {!studentName ? (
+          <p className="ip-quiet" data-testid="instructor-student-empty">
+            No student profile is filled in yet. Add your name and ratings in Student Edition to see them
+            here. Nothing is filled in with sample data.
+          </p>
+        ) : null}
+        <div className="student instructor-student-profile__sheet">
+          <StudentCardLayout
+            home
+            portrait={media.portrait}
+            to={to}
+            bodyScan={<BodyScanSection report={report} commit={commit} to={to} />}
+          />
+        </div>
+      </section>
+    </div>
   );
 }
