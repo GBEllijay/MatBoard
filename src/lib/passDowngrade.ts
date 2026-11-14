@@ -15,6 +15,7 @@
  */
 
 import { base64UrlToBytes } from './entitlementToken.ts';
+import { claimsOpenPlusCloud } from './advantageCloudMedia.ts';
 import { impliedDoors } from './tierImplications.ts';
 
 export const STUDENT_SIDE_TOKEN_KEY = 'matboard.studentEdition.studentLicenseToken.v1';
@@ -63,6 +64,33 @@ export function claimsWouldDowngrade(here: Payload | null | undefined, next: Pay
   const theirs = doors(next);
   for (const door of mine) if (!theirs.has(door)) return true;
   return false;
+}
+
+/**
+ * Email sign-in (and Refresh this device) replaces the pass on this browser with the
+ * account's pass. It must not take anything away: when the pass already here is live and
+ * opens a door or Plus Cloud that the sign-in pass does not, the pass here stays.
+ * A seat here is not protected by itself (an owner or Pro pass outranks a seat, the same
+ * rule as ownerPassOutranksSeat); only the doors count. An expired or locked pass here is
+ * not protected.
+ */
+export function loginPassWouldDowngrade(
+  here: (Payload & { exp?: unknown }) | null | undefined,
+  next: Payload | null | undefined,
+  nowSeconds: number,
+): boolean {
+  if (!here || !next) return false;
+  if (here.subs?.state === 'locked') return false;
+  if (typeof here.exp === 'number' && here.exp <= nowSeconds) return false;
+  const theirs = doors(next);
+  for (const door of doors(here)) if (!theirs.has(door)) return true;
+  return cloudOf(here) && !cloudOf(next);
+}
+
+function cloudOf(row: Payload): boolean {
+  const grants = Array.isArray(row.grants) ? row.grants.filter((door): door is string => typeof door === 'string') : [];
+  const subs = row.subs && typeof row.subs === 'object' ? (row.subs as { state?: string; cloud?: boolean }) : null;
+  return claimsOpenPlusCloud({ src: String(row.src ?? ''), tier: String(row.tier ?? ''), grants, subs });
 }
 
 /** Same rule on raw pass tokens. An unreadable current pass is not protected. */
