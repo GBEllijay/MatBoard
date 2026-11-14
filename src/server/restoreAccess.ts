@@ -1,8 +1,8 @@
 import { thumbprintJwk, verifyToken, type PublicJwk } from '../lib/entitlementToken.ts';
 import type { Door } from '../lib/entitlementToken.ts';
-import { ensureAccountForLicense, licenseForVerifiedEmail, primaryLicenseForAccount } from './accountId.ts';
+import { accountByEmail, ensureAccountForLicense, licenseForVerifiedEmail, primaryLicenseForAccount } from './accountId.ts';
 import { countExtraProfileSlots } from './profileSlots.ts';
-import { keyedHash, normalizeEmail } from './codeCrypto.ts';
+import { keyedHash, normalizeEmail, timingSafeEqual } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
 import type { EmailSender } from './emailSender.ts';
 import { expandGrants, tierForGrants } from './grantMatrix.ts';
@@ -165,6 +165,30 @@ export async function handleRestoreRequest(
   return genericOk(challengeId);
 }
 
+/** Same account and license the request step would find, including a plaintext email fallback. */
+async function licenseForRestoreChallenge(
+  db: D1Database,
+  emailHash: string,
+  email: string,
+): Promise<{ accountId: string; licenseId: string } | null> {
+  let account = await db
+    .prepare(`SELECT id FROM accounts WHERE email_hash = ? LIMIT 1`)
+    .bind(emailHash)
+    .first<{ id: string }>();
+  if (!account && email) {
+    const row = await accountByEmail(db, normalizeEmail(email), emailHash);
+    if (row) account = { id: row.id };
+  }
+  const fromAccount = account ? await primaryLicenseForAccount(db, account.id) : null;
+  if (account && fromAccount) return { accountId: account.id, licenseId: fromAccount };
+  const identity = await db
+    .prepare(`SELECT license_id AS licenseId FROM identities WHERE email_hash = ? LIMIT 1`)
+    .bind(emailHash)
+    .first<{ licenseId: string }>();
+  if (identity?.licenseId) return { accountId: account?.id ?? '', licenseId: identity.licenseId };
+  return null;
+}
+
 export async function handleRestoreVerify(
   request: Request,
   env: RestoreEnv,
@@ -176,7 +200,7 @@ export async function handleRestoreVerify(
   const pepper = env.CODE_HASH_PEPPER.trim();
   const raw = await request.text();
   if (raw.length > 8_000) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  let body: { challengeId?: unknown; code?: unknown; deviceId?: unknown; publicJwk?: unknown } = {};
+  let body: { challengeId?: unknown; code?: unknown; email?: unknown; deviceId?: unknown; publicJwk?: unknown } = {};
   try {
     body = JSON.parse(raw) as typeof body;
   } catch {
@@ -206,33 +230,32 @@ export async function handleRestoreVerify(
     await db.prepare(`UPDATE restore_challenges SET attempts = attempts + 1 WHERE id = ?`).bind(challengeId).run();
     return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
   }
+  const email = typeof body.email === 'string' ? body.email.trim() : '';
+  if (email) {
+    const providedHash = await keyedHash(normalizeEmail(email), pepper, 'email');
+    if (!timingSafeEqual(providedHash, row.emailHash)) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
+  }
+  const found = await licenseForRestoreChallenge(db, row.emailHash, email);
+  const licenseId = found?.licenseId ?? '';
+  if (!licenseId) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
+  const grants = await grantsForLicense(db, licenseId, now());
+  const doors = expandGrants(doorsFromStored(grants)) as Door[];
+  if (!doors.length) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
   const consumed = await db
     .prepare(`UPDATE restore_challenges SET used_at = ? WHERE id = ? AND used_at IS NULL`)
     .bind(now().toISOString(), challengeId)
     .run();
   if (consumed.meta.changes !== 1) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-
-  const account = await db
-    .prepare(`SELECT id FROM accounts WHERE email_hash = ? LIMIT 1`)
-    .bind(row.emailHash)
-    .first<{ id: string }>();
-  const fromAccount = account ? await primaryLicenseForAccount(db, account.id) : null;
-  const identity = fromAccount
-    ? null
-    : await db
-        .prepare(`SELECT license_id AS licenseId FROM identities WHERE email_hash = ? LIMIT 1`)
-        .bind(row.emailHash)
-        .first<{ licenseId: string }>();
-  const licenseId = fromAccount ?? identity?.licenseId ?? '';
-  if (!licenseId) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  const linked = await ensureAccountForLicense(db, { licenseId, pepper, now: now() });
-  const grants = await grantsForLicense(db, licenseId, now());
-  const doors = expandGrants(doorsFromStored(grants)) as Door[];
-  if (!doors.length) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
+  const linked = await ensureAccountForLicense(db, {
+    licenseId,
+    ...(email ? { email } : {}),
+    pepper,
+    now: now(),
+  });
   const ownerAcademy = grants.some((grant) => isPerpetualOwnerAcademyGrant(grant) && grant.product === 'advantage-pro');
   const deviceId = typeof body.deviceId === 'string' && body.deviceId.trim() ? body.deviceId.trim().slice(0, 80) : crypto.randomUUID();
   const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
-  const accountId = linked?.accountId ?? account?.id ?? '';
+  const accountId = linked?.accountId ?? found?.accountId ?? '';
   const extraProfileSlots = accountId ? await countExtraProfileSlots(db, accountId) : 0;
   if (!material) {
     return json(200, {

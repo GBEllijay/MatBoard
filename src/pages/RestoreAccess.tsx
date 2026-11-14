@@ -179,6 +179,7 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
           code: code.trim(),
           deviceId: readDeviceId(),
           publicJwk,
+          ...(email.trim() ? { email: email.trim() } : {}),
         }),
       });
       const body = (await response.json()) as {
