@@ -322,10 +322,16 @@ export function isInviteEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/**
+ * Invite link (and the QR, which encodes the same link). It opens the account page in invite
+ * mode with the invite filled in: the instructor enters the invited email and picks a password,
+ * which turns the seat on and makes the email + password login in one step.
+ * Older `/instructors?invite=` links are sent to the same screen (App.tsx).
+ */
 export function instructorInviteLink(token: string, origin: string): string {
   const base = origin.replace(/\/$/, '');
   const params = new URLSearchParams({ invite: token });
-  return `${base}/instructors?${params.toString()}`;
+  return `${base}/account?${params.toString()}`;
 }
 
 /**

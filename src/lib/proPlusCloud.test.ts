@@ -23,7 +23,8 @@ if (typeof globalThis.sessionStorage === 'undefined') {
 }
 
 const page = readFileSync(new URL('../pages/ProPlusCloud.tsx', import.meta.url), 'utf8');
-const home = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8');
+// The /products card rules live in productTiles.ts; Home.tsx renders them.
+const home = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8') + readFileSync(new URL('./productTiles.ts', import.meta.url), 'utf8');
 const pro = readFileSync(new URL('../pages/Pro.tsx', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 const gate = readFileSync(new URL('./proPlusCloud.ts', import.meta.url), 'utf8');

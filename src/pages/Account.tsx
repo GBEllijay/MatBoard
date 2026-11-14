@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { SecretField } from '../components/SecretField';
 import { SignOutButton } from '../components/SignOutButton';
 import { SiteFooter } from '../components/SiteFooter';
 import {
+  accountReturnPath,
   fetchAccount,
   firstSignInWithInvite,
   setPasswordWithEmailCode,
@@ -18,6 +19,13 @@ import {
 import { INSTRUCTOR_PERMISSION_FIELDS, instructorPreset, normalizeInstructorPresetId } from '../lib/instructorSeats';
 import { fetchRestoreCheckConfig, loadTurnstile, type TurnstileApi } from '../lib/turnstile';
 import { isWhiteRestoreEmail, restoreWhiteByEmail } from '../lib/whiteUnlock';
+
+/** Top of the invite screen when someone opens an invite link or scans its QR code. */
+export const INVITE_WELCOME =
+  "You've been invited as an instructor. Enter the email this invite was sent to and choose a password.";
+
+/** The invite was already used to set a password for this email (409 from /api/login/invite). */
+export const INVITE_ALREADY_SET_UP = 'This email already has a password. Sign in with your email and password.';
 
 const ROLE_LABEL: Record<AccountRole, string> = {
   owner: 'Academy owner',
@@ -284,6 +292,11 @@ export function AccountPage() {
   const [note, setNote] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const check = usePersonCheck(!loading && !payload && mode === 'code' && !challengeId);
+  const navigate = useNavigate();
+  // Where a successful sign-in goes: the products page for an invite link or the homepage
+  // "Returning user?" prompt, so whatever the person bought or was given shows open there.
+  const [returnTo, setReturnTo] = useState<string | null>(null);
+  const [invited, setInvited] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -291,7 +304,9 @@ export function AccountPage() {
     if (invite) {
       setInviteCode(invite);
       setMode('invite');
+      setInvited(true);
     }
+    setReturnTo(accountReturnPath(params));
     const preset = params.get('email');
     if (preset && isWhiteRestoreEmail(preset)) setEmail(preset.trim());
     let cancelled = false;
@@ -315,6 +330,7 @@ export function AccountPage() {
     setPassword('');
     setConfirm('');
     setPayload(result.payload);
+    if (returnTo) navigate(returnTo, { replace: true });
   }
 
   function passwordReady(): boolean {
@@ -343,7 +359,17 @@ export function AccountPage() {
     if (!email.trim() || !inviteCode.trim()) return setError('Enter your email and the invite code or link.');
     if (!passwordReady()) return;
     setPending(true);
-    finish(await firstSignInWithInvite(email.trim(), inviteCode.trim(), password));
+    const result = await firstSignInWithInvite(email.trim(), inviteCode.trim(), password);
+    if (!result.ok && result.status === 409) {
+      // This email already set a password with its invite: sign in normally instead.
+      setPending(false);
+      setPassword('');
+      setConfirm('');
+      setMode('signin');
+      setNote(INVITE_ALREADY_SET_UP);
+      return;
+    }
+    finish(result);
   }
 
   async function onRequestCode(event: FormEvent<HTMLFormElement>) {
@@ -451,9 +477,14 @@ export function AccountPage() {
               ) : null}
               {mode === 'invite' ? (
                 <form className="buy__card" onSubmit={(event) => void onInvite(event)}>
+                  {invited ? (
+                    <p>
+                      <strong>{INVITE_WELCOME}</strong>
+                    </p>
+                  ) : null}
                   <p>
                     Use the email your instructor or gym owner sent the invite to, and paste the invite code or link. This
-                    sets your password, opens what they picked for you, and connects you to their academy. No QR scan.
+                    sets your password, opens what they picked for you, and connects you to their academy.
                   </p>
                   {emailField}
                   <label className="buy__field">

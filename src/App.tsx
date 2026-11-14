@@ -1,6 +1,6 @@
 import { CAMERA_HREF, CAMERA_PATH, cameraWindowOpen } from './lib/pdCamera';
 import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
-import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { InviteHandoffAccept } from './components/InviteHandoffAccept';
 import { OneDriveConnectResume } from './components/OneDriveConnectResume';
 import { SeatSessionChrome, useCurrentSeat } from './components/SeatSessionBar';
@@ -115,7 +115,7 @@ import { PaymentGraceBanner } from './components/PaymentGraceBanner';
 import { bootEntitlement, entitlementNowMs, entitlementReady, entitlementSnapshot, proAccessPaused, subscribeEntitlement } from './lib/entitlement';
 import { paidChunkMenuAgrees, type PaidChunkId } from './lib/paidChunkAccess';
 import { proPlusCloudStripePro } from './lib/proPlusCloud';
-import { acceptSignedSeat } from './lib/seatClient';
+import { ACCOUNT_PATH, accountInvitePath } from './lib/emailLogin';
 import { isSignedSeatInvite } from './lib/seatSunset';
 import { ProLockedPage } from './pages/ProLocked';
 import { BuyCoachPage, BuyMediaPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
@@ -137,33 +137,27 @@ consumeCoachUnlockQueryNow();
 consumeHalfOffQueryNow();
 bootEntitlement();
 
-/**
- * Full page loads read the invite before the router paints a locked route.
- * A live token accepts the seat and replaces the address with home.
- * The owner code is never added to that address.
- */
 function closedOrPaused(seated: boolean): string {
   if (proAccessPaused()) return '/pro/paused';
   return closedDoorPath(seated);
 }
 
+/**
+ * Full page loads read the invite before the router paints a locked route.
+ * A signed seat invite opens the account invite screen (email + new password).
+ * A legacy token made on this device accepts the seat and replaces the address with home.
+ * The owner code is never added to that address.
+ */
 function consumeInviteDoorNow(): void {
   if (typeof window === 'undefined') return;
   const params = new URLSearchParams(window.location.search);
   const token = params.get('invite');
+  // The account page owns its invite: email + new password turns the seat on and makes the login.
+  if (token && window.location.pathname === ACCOUNT_PATH) return;
   if (token && isSignedSeatInvite(token)) {
-    void acceptSignedSeat(token).then((ok) => {
-      if (!ok) {
-        // Already bound to an email account, taken, or offline: open sign-in with the invite filled in
-        // (first time sets the password) instead of leaving a blank or locked page.
-        if (window.location.pathname !== '/account') window.location.replace(`/account?invite=${encodeURIComponent(token)}`);
-        return;
-      }
-      const url = new URL(window.location.href);
-      url.pathname = PRODUCTS_PATH;
-      url.search = '';
-      window.history.replaceState(window.history.state, '', `${url.pathname}${url.hash}`);
-    });
+    // Older `/instructors?invite=` links (and their QR codes) go to the same account invite screen.
+    // Nothing is accepted silently here, so every instructor ends up with an email + password login.
+    window.history.replaceState(window.history.state, '', accountInvitePath(token));
     return;
   }
   if (!token || peekInstructorInvite(token) !== 'open') return;
@@ -386,16 +380,20 @@ function CoachRoute({ children }: { children: ReactNode }) {
 }
 
 /**
- * A live invite is its own door. Accept it before a Pro route can bounce the
- * link to the owner purchase lock, then land on home. The owner code stays out
- * of the link. A bad token does not open the door.
+ * A live invite is its own door. A signed seat invite goes to the account invite screen
+ * (the account page itself always renders, so it never shows a blank page). A legacy
+ * token made on this device is accepted before a Pro route can bounce the link to the
+ * owner purchase lock, then lands on home. The owner code stays out of the link.
+ * A bad token does not open the door.
  */
 function InviteDoor({ children }: { children: ReactNode }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const token = searchParams.get('invite');
-  const signedInvite = Boolean(token && isSignedSeatInvite(token));
-  const peek = token && !signedInvite ? peekInstructorInvite(token) : null;
+  const onAccount = pathname === ACCOUNT_PATH;
+  const signedInvite = Boolean(token && !onAccount && isSignedSeatInvite(token));
+  const peek = token && !onAccount && !signedInvite ? peekInstructorInvite(token) : null;
   const open = peek === 'open';
 
   useEffect(() => {
@@ -417,9 +415,7 @@ function InviteDoor({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!token || !signedInvite) return;
-    void acceptSignedSeat(token).then((ok) => {
-      if (ok) navigate(PRODUCTS_PATH, { replace: true });
-    });
+    navigate(accountInvitePath(token), { replace: true });
   }, [token, signedInvite, navigate]);
 
   if (signedInvite) return null;
