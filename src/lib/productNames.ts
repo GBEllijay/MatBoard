@@ -114,10 +114,16 @@ export const PRO_COMING_SOON_LINES = [
   'Assignable Instructor Licenses with Cross Platform Access to Updates, Shared Training Videos and More.',
 ] as const;
 
-/** Coach hub keeps practice framing; Owner Console uses real-event tooling. */
+/** Full bracket board. Instructor Edition, Pro, and invited seats all open it. */
+export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
+
+/**
+ * Retired practice-bracket name. Instructor Edition now opens the full
+ * Tournament Software (TOURNAMENT_SOFTWARE_NAME). Kept for older copy checks.
+ */
 export const MOCK_TOURNAMENT_NAME = 'Mock Tournament';
 
-/** Advantage Coach hub. Opens Competitor Management System and Mock Tournament. */
+/** Advantage Coach hub. Opens Competitor Management System and Tournament Software. */
 export const COMPETITION_MANAGEMENT_LABEL = 'Competition Team Management';
 
 /** Coach competition folder for bout competitors, roster CSV, and on-device rankings. */
@@ -195,7 +201,7 @@ export const COACH_HUBS = [
   { title: 'Student Roster', to: STUDENT_ROSTER_PATH, belt: 'coach' as const },
   // Instructor Edition has no Pro door, so /suite is closed. This is the competitor list those users can still open.
   { title: COMPETITOR_ROSTER_LABEL, to: `/roster?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
-  { title: MOCK_TOURNAMENT_NAME, to: `/tournament?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
+  { title: TOURNAMENT_SOFTWARE_NAME, to: `/tournament?from=${COACH_BOARD_FROM}`, belt: 'tournament' as const },
 ] as const;
 
 /**
@@ -252,7 +258,7 @@ export const COACH_UNLIMITED_TOOLS = [
 
 /**
  * Competition Team Management submenu.
- * CMS, then Mock Tournament, then two shortcuts into screens that already exist.
+ * CMS, then Tournament Software, then two shortcuts into screens that already exist.
  * Scoreboard opens the match controller (`/match/control`). With Coach unlocked,
  * that controller's name fields use the full Competitor Roster. It is not the
  * plain White display at `/match`. Round Timer opens the same White rounds
@@ -261,7 +267,7 @@ export const COACH_UNLIMITED_TOOLS = [
 export const COMPETITION_MENU = [
   { title: COMPETITOR_SYSTEM_NAME, to: '/competitors?from=competition', belt: 'tournament' as const },
   { title: COMPETITOR_ROSTER_LABEL, to: '/roster?from=competition', belt: 'tournament' as const },
-  { title: MOCK_TOURNAMENT_NAME, to: '/tournament', belt: 'tournament' as const },
+  { title: TOURNAMENT_SOFTWARE_NAME, to: '/tournament', belt: 'tournament' as const },
   { title: 'Scoreboard', to: '/match/control', belt: 'tournament' as const, clearBout: true as const },
   { title: 'Round Timer', to: '/training', belt: 'tournament' as const },
 ] as const;
@@ -276,8 +282,6 @@ export const COMPETITION_MENU_PRO: readonly {
   to: string;
   belt: 'tournament';
 }[] = [];
-
-export const TOURNAMENT_SOFTWARE_NAME = 'Tournament Software';
 
 /** Working title kept for longer appetite copy. Not the Pro hub button or Suite heading. */
 export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
@@ -337,12 +341,15 @@ export const ROUND_CONTROLLER_PATH = '/training/control';
 export const SUITE_FROM = 'suite';
 
 /**
- * Basic Coach Mock Tournament, including when Pro is also unlocked and the
- * board was opened from the Coach page. Suite brackets stay the Pro board.
+ * The retired plain practice bracket. Instructor Edition now gets the full
+ * Tournament Software, so the board is plain only when this browser has no
+ * competition suite door at all (see competitionSuiteOpen). The /tournament
+ * route already requires that door, so in practice this is false.
+ * Suite brackets are never plain.
  */
-export function isPlainCoachTournament(from: string | null, basicCoach: boolean): boolean {
+export function isPlainCoachTournament(from: string | null, competitionSuite: boolean): boolean {
   if (from === SUITE_FROM) return false;
-  return from === COACH_BOARD_FROM || basicCoach;
+  return !competitionSuite;
 }
 
 /** Keep `from=suite` or `from=unlimited` on links opened from that hub. Other callers stay unchanged. */
@@ -555,9 +562,9 @@ export function carryHubFrom(path: string, search: string): string {
   return `${pathname}${qs ? `?${qs}` : ''}${hash}`;
 }
 
-/** Owner Console label; Coach keeps Mock Tournament when Pro is off. */
-export function tournamentToolLabel(proUnlocked: boolean): string {
-  return proUnlocked ? TOURNAMENT_SOFTWARE_NAME : MOCK_TOURNAMENT_NAME;
+/** Bracket board title. Instructor Edition, Pro, and seats all get Tournament Software. */
+export function tournamentToolLabel(competitionSuite: boolean): string {
+  return competitionSuite ? TOURNAMENT_SOFTWARE_NAME : MOCK_TOURNAMENT_NAME;
 }
 
 /** Pro includes Coach tools. Coach-only unlock still opens them on its own. */
@@ -806,6 +813,21 @@ export function coachDoorOpen(
   seated: boolean,
 ): boolean {
   return coachToolsOpen(proUnlocked, coachUnlocked) || seated;
+}
+
+/**
+ * Competition and Tournament Management suite: full Tournament Software (64
+ * competitors, Pro size presets), bracket skins, the Competition lesson template,
+ * and linked-bout skins. Instructor Edition includes it (owner, 14 Nov 2026), so it
+ * opens on the same door as the Coach tools: Instructor, Pro, or a live seat.
+ * Display only. It does not open /suite, the Pro Console, or Lesson Cloud.
+ */
+export function competitionSuiteOpen(
+  proUnlocked: boolean,
+  coachUnlocked: boolean,
+  seated: boolean,
+): boolean {
+  return coachDoorOpen(proUnlocked, coachUnlocked, seated);
 }
 
 /**

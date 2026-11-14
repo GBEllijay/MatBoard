@@ -14,6 +14,7 @@ import { RosterNameField } from '../components/RosterNameField';
 import { Sheet } from '../components/Sheet';
 import { useLockViewportZoom, usePinchZoom } from '../hooks/usePinchZoom';
 import { inputTypeUsesKeyboard } from '../lib/keepFieldVisible';
+import { useCurrentSeat } from '../components/SeatSessionBar';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useProUnlocked } from '../hooks/useProUnlocked';
@@ -48,8 +49,9 @@ import {
 import { isSheetLayerOpen, subscribeSheetLayer } from '../lib/sheetLayer';
 import { competitorCards, rosterGymForName, studentRosterCards } from '../lib/rosterStore';
 import {
+  COACH_BOARD_FROM,
   COACH_UNLIMITED_PATH,
-  isBasicCoach,
+  competitionSuiteOpen,
   isPlainCoachTournament,
   MOCK_TOURNAMENT_NAME,
   SUITE_FROM,
@@ -121,20 +123,18 @@ export function TournamentPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const parent = useToolboxParent();
-  const proUnlocked = useProUnlocked();
-  const plainCoach = isPlainCoachTournament(
-    searchParams.get('from'),
-    isBasicCoach(proUnlocked, useCoachUnlocked()),
-  );
-  const sizeMax = maxCompetitors(proUnlocked);
+  // Instructor Edition, Pro, and seats all get the full Tournament Software (owner, 14 Nov 2026).
+  const competitionSuite = useCompetitionSuite();
+  const plainCoach = isPlainCoachTournament(searchParams.get('from'), competitionSuite);
+  const sizeMax = maxCompetitors(competitionSuite);
   const from = searchParams.get('from');
   const fromSuite = from === SUITE_FROM;
   const fromUnlimited = from === UNLIMITED_FROM;
   const shownTheme = plainCoach ? DEFAULT_BRACKET_THEME : theme;
   const exitPath =
     useSubmenuBack() ??
-    (fromSuite ? '/suite' : fromUnlimited ? COACH_UNLIMITED_PATH : plainCoach ? '/coach' : parent.path);
-  const kidsSkins = kidsBracketSkinsAllowed(from) && !plainCoach;
+    (fromSuite ? '/suite' : fromUnlimited ? COACH_UNLIMITED_PATH : plainCoach || from === COACH_BOARD_FROM ? '/coach' : parent.path);
+  const kidsSkins = kidsBracketSkinsAllowed(from, competitionSuite) && !plainCoach;
   const kidsOn = kidsBracketChromeOn(kidsSkins, kids.enabled);
   const [namesOpen, setNamesOpen] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
@@ -265,7 +265,7 @@ export function TournamentPage() {
       <header className="tournament__bar">
         <div className="tournament__brand">
           <p className="tournament__eyebrow">{plainCoach ? 'Advantage Instructor Edition' : parent.eyebrow}</p>
-          <h1>{plainCoach ? MOCK_TOURNAMENT_NAME : tournamentToolLabel(proUnlocked)}</h1>
+          <h1>{plainCoach ? MOCK_TOURNAMENT_NAME : tournamentToolLabel(competitionSuite)}</h1>
         </div>
       </header>
 
@@ -574,8 +574,8 @@ export function TournamentPage() {
           vs 5th, and 1st, 2nd, and 3rd receive byes. A field of 7 gives the bye to the 1st seed.
           Eight and up, and every other custom count, fill to the next power of two with those same
           seeded byes. Tap a size to apply it. Names that fit stay. Results on this board clear.
-          {proUnlocked && !plainCoach
-            ? ' Pro boards save up to 64 competitors on this device.'
+          {competitionSuite && !plainCoach
+            ? ' Brackets save up to 64 competitors on this device.'
             : ' Mock Tournament stays at 16.'}
         </p>
         <p className="tournament__sheet-copy">Placement</p>
@@ -604,7 +604,7 @@ export function TournamentPage() {
           first-round cards.
         </p>
         <div className="tournament__size-presets" role="group" aria-label="Size presets">
-          {sizePresets(proUnlocked).map((preset) => (
+          {sizePresets(competitionSuite).map((preset) => (
             <button
               key={preset}
               type="button"
@@ -616,7 +616,7 @@ export function TournamentPage() {
           ))}
         </div>
         <label className="tournament__custom-size">
-          <span>{proUnlocked ? 'Custom 2–64' : 'Custom 3–15'}</span>
+          <span>{competitionSuite ? 'Custom 2–64' : 'Custom 3–15'}</span>
           <input
             type="number"
             min={2}
@@ -709,7 +709,8 @@ export function TournamentPage() {
           })}
         </ul>
         <p className="tournament__cloud">
-          {proUnlocked
+          {/* No tier syncs brackets yet; every save is local (OWNER_BRACKET_CLOUD in tournamentStore). */}
+          {competitionSuite
             ? OWNER_BRACKET_CLOUD_NOTE
             : 'Coach saves stay on this phone. Nothing is uploaded.'}
         </p>
@@ -844,7 +845,7 @@ function MatchCard({
   const fromUnlimited = from === UNLIMITED_FROM;
   const plainCoach = usePlainCoachBoard();
   const kids = useKidsScoreboard();
-  const kidsOn = kidsBracketChromeOn(kidsBracketSkinsAllowed(from) && !plainCoach, kids.enabled);
+  const kidsOn = kidsBracketChromeOn(kidsBracketSkinsAllowed(from, useCompetitionSuite()) && !plainCoach, kids.enabled);
   const hasResult = Boolean(tournament.results[matchId]);
   const live = liveMatchId === matchId;
   const bye = matchHasBye(tournament, matchId);
@@ -913,9 +914,14 @@ function MatchCard({
   );
 }
 
+/** Instructor Edition, Pro, or a live seat: the full Tournament Software and its skins. */
+function useCompetitionSuite(): boolean {
+  return competitionSuiteOpen(useProUnlocked(), useCoachUnlocked(), useCurrentSeat() !== null);
+}
+
 function usePlainCoachBoard(): boolean {
   const [searchParams] = useSearchParams();
-  return isPlainCoachTournament(searchParams.get('from'), isBasicCoach(useProUnlocked(), useCoachUnlocked()));
+  return isPlainCoachTournament(searchParams.get('from'), useCompetitionSuite());
 }
 
 function SlotRow({ matchId, side }: { matchId: BracketMatchId; side: MatchSide }) {

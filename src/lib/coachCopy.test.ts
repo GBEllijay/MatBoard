@@ -111,12 +111,12 @@ function allCopy(): string {
 function assertCoachToolOrder(text: string, rosterLabel = 'Competitor Roster') {
   const lesson = text.indexOf('Daily Lesson Plan');
   const videos = text.indexOf('Daily Training Videos');
-  const mock = text.indexOf('Mock Tournament');
+  const mock = text.indexOf('Tournament');
   const roster = text.indexOf(rosterLabel);
   assert.ok(lesson >= 0 && videos > lesson && mock > videos && roster > mock);
 }
 
-test('Coach teasers list the four hub tools in lesson, videos, mock, roster order', () => {
+test('Coach teasers list the four hub tools in lesson, videos, tournament, roster order', () => {
   assert.equal(COMPETITOR_ROSTER_LABEL, 'Competitor Roster');
   assert.equal(TRAINING_NOTES_LABEL, 'Daily Lesson Plan');
   assert.equal(TECHNIQUE_TREE_LABEL, 'Technique Tree');
@@ -129,7 +129,7 @@ test('Coach teasers list the four hub tools in lesson, videos, mock, roster orde
   );
   assert.deepEqual(BASIC_COACH_BELT_LINES, [
     'Tools and Templates for Coaches.',
-    "Plan today's class, and loop training clips on the TV, run a mock tournament and maintain a student roster.",
+    "Plan today's class, and loop training clips on the TV, run tournament brackets and maintain a student roster.",
   ]);
   assert.doesNotMatch(COACH_TOOLS_TEASER, /^Coach\b/);
   assertCoachToolOrder(COACH_HOME_TEASER, 'Roster');
@@ -194,7 +194,7 @@ test('Game Plan copy keeps a note optional and stays on bout competitors', () =>
 test('Coach CMS roster shows CSV and keeps manual roster language', () => {
   assert.equal(
     ROSTER_LEAD_COACH,
-    'Competitor Roster with Names and Ranks for Single Matches and Mock Tournaments.',
+    'Competitor Roster with Names and Ranks for Single Matches and Tournament Brackets.',
   );
   assert.doesNotMatch(ROSTER_LEAD_COACH, /Competitor Management/);
   assert.equal(rosterCsvAvailable(true, false), true);

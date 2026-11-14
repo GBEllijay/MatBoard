@@ -30,6 +30,7 @@ import {
   matchHasBye,
   matchIdsForSize,
   maxCompetitors,
+  sizePresets,
   parseNameList,
   nextSlot,
   normalizeBoard,
@@ -162,6 +163,15 @@ describe('flexible bracket size', () => {
     assert.equal(matchHasBye(board, 'qf-2'), false);
     board = applyMatchOutcome(board, 'qf-2', 'b', { call: 'win', method: 'points' }, { toggle: false });
     assert.equal(board.entries['sf-1-a'], 'Glen');
+  });
+
+  it('gives Instructor Edition the full 64-person board and Pro size presets', () => {
+    // maxCompetitors/sizePresets take competitionSuiteOpen, which is true for Instructor Edition.
+    const instructorSuite = true;
+    assert.equal(maxCompetitors(instructorSuite), 64);
+    assert.deepEqual([...sizePresets(instructorSuite)], [2, 3, 4, 5, 7, 8, 16, 32, 64]);
+    assert.equal(OWNER_BRACKET_CLOUD.coachSaves, 'local-only');
+    assert.equal(OWNER_BRACKET_CLOUD.ownerSaves, 'local-only');
   });
 
   it('lets Pro save a 64-person board and keeps Coach changes at 16', () => {
