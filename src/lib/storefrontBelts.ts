@@ -125,7 +125,6 @@ export const STOREFRONT_BELT_LADDER: readonly BeltRung[] = [
     rankLabel: 'INSTRUCTOR',
     title: 'Advantage Instructor Edition',
     blurb: 'Daily lesson plans, videos, and enhanced training tools.',
-    // Display only on this tile: Stripe still charges the Coach product at $29.99.
     detail: INSTRUCTOR_DRIVE_REQUIREMENT,
     cardPrice: INSTRUCTOR_DISPLAY_PRICE_LINE,
     status: coach.status,

@@ -99,7 +99,7 @@ test('coming soon stays Student, Coach, Pro and does not sell Coach or Pro', () 
     [false, false, false],
   );
   assert.equal(STOREFRONT_COMING_SOON[0]?.price, '$19.99 one-time');
-  assert.equal(STOREFRONT_COMING_SOON[1]?.price, '$29.99 one-time');
+  assert.equal(STOREFRONT_COMING_SOON[1]?.price, '$49.99 one-time');
   assert.equal(STOREFRONT_COMING_SOON[2]?.price, '$99.99 one-time');
   assert.equal(STOREFRONT_COMING_SOON[2]?.cardPrice, '$99.99 one-time');
   assert.equal(STOREFRONT_COMING_SOON[0]?.blurb, 'A personal BJJ training journal.');

@@ -84,9 +84,8 @@ test('Coach reads Instructor in this section, with the same code name, id and ro
   assert.equal(rung.title, 'Advantage Instructor Edition');
   assert.equal(rung.rankLabel, 'INSTRUCTOR');
   assert.equal(rung.blurb, 'Daily lesson plans, videos, and enhanced training tools.');
-  // $49.99 is display only on this tile; the Coach product copy (and Stripe) still says $29.99.
   assert.equal(rung.cardPrice, '$49.99 one-time');
-  assert.equal(coach.cardPrice, '$29.99 one-time');
+  assert.equal(coach.cardPrice, '$49.99 one-time');
   assert.equal(rung.to, '/editions/instructor');
   assert.equal(coach.to, '/products');
   assert.equal(rung.status, 'This product is in alpha');

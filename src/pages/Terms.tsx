@@ -68,7 +68,7 @@ export function TermsPage() {
             sale.
           </li>
           <li>
-            Advantage Instructor Edition costs $49.99 as a one-time purchase, once it’s offered for sale.
+            Advantage Instructor Edition costs $49.99 as a one-time purchase and is offered for sale now.
           </li>
           <li>
             Advantage Pro costs $99.99 as a one-time purchase, plus a subscription of $5.99 per
@@ -99,8 +99,8 @@ export function TermsPage() {
       <section>
         <h3>4. Alpha Access</h3>
         <p>
-          Advantage Instructor Edition and Advantage Pro are currently in alpha testing and are not offered for
-          sale. We may provide free alpha access codes on request. To request one, email{' '}
+          Advantage Instructor Edition is offered for sale now at $49.99 as a one-time purchase.
+          Advantage Pro is currently in alpha testing and is not offered for sale. We may provide free alpha access codes on request. To request one, email{' '}
           <SupportEmail />. Alpha features are provided “as is.” They may change, be incomplete,
           contain errors, or lose data, and we may end alpha access at any time. Alpha access does
           not guarantee future free access or any particular price.

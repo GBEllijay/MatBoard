@@ -32,7 +32,7 @@ export const INSTRUCTOR_CLOUD_MONTHLY_PRICE_CENTS = 599;
 
 export const STUDENT_PRICE_LINE = '$19.99 one-time';
 
-export const COACH_PRICE_LINE = '$29.99 one-time';
+export const COACH_PRICE_LINE = '$49.99 one-time';
 
 /** Instructor Edition (id coach) price line on /products and the homepage belt ladder. Matches INSTRUCTOR_LIST_PRICE_CENTS. */
 export const INSTRUCTOR_DISPLAY_PRICE_LINE = '$49.99 one-time';
