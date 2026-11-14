@@ -247,11 +247,26 @@ export function coachingToolsMenu(unlimited: boolean) {
  * Sunday review and Drive cards stay on the page, under this menu.
  * Competition Class Curriculum opens from the Daily Lesson Plan template picker.
  */
+/**
+ * Fourth Advantage Pro hub button and the heading on the page it opens.
+ * The Coming Soon ad keeps COMPETITION_MANAGEMENT_PRO_LABEL.
+ * Also the Instructor Edition tool card that opens the competition hub (COMPETITION_TOOL_PATH).
+ */
+export const TOURNAMENT_MANAGEMENT_PRO_LABEL = 'Competition and Tournament Management';
+
+/**
+ * Instructor Edition tool card for the competition suite. Opens the existing
+ * Competition Team Management hub (/competition, CoachRoute: Instructor, Pro, or a seat).
+ * `from=unlimited` sends Back to this page. /suite stays the Pro Console hub.
+ */
+export const COMPETITION_TOOL_PATH = '/competition?from=unlimited';
+
 export const COACH_UNLIMITED_TOOLS = [
   { title: TRAINING_NOTES_LABEL, to: UNLIMITED_LESSON_PATH, belt: 'brown' as const, stripes: 0 as const, clearBout: false as const },
   { title: 'Daily Training Videos', to: UNLIMITED_VIDEOS_PATH, belt: 'brown' as const, stripes: 1 as const, clearBout: false as const },
   { title: TECHNIQUE_TREE_LABEL, to: UNLIMITED_TREE_PATH, belt: 'brown' as const, stripes: 2 as const, clearBout: false as const },
   { title: STUDENT_ROSTER_LABEL, to: STUDENT_ROSTER_MENU_PATH, belt: 'brown' as const, stripes: 3 as const, clearBout: false as const },
+  { title: TOURNAMENT_MANAGEMENT_PRO_LABEL, to: COMPETITION_TOOL_PATH, belt: 'tournament' as const, clearBout: false as const },
   { title: 'Scoreboard', to: '/match/control?from=unlimited', belt: 'black' as const, clearBout: true as const },
   { title: 'Round Timer', to: '/training/control?from=unlimited', belt: 'black' as const, clearBout: false as const },
 ] as const;
@@ -285,12 +300,6 @@ export const COMPETITION_MENU_PRO: readonly {
 
 /** Working title kept for longer appetite copy. Not the Pro hub button or Suite heading. */
 export const TOURNAMENT_SUITE_NAME = 'In-House Tournament Management Suite';
-
-/**
- * Fourth Advantage Pro hub button and the heading on the page it opens.
- * The Coming Soon ad keeps COMPETITION_MANAGEMENT_PRO_LABEL.
- */
-export const TOURNAMENT_MANAGEMENT_PRO_LABEL = 'Competition and Tournament Management';
 
 /**
  * Lead under that heading. Rankings stay on Competitor Management System.

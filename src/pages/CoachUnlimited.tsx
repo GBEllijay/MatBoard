@@ -5,6 +5,7 @@ import { InstructorSheet } from '../components/InstructorSheet';
 import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
 import { InstructorToolMark, type InstructorToolMarkName } from '../components/InstructorToolMark';
+import { CompetitionToolMark } from '../components/CompetitionToolMark';
 import { DriveConnectCard } from '../components/DriveConnectCard';
 import { useAdvantageCloudOn } from '../components/useAdvantageCloudOn';
 import { HomeMark } from '../components/HomeMark';
@@ -25,7 +26,13 @@ import {
   ownerDriveTitle,
   type LessonRevision,
 } from '../lib/lessonDrive';
-import { COACH_UNLIMITED_TOOLS, INSTRUCTOR_COACH_ENTRY, PRODUCTS_PATH, proConsoleEntryOpen } from '../lib/productNames';
+import {
+  COACH_UNLIMITED_TOOLS,
+  INSTRUCTOR_COACH_ENTRY,
+  PRODUCTS_PATH,
+  proConsoleEntryOpen,
+  TOURNAMENT_MANAGEMENT_PRO_LABEL,
+} from '../lib/productNames';
 import { STUDENT_ROSTER_LABEL, TECHNIQUE_TREE_LABEL, TRAINING_NOTES_LABEL } from '../lib/coachCopy';
 import './instructorTools.css';
 import { previewEntryPath } from '../lib/techniqueTreePreview';
@@ -84,17 +91,20 @@ export function CoachUnlimitedPage() {
           <InstructorSheet />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
             <div className="instructor-tools">
-              {tools.map((tool) => (
-                <Link
-                  key={tool.to}
-                  className="instructor-tool"
-                  to={tool.to}
-                  onClick={tool.clearBout ? () => unlinkBracketBout() : undefined}
-                >
-                  <span>{tool.title}</span>
-                  <InstructorToolMark mark={marks[tool.title] ?? 'plan'} />
-                </Link>
-              ))}
+              {tools.map((tool) => {
+                const competition = tool.title === TOURNAMENT_MANAGEMENT_PRO_LABEL;
+                return (
+                  <Link
+                    key={tool.to}
+                    className={competition ? 'instructor-tool instructor-tool--competition' : 'instructor-tool'}
+                    to={tool.to}
+                    onClick={tool.clearBout ? () => unlinkBracketBout() : undefined}
+                  >
+                    <span>{tool.title}</span>
+                    {competition ? <CompetitionToolMark /> : <InstructorToolMark mark={marks[tool.title] ?? 'plan'} />}
+                  </Link>
+                );
+              })}
             </div>
           </nav>
           <LicenseShareButton />

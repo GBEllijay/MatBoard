@@ -262,13 +262,17 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COMPETITOR_ROSTER_PATH, '/roster?from=competitors');
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Scoreboard', 'Round Timer'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Competition and Tournament Management', 'Scoreboard', 'Round Timer'],
   );
-  assert.equal(COACH_UNLIMITED_TOOLS[4].to, withHubFrom(MATCH_CONTROLLER_PATH, 'unlimited'));
-  assert.equal(COACH_UNLIMITED_TOOLS[5].to, withHubFrom(ROUND_CONTROLLER_PATH, 'unlimited'));
-  assert.equal(COACH_UNLIMITED_TOOLS[4].belt, 'black');
+  // Instructor Edition competition card: after Student Roster, opens the existing /competition hub.
+  assert.equal(COACH_UNLIMITED_TOOLS[4].title, TOURNAMENT_MANAGEMENT_PRO_LABEL);
+  assert.equal(COACH_UNLIMITED_TOOLS[4].to, '/competition?from=unlimited');
+  assert.equal(COACH_UNLIMITED_TOOLS[4].belt, 'tournament');
+  assert.equal(COACH_UNLIMITED_TOOLS[5].to, withHubFrom(MATCH_CONTROLLER_PATH, 'unlimited'));
+  assert.equal(COACH_UNLIMITED_TOOLS[6].to, withHubFrom(ROUND_CONTROLLER_PATH, 'unlimited'));
   assert.equal(COACH_UNLIMITED_TOOLS[5].belt, 'black');
-  assert.equal(COACH_UNLIMITED_TOOLS[4].clearBout, true);
+  assert.equal(COACH_UNLIMITED_TOOLS[6].belt, 'black');
+  assert.equal(COACH_UNLIMITED_TOOLS[5].clearBout, true);
   assert.equal(COACH_UNLIMITED_TOOLS[3].title, 'Student Roster');
   assert.ok(!COACH_UNLIMITED_TOOLS.some((tool) => tool.title === 'Record for Review'));
   assert.equal(COACH_UNLIMITED_TOOLS[0].to, UNLIMITED_LESSON_PATH);
@@ -276,11 +280,11 @@ test('Pro console hubs stay four siblings, Media Console first', () => {
   assert.equal(COACH_UNLIMITED_TOOLS[2].to, UNLIMITED_TREE_PATH);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.belt),
-    ['brown', 'brown', 'brown', 'brown', 'black', 'black'],
+    ['brown', 'brown', 'brown', 'brown', 'tournament', 'black', 'black'],
   );
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => ('stripes' in tool ? tool.stripes : null)),
-    [0, 1, 2, 3, null, null],
+    [0, 1, 2, 3, null, null, null],
   );
   assert.equal(COACH_UNLIMITED_TOOLS[3].to, '/student-roster');
   assert.equal(isCoachStudentRoster('/student-roster', null), true);
