@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   REQUIRE_APPROVAL_LABEL,
+  REQUIRE_APPROVAL_WHY,
   canSetGalleryApproval,
   writeGalleryApproval,
   type GalleryApprovalSettings,
@@ -59,6 +60,7 @@ export function GalleryApprovalSwitch({ viewer }: { viewer: Viewer }) {
   return (
     <fieldset className="invite-form">
       <legend className="sr-only">Gallery approval</legend>
+      <p className="invite-form__note">{REQUIRE_APPROVAL_WHY}</p>
       <label>
         <input
           type="checkbox"
