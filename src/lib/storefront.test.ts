@@ -28,8 +28,8 @@ test('storefront sells White once and sends Buy Now to the existing checkout', (
   assert.equal(STOREFRONT_BUY_LABEL, 'Buy Advantage White — $9.99');
   assert.equal(STOREFRONT_HERO.title, 'Win by Advantage.');
   assert.equal(STOREFRONT_HERO.clock, '05:00');
-  assert.equal(STOREFRONT_HERO.leadBeforeBreak, 'Your gym scoreboard, round timer, and management software.');
-  assert.match(STOREFRONT_HERO.leadAfterBreak, /from your phone/);
+  assert.equal(STOREFRONT_HERO.leadBeforeBreak, "Your Gym's Scoreboard, Round Timer, and Academy Enhancement Software.");
+  assert.equal(STOREFRONT_HERO.leadAfterBreak, 'Cast to your TV from your phone or PC.');
 });
 
 test('Pass 2 sections use the approved copy and woodblocks', () => {
