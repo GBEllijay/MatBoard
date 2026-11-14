@@ -186,8 +186,8 @@ test('Coach hub buy link opens the Instructor buy page; checkout product key sta
   assert.match(checkout, /coach: '\/buy\/coach'/);
 });
 
-test('TierRestoreCard links to /restore and does not post a restore request', () => {
+test('TierRestoreCard links to /restore when signed out and posts when signed in', () => {
   assert.match(parts, /restoreHref\(email\)/);
-  assert.doesNotMatch(parts, /restoreWhiteByEmail/);
+  assert.match(parts, /startSignedInRestore/);
   assert.doesNotMatch(parts, /<form className="buy__card buy__restore"/);
 });

@@ -8,7 +8,10 @@ import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { acceptServerToken, clearEntitlementToken, setEntitlementConfigForTests } from '../lib/entitlement.ts';
+import type { PrivateJwk, PublicJwk } from '../lib/entitlementToken.ts';
 import { RESTORE_CHALLENGE_KEY, readRestoreChallenge, saveRestoreChallenge } from '../lib/restoreChallenge.ts';
+import { issueToken } from '../server/tokenIssue.ts';
 import type { TurnstileApi, TurnstileRenderOptions } from '../lib/turnstile.ts';
 import { BUY_RESTORE_COPY, BuyWhitePage } from './BuyWhite.tsx';
 import { RestoreAccessPage } from './RestoreAccess.tsx';
@@ -27,6 +30,7 @@ installGlobal('document', view.document);
 installGlobal('localStorage', view.localStorage);
 installGlobal('sessionStorage', view.sessionStorage);
 installGlobal('HTMLElement', view.HTMLElement);
+installGlobal('Event', view.Event);
 installGlobal('navigator', view.navigator);
 installGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
@@ -136,6 +140,7 @@ test.beforeEach(() => {
   respond = () => ({});
   localStorage.clear();
   sessionStorage.clear();
+  void clearEntitlementToken();
 });
 
 test('/buy email is sent with a code and Restore opens /restore with that email', async () => {
@@ -308,4 +313,80 @@ test('stored challenges expire after 15 minutes', () => {
   assert.equal(readRestoreChallenge(1_000 + 14 * 60_000), 'old');
   assert.equal(readRestoreChallenge(1_000 + 15 * 60_000 + 1), '');
   assert.equal(localStorage.getItem(RESTORE_CHALLENGE_KEY), null);
+});
+
+
+async function sessionPass() {
+  const key = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const privateJwk = (await crypto.subtle.exportKey('jwk', key.privateKey)) as PrivateJwk;
+  const publicJwk = (await crypto.subtle.exportKey('jwk', key.publicKey)) as PublicJwk;
+  const secret = JSON.stringify(privateJwk);
+  setEntitlementConfigForTests({
+    signing: true,
+    keys: [{ kid: 'k1', jwk: { kty: 'EC', crv: 'P-256', x: publicJwk.x!, y: publicJwk.y! } }],
+  });
+  const token = await issueToken(secret, {
+    licenseId: 'lic-restore',
+    grants: ['white'],
+    tier: 'white',
+    src: 'stripe',
+    deviceId: 'phone',
+    now: new Date('2026-11-14T12:00:00.000Z'),
+    kind: 'onetime',
+  });
+  assert.ok(token);
+  assert.equal(await acceptServerToken(token), true);
+  return token;
+}
+
+test('signed-out /restore still asks for an email and Turnstile', async () => {
+  const turnstile = fakeTurnstile();
+  const mounted = await mount(
+    <RestoreAccessPage
+      deps={{
+        fetchConfig: async () => ({ ok: true, siteKey: 'site-key-1', restoreAvailable: true }),
+        loadTurnstile: async () => turnstile.api,
+      }}
+    />,
+    '/restore',
+  );
+  const { host } = mounted;
+  assert.ok(host.querySelector('input[name="email"]'));
+  assert.ok(host.querySelector('[data-testid="turnstile"]'));
+  await submit(button(host, 'Email me a code').closest('form') as HTMLFormElement);
+  assert.equal(calls.filter((call) => call.url.includes('/api/restore/request')).length, 0);
+  unmount(mounted);
+});
+
+test('signed-in /restore sends the session token without an email field or Turnstile', async () => {
+  const token = await sessionPass();
+  const turnstile = fakeTurnstile();
+  respond = (url) =>
+    url.includes('/api/restore/request')
+      ? { ok: true, message: 'Check your email.', challengeId: 'challenge-session', emailHint: 'b***@gym.test' }
+      : {};
+  const mounted = await mount(
+    <RestoreAccessPage
+      deps={{
+        fetchConfig: async () => ({ ok: true, siteKey: 'site-key-1', restoreAvailable: true }),
+        loadTurnstile: async () => turnstile.api,
+      }}
+    />,
+    '/restore',
+  );
+  const { host } = mounted;
+  await flush();
+  assert.equal(host.querySelector('input[name="email"]'), null);
+  assert.equal(host.querySelector('[data-testid="turnstile"]'), null);
+  await submit(button(host, 'Email me a code').closest('form') as HTMLFormElement);
+  const request = calls.find((call) => call.url.includes('/api/restore/request'));
+  assert.ok(request);
+  assert.equal(request.body?.sessionToken, token);
+  assert.equal(request.body?.email, undefined);
+  assert.equal(request.body?.turnstileToken, undefined);
+  assert.equal(readRestoreChallenge(), 'challenge-session');
+  assert.ok(host.querySelector('input[name="code"]'));
+  assert.match(host.textContent ?? '', /Check your email/);
+  assert.match(host.textContent ?? '', /b\*\*\*@gym\.test/);
+  unmount(mounted);
 });

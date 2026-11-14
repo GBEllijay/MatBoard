@@ -1,10 +1,13 @@
 import { useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AlphaAccessNote } from './AlphaAccessNote';
 import { LEARN_MORE } from '../lib/learnMore';
 import { PRO_PLUS_CLOUD_DESCRIPTION, PRO_PLUS_CLOUD_INFO_PATH, PRO_PLUS_CLOUD_NAME } from '../lib/productNames';
 import { EDITION_ALPHA_NOTE, EDITION_EMAIL_DISPLAY, PRO_PLUS_CLOUD_PRICE_LINE } from '../lib/productPrices';
 import { higherTiers, type TierBelt, type TierBuyEntry, type TierId } from '../lib/tierBuyPages';
+import { useRestoreSession } from '../hooks/useRestoreSession';
+import { sessionEmailHint, startSignedInRestore } from '../lib/restorePurchase';
+import { saveRestoreChallenge } from '../lib/restoreChallenge';
 import { restoreHref } from '../lib/whiteUnlock';
 import '../pages/buyTiers.css';
 
@@ -108,9 +111,51 @@ export function HigherTierList({
   );
 }
 
-/** Already-purchased entry on the tier buy pages. The person check lives on /restore, so this card only sends people there. */
+/** Already-purchased entry on the tier buy pages. Signed-out visitors still go to /restore to enter an email. A signed-in session sends the code immediately. */
 export function TierRestoreCard({ label }: { label: string }) {
+  const signedIn = useRestoreSession();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hint = sessionEmailHint();
+
+  async function onSignedInRestore() {
+    if (pending) return;
+    setError(null);
+    setPending(true);
+    const result = await startSignedInRestore();
+    setPending(false);
+    if (!result.ok) {
+      setError(result.error);
+      if (result.needsEmail) navigate('/restore');
+      return;
+    }
+    if (result.challengeId) saveRestoreChallenge(result.challengeId);
+    navigate('/restore', { state: { restoreSent: true, message: result.message, emailHint: result.emailHint } });
+  }
+
+  if (signedIn) {
+    return (
+      <section className="buy__card buy__restore" aria-label="Already purchased">
+        <h3>Already purchased?</h3>
+        <p>
+          Send a one-time code to the email on file for this session. You will land on the restore page to enter
+          the code. The full address is never shown.
+        </p>
+        {hint ? <p className="buy__status">We will email {hint}.</p> : null}
+        {error ? (
+          <p className="buy__status buy__status--bad" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <button className="btn btn--ghost" type="button" onClick={() => void onSignedInRestore()} disabled={pending}>
+          {pending ? 'Sending…' : label}
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section className="buy__card buy__restore" aria-label="Already purchased">
       <h3>Already purchased?</h3>
