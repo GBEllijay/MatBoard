@@ -245,6 +245,28 @@ body:has(.d8-live),
   font-weight: 700;
 }
 
+.d8-live-sheet .d8sf-add-actions {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(28, 20, 14, 0.28);
+}
+
+.d8-live-sheet .d8sf-add-actions button.d8sf-add-submit {
+  border-color: #8a6a12;
+  border-radius: 10px;
+  background: #e0b429;
+  color: #1c140e;
+  font-weight: 800;
+}
+
+.d8-live-sheet .d8sf-add-actions button.d8sf-add-cancel {
+  border-color: #1c140e;
+  border-radius: 10px;
+  background: transparent;
+  color: #1c140e;
+  font-weight: 700;
+}
+
 .d8-live-sheet .d8sf-rate[aria-pressed='true'] {
   background: #004eba;
   border-color: #004eba;

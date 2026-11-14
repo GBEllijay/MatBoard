@@ -264,10 +264,35 @@ body:has(.d8sf) .seat-session-dock {
 .d8sf-add-actions {
   display: flex;
   gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(104, 216, 255, 0.35);
 }
 
 .d8sf-add-actions button {
   flex: 1;
+}
+
+.d8sf-add-actions .d8sf-add-submit {
+  min-height: 44px;
+  border: 2px solid #8a6a12;
+  border-radius: 10px;
+  background: #e0b429;
+  color: #1c140e;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.d8sf-add-actions .d8sf-add-cancel {
+  min-height: 44px;
+  border: 2px solid rgba(231, 248, 251, 0.55);
+  border-radius: 10px;
+  background: transparent;
+  color: #e7f8fb;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .d8sf-add-error {
