@@ -75,7 +75,7 @@ type NodeRequest = {
 
 type NodeResponse = {
   statusCode: number;
-  setHeader(name: string, value: string): void;
+  setHeader(name: string, value: string | string[]): void;
   end(body?: Uint8Array | string): void;
 };
 
@@ -249,7 +249,13 @@ function attach(
     if (path.startsWith('/api/login/')) {
       try {
         const request = await toWebRequest(req as NodeRequest);
-        await writeResponse(res as NodeResponse, await handleLogin(request, env, devDb, () => new Date(), fetch));
+        const response = await handleLogin(request, env, devDb, () => new Date(), fetch);
+        const cookies = response.headers.getSetCookie();
+        response.headers.delete('set-cookie');
+        if (cookies.length) (res as NodeResponse).setHeader('set-cookie', cookies);
+        res.statusCode = response.status;
+        response.headers.forEach((value, key) => (res as NodeResponse).setHeader(key, value));
+        res.end(new Uint8Array(await response.arrayBuffer()));
       } catch {
         res.statusCode = 500;
         res.setHeader('content-type', 'application/json; charset=utf-8');

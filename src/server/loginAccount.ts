@@ -15,7 +15,9 @@
  *   POST /api/login/signout  revokes this session. Data on the device stays (PR 459).
  *
  * The session is a random token in an HttpOnly Secure SameSite=Lax cookie scoped to
- * /api/login. Only its keyed hash is stored (login_sessions). 90 days, sliding on /me.
+ * /api/login. Only its keyed hash is stored (login_sessions). 180 days, sliding on /me.
+ * A readable `adv_login=1` cookie (Path=/, no secret) tells the page a session exists, so boot
+ * can self-heal a wiped localStorage pass without calling /me for every anonymous visitor.
  *
  * Every login restores what an invite granted, from what the instructor picked
  * (invite_selections): the Student license with its gym link and inbox pass, or the
@@ -50,7 +52,9 @@ import { APP_VERSION_HEADER } from '../lib/appCapability.ts';
 
 export const LOGIN_COOKIE = 'adv_session';
 export const LOGIN_COOKIE_PATH = '/api/login';
-export const SESSION_DAYS = 90;
+export const SESSION_DAYS = 180;
+/** Readable companion cookie, no secret in it: lets the page skip /me for visitors who never signed in. */
+export const LOGIN_HINT_COOKIE = 'adv_login';
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const FAIL_LIMIT = 5;
 export const FAIL_WINDOW_MS = 15 * 60 * 1000;
@@ -67,18 +71,25 @@ export type LoginEnv = RestoreEnv & SeatEnv & CoachConnectEnv;
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 
-function json(status: number, body: unknown, cookie?: string): Response {
+function json(status: number, body: unknown, cookies?: string | string[]): Response {
   const headers = new Headers(JSON_HEADERS);
-  if (cookie) headers.append('set-cookie', cookie);
+  for (const cookie of Array.isArray(cookies) ? cookies : cookies ? [cookies] : []) headers.append('set-cookie', cookie);
   return new Response(JSON.stringify(body), { status, headers });
 }
 
-export function sessionCookie(token: string, maxAgeSeconds: number): string {
-  return `${LOGIN_COOKIE}=${token}; Path=${LOGIN_COOKIE_PATH}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
+/** The session cookie, then the readable hint cookie. Both live as long as the session. */
+export function sessionCookie(token: string, maxAgeSeconds: number): string[] {
+  return [
+    `${LOGIN_COOKIE}=${token}; Path=${LOGIN_COOKIE_PATH}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAgeSeconds}`,
+    `${LOGIN_HINT_COOKIE}=1; Path=/; Secure; SameSite=Lax; Max-Age=${maxAgeSeconds}`,
+  ];
 }
 
-export function clearedCookie(): string {
-  return `${LOGIN_COOKIE}=; Path=${LOGIN_COOKIE_PATH}; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+export function clearedCookie(): string[] {
+  return [
+    `${LOGIN_COOKIE}=; Path=${LOGIN_COOKIE_PATH}; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+    `${LOGIN_HINT_COOKIE}=; Path=/; Secure; SameSite=Lax; Max-Age=0`,
+  ];
 }
 
 export function readSessionCookie(request: Request): string {
@@ -230,6 +241,14 @@ function studentCodeOf(summary: LicenseSummary | null): string | null {
   return grant?.sourceRef ? grant.sourceRef.slice(STUDENT_LICENSE_SOURCE_PREFIX.length) : null;
 }
 
+/**
+ * owner: owns the academy (Pro or owner academy) and receives from instructors and students.
+ * instructor: holds a seat invited by email; connected to that academy on sign-in.
+ * student: free Student license from an invite; connected to that academy on sign-in.
+ * member: owns editions, no academy role.
+ */
+export type AccountRole = 'owner' | 'instructor' | 'student' | 'member';
+
 type ActiveSeat = { selection: InviteSelection };
 
 async function openSeatsForEmail(db: D1Database, emailHash: string): Promise<ActiveSeat[]> {
@@ -288,7 +307,15 @@ async function loginPayload(
   }
 
   const seats = await openSeatsForEmail(db, input.emailHash);
+  // Role comes from who signed in. One person can hold several (an owner is also an instructor).
+  const roles: AccountRole[] = [];
+  if (summary?.ownerAcademy || summary?.doors.includes('pro')) roles.push('owner');
+  if (seats.length) roles.push('instructor');
+  if (summary?.student) roles.push('student');
+  if (!roles.length && summary) roles.push('member');
   out.profile = {
+    role: roles[0] ?? null,
+    roles,
     email: input.emailMask,
     editions: summary?.doors ?? [],
     tier: summary?.tier ?? (seats.length ? 'seat' : null),
@@ -655,7 +682,7 @@ export async function handleLoginMe(
   if (!row) return json(200, { ok: true, signedIn: false, available: true }, clearedCookie());
   let body: Record<string, unknown> = {};
   if (request.method === 'POST') body = (await readBody(request)) ?? {};
-  // Sliding expiry: each visit to /account keeps the session for another 90 days.
+  // Sliding expiry: each boot heal or /account visit keeps the session for another 180 days.
   const expiresAt = new Date(stamp.getTime() + SESSION_DAYS * DAY_MS).toISOString();
   await db
     .prepare(`UPDATE login_sessions SET last_seen_at = ?, expires_at = ? WHERE id = ?`)

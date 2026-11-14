@@ -16,7 +16,7 @@ import {
 import { hashPassword, needsRehash, verifyPassword } from './password.ts';
 import { recordPurchase } from './purchaseRecords.ts';
 import { handleRestoreRequest } from './restoreAccess.ts';
-import { handleSeatIssue, handleSeatPermissions, handleSeatRevoke, handleSeatSync } from './seats.ts';
+import { SEAT_ACCOUNT_BOUND, handleSeatAccept, handleSeatIssue, handleSeatPermissions, handleSeatRevoke, handleSeatSync, refreshSeat } from './seats.ts';
 import { handleStudentLicenseIssue, handleStudentLicenseRevoke } from './studentLicenses.ts';
 import { sqliteD1 } from './sqliteD1.ts';
 import { issueToken } from './tokenIssue.ts';
@@ -79,8 +79,10 @@ type Answer = { status: number; body: Record<string, any>; cookie: string; setCo
 
 async function call(f: Fixture, request: Request, at: Date = NOW): Promise<Answer> {
   const response = await handleLogin(request, f.env, f.db, () => at, async () => new Response('{}', { status: 404 }));
-  const setCookie = response.headers.get('set-cookie') ?? '';
+  const all = response.headers.getSetCookie();
+  const setCookie = all[0] ?? '';
   const cookie = setCookie.split(';')[0] ?? '';
+  if (all[1]) assert.match(all[1], /^adv_login=1?; Path=\/; Secure; SameSite=Lax; Max-Age=\d+$/);
   return { status: response.status, body: (await response.json()) as Record<string, any>, cookie, setCookie };
 }
 
@@ -158,7 +160,7 @@ test('purchaser sets a first password with the restore code, then signs in with 
   assert.equal(setup.status, 200);
   assert.equal(setup.body.signedIn, true);
   assert.equal(setup.body.email, 'bu•••@gym.test');
-  assert.match(setup.setCookie, /^adv_session=[A-Za-z0-9_-]{40,}; Path=\/api\/login; HttpOnly; Secure; SameSite=Lax; Max-Age=7776000$/);
+  assert.match(setup.setCookie, /^adv_session=[A-Za-z0-9_-]{40,}; Path=\/api\/login; HttpOnly; Secure; SameSite=Lax; Max-Age=15552000$/);
   assert.ok(setup.body.pass.token);
   assert.deepEqual(setup.body.profile.editions, ['white']);
   // No invite, so no academy link and no instructor section.
@@ -355,6 +357,28 @@ test('pending instructor seat invite: email + invite link sets the password and 
   const daily = await call(f, post('/api/login/signin', { email: 'coachone@gmail.com', password: 'coach pass 12', deviceId: 'coach-laptop' }));
   assert.deepEqual(daily.body.seat.permissions, edited);
   assert.deepEqual(daily.body.profile.invites[0].features, edited);
+
+  // Role comes from who signed in, and the seat is bound to the account, not one browser.
+  assert.equal(daily.body.profile.role, 'instructor');
+  assert.deepEqual(daily.body.profile.roles, ['instructor']);
+  assert.equal(daily.body.academy.gym, owner.licenseId, 'instructor auto-connected to the academy on every sign-in');
+  const bound = await f.db.prepare(`SELECT claimed_device AS d, status FROM seats WHERE id = ?`).bind(seat.seatId).first<{ d: string; status: string }>();
+  assert.equal(bound?.d, SEAT_ACCOUNT_BOUND);
+  assert.equal(bound?.status, 'claimed');
+  for (const pass of [first.body.seat.token, daily.body.seat.token]) {
+    const claims = await verifyToken(pass, [{ kid: 'k1', jwk: f.publicJwk }]);
+    const refreshed = await refreshSeat(f.db, f.env, { gym: claims?.gym, sid: claims?.sid, did: String(claims?.did), preset: claims?.preset }, NOW, fetch);
+    assert.equal('error' in refreshed, false, 'phone and laptop both keep the seat (no ping-pong)');
+  }
+  // The bare link can't move an account-bound seat to an unsigned-in browser; it points to sign-in.
+  const viaLink = await handleSeatAccept(post('/api/seats/accept', { invite: seat.invite, deviceId: 'random-browser' }), f.env, f.db, fetch, () => NOW);
+  assert.equal(viaLink.status, 409);
+  assert.equal(((await viaLink.json()) as { signIn?: boolean }).signIn, true);
+  // Boot heal: /me with the session cookie re-issues the seat pass for a wiped browser.
+  const healed = await call(f, post('/api/login/me', { deviceId: 'safari-after-wipe' }, daily.cookie));
+  assert.equal(healed.status, 200);
+  assert.equal(healed.body.seat.seatId, seat.seatId);
+  assert.equal((await verifyToken(healed.body.seat.token, [{ kid: 'k1', jwk: f.publicJwk }]))?.did, 'safari-after-wipe');
 
   // Revoked seat: not restored on sign-in.
   await handleSeatRevoke(post('/api/seats/revoke', { token: owner.token, seatId: seat.seatId }), f.env, f.db, () => NOW);

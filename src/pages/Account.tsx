@@ -13,10 +13,18 @@ import {
   type InviteGrant,
   type LoginPayload,
   type LoginResult,
+  type AccountRole,
 } from '../lib/emailLogin';
 import { INSTRUCTOR_PERMISSION_FIELDS, instructorPreset, normalizeInstructorPresetId } from '../lib/instructorSeats';
 import { fetchRestoreCheckConfig, loadTurnstile, type TurnstileApi } from '../lib/turnstile';
 import { isWhiteRestoreEmail, restoreWhiteByEmail } from '../lib/whiteUnlock';
+
+const ROLE_LABEL: Record<AccountRole, string> = {
+  owner: 'Academy owner',
+  instructor: 'Instructor',
+  student: 'Student',
+  member: 'Member',
+};
 
 const EDITION_LABELS: Record<string, string> = {
   white: 'Advantage White',
@@ -184,6 +192,11 @@ function Profile({ payload, onRefresh, busy }: { payload: LoginPayload; onRefres
           Signed in as <strong>{profile.email}</strong>. This browser stays signed in until you sign out
           {payload.sessionExpiresAt ? ` (or until ${dateText(payload.sessionExpiresAt)} without a visit)` : ''}.
         </p>
+        {profile.roles?.length ? (
+          <p>
+            Role: <strong>{profile.roles.map((role) => ROLE_LABEL[role]).join(' · ')}</strong>
+          </p>
+        ) : null}
         {payload.warning ? <p className="buy__status buy__status--bad">{payload.warning}</p> : null}
       </header>
       <section className="buy__card" aria-label="Editions you own">

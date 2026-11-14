@@ -17,6 +17,13 @@ const JSON_HEADERS = {
 };
 
 const INVITE_SECONDS = 14 * 24 * 60 * 60;
+
+/**
+ * claimed_device value for a seat bound to the invited email's account by email sign-in.
+ * The seat then works on every browser that person signs into (Safari, the home-screen app,
+ * a laptop), instead of one device. Revoke still ends it everywhere at the next refresh.
+ */
+export const SEAT_ACCOUNT_BOUND = 'account';
 const OPEN_STATUSES = ['pending', 'claimed'];
 
 function json(status: number, body: unknown): Response {
@@ -267,6 +274,9 @@ export async function handleSeatAccept(
     if (!row) return json(400, { ok: false, error: 'This invite is not valid.' });
   }
   if (row.revokedAt || row.status === 'revoked') return json(403, { ok: false, error: 'This seat was revoked.' });
+  if (row.claimedDevice === SEAT_ACCOUNT_BOUND) {
+    return json(409, { ok: false, error: 'This seat signs in with your email. Open Account and sign in.', signIn: true });
+  }
   if (row.claimedDevice && row.claimedDevice !== deviceId) {
     return json(409, { ok: false, error: 'This seat is already open on another device. The owner can reset it.' });
   }
@@ -441,7 +451,7 @@ export async function refreshSeat(
   if (!row || row.revokedAt || row.status === 'revoked' || row.gymLicenseId !== claims.gym) {
     return { error: true, status: 401, body: { ok: false, revoked: true, error: 'This seat was revoked.' } };
   }
-  if (row.claimedDevice && row.claimedDevice !== claims.did) {
+  if (row.claimedDevice && row.claimedDevice !== SEAT_ACCOUNT_BOUND && row.claimedDevice !== claims.did) {
     return { error: true, status: 401, body: { ok: false, revoked: true, error: 'This seat is open on another device.' } };
   }
   const access = await ownerAccess(db, env, row.gymLicenseId, now, fetchImpl);
@@ -452,8 +462,8 @@ export async function refreshSeat(
 
 /**
  * Email sign-in for an instructor whose invite was sent to this (verified-by-password) address.
- * Moves the seat to this device, so a seat is still open on one device at a time, and issues
- * the same seat pass Accept would. A revoked or expired-unclaimed seat is not restored.
+ * Binds the seat to that account (SEAT_ACCOUNT_BOUND), so it opens on every browser the person
+ * signs into, and issues the same seat pass Accept would. A revoked or expired-unclaimed seat is not restored.
  */
 export async function seatPassForLogin(
   db: D1Database,
@@ -464,9 +474,10 @@ export async function seatPassForLogin(
   if (!row || row.revokedAt || row.status === 'revoked') return null;
   if (row.status === 'pending' && row.inviteExpiresAt && Date.parse(row.inviteExpiresAt) <= input.now.getTime()) return null;
   if (row.status !== 'pending' && row.status !== 'claimed' && row.status !== 'active') return null;
+  // Bound to the account, not to this browser: every browser this email signs into gets the seat.
   await db
     .prepare(`UPDATE seats SET status = 'claimed', claimed_device = ?, claimed_at = COALESCE(claimed_at, ?) WHERE id = ? AND revoked_at IS NULL`)
-    .bind(input.deviceId, input.now.toISOString(), row.id)
+    .bind(SEAT_ACCOUNT_BOUND, input.now.toISOString(), row.id)
     .run();
   const access = await ownerAccess(db, env, row.gymLicenseId, input.now, input.fetchImpl ?? fetch);
   const entitled = access ? access.access.entitled : true;

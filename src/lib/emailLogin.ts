@@ -34,8 +34,13 @@ export type InviteGrant = {
   active: boolean;
 };
 
+export type AccountRole = 'owner' | 'instructor' | 'student' | 'member';
+
 export type AccountProfile = {
   email: string;
+  /** From who signed in. An owner is also an instructor for inbox purposes. */
+  role?: AccountRole | null;
+  roles?: AccountRole[];
   editions: string[];
   tier: string | null;
   license: { grants: { product: string; source: string; status: string; endsAt: string | null }[]; ownerAcademy: boolean; accountId: string | null } | null;
