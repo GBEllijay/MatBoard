@@ -10,6 +10,11 @@ import {
   d12AxesFromScores,
   d12Faces,
   d12Summary,
+  INSTRUCTOR_D12_STORAGE_KEY,
+  instructorD12HasRatings,
+  instructorD12SeatKey,
+  loadInstructorD12Scores,
+  saveInstructorD12Scores,
   type InstructorD12Scores,
 } from './instructorD12.ts';
 
@@ -203,4 +208,36 @@ test('the instructor D12 topo is a regular dodecahedron in approved face order',
   const empty = buildD12Topo(null);
   assert.equal(empty.faces.length, 12);
   assert.ok(empty.tiles.every((tile) => tile.move == null && tile.apex == null));
+});
+
+function memoryStorage(start: Record<string, string> = {}): Pick<Storage, 'getItem' | 'setItem'> {
+  const map = new Map(Object.entries(start));
+  return {
+    getItem(key: string) {
+      return map.has(key) ? map.get(key)! : null;
+    },
+    setItem(key: string, value: string) {
+      map.set(key, value);
+    },
+  };
+}
+
+test('saved instructor D12 scores reload, and empty storage is not sample data', () => {
+  const storage = memoryStorage();
+  assert.equal(INSTRUCTOR_D12_STORAGE_KEY, 'matboard.instructor.d12.v1');
+  assert.equal(instructorD12SeatKey(null), 'owner');
+  assert.equal(instructorD12SeatKey('seat-9'), 'seat-9');
+  assert.equal(loadInstructorD12Scores(storage, 'owner'), null);
+  assert.equal(instructorD12HasRatings(null), false);
+  const saved = saveInstructorD12Scores({ preparation: 5, safety: 4, energy: 2 }, storage, 'owner');
+  assert.equal(saved.preparation, 5);
+  const reloaded = loadInstructorD12Scores(storage, 'owner');
+  assert.equal(reloaded?.preparation, 5);
+  assert.equal(reloaded?.safety, 4);
+  assert.equal(reloaded?.energy, 2);
+  assert.equal(reloaded?.['public-speaking'] ?? null, null);
+  assert.equal(loadInstructorD12Scores(storage, 'seat-9'), null);
+  saveInstructorD12Scores({ 'time-management': 3 }, storage, 'seat-9');
+  assert.equal(loadInstructorD12Scores(storage, 'seat-9')?.['time-management'], 3);
+  assert.equal(loadInstructorD12Scores(storage, 'owner')?.preparation, 5);
 });

@@ -1,0 +1,121 @@
+/* Real instructor profile uses the /preview/instructor-sheet paint job,
+   embedded on Instructor Edition and the Pro owner sheet. */
+.ip-preview--embedded {
+  min-height: 0;
+  margin: 0 0 16px;
+  padding: 16px 12px 20px;
+  border-radius: 6px;
+}
+
+.ip-preview--embedded .student {
+  min-height: 0;
+  background: transparent;
+  color: var(--ip-ink, #f5f1e8);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color-scheme: dark;
+}
+
+.ip-preview--embedded .cs-sheet {
+  margin: 0;
+  background: rgba(8, 18, 36, 0.55);
+  color: var(--ip-ink, #f5f1e8);
+}
+
+.ip-preview--embedded .card-link,
+.ip-preview--embedded .profile-face__edit,
+.ip-preview--embedded .sheet-diamond__note,
+.ip-preview--embedded .card-empty,
+.ip-preview--embedded .assess-legend,
+.ip-preview--embedded .ip-quiet {
+  color: rgba(245, 241, 232, 0.82);
+}
+
+.ip-preview--embedded .sheet-d12__form {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.ip-preview--embedded .sheet-d12__face {
+  display: grid;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid var(--ip-line, rgba(110, 168, 255, 0.35));
+}
+
+.ip-preview--embedded .sheet-d12__face > span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ip-preview--embedded .sheet-d12__scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ip-preview--embedded .sheet-d12__tap {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 2px solid #1c140e;
+  border-radius: 999px;
+  background: rgba(244, 240, 228, 0.94);
+  color: #1c140e;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ip-preview--embedded .sheet-d12__tap.is-on,
+.ip-preview--embedded .sheet-d12__tap[aria-pressed='true'] {
+  background: #004eba;
+  color: #f4f0e4;
+}
+
+.ip-preview--embedded .sheet-d12__tap:focus-visible,
+.ip-preview--embedded .ip-log-btn:focus-visible {
+  outline: 3px solid #6ea8ff;
+  outline-offset: 2px;
+}
+
+.ip-preview--embedded .gym-bars,
+.ip-preview--embedded .gym-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.ip-preview--embedded .gym-bars li {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 28px;
+  font-size: 14px;
+}
+
+.ip-preview--embedded .gym-bars i {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #004eba, #6ea8ff);
+}
+
+.ip-preview--embedded .gym-log li {
+  display: grid;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--ip-line, rgba(110, 168, 255, 0.35));
+  font-size: 14px;
+}
+
+@media (min-width: 720px) {
+  .ip-preview--embedded {
+    padding: 20px 16px 24px;
+  }
+}

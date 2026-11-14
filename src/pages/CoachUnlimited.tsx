@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AcademyPathwayPanel } from '../components/AcademyPathwayPanel';
+import { InstructorSheet } from '../components/InstructorSheet';
 import { EditionLadder } from '../components/EditionLadder';
 import { BeltHeader } from '../components/BeltHeader';
 import { InstructorToolMark, type InstructorToolMarkName } from '../components/InstructorToolMark';
@@ -80,6 +81,7 @@ export function CoachUnlimitedPage() {
         <HomeMark to={PRODUCTS_PATH} />
         <section className="suite instructor-hub">
           <BeltHeader kind="brown" worn title="Instructor Edition" />
+          <InstructorSheet />
           <nav className="instructor-jumps" aria-label={INSTRUCTOR_COACH_ENTRY}>
             <div className="instructor-tools">
               {tools.map((tool) => (

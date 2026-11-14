@@ -3,7 +3,7 @@
  * card face (name + belt) → small mat hours frame + timer → Shape radar (read-only)
  * → the three most recent medals → mat hours details (streak, split, report card).
  */
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ApprovedOctagonRadar } from '../../preview/assessmentRadar/OctagonChart';
 import { LiveD8, SheetD8Thumb, unratedLineNote } from '../../indexCards/LiveD8';
@@ -350,7 +350,7 @@ export function WinsZone({ report, to }: { report: StudentProgressReport; to: (p
 }
 
 /** The whole card column on the profile page. `home` = the /student order with `streak` beside mat hours. */
-export function StudentCardLayout({ portrait, to, home = false, bodyScan }: { portrait: string | null; to: (path: string) => string; home?: boolean; bodyScan?: React.ReactNode }) {
+export function StudentCardLayout({ portrait, to, home = false, bodyScan, shapeExtra }: { portrait: string | null; to: (path: string) => string; home?: boolean; bodyScan?: React.ReactNode; shapeExtra?: ReactNode }) {
   const { report, commit } = useStudentFile();
   const [adding, setAdding] = useState(false);
   if (home) {
@@ -366,6 +366,7 @@ export function StudentCardLayout({ portrait, to, home = false, bodyScan }: { po
         <section className="sheet-zone sheet-zone--radar" data-testid="sheet-zone" data-zone="radar" aria-label="Shape">
           <h3 className="sheet-cap">Shape</h3>
           <CardRadar to={to} />
+          {shapeExtra}
         </section>
         <section className="sheet-zone sheet-zone--wins" data-testid="sheet-zone" data-zone="wins" aria-label="Wins">
           <h3 className="sheet-cap">Wins</h3>
@@ -396,6 +397,7 @@ export function StudentCardLayout({ portrait, to, home = false, bodyScan }: { po
       />
       {adding ? <MatQuickAddSheet report={report} commit={commit} onClose={() => setAdding(false)} /> : null}
       <CardRadar to={to} />
+      {shapeExtra}
       <CardMedals report={report} to={to} />
       <section className="profile-face__stats" aria-label="Card stats" data-testid="profile-face-stats">
         <MatHoursDetails report={report} to={to} />
