@@ -87,7 +87,10 @@ import {
 } from './rosterStore.ts';
 import type { StudentCardShare } from './studentCardShare.ts';
 import { readCloudBearer } from './advantageCloudMedia.ts';
+import { stripCoachToStudentRank } from './studentOwnedRank.ts';
 import { submitGymRoster } from './gymRosterClient.ts';
+import { ensureRosterCardsForAssessments } from './rosterCardFromInbox.ts';
+import type { InstructorAssessmentItem } from './instructorAssessments.ts';
 import { buildRosterBackup } from './rosterBackup.ts';
 import type { TournamentRegistrationEvent } from './studentEvents.ts';
 import {
@@ -199,7 +202,7 @@ export function recordCardSyncSent(
 ): void {
   if (!storage) return;
   const row: CardSyncSent = { linkedStudentId: packet.studentId, kind: packet.kind, updateId: packet.updateId, sentAt: now, mode };
-  if (packet.kind === 'coach-rank-update') {
+  if (packet.kind === 'coach-rank-update' && packet.rankUpdate?.belt) {
     row.promotion = {
       belt: packet.rankUpdate.belt,
       stripe: packet.rankUpdate.stripeCount,
@@ -340,9 +343,10 @@ export async function sendCardSync(
   if (!card) return { mode: 'blocked', gate: 'unknown-card', reason: 'That card is not on this roster.' };
   let gate = syncSendGate(card, options.actor ?? currentActor(), roster);
   if (gate === 'send' && card.linkedStudentId !== packet.studentId) gate = 'unlinked';
-  const result = await deliverSyncPacket(packet, gate, { folder: options.folder, deliver: options.deliver });
+  const outbound = stripCoachToStudentRank(packet);
+  const result = await deliverSyncPacket(outbound, gate, { folder: options.folder, deliver: options.deliver });
   if (result.mode !== 'blocked') {
-    recordCardSyncSent(packet, result.mode, options.log === undefined ? defaultStorage() : options.log, options.now);
+    recordCardSyncSent(outbound, result.mode, options.log === undefined ? defaultStorage() : options.log, options.now);
   }
   return result;
 }
@@ -566,6 +570,50 @@ async function pushCardToMaster(card: Student, deps: { fetchImpl?: typeof fetch;
  * student who is already assigned. The card then goes to the academy master roster
  * under the same linkedStudentId, so attendance keeps one person key.
  */
+/** After an assessment list is loaded, add or link a Student Roster card for each new student, then push new cards the same way an accepted share is pushed. */
+export async function ensureAssessmentRosterCards(
+  items: readonly InstructorAssessmentItem[],
+  deps: {
+    actor?: SyncActor;
+    fetchImpl?: typeof fetch;
+    token?: string | null;
+    pushMaster?: (card: Student) => Promise<CardShareMasterPush>;
+  } = {},
+): Promise<{ created: Student[]; linked: Student[]; existing: Student[] }> {
+  const actor = deps.actor ?? currentActor();
+  const result = ensureRosterCardsForAssessments(items, { actor });
+  const changed = [...result.created, ...result.linked];
+  for (const card of changed) {
+    try {
+      await (deps.pushMaster ?? ((row: Student) => pushCardToMaster(row, deps)))(card);
+    } catch {
+      /* Best effort, same as acceptCardShare: the local card stays even if the academy copy fails. */
+    }
+  }
+  return result;
+}
+
+/** Apply every pending card share: create or update the linked card, then push it to the academy roster. No Accept tap. */
+export async function applyIncomingCardShares(
+  deps: {
+    actor?: SyncActor;
+    storage?: MemoryStore | null;
+    fetchImpl?: typeof fetch;
+    token?: string | null;
+    pushMaster?: (card: Student) => Promise<CardShareMasterPush>;
+  } = {},
+): Promise<{ applied: number; cards: Student[] }> {
+  const storage = deps.storage === undefined ? defaultStorage() : deps.storage;
+  if (!storage) return { applied: 0, cards: [] };
+  const pending = pendingCardShares(storage);
+  const cards: Student[] = [];
+  for (const share of pending) {
+    const result = await acceptCardShare(share.shareId, { mode: 'new' }, deps);
+    if (result.ok) cards.push(result.card);
+  }
+  return { applied: cards.length, cards };
+}
+
 export async function acceptCardShare(
   shareId: string,
   target: { mode: 'new' } | { mode: 'merge'; cardId: string },
@@ -581,7 +629,9 @@ export async function acceptCardShare(
   if (!storage) return { ok: false, reason: 'not-pending' };
   const share = pendingCardShares(storage).find((row) => row.shareId === shareId);
   const result = acceptCardShareIn(storage, shareId, deps.actor ?? currentActor(), target, {
-    students: getRoster().students,
+    get students() {
+      return getRoster().students;
+    },
     add: addStudent,
     update: updateStudent,
     link: linkRosterCard,

@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import {
   acceptCardShare,
+  applyIncomingCardShares,
   applyStudentUpdate,
   dismissStudentUpdate,
   getPendingStudentUpdates,
@@ -21,6 +22,8 @@ import {
 import type { Student } from '../lib/rosterStore';
 import { applyStudentPhotoFlag, parseStudentPhotoFlag } from '../lib/studentPhotoFlag';
 import { CARD_SHARE_CHECK_FAILED, cardShareCheckNote } from '../lib/cardShareCheck';
+import { readCloudBearer } from '../lib/advantageCloudMedia';
+import { linkedRosterCardForStudent } from '../lib/rosterCardFromInbox';
 import { readRosterCard } from '../lib/rosterCardStore';
 import { AssessmentCompareD8, entriesFromScoreRows } from './AssessmentCompareD8';
 
@@ -87,11 +90,31 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
   const [, setTick] = useState(0);
   const shares = getPendingCardShares();
   const targets = roster.filter((row) => !row.guestId);
+
+  useEffect(() => {
+    // One pull when the roster opens, if this phone is signed in. Same as Assessments waiting.
+    if (!readCloudBearer()) return;
+    void (async () => {
+      const result = await refreshCardShares();
+      if (!result.ok) return;
+      const applied = await applyIncomingCardShares();
+      if (applied.applied) {
+        setStatus(
+          applied.applied === 1
+            ? 'A student card was added or updated from a shared card.'
+            : `${applied.applied} student cards were added or updated from shared cards.`,
+        );
+      }
+    })();
+  }, []);
+
   return (
     <section aria-label={title}>
       <h3>{title}</h3>
-      <p>A merge fills only blank fields. A shared photo waits for the head coach.</p>
-      {shares.map((share) => (
+      <p>Shared student cards are added to the roster automatically, and an existing card is updated with the latest belt and profile the student sent. Belt and stripes are set by the student, not the instructor. A shared photo waits for the head coach. You can remove a card from the roster if it was added by mistake.</p>
+      {shares.map((share) => {
+        const existing = linkedRosterCardForStudent(roster, share.studentId);
+        return (
         <article key={share.shareId} className="roster-inbox-card">
           <p>
             {share.card.name} · {share.card.belt || 'No belt'}
@@ -100,6 +123,18 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
             {share.photo ? ' · photo pending head coach' : ''}
             {share.viaInstructorId ? ` · scanned ${share.viaInstructorId === 'owner' ? "the owner's" : 'an instructor'} code` : ''}
           </p>
+          {existing ? (
+          <button
+            type="button"
+            className="btn"
+            onClick={async () => {
+              const result = await acceptCardShare(share.shareId, { mode: 'merge', cardId: existing.id });
+              setStatus(result.ok ? `Added to ${existing.name}'s card.${masterNote(result.master)}` : `Could not add to the card (${result.reason}).`);
+            }}
+          >
+            {`Accept onto ${existing.name}'s card`}
+          </button>
+          ) : (
           <button
             type="button"
             className="btn"
@@ -110,6 +145,7 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
           >
             Accept as new card
           </button>
+          )}
           <select
             aria-label={`Merge ${share.card.name} into`}
             value={mergeInto[share.shareId] ?? ''}
@@ -141,7 +177,8 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
             Decline
           </button>
         </article>
-      ))}
+        );
+      })}
       <button
         type="button"
         className="btn btn--ghost"
@@ -152,7 +189,17 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
           setCheckNote('Checking for student cards…');
           try {
             const result = await refreshCardShares();
-            setCheckNote(result.ok ? cardShareCheckNote(result.pending, before) : CARD_SHARE_CHECK_FAILED);
+            if (!result.ok) setCheckNote(CARD_SHARE_CHECK_FAILED);
+            else {
+              const applied = await applyIncomingCardShares();
+              setCheckNote(
+                applied.applied
+                  ? applied.applied === 1
+                    ? 'A student card was added or updated.'
+                    : `${applied.applied} student cards were added or updated.`
+                  : cardShareCheckNote(result.pending, before),
+              );
+            }
           } catch {
             setCheckNote(CARD_SHARE_CHECK_FAILED);
           } finally {
@@ -207,7 +254,7 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
   return (
     <div aria-label="Student updates waiting">
       <h3>Student updates waiting</h3>
-      <p>Adding fills only blank fields on the linked card, including a blank bout division from an entered tournament. Tournaments, weight, and opponent cards are kept with the student's updates. Belt and stripes change only when you approve them. Dismiss leaves that file off the card.</p>
+      <p>Adding fills only blank fields on the linked card, including a blank bout division from an entered tournament. Tournaments, weight, and opponent cards are kept with the student's updates. Belt and stripes in the file update the card automatically — they are set by the student. Dismiss leaves that file off the card.</p>
       {updates.map((update) => {
         const card = roster.find((row) => row.linkedStudentId === update.studentId && !row.guestId);
         const tournaments = update.competition?.tournaments ?? [];
@@ -269,10 +316,10 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
                 onClick={() => {
                   const result = applyStudentUpdate(update.updateId, true);
                   const cards = update.scouting?.cards.length ? ` Opponent cards kept: ${update.scouting.cards.length}.` : '';
-                  done(result.ok ? `Added. Belt and stripes approved.${cards}` : result.reason === 'not-allowed' ? 'Only a Coach seat or the owner can approve belt changes.' : `Could not add (${result.reason}).`);
+                  done(result.ok ? `Added. The student's belt and stripes were applied.${cards}` : result.reason === 'not-allowed' ? 'Only a Coach seat or the owner can approve belt changes.' : `Could not add (${result.reason}).`);
                 }}
               >
-                Add and approve belt
+                Add, including the student's belt
               </button>
             ) : null}
             <button

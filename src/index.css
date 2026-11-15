@@ -20469,3 +20469,50 @@ a.plan-pick {
   background: rgba(255, 214, 102, 0.16);
   border-bottom: 1px solid rgba(255, 214, 102, 0.45);
 }
+
+.roster__dupes {
+  width: min(42rem, calc(100% - 2rem));
+  margin: 0 auto 1rem;
+  padding: 12px 14px;
+  background: #f4f1ea;
+  color: #122033;
+  border-radius: 12px;
+}
+.roster__dupes h3,
+.roster__dupes h4,
+.roster__dupes p,
+.roster__dupes li {
+  color: #122033;
+}
+.roster__dupes ul {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.roster__dupes select,
+.roster__dupes label {
+  display: block;
+  margin: 6px 0;
+}
+
+
+.clipboard__rank-note,
+.roster-card__rank-note,
+.roster-edit__hint {
+  /* rank note color stays with surrounding card text */
+}
+.clipboard__rank-note {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: inherit;
+}
+.clipboard__rank-unset,
+.roster-card__rank-unset {
+  font-weight: 650;
+}
+.roster-card__rank-note {
+  margin-left: 8px;
+  font-size: 0.8rem;
+}

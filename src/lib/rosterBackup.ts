@@ -16,6 +16,7 @@
  */
 
 import { fillAssignedInstructor, isInstructorId } from './instructorIdentity.ts';
+import { incomingRankSource } from './studentOwnedRank.ts';
 import {
   type CoachInboxItemLike,
   type RosterCardFile,
@@ -46,6 +47,9 @@ export type BackupStudent = {
   assignedInstructorId?: string;
   guestId?: string;
   stripes?: number;
+  rankUnset?: boolean;
+  studentRankAt?: number;
+  coachRankAt?: number;
   /** Roster sync layer: 'off' keeps the card local. */
   coachSync?: 'off';
   parentPhotoApproval?: true;
@@ -100,6 +104,9 @@ export function lightNormalizeRoster(raw: unknown): BackupRoster {
     if (isInstructorId(s.assignedInstructorId) && !student.guestId) student.assignedInstructorId = s.assignedInstructorId;
     // Same ceiling as rosterStore ROSTER_STRIPE_CAP (kids belts store up to 11 tapes).
     if (typeof s.stripes === 'number' && Number.isInteger(s.stripes) && s.stripes >= 0 && s.stripes <= 11) student.stripes = s.stripes;
+    if (s.rankUnset === true) student.rankUnset = true;
+    if (typeof s.studentRankAt === 'number' && Number.isFinite(s.studentRankAt) && s.studentRankAt > 0) student.studentRankAt = s.studentRankAt;
+    if (typeof s.coachRankAt === 'number' && Number.isFinite(s.coachRankAt) && s.coachRankAt > 0) student.coachRankAt = s.coachRankAt;
     if (s.coachSync === 'off') student.coachSync = 'off';
     if (s.parentPhotoApproval === true) student.parentPhotoApproval = true;
     if (typeof s.cardPhotoId === 'string' && ID_RE.test(s.cardPhotoId)) student.cardPhotoId = s.cardPhotoId;
@@ -434,10 +441,28 @@ export function matchStudent(local: readonly BackupStudent[], incoming: BackupSt
 
 const FILL_STUDENT_FIELDS = ['division', 'gym', 'photo', 'lastPromotion', 'lastPromotionDetail', 'note'] as const;
 
-function fillStudent(local: BackupStudent, incoming: BackupStudent): BackupStudent {
+function fillStudent(local: BackupStudent, incoming: BackupStudent, linkedProfile: RosterLinkedProfile = 'blanks'): BackupStudent {
   const next: BackupStudent = { ...local };
   for (const field of FILL_STUDENT_FIELDS) {
     if (!next[field] && incoming[field]) next[field] = incoming[field];
+  }
+  const samePerson =
+    Boolean(local.linkedStudentId && incoming.linkedStudentId && local.linkedStudentId === incoming.linkedStudentId);
+  if (samePerson && linkedProfile === 'incoming') {
+    // Name, division, and gym may follow a later instructor/academy copy.
+    // Belt: a later student submission wins; a coach edit applies only if it is
+    // newer than the latest student submission, so a stale White cannot overwrite Blue.
+    if (incoming.name?.trim()) next.name = incoming.name;
+    if (incoming.division?.trim()) next.division = incoming.division;
+    if (incoming.gym?.trim()) next.gym = incoming.gym;
+    const rankFrom = incomingRankSource(incoming, local);
+    if (rankFrom) {
+      if (incoming.belt?.trim()) next.belt = incoming.belt;
+      if (incoming.stripes !== undefined && (incoming.stripes > 0 || incoming.belt?.trim())) next.stripes = incoming.stripes;
+      if (incoming.studentRankAt) next.studentRankAt = incoming.studentRankAt;
+      if (incoming.coachRankAt) next.coachRankAt = incoming.coachRankAt;
+      delete next.rankUnset;
+    }
   }
   // The chosen card photo id travels with the photo it names.
   if (!local.photo && next.photo && incoming.cardPhotoId && !next.cardPhotoId) next.cardPhotoId = incoming.cardPhotoId;
@@ -511,10 +536,12 @@ function same(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+export type RosterLinkedProfile = 'blanks' | 'incoming';
+
 export function mergeRosterBackup(
   local: RosterBackupSources,
   backup: RosterBackup,
-  options: { now?: number; newerSchema?: boolean; normalize?: RosterNormalizer } = {},
+  options: { now?: number; newerSchema?: boolean; normalize?: RosterNormalizer; linkedProfile?: RosterLinkedProfile } = {},
 ): { next: RosterBackupSources; report: RosterMergeReport; changed: RosterMergeChanged } {
   const now = options.now ?? Date.now();
   const report: RosterMergeReport = {
@@ -544,7 +571,7 @@ export function mergeRosterBackup(
     if (found.kind === 'match') {
       idMap.set(incoming.id, found.id);
       const index = students.findIndex((row) => row.id === found.id);
-      const filled = fillStudent(students[index], incoming);
+      const filled = fillStudent(students[index], incoming, options.linkedProfile);
       if (same(filled, students[index])) report.studentsUnchanged += 1;
       else {
         students[index] = filled;

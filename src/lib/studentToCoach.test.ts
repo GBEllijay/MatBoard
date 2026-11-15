@@ -181,7 +181,7 @@ function memoryRoster(students: Student[]): CardShareRoster & { students: Studen
   return roster;
 }
 
-test('coach: card share stays pending until an Instructor or Coach seat accepts; merge never overwrites', () => {
+test('coach: card share stays pending until an Instructor or Coach seat applies it; the shared belt and profile replace older values', () => {
   const storage = testMemory();
   const built = createStudentCardShare({
     studentId: 'stu-new', gym: { plusCloud: true }, card: { name: 'Sam Lee', belt: 'Purple', stripes: 3, division: 'Masters', gym: 'Advantage' },
@@ -208,10 +208,11 @@ test('coach: card share stays pending until an Instructor or Coach seat accepts;
   const merged = acceptCardShare(storage, 'share-9', 'coach', { mode: 'merge', cardId: 'card-sam' }, roster);
   assert.ok(merged.ok);
   if (!merged.ok) return;
-  assert.equal(merged.card.name, 'Sam L.');
-  assert.equal(merged.card.belt, 'Blue');
-  assert.equal(merged.card.gym, 'Coach Gym');
+  assert.equal(merged.card.name, 'Sam Lee');
+  assert.equal(merged.card.belt, 'Purple');
+  assert.equal(merged.card.gym, 'Advantage');
   assert.equal(merged.card.division, 'Masters');
+  assert.equal(merged.card.stripes, 3);
   assert.equal(merged.card.linkedStudentId, 'stu-new');
   assert.equal(merged.card.photo, '');
   assert.equal(merged.photo, 'pending-head-coach');

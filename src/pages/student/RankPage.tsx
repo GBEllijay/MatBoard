@@ -73,6 +73,7 @@ import {
   type LadderRung,
 } from '../../lib/studentRank';
 import { GrandmasterCheer } from '../../components/GrandmasterCheer';
+import { claimStudentKidsToBlueCheer, STUDENT_BLUE_CHEER_LINES } from '../../lib/blueBeltCheer';
 import { AchievedDateField, formatAchieved } from './AchievedDateField';
 import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
 import { BeltPhotoSection } from './RankPhotoGallery';
@@ -100,17 +101,19 @@ export function RankPage() {
   const unlocked = coralRanksUnlocked(report.profile.belt);
   const mode = beltModeOf(report);
   const [pendingMode, setPendingMode] = useState<'' | 'adult' | 'kids'>('');
-  const [coachCheer, setCoachCheer] = useState(false);
+  const [blueCheer, setBlueCheer] = useState(false);
   const reportRef = useRef(report);
   reportRef.current = report;
   useScrollToHash(mode === 'kids' ? `kids:${currentKidsBelt(report).beltId}` : report.profile.belt);
 
   const commitReport = (next: StudentProgressReport) => {
     try {
+      const previous = reportRef.current;
       const saved = commit(next);
       reportRef.current = saved;
       setError('');
       setPhotoErrorKey('');
+      if (claimStudentKidsToBlueCheer(localStorage, previous, saved)) setBlueCheer(true);
       return saved;
     } catch (err) {
       setPhotoErrorKey('');
@@ -168,8 +171,8 @@ export function RankPage() {
   return (
     <main className="student student-frame student--arena student--rank s-group">
       <StudentMarks />
-      {coachCheer ? (
-        <GrandmasterCheer lines={['Congratulations, Coach!', 'The blue belt is yours.']} onDismiss={() => setCoachCheer(false)} />
+      {blueCheer ? (
+        <GrandmasterCheer lines={STUDENT_BLUE_CHEER_LINES} onDismiss={() => setBlueCheer(false)} />
       ) : null}
       <div className="arena-scroll">
         <header className="arena-hero rank-hero">
@@ -207,8 +210,7 @@ export function RankPage() {
               onRemoveBeltPhoto={(beltId, index) => setPhotos(removeKidsBeltPhoto(photos, beltId, index))}
               onGraduate={(choice) => {
                 setPendingMode('');
-                if (!run(graduateToAdult(report, choice))) return;
-                if (choice === 'blue') setCoachCheer(true);
+                run(graduateToAdult(report, choice));
               }}
               lineage={<LineageEditor lineage={rank.lineage ?? []} onSave={(lines) => run(setRankLineage(report, lines))} />}
               saveAwarded={saveKidsAwarded}

@@ -32,6 +32,7 @@ import {
   type UpdateLedger,
 } from './coachRankUpdate.ts';
 import type { HandoffFolder } from './driveHandoff.ts';
+import { stripCoachToStudentRank } from './studentOwnedRank.ts';
 import { base64UrlToBytes } from './entitlementToken.ts';
 import { exportProgressPacket, parseProgressPacket, progressHandoffFileName } from './progress/format.ts';
 import { SYNC_ASSESSMENT_AREA_IDS } from './progress/syncPackets.ts';
@@ -635,7 +636,7 @@ export async function deliverSyncPacket(
 ): Promise<SyncDelivery | { mode: 'folder'; name: string }> {
   if (gate !== 'send') return { mode: 'blocked', gate, reason: SYNC_GATE_COPY[gate] };
   // Sign with this gym's ids so a student who left can refuse it.
-  packet = stampGymIds(packet, options.gymIds);
+  packet = stripCoachToStudentRank(stampGymIds(packet, options.gymIds));
   const delivery = await (options.deliver ?? ((item: SyncPacket) => deliverRankUpdate(item)))(packet);
   if (delivery.mode === 'cloud' || !options.folder) return delivery;
   // Cloud is off or lapsed: try the gym's own Drive / OneDrive folder before a download.

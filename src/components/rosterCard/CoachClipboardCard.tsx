@@ -60,6 +60,10 @@ export type ClipboardCardProps = {
   gymLogo: string | null;
   belt: WornBeltPreview;
   onEditBelt?: () => void;
+  /** Optional note under the belt. Linked cards use this to say edits stay on the roster. */
+  rankLocked?: boolean;
+  rankNote?: string | null;
+  rankUnset?: boolean;
   beltLine: string;
   dates: DateFacts;
   startedOn: string;
@@ -172,13 +176,18 @@ export function CoachClipboardCard(props: ClipboardCardProps) {
             <div className="clipboard__brow">
               {props.onEditBelt ? (
                 <button type="button" className="clipboard__belt clipboard__tap" aria-label="Change belt and stripes" onClick={props.onEditBelt}>
-                  <WornBeltMark preview={props.belt} />
+                  {props.rankUnset ? (
+                    <span className="clipboard__rank-unset" data-testid="rank-unset">Not set yet</span>
+                  ) : (
+                    <WornBeltMark preview={props.belt} />
+                  )}
                 </button>
               ) : (
                 <span className="clipboard__belt">
                   <WornBeltMark preview={props.belt} />
                 </span>
               )}
+              {props.rankNote ? <p className="clipboard__rank-note" data-testid="student-owned-rank">{props.rankNote}</p> : null}
               {props.onEditBelt ? (
                 <button type="button" className="clipboard__pencil" aria-label="Edit belt and stripes" onClick={props.onEditBelt}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

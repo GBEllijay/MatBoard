@@ -97,10 +97,18 @@ export function parseRosterBackupOnDevice(text: string): ParsedRosterBackup {
 }
 
 /** Merge a parsed backup into this device. Only what changed is written. */
-export function importRosterBackupOnDevice(backup: RosterBackup, newerSchema = false): RosterMergeReport {
+export function importRosterBackupOnDevice(
+  backup: RosterBackup,
+  newerSchema = false,
+  options: { linkedProfile?: 'blanks' | 'incoming' } = {},
+): RosterMergeReport {
   const storage = defaultCardStorage();
   const local = readRosterBackupSources(storage, { includePrivate: true });
-  const { next, report, changed } = mergeRosterBackup(local, backup, { newerSchema, normalize: normalizeRoster });
+  const { next, report, changed } = mergeRosterBackup(local, backup, {
+    newerSchema,
+    normalize: normalizeRoster,
+    linkedProfile: options.linkedProfile,
+  });
   if (changed.roster) replaceRosterState(next.roster as RosterState);
   if (storage) {
     if (changed.cards) writeCardFile(storage, next.cardFile);
