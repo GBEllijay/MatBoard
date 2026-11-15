@@ -31,7 +31,7 @@ export function StudentIdentityPanel({ connected }: { connected: boolean }) {
       if (stable.changed) saveStudentReport(localStorage, stable.report);
       publish(stable.studentId);
     } catch {
-      setCopyNote('This phone could not save a student ID.');
+      setCopyNote('This device could not save a student ID.');
     }
   }, [connected]);
 
@@ -43,7 +43,7 @@ export function StudentIdentityPanel({ connected }: { connected: boolean }) {
       publish(stable.studentId);
       setCopyNote('');
     } catch {
-      setCopyNote('This phone could not save a student ID.');
+      setCopyNote('This device could not save a student ID.');
     }
   };
 
@@ -99,7 +99,7 @@ export function StudentIdentityPanel({ connected }: { connected: boolean }) {
           saveInboxPass(localStorage, passText);
           setPassNote(
             passText.trim().split('.').length === 3
-              ? 'This phone will check that inbox when you open Student Edition.'
+              ? 'This device will check that inbox when you open Student Edition.'
               : 'That is not an inbox code.',
           );
         }}

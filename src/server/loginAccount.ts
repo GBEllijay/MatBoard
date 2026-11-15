@@ -219,6 +219,19 @@ async function readSession(db: D1Database, pepper: string, request: Request, now
   return row;
 }
 
+export type LoginSession = { id: string; emailHash: string };
+
+/** Valid, unexpired login session, or null. Used by /api/login/sync. */
+export async function readLoginSession(
+  db: D1Database,
+  pepper: string,
+  request: Request,
+  now: Date,
+): Promise<LoginSession | null> {
+  const row = await readSession(db, pepper, request, now);
+  return row ? { id: row.id, emailHash: row.emailHash } : null;
+}
+
 /** The license this email owns today. Stored license id is only a fallback. */
 async function licenseForEmailHash(db: D1Database, emailHash: string, stored: string | null): Promise<string | null> {
   const account = await db.prepare(`SELECT id FROM accounts WHERE email_hash = ? LIMIT 1`).bind(emailHash).first<{ id: string }>();
@@ -725,6 +738,7 @@ export const LOGIN_PATHS = {
   code: '/api/login/code',
   me: '/api/login/me',
   signout: '/api/login/signout',
+  sync: '/api/login/sync',
 } as const;
 
 /** One entry for the Pages catch-all and the dev server. */
@@ -742,6 +756,10 @@ export async function handleLogin(
     if (path === LOGIN_PATHS.code) return await handleLoginCode(request, env, db, now, fetchImpl);
     if (path === LOGIN_PATHS.me) return await handleLoginMe(request, env, db, now, fetchImpl);
     if (path === LOGIN_PATHS.signout) return await handleLoginSignOut(request, env, db, now);
+    if (path === LOGIN_PATHS.sync) {
+      const { handleProfileSync } = await import('./profileSync.ts');
+      return await handleProfileSync(request, env, db, now);
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/no such table/i.test(message) && /login_|invite_selections/.test(message)) {

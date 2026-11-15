@@ -185,7 +185,7 @@ export function VideoLibraryPage() {
                     <a href={clip.url} target="_blank" rel="noopener noreferrer">
                       {clip.description}
                     </a>
-                    <p className="student-quiet">Link. Opens in a new tab. Not saved as a video file on this phone.</p>
+                    <p className="student-quiet">Link. Opens in a new tab. Not saved as a video file on this device.</p>
                     <SavedTechniqueLink
                       report={report}
                       title={clip.description}
@@ -380,7 +380,7 @@ function FilmAMove({
       <h2>Film a move</h2>
       <p>This file goes to your student inbox. It is not added to the gym gallery or the instructor video folder.</p>
       <p className="student-quiet">
-        Record a coach or partner showing the night&apos;s technique, or pick a video already on this phone. The name is the date plus the technique you type.
+        Record a coach or partner showing the night&apos;s technique, or pick a video already on this device. The name is the date plus the technique you type.
       </p>
       <div className="student-film__inputs">
         <DeviceMediaInput
@@ -429,7 +429,7 @@ function FilmAMove({
             <legend>Where to save</legend>
             <label>
               <input type="radio" name="film-where" checked={where === 'phone'} onChange={() => setWhere('phone')} />
-              Keep on this phone
+              Keep on this device
             </label>
             <label>
               <input
@@ -519,7 +519,7 @@ function FilmedList({ query, tick, onChange }: { query: string; tick: number; on
             )}
             <p className="student-quiet">
               {film.fileName}
-              {film.where === 'phone' ? ' · On this phone' : ''}
+              {film.where === 'phone' ? ' · On this device' : ''}
               {film.where === 'academy' ? ' · Academy folder' : ''}
               {film.where === 'personal' ? ' · My drive' : ''}
               {' '}The video file stays in this library.

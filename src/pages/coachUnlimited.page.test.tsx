@@ -199,7 +199,7 @@ test('a Cloud gym trims Sunday Review, replaces the Drive-ids note, and collapse
   const m = await mount(true);
   const text = m.host.textContent ?? '';
   assert.doesNotMatch(text, /Class plans in your Google Drive/);
-  assert.doesNotMatch(text, /Drive file ids on this phone/);
+  assert.doesNotMatch(text, /Drive file ids on this device/);
   assert.doesNotMatch(text, /Advantage does not store the video files/);
   assert.match(text, new RegExp(OWNER_CLOUD_TITLE));
   assert.match(text, new RegExp(OWNER_CLOUD_BODY.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));

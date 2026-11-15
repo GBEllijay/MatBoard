@@ -89,7 +89,7 @@ test('my rank and belt progress keep every control and match the arena skin', as
 
   await page.getByLabel('Name', { exact: true }).fill('Ada Silva');
   await page.getByLabel('Name', { exact: true }).blur();
-  await expect(page.getByText('Saved on this phone.')).toBeVisible();
+  await expect(page.getByText('Saved on this device.')).toBeVisible();
   await page.getByRole('button', { name: 'Stripe 1', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Stripe 1', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -154,7 +154,7 @@ test('my rank and belt progress keep every control and match the arena skin', as
   await expect(page.getByLabel('Personal goal note')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add personal goal', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'From my coach' })).toBeVisible();
-  await expect(page.getByText('Nothing from your coach on this phone yet.')).toBeVisible();
+  await expect(page.getByText('Nothing from your coach on this device yet.')).toBeVisible();
 
   await page.getByRole('button', { name: 'Mark Hold closed guard. met' }).click();
   await expect(page.getByRole('button', { name: 'Hold closed guard. met' })).toHaveAttribute('aria-pressed', 'true');

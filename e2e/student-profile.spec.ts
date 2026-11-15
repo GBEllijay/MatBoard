@@ -37,7 +37,7 @@ test('my profile saves name, gym, and an optional start date at 390px', async ({
   await form.getByLabel('Name').fill('Ada Student');
   await form.getByLabel('Gym').fill('GB Ellijay');
   await form.getByRole('button', { name: 'Save profile' }).click();
-  await expect(form.getByRole('status')).toHaveText('Saved on this phone.');
+  await expect(form.getByRole('status')).toHaveText('Saved on this device.');
 
   await page.goto('/student/print/progress?student=1');
   await expect(page.getByRole('article', { name: 'Progress report' })).toContainText('Student: Ada Student');
@@ -47,7 +47,7 @@ test('my profile saves name, gym, and an optional start date at 390px', async ({
   await page.goto('/student/profile?student=1');
   await form.getByLabel('Training start date').fill('2014-03-01');
   await form.getByRole('button', { name: 'Save profile' }).click();
-  await expect(form.getByRole('status')).toHaveText('Saved on this phone.');
+  await expect(form.getByRole('status')).toHaveText('Saved on this device.');
   await page.reload();
   await expect(form.getByLabel('Name')).toHaveValue('Ada Student');
   await expect(form.getByLabel('Gym')).toHaveValue('GB Ellijay');
@@ -117,8 +117,8 @@ test('my profile saves name, gym, and an optional start date at 390px', async ({
 
   await page.goto('/student/backup?student=1');
   await page.getByLabel('Restore from backup').setInputFiles(backupPath);
-  await page.getByRole('button', { name: 'Replace this phone' }).click();
-  await expect(page.getByRole('status')).toContainText('The backup replaced the journal on this phone.');
+  await page.getByRole('button', { name: 'Replace this device' }).click();
+  await expect(page.getByRole('status')).toContainText('The backup replaced the journal on this device.');
 
   await page.goto('/student/profile?student=1');
   await expect(page.getByLabel('Name')).toHaveValue('Ada Student');

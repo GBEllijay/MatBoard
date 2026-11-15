@@ -543,7 +543,7 @@ export function layoutAssessment(report: StudentProgressReport, assessment: Asse
   const previous = entries[1] ?? null;
   let diamond: DiamondBoxes | null = null;
   if (!latest) {
-    drawWrapped(state, 'No self-assessment saved on this phone.', 11, 'regular', INK, 4);
+    drawWrapped(state, 'No self-assessment saved on this device.', 11, 'regular', INK, 4);
   } else {
     const average = assessmentAverage(latest.scores).toFixed(1);
     state.top += 2;

@@ -22,8 +22,8 @@ export type CoachInboundOutcome =
   | { kind: 'queued'; message: string }
   | { kind: 'applied'; message: string; report: StudentProgressReport; shelf: CoachShelf };
 
-export const PARENT_HOLD_MESSAGE = 'Saved. A parent approves coach updates on this phone first (Parent approvals).';
-export const PARENT_DECLINED_MESSAGE = 'A parent already declined this coach update on this phone.';
+export const PARENT_HOLD_MESSAGE = 'Saved. A parent approves coach updates on this device first (Parent approvals).';
+export const PARENT_DECLINED_MESSAGE = 'A parent already declined this coach update on this device.';
 
 export function importCoachText(
   storage: Store,

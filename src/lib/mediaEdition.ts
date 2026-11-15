@@ -45,7 +45,7 @@ export type MediaEditionFeature = { title: string; body: string };
 export const MEDIA_EDITION_FEATURES: readonly MediaEditionFeature[] = [
   {
     title: 'Gallery',
-    body: 'Photos and videos loop fullscreen on the gym TV. Add them from this phone, from Google Photos (including albums), or from Google Drive.',
+    body: 'Photos and videos loop fullscreen on the gym TV. Add them from this device, from Google Photos (including albums), or from Google Drive.',
   },
   {
     title: 'Class Schedule',

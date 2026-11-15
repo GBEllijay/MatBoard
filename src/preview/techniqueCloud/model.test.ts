@@ -59,7 +59,7 @@ test('a preview copy reads techniques without changing the report or marking the
   assert.equal(JSON.stringify(copy).includes('learned'), false);
   assert.equal(emptyCloud().techniques.length, 0);
   assert.equal(sampleCloud().note.includes('Sample only'), true);
-  assert.equal(previewCopyFromText(null).note, 'No student file on this phone.');
+  assert.equal(previewCopyFromText(null).note, 'No student file on this device.');
   assert.equal(previewCopyFromText('{').note, 'This preview left the student file unread.');
 });
 

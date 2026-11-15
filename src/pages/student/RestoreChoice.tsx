@@ -31,12 +31,12 @@ export function RestoreChoice({
       {restorable ? <p>{replaceWarning}</p> : null}
       {restorable ? (
         <button type="button" className="ink-btn" disabled={locked} onClick={onMerge}>
-          Merge with this phone
+          Merge with this device
         </button>
       ) : null}
       {restorable ? (
         <button type="button" className="ink-btn" disabled={locked} onClick={onReplace}>
-          Replace this phone
+          Replace this device
         </button>
       ) : null}
       <button type="button" className="ink-btn" onClick={onCancel}>

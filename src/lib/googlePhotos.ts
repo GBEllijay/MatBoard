@@ -45,10 +45,10 @@ export const PHOTOS_CONNECTED =
   'This Google Photos library is connected. In Media Console, Pick from Google Photos opens it. Search for an album or collection there. Gallery picks upload to this gym\'s Advantage Cloud when Cloud is on. Without it, Advantage does not host the photos or videos.';
 export const PHOTOS_PICK_LABEL = 'Pick from Google Photos';
 export const PHOTOS_WITH_DRIVE_STAY =
-  'Pick from gallery is this phone. Pick from Google Photos uses the connected library, including albums. Google Drive is an additional source. Advantage does not host those files.';
+  'Pick from gallery is this device. Pick from Google Photos uses the connected library, including albums. Google Drive is an additional source. Advantage does not host those files.';
 export const PHOTOS_PICK_TITLE = 'Pick from Google Photos';
 export const PHOTOS_PICK_WAITING =
-  'Google Photos is open. Search for an album or collection, select the photos or videos, then tap Done. They stay in the gym account. This phone keeps a copy so the TV can play them.';
+  'Google Photos is open. Search for an album or collection, select the photos or videos, then tap Done. They stay in the gym account. This device keeps a copy so the TV can play them.';
 export const PHOTOS_PICK_OPEN = 'Open Google Photos';
 export const PHOTOS_PICK_EMPTY = 'Nothing was selected in Google Photos.';
 export const PHOTOS_PICK_TIMED_OUT = 'Google Photos closed before any photos were selected. Try again.';

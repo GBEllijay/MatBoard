@@ -1,3 +1,4 @@
+import { noteLocalAcademyChange } from './syncTrigger.ts';
 import { shrinkImageFile } from './imageShrink.ts';
 import { isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
@@ -111,6 +112,7 @@ export function writeGymLogo(dataUrl: string): void {
     throw error;
   }
   emitGymLogo();
+  noteLocalAcademyChange();
 }
 
 export function clearGymLogo(): void {
@@ -120,6 +122,7 @@ export function clearGymLogo(): void {
     /* private mode */
   }
   emitGymLogo();
+  noteLocalAcademyChange();
 }
 
 async function blobToDataUrl(blob: Blob): Promise<string> {

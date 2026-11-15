@@ -234,7 +234,7 @@ test('the owner issues an invite and the coach submits through the gym folder', 
   await expect(page.getByText('Nothing new in the gym Google Drive folder.')).toBeVisible();
   await expect(check).toHaveCSS('background-color', 'rgb(0, 78, 186)');
   await page.getByRole('button', { name: 'Upload for instructor distribution' }).click();
-  await expect(page.getByText('Saved on this phone.')).toBeVisible();
+  await expect(page.getByText('Saved on this device.')).toBeVisible();
 });
 
 test('the review inbox reads a submission from the gym folder', async ({ page }) => {

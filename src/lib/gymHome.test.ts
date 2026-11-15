@@ -25,7 +25,7 @@ test('slideshow home is Cloud, then Drive or OneDrive, then the phone', () => {
     chooseGymHome({ plusCloudActive: false, cloudBound: false, driveConnected: false, oneDriveConnected: false }),
     'phone',
   );
-  assert.match(playingFromCopy('phone'), /Playing from this phone/);
+  assert.match(playingFromCopy('phone'), /Playing from this device/);
   assert.match(playingFromCopy('google-drive'), /Playing from Google Drive/);
   assert.match(playingFromCopy('advantage-cloud'), /Playing from Advantage Cloud/);
 });

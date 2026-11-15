@@ -17,7 +17,7 @@ function load(): GalleryApprovalSettings {
 }
 
 export const CLOUD_APPROVAL_OWNER_HINT =
-  "This is the gym-wide Advantage Cloud setting. Only the owner can change it. Photos that stay on this phone or go to Google Drive or OneDrive still use this device's own approval setting.";
+  "This is the gym-wide Advantage Cloud setting. Only the owner can change it. Photos that stay on this device or go to Google Drive or OneDrive still use this device's own approval setting.";
 
 export const CLOUD_APPROVAL_SEAT_HINT = 'Only the owner can change the Advantage Cloud approval setting.';
 

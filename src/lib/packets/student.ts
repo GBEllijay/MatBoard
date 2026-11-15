@@ -4,6 +4,7 @@
  * An older student-journal-backup JSON still restores.
  */
 
+import { noteRestoredStudentData } from '../signedInSync.ts';
 import { BRACKET_PHOTO_KEY } from '../bracketPhoto.ts';
 import { COACH_FILE_SNAPSHOT_KEY, SHARE_WEIGHT_WITH_COACH_KEY } from '../coachProgressFile.ts';
 import { COACH_UPDATE_LEDGER_KEY } from '../coachRankUpdate.ts';
@@ -467,6 +468,7 @@ export function applyStudentRestore(
   }
   if (choice.source === 'legacy') {
     const applied = applyBackupToMemory(storage, choice.file, mode, photos);
+    noteRestoredStudentData(choice.file.profile?.id || readActiveStudentProfile(storage).id);
     return {
       note: applied.note,
       films: [{ profileId: choice.file.profile?.id || readActiveStudentProfile(storage).id, blobs: filmBlobsFromBackup(choice.file) }],
@@ -492,7 +494,8 @@ export function applyStudentRestore(
     const activeId = choice.packet.sections.activeProfileId;
     if (typeof activeId === 'string') switchStudentProfile(storage, activeId);
   }
-  if (choice.bundles.length === 1) return { note: notes[0] ?? 'Saved on this phone.', films };
+  noteRestoredStudentData(choice.bundles[0]?.profile.id);
+  if (choice.bundles.length === 1) return { note: notes[0] ?? 'Saved on this device.', films };
   const verb = mode === 'replace' ? 'replaced' : 'merged';
-  return { note: `The backup ${verb} ${choice.bundles.length} profiles on this phone. Saved on this phone.`, films };
+  return { note: `The backup ${verb} ${choice.bundles.length} profiles on this device. Saved on this device.`, films };
 }

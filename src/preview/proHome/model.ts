@@ -141,10 +141,10 @@ export type InstructorCard = {
 };
 
 const INSTRUCTOR_NOTES: Record<string, { note: string; mark: InstructorCard['mark'] }> = {
-  [TRAINING_NOTES_LABEL]: { note: 'Today’s class on this phone.', mark: 'plan' },
+  [TRAINING_NOTES_LABEL]: { note: 'Today’s class on this device.', mark: 'plan' },
   'Daily Training Videos': { note: 'Warm-up, technique, and cool-down clips.', mark: 'video' },
   [TECHNIQUE_TREE_LABEL]: { note: 'Positions, branches, and counters.', mark: 'tree' },
-  [STUDENT_ROSTER_LABEL]: { note: 'Names and belts on this phone.', mark: 'roster' },
+  [STUDENT_ROSTER_LABEL]: { note: 'Names and belts on this device.', mark: 'roster' },
   Scoreboard: { note: 'Match controller. Back returns to Instructor.', mark: 'board' },
   'Round Timer': { note: 'Rounds controller. Back returns to Instructor.', mark: 'timer' },
 };

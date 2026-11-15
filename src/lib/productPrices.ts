@@ -61,7 +61,7 @@ export const WHITE_STORAGE_LINE =
  * or OneDrive later for a personal backup or an academy folder.
  */
 export const STUDENT_STORAGE_LINE =
-  "Your progress saves on this phone, so you don't need Google Drive or OneDrive. Connect one anytime to back up or link with your academy.";
+  "Your progress saves on this device, so you don't need Google Drive or OneDrive. Connect one anytime to back up or link with your academy.";
 
 export const ALPHA_PRODUCT_STATUS = 'This product is in alpha';
 

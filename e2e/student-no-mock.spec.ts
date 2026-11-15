@@ -136,7 +136,7 @@ test('a fresh Student Edition stays White with an empty journal past the old fli
 
   await page.goto('/student/print/assessment?student=1');
   await expect(page.getByRole('heading', { name: 'Self-assessment' }).first()).toBeVisible();
-  await expect(page.getByText('No self-assessment saved on this phone.')).toBeVisible();
+  await expect(page.getByText('No self-assessment saved on this device.')).toBeVisible();
   await expectNoMock(page);
   await shot(page, 'student_print_assessment_fresh_390');
 });

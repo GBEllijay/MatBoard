@@ -39,7 +39,7 @@ export function StudentProfileFields({
     try {
       const next = setStudentProfile(report, patch);
       if (next !== report) commit(next);
-      if (next !== report || confirm) setStatus('Saved on this phone.');
+      if (next !== report || confirm) setStatus('Saved on this device.');
       setError('');
       return true;
     } catch (err) {

@@ -49,20 +49,20 @@ const COPY: Record<
   video: {
     capture: VIDEO_RECORD_LABEL,
     captureHint: 'Open the camera in video mode',
-    libraryHint: 'Choose an existing clip in Google Photos or on this phone',
+    libraryHint: 'Choose an existing clip in Google Photos or on this device',
     stay: 'Clips stay on this device. Nothing is uploaded.',
   },
   photo: {
     capture: PHOTO_CAPTURE_LABEL,
     captureHint: 'Open the camera in photo mode',
-    libraryHint: 'Choose a photo in Google Photos or on this phone',
+    libraryHint: 'Choose a photo in Google Photos or on this device',
     stay: 'Photos stay on this device. Nothing is uploaded.',
   },
   'photo-or-video': {
     capture: PHOTO_CAPTURE_LABEL,
     captureHint: 'Open the camera in photo mode',
-    libraryHint: 'Choose a photo or video in Google Photos or on this phone',
-    stay: 'Photos and clips stay on this phone. A copy goes in the gallery folder, not the instructor video folder.',
+    libraryHint: 'Choose a photo or video in Google Photos or on this device',
+    stay: 'Photos and clips stay on this device. A copy goes in the gallery folder, not the instructor video folder.',
   },
 };
 

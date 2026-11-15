@@ -119,7 +119,7 @@ export function CompetitorPage() {
               <span className="arena-node" aria-hidden="true" />
               <h2>Self-assessment</h2>
               <p className="student-quiet">
-                Rate the work in front of you. 1 is early. 5 is ready to rely on. Saved on this phone by date.
+                Rate the work in front of you. 1 is early. 5 is ready to rely on. Saved on this device by date.
               </p>
               <Link className="ink-btn ink-btn--save" to={to('/student/self-assessment?from=competitor')}>
                 Open: self-assessment

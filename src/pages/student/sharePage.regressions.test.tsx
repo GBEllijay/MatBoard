@@ -116,7 +116,7 @@ test('share page controls still make a file, explain a coach file, and import on
       partners: '',
       drills: '',
       rolls: '',
-      notes: 'only on this phone',
+      notes: 'only on this device',
     },
     4,
   );
@@ -133,7 +133,7 @@ test('share page controls still make a file, explain a coach file, and import on
   assert.match(page.host.textContent ?? '', /Share my card with my coach and your photos go to your coach through Advantage Cloud/);
   assert.match(page.host.textContent ?? '', /New student cards on the coach's Student Roster/);
   assert.match(page.host.textContent ?? '', /Belt and stripes wait for your coach to approve/);
-  assert.match(page.host.textContent ?? '', /This file is optional\. It stays on this phone until you send it/);
+  assert.match(page.host.textContent ?? '', /This file is optional\. It stays on this device until you send it/);
   assert.match(page.host.textContent ?? '', /Import a student file, after accepting your card/);
   assert.match(page.host.textContent ?? '', /What's in the file/);
   // Coach update file (changes since the last file) never carries photos or the journal.
@@ -180,7 +180,7 @@ test('share page controls still make a file, explain a coach file, and import on
   const update = JSON.parse(updateText) as Record<string, unknown>;
   assert.equal(update.kind, STUDENT_COACH_UPDATE_KIND);
   assert.equal('journal' in update, false);
-  assert.doesNotMatch(updateText, /only on this phone/);
+  assert.doesNotMatch(updateText, /only on this device/);
   assert.match(page.host.textContent ?? '', /Downloaded the file on this device/);
   assert.match(page.host.textContent ?? '', /Your coach imports it on Student Roster with Import a student file/);
 
@@ -221,13 +221,13 @@ test('share page controls still make a file, explain a coach file, and import on
   assert.equal(sample.plan.title, 'Sample coach plan');
   assert.equal(sample.studentId, 'student-local');
   assert.match(page.host.textContent ?? '', /Downloaded a sample coach plan/);
-  assert.equal(loadStudentReport(localStorage).journal.some((entry) => entry.body.includes('only on this phone')), true);
+  assert.equal(loadStudentReport(localStorage).journal.some((entry) => entry.body.includes('only on this device')), true);
 
   const picker = page.host.querySelector('input[type="file"]') as HTMLInputElement;
   assert.equal(picker.getAttribute('aria-label'), 'Import from coach');
   const beforePlan = loadStudentReport(localStorage);
   await chooseFile(picker, sample.name, sampleText);
-  assert.match(page.host.textContent ?? '', /Sample coach plan is on this phone/);
+  assert.match(page.host.textContent ?? '', /Sample coach plan is on this device/);
   assert.match(page.host.textContent ?? '', /were not changed/);
   assert.equal(loadStudentReport(localStorage).updatedAt, beforePlan.updatedAt);
   const storedPlan = JSON.parse(localStorage.getItem(COACH_PLAN_STORAGE_KEY) ?? '{}') as { plan?: { title?: string } };
@@ -247,12 +247,12 @@ test('share page controls still make a file, explain a coach file, and import on
     },
   };
   await chooseFile(picker, 'coach-feedback.json', exportProgressPacket(feedback));
-  assert.match(page.host.textContent ?? '', /Coach feedback is on this phone/);
+  assert.match(page.host.textContent ?? '', /Coach feedback is on this device/);
   const storedFeedback = JSON.parse(localStorage.getItem(COACH_FEEDBACK_STORAGE_KEY) ?? '{}') as {
     feedback?: { synopsis?: string };
   };
   assert.equal(storedFeedback.feedback?.synopsis, 'Sample coach feedback.');
-  assert.equal(loadStudentReport(localStorage).journal.some((entry) => entry.body.includes('only on this phone')), true);
+  assert.equal(loadStudentReport(localStorage).journal.some((entry) => entry.body.includes('only on this device')), true);
   assert.equal(loadStudentReport(localStorage).goals.length, beforePlan.goals.length);
 
   // An older full progress file from this phone still merges after confirm.
@@ -272,8 +272,8 @@ test('share page controls still make a file, explain a coach file, and import on
 
   await chooseFile(picker, 'own-progress.json', progressText);
   click(button(page.host, 'Merge into my journal'));
-  assert.match(page.host.textContent ?? '', /Merged this progress file into the journal on this phone/);
-  assert.equal(loadStudentReport(localStorage).journal.some((entry) => entry.body.includes('only on this phone')), true);
+  assert.match(page.host.textContent ?? '', /Merged this progress file into the journal on this device/);
+  assert.equal(loadStudentReport(localStorage).journal.some((entry) => entry.body.includes('only on this device')), true);
 
   const other = structuredClone(loadStudentReport(localStorage));
   other.studentId = 'student-other';
@@ -305,7 +305,7 @@ test('share page controls still make a file, explain a coach file, and import on
   };
   await chooseFile(picker, 'marked.json', JSON.stringify(marked));
   assert.match(page.host.querySelector('[role="alert"]')?.textContent ?? '', /cannot do that, so it was not imported/);
-  assert.equal(loadStudentReport(localStorage).journal.some((entry) => entry.body.includes('only on this phone')), true);
+  assert.equal(loadStudentReport(localStorage).journal.some((entry) => entry.body.includes('only on this device')), true);
 
   unmount(page);
 });
@@ -322,7 +322,7 @@ test('a gym brand file still imports the name and logo on the share page', async
       partners: '',
       drills: '',
       rolls: '',
-      notes: 'only on this phone',
+      notes: 'only on this device',
     },
     8,
   );
@@ -340,12 +340,12 @@ test('a gym brand file still imports the name and logo on the share page', async
   const logo = 'data:image/png;base64,BBBB';
   const file = buildGymBrandFile({ name: 'GB Ellijay', logo, issuedOn: '2026-10-26', now: 30 });
   await chooseFile(picker, 'advantage-gym-file.json', file);
-  assert.match(page.host.textContent ?? '', /Gym name and logo are stored on this phone/);
+  assert.match(page.host.textContent ?? '', /Gym name and logo are stored on this device/);
   assert.match(page.host.textContent ?? '', /journal was not changed/);
   assert.equal(readStudentGymLogo(localStorage), logo);
   const savedReport = loadStudentReport(localStorage);
   assert.equal(savedReport.profile.gymName, 'GB Ellijay');
-  assert.ok(savedReport.journal.some((entry) => entry.body.includes('only on this phone')));
+  assert.ok(savedReport.journal.some((entry) => entry.body.includes('only on this device')));
   assert.equal(JSON.parse(localStorage.getItem(COACH_PLAN_STORAGE_KEY) ?? '{}').plan?.title, 'Sample coach plan');
 
   await chooseFile(picker, 'notes.txt', 'hello from class', 'text/plain');

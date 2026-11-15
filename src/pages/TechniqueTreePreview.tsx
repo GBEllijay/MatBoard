@@ -123,7 +123,7 @@ export function TechniqueTreePreviewPage() {
           </div>
           {confirmReset ? (
             <div className="ttp-confirm" role="group" aria-label="Reset the sample class">
-              <p>Restore the sample class? New index entries, lesson lines, journal ratings, and mat time on this phone go back to the seed.</p>
+              <p>Restore the sample class? New index entries, lesson lines, journal ratings, and mat time on this device go back to the seed.</p>
               <div className="ttp-actions">
                 <button type="button" className="ttp-btn--primary" onClick={restore}>
                   Restore sample

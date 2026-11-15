@@ -5,10 +5,10 @@ export const TRAINING_NOTES_LABEL = 'Daily Lesson Plan';
 export const TECHNIQUE_TREE_LABEL = 'Technique Tree';
 
 export const TECHNIQUE_TREE_LEAD =
-  'Trees stay on this phone. Start from a base position, then add a branch or a defense.';
+  'Trees stay on this device. Start from a base position, then add a branch or a defense.';
 
 export const TECHNIQUE_TREE_CAP_NOTE =
-  'This phone holds 20 Technique Trees. Delete one to add another.';
+  'This device holds 20 Technique Trees. Delete one to add another.';
 
 export const COACH_TOOLS_TEASER =
   'Tools and Templates for Coaches and Professors.';
@@ -22,7 +22,7 @@ export const BASIC_COACH_BELT_LINES = [
 export const STUDENT_ROSTER_LABEL = 'Student Roster';
 export const STUDENT_NOTES_LABEL = 'Student Notes';
 export const EMPTY_STUDENT_ROSTER_TITLE = 'No students yet';
-export const EMPTY_STUDENT_ROSTER_BODY = 'Add a name and belt. The list stays on this phone.';
+export const EMPTY_STUDENT_ROSTER_BODY = 'Add a name and belt. The list stays on this device.';
 export const EMPTY_STUDENT_ROSTER_SEARCH = 'No students match that name, belt, or division.';
 
 /** Short home-card line so Coming Soon and unlocked teasers both fit. */

@@ -173,7 +173,7 @@ async function exerciseExports(host: HTMLElement) {
   assert.equal(saved.length, before + 4);
   assert.match(saved.at(-1)?.name ?? '', /\.advantage$/);
   assert.match(text(), /Backup saved/);
-  assert.match(text(), /Saved on this phone as advantage-student-packet-/);
+  assert.match(text(), /Saved on this device as advantage-student-packet-/);
   assert.match(text(), /Video files kept on this device are included/);
   assert.equal(host.querySelector('[data-kind="ok"]')?.getAttribute('role'), 'status');
   const file = JSON.parse(await (saved.at(-1)?.blob.text() ?? '{}')) as {
@@ -198,7 +198,7 @@ test('backup page controls each download one file, then merge and replace still 
   localStorage.clear();
   saved.length = 0;
   writeFilms(localStorage, [clip]);
-  saveStudentReport(localStorage, journal('only on this phone', 4));
+  saveStudentReport(localStorage, journal('only on this device', 4));
   const page = mount(<BackupMenu />, '/student/backup?student=1');
   await exerciseExports(page.host);
 
@@ -219,11 +219,11 @@ test('backup page controls each download one file, then merge and replace still 
     reactProps(input)?.onChange?.({ target: { files: [{ text: async () => built.json }], value: '' } });
   });
   await settle();
-  assert.match(page.host.textContent ?? '', /Merge with this phone/);
-  await click(button(page.host, 'Merge with this phone'));
+  assert.match(page.host.textContent ?? '', /Merge with this device/);
+  await click(button(page.host, 'Merge with this device'));
   const confirm = page.host.querySelector('.save-confirm');
   assert.match(confirm?.textContent ?? '', /merged/);
-  assert.match(confirm?.textContent ?? '', /Saved on this phone/);
+  assert.match(confirm?.textContent ?? '', /Saved on this device/);
   assert.equal(confirm?.querySelector('.save-confirm__mark')?.textContent?.trim(), '✓');
   assert.equal(confirm?.getAttribute('role'), 'status');
   assert.doesNotMatch(confirm?.textContent ?? '', /Cloud/);
@@ -236,14 +236,14 @@ test('backup page controls each download one file, then merge and replace still 
   });
   await settle();
   await click(button(page.host, 'Cancel restore'));
-  assert.equal(page.host.textContent?.includes('Replace this phone'), false);
+  assert.equal(page.host.textContent?.includes('Replace this device'), false);
   assert.equal(page.host.querySelector('.save-confirm'), null);
 
   await act(async () => {
     reactProps(input)?.onChange?.({ target: { files: [{ text: async () => built.json }], value: '' } });
   });
   await settle();
-  await click(button(page.host, 'Replace this phone'));
+  await click(button(page.host, 'Replace this device'));
   assert.match(page.host.textContent ?? '', /replaced/);
   const replaced = loadStudentReport(localStorage);
   assert.equal(replaced.journal.length, 1);
@@ -262,7 +262,7 @@ test('connections page keeps the same export, restore, and clear controls', asyn
   localStorage.setItem('advantage.studentUnlocked', '1');
   localStorage.setItem('matboard.pro.googleDriveFolder.v1', '{"folderId":"keep-folder"}');
   writeFilms(localStorage, [clip]);
-  saveStudentReport(localStorage, journal('only on this phone', 4));
+  saveStudentReport(localStorage, journal('only on this device', 4));
   const page = mount(<ConnectionsPage />, '/student/connections?student=1');
   await exerciseExports(page.host);
   assert.match(page.host.textContent ?? '', /Import from coach/);
@@ -275,7 +275,7 @@ test('connections page keeps the same export, restore, and clear controls', asyn
   await click(button(page.host, 'Back up first (.advantage)'));
   assert.equal(saved.length, count + 1);
   assert.match(saved.at(-1)?.name ?? '', /\.advantage$/);
-  assert.match(page.host.textContent ?? '', /Saved on this phone/);
+  assert.match(page.host.textContent ?? '', /Saved on this device/);
 
   await click(button(page.host, 'Continue without a backup'));
   const erase = button(page.host, 'Erase Student Edition data');
@@ -308,7 +308,7 @@ test('clear from Backup & Print downloads one student packet and still requires 
   assert.equal(saved.length, 1);
   assert.match(saved[0]?.name ?? '', /\.advantage$/);
   assert.match(await (saved[0]?.blob.text() ?? ''), /keep until clear/);
-  assert.match(page.host.textContent ?? '', /Saved on this phone/);
+  assert.match(page.host.textContent ?? '', /Saved on this device/);
   await click(button(page.host, 'Continue without a backup'));
   const erase = button(page.host, 'Erase Student Edition data');
   assert.equal(erase.disabled, true);

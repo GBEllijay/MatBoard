@@ -282,7 +282,7 @@ export function IndexCardHost() {
                     ) : (
                       <span>
                         {video.title}
-                        <span className="d8sf-kicker">On this phone</span>
+                        <span className="d8sf-kicker">On this device</span>
                       </span>
                     )}
                   </li>

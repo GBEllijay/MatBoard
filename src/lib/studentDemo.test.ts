@@ -382,7 +382,7 @@ test('the public student demo is a fictional blue belt, not an instructor', () =
   assert.doesNotMatch(parsed.value.profile.displayName, /coach/i);
 });
 
-test('a late bypass write does not replace a journal this phone already saved', () => {
+test('a late bypass write does not replace a journal this device already saved', () => {
   resetStudentMockGuardForTests();
   const storage = memory();
   installStudentMockGuard(storage, () => '');

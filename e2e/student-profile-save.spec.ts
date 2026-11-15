@@ -24,7 +24,7 @@ test('save stays on the editable profile card, and Both sticks after reload', as
   await expect(choice('No-Gi')).toHaveAttribute('aria-checked', 'false');
 
   await page.getByRole('button', { name: 'Save profile' }).click();
-  await expect(page.getByText('Saved on this phone.')).toBeVisible();
+  await expect(page.getByText('Saved on this device.')).toBeVisible();
   await expect(page).toHaveURL(/\/student\/profile\?student=1$/);
   await expect(page.getByTestId('student-card-preview')).toHaveCount(0);
   await expect(page.getByRole('dialog')).toHaveCount(0);

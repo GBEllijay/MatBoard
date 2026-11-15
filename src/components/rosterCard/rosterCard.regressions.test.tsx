@@ -260,7 +260,7 @@ test('My profile: Save profile is the last control and stays on the editable car
   assert.equal(all[all.length - 1], save, 'Save profile is last in My profile');
   assert.ok(save.getAttribute('form'), 'submits the profile form from the bottom');
   submitProfile();
-  assert.ok(text().includes('Saved on this phone.'));
+  assert.ok(text().includes('Saved on this device.'));
   assert.equal(document.querySelector('[data-testid="student-card-preview"]'), null, 'Save does not open the preview shell');
   assert.equal(document.querySelector('[role="dialog"]'), null, 'no preview dialog');
   const face = document.querySelector('[data-testid="profile-card-face"]');

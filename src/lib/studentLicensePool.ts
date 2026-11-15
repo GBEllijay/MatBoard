@@ -29,7 +29,7 @@ export const STUDENT_LICENSE_GIVE = 'Invite a student (Student Edition only)';
 export const STUDENT_INVITE_TYP = 'student-invite';
 export const STUDENT_JOIN_PATH = '/join/student';
 export const STUDENT_CLAIM_KEPT_HIGHER =
-  'This phone already has a higher license, so Student Edition was not installed over it. You are still linked to the academy.';
+  'This device already has a higher license, so Student Edition was not installed over it. You are still linked to the academy.';
 export const STUDENT_LICENSE_EMPTY = 'No free Student licenses left.';
 export const STUDENT_LICENSE_REVOKED_MESSAGE =
   'This free Student license was revoked. Ask your coach for a new code.';

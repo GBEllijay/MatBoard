@@ -712,7 +712,7 @@ export function TournamentPage() {
           {/* No tier syncs brackets yet; every save is local (OWNER_BRACKET_CLOUD in tournamentStore). */}
           {competitionSuite
             ? OWNER_BRACKET_CLOUD_NOTE
-            : 'Coach saves stay on this phone. Nothing is uploaded.'}
+            : 'Coach saves stay on this device. Nothing is uploaded.'}
         </p>
       </Sheet>
       <Sheet

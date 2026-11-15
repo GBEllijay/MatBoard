@@ -9,7 +9,7 @@ import { readWorkingGraph } from '../../lib/workingTechniques.ts';
 export const CLOUD_PATH = '/preview/technique-cloud';
 export const LIBRARY_PATH = '/preview/video-library';
 export const CLOUD_NOTE =
-  'Preview only. A sample is labelled sample. A preview copy is read from this phone and is not written back.';
+  'Preview only. A sample is labelled sample. A preview copy is read from this device and is not written back.';
 
 export type CloudVideo = { id: string; title: string };
 export type CloudCard = { id: string; date: string; title: string; classOrigin: string };
@@ -97,7 +97,7 @@ export function copyFromReport(report: Pick<StudentProgressReport, 'working' | '
       journalCards: cards,
     };
   });
-  if (!techniques.length) return { source: 'empty', techniques: [], edges: [], note: 'The working list on this phone is empty.' };
+  if (!techniques.length) return { source: 'empty', techniques: [], edges: [], note: 'The working list on this device is empty.' };
   return {
     source: 'preview-copy',
     techniques,
@@ -107,7 +107,7 @@ export function copyFromReport(report: Pick<StudentProgressReport, 'working' | '
 }
 
 export function previewCopyFromText(raw: string | null): CloudPreview {
-  if (!raw) return { source: 'empty', techniques: [], edges: [], note: 'No student file on this phone.' };
+  if (!raw) return { source: 'empty', techniques: [], edges: [], note: 'No student file on this device.' };
   const parsed = parseProgressPacket(raw);
   if (!parsed.ok || parsed.value.kind !== 'student-progress-report') {
     return { source: 'empty', techniques: [], edges: [], note: 'This preview left the student file unread.' };
