@@ -48,7 +48,9 @@ export function BackButtonPreviewPage() {
       <p>
         The Back mark is the Advantage badge itself — same blue, yellow and white timer face, same
         black silhouette — with the referee's arm raised in a penalty signal instead of pointing.
-        A penalty is a step back, so this pose means Back. The pointing logo stays Home.
+        A penalty is a step back, so this pose means Back. The word Back sits under the badge so it
+        is easier to read. Screen readers already hear Back from the control's name. The pointing
+        logo stays Home.
       </p>
       <p>
         <Link to={BACK_BUTTON_LAYOUT_PREVIEW_PATH}>Open the Instructor header at this window width</Link>

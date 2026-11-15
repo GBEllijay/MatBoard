@@ -3779,14 +3779,17 @@ span.role-plan__mark {
   z-index: 40;
   align-self: flex-start;
   width: 64px;
-  height: 64px;
-  padding: 0;
+  height: auto;
+  min-height: 64px;
+  padding: 0 0 0.15rem;
   margin: 0;
   border: 0;
   border-radius: 18px;
   background: radial-gradient(circle at 50% 48%, rgba(8, 10, 16, 0.28) 0%, rgba(8, 10, 16, 0.1) 46%, transparent 70%);
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   opacity: 0.42;
   appearance: none;
   -webkit-appearance: none;
@@ -3805,8 +3808,18 @@ span.role-plan__mark {
   z-index: 45;
 }
 
-.play-exit img,
 .play-exit .back-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.play-exit img,
+.play-exit .back-btn img,
+.play-exit .back-btn svg {
   width: var(--mark-back);
   height: var(--mark-back);
   flex-shrink: 0;
@@ -3817,12 +3830,17 @@ span.role-plan__mark {
   filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.45)) drop-shadow(0 1px 6px rgba(0, 0, 0, 0.7));
 }
 
-.play-exit .back-btn img,
-.play-exit .back-btn svg {
-  width: 100%;
-  height: 100%;
+.back-btn__label {
   display: block;
-  border-radius: 50%;
+  margin-top: 0.1rem;
+  padding: 0 0.3rem 0.05rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: #f5f1e8;
+  background: rgba(8, 10, 16, 0.78);
 }
 
 /* Same family as the Home logo, distinguished by the raised-fist pose. */
@@ -3872,7 +3890,7 @@ span.role-plan__mark {
 /* Keep the in-flow Home logo clear of the pinned back mark on a narrow column. */
 @media (max-width: 739px) {
   .home__inner:has(> .play-exit) {
-    padding-top: calc(0.5rem + var(--safe-t) + 64px);
+    padding-top: calc(0.5rem + var(--safe-t) + 80px);
   }
 }
 
@@ -6923,11 +6941,12 @@ a.saver-folder--link {
   /* Phone landscape Controller: keep the Home mark small so it does not crowd Display / Cast. */
   .controller > .play-exit {
     width: 52px;
-    height: 52px;
+    height: auto;
+    min-height: 52px;
   }
 
   .controller > .play-exit img,
-  .controller > .play-exit .back-btn {
+  .controller > .play-exit .back-btn img {
     width: 34px;
     height: 34px;
   }
@@ -8050,14 +8069,15 @@ a.saver-folder--link {
 .tournament--bright > .play-exit {
   opacity: 0.96;
   width: 52px;
-  height: 52px;
+  height: auto;
+  min-height: 52px;
   top: calc(0.28rem + var(--safe-t));
   left: calc(0.28rem + var(--safe-l));
   background: none;
 }
 
 .tournament--bright > .play-exit img,
-.tournament--bright > .play-exit .back-btn {
+.tournament--bright > .play-exit .back-btn img {
   width: 46px;
   height: 46px;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
@@ -8626,14 +8646,15 @@ a.saver-folder--link {
 .tournament--dark > .play-exit {
   opacity: 0.96;
   width: 52px;
-  height: 52px;
+  height: auto;
+  min-height: 52px;
   top: calc(0.28rem + var(--safe-t));
   left: calc(0.28rem + var(--safe-l));
   background: none;
 }
 
 .tournament--dark > .play-exit img,
-.tournament--dark > .play-exit .back-btn {
+.tournament--dark > .play-exit .back-btn img {
   width: 46px;
   height: 46px;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));

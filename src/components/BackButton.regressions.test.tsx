@@ -61,14 +61,13 @@ test('HistoryBackMark and PlayExitMark use the shared BackButton, not the Advant
   assert.doesNotMatch(tierHome, /<BackButton/);
 });
 
-test('the Back button keeps the 44px mark and 64px tap target', () => {
+test('the Back button keeps the 44px mark, a 64px-wide tap target, and a visible Back label', () => {
   assert.match(css, /--mark-back:\s*44px;/);
-  const rule = css.slice(css.indexOf('.play-exit img,\n.play-exit .back-btn {'), css.indexOf('.play-exit .back-btn svg'));
-  assert.match(rule, /width:\s*var\(--mark-back\)/);
-  assert.match(rule, /height:\s*var\(--mark-back\)/);
-  const hit = css.slice(css.indexOf('\n.play-exit {'), css.indexOf('\n.play-exit img,'));
+  const hit = css.slice(css.indexOf('\n.play-exit {'), css.indexOf('\n.play-exit .back-btn {'));
   assert.match(hit, /width:\s*64px;/);
-  assert.match(hit, /height:\s*64px;/);
+  assert.match(hit, /min-height:\s*64px;/);
+  assert.match(css, /\.play-exit \.back-btn img,[\s\S]*width:\s*var\(--mark-back\)/);
+  assert.match(css, /\.back-btn__label \{/);
 });
 
 test('the preview route is registered and shows the Back mark beside the Home logo', () => {
@@ -93,6 +92,9 @@ test('the preview route is registered and shows the Back mark beside the Home lo
   assert.ok(host.querySelector('.bb-preview__header--light'));
   const sampleBacks = host.querySelectorAll('a[aria-label="Back"] .back-btn img');
   assert.ok(sampleBacks.length >= 2);
+  const sampleLabels = host.querySelectorAll('a[aria-label="Back"] .back-btn__label');
+  assert.ok(sampleLabels.length >= 2);
+  for (const label of sampleLabels) assert.equal(label.textContent, 'Back');
   const home = host.querySelector('.tier-home');
   assert.ok(home);
   assert.equal(home?.getAttribute('aria-label'), 'Home');
@@ -112,6 +114,9 @@ test('BackButton renders the 44px penalty badge and hides it from the accessibil
   assert.equal(img?.getAttribute('width'), '44');
   assert.equal(img?.getAttribute('height'), '44');
   assert.equal(img?.getAttribute('alt'), '');
+  const label = wrap?.querySelector('.back-btn__label');
+  assert.ok(label);
+  assert.equal(label?.textContent, 'Back');
   root.unmount();
   host.remove();
 });
@@ -123,6 +128,7 @@ test('HistoryBackMark keeps aria-label Back and the same fallback link', () => {
   assert.equal(link?.getAttribute('aria-label'), 'Back');
   assert.equal(link?.getAttribute('href'), '/');
   assert.ok(link?.querySelector(`.back-btn img[src="${PENALTY_BACK_SRC}"]`));
+  assert.equal(link?.querySelector('.back-btn__label')?.textContent, 'Back');
   assert.equal(link?.querySelectorAll('img[src="/advantage-icon.png"]').length, 0);
   root.unmount();
   host.remove();

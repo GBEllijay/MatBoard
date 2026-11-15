@@ -1139,13 +1139,14 @@
 .training--polished:has([data-skin="heavy-metal"]) > .play-exit {
   opacity: 1;
   width: 9vh;
-  height: 9vh;
-  border-radius: 50%;
+  height: auto;
+  min-height: 9vh;
+  border-radius: 1.2vh;
   background: none;
 }
 
 .training--polished:has([data-skin="heavy-metal"]) > .play-exit img,
-.training--polished:has([data-skin="heavy-metal"]) > .play-exit .back-btn {
+.training--polished:has([data-skin="heavy-metal"]) > .play-exit .back-btn img {
   width: 7.4vh;
   height: 7.4vh;
   border-radius: 50%;
