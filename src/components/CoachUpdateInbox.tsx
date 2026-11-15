@@ -35,7 +35,8 @@ import {
   writeCoachOverlay,
 } from '../lib/coachSync';
 import { writeStudentGymLogo } from '../lib/studentGymMark';
-import { assignStudentId, readStableStudentId } from '../lib/studentIdentity';
+import { assignStudentId, ensureStableStudentId, PLACEHOLDER_STUDENT_ID, readStableStudentId } from '../lib/studentIdentity';
+import { packetForJournal, packetsForStudent, type StudentIds } from '../lib/coachInboxIdentity';
 import {
   alertIds,
   arrivalToast,
@@ -58,17 +59,20 @@ import {
   downloadFromInstructor,
   pullStudentInbox,
   readInboxPass,
+  studentIdFromInboxPass,
   type PhotoDecision,
 } from '../lib/studentInboxClient';
 import { useStudentFile } from '../pages/student/chrome';
 import { loadAssessments } from '../lib/studentAssessment';
 import { AssessmentCompareD8, assessmentEntryFromScores } from './AssessmentCompareD8';
 
-function matchingPackets(reportStudentId: string, packets: readonly CoachInboxPacket[]): CoachInboxPacket[] {
-  const stable = readStableStudentId(localStorage);
-  const studentId = reportStudentId === 'student-local' ? stable : reportStudentId;
-  if (!studentId) return [];
-  return packets.filter((packet) => packet.studentId === studentId);
+function thisStudentIds(reportStudentId: string): StudentIds {
+  const pass = readInboxPass(localStorage);
+  return {
+    reportStudentId,
+    stableStudentId: readStableStudentId(localStorage),
+    passStudentId: pass ? studentIdFromInboxPass(pass) : null,
+  };
 }
 
 /**
@@ -146,7 +150,7 @@ export function CoachUpdateInbox() {
   }, []);
 
   const allowedPackets = useMemo(
-    () => (sample ? [sample.packet] : matchingPackets(report.studentId, packets.filter((item) => gymPacketAllowed(localStorage, item)))),
+    () => (sample ? [sample.packet] : packetsForStudent(packets.filter((item) => gymPacketAllowed(localStorage, item)), thisStudentIds(report.studentId))),
     [sample, report.studentId, packets],
   );
   const packet = allowedPackets[0] ?? null;
@@ -290,30 +294,37 @@ export function CoachUpdateInbox() {
     let current = report;
     if (current.studentId !== packet.studentId) {
       const stable = readStableStudentId(localStorage);
-      if (stable !== packet.studentId) {
-        setNote('This update is for a different student ID.');
-        return;
+      if (stable === packet.studentId) {
+        current = assignStudentId(current, stable);
+      } else if (current.studentId === PLACEHOLDER_STUDENT_ID) {
+        // Addressed to the inbox pass id on a blank journal: give the journal its own id first.
+        current = ensureStableStudentId(current, localStorage).report;
       }
-      current = assignStudentId(current, stable);
+    }
+    // Replies are addressed to the inbox pass id the coach card is linked to.
+    const target = packetForJournal(packet, current.studentId, thisStudentIds(report.studentId));
+    if (!target) {
+      setNote('This update is for a different student ID.');
+      return;
     }
     const ledger = readUpdateLedger(localStorage);
     let result: { report: typeof current; ledger: typeof ledger; applied: boolean };
     let cheerNow = false;
-    if (kind === 'confirm-blue' && packet.kind === 'coach-rank-update') {
-      const blue = acceptCoachBlueBelt(current, packet, ledger, { birthYear: cleanBirthYear(blueYear) });
+    if (kind === 'confirm-blue' && target.kind === 'coach-rank-update') {
+      const blue = acceptCoachBlueBelt(current, target, ledger, { birthYear: cleanBirthYear(blueYear) });
       result = blue;
-      cheerNow = blue.cheer && claimBlueCheer(localStorage, current.studentId, packet.updateId);
+      cheerNow = blue.cheer && claimBlueCheer(localStorage, current.studentId, target.updateId);
     } else if (kind === 'confirm-blue') {
       return;
     } else if (kind === 'dismiss') {
-      result = dismissCoachRankUpdate(current, packet, ledger);
-    } else if (packet.kind === 'coach-rank-update') {
-      result = acceptCoachRankUpdate(current, packet, ledger);
-    } else if (packet.kind === 'coach-competition-update') {
-      result = acceptCoachCompetitionUpdate(current, packet, ledger, choices);
+      result = dismissCoachRankUpdate(current, target, ledger);
+    } else if (target.kind === 'coach-rank-update') {
+      result = acceptCoachRankUpdate(current, target, ledger);
+    } else if (target.kind === 'coach-competition-update') {
+      result = acceptCoachCompetitionUpdate(current, target, ledger, choices);
     } else {
       // Belt progress and assessments go to the coach overlay only. A coach note also appends a labeled journal block.
-      const synced = acceptCoachSyncUpdate(current, packet, ledger, readCoachOverlay(localStorage));
+      const synced = acceptCoachSyncUpdate(current, target, ledger, readCoachOverlay(localStorage));
       if (synced.applied) writeCoachOverlay(localStorage, synced.overlay);
       result = { report: synced.report, ledger: synced.ledger, applied: synced.applied };
     }

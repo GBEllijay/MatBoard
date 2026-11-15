@@ -13,6 +13,7 @@ import { StudentToast } from './StudentToast.tsx';
 import { buildCoachRankUpdate, queueCoachUpdate, readCoachQueue } from '../lib/coachRankUpdate.ts';
 import { blankStudentReport, saveStudentReport } from '../lib/studentEdition.ts';
 import { assignStudentId } from '../lib/studentIdentity.ts';
+import { buildCoachAssessmentUpdate, readCoachOverlay } from '../lib/coachSync.ts';
 import { INBOX_PASS_KEY } from '../lib/studentInboxClient.ts';
 import { recordPhotoSent, STUDENT_TOAST_EVENT } from '../lib/studentAlerts.ts';
 
@@ -156,6 +157,51 @@ test('photo decision: the student sees it once from their own inbox read, and Go
     });
     assert.equal(again.host.querySelector('section.coach-update--photo'), null);
     again.unmount();
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('a coach assessment reply addressed to the inbox pass id shows and accepts (Haven, Nov 15)', async () => {
+  // The pass carries the free Student license id; the journal has its own stu- id.
+  // The coach card is linked to the pass id, so the reply is addressed to it.
+  localStorage.clear();
+  const passId = 'dbdae78e-5b1c-4af4-aee7-1f03b3d8dabb';
+  saveStudentReport(localStorage, assignStudentId(blankStudentReport(10), 'stu-haven'));
+  const pass = `${b64({ alg: 'ES256' })}.${b64({ typ: 'student-inbox', v: 1, gym: 'license01', studentId: passId, exp: 9e9 })}.sig`;
+  localStorage.setItem(INBOX_PASS_KEY, pass);
+  const built = buildCoachAssessmentUpdate({
+    studentId: passId,
+    date: '2026-11-14',
+    scores: { guard: 5, passing: 4 },
+    note: 'Nice work',
+    now: 30,
+    updateId: 'assess-haven-1',
+  });
+  if (!built.ok) throw new Error(built.error);
+  const urls: string[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    urls.push(String(input));
+    return new Response(JSON.stringify({ ok: true, packets: [built.packet], fromInstructor: [], photoDecisions: [] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+  try {
+    const { host, unmount } = mount(<CoachUpdateInbox />);
+    await act(async () => {
+      for (let i = 0; i < 10; i += 1) await Promise.resolve();
+    });
+    assert.match(urls[0] ?? '', new RegExp(`studentId=${passId}`));
+    const card = host.querySelector('section.coach-update');
+    assert.ok(card, 'the reply shows in From your coach');
+    assert.equal(host.querySelector('.student-alert-badge__count')?.textContent, '1');
+    click(button(host, /^Accept$/));
+    assert.equal(readCoachQueue(localStorage).length, 0);
+    assert.equal(host.querySelector('.coach-update__note')?.textContent?.includes('different student') ?? false, false);
+    assert.ok(readCoachOverlay(localStorage).assessments.some((row) => row.updateId === 'assess-haven-1'), 'coach overlay saved');
+    unmount();
   } finally {
     globalThis.fetch = realFetch;
   }
