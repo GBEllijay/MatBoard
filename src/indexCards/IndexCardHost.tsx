@@ -91,7 +91,10 @@ export function IndexCardHost() {
   useEffect(() => {
     if (!open) return;
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') closeIndexCard();
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeIndexCard();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
