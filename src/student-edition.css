@@ -3517,3 +3517,24 @@ body:has(main.academy-modern) .parent-approvals ~ main.student.academy-modern {
   color: #8a4b00;
   font-weight: 700;
 }
+
+/* Academy QR scanner feedback: right under the scan buttons. */
+.academy-scan__feedback {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.academy-scan__feedback--ok {
+  color: #1e7b45;
+}
+.academy-modern .academy-scan__feedback--ok {
+  color: #9fe3b4;
+}
+.academy-scan__feedback--error {
+  color: var(--am-red, #c0392b);
+}
+.academy-scan__tip {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.75;
+}

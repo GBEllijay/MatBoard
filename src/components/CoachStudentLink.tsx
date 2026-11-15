@@ -73,7 +73,7 @@ export function LinkStudentSheet({ student, onClose }: { student: Student | null
               onChange={(event) => setText(event.target.value)}
             />
           </label>
-          {error ? (
+          {error && !scanning ? (
             <p className="roster-edit__error" role="alert">
               {error}
             </p>
@@ -86,7 +86,14 @@ export function LinkStudentSheet({ student, onClose }: { student: Student | null
               {scanning ? 'Hide scanner' : 'Scan student code'}
             </button>
           </div>
-          {scanning ? <AcademyQrScanner onScan={link} /> : null}
+          {scanning ? (
+            <AcademyQrScanner
+              onScan={link}
+              photoId="student-link-qr-photo"
+              result={error ? { kind: 'error', text: error } : null}
+              onStart={() => setError('')}
+            />
+          ) : null}
         </>
       ) : null}
     </Sheet>

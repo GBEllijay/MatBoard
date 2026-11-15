@@ -1,29 +1,62 @@
 import { useEffect, useRef, useState } from 'react';
 import { DeviceMediaInput } from './DeviceMediaInput';
-import { decodeQrImageData } from '../lib/qrScan';
+import {
+  LIVE_SCAN_INTERVAL_MS,
+  SCAN_IOS_TIP,
+  SCAN_SLOW_AFTER_MS,
+  decodeRegions,
+  isAppleMobile,
+  scanFeedback,
+  scanRegions,
+  type ScanMode,
+  type ScanPhase,
+  type ScanRegion,
+  type ScanResult,
+} from '../lib/qrScanPlan';
 
-const SCAN_MAX = 720;
+export type { ScanResult } from '../lib/qrScanPlan';
 
 type Props = {
   onScan: (text: string) => void;
 };
 
-function readSource(source: CanvasImageSource, width: number, height: number, canvas: HTMLCanvasElement): string | null {
-  if (width < 21 || height < 21) return null;
-  const scale = Math.min(1, SCAN_MAX / Math.max(width, height));
-  const nextWidth = Math.max(1, Math.round(width * scale));
-  const nextHeight = Math.max(1, Math.round(height * scale));
-  canvas.width = nextWidth;
-  canvas.height = nextHeight;
+function drawRegion(source: CanvasImageSource, region: ScanRegion, canvas: HTMLCanvasElement) {
+  canvas.width = region.dw;
+  canvas.height = region.dh;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) return null;
-  ctx.drawImage(source, 0, 0, nextWidth, nextHeight);
-  return decodeQrImageData(ctx.getImageData(0, 0, nextWidth, nextHeight));
+  ctx.drawImage(source, region.sx, region.sy, region.sw, region.sh, 0, 0, region.dw, region.dh);
+  return ctx.getImageData(0, 0, region.dw, region.dh);
+}
+
+/** Photo: every pass in order. Live: one pass per tick, rotating, so each tick stays cheap. */
+function readSource(
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+  canvas: HTMLCanvasElement,
+  mode: ScanMode,
+  pass?: number,
+): string | null {
+  const regions = scanRegions(width, height, mode);
+  if (!regions.length) return null;
+  const chosen = pass === undefined ? regions : [regions[pass % regions.length]];
+  return decodeRegions(chosen, (region) => drawRegion(source, region, canvas));
+}
+
+function buzz() {
+  try {
+    navigator.vibrate?.(80);
+  } catch {
+    // iOS has no vibrate; nothing to do.
+  }
 }
 
 /**
  * Camera scan for the academy QR, plus a photo of that QR when the live
  * camera does not open. The pasted link stays beside this control.
+ * Feedback sits right under the buttons: looking, still looking, got it,
+ * then the page's own result (connected / why it failed).
  */
 export function AcademyQrScanner({
   onScan,
@@ -32,6 +65,9 @@ export function AcademyQrScanner({
   buttonClassName = 'ink-btn',
   photoId = 'academy-qr-photo',
   startSignal = 0,
+  result = null,
+  onStart,
+  slowAfterMs = SCAN_SLOW_AFTER_MS,
 }: Props & {
   scanLabel?: string;
   scanClassName?: string;
@@ -40,34 +76,59 @@ export function AcademyQrScanner({
   photoId?: string;
   /** Bump to open the camera from another button (Rescan). */
   startSignal?: number;
+  /** What the page made of the scanned code; shown under the scanner. */
+  result?: ScanResult | null;
+  /** A new scan or photo began; the page can clear its old result. */
+  onStart?: () => void;
+  slowAfterMs?: number;
 }) {
   const photoRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const feedbackRef = useRef<HTMLDivElement | null>(null);
   const stopRef = useRef(false);
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [live, setLive] = useState(false);
   const [error, setError] = useState('');
+  const [phase, setPhase] = useState<ScanPhase>('idle');
+  const [ios] = useState(() => (typeof navigator === 'undefined' ? false : isAppleMobile(navigator)));
+
+  const clearSlow = () => {
+    if (slowTimer.current) clearTimeout(slowTimer.current);
+    slowTimer.current = null;
+  };
 
   const stop = () => {
     stopRef.current = true;
+    clearSlow();
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     const video = videoRef.current;
     if (video) video.srcObject = null;
     setLive(false);
+    setPhase((current) => (current === 'got' ? current : 'idle'));
   };
 
   useEffect(() => {
     return () => {
       stopRef.current = true;
+      clearSlow();
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     };
   }, []);
 
+  const got = (text: string) => {
+    buzz();
+    setPhase('got');
+    onScan(text);
+  };
+
   const start = async () => {
     setError('');
+    setPhase('idle');
+    onStart?.();
     if (!navigator.mediaDevices?.getUserMedia) {
       setError('This browser has no live camera. Take a photo of the QR, or paste the academy link.');
       return;
@@ -75,7 +136,7 @@ export function AcademyQrScanner({
     stopRef.current = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
       if (stopRef.current) {
@@ -91,16 +152,25 @@ export function AcademyQrScanner({
       video.srcObject = stream;
       await video.play();
       setLive(true);
+      setPhase('looking');
+      clearSlow();
+      slowTimer.current = setTimeout(() => {
+        if (!stopRef.current) setPhase((current) => (current === 'looking' ? 'slow' : current));
+      }, slowAfterMs);
       const canvas = canvasRef.current ?? document.createElement('canvas');
       canvasRef.current = canvas;
-      const tick = () => {
+      let last = 0;
+      let pass = 0;
+      const tick = (now: number) => {
         if (stopRef.current) return;
         const frame = videoRef.current;
-        if (frame && frame.readyState >= 2 && frame.videoWidth > 0) {
-          const text = readSource(frame, frame.videoWidth, frame.videoHeight, canvas);
+        if (now - last >= LIVE_SCAN_INTERVAL_MS && frame && frame.readyState >= 2 && frame.videoWidth > 0) {
+          last = now;
+          const text = readSource(frame, frame.videoWidth, frame.videoHeight, canvas, 'live', pass);
+          pass += 1;
           if (text) {
             stop();
-            onScan(text);
+            got(text);
             return;
           }
         }
@@ -123,21 +193,31 @@ export function AcademyQrScanner({
     const file = files[0];
     if (!file) return;
     setError('');
+    setPhase('idle');
+    onStart?.();
     try {
       const bitmap = await createImageBitmap(file);
       const canvas = canvasRef.current ?? document.createElement('canvas');
       canvasRef.current = canvas;
-      const text = readSource(bitmap, bitmap.width, bitmap.height, canvas);
+      const text = readSource(bitmap, bitmap.width, bitmap.height, canvas, 'photo');
       bitmap.close();
       if (!text) {
         setError('That photo has no academy QR. Try again, or paste the academy link.');
         return;
       }
-      onScan(text);
+      got(text);
     } catch {
       setError('That photo could not be read. Paste the academy link.');
     }
   };
+
+  const feedback = scanFeedback(phase, phase === 'got' || !live ? result : null, error);
+
+  useEffect(() => {
+    if (!result) return;
+    const node = feedbackRef.current;
+    if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [result?.kind, result?.text]);
 
   return (
     <div className="academy-scan">
@@ -161,6 +241,22 @@ export function AcademyQrScanner({
           </button>
         ) : null}
       </div>
+      <div ref={feedbackRef} className="academy-scan__feedback-slot">
+        {feedback ? (
+          <p role={feedback.role} className={`academy-scan__feedback academy-scan__feedback--${feedback.tone}`}>
+            {feedback.tone === 'ok' ? (
+              <span className="academy-scan__mark" aria-hidden="true">
+                ✓{' '}
+              </span>
+            ) : feedback.tone === 'error' ? (
+              <span className="academy-scan__mark" aria-hidden="true">
+                ✕{' '}
+              </span>
+            ) : null}
+            {feedback.text}
+          </p>
+        ) : null}
+      </div>
       <video
         ref={videoRef}
         className={live ? 'academy-scan__video' : 'sr-only'}
@@ -168,7 +264,7 @@ export function AcademyQrScanner({
         playsInline
         aria-label="Academy QR camera"
       />
-      {error ? <p role="alert">{error}</p> : null}
+      {ios ? <p className="academy-scan__tip">{SCAN_IOS_TIP}</p> : null}
     </div>
   );
 }

@@ -259,3 +259,56 @@ test('owner answer 8: Parent approvals strip on the academy pages is navy, 12px+
   for (const size of [...block.matchAll(/font-size:\s*(\d+)px/g)].map((m) => Number(m[1]))) assert.ok(size >= 12, String(size));
   assert.ok((block.match(/min-height: 44px/g) ?? []).length >= 3);
 });
+
+/* ---------------- QR scan feedback sits under the scanner (owner, Nov 14 2026) ---------------- */
+
+const { AcademyQrScanner } = await import('../../components/AcademyQrScanner.tsx');
+
+test('scan feedback: a pasted or scanned link answers right under the scanner, not at the page bottom', async () => {
+  localStorage.clear();
+  const page = mount(<AcademyConnectPage />, '/student/academy?student=1');
+  const host = page.host;
+  await click(button(host, 'Paste invite link'));
+  const input = host.querySelector('input[aria-label="Academy link"]') as HTMLInputElement;
+  await type(input, 'nope');
+  await click(button(host, 'Use this academy link'));
+  const alert = host.querySelector('.academy-scan [role="alert"]');
+  assert.match(alert?.textContent ?? '', /That is not an academy link/);
+  assert.equal((host.textContent?.match(/That is not an academy link/g) ?? []).length, 1, 'shown once, by the scanner');
+  await type(input, link('gym-folder-aaa', 'North Side BJJ'));
+  await click(button(host, 'Use this academy link'));
+  assert.equal(host.querySelector('.academy-scan [role="alert"]'), null);
+  assert.match(host.querySelector('.academy-scan [role="status"]')?.textContent ?? '', /North Side BJJ folder on Google Drive/);
+  unmount(page);
+});
+
+test('scanner: looking hint while live, then the still-looking hint; result prop shows ✓ or an alert', async () => {
+  const mediaDevices = { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) };
+  Object.defineProperty(view.navigator, 'mediaDevices', { value: mediaDevices, configurable: true });
+  const proto = view.HTMLMediaElement.prototype as unknown as { play: () => Promise<void> };
+  const play = proto.play;
+  proto.play = async () => {};
+  const srcDesc = Object.getOwnPropertyDescriptor(view.HTMLMediaElement.prototype, 'srcObject');
+  Object.defineProperty(view.HTMLMediaElement.prototype, 'srcObject', { configurable: true, get: () => null, set: () => {} });
+  const scanner = mount(<AcademyQrScanner onScan={() => {}} slowAfterMs={20} />, '/student/academy');
+  await click(button(scanner.host, 'Scan academy QR'));
+  assert.match(scanner.host.querySelector('[role="status"]')?.textContent ?? '', /Looking for the QR/);
+  assert.ok(buttons(scanner.host).includes('Stop camera'));
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 60)));
+  assert.match(scanner.host.querySelector('[role="status"]')?.textContent ?? '', /Still can't read it/);
+  await click(button(scanner.host, 'Stop camera'));
+  assert.equal(scanner.host.querySelector('[role="status"]'), null);
+  unmount(scanner);
+  proto.play = play;
+  if (srcDesc) Object.defineProperty(view.HTMLMediaElement.prototype, 'srcObject', srcDesc);
+
+  const ok = mount(<AcademyQrScanner onScan={() => {}} result={{ kind: 'ok', text: 'Connected to GB Ellijay.' }} />, '/student/academy');
+  const okLine = ok.host.querySelector('[role="status"]');
+  assert.match(okLine?.textContent ?? '', /✓ Connected to GB Ellijay\./);
+  assert.ok(okLine?.className.includes('academy-scan__feedback--ok'));
+  unmount(ok);
+  const bad = mount(<AcademyQrScanner onScan={() => {}} result={{ kind: 'error', text: 'This coach connect QR was replaced.' }} />, '/student/academy');
+  assert.match(bad.host.querySelector('[role="alert"]')?.textContent ?? '', /was replaced/);
+  assert.equal(bad.host.querySelector('.academy-scan__tip'), null, 'no iPhone tip off iOS');
+  unmount(bad);
+});
