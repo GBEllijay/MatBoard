@@ -316,7 +316,7 @@ body:has(.d8-live),
 }
 
 /*
- * 4×4 and 5×5 faces. The readout lays each mesh row out as a centered,
+ * 4×4 and finer faces. The readout lays each mesh row out as a centered,
  * wrapping line so names never sit on top of each other. Text stays at 12px or more.
  */
 .d8-live .d8-live-pyramid-rows {

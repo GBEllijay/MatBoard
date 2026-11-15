@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { EMPTY_JOURNAL, INDEX_CARDS_STORAGE_KEY, NEUTRAL_NOTE } from '../lib/indexCards.ts';
 import { GLOSSARY_ADDITIONS_KEY } from '../lib/glossaryAdditions.ts';
 import { CAMERA_Z, LIVE_ZOOM_MAX, MESH_RADIUS, NEAR_GAP, projectFit } from '../preview/crystallineSweeps/labels.ts';
-import { D8_FACE_CAP, D8_STAGE_DEFAULT, D8_STAGE_HEIGHT_KEY, d8FaceGrids, d8StageMax } from './LiveD8.tsx';
+import { D8_STAGE_DEFAULT, D8_STAGE_HEIGHT_KEY, d8FaceGrids, d8StageMax } from './LiveD8.tsx';
 import { D8GridPreview, d8GridSampleFile } from './D8GridPreview.tsx';
 import { IndexTermText } from './IndexTermLink.tsx';
 import { IndexCardProvider } from './IndexCardHost.tsx';
@@ -349,7 +349,7 @@ function tilesOn(host: HTMLElement, faceId: string): number {
   return host.querySelectorAll(`[data-technique-face="${faceId}"]`).length;
 }
 
-test('each face grows from 9 to 16 to 25 tiles as cards are added, and stays 5x5 past 25', () => {
+test('each face grows from 9 to 16 to 25 tiles as cards are added, then keeps subdividing', () => {
   localStorage.clear();
   resetIndexCardStoreForTests();
   const { root, host } = mount(
@@ -375,25 +375,38 @@ test('each face grows from 9 to 16 to 25 tiles as cards are added, and stays 5x5
   });
   assert.equal(tilesOn(host, 'passing'), 16);
   assert.equal(host.querySelectorAll('[data-technique-face="passing"][data-technique-label]:not([data-technique-label=""])').length, 16);
-  // + 11 = 17: 5x5.
+  // + 11 = 17: 5x5. Existing saved 17–25 card faces stay 5x5.
   act(() => {
     commitIndexCards({ version: 1, cards: extraCards('passing', 11) });
   });
   assert.equal(tilesOn(host, 'passing'), 25);
-  // + 24 = 30: stays 5x5, 25 drawn, +5 more.
+  act(() => {
+    commitIndexCards({ version: 1, cards: extraCards('passing', 19) });
+  });
+  assert.equal(tilesOn(host, 'passing'), 25);
+  // + 24 = 30: 6x6, all 30 drawn as triangles, no overflow chip.
   act(() => {
     commitIndexCards({ version: 1, cards: extraCards('passing', 24) });
   });
-  assert.equal(tilesOn(host, 'passing'), D8_FACE_CAP);
-  assert.equal(host.querySelectorAll('[data-technique-face="passing"]:not([data-technique-label=""])').length, 25);
+  assert.equal(tilesOn(host, 'passing'), 36);
+  assert.equal(host.querySelectorAll('[data-technique-face="passing"]:not([data-technique-label=""])').length, 30);
   focusFace(host, 'passing');
-  assert.match(host.textContent ?? '', /\+5 more/);
+  assert.equal(host.querySelector('[data-more]'), null);
+  assert.doesNotMatch(host.textContent ?? '', /\+\d+ more/);
   const pyramid = host.querySelector('[data-testid="face-pyramid"]') as HTMLElement;
-  assert.equal(pyramid.getAttribute('data-grid'), '5');
-  assert.equal(pyramid.querySelectorAll('.d8-live-pyramid-row').length, 5);
-  assert.equal(pyramid.querySelectorAll('[data-slot]').length, 25);
-  // Every card, including the five not drawn, stays in the list.
+  assert.equal(pyramid.getAttribute('data-grid'), '6');
+  assert.equal(pyramid.querySelectorAll('.d8-live-pyramid-row').length, 6);
+  assert.equal(pyramid.querySelectorAll('[data-slot]').length, 36);
+  assert.equal(pyramid.querySelectorAll('.d8sf-term').length, 30);
+  assert.equal(pyramid.querySelectorAll('[data-empty-slot]').length, 6);
   assert.equal(host.querySelectorAll('[data-list-card]').length, 30);
+  // + 31 = 37: 7x7, all 37 drawn.
+  act(() => {
+    commitIndexCards({ version: 1, cards: extraCards('passing', 31) });
+  });
+  assert.equal(tilesOn(host, 'passing'), 49);
+  assert.equal(host.querySelectorAll('[data-technique-face="passing"]:not([data-technique-label=""])').length, 37);
+  assert.equal(host.querySelectorAll('[data-list-card]').length, 37);
   // Other faces were not touched.
   assert.equal(tilesOn(host, 'sweeps'), 9);
   assert.equal(tilesOn(host, 'mindset'), 9);
@@ -455,7 +468,7 @@ test('d8FaceGrids follows each face card count', () => {
   const mixed = grid({ passing: 10, sweeps: 17, submissions: 40, mindset: 9 });
   assert.equal(mixed[index('passing')], 4);
   assert.equal(mixed[index('sweeps')], 5);
-  assert.equal(mixed[index('submissions')], 5);
+  assert.equal(mixed[index('submissions')], 7);
   assert.equal(mixed[index('mindset')], 3);
 });
 
@@ -473,7 +486,7 @@ test('the grid preview shows sample cards in memory and never writes the saved f
   assert.equal(tilesOn(host, 'takedowns'), 9);
   assert.equal(tilesOn(host, 'passing'), 16);
   assert.equal(tilesOn(host, 'sweeps'), 25);
-  assert.equal(tilesOn(host, 'submissions'), 25);
+  assert.equal(tilesOn(host, 'submissions'), 36);
   assert.equal(tilesOn(host, 'mindset'), 9);
   act(() => {
     commitIndexCards({ version: 1, cards: [...d8GridSampleFile().cards, ...extraCards('guard-control', 1)] });

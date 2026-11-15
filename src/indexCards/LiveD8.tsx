@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { TopoStage } from '../preview/crystallineSweeps/TopoStage.tsx';
 import { LIVE_ZOOM_MAX } from '../preview/crystallineSweeps/labels.ts';
 import { FACES } from '../preview/d8Subfactors/model.ts';
-import { FACE_GRID_MAX, buildSubfactorTopo, faceGridSize, faceSlots, faceTileCap, showOnDiamond } from '../preview/d8Subfactors/topoModel.ts';
+import { buildSubfactorTopo, faceGridSize, faceSlots, faceTileCap, showOnDiamond } from '../preview/d8Subfactors/topoModel.ts';
 import {
   INDEX_FACE_IDS,
   faceScoreExact,
@@ -38,13 +38,6 @@ import '../preview/crystallineSweeps/crystallineSweeps.css';
 import '../preview/d8Subfactors/d8Subfactors.css';
 import './liveD8.css';
 
-/**
- * Most cards one face can draw: a 5×5 split, 25 tiles.
- * Each face grows on its own: up to 9 cards is 3×3, 10–16 is 4×4, 17–25 is 5×5.
- * Past 25 the face stays 5×5 with its 25 strongest cards (rating, then newest),
- * shows "+N more", and every card stays in the list under the diamond.
- */
-export const D8_FACE_CAP = FACE_GRID_MAX * FACE_GRID_MAX;
 /**
  * The face list only replaces the face readout past this zoom. It sits above the
  * live zoom ceiling, so a deeper zoom keeps the readout, as it has since the clamp landed.
@@ -235,7 +228,11 @@ function isLiveFace(id: string): id is IndexFaceId {
   return FACES.some((face) => face.id === id);
 }
 
-/** Rows on each face, in FACES order, from how many cards that face has. */
+/**
+ * Rows on each face, in FACES order, from how many cards that face has.
+ * Up to 9 cards is 3×3, 10–16 is 4×4, 17–25 is 5×5, then the face keeps
+ * subdividing (26–36 is 6×6, and so on). Every card is drawn as a triangle.
+ */
 export function d8FaceGrids(cards: readonly LiveCard[]): number[] {
   return FACES.map((face) => (isLiveFace(face.id) ? faceGridSize(cards.filter((card) => card.faceId === face.id).length) : faceGridSize(0)));
 }
@@ -245,7 +242,7 @@ function useMesh(cards: readonly LiveCard[]) {
   const gridKey = useRef('');
   const grids = d8FaceGrids(cards);
   const nextGridKey = grids.join(',');
-  // A face that crosses 9 or 16 cards gets a finer split. The mesh is rebuilt only then.
+  // A face that crosses a square (9, 16, 25, 36, …) gets a finer split. The mesh is rebuilt only then.
   if (!modelRef.current || gridKey.current !== nextGridKey) {
     modelRef.current = buildSubfactorTopo(FACES, () => null, (faceIndex) => grids[faceIndex] ?? faceGridSize(0));
     gridKey.current = nextGridKey;
@@ -274,11 +271,6 @@ function strongest(cards: readonly LiveCard[]): LiveCard[] {
     .slice(0, faceTileCap(cards.length));
 }
 
-function moreLabel(count: number): string | null {
-  const extra = count - D8_FACE_CAP;
-  return extra > 0 ? `+${extra} more` : null;
-}
-
 function FaceScores({ cards, unrated }: { cards: readonly LiveCard[]; unrated: string }) {
   return (
     <div className="crystal-readout">
@@ -289,14 +281,12 @@ function FaceScores({ cards, unrated }: { cards: readonly LiveCard[]; unrated: s
           {FACES.map((face) => {
             if (!isLiveFace(face.id)) return null;
             const score = faceScoreExact(cards, face.id).toFixed(1);
-            const extra = moreLabel(cards.filter((card) => card.faceId === face.id).length);
             return (
               <li key={face.id}>
                 <button type="button" onClick={() => document.querySelector<HTMLButtonElement>(`[data-face-button="${face.id}"]`)?.click()}>
                   <span>{face.label}</span>
                   <span>{score} / 5</span>
                 </button>
-                {extra ? <span>{extra}</span> : null}
               </li>
             );
           })}
@@ -402,7 +392,6 @@ function FaceReadout({
   unrated: string;
 }) {
   const byId = new Map(cards.map((card) => [card.id, card]));
-  const extra = moreLabel(cards.length);
   return (
     <div className="crystal-readout">
       <section aria-label={`${label} sub-factors`}>
@@ -411,13 +400,6 @@ function FaceReadout({
           {faceScoreLine(cards, faceId)}
         </p>
         <p>{`Average of every line on this face. ${unrated}`}</p>
-        {extra ? (
-          <p>
-            <span className="d8sf-badge" data-more={faceId}>
-              {extra}
-            </span>
-          </p>
-        ) : null}
         <FacePyramid faceId={faceId} label={label} slots={slots} byId={byId} />
         <CardList faceId={faceId} cards={cards} />
       </section>
@@ -470,7 +452,7 @@ function FacePyramid({
       </div>
     );
   }
-  // 4×4 and 5×5: one centered row per mesh row so names wrap instead of piling up.
+  // 4×4 and finer: one centered row per mesh row so names wrap instead of piling up.
   const rows = Array.from({ length: grid }, (_, row) =>
     slots.filter((slot) => slot.row === row).sort((left, right) => left.x - right.x || left.tileIndex - right.tileIndex),
   );
