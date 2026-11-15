@@ -1144,7 +1144,8 @@
   background: none;
 }
 
-.training--polished:has([data-skin="heavy-metal"]) > .play-exit img {
+.training--polished:has([data-skin="heavy-metal"]) > .play-exit img,
+.training--polished:has([data-skin="heavy-metal"]) > .play-exit .back-btn {
   width: 7.4vh;
   height: 7.4vh;
   border-radius: 50%;

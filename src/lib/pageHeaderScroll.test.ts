@@ -48,12 +48,14 @@ test('demo warning is in the page flow and does not paint behind the logos', () 
   assert.match(clear, /padding-top:\s*0\.75rem/);
 });
 
-test('page home and back marks scroll with the document', () => {
+test('the Home logo scrolls with the document; the Back mark stays pinned top-left', () => {
   const logo = block(home, '.home__logo {');
   const back = block(home, '.play-exit {');
   const center = block(home, '.tier-home {');
   assert.match(logo, /position:\s*static/);
-  assert.match(back, /position:\s*relative/);
+  assert.match(back, /position:\s*fixed/);
+  assert.match(back, /top:\s*calc\(0\.2rem \+ var\(--safe-t\)\)/);
+  assert.match(back, /left:\s*calc\(0\.15rem \+ var\(--safe-l\)\)/);
   assert.match(center, /position:\s*relative/);
   assert.match(center, /transform:\s*none/);
   assert.doesNotMatch(logo, /position:\s*fixed/);
@@ -79,7 +81,7 @@ test('home--pro pages do not reserve a fixed-logo band above the in-flow mark', 
   assert.doesNotMatch(proInner, /--mark-home/);
   assert.doesNotMatch(sheet, /padding-top:\s*calc\(var\(--mark-home\)/);
   const back = block(sheet, '.home--pro .play-exit {');
-  assert.match(back, /margin-top:\s*0\.35rem/);
+  assert.match(back, /margin-top:\s*0;/);
   assert.doesNotMatch(back, /--safe-t/);
 });
 
