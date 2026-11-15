@@ -19,7 +19,7 @@
  * - The owner's submissions apply at once. A seat's submissions are pending unless trust mode is on.
  * - The owner and an Instructors seat approve or reject. A seat never decides its own submission.
  * - Only the owner turns trust mode on or off.
- * - Only the owner merges duplicate cards (op=merge-dupes). Belt and stripes on a linked student change only from a newer student-owned submission, never from an instructor edit.
+ * - Only the owner merges duplicate cards (op=merge-dupes). Belt on the master follows a later student submission, or a coach edit that is newer than the latest student submission.
  * - Private notes: each author writes only their own file. The owner reads every author's file.
  *   A seat reads only its own. They are never in master.json, pending files, or any student route.
  *

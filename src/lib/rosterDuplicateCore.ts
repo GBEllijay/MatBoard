@@ -4,7 +4,7 @@
  * Kept free of rosterStore so the gym roster API can import it.
  */
 import { normalizeRosterPersonName } from './rosterPersonName.ts';
-import { isNewerStudentRank } from './studentOwnedRank.ts';
+import { incomingRankSource } from './studentOwnedRank.ts';
 
 export type DupableStudent = {
   id: string;
@@ -27,6 +27,7 @@ export type DupableStudent = {
   checkedIn?: boolean;
   rankUnset?: boolean;
   studentRankAt?: number;
+  coachRankAt?: number;
 };
 
 export type RosterDupeReason = 'linked-student' | 'name';
@@ -106,12 +107,15 @@ export function combinedDuplicateCard<T extends DupableStudent>(keep: T, drop: T
   if (next.stripes === undefined && drop.stripes !== undefined) next.stripes = drop.stripes;
   if (!next.linkedStudentId && drop.linkedStudentId) next.linkedStudentId = drop.linkedStudentId;
   if (!next.assignedInstructorId && drop.assignedInstructorId) next.assignedInstructorId = drop.assignedInstructorId;
-  // The owner picks which card to keep, not which belt. Newest student submission wins.
-  const rankFrom = isNewerStudentRank(drop, keep) ? drop : keep;
-  if (!rankFrom.rankUnset && typeof rankFrom.studentRankAt === 'number') {
-    if (rankFrom.belt?.trim()) next.belt = rankFrom.belt;
-    if (rankFrom.stripes !== undefined) next.stripes = rankFrom.stripes;
-    next.studentRankAt = rankFrom.studentRankAt;
+  // The owner picks which card to keep. Belt comes from the newest student
+  // submission, or from a later coach edit if that edit is newer than the student.
+  const useDrop = incomingRankSource(drop, keep);
+  const source = useDrop ? drop : keep;
+  if (source.belt?.trim() && (source.studentRankAt || source.coachRankAt || useDrop)) {
+    next.belt = source.belt;
+    if (source.stripes !== undefined) next.stripes = source.stripes;
+    if (source.studentRankAt) next.studentRankAt = source.studentRankAt;
+    if (source.coachRankAt) next.coachRankAt = source.coachRankAt;
     delete next.rankUnset;
   }
   return next;

@@ -14,7 +14,7 @@ import { buildCoachRankUpdate, dismissCoachRankUpdate, emptyUpdateLedger } from 
 import { exportProgressPacket, parseProgressPacket } from './progress/format.ts';
 import { blankStudentReport } from './studentEdition.ts';
 import { assignStudentId } from './studentIdentity.ts';
-import { beltModeOf, earlierKidRows } from './beltBook.ts';
+import { beltModeOf } from './beltBook.ts';
 import { setBeltMode, setBirthYear, setKidsBelt, setKidsTapeCount, setRankBelt } from './studentRank.ts';
 
 const TODAY = new Date(2026, 10, 11);
@@ -69,7 +69,7 @@ test('gentle notes: under 16 by birth year, under a year of training, or missing
   assert.equal(cleanBirthYear('2030', TODAY), null);
 });
 
-test('kids file + coach Blue packet: confirm moves to adult blue, keeps kids belts, cheers once', () => {
+test('kids file + leftover Blue packet: confirm does not change My rank or cheer', () => {
   const report = kidFile();
   const packet = rankPacket('Blue');
   // The packet is the same v2 rank update. Nothing new rides on it.
@@ -79,15 +79,12 @@ test('kids file + coach Blue packet: confirm moves to adult blue, keeps kids bel
   const ledger = emptyUpdateLedger();
   const result = acceptCoachBlueBelt(report, packet, ledger, { birthYear: 2010 }, 30);
   assert.equal(result.applied, true);
-  assert.equal(result.cheer, true);
-  assert.equal(result.report.profile.belt, 'blue');
-  assert.equal(beltModeOf(result.report), 'adult');
-  assert.equal(result.report.rank?.awardedOn, '2026-11-10');
-  assert.equal(result.report.rank?.tapeCount, 0);
+  assert.equal(result.cheer, false);
+  assert.equal(result.report.profile.belt, report.profile.belt, 'a leftover promotion must not change My rank');
+  assert.equal(beltModeOf(result.report), 'kids');
   assert.equal(result.report.beltBook?.birthYear, 2010);
   assert.equal(result.report.beltBook?.kids?.beltId, 'green');
-  assert.equal(earlierKidRows(result.report).some((row) => row.label === 'Green' && row.tapeCount === 2), true);
-  assert.equal(result.report.journal.length, report.journal.length + 1);
+  assert.equal(result.report.beltBook?.kids?.tapeCount, 2);
   assert.deepEqual(result.ledger.accepted, ['rank-blue-1']);
 
   // The same update again never re-applies or re-cheers.
@@ -104,13 +101,13 @@ test('kids file + coach Blue packet: confirm moves to adult blue, keeps kids bel
   assert.equal(claimBlueCheer(store, 'stu-other', packet.updateId), true);
 });
 
-test('confirmed birth year is saved; stripes on the blue update still apply', () => {
+test('confirmed birth year is saved; stripes on a leftover blue update do not apply', () => {
   const report = kidFile('yellow');
   const result = acceptCoachBlueBelt(report, rankPacket('Blue', 'rank-blue-2', 'stu-kid', 1), emptyUpdateLedger(), { birthYear: 2009 }, 30);
   assert.equal(result.applied, true);
   assert.equal(result.report.beltBook?.birthYear, 2009);
-  assert.equal(result.report.profile.belt, 'blue');
-  assert.equal(result.report.rank?.tapeCount, 1);
+  assert.equal(result.report.profile.belt, report.profile.belt);
+  assert.equal(result.report.rank?.tapeCount, report.rank?.tapeCount);
 });
 
 test('adult promotions and other belts never take the blue-belt path or cheer', () => {

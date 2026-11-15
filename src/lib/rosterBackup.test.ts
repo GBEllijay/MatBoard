@@ -209,5 +209,25 @@ describe('full roster backup format', () => {
     assert.equal(haven.studentRankAt, 50);
     assert.equal(haven.note, 'Coach note');
     assert.equal(haven.id, 'h1');
+    const fromCoach = buildRosterBackup(
+      sources([
+        student({ id: 'h4', name: 'Haven Cole', belt: 'Purple', division: 'Kids', gym: 'GB', stripes: 1, linkedStudentId: 'stu-haven', coachRankAt: 80 }),
+      ]),
+      { scope: 'shared', now },
+    );
+    const afterCoach = mergeRosterBackup(updated.next, fromCoach, { now: now.getTime(), linkedProfile: 'incoming' });
+    const coached = afterCoach.next.roster.students[0];
+    assert.equal(coached.belt, 'Purple', 'a coach edit newer than the student submission may update the master');
+    assert.equal(coached.stripes, 1);
+    assert.equal(coached.coachRankAt, 80);
+    assert.equal(coached.studentRankAt, 50);
+    const staleCoach = buildRosterBackup(
+      sources([
+        student({ id: 'h5', name: 'Haven Cole', belt: 'White', division: 'Kids', gym: 'GB', linkedStudentId: 'stu-haven', coachRankAt: 40 }),
+      ]),
+      { scope: 'shared', now },
+    );
+    const afterStale = mergeRosterBackup(afterCoach.next, staleCoach, { now: now.getTime(), linkedProfile: 'incoming' });
+    assert.equal(afterStale.next.roster.students[0].belt, 'Purple', 'an older coach edit must not overwrite');
   });
 });

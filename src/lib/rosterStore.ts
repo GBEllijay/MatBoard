@@ -122,6 +122,11 @@ export type Student = {
    */
   studentRankAt?: number;
   /**
+   * When the coach last edited belt, stripes, or last promotion on this card.
+   * This never goes back to the student's app.
+   */
+  coachRankAt?: number;
+  /**
    * Coach sync for this student. Omitted means on (older cards keep sending).
    * 'off' keeps the card fully local: no rank, competition, belt progress,
    * assessment, or photo packet is offered or sent by any route.
@@ -660,6 +665,9 @@ function copyStudentRank(from: Partial<Student>, to: Student): void {
   if (typeof from.studentRankAt === 'number' && Number.isFinite(from.studentRankAt) && from.studentRankAt > 0) {
     to.studentRankAt = from.studentRankAt;
   }
+  if (typeof from.coachRankAt === 'number' && Number.isFinite(from.coachRankAt) && from.coachRankAt > 0) {
+    to.coachRankAt = from.coachRankAt;
+  }
 }
 
 function copySyncSettings(from: Partial<Student>, to: Student): void {
@@ -1019,32 +1027,39 @@ export type StudentWriteOptions = { source?: 'editor' | 'student-submission' | '
 export function updateStudent(id: string, draft: Partial<StudentDraft>, options: StudentWriteOptions = {}): Student | null {
   const current = state.students.find((row) => row.id === id);
   if (!current) return null;
-  const lockRank = studentOwnsRosterRank(current) && options.source !== 'student-submission' && options.source !== 'follow-student-rank';
   const next = studentFromInput({
     id: current.id,
     name: draft.name ?? current.name,
-    belt: lockRank ? current.belt : (draft.belt ?? current.belt),
+    belt: draft.belt ?? current.belt,
     division: draft.division ?? current.division,
     gym: draft.gym ?? current.gym,
     photo: draft.photo !== undefined ? draft.photo : current.photo,
-    lastPromotion: lockRank ? current.lastPromotion : (draft.lastPromotion ?? current.lastPromotion),
-    lastPromotionDetail: lockRank
-      ? current.lastPromotionDetail
-      : draft.lastPromotionDetail !== undefined
-        ? draft.lastPromotionDetail
-        : current.lastPromotionDetail,
+    lastPromotion: draft.lastPromotion ?? current.lastPromotion,
+    lastPromotionDetail:
+      draft.lastPromotionDetail !== undefined ? draft.lastPromotionDetail : current.lastPromotionDetail,
     note: draft.note ?? current.note,
     checkedIn: current.checkedIn,
   });
   if (!next) return null;
-  const card = preserveRosterCard(current, next, lockRank ? { ...draft, stripes: undefined } : draft);
+  const card = preserveRosterCard(current, next, draft);
   copyStudentRank(current, card);
+  const now = options.now ?? Date.now();
   if (options.source === 'student-submission' && studentOwnsRosterRank(card)) {
     const hasBelt = Boolean(draft.belt?.trim());
     const hasStripes = draft.stripes !== undefined && (draft.stripes > 0 || hasBelt);
     if (hasBelt || hasStripes) {
-      card.studentRankAt = options.now ?? Date.now();
+      card.studentRankAt = now;
       delete card.rankUnset;
+    }
+  } else if (options.source !== 'follow-student-rank' && options.source !== 'student-submission') {
+    const stripesChanged = draft.stripes !== undefined && clipStripes(draft.stripes) !== current.stripes;
+    const beltChanged = draft.belt !== undefined && draft.belt !== current.belt;
+    const promoChanged =
+      (draft.lastPromotion !== undefined && draft.lastPromotion !== current.lastPromotion) ||
+      (draft.lastPromotionDetail !== undefined && draft.lastPromotionDetail !== current.lastPromotionDetail);
+    if (beltChanged || stripesChanged || promoChanged) {
+      card.coachRankAt = now;
+      if (card.belt.trim()) delete card.rankUnset;
     }
   }
   commit(sortStudents(state.students.map((row) => (row.id === id ? card : row))));
@@ -1056,6 +1071,7 @@ export function markRosterRankUnset(id: string): Student | null {
   const current = state.students.find((row) => row.id === id);
   if (!current) return null;
   if (current.studentRankAt) return current;
+  if (current.coachRankAt) return current;
   if (current.rankUnset) return current;
   const card: Student = { ...current, rankUnset: true };
   commit(sortStudents(state.students.map((row) => (row.id === id ? card : row))));

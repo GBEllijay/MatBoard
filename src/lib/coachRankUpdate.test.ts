@@ -68,7 +68,7 @@ test('coach-rank-update validates and rejects checklist marks', () => {
   assert.equal(banned.ok, false);
 });
 
-test('accept writes rank and a journal card once; dismiss leaves the file alone', () => {
+test('accept ignores belt and stripes on a leftover packet; dismiss leaves the file alone', () => {
   const packet = sample();
   const report = assignStudentId(blankStudentReport(1), 'stu-alex', 1);
   const checklist = report.checklist;
@@ -77,11 +77,10 @@ test('accept writes rank and a journal card once; dismiss leaves the file alone'
   assert.equal(accepted.report.checklist, checklist);
   assert.equal(accepted.report.rubric, report.rubric);
   assert.equal(accepted.report.goals, report.goals);
-  assert.equal(accepted.report.profile.belt, 'blue');
-  assert.equal(accepted.report.rank?.tapeCount, 2);
-  assert.equal(accepted.report.rank?.tapeDates[1], '2026-11-03');
-  assert.match(latestJournalNotes(accepted.report), /Coach recorded Blue belt, stripe 2 on Nov 3/);
+  assert.equal(accepted.report.profile.belt, 'white', 'a leftover promotion packet must not change My rank');
+  assert.equal(accepted.report.rank, report.rank);
   assert.match(latestJournalNotes(accepted.report), /Nice work/);
+  assert.doesNotMatch(latestJournalNotes(accepted.report), /Coach recorded Blue belt/);
   assert.equal(accepted.report.profile.gymName, 'Advantage');
 
   const again = acceptCoachRankUpdate(accepted.report, packet, accepted.ledger, 90);
@@ -157,9 +156,10 @@ test('linking a roster card keeps the student id across a later save', () => {
       stripes: 2,
     });
     assert.equal(blocked?.linkedStudentId, 'stu-alex');
-    assert.equal(blocked?.belt, 'White', 'the instructor cannot change a linked belt');
-    assert.equal(blocked?.stripes, undefined);
+    assert.equal(blocked?.belt, 'Blue', 'the coach can edit belt on their own roster');
+    assert.equal(blocked?.stripes, 2);
     assert.equal(blocked?.note, 'Coach note');
+    assert.ok((blocked?.coachRankAt ?? 0) > 0);
     const saved = updateStudent(added.id, { belt: 'Blue', stripes: 2 }, { source: 'student-submission', now: 20 });
     assert.equal(saved?.linkedStudentId, 'stu-alex');
     assert.equal(saved?.stripes, 2);

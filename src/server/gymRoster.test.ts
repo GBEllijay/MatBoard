@@ -384,6 +384,20 @@ test('an instructor submit cannot overwrite a linked student belt; a newer stude
   assert.equal(haven?.stripes, 2);
   assert.equal(haven?.studentRankAt, 80);
   assert.equal(master?.roster.students.filter((row) => row.linkedStudentId === 'stu-haven').length, 1);
+  const fromCoach = await call(env, '/api/gym/roster?op=submit', coach, {
+    backup: backup([student('h9', 'Haven', { belt: 'Purple', stripes: 1, linkedStudentId: 'stu-haven', coachRankAt: 120 })]),
+  });
+  assert.equal(fromCoach.status, 200);
+  const afterCoach = (await state(env, owner)).body.master;
+  const coached = afterCoach?.roster.students.find((row) => row.linkedStudentId === 'stu-haven');
+  assert.equal(coached?.belt, 'Purple', 'a later coach edit may update the master');
+  assert.equal(coached?.coachRankAt, 120);
+  const staleCoach = await call(env, '/api/gym/roster?op=submit', coach, {
+    backup: backup([student('h9', 'Haven', { belt: 'White', linkedStudentId: 'stu-haven', coachRankAt: 10 })]),
+  });
+  assert.equal(staleCoach.status, 200);
+  const stillPurple = (await state(env, owner)).body.master?.roster.students.find((row) => row.linkedStudentId === 'stu-haven');
+  assert.equal(stillPurple?.belt, 'Purple', 'an older coach edit must not overwrite the master');
 });
 
 test('only the owner can merge duplicate academy cards', async () => {

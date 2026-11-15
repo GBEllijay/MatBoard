@@ -93,38 +93,26 @@ function seedKid(updateId: string, belt = 'Blue') {
   queueCoachUpdate(localStorage, built.packet);
 }
 
-test('student: Accept asks to confirm Blue and birth year; Not yet changes nothing', () => {
+test('student: a leftover Blue packet is accepted without changing My rank', () => {
   seedKid('rank-blue-ui-1');
   const { host, unmount } = mount(<CoachUpdateInbox />);
-  click(button(host, /Accept blue belt/));
-  const confirm = host.querySelector('fieldset.blue-belt-confirm');
-  assert.ok(confirm, 'confirm prompt');
-  assert.match(confirm.textContent ?? '', /Your coach promoted you to Blue belt/);
-  assert.match(confirm.textContent ?? '', /New belt: Blue/);
-  const year = host.querySelector('input[aria-label="Birth year"]') as HTMLInputElement;
-  assert.equal(year.value, '2010');
-  click(button(host, /Not yet/));
+  click(button(host, /^Accept$/));
   assert.equal(host.querySelector('fieldset.blue-belt-confirm'), null);
   assert.equal(beltModeOf(loadStudentReport(localStorage)), 'kids');
-  assert.equal(readCoachQueue(localStorage).length, 1);
+  assert.equal(loadStudentReport(localStorage).profile.belt, 'green');
+  assert.equal(readCoachQueue(localStorage).length, 0);
   assert.equal(host.querySelector('.kids-grandmaster'), null);
   unmount();
 });
 
-test('student: Confirm applies blue, fires the cheer once, and never replays on reload', () => {
+test('student: accepting a leftover Blue packet does not cheer or change the belt', () => {
   seedKid('rank-blue-ui-2');
   const first = mount(<CoachUpdateInbox />);
-  click(button(first.host, /Accept blue belt/));
-  type(first.host.querySelector('input[aria-label="Birth year"]') as HTMLInputElement, '2009');
-  click(button(first.host, /Confirm Blue belt, born 2009/));
-  const cheer = first.host.querySelector('.kids-grandmaster');
-  assert.ok(cheer, 'cheer shows');
-  assert.match(cheer.textContent ?? '', /Parabéns, Coach!/);
-  assert.ok(cheer.querySelector('.kids-confetti'), 'confetti');
+  click(button(first.host, /^Accept$/));
+  assert.equal(first.host.querySelector('.kids-grandmaster'), null);
   const saved = loadStudentReport(localStorage);
-  assert.equal(saved.profile.belt, 'blue');
-  assert.equal(beltModeOf(saved), 'adult');
-  assert.equal(saved.beltBook?.birthYear, 2009);
+  assert.equal(saved.profile.belt, 'green');
+  assert.equal(beltModeOf(saved), 'kids');
   assert.deepEqual(readUpdateLedger(localStorage).accepted, ['rank-blue-ui-2']);
   first.unmount();
   const again = mount(<CoachUpdateInbox />);

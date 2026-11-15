@@ -593,9 +593,8 @@ export function RosterPage() {
         }}
         draft={editor?.draft ?? emptyDraft()}
         saveError={saveError}
-        focusStripes={Boolean(editor?.focusStripes) && !Boolean(editor?.id && studentOwnsRosterRank(roster.students.find((row) => row.id === editor.id) ?? {}))}
-        rankLocked={Boolean(editor?.id && studentRoster && studentOwnsRosterRank(roster.students.find((row) => row.id === editor.id) ?? {}))}
-        rankHint={editor?.id ? rosterRankHint(roster.students.find((row) => row.id === editor.id) ?? { belt: '' }) : null}
+        focusStripes={Boolean(editor?.focusStripes)}
+        rankHint={editor?.id && studentRoster ? rosterRankHint(roster.students.find((row) => row.id === editor.id) ?? { belt: '' }) : null}
         onChange={(draft) => setEditor((current) => (current ? { ...current, draft } : current))}
         onClose={() => {
           setSaveError('');
@@ -1059,14 +1058,11 @@ export function StudentCard({
           </div>
           {onOpenFace ? null : (
             <div className="roster-card__belt-row">
-              {student.rankUnset && studentOwnsRosterRank(student) ? (
+              {student.rankUnset && studentOwnsRosterRank(student) && !student.coachRankAt ? (
                 <span className="roster-card__rank-unset">Not set yet</span>
               ) : (
                 <BeltTip belt={student.belt} />
               )}
-              {typeof student.studentRankAt === 'number' && studentOwnsRosterRank(student) && !student.rankUnset ? (
-                <span className="roster-card__rank-note">Set by the student</span>
-              ) : null}
               {competitorSwitch ? (
                 <button
                   type="button"
@@ -1246,7 +1242,6 @@ function StudentEditor({
   draft,
   saveError,
   focusStripes = false,
-  rankLocked = false,
   rankHint = null,
   onChange,
   onClose,
@@ -1265,8 +1260,7 @@ function StudentEditor({
   saveError: string;
   /** Opened from the card's belt: the Promotion stripes control is the belt. */
   focusStripes?: boolean;
-  /** Linked Student Edition cards: belt and stripes are read-only. */
-  rankLocked?: boolean;
+  /** Linked cards: belt edits stay on this roster and are not sent to the student. */
   rankHint?: string | null;
   onChange: (draft: StudentDraft) => void;
   onClose: () => void;
@@ -1444,7 +1438,7 @@ function StudentEditor({
                   />
                 </label>
               </div>
-              {linkedStudent || rankLocked ? null : (
+              {linkedStudent ? null : (
               <div className="clipboard__brow card-entry__brow">
                 <button type="button" className="card-entry__tap card-entry__beltslot" data-testid="card-entry-belt-slot" onClick={focusBelts}>
                   {draft.belt.trim() ? (
@@ -1464,16 +1458,6 @@ function StudentEditor({
                 </button>
               </p>
             ) : null}
-            {rankLocked ? (
-              <div className="card-entry__identity" data-testid="student-owned-rank">
-                {rankHint?.startsWith('Not set yet') ? (
-                  <strong>Not set yet</strong>
-                ) : (
-                  <RankBelt student={{ belt: draft.belt, stripes: draft.stripes ?? 0, lastPromotion: draft.lastPromotion }} />
-                )}
-                <p className="roster-edit__hint">{rankHint ?? 'Set by the student'}</p>
-              </div>
-            ) : null}
             {studentRoster || !noPhotos ? null : (
               <p className="roster-edit__hint card-entry__note" data-testid="editor-no-photos">
                 <strong>No photos</strong> · photos are off for this student.
@@ -1483,7 +1467,6 @@ function StudentEditor({
             <div className="card-entry__body">
               {linkedStudent ? null : (
               <>
-              {rankLocked ? null : (
               <fieldset className="roster-edit__belts card-entry__rack" ref={rackRef}>
                 <legend>Belt rank</legend>
                 <p className="roster-edit__hint">
@@ -1532,7 +1515,7 @@ function StudentEditor({
                   />
                 </label>
               </fieldset>
-              )}
+              {rankHint ? <p className="roster-edit__hint" data-testid="student-owned-rank">{rankHint}</p> : null}
               <div className="card-entry__facts">
                 <label className="card-entry__cell">
                   Division
@@ -1555,7 +1538,6 @@ function StudentEditor({
                   />
                 </label>
               </div>
-              {rankLocked ? null : (
               <div className="roster-edit__promotion card-entry__facts">
                 <label className="roster-edit__promotion-date card-entry__cell">
                   Last promotion
@@ -1597,7 +1579,6 @@ function StudentEditor({
                   </label>
                 ) : null}
               </div>
-              )}
               </>
               )}
               {!studentRoster && competitorId ? <CompetitorWorkspace competitorId={competitorId} /> : null}

@@ -87,6 +87,7 @@ import {
 } from './rosterStore.ts';
 import type { StudentCardShare } from './studentCardShare.ts';
 import { readCloudBearer } from './advantageCloudMedia.ts';
+import { stripCoachToStudentRank } from './studentOwnedRank.ts';
 import { submitGymRoster } from './gymRosterClient.ts';
 import { ensureRosterCardsForAssessments } from './rosterCardFromInbox.ts';
 import type { InstructorAssessmentItem } from './instructorAssessments.ts';
@@ -201,7 +202,7 @@ export function recordCardSyncSent(
 ): void {
   if (!storage) return;
   const row: CardSyncSent = { linkedStudentId: packet.studentId, kind: packet.kind, updateId: packet.updateId, sentAt: now, mode };
-  if (packet.kind === 'coach-rank-update') {
+  if (packet.kind === 'coach-rank-update' && packet.rankUpdate?.belt) {
     row.promotion = {
       belt: packet.rankUpdate.belt,
       stripe: packet.rankUpdate.stripeCount,
@@ -342,9 +343,10 @@ export async function sendCardSync(
   if (!card) return { mode: 'blocked', gate: 'unknown-card', reason: 'That card is not on this roster.' };
   let gate = syncSendGate(card, options.actor ?? currentActor(), roster);
   if (gate === 'send' && card.linkedStudentId !== packet.studentId) gate = 'unlinked';
-  const result = await deliverSyncPacket(packet, gate, { folder: options.folder, deliver: options.deliver });
+  const outbound = stripCoachToStudentRank(packet);
+  const result = await deliverSyncPacket(outbound, gate, { folder: options.folder, deliver: options.deliver });
   if (result.mode !== 'blocked') {
-    recordCardSyncSent(packet, result.mode, options.log === undefined ? defaultStorage() : options.log, options.now);
+    recordCardSyncSent(outbound, result.mode, options.log === undefined ? defaultStorage() : options.log, options.now);
   }
   return result;
 }

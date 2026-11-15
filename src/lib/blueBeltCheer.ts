@@ -1,20 +1,13 @@
 /**
- * Kids belt → blue belt, pushed by the coach. A rite of passage.
- *
- * Coach side: promoting a kids-belt card (Grey, Yellow, Orange, Green) to Blue
- * asks the coach to confirm the belt and the birth year before anything is sent.
- * Student side: an incoming coach rank update that moves a kids-belt file to
- * Blue asks the student to confirm the belt and birth year. Confirm moves the
- * file to the adult system (kids belts stay under Earlier belts) and the master
- * congratulates the coach, with confetti, once per promotion.
- *
- * The packet is the existing coach-rank-update (schema v2). Nothing new rides on it.
- * Adult-to-adult promotions and other belts never take this path.
+ * Kids-to-Blue promotions are no longer sent from the coach to the student
+ * (rankSendOffer is always noop). If an older packet is still in the queue,
+ * confirm consumes it without changing My rank. A typed birth year may still
+ * be saved. No cheer fires, because the promotion is not applied.
  */
 
 import { acceptCoachRankUpdate, buildCoachRankUpdate, type UpdateLedger } from './coachRankUpdate.ts';
 import { blankStudentReport } from './studentEdition.ts';
-import { beltModeOf, ibjjfAge, setBeltMode, setBirthYear, setKidsBelt, startAdultFromKids } from './studentRank.ts';
+import { beltModeOf, ibjjfAge, setBeltMode, setBirthYear, setKidsBelt } from './studentRank.ts';
 import { canonicalBelt, KIDS_BELTS } from './rosterStore.ts';
 import type { CoachRankUpdatePacket, ProgressBelt, StudentProgressReport } from './progress/types.ts';
 
@@ -94,9 +87,9 @@ export function isKidsToBlueUpdate(
 }
 
 /**
- * Student confirmed the blue belt and birth year. Sets the birth year, moves the
- * file to the adult system on the promotion date, then applies the coach update
- * (stripes, journal card) as before. Any other update is the plain accept.
+ * A leftover kids-to-Blue packet is consumed without changing My rank. Birth year
+ * may still be saved if the student typed one. No cheer, because the promotion
+ * is not applied. Any other update is the plain accept.
  */
 export function acceptCoachBlueBelt(
   report: StudentProgressReport,
@@ -111,9 +104,8 @@ export function acceptCoachBlueBelt(
   }
   let next = report;
   if (confirm.birthYear != null) next = setBirthYear(next, confirm.birthYear, now);
-  next = startAdultFromKids(next, 'blue', packet.rankUpdate.promotionDate, now);
   const result = acceptCoachRankUpdate(next, packet, ledger, now);
-  return { ...result, cheer: result.applied };
+  return { ...result, cheer: false };
 }
 
 function readSeen(storage: Pick<MemoryStore, 'getItem'>): Record<string, string[]> {

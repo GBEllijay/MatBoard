@@ -48,3 +48,18 @@ test('mergeDuplicateStudents keeps the chosen card, fills blanks, and archives t
   if (!device.ok) return;
   assert.equal(getRoster().students.filter((row) => row.name === 'Haven' && !isArchivedStudent(row)).length, 1);
 });
+
+test('mergeDuplicateStudents uses a later coach belt when it is newer than the student submission', () => {
+  resetRoster();
+  const keep = addStudent({ name: 'Haven', belt: 'White', division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', note: 'Coach note' }, { rosterList: 'student' })!;
+  const drop = addStudent({ name: 'Haven', belt: 'Purple', division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', note: '' }, { rosterList: 'student' })!;
+  linkRosterCard(keep.id, 'stu-haven');
+  linkRosterCard(drop.id, 'stu-haven');
+  updateStudent(keep.id, { belt: 'White' }, { source: 'student-submission', now: 10 });
+  updateStudent(drop.id, { belt: 'Purple', stripes: 1 }, { now: 40 });
+  const merged = mergeDuplicateStudents(getRoster().students, keep.id, drop.id);
+  assert.ok(merged.ok);
+  if (!merged.ok) return;
+  assert.equal(merged.kept.belt, 'Purple', 'later coach edit wins over an earlier student belt');
+  assert.equal(merged.kept.note, 'Coach note');
+});
