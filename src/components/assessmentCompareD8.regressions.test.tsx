@@ -18,6 +18,7 @@ import { buildCoachAssessmentUpdate, readCoachOverlay, writeCoachOverlay } from 
 import { queueCoachUpdate, readCoachQueue } from '../lib/coachRankUpdate.ts';
 import { ASSESSMENTS_WAITING_KEY, buildAssessmentSubmission } from '../lib/instructorAssessmentClient.ts';
 import { assessmentItemId } from '../lib/instructorAssessments.ts';
+import { readFileSync } from 'node:fs';
 import { COACH_STUDENT_UPDATES_KEY, STUDENT_COACH_UPDATE_KIND } from '../lib/coachProgressFile.ts';
 import { blankStudentReport, saveStudentReport } from '../lib/studentEdition.ts';
 import { assignStudentId } from '../lib/studentIdentity.ts';
@@ -323,3 +324,14 @@ test('Assessments waiting: Compare uses the submitted self scores over the roste
   unmount();
 });
 
+test('inbox compare D8 separates overlapping face labels, and inbox copy sits on a solid card clear of the A–Z strip', () => {
+  const compare = readFileSync('src/components/AssessmentCompareD8.tsx', 'utf8');
+  assert.match(compare, /<CardDiamond[\s\S]*separateLabels/);
+  const diamond = readFileSync('src/components/rosterCard/CoachClipboardCard.tsx', 'utf8');
+  assert.match(diamond, /separateLabels=\{separateLabels\}/);
+  const css = readFileSync('src/index.css', 'utf8');
+  assert.match(css, /\.roster__inbox\s*\{[^}]*padding:\s*0 48px 0 10px/);
+  assert.match(css, /\.roster-inbox-card\s*\{[^}]*background:\s*#f4f1ea/);
+  const inbox = readFileSync('src/components/CoachStudentInbox.tsx', 'utf8');
+  assert.match(inbox, /className="roster-inbox-card"/);
+});

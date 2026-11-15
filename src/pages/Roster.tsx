@@ -632,8 +632,10 @@ export function RosterPage() {
       />
       {studentRoster ? (
         <>
-          <PendingCardShares roster={roster.students} title="New student cards" />
-          <AssessmentsWaiting roster={roster.students} />
+          <div className="roster__inbox">
+            <PendingCardShares roster={roster.students} title="New student cards" />
+            <AssessmentsWaiting roster={roster.students} />
+          </div>
         </>
       ) : (
         <GuestArchive />

@@ -17,9 +17,7 @@
 }
 
 .assess-waiting [data-assessment-item] {
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
-  padding-top: 8px;
-  margin-top: 8px;
+  margin: 0;
 }
 
 .assess-send {

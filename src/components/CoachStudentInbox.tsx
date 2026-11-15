@@ -92,7 +92,7 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
       <h3>{title}</h3>
       <p>A merge fills only blank fields. A shared photo waits for the head coach.</p>
       {shares.map((share) => (
-        <div key={share.shareId}>
+        <article key={share.shareId} className="roster-inbox-card">
           <p>
             {share.card.name} · {share.card.belt || 'No belt'}
             {share.card.stripes ? ` · ${share.card.stripes} stripes` : ''}
@@ -140,7 +140,7 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
           >
             Decline
           </button>
-        </div>
+        </article>
       ))}
       <button
         type="button"
@@ -212,7 +212,7 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
         const card = roster.find((row) => row.linkedStudentId === update.studentId && !row.guestId);
         const tournaments = update.competition?.tournaments ?? [];
         return (
-          <div key={update.updateId}>
+          <article key={update.updateId} className="roster-inbox-card">
             <p>
               {card ? card.name : 'No linked card yet'}
               {update.profile ? ' · profile' : ''}
@@ -285,7 +285,7 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
             >
               Dismiss
             </button>
-          </div>
+          </article>
         );
       })}
     </div>
