@@ -330,7 +330,7 @@ test('Daily Training copy is the Drive day-save handoff, including seated Pro in
   assert.equal(driveVideoProgressLabel(2, 3), 'Uploading 2 of 3 videos to Google Drive…');
   assert.match(
     drivePackageNotice({ lessonSaved: true, revisions: 1, uploaded: 0, failed: 1, unreachable: false }),
-    /Lesson text saved to Google Drive\. 1 video stays on this phone/,
+    /Lesson text saved to Google Drive\. 1 video stays on this device/,
   );
   assert.match(
     drivePackageNotice({ lessonSaved: true, revisions: 2, uploaded: 1, failed: 0, unreachable: false }),

@@ -512,7 +512,7 @@ test('selfie follows its switch; new backups and progress PDFs never include the
   writeStudentGymLogo(existing, storage);
   applyBackupToMemory(storage, oldBackup.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
   assert.equal(readProfilePortrait(storage), selfie);
-  assert.equal(readStudentGymLogo(storage), existing, 'restore does not overwrite a logo already on this phone');
+  assert.equal(readStudentGymLogo(storage), existing, 'restore does not overwrite a logo already on this device');
 
   const empty = memory();
   applyBackupToMemory(empty, oldBackup.file, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
@@ -560,7 +560,7 @@ test('a profile photo rides in a backup only with the switch, and merge does not
   const restored = memory();
   const merged = applyBackupToMemory(restored, parsed.file, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
   assert.equal(readProfilePortrait(restored), selfie);
-  assert.match(merged.note, /Saved on this phone/);
+  assert.match(merged.note, /Saved on this device/);
   assert.doesNotMatch(merged.note, /Cloud/);
 
   applyBackupToMemory(restored, { ...parsed.file, portrait: other }, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });

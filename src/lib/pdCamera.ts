@@ -35,7 +35,7 @@ export const CAMERA_PHOTO_HINT = 'Photos go to the Gallery.';
 export const TODAYS_VIDEOS_TITLE = "Today's videos";
 export const TODAYS_VIDEOS_EMPTY = 'No videos in today\'s videos yet.';
 export const TODAYS_VIDEOS_FROM_DRIVE = "Play from the gym's Google Drive";
-export const TODAYS_VIDEOS_FROM_DEVICE = 'Play a video from this phone';
+export const TODAYS_VIDEOS_FROM_DEVICE = 'Play a video from this device';
 export const TODAYS_VIDEOS_LOOP_LABEL = 'Loop';
 export const TODAYS_VIDEOS_LOOP_ALWAYS = 'Always';
 

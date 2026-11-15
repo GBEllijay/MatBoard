@@ -147,7 +147,7 @@ export function BackupMenu() {
               setPending(parsed.choice);
               setError('');
               setSavedNote('');
-              setStatus(parsed.choice.restorable ? 'Choose merge or replace. Merge keeps records that are only on this phone.' : '');
+              setStatus(parsed.choice.restorable ? 'Choose merge or replace. Merge keeps records that are only on this device.' : '');
             });
           }}
         />

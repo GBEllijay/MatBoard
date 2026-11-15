@@ -367,7 +367,7 @@ export function RosterPage() {
 
       <p className="roster__lead">
         {studentRoster
-          ? 'Student Roster with names, belts, and notes. The list stays on this phone.'
+          ? 'Student Roster with names, belts, and notes. The list stays on this device.'
           : coachRoster
             ? ROSTER_LEAD_COACH
             : ROSTER_LEAD_PRO}

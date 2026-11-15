@@ -16,9 +16,9 @@ export const DRIVE_PICK_BACK = 'Back';
 export const DRIVE_PICK_LOADING = 'Opening the gym folder…';
 export const DRIVE_PICK_RECONNECT = 'Reconnect';
 export const DRIVE_PICK_BESIDE_PHOTOS =
-  'Pick from gallery includes Google Photos and this phone. Google Drive is an additional source. With Advantage Cloud on, gallery picks also upload to this gym\'s Advantage Cloud. Without it, Advantage does not host those files.';
+  'Pick from gallery includes Google Photos and this device. Google Drive is an additional source. With Advantage Cloud on, gallery picks also upload to this gym\'s Advantage Cloud. Without it, Advantage does not host those files.';
 export const DRIVE_PICK_STAY =
-  'These files come from the gym Google Drive folder, in addition to Google Photos or this phone. This phone keeps a copy so the TV can play them. With Advantage Cloud on, gallery files also upload to this gym\'s Advantage Cloud. Without it, Advantage does not host them.';
+  'These files come from the gym Google Drive folder, in addition to Google Photos or this device. This device keeps a copy so the TV can play them. With Advantage Cloud on, gallery files also upload to this gym\'s Advantage Cloud. Without it, Advantage does not host them.';
 
 export type DrivePickKind = 'photo' | 'video' | 'any' | 'lesson';
 

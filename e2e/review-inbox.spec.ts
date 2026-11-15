@@ -113,7 +113,7 @@ test('Sunday review opens the inbox and the coach can submit', async ({ page }) 
   await seedClassPhoto(page);
   const distribute = page.getByRole('complementary', { name: 'Instructor distribution' });
   await distribute.getByRole('button', { name: 'Upload for instructor distribution' }).click();
-  await expect(distribute.getByText('Saved on this phone.')).toBeVisible();
+  await expect(distribute.getByText('Saved on this device.')).toBeVisible();
   await page.getByRole('button', { name: 'Submit for review' }).click();
   await expect(page.getByText('Sent for review.')).toBeVisible();
   await shot(page, 'review-submit-desktop');

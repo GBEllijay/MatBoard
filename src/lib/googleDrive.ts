@@ -133,7 +133,7 @@ export const DRIVE_SIGN_IN_FAILED =
 export const DRIVE_FOLDER_EMPTY = 'This Google Drive account does not have any folders yet.';
 export const CLASS_HISTORY_TITLE = 'Class history';
 export const CLASS_HISTORY_LEAD =
-  'Techniques, photos, and videos from the gym Google Drive folder, by date. Open this class puts that day’s lesson plan and training videos back on this phone. They stay in Drive for as long as the gym keeps that folder.';
+  'Techniques, photos, and videos from the gym Google Drive folder, by date. Open this class puts that day’s lesson plan and training videos back on this device. They stay in Drive for as long as the gym keeps that folder.';
 export const CLASS_HISTORY_EMPTY = 'Nothing in this Google Drive folder yet.';
 export const CLASS_HISTORY_CONNECT =
   'Connect your Google Drive folder to see this list. Advantage does not host the photos or videos.';

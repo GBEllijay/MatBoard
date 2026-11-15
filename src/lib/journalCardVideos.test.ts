@@ -156,7 +156,7 @@ test('a damaged video row is dropped and the rest of the journal still opens', (
   assert.equal(readJournalCardVideos([]), undefined);
 });
 
-test('restoring a file adds videos this phone does not have and keeps the ones it does', () => {
+test('restoring a file adds videos this device does not have and keeps the ones it does', () => {
   const { report, id } = withCard();
   const local = addCardVideo(report, id, { source: 'link', url: 'https://x.test/local', term: cardVideoTerm('Kimura'), note: '' }, { id: 'jvid.local', now: 20 }).report;
   const incoming = addCardVideo(report, id, { source: 'link', url: 'https://x.test/other', term: cardVideoTerm('Kimura'), note: '' }, { id: 'jvid.other', now: 21 }).report;
@@ -168,7 +168,7 @@ test('row labels name the term and where the video lives', async () => {
   const { cardVideoLabel } = await import('./journalCardVideos.ts');
   const base = { term: { id: 'gl.kimura', name: 'Kimura' }, note: '', createdAt: 1, updatedAt: 1 };
   assert.equal(cardVideoLabel({ ...base, id: 'a', source: 'link', url: 'https://www.youtube.com/watch?v=1' }), 'Kimura · Link · youtube.com');
-  assert.equal(cardVideoLabel({ ...base, id: 'b', source: 'phone', fileName: 'k.mp4' }), 'Kimura · On this phone · k.mp4');
+  assert.equal(cardVideoLabel({ ...base, id: 'b', source: 'phone', fileName: 'k.mp4' }), 'Kimura · On this device · k.mp4');
 });
 
 test('the public demo journal card keeps the same id on every read, so it opens', async () => {

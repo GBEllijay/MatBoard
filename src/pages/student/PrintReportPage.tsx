@@ -69,7 +69,7 @@ export function PrintReportPage({ kind }: { kind: 'progress' | 'assessment' }) {
         </div>
         {profileNeedsPrompt(report) ? (
           <form className="report-prompt" aria-label="Student profile" onSubmit={(event) => event.preventDefault()}>
-            <p>Add your name, gym, and start date so this report is ready to hand to an instructor. They stay on this phone with the rest of your Student Edition data.</p>
+            <p>Add your name, gym, and start date so this report is ready to hand to an instructor. They stay on this device with the rest of your Student Edition data.</p>
             <StudentProfileFields report={report} commit={commit} />
           </form>
         ) : null}
@@ -153,7 +153,7 @@ function AssessmentSheet({
     <>
       <ReportHero title="Self-assessment" report={report} issuedOn={issuedOn} score={average || undefined} />
       <div className="report-body">
-        {!latest ? <p>No self-assessment saved on this phone.</p> : null}
+        {!latest ? <p>No self-assessment saved on this device.</p> : null}
         {latest ? (
           <>
             <div className="report-checkin">

@@ -226,7 +226,7 @@ export function BeltPage() {
             <p className="student-quiet">
               Suggestions only. Copy a line into your personal goals if you want it. Your practical benchmarks stay as you marked them.
             </p>
-            {!shelf.plan && !shelf.feedback && !coachNotes.length ? <p>Nothing from your coach on this phone yet.</p> : null}
+            {!shelf.plan && !shelf.feedback && !coachNotes.length ? <p>Nothing from your coach on this device yet.</p> : null}
             {shelf.plan ? (
               <article className="ink">
                 <h3>{shelf.plan.plan.title || 'Work on before next promotion'}</h3>
@@ -502,7 +502,7 @@ function OpenedBeltBenchmarks({
       </Link>
       {found ? null : (
         <p id={anchorId} className="ink belt-block is-anchor" role="status">
-          That benchmark is not on the {label} list on this phone.
+          That benchmark is not on the {label} list on this device.
         </p>
       )}
       {visible.map((row) => (

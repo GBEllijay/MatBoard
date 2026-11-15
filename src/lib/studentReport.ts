@@ -257,7 +257,7 @@ function rankBlock(report: StudentProgressReport): ReportBlock {
     lines.push(`Current belt: ${worn.label}`);
     lines.push(`Stripes: ${worn.tapeCount}`);
     appendStripeLines(lines, worn.tapeCount, worn.tapeDates);
-    lines.push('Adult belts saved on this phone:');
+    lines.push('Adult belts saved on this device:');
   }
   const finalRank = isFinalRank(report.profile.belt);
   if (finalRank) lines.push(`Current rank: ${degreeHeadline(report.profile.belt, rank?.tapeCount ?? 0)}`);
@@ -499,7 +499,7 @@ export function selfAssessmentLines(report: StudentProgressReport, assessment: A
     '',
   ];
   const entries = [...assessment.entries].sort((left, right) => right.date.localeCompare(left.date));
-  if (!entries.length) lines.push('No self-assessment saved on this phone.');
+  if (!entries.length) lines.push('No self-assessment saved on this device.');
   for (const entry of entries) {
     lines.push(`${entry.date} — average ${assessmentAverage(entry.scores).toFixed(1)}`);
     for (const area of ASSESSMENT_FORM_AREAS) {

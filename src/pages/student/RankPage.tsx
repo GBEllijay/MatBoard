@@ -182,7 +182,7 @@ export function RankPage() {
           <section aria-label="Profile">
             <h2>Profile</h2>
             <p className="student-quiet">
-              Your name, gym, and start date print on the progress report and the self-assessment. The start date can stay blank. They stay on this phone.
+              Your name, gym, and start date print on the progress report and the self-assessment. The start date can stay blank. They stay on this device.
             </p>
             <StudentProfileFields report={report} commit={commit} />
           </section>
@@ -408,7 +408,7 @@ export function RankPage() {
             </section>
           ) : null}
           <p className="student-quiet">
-            Photos stay on this phone. Send to coach includes them when the file has room.
+            Photos stay on this device. Send to coach includes them when the file has room.
           </p>
           <p className="student-quiet">
             A Promotion test on the calendar is a reminder you add by hand. It does not fill a belt date. The calendar reads the dates you save here.
@@ -676,7 +676,7 @@ function StripePhotoMarks({
 
 function PhotoSavedLine({ show, token }: { show: boolean; token: number }) {
   if (!show) return null;
-  return <SaveConfirm message="Saved on this phone. Shows on your belt page." token={token} />;
+  return <SaveConfirm message="Saved on this device. Shows on your belt page." token={token} />;
 }
 
 function PhotoRow({
@@ -846,8 +846,8 @@ function BeltSystemSwitch({
   onConfirm: () => void;
 }) {
   const note = pending === 'kids'
-    ? 'Switch to kids belts? Your history stays. Your adult belts stay on this phone.'
-    : 'Switch to adult belts? Your history stays. Your kids belts stay on this phone.';
+    ? 'Switch to kids belts? Your history stays. Your adult belts stay on this device.'
+    : 'Switch to adult belts? Your history stays. Your kids belts stay on this device.';
   return (
     <section className="belt-system" aria-label="Belt system">
       <h2>Belt system</h2>
@@ -873,7 +873,7 @@ function BeltSystemSwitch({
         </div>
       ) : (
         <p className="student-quiet">
-          {mode === 'kids' ? 'IBJJF kids belts. Your adult belts stay on this phone.' : 'Adult stays the default. Kids belts stay saved if you switch.'}
+          {mode === 'kids' ? 'IBJJF kids belts. Your adult belts stay on this device.' : 'Adult stays the default. Kids belts stay saved if you switch.'}
         </p>
       )}
     </section>

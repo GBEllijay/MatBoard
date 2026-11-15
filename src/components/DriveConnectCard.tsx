@@ -87,7 +87,7 @@ function connectedDetail(binding: CloudBinding): string {
   if (binding.providerId === 'oneDrive') {
     return `${who}This OneDrive folder is connected. A small connect file was saved there. Lesson packages on OneDrive are not in this build yet. Advantage does not host the files.`;
   }
-  return `${who}Lesson plans and attached training videos save in this folder. This phone keeps a copy of each video for offline play. Advantage does not host the video files.`;
+  return `${who}Lesson plans and attached training videos save in this folder. This device keeps a copy of each video for offline play. Advantage does not host the video files.`;
 }
 
 /**

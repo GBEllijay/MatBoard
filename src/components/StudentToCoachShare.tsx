@@ -81,7 +81,7 @@ export function ShareCardWithCoach({
   withPhoto = true,
   label = 'Share my card with my coach',
   buttonClassName = 'ink-btn ink-btn--save',
-  note = 'Sends your name, belt, stripes, and gym. Your journal and notes stay on this phone.',
+  note = 'Sends your name, belt, stripes, and gym. Your journal and notes stay on this device.',
   onNoChannel,
 }: {
   /** Send my ID to coach sends no photo. */

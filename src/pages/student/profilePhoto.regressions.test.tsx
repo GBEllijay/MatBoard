@@ -171,7 +171,7 @@ test('a camera photo that encodes is saved from the Choose photo control', async
     await acknowledgeAndUse();
     const photo = page.host.querySelector('[aria-label="Profile photo"]');
     const savedNote = photo?.querySelector('.save-confirm');
-    assert.match(savedNote?.textContent ?? '', /Saved on this phone/);
+    assert.match(savedNote?.textContent ?? '', /Saved on this device/);
     assert.equal(savedNote?.querySelector('.save-confirm__mark')?.textContent?.trim(), '✓');
     assert.doesNotMatch(savedNote?.textContent ?? '', /Cloud/);
     assert.equal(photo?.querySelector('#profile-portrait-error'), null);

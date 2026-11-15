@@ -14,7 +14,7 @@ export function WhiteRosterCard() {
       />
       <strong>Match names</strong>
       <span className="mode-card__sub">Names and belts</span>
-      <span>Save competitor names and belt ranks on this phone, then pick them on the scoreboard.</span>
+      <span>Save competitor names and belt ranks on this device, then pick them on the scoreboard.</span>
       <div className="mode-card__actions">
         <Link className="btn" to="/white/roster">
           Match names

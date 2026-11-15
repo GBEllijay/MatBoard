@@ -506,7 +506,7 @@ test('adult belts stay put when the student switches to kids and back', async ()
     await click(buttonNamed('Kids'));
     assert.equal(buttonNamed('Adult').getAttribute('aria-pressed'), 'true');
     assert.equal(labeled('Stripe 1').getAttribute('aria-pressed'), 'true');
-    assert.match(document.body.textContent ?? '', /Your adult belts stay on this phone/);
+    assert.match(document.body.textContent ?? '', /Your adult belts stay on this device/);
     await click(buttonNamed('Stay'));
     assert.equal(labeled('1st degree').getAttribute('aria-pressed'), 'true');
     await click(buttonNamed('Kids'));
@@ -748,7 +748,7 @@ test('switching to adult and tapping Blue also cheers once; adult White to Blue 
   }
 });
 
-test('a kids profile shows her photo on this phone, and reports stay off until a parent turns that on', async () => {
+test('a kids profile shows her photo on this device, and reports stay off until a parent turns that on', async () => {
   const report = setBeltMode(blankStudentReport(50), 'kids', 51);
   report.profile.gymName = 'North Gym';
   saveStudentReport(localStorage, report);

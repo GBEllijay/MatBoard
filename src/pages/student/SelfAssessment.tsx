@@ -182,7 +182,7 @@ export function SelfAssessment({ report, to }: { report: StudentProgressReport; 
     <section className="assess" id="self-assessment" aria-label="Self-assessment">
       <div className="assess-lead">
         <h1>Self-assessment</h1>
-        <p className="student-quiet">Rate the work in front of you. 1 is early. 5 is ready to rely on. Saved on this phone by date.</p>
+        <p className="student-quiet">Rate the work in front of you. 1 is early. 5 is ready to rely on. Saved on this device by date.</p>
         <p className="student-quiet">
           Today's ratings start from your last check-in, all eight areas including Sweeps. Anything that check-in lacks starts
           from Fundamentals. Mindset is rated on this page. A day you already saved stays as you saved it.

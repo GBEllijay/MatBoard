@@ -135,7 +135,7 @@ test('promotion photos export when they fit, and the rest stay off the file with
   });
   assert.equal(fitted.rank?.pictures?.length, 3);
   assert.equal(fitted.rank?.pictureCount, 3);
-  assert.equal(fitted.rank?.pictureNote, '1 promotion photo stayed on this phone.');
+  assert.equal(fitted.rank?.pictureNote, '1 promotion photo stayed on this device.');
   assert.ok((fitted.rank?.pictures?.reduce((sum, picture) => sum + picture.image.length, 0) ?? 0) <= RANK_EXPORT_BUDGET);
   const text = exportProgressPacket(fitted);
   assert.equal(text.includes('"stripes"'), false);
@@ -143,14 +143,14 @@ test('promotion photos export when they fit, and the rest stay off the file with
   assert.equal(parsed.ok, true);
   if (parsed.ok && parsed.value.kind === 'student-progress-report') {
     assert.equal(parsed.value.rank?.pictures?.length, 3);
-    assert.equal(parsed.value.rank?.pictureNote, '1 promotion photo stayed on this phone.');
+    assert.equal(parsed.value.rank?.pictureNote, '1 promotion photo stayed on this device.');
   }
   const blocked = parseProgressPacket(JSON.stringify({ ...report, photo: photo }));
   assert.equal(blocked.ok, false);
 
   const files = progressReportFiles(report, [{ belt: 'blue', image: photo }]);
   assert.match(files.json, /data:image\/jpeg/);
-  assert.doesNotMatch(files.json, /stayed on this phone/);
+  assert.doesNotMatch(files.json, /stayed on this device/);
   const kept = mergeStudentProgress(report, parsed.ok && parsed.value.kind === 'student-progress-report' ? parsed.value : report);
   assert.equal(kept.report.rank?.pictures, undefined);
 });

@@ -163,7 +163,7 @@ export function setFilmAnchor(films: readonly StudentFilm[], filmId: string, anc
  * Write the journal association and the technique link only after the library save succeeded.
  * A failed or cancelled save leaves the progress file alone.
  */
-export const DAY_FILM_SAVED = 'Saved on this phone in the video library and on this card. This is not a cloud backup.';
+export const DAY_FILM_SAVED = 'Saved on this device in the video library and on this card. This is not a cloud backup.';
 
 /**
  * Save a day-card recording into the video library and remember this card as the original class.
@@ -374,7 +374,7 @@ export function videosForCard(
       id: clip.id,
       label: clip.description.trim() || clip.url,
       url: clip.url,
-      place: 'Link. Opens in a new tab. Not saved as a video file on this phone.',
+      place: 'Link. Opens in a new tab. Not saved as a video file on this device.',
       originId: clip.journalEntryId ?? '',
       ...origin,
       viaTechnique,
@@ -385,7 +385,7 @@ export function videosForCard(
     const originHere = film.journalEntryId === entryId;
     if (!viaTechnique && !originHere) continue;
     const origin = originOf(report, film.journalEntryId ?? '', entryId);
-    const place = film.where === 'phone' ? 'On this phone. The file stays in the video library.' : film.where === 'academy' ? 'In the academy folder. The file stays in the video library.' : 'On your drive. The file stays in the video library.';
+    const place = film.where === 'phone' ? 'On this device. The file stays in the video library.' : film.where === 'academy' ? 'In the academy folder. The file stays in the video library.' : 'On your drive. The file stays in the video library.';
     shown.push({
       kind: 'film',
       id: film.id,

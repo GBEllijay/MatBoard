@@ -403,13 +403,13 @@ test('the uploaded send to coach file merges after confirm and a backup points t
       partners: '',
       drills: '',
       rolls: '',
-      notes: 'only on this phone',
+      notes: 'only on this device',
     },
     3,
   );
   const kept = mergeOwnStudentFile(phone, incoming);
   assert.equal(kept.error, '');
-  assert.ok(kept.report.journal.some((entry) => entry.body.includes('only on this phone')));
+  assert.ok(kept.report.journal.some((entry) => entry.body.includes('only on this device')));
   assert.ok(kept.report.journal.length > phone.journal.length);
 
   const backup = applyCoachFile(local, { plan: null, feedback: null }, JSON.stringify({ advantage: 'student-journal-backup', version: 1 }));
@@ -474,7 +474,7 @@ test('a gym brand file still imports the name and logo and leaves the coach plan
       partners: '',
       drills: '',
       rolls: '',
-      notes: 'only on this phone',
+      notes: 'only on this device',
     },
     2,
   );
@@ -491,9 +491,9 @@ test('a gym brand file still imports the name and logo and leaves the coach plan
   assert.equal(imported.report.profile.gymName, 'GB Ellijay');
   assert.equal(imported.shelf.plan?.id, 'sample-coach-plan');
   assert.equal(imported.shelf.feedback, null);
-  assert.ok(imported.report.journal.some((entry) => entry.body.includes('only on this phone')));
+  assert.ok(imported.report.journal.some((entry) => entry.body.includes('only on this device')));
   assert.deepEqual(imported.report.rubric, planned.report.rubric);
-  assert.match(imported.message, /Gym name and logo are stored on this phone/);
+  assert.match(imported.message, /Gym name and logo are stored on this device/);
   assert.match(imported.message, /journal was not changed/);
 
   const named = structuredClone(imported.report);

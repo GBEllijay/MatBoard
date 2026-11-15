@@ -47,7 +47,7 @@ export function StudentCompetitionPlan({
     <section className="roster-plan" aria-label="Student competition plan">
       <h3>Student competition plan</h3>
       <p className="roster-plan__quiet">
-        Imported from {plan.displayName || 'the student'}’s progress file. It stays on this phone. Advantage does not host it.
+        Imported from {plan.displayName || 'the student'}’s progress file. It stays on this device. Advantage does not host it.
       </p>
       {GAME_TAGS.map((tag) => {
         const game = plan.games[tag];
@@ -139,7 +139,7 @@ export function ImportStudentProgress({
                 return;
               }
               setError('');
-              setMessage('Competition plan is on this phone. Advantage does not host the file.');
+              setMessage('Competition plan is on this device. Advantage does not host the file.');
             });
           }}
         />

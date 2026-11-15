@@ -197,7 +197,7 @@ export function cardVideosForTerm(report: StudentProgressReport, termName: strin
 
 /** Where a video lives, for its row: the link's site, or this phone. */
 export function cardVideoPlace(video: JournalCardVideo): string {
-  if (video.source === 'phone') return video.fileName ? `On this phone · ${video.fileName}` : 'On this phone';
+  if (video.source === 'phone') return video.fileName ? `On this device · ${video.fileName}` : 'On this device';
   try {
     const host = new URL(video.url ?? '').hostname.replace(/^www\./, '');
     return host ? `Link · ${host}` : 'Link';

@@ -819,7 +819,7 @@ export function TrainingNotesPage() {
       setDownloadNote(
         reason instanceof Error
           ? reason.message
-          : 'A Google Drive video could not be downloaded. Gallery copies already saved stay on this phone.',
+          : 'A Google Drive video could not be downloaded. Gallery copies already saved stay on this device.',
       );
     }
   };

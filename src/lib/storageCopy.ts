@@ -40,11 +40,11 @@ export const TRAINING_CLOUD_LEAD =
   'This gym has Advantage Cloud. Under “Where new files from this page go,” pick Advantage Cloud to store clips there for the gym owner and instructors. Google Drive is optional.';
 export const TRAINING_CLOUD_ACTION = 'With Advantage Cloud picked, a clip you add uploads to Advantage Cloud.';
 export const TRAINING_CLOUD_WARNING =
-  'Clips kept on This phone stay on this device and are not shared until you upload them to Advantage Cloud or connect Google Drive and save this day.';
+  'Clips kept on This device stay on this device and are not shared until you upload them to Advantage Cloud or connect Google Drive and save this day.';
 
 /** Slideshow line when this license has Advantage Cloud but this screen plays from the phone. */
 export const PLAYING_FROM_PHONE_CLOUD =
-  'The slideshow on this device is playing from this phone. Files uploaded to Advantage Cloud are stored in Advantage Cloud for the gym.';
+  'The slideshow on this device is playing from this device. Files uploaded to Advantage Cloud are stored in Advantage Cloud for the gym.';
 
 /** /pro academy pathway when no Drive folder is connected but Advantage Cloud is on. */
 export const ACADEMY_NO_FOLDER_CLOUD =

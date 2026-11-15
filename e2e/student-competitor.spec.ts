@@ -169,7 +169,7 @@ test('competitor tracker, game, weight, calendar, and coach import', async ({ br
     mimeType: 'application/json',
     buffer: Buffer.from(progress),
   });
-  await expect(card.getByText('Competition plan is on this phone.')).toBeVisible();
+  await expect(card.getByText('Competition plan is on this device.')).toBeVisible();
   await expect(card.getByRole('region', { name: 'Student competition plan' })).toContainText('Armbar from mount');
   await expect(card.getByRole('region', { name: 'Student competition plan' })).toContainText('Spring Open');
   await expect(card.getByRole('region', { name: 'Student competition plan' })).toContainText('win Sam');

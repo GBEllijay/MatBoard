@@ -100,7 +100,7 @@ export function CompetitionCard({
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    setCalNote('Calendar file saved on this phone. Open it to add the events.');
+    setCalNote('Calendar file saved on this device. Open it to add the events.');
   };
 
   return (
@@ -317,8 +317,8 @@ export function CompetitionCard({
         <footer className="comp-card__foot">
           <p className="comp-card__infoline">
             {plan
-              ? `Progress file from ${plan.displayName || student.name}, imported ${cardDate(new Date(plan.importedAt).toISOString().slice(0, 10))}. Stays on this phone.`
-              : 'Import the student progress file to fill in results and upcoming events. Stays on this phone.'}
+              ? `Progress file from ${plan.displayName || student.name}, imported ${cardDate(new Date(plan.importedAt).toISOString().slice(0, 10))}. Stays on this device.`
+              : 'Import the student progress file to fill in results and upcoming events. Stays on this device.'}
           </p>
           <button type="button" className="comp-card__btn" onClick={saveCalendar} disabled={!upcoming.length}>
             Calendar

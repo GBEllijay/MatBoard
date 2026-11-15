@@ -1111,7 +1111,7 @@ export function ScreensaverPage() {
                   {focusConfig.videoAddLabel}
                 </button>
               ) : null}
-              <p className="saver-sound-hint">Optional import. Copies files onto this phone. Does not replace Advantage Cloud or disconnect a folder.</p>
+              <p className="saver-sound-hint">Optional import. Copies files onto this device. Does not replace Advantage Cloud or disconnect a folder.</p>
               <button
                 type="button"
                 className="btn"

@@ -120,7 +120,7 @@ test('Coach teasers list the four hub tools in lesson, videos, tournament, roste
   assert.equal(COMPETITOR_ROSTER_LABEL, 'Competitor Roster');
   assert.equal(TRAINING_NOTES_LABEL, 'Daily Lesson Plan');
   assert.equal(TECHNIQUE_TREE_LABEL, 'Technique Tree');
-  assert.match(TECHNIQUE_TREE_LEAD, /Trees stay on this phone/);
+  assert.match(TECHNIQUE_TREE_LEAD, /Trees stay on this device/);
   assert.match(COACH_HUB_BLURB, /Technique Tree/);
   assert.match(COACH_AD_LEAD, /Technique Tree/);
   assert.equal(

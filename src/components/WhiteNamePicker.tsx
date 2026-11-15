@@ -70,7 +70,7 @@ export function WhiteNamePicker({
   return (
     <>
       <p className="roster-pick__copy">
-        Type a competitor name or pick one saved on this phone. A belt rank is saved with the name.
+        Type a competitor name or pick one saved on this device. A belt rank is saved with the name.
       </p>
       <div className="roster-pick__manual">
         <label>
@@ -98,7 +98,7 @@ export function WhiteNamePicker({
             checked={saveOnPhone}
             onChange={(event) => onSaveOnPhone(event.target.checked)}
           />
-          Save name and belt on this phone
+          Save name and belt on this device
         </label>
         {saveOnPhone ? <WhiteBeltPicker belt={belt} onBelt={onBelt} /> : null}
         <button
@@ -110,7 +110,7 @@ export function WhiteNamePicker({
           {saveOnPhone ? 'Save and use this name' : 'Use this name'}
         </button>
         {saveOnPhone && canUseTyped && !canSave ? (
-          <p className="roster-edit__error">Pick a belt to save this name on this phone.</p>
+          <p className="roster-edit__error">Pick a belt to save this name on this device.</p>
         ) : null}
       </div>
       {matches.length ? (
@@ -133,8 +133,8 @@ export function WhiteNamePicker({
       ) : (
         <p className="roster-pick__empty">
           {roster.names.length
-            ? 'No match on this phone. Use the name above, or save it.'
-            : 'No names saved on this phone yet.'}
+            ? 'No match on this device. Use the name above, or save it.'
+            : 'No names saved on this device yet.'}
         </p>
       )}
       <Link className="text-link" to="/white/roster">

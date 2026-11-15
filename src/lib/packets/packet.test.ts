@@ -172,26 +172,26 @@ test('a student packet round-trips after the phone is cleared', async () => {
   assert.deepEqual(second.packet.sections, first.packet.sections);
 });
 
-test('merge keeps a note that exists only on this phone, and replace does not', async () => {
+test('merge keeps a note that exists only on this device, and replace does not', async () => {
   const store = memory();
   saveStudentReport(store, journal('from the packet', 'blue', 1, 40, 20));
   writeIndexCards(store, cards('Hip bump'));
   const built = await buildStudentPacket({ storage: store, includeVideos: false, now: WHEN });
-  saveStudentReport(store, journal('only on this phone', 'white', 0, 15, 80));
+  saveStudentReport(store, journal('only on this device', 'white', 0, 15, 80));
   writeIndexCards(store, cards('Scissor sweep'));
   const choice = await readRestoreChoice(built.text);
   assert.equal(choice.ok, true);
   if (!choice.ok || !choice.choice.restorable) return;
   applyStudentRestore(store, choice.choice, 'merge', { rank: emptyRankPhotoStore(), bracket: {} });
   const merged = JSON.stringify(loadStudentReport(store));
-  assert.match(merged, /only on this phone/);
+  assert.match(merged, /only on this device/);
   assert.match(merged, /from the packet/);
   const names = loadIndexCards(store).cards.map((card) => card.name).sort();
   assert.deepEqual(names, ['Hip bump', 'Scissor sweep']);
 
   applyStudentRestore(store, choice.choice, 'replace', { rank: emptyRankPhotoStore(), bracket: {} });
   const replaced = JSON.stringify(loadStudentReport(store));
-  assert.equal(replaced.includes('only on this phone'), false);
+  assert.equal(replaced.includes('only on this device'), false);
   assert.match(replaced, /from the packet/);
   assert.deepEqual(loadIndexCards(store).cards.map((card) => card.name), ['Hip bump']);
 });
