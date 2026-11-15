@@ -109,6 +109,8 @@ test('Assessments waiting: badge count, eight scores, Mark seen; Reply only with
   assert.match(none.host.textContent ?? '', /Guard\/Control 4/);
   assert.match(none.host.textContent ?? '', /Mindset 5/);
   assert.match(none.host.textContent ?? '', /Accept this student's card first/);
+  const row = none.host.querySelector('[data-assessment-item]');
+  assert.equal(row?.classList.contains('roster-inbox-card'), true);
   const reply = [...none.host.querySelectorAll('button')].find((b) => b.textContent === 'Reply')!;
   assert.equal(reply.hasAttribute('disabled'), true);
   assert.ok([...none.host.querySelectorAll('button')].some((b) => b.textContent === 'Mark seen'));
@@ -129,6 +131,7 @@ test('Assessments waiting: badge count, eight scores, Mark seen; Reply only with
 
 test('Roster shows Assessments waiting next to new student cards; the Clipboard Self view is no longer hard-coded empty', () => {
   const roster = readFileSync('src/pages/Roster.tsx', 'utf8');
+  assert.match(roster, /className="roster__inbox"/);
   assert.match(roster, /<PendingCardShares roster=\{roster\.students\} title="New student cards" \/>\s*<AssessmentsWaiting roster=\{roster\.students\} \/>/);
   const sheet = readFileSync('src/components/rosterCard/RosterCardSheet.tsx', 'utf8');
   assert.doesNotMatch(sheet, /assessmentSummary\(record\.coachAssessments, \[\], view\)/);

@@ -102,7 +102,7 @@ export function AssessmentsWaiting({ roster }: { roster: readonly Student[] }) {
           item.submission.note,
         );
         return (
-          <div key={item.id} data-assessment-item={item.id}>
+          <article key={item.id} className="roster-inbox-card" data-assessment-item={item.id}>
             <p>
               <strong>{card?.name || item.submission.studentName || 'Student'}</strong> · {item.submission.date}
               {state.owner ? ` · for ${instructorLabel(item.instructorId, state.instructorId)}` : ''}
@@ -148,7 +148,7 @@ export function AssessmentsWaiting({ roster }: { roster: readonly Student[] }) {
                 }}
               />
             ) : null}
-          </div>
+          </article>
         );
       })}
       <button type="button" className="btn btn--ghost" disabled={checking} onClick={() => void check()}>
