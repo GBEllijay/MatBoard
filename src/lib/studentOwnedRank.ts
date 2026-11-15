@@ -29,6 +29,7 @@ export function rosterRankLabel(row: RankOwnerFields): string {
 export function rosterRankHint(row: RankOwnerFields): string | null {
   if (!studentOwnsRosterRank(row)) return null;
   if (row.rankUnset || !row.belt?.trim()) return 'Not set yet. This updates when the student shares their card.';
+  if (typeof row.studentRankAt !== 'number') return 'This updates when the student shares their card.';
   return 'Set by the student';
 }
 

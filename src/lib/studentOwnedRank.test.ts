@@ -21,6 +21,10 @@ test('rosterRankLabel shows Not set yet on an unset linked card, not White', () 
   assert.match(rosterRankHint(row) ?? '', /Not set yet/);
   assert.equal(rosterRankLabel({ belt: 'Blue', linkedStudentId: 'stu-haven', studentRankAt: 1 }), 'Blue');
   assert.equal(rosterRankHint({ belt: 'Blue', linkedStudentId: 'stu-haven', studentRankAt: 1 }), 'Set by the student');
+  assert.equal(
+    rosterRankHint({ belt: 'Blue', linkedStudentId: 'stu-haven' }),
+    'This updates when the student shares their card.',
+  );
 });
 
 test('isNewerStudentRank ignores placeholders and older stamps', () => {

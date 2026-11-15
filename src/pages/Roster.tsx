@@ -1064,7 +1064,7 @@ export function StudentCard({
               ) : (
                 <BeltTip belt={student.belt} />
               )}
-              {studentOwnsRosterRank(student) && !student.rankUnset ? (
+              {typeof student.studentRankAt === 'number' && studentOwnsRosterRank(student) && !student.rankUnset ? (
                 <span className="roster-card__rank-note">Set by the student</span>
               ) : null}
               {competitorSwitch ? (
