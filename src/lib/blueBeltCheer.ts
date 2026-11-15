@@ -2,20 +2,26 @@
  * Kids-to-Blue promotions are no longer sent from the coach to the student
  * (rankSendOffer is always noop). If an older packet is still in the queue,
  * confirm consumes it without changing My rank. A typed birth year may still
- * be saved. No cheer fires, because the promotion is not applied.
+ * be saved. No cheer fires from a coach packet, because the promotion is not
+ * applied. The cheer and confetti fire when the student updates their own belt
+ * from a kids belt to adult Blue on My rank.
  */
 
 import { acceptCoachRankUpdate, buildCoachRankUpdate, type UpdateLedger } from './coachRankUpdate.ts';
 import { blankStudentReport } from './studentEdition.ts';
-import { beltModeOf, ibjjfAge, setBeltMode, setBirthYear, setKidsBelt } from './studentRank.ts';
+import { beltModeOf, currentKidsBelt, ibjjfAge, setBeltMode, setBirthYear, setKidsBelt } from './studentRank.ts';
 import { canonicalBelt, KIDS_BELTS } from './rosterStore.ts';
+import { IBJJF_KIDS_TEMPLATE } from './beltTemplates.ts';
 import type { CoachRankUpdatePacket, ProgressBelt, StudentProgressReport } from './progress/types.ts';
 
 export const BLUE_BELT_CHEER_KEY = 'matboard.studentEdition.blueBeltCheer.v1';
 export const BLUE_BELT_CHEER_LINES = ['Parabéns, Coach!', 'Good job. The blue belt is yours.'] as const;
+export const STUDENT_BLUE_CHEER_LINES = ['Congratulations, Coach!', 'The blue belt is yours.'] as const;
+export const STUDENT_BLUE_CHEER_ID = 'self-kids-to-blue';
 export const ADULT_BELT_AGE = 16;
 
 const KIDS_PROGRESS_BELTS: readonly ProgressBelt[] = ['grey', 'yellow', 'orange', 'green'];
+const KIDS_SELF_BELT_IDS = new Set(IBJJF_KIDS_TEMPLATE.belts.map((belt) => belt.id));
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const SEEN_MAX = 20;
 
@@ -34,6 +40,43 @@ export function isKidsRosterBelt(belt: string): boolean {
 export function coachKidsToBlue(previousBelt: string | null | undefined, nextBelt: string): boolean {
   if (!previousBelt) return false;
   return isKidsRosterBelt(previousBelt) && canonicalBelt(nextBelt) === 'Blue';
+}
+
+/** IBJJF kids belts on My rank: white, grey/yellow/orange/green, and their white/black variants. */
+export function isKidsSelfBeltId(beltId: string | null | undefined): boolean {
+  return Boolean(beltId && KIDS_SELF_BELT_IDS.has(beltId));
+}
+
+/**
+ * True when the file is still on a kids belt the student wears, or just switched
+ * to the adult ladder without already being Blue. An unused default kids-white
+ * slot on an adult file does not count, so adult White to Blue does not cheer.
+ */
+export function studentWearingKidsBelt(report: StudentProgressReport): boolean {
+  if (beltModeOf(report) === 'kids') return isKidsSelfBeltId(currentKidsBelt(report).beltId);
+  if (report.profile.belt === 'blue') return false;
+  const kids = report.beltBook?.kids;
+  if (!kids || !isKidsSelfBeltId(kids.beltId)) return false;
+  if (kids.beltId !== 'white') return true;
+  return Boolean((kids.history?.length ?? 0) > 0 || (kids.classCount ?? 0) > 0 || (kids.tapeCount ?? 0) > 0 || kids.awardedOn);
+}
+
+/** The student just moved their own file from a kids belt onto adult Blue. */
+export function studentKidsToBlue(before: StudentProgressReport, after: StudentProgressReport): boolean {
+  if (after.profile.belt !== 'blue') return false;
+  if (beltModeOf(before) === 'kids') return isKidsSelfBeltId(currentKidsBelt(before).beltId);
+  if (before.profile.belt === 'blue') return false;
+  return studentWearingKidsBelt(before);
+}
+
+/** True the first time this profile moves from a kids belt to Blue. A reload or Blue re-save does not replay. */
+export function claimStudentKidsToBlueCheer(
+  storage: MemoryStore,
+  before: StudentProgressReport,
+  after: StudentProgressReport,
+): boolean {
+  if (!studentKidsToBlue(before, after)) return false;
+  return claimBlueCheer(storage, after.studentId, STUDENT_BLUE_CHEER_ID);
 }
 
 export function cleanBirthYear(value: unknown, today = new Date()): number | null {
