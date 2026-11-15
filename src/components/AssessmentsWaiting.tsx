@@ -2,11 +2,12 @@
  * Assessments waiting: student self-assessments sent with "Send to my instructor".
  * The assigned instructor sees hers; the owner sees every instructor's. In-app badge only, no push.
  * Reply goes out through Coach Sync (sendCoachAssessment), prefilled from the student's own scores,
- * and lands in the student's "From your coach" inbox. The item is then marked responded.
+ * and lands in the student's "From your coach" inbox when Advantage Cloud takes it (the status says which). The item is then marked responded.
  */
 import { useEffect, useLayoutEffect, useState } from 'react';
 import './assessmentsWaiting.css';
 import { ensureAssessmentRosterCards, sendCoachAssessment } from '../lib/cardSync';
+import { assessmentReplyText } from '../lib/coachReplyOutcome';
 import { syncActorFromToken } from '../lib/coachSync';
 import {
   assessmentsWaitingCount,
@@ -214,11 +215,8 @@ function ReplyForm({ item, card, onDone }: { item: InstructorAssessmentItem; car
         }));
         const marked = await markAssessment(item.id, 'responded', { responseId });
         setBusy(false);
-        onDone(
-          marked.ok
-            ? `Sent to ${card.name}'s card. It shows in their From your coach inbox.`
-            : `Sent to ${card.name}'s card. Marking it answered did not save: ${marked.error}`,
-        );
+        // Say what really happened: only a cloud write reached their From your coach inbox.
+        onDone(assessmentReplyText(result, card.name, marked.ok ? { ok: true } : { ok: false, error: marked.error }).text);
       }}
     >
       {ASSESSMENT_FORM_AREAS.map((area) => (
