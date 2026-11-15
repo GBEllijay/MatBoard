@@ -353,3 +353,56 @@ test('requests without Plus Cloud or without a bucket are refused', async () => 
   const signedOut = await handleGymRoster(new Request('https://advantagebjjtimer.com/api/gym/roster?op=state'), makeEnv(secret), () => now);
   assert.equal(signedOut.status, 401);
 });
+
+test('a later instructor submit updates the linked student belt on the master roster', async () => {
+  const secret = await signingSecret();
+  const { env: makeEnv } = setup();
+  const env = makeEnv(secret);
+  const owner = await ownerToken(secret);
+  await call(env, '/api/gym/roster?op=submit', owner, {
+    backup: backup([student('h1', 'Haven', { belt: 'White', linkedStudentId: 'stu-haven' })]),
+  });
+  const first = (await state(env, owner)).body.master;
+  assert.equal(first?.roster.students[0].belt, 'White');
+  const coach = await seatToken(secret, 'seat-coach', 'coach');
+  await call(env, '/api/gym/roster?op=trust', owner, { on: true });
+  const sent = await call(env, '/api/gym/roster?op=submit', coach, {
+    backup: backup([student('h9', 'Haven', { belt: 'Blue', stripes: 2, linkedStudentId: 'stu-haven' })]),
+  });
+  assert.equal(sent.status, 200);
+  const body = (await sent.json()) as { applied: boolean };
+  assert.equal(body.applied, true);
+  const master = (await state(env, owner)).body.master;
+  const haven = master?.roster.students.find((row) => row.linkedStudentId === 'stu-haven');
+  assert.equal(haven?.belt, 'Blue');
+  assert.equal(haven?.stripes, 2);
+  assert.equal(master?.roster.students.filter((row) => row.linkedStudentId === 'stu-haven').length, 1);
+});
+
+test('only the owner can merge duplicate academy cards', async () => {
+  const secret = await signingSecret();
+  const { env: makeEnv } = setup();
+  const env = makeEnv(secret);
+  const owner = await ownerToken(secret);
+  const coach = await seatToken(secret, 'seat-coach', 'coach');
+  // Different belts so the usual name+belt match does not collapse them on submit.
+  await call(env, '/api/gym/roster?op=submit', owner, {
+    backup: backup([
+      student('h1', 'Haven', { belt: 'White', note: 'Coach note' }),
+      student('h2', 'Haven', { belt: 'Blue', division: 'Kids' }),
+    ]),
+  });
+  assert.equal((await call(env, '/api/gym/roster?op=merge-dupes', coach, { keepId: 'h1', dropId: 'h2' })).status, 403);
+  const merged = await call(env, '/api/gym/roster?op=merge-dupes', owner, { keepId: 'h1', dropId: 'h2' });
+  assert.equal(merged.status, 200);
+  const body = (await merged.json()) as { keptId: string; droppedId: string; name: string };
+  assert.equal(body.keptId, 'h1');
+  assert.equal(body.name, 'Haven');
+  const master = (await state(env, owner)).body.master;
+  const keep = master?.roster.students.find((row) => row.id === 'h1');
+  const drop = master?.roster.students.find((row) => row.id === 'h2');
+  assert.equal(keep?.note, 'Coach note');
+  assert.equal(keep?.division, 'Kids');
+  assert.equal(keep?.belt, 'White');
+  assert.ok(drop?.archivedAt);
+});

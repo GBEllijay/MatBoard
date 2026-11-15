@@ -591,6 +591,27 @@ export async function ensureAssessmentRosterCards(
   return result;
 }
 
+/** Apply every pending card share: create or update the linked card, then push it to the academy roster. No Accept tap. */
+export async function applyIncomingCardShares(
+  deps: {
+    actor?: SyncActor;
+    storage?: MemoryStore | null;
+    fetchImpl?: typeof fetch;
+    token?: string | null;
+    pushMaster?: (card: Student) => Promise<CardShareMasterPush>;
+  } = {},
+): Promise<{ applied: number; cards: Student[] }> {
+  const storage = deps.storage === undefined ? defaultStorage() : deps.storage;
+  if (!storage) return { applied: 0, cards: [] };
+  const pending = pendingCardShares(storage);
+  const cards: Student[] = [];
+  for (const share of pending) {
+    const result = await acceptCardShare(share.shareId, { mode: 'new' }, deps);
+    if (result.ok) cards.push(result.card);
+  }
+  return { applied: cards.length, cards };
+}
+
 export async function acceptCardShare(
   shareId: string,
   target: { mode: 'new' } | { mode: 'merge'; cardId: string },
@@ -606,7 +627,9 @@ export async function acceptCardShare(
   if (!storage) return { ok: false, reason: 'not-pending' };
   const share = pendingCardShares(storage).find((row) => row.shareId === shareId);
   const result = acceptCardShareIn(storage, shareId, deps.actor ?? currentActor(), target, {
-    students: getRoster().students,
+    get students() {
+      return getRoster().students;
+    },
     add: addStudent,
     update: updateStudent,
     link: linkRosterCard,

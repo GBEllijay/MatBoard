@@ -131,12 +131,51 @@ test('a later card share accepted as new merges into the auto-created linked car
   assert.equal(accepted.decision, 'merged');
   assert.equal(accepted.card.id, made.card.id);
   assert.equal(accepted.card.linkedStudentId, 'stu-haven');
-  // Auto-create had to set a belt (roster cards require one). Merge never overwrites a set field, so White stays.
-  assert.equal(accepted.card.belt, 'White');
+  assert.equal(accepted.card.belt, 'Blue', 'the shared belt replaces the auto-default White');
   assert.equal(accepted.card.stripes, 2);
   assert.equal(accepted.card.division, 'Kids');
   assert.equal(accepted.card.gym, 'GB Ellijay');
   assert.equal(getRoster().students.filter((row) => row.linkedStudentId === 'stu-haven').length, 1);
   assert.equal(identityFromAssessment(item('stu-haven', 'Haven')).studentId, 'stu-haven');
   assert.equal(linkedRosterCardForStudent(getRoster().students, 'stu-haven')?.id, made.card.id);
+});
+
+test('a share with no division or gym leaves coach-set values, and a name-only share does not zero stripes', () => {
+  resetRoster();
+  const made = ensureRosterCardForStudent(
+    { studentId: 'stu-haven', name: 'Haven', division: 'Kids', gym: 'GB Ellijay', stripes: 2 },
+    { actor: 'owner' },
+  );
+  assert.equal(made.status, 'created');
+  if (made.status !== 'created') return;
+  const primed = updateStudent(made.card.id, { division: 'Kids', gym: 'GB Ellijay', stripes: 2 })!;
+  assert.equal(primed.stripes, 2);
+  const storage = testMemory();
+  const named = createStudentCardShare({
+    studentId: 'stu-haven',
+    gym: { plusCloud: true },
+    card: { name: 'Haven Cole' },
+    parentRequired: false,
+    shareId: 'share-name-only',
+    now: 10,
+  });
+  assert.ok(named.ok);
+  if (!named.ok) return;
+  assert.equal(receiveCardShare(storage, named.share), 'pending');
+  const roster = {
+    get students() {
+      return getRoster().students;
+    },
+    add: addStudent,
+    update: updateStudent,
+    link: linkRosterCard,
+  };
+  const accepted = acceptCardShare(storage, 'share-name-only', 'coach', { mode: 'new' }, roster);
+  assert.ok(accepted.ok);
+  if (!accepted.ok) return;
+  assert.equal(accepted.card.name, 'Haven Cole');
+  assert.equal(accepted.card.belt, 'White');
+  assert.equal(accepted.card.division, 'Kids');
+  assert.equal(accepted.card.gym, 'GB Ellijay');
+  assert.equal(accepted.card.stripes, 2);
 });

@@ -19,6 +19,7 @@ import {
 } from './rosterPhotoApproval.ts';
 import type { Student, StudentDraft } from './rosterStore.ts';
 import { readStudentCardShare, type StudentCardShare } from './studentCardShare.ts';
+import { ensureRosterCardForStudent, identityFromShare } from './rosterCardFromInbox.ts';
 import { readStudentCoachUpdate, receiveStudentCoachUpdate, type UpdateReceive } from './coachProgressFile.ts';
 import { readTournamentRegistration, type TournamentRegistrationEvent } from './studentEvents.ts';
 
@@ -146,16 +147,28 @@ export function canAcceptCardShare(actor: SyncActor): boolean {
 }
 
 /**
- * The merge patch: only coach fields that are empty on the card are filled.
- * Nothing set by the coach is replaced.
+ * Newest share data wins for profile fields the share actually includes
+ * (name, belt, stripes, division, gym). Empty share fields do not clear
+ * coach-set values. Coach notes and other roster-only fields stay intact.
  */
-export function cardShareMergePatch(card: Student, share: StudentCardShare): Partial<StudentDraft> {
+export function cardShareIncludesStripes(share: StudentCardShare): boolean {
+  if (typeof share.card.stripes !== 'number') return false;
+  // A name-only share defaults stripes to 0 and must not wipe coach stripes.
+  // 0 is a real "no stripes" value when the student also sent a belt.
+  return share.card.stripes > 0 || Boolean(share.card.belt?.trim());
+}
+
+export function cardShareMergePatch(share: StudentCardShare): Partial<StudentDraft> {
   const patch: Partial<StudentDraft> = {};
-  if (!card.name.trim() && share.card.name) patch.name = share.card.name;
-  if (!card.belt.trim() && share.card.belt) patch.belt = share.card.belt;
-  if (!card.division.trim() && share.card.division) patch.division = share.card.division;
-  if (!card.gym.trim() && share.card.gym) patch.gym = share.card.gym;
-  if (card.stripes === undefined && share.card.stripes) patch.stripes = share.card.stripes;
+  const name = share.card.name?.trim();
+  if (name) patch.name = name;
+  const belt = share.card.belt?.trim();
+  if (belt) patch.belt = belt;
+  const division = share.card.division?.trim();
+  if (division) patch.division = division;
+  const gym = share.card.gym?.trim();
+  if (gym) patch.gym = gym;
+  if (cardShareIncludesStripes(share)) patch.stripes = share.card.stripes;
   return patch;
 }
 
@@ -195,18 +208,24 @@ export function acceptCardShare(
   if (!canAcceptCardShare(actor)) return { ok: false, reason: 'not-allowed' };
   const share = pendingCardShares(storage).find((row) => row.shareId === shareId);
   if (!share) return { ok: false, reason: 'not-pending' };
-  const already = roster.students.find((row) => row.linkedStudentId === share.studentId && !row.guestId);
-  // A card auto-created from an earlier assessment (or already linked) must be
-  // updated in place. Accept as new never adds a second card for the same student.
+  let already = roster.students.find((row) => row.linkedStudentId === share.studentId && !row.guestId) ?? null;
+  // A share without a linked card auto-creates one, or links the one same-name
+  // unlinked student card, then updates that card. Never a second card for this id.
+  if (!already && target.mode === 'new') {
+    const ensured = ensureRosterCardForStudent(identityFromShare(share), { actor, roster });
+    if (ensured.status === 'created' || ensured.status === 'linked' || ensured.status === 'existing') {
+      already = ensured.card;
+    }
+  }
   const action = target.mode === 'new' && already ? ({ mode: 'merge', cardId: already.id } as const) : target;
   let card: Student | null;
   let decision: 'accepted' | 'merged';
   if (action.mode === 'merge') {
-    const current = roster.students.find((row) => row.id === action.cardId);
+    const current = roster.students.find((row) => row.id === action.cardId) ?? (already && already.id === action.cardId ? already : null);
     if (!current) return { ok: false, reason: 'no-card' };
     if (current.guestId) return { ok: false, reason: 'guest' };
     if (current.linkedStudentId && current.linkedStudentId !== share.studentId) return { ok: false, reason: 'linked-elsewhere' };
-    const patch = cardShareMergePatch(current, share);
+    const patch = cardShareMergePatch(share);
     card = Object.keys(patch).length ? roster.update(current.id, patch) : current;
     decision = 'merged';
   } else {

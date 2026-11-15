@@ -84,3 +84,8 @@ export async function fetchGymRosterPrivateNotes(fetcher: Fetcher = fetch, token
     return null;
   }
 }
+
+/** Owner-only: keep one academy card, fill blanks from the other, and archive the duplicate. */
+export function mergeGymRosterDuplicates(keepId: string, dropId: string, fetcher: Fetcher = fetch, token = readCloudBearer()) {
+  return post<{ keptId: string; droppedId: string; name: string }>('merge-dupes', { keepId, dropId }, fetcher, token);
+}

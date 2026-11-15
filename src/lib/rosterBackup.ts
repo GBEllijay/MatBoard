@@ -434,10 +434,20 @@ export function matchStudent(local: readonly BackupStudent[], incoming: BackupSt
 
 const FILL_STUDENT_FIELDS = ['division', 'gym', 'photo', 'lastPromotion', 'lastPromotionDetail', 'note'] as const;
 
-function fillStudent(local: BackupStudent, incoming: BackupStudent): BackupStudent {
+function fillStudent(local: BackupStudent, incoming: BackupStudent, linkedProfile: RosterLinkedProfile = 'blanks'): BackupStudent {
   const next: BackupStudent = { ...local };
   for (const field of FILL_STUDENT_FIELDS) {
     if (!next[field] && incoming[field]) next[field] = incoming[field];
+  }
+  const samePerson =
+    Boolean(local.linkedStudentId && incoming.linkedStudentId && local.linkedStudentId === incoming.linkedStudentId);
+  if (samePerson && linkedProfile === 'incoming') {
+    // Instructor and academy copies of the same Student Edition id: newest profile wins.
+    if (incoming.name?.trim()) next.name = incoming.name;
+    if (incoming.belt?.trim()) next.belt = incoming.belt;
+    if (incoming.division?.trim()) next.division = incoming.division;
+    if (incoming.gym?.trim()) next.gym = incoming.gym;
+    if (incoming.stripes !== undefined && (incoming.stripes > 0 || incoming.belt?.trim())) next.stripes = incoming.stripes;
   }
   // The chosen card photo id travels with the photo it names.
   if (!local.photo && next.photo && incoming.cardPhotoId && !next.cardPhotoId) next.cardPhotoId = incoming.cardPhotoId;
@@ -511,10 +521,12 @@ function same(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+export type RosterLinkedProfile = 'blanks' | 'incoming';
+
 export function mergeRosterBackup(
   local: RosterBackupSources,
   backup: RosterBackup,
-  options: { now?: number; newerSchema?: boolean; normalize?: RosterNormalizer } = {},
+  options: { now?: number; newerSchema?: boolean; normalize?: RosterNormalizer; linkedProfile?: RosterLinkedProfile } = {},
 ): { next: RosterBackupSources; report: RosterMergeReport; changed: RosterMergeChanged } {
   const now = options.now ?? Date.now();
   const report: RosterMergeReport = {
@@ -544,7 +556,7 @@ export function mergeRosterBackup(
     if (found.kind === 'match') {
       idMap.set(incoming.id, found.id);
       const index = students.findIndex((row) => row.id === found.id);
-      const filled = fillStudent(students[index], incoming);
+      const filled = fillStudent(students[index], incoming, options.linkedProfile);
       if (same(filled, students[index])) report.studentsUnchanged += 1;
       else {
         students[index] = filled;

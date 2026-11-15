@@ -3,7 +3,7 @@
  * and no linked Student Roster card exists yet, add or link one so the coach can reply.
  * Students may send a card share or a self-assessment independently.
  */
-import { canAcceptCardShare, type CardShareRoster } from './coachStudentInbox.ts';
+import { canSendCoachSync, type SyncActor } from './coachSync.ts';
 import type { InstructorAssessmentItem } from './instructorAssessments.ts';
 import {
   addStudent,
@@ -16,8 +16,16 @@ import {
   type Student,
   type StudentDraft,
 } from './rosterStore.ts';
+import { normalizeRosterPersonName } from './rosterPersonName.ts';
+export { normalizeRosterPersonName } from './rosterPersonName.ts';
 import { isStableStudentId } from './studentIdentity.ts';
-import type { SyncActor } from './coachSync.ts';
+
+export type InboxRoster = {
+  students: readonly Student[];
+  add(draft: StudentDraft, options: { rosterList: 'student' }): Student | null;
+  update(id: string, draft: Partial<StudentDraft>): Student | null;
+  link(id: string, studentId: string): Student | null;
+};
 
 export type InboxStudentIdentity = {
   studentId: string;
@@ -34,7 +42,7 @@ export type EnsureRosterCardResult =
   | { status: 'created'; card: Student }
   | { status: 'skipped'; reason: 'not-allowed' | 'invalid-student' | 'invalid-card' };
 
-function liveRoster(roster?: CardShareRoster): CardShareRoster {
+function liveRoster(roster?: InboxRoster): InboxRoster {
   return (
     roster ?? {
       get students() {
@@ -48,10 +56,6 @@ function liveRoster(roster?: CardShareRoster): CardShareRoster {
 }
 
 /** NFC, trim, collapse spaces, case-fold. Conservative exact match only. */
-export function normalizeRosterPersonName(name: string): string {
-  return clipName(name).replace(/\s+/g, ' ').toLowerCase();
-}
-
 export function linkedRosterCardForStudent(students: readonly Student[], studentId: string): Student | undefined {
   const id = studentId.trim();
   if (!isStableStudentId(id)) return undefined;
@@ -89,9 +93,9 @@ function draftFromIdentity(identity: InboxStudentIdentity): StudentDraft | null 
  */
 export function ensureRosterCardForStudent(
   identity: InboxStudentIdentity,
-  options: { actor: SyncActor; roster?: CardShareRoster } = { actor: 'owner' },
+  options: { actor: SyncActor; roster?: InboxRoster } = { actor: 'owner' },
 ): EnsureRosterCardResult {
-  if (!canAcceptCardShare(options.actor)) return { status: 'skipped', reason: 'not-allowed' };
+  if (!canSendCoachSync(options.actor)) return { status: 'skipped', reason: 'not-allowed' };
   const studentId = identity.studentId.trim();
   if (!isStableStudentId(studentId)) return { status: 'skipped', reason: 'invalid-student' };
   const roster = liveRoster(options.roster);
@@ -128,7 +132,7 @@ export type EnsureAssessmentsResult = { created: Student[]; linked: Student[]; e
 /** One card per distinct studentId in the waiting list. Safe to call on every roster open. */
 export function ensureRosterCardsForAssessments(
   items: readonly InstructorAssessmentItem[],
-  options: { actor: SyncActor; roster?: CardShareRoster } = { actor: 'owner' },
+  options: { actor: SyncActor; roster?: InboxRoster } = { actor: 'owner' },
 ): EnsureAssessmentsResult {
   const created: Student[] = [];
   const linked: Student[] = [];
@@ -145,3 +149,15 @@ export function ensureRosterCardsForAssessments(
   }
   return { created, linked, existing };
 }
+
+export function identityFromShare(share: { studentId: string; card: { name?: string; belt?: string; stripes?: number; division?: string; gym?: string } }): InboxStudentIdentity {
+  return {
+    studentId: share.studentId,
+    name: share.card.name,
+    belt: share.card.belt,
+    stripes: share.card.stripes,
+    division: share.card.division,
+    gym: share.card.gym,
+  };
+}
+

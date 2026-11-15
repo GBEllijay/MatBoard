@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import {
   acceptCardShare,
+  applyIncomingCardShares,
   applyStudentUpdate,
   dismissStudentUpdate,
   getPendingStudentUpdates,
@@ -93,13 +94,24 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
   useEffect(() => {
     // One pull when the roster opens, if this phone is signed in. Same as Assessments waiting.
     if (!readCloudBearer()) return;
-    void refreshCardShares();
+    void (async () => {
+      const result = await refreshCardShares();
+      if (!result.ok) return;
+      const applied = await applyIncomingCardShares();
+      if (applied.applied) {
+        setStatus(
+          applied.applied === 1
+            ? 'A student card was added or updated from a shared card.'
+            : `${applied.applied} student cards were added or updated from shared cards.`,
+        );
+      }
+    })();
   }, []);
 
   return (
     <section aria-label={title}>
       <h3>{title}</h3>
-      <p>A merge fills only blank fields. A shared photo waits for the head coach. If the student already has a card, Accept adds the share to that card.</p>
+      <p>Shared student cards are added to the roster automatically, and an existing card is updated with the latest belt and profile. A shared photo waits for the head coach. You can remove a card from the roster if it was added by mistake.</p>
       {shares.map((share) => {
         const existing = linkedRosterCardForStudent(roster, share.studentId);
         return (
@@ -177,7 +189,17 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
           setCheckNote('Checking for student cards…');
           try {
             const result = await refreshCardShares();
-            setCheckNote(result.ok ? cardShareCheckNote(result.pending, before) : CARD_SHARE_CHECK_FAILED);
+            if (!result.ok) setCheckNote(CARD_SHARE_CHECK_FAILED);
+            else {
+              const applied = await applyIncomingCardShares();
+              setCheckNote(
+                applied.applied
+                  ? applied.applied === 1
+                    ? 'A student card was added or updated.'
+                    : `${applied.applied} student cards were added or updated.`
+                  : cardShareCheckNote(result.pending, before),
+              );
+            }
           } catch {
             setCheckNote(CARD_SHARE_CHECK_FAILED);
           } finally {

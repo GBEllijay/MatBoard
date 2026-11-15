@@ -175,4 +175,28 @@ describe('full roster backup format', () => {
     assert.ok(parsed.ok);
     assert.equal(parsed.newerSchema, true);
   });
+
+  it('updates belt and profile for the same linked student when linkedProfile is incoming', () => {
+    const local = sources([
+      student({ id: 'h1', name: 'Haven', belt: 'White', division: '', gym: '', linkedStudentId: 'stu-haven', note: 'Coach note' }),
+    ]);
+    const incoming = buildRosterBackup(
+      sources([
+        student({ id: 'h2', name: 'Haven Cole', belt: 'Blue', division: 'Kids', gym: 'GB', stripes: 2, linkedStudentId: 'stu-haven', note: 'Should not replace' }),
+      ]),
+      { scope: 'shared', now },
+    );
+    const blanks = mergeRosterBackup(local, incoming, { now: now.getTime() });
+    assert.equal(blanks.next.roster.students[0].belt, 'White', 'default merge still fills blanks only');
+    assert.equal(blanks.next.roster.students[0].note, 'Coach note');
+    const updated = mergeRosterBackup(local, incoming, { now: now.getTime(), linkedProfile: 'incoming' });
+    const haven = updated.next.roster.students[0];
+    assert.equal(haven.belt, 'Blue');
+    assert.equal(haven.name, 'Haven Cole');
+    assert.equal(haven.division, 'Kids');
+    assert.equal(haven.gym, 'GB');
+    assert.equal(haven.stripes, 2);
+    assert.equal(haven.note, 'Coach note');
+    assert.equal(haven.id, 'h1');
+  });
 });

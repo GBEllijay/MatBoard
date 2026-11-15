@@ -30,6 +30,7 @@ import {
 } from '../lib/rosterBackupDevice';
 import { normalizeRoster } from '../lib/rosterStore';
 import { ROSTER_CLOUD_HINT } from '../lib/storageCopy';
+import { AcademyRosterDupes } from './AcademyRosterDupes';
 
 function downloadJson(filename: string, text: string): void {
   const blob = new Blob([text], { type: 'application/json' });
@@ -147,7 +148,7 @@ export function RosterBackupTools({ seat, canExport, canImport }: Props) {
       const state = await fetchGymRosterState();
       setCloud(state);
       if (!state) return 'Advantage Cloud did not answer. Try again.';
-      let text = state.master ? formatRosterMergeReport(importRosterBackupOnDevice(state.master)) : 'No gym roster in Advantage Cloud yet.';
+      let text = state.master ? formatRosterMergeReport(importRosterBackupOnDevice(state.master, false, { linkedProfile: 'incoming' })) : 'No gym roster in Advantage Cloud yet.';
       const mine = await fetchGymRosterPrivateNotes();
       // Only this author's own notes come back to this device.
       const own = mine ? mine.notes[mine.author] : undefined;
@@ -236,6 +237,7 @@ export function RosterBackupTools({ seat, canExport, canImport }: Props) {
         </label>
       ) : null}
       {ownWaiting ? <p className="roster__csv-hint">{ownWaiting} roster change(s) waiting for the head coach.</p> : null}
+      {cloud?.role.isOwner ? <AcademyRosterDupes cloud={cloud} onRefreshCloud={refreshCloud} /> : null}
       {cloudPending.length || folderPending.length ? (
         <ul className="roster__review" aria-label="Roster changes to review">
           {cloudPending.map((row) => (
