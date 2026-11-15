@@ -105,7 +105,7 @@ function card(partial: Partial<Student> & { id: string }): Student {
   } as Student;
 }
 
-test('coach import: blanks fill, belt waits for approval, assistants cannot approve', () => {
+test('coach import: blanks fill, and the student file applies belt without instructor approval', () => {
   const student = testMemory();
   const coach = testMemory();
   const built = buildCoachUpdateFile(baseReport(), { storage: student, assessments, now: 100, today: '2026-11-04' });
@@ -117,17 +117,11 @@ test('coach import: blanks fill, belt waits for approval, assistants cannot appr
   const applied = applyStudentCoachUpdate(coach, id, roster(cards), { actor: 'coach', approveRank: false });
   assert.ok(applied.ok);
   if (!applied.ok) return;
-  assert.equal(applied.rank, 'not-approved');
+  assert.equal(applied.rank, 'approved');
   assert.equal(cards[0].name, 'Alex Kim');
   assert.equal(cards[0].gym, 'Coach Typed Gym');
-  assert.equal(cards[0].belt, 'White');
-  assert.equal(pendingStudentCoachUpdates(coach).length, 0);
-
-  const again = buildCoachUpdateFile(baseReport(), { storage: testMemory(), assessments, now: 500, today: '2026-11-04' });
-  receiveStudentCoachUpdate(coach, JSON.parse(again.json));
-  const approved = applyStudentCoachUpdate(coach, again.update.updateId, roster(cards), { actor: 'head', approveRank: true });
-  assert.ok(approved.ok && approved.rank === 'approved');
   assert.equal(cards[0].belt, 'Blue');
+  assert.equal(pendingStudentCoachUpdates(coach).length, 0);
 
   const third = buildCoachUpdateFile(baseReport(), { storage: testMemory(), assessments, now: 900, today: '2026-11-04' });
   receiveStudentCoachUpdate(coach, JSON.parse(third.json));

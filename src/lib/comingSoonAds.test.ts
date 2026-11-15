@@ -71,12 +71,12 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
   assert.equal(COACH_PREVIEW_LABEL, 'Advantage Instructor Edition');
   assert.equal(
     COACH_PREVIEW_NOTE,
-    'Daily Lesson Plan, training videos, Technique Tree, Student Roster, and a plain mock tournament.',
+    'Daily Lesson Plan, training videos, Technique Tree, Student Roster, and full tournament brackets.',
   );
   assert.doesNotMatch(text, /^Coach tools:/m);
   assert.deepEqual(
     COMING_SOON_ADS.coach.features.map((feature) => feature.title),
-    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Mock Tournament'],
+    ['Daily Lesson Plan', 'Daily Training Videos', 'Technique Tree', 'Student Roster', 'Tournament Software'],
   );
   assert.match(text, /Student Roster/);
   assert.match(text, /Student Notes/);
@@ -85,7 +85,8 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
   assert.match(text, /gym name or nickname/);
   assert.match(text, /last promotion/);
   assert.match(text, /No photo on Instructor Edition/);
-  assert.match(text, /No skins and no rankings/);
+  assert.match(text, /up to 64 competitors/);
+  assert.doesNotMatch(text, /does not include Competition/);
   assert.doesNotMatch(text, /competitor roster/i);
   assert.doesNotMatch(text, /Daily Techniques/);
   assert.doesNotMatch(text, /membership app/i);
@@ -128,7 +129,7 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
   const teaser = PRODUCT_TEASERS.coach;
   const lesson = teaser.indexOf('Daily Lesson Plan');
   const videos = teaser.indexOf('Daily Training Videos');
-  const mock = teaser.indexOf('Mock Tournament');
+  const mock = teaser.indexOf('Tournament');
   const roster = teaser.indexOf('Roster');
   assert.ok(lesson === 0 && videos > lesson && mock > videos && roster > mock);
   assert.ok(PRODUCT_TEASERS.coach.length < 70);
@@ -159,7 +160,8 @@ test('Pro ad lists the live Pro hubs and keeps launch pricing off the feature co
   const tournamentFeature = COMING_SOON_ADS.pro.features.find(
     (feature) => feature.title === TOURNAMENT_MANAGEMENT_PRO_LABEL,
   );
-  assert.match(tournamentFeature?.body ?? '', /Pro brackets/);
+  // Instructor Edition includes the full brackets now (owner, 14 Nov 2026); Pro opens them from its console.
+  assert.match(tournamentFeature?.body ?? '', /same brackets.*Instructor Edition/);
   assert.doesNotMatch(tournamentFeature?.body ?? '', /roster/i);
   const unlimitedFeature = COMING_SOON_ADS.pro.features.find(
     (feature) => feature.title === PRO_INSTRUCTOR_HUB_LABEL,

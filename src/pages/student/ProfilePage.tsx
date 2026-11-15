@@ -38,7 +38,7 @@ export function ProfilePage() {
           <div className="profile-hero__copy">
             <h1>My profile</h1>
             <p>
-              Tap any part of your card to fill it in. It all stays on this phone. <Link to={to('/student/faq')}>FAQ</Link>
+              Tap any part of your card to fill it in. It all stays on this device. <Link to={to('/student/faq')}>FAQ</Link>
             </p>
           </div>
           <ProfileCornerMarks
@@ -121,8 +121,8 @@ function KidAdultFields({
     }
   };
   const note = pending === 'kids'
-    ? 'Switch to Kid? Your history stays. Adult belts stay on this phone.'
-    : 'Switch to Adult? Your history stays. Kids belts stay on this phone.';
+    ? 'Switch to Kid? Your history stays. Adult belts stay on this device.'
+    : 'Switch to Adult? Your history stays. Kids belts stay on this device.';
   return (
     <section className="profile-card" aria-label="Kid or Adult">
       <h2>Kid or Adult</h2>

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readCardSyncSent, sendCoachAssessment, sendCoachNote } from './cardSync.ts';
+import { readCardSyncSent, sendCardSync, sendCoachAssessment, sendCoachNote } from './cardSync.ts';
 import { importCoachText } from './coachInbound.ts';
 import { emptyUpdateLedger, readCoachQueue } from './coachRankUpdate.ts';
 import {
@@ -158,4 +158,42 @@ test('sendCoachAssessment: one press sends one assessment; it is accepted beside
     ledger = done.ledger;
   }
   assert.deepEqual(overlay.assessments.map((row) => row.date), ['2026-11-01', '2026-11-03']);
+});
+
+test('sendCardSync strips belt and stripes but keeps scores, notes, and video links', async () => {
+  const log = testMemory();
+  const { sent, deliver } = capture();
+  const first = await sendCoachAssessment(
+    'card-1',
+    { date: '2026-11-14', scores: { guard: 4 }, note: 'Nice passing' },
+    { roster: [linked], actor: 'owner', deliver, log, now: 100 },
+  );
+  assert.equal(first.mode, 'cloud');
+  const packet = {
+    ...(sent[0] as CoachAssessmentPacket),
+    belt: 'Purple',
+    stripes: 4,
+    lastPromotion: '2026-01-01',
+    suggestedVideoLinks: ['https://example.com/guard'],
+    assessment: { ...(sent[0] as CoachAssessmentPacket).assessment, belt: 'Purple', stripes: 4 },
+  };
+  sent.length = 0;
+  const again = await sendCardSync('card-1', packet as CoachAssessmentPacket, {
+    roster: [linked],
+    actor: 'owner',
+    deliver,
+    log,
+    now: 110,
+  });
+  assert.equal(again.mode, 'cloud');
+  const outbound = sent[0] as Record<string, unknown>;
+  assert.equal(outbound.belt, undefined);
+  assert.equal(outbound.stripes, undefined);
+  assert.equal(outbound.lastPromotion, undefined);
+  assert.deepEqual(outbound.suggestedVideoLinks, ['https://example.com/guard']);
+  const assessment = outbound.assessment as { scores: { guard: number }; note?: string; belt?: string; stripes?: number };
+  assert.equal(assessment.scores.guard, 4);
+  assert.equal(assessment.note, 'Nice passing');
+  assert.equal(assessment.belt, undefined);
+  assert.equal(assessment.stripes, undefined);
 });

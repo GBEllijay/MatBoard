@@ -75,7 +75,7 @@ export function createPhotoSubmission(input: {
   photoId?: string;
 }): { ok: true; submission: StudentPhotoSubmission; state: PhotoDraftState } | { ok: false; error: string } {
   if (!photoImageFits(input.image)) return { ok: false, error: 'Use a JPEG, PNG, or WebP photo under 350 KB.' };
-  if (!ID_RE.test(input.studentId)) return { ok: false, error: 'Link this phone to your gym first.' };
+  if (!ID_RE.test(input.studentId)) return { ok: false, error: 'Link this device to your gym first.' };
   const now = input.now ?? Date.now();
   const photoId = input.photoId ?? `photo-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const submission: StudentPhotoSubmission = {

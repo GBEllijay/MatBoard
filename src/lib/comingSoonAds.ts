@@ -45,7 +45,7 @@ export const INSTRUCTOR_EDITION_INCLUDES = 'Includes everything in Media, Studen
 
 /** First Instructor feature: the Daily Lesson Plan, with its download and Drive save. */
 export const INSTRUCTOR_LESSON_PLAN_BODY =
-  "Plan today's class on this phone — warm-up, techniques, cool-down, and closing. Download today's lesson videos and save the plan to your Google Drive.";
+  "Plan today's class on this device — warm-up, techniques, cool-down, and closing. Download today's lesson videos and save the plan to your Google Drive.";
 
 /** Locked Pro and Student splash gold label. Coach does not use this. */
 export const COMING_SOON_LABEL = 'Coming Soon';
@@ -55,7 +55,7 @@ export const COACH_PREVIEW_LABEL = INSTRUCTOR_HOME_TITLE;
 
 /** One line under that shot. The picture is the live Coach button list. */
 export const COACH_PREVIEW_NOTE =
-  'Daily Lesson Plan, training videos, Technique Tree, Student Roster, and a plain mock tournament.';
+  'Daily Lesson Plan, training videos, Technique Tree, Student Roster, and full tournament brackets.';
 
 /** Caption on the Pro Coming Soon shot of the unlocked console home. */
 export const PRO_CONSOLE_PREVIEW_LABEL = 'Advantage Pro';
@@ -77,7 +77,7 @@ export const STUDENT_LAUNCH_PRICE_NOTE = `Price: ${STUDENT_PRICE_LINE} when it l
 export const STUDENT_PREVIEW_LABEL = STUDENT_EDITION_NAME;
 
 /** One line under that journal. */
-export const STUDENT_PREVIEW_NOTE = 'Journal, journal cards, a fundamentals checklist, calendar, and belt progress stay on this phone.';
+export const STUDENT_PREVIEW_NOTE = 'Journal, journal cards, a fundamentals checklist, calendar, and belt progress stay on this device.';
 
 /** Same request line as the home cards. Product sheets pass their own note. */
 export const ALPHA_TRIAL_NOTE = `Email ${SITE_FEEDBACK_EMAIL} to request an alpha code.`;
@@ -96,7 +96,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
     lead: INSTRUCTOR_EDITION_LEAD,
     includes: INSTRUCTOR_EDITION_INCLUDES,
     aside:
-      'Instructor Edition does not include Competition Class Curriculum or Competition Team Management.',
+      'Instructor Edition includes Competition Class Curriculum and Competition Team Management.',
     features: [
       {
         title: TRAINING_NOTES_LABEL,
@@ -104,19 +104,19 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: 'Daily Training Videos',
-        body: 'Loop training clips while the class drills. Clips stay on this phone.',
+        body: 'Loop training clips while the class drills. Clips stay on this device.',
       },
       {
         title: TECHNIQUE_TREE_LABEL,
-        body: 'Map a base position into branches and defenses. Trees stay on this phone.',
+        body: 'Map a base position into branches and defenses. Trees stay on this device.',
       },
       {
         title: STUDENT_ROSTER_LABEL,
         body: `Name, belt, other belt, Division, gym name or nickname, last promotion, and ${STUDENT_NOTES_LABEL}. No photo on Instructor Edition.`,
       },
       {
-        title: 'Mock Tournament',
-        body: 'A plain bracket on this phone. No skins and no rankings.',
+        title: 'Tournament Software',
+        body: 'Brackets up to 64 competitors, with bracket skins and the Competition class template. Brackets save on this device.',
       },
     ],
     dismiss: 'Got it',
@@ -141,7 +141,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: TOURNAMENT_MANAGEMENT_PRO_LABEL,
-        body: 'Pro brackets, the scoreboard, and the round timer, with extra skins and animations.',
+        body: 'The same brackets, scoreboard, and round timer as Instructor Edition, opened from the Pro console.',
       },
     ],
     dismiss: 'Got it',
@@ -150,7 +150,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
     title: STUDENT_EDITION_NAME,
     kicker: COMING_SOON_LABEL,
     lead: STUDENT_HOME_DESCRIPTION,
-    includes: 'Daily notes, journal cards, and a fundamentals checklist stay on this phone.',
+    includes: 'Daily notes, journal cards, and a fundamentals checklist stay on this device.',
     features: [
       {
         title: 'Journal',

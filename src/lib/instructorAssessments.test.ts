@@ -186,7 +186,7 @@ test('roster: assignedInstructorId survives a normalize and a merge fills it onl
   assert.equal(kept.next.roster.students[0].assignedInstructorId, 'seat-a');
 });
 
-test('scanning a coach connect code keeps who showed it on this phone', async () => {
+test('scanning a coach connect code keeps who showed it on this device', async () => {
   const { acceptCoachConnect } = await import('./coachConnect.ts');
   const memory = testMemory();
   const fetchImpl = (async () =>

@@ -5,6 +5,7 @@ import { AlphaCodeEntry } from '../components/AlphaCodeEntry';
 import { HomeMark } from '../components/HomeMark';
 import { SiteFooter } from '../components/SiteFooter';
 import { TierBeltIcon } from '../components/TierBuyParts';
+import { ACCOUNT_PATH } from '../lib/emailLogin';
 import {
   PRODUCTS_PATH,
   PRO_PLUS_CLOUD_DESCRIPTION,
@@ -41,6 +42,12 @@ export function ProPlusCloudInfoPage() {
             </p>
             <p>Not for sale on this page.</p>
           </header>
+          <section className="buy__card buy__checkout" aria-label="Already have Pro + Cloud">
+            <p>Already have Pro + Cloud? Sign in with your email to restore it on this device.</p>
+            <Link className="btn btn--white" to={ACCOUNT_PATH} data-restore="pro-cloud">
+              Sign in to restore Pro + Cloud
+            </Link>
+          </section>
           <section className="buy__card buy__checkout" aria-label="Alpha access">
             <AlphaCodeEntry tier="pro-cloud" />
             <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />

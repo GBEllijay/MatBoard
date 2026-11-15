@@ -10,7 +10,7 @@ export const CLOUD_DOWNLOAD_MS = CLOUD_DOWNLOAD_DAYS * 24 * 60 * 60 * 1000;
 export const CLOUD_SEEN_KEY = 'matboard.plusCloud.seenActive.v1';
 export const CLOUD_LAPSED_KEY = 'matboard.plusCloud.lapsedAt.v1';
 
-export const LAPSE_PAUSED = 'Cloud sharing is paused. Everything on this phone still works.';
+export const LAPSE_PAUSED = 'Cloud sharing is paused. Everything on this device still works.';
 /**
  * What “paused” means. Same condition as the notice: this browser once had
  * Advantage Pro Plus Cloud open, and the pass signed in here does not open it now.
@@ -21,8 +21,8 @@ export const LAPSE_WHY =
 export const LAPSE_CONNECT =
   'To use these files on another device, connect Google Drive, OneDrive, or a folder on this computer.';
 export const LAPSE_REMOVED =
-  'The Advantage Cloud copy has been removed. Files already on this phone, and any folder you downloaded, are still yours.';
-export const LAPSE_DOWNLOADED = 'Saved advantage-gym-folder.txt on this phone.';
+  'The Advantage Cloud copy has been removed. Files already on this device, and any folder you downloaded, are still yours.';
+export const LAPSE_DOWNLOADED = 'Saved advantage-gym-folder.txt on this device.';
 
 export type CloudLapsePhase =
   | { phase: 'hidden' }
@@ -102,7 +102,7 @@ export function gymFolderDownloadText(): string {
     'events/',
     'pro-shop/',
     '',
-    'Photos and videos already on this phone stay on this phone.',
+    'Photos and videos already on this device stay on this device.',
     'Connect Google Drive, OneDrive, or a folder on this computer to keep a copy there.',
   ].join('\n');
 }

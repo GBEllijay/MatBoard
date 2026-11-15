@@ -8,7 +8,6 @@ import {
   bluePreviewRequested,
   claimBlueCheer,
   cleanBirthYear,
-  isKidsToBlueUpdate,
 } from '../lib/blueBeltCheer';
 import { gymPacketAllowed } from '../lib/academyMembership';
 import {
@@ -201,7 +200,9 @@ export function CoachUpdateInbox() {
     setMarkerTick((tick) => tick + 1);
   };
   const fileReport = sample ? sample.report : report;
-  const kidsToBlue = packet ? isKidsToBlueUpdate(fileReport, packet) : false;
+  // Leftover promotion packets are accepted without changing My rank, so the
+  // kids-to-Blue confirm is never shown.
+  const kidsToBlue = false;
   const downloadInstructorFile = (path: string, name: string) => {
     const pass = readInboxPass(localStorage);
     if (!pass) return;

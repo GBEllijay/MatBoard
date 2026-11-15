@@ -15,6 +15,7 @@ import {
   type LiveCard,
 } from '../lib/indexCards.ts';
 import { beginAppStudentSave, endAppStudentSave } from '../lib/studentDemo.ts';
+import { noteLocalStudentChange } from '../lib/syncTrigger.ts';
 import { loadAdditions, recordAddition, writeAdditions, type AdditionInput, type AdditionsPool } from '../lib/glossaryAdditions.ts';
 import { d8Catalog } from './catalog.ts';
 
@@ -68,6 +69,7 @@ export function commitIndexCards(file: IndexCardFile): IndexCardFile {
     endAppStudentSave();
   }
   emitFile();
+  noteSignedInStudentChange();
   return snapshot;
 }
 
@@ -96,6 +98,7 @@ export function noteAddition(input: AdditionInput): void {
     endAppStudentSave();
   }
   for (const listener of additionListeners) listener();
+  noteSignedInStudentChange();
 }
 
 export function useAdditions(): AdditionsPool {
@@ -151,6 +154,20 @@ export function resetIndexCardStoreForTests(): void {
   emitFile();
   for (const listener of additionListeners) listener();
   emitOpen();
+}
+
+/** Reload the in-memory cards after Cloud applies a newer document. */
+export function hydrateIndexCardsFromSync(doc: { indexCards: IndexCardFile; glossaryAdditions?: AdditionsPool }): void {
+  if (memoryOnly) return;
+  snapshot = doc.indexCards;
+  if (doc.glossaryAdditions) additions = doc.glossaryAdditions;
+  emitFile();
+  for (const listener of additionListeners) listener();
+}
+
+function noteSignedInStudentChange(): void {
+  if (memoryOnly) return;
+  noteLocalStudentChange();
 }
 
 export function useIndexCardFile(): IndexCardFile {

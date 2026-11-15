@@ -76,6 +76,7 @@ import {
 } from '../lib/rosterCsv';
 import { competitionSendOffer } from '../lib/coachCompetitionUpdate';
 import { rankSendOffer } from '../lib/coachRankUpdate';
+import { rosterRankHint, studentOwnsRosterRank } from '../lib/studentOwnedRank';
 import { seatPermissionAllows } from '../lib/instructorSeats';
 import { readGymName } from '../lib/gymName';
 import { useGymName } from '../hooks/useGymBrand';
@@ -353,7 +354,7 @@ export function RosterPage() {
       <header className="roster__bar">
         <div className="roster__brand">
           <p className="roster__eyebrow">
-            {studentRoster || coachRoster ? 'Advantage Coach' : fromCompetitors ? COMPETITOR_SYSTEM_NAME : parent.eyebrow}
+            {studentRoster || coachRoster ? 'Advantage Instructor Edition' : fromCompetitors ? COMPETITOR_SYSTEM_NAME : parent.eyebrow}
           </p>
           <h1>{studentRoster ? STUDENT_ROSTER_LABEL : COMPETITOR_ROSTER_LABEL}</h1>
         </div>
@@ -366,7 +367,7 @@ export function RosterPage() {
 
       <p className="roster__lead">
         {studentRoster
-          ? 'Student Roster with names, belts, and notes. The list stays on this phone.'
+          ? 'Student Roster with names, belts, and notes. The list stays on this device.'
           : coachRoster
             ? ROSTER_LEAD_COACH
             : ROSTER_LEAD_PRO}
@@ -593,6 +594,7 @@ export function RosterPage() {
         draft={editor?.draft ?? emptyDraft()}
         saveError={saveError}
         focusStripes={Boolean(editor?.focusStripes)}
+        rankHint={editor?.id && studentRoster ? rosterRankHint(roster.students.find((row) => row.id === editor.id) ?? { belt: '' }) : null}
         onChange={(draft) => setEditor((current) => (current ? { ...current, draft } : current))}
         onClose={() => {
           setSaveError('');
@@ -632,8 +634,10 @@ export function RosterPage() {
       />
       {studentRoster ? (
         <>
-          <PendingCardShares roster={roster.students} title="New student cards" />
-          <AssessmentsWaiting roster={roster.students} />
+          <div className="roster__inbox">
+            <PendingCardShares roster={roster.students} title="New student cards" />
+            <AssessmentsWaiting roster={roster.students} />
+          </div>
         </>
       ) : (
         <GuestArchive />
@@ -1054,7 +1058,11 @@ export function StudentCard({
           </div>
           {onOpenFace ? null : (
             <div className="roster-card__belt-row">
-              <BeltTip belt={student.belt} />
+              {student.rankUnset && studentOwnsRosterRank(student) && !student.coachRankAt ? (
+                <span className="roster-card__rank-unset">Not set yet</span>
+              ) : (
+                <BeltTip belt={student.belt} />
+              )}
               {competitorSwitch ? (
                 <button
                   type="button"
@@ -1234,6 +1242,7 @@ function StudentEditor({
   draft,
   saveError,
   focusStripes = false,
+  rankHint = null,
   onChange,
   onClose,
   onSave,
@@ -1251,6 +1260,8 @@ function StudentEditor({
   saveError: string;
   /** Opened from the card's belt: the Promotion stripes control is the belt. */
   focusStripes?: boolean;
+  /** Linked cards: belt edits stay on this roster and are not sent to the student. */
+  rankHint?: string | null;
   onChange: (draft: StudentDraft) => void;
   onClose: () => void;
   onSave: () => void;
@@ -1504,6 +1515,7 @@ function StudentEditor({
                   />
                 </label>
               </fieldset>
+              {rankHint ? <p className="roster-edit__hint" data-testid="student-owned-rank">{rankHint}</p> : null}
               <div className="card-entry__facts">
                 <label className="card-entry__cell">
                   Division

@@ -506,7 +506,7 @@ test('adult belts stay put when the student switches to kids and back', async ()
     await click(buttonNamed('Kids'));
     assert.equal(buttonNamed('Adult').getAttribute('aria-pressed'), 'true');
     assert.equal(labeled('Stripe 1').getAttribute('aria-pressed'), 'true');
-    assert.match(document.body.textContent ?? '', /Your adult belts stay on this phone/);
+    assert.match(document.body.textContent ?? '', /Your adult belts stay on this device/);
     await click(buttonNamed('Stay'));
     assert.equal(labeled('1st degree').getAttribute('aria-pressed'), 'true');
     await click(buttonNamed('Kids'));
@@ -700,7 +700,55 @@ test('The grandmaster congratulates a blue-belt graduation once, and not a white
   }
 });
 
-test('a kids profile shows her photo on this phone, and reports stay off until a parent turns that on', async () => {
+test('a green/black 16-year-old gets the Blue cheer when they start at blue on My rank', async () => {
+  let report = setBeltMode(blankStudentReport(40), 'kids', 41);
+  report = setBirthYear(report, new Date().getFullYear() - 16, 42);
+  report = setKidsBelt(report, 'green-black', 43);
+  saveStudentReport(localStorage, report);
+  const mounted = mount(<RankPage />);
+  try {
+    await click(buttonNamed('Start at blue'));
+    assert.equal(buttonNamed('Blue').getAttribute('aria-pressed'), 'true');
+    const cheer = document.querySelector('.kids-grandmaster');
+    assert.ok(cheer instanceof HTMLElement);
+    assert.match(cheer.textContent ?? '', /Congratulations, Coach!/);
+    assert.match(cheer.textContent ?? '', /The blue belt is yours\./);
+  } finally {
+    unmount(mounted);
+  }
+});
+
+test('switching to adult and tapping Blue also cheers once; adult White to Blue and a Blue re-tap do not', async () => {
+  let report = setBeltMode(blankStudentReport(40), 'kids', 41);
+  report = setKidsBelt(report, 'green-black', 42);
+  saveStudentReport(localStorage, report);
+  const fromKids = mount(<RankPage />);
+  try {
+    await click(buttonNamed('Adult'));
+    await click(buttonNamed('Switch'));
+    await click(buttonNamed('Blue'));
+    assert.equal(buttonNamed('Blue').getAttribute('aria-pressed'), 'true');
+    assert.match(document.querySelector('.kids-grandmaster')?.textContent ?? '', /Congratulations, Coach!/);
+    await click(buttonNamed('Got it'));
+    assert.equal(document.querySelector('.kids-grandmaster'), null);
+    await click(buttonNamed('Blue'));
+    assert.equal(document.querySelector('.kids-grandmaster'), null);
+  } finally {
+    unmount(fromKids);
+  }
+
+  saveStudentReport(localStorage, blankStudentReport(50));
+  const adult = mount(<RankPage />);
+  try {
+    await click(buttonNamed('Blue'));
+    assert.equal(buttonNamed('Blue').getAttribute('aria-pressed'), 'true');
+    assert.equal(document.querySelector('.kids-grandmaster'), null);
+  } finally {
+    unmount(adult);
+  }
+});
+
+test('a kids profile shows her photo on this device, and reports stay off until a parent turns that on', async () => {
   const report = setBeltMode(blankStudentReport(50), 'kids', 51);
   report.profile.gymName = 'North Gym';
   saveStudentReport(localStorage, report);

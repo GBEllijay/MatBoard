@@ -77,7 +77,7 @@ export function cloudCopyLine(summary: CloudCopySummary): { tone: 'saved' | 'err
     const copied = summary.copied ? ` ${summary.copied} copied.` : '';
     return {
       tone: 'error',
-      text: `Saved on this phone. ${summary.failed} of ${summary.attempted} did not copy to Advantage Cloud: ${summary.message}${copied}`,
+      text: `Saved on this device. ${summary.failed} of ${summary.attempted} did not copy to Advantage Cloud: ${summary.message}${copied}`,
     };
   }
   const waiting = summary.waiting ? ` ${summary.waiting} wait for approval in Review Inbox.` : '';

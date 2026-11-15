@@ -385,7 +385,6 @@ describe('Add to Competitor Roster', () => {
   it('same person link fills blanks and leaves competitor-only notes alone', () => {
     const store = new MemoryStorage();
     const card = studentCard('Paige');
-    linkRosterCard(card.id, 'stu-paige');
     updateStudent(card.id, {
       division: 'Adult',
       gym: 'Ellijay',
@@ -394,6 +393,7 @@ describe('Add to Competitor Roster', () => {
       photo: PHOTO,
       stripes: 2,
     });
+    linkRosterCard(card.id, 'stu-paige');
     updateRosterCard(card.id, (row) => ({ ...row, trainingStyle: '' }), store);
     const comp = addStudent({ name: 'Paige', belt: 'Black', division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', note: 'KEEP', photo: '' });
     assert.ok(comp);

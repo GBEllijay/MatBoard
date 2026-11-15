@@ -166,7 +166,7 @@ export function ResultsPage() {
         <div className="student-sheet">
           <p className="student-quiet">
             Record a quick result such as gold, silver, or bronze, or log each match. This is not a live scoreboard. A
-            bracket photo stays on this phone and is not in the file you send. Podium photos stay on this phone too. They
+            bracket photo stays on this device and is not in the file you send. Podium photos stay on this device too. They
             are not sent to your coach. {SELF_REPORTED_NOTE} A coach update you accept is the verified copy. Saving does
             not need a coach.
           </p>

@@ -73,6 +73,7 @@ import {
   type LadderRung,
 } from '../../lib/studentRank';
 import { GrandmasterCheer } from '../../components/GrandmasterCheer';
+import { claimStudentKidsToBlueCheer, STUDENT_BLUE_CHEER_LINES } from '../../lib/blueBeltCheer';
 import { AchievedDateField, formatAchieved } from './AchievedDateField';
 import { StudentMarks, useScrollToHash, useStudentFile, useStudentPath } from './chrome';
 import { BeltPhotoSection } from './RankPhotoGallery';
@@ -100,17 +101,19 @@ export function RankPage() {
   const unlocked = coralRanksUnlocked(report.profile.belt);
   const mode = beltModeOf(report);
   const [pendingMode, setPendingMode] = useState<'' | 'adult' | 'kids'>('');
-  const [coachCheer, setCoachCheer] = useState(false);
+  const [blueCheer, setBlueCheer] = useState(false);
   const reportRef = useRef(report);
   reportRef.current = report;
   useScrollToHash(mode === 'kids' ? `kids:${currentKidsBelt(report).beltId}` : report.profile.belt);
 
   const commitReport = (next: StudentProgressReport) => {
     try {
+      const previous = reportRef.current;
       const saved = commit(next);
       reportRef.current = saved;
       setError('');
       setPhotoErrorKey('');
+      if (claimStudentKidsToBlueCheer(localStorage, previous, saved)) setBlueCheer(true);
       return saved;
     } catch (err) {
       setPhotoErrorKey('');
@@ -168,8 +171,8 @@ export function RankPage() {
   return (
     <main className="student student-frame student--arena student--rank s-group">
       <StudentMarks />
-      {coachCheer ? (
-        <GrandmasterCheer lines={['Congratulations, Coach!', 'The blue belt is yours.']} onDismiss={() => setCoachCheer(false)} />
+      {blueCheer ? (
+        <GrandmasterCheer lines={STUDENT_BLUE_CHEER_LINES} onDismiss={() => setBlueCheer(false)} />
       ) : null}
       <div className="arena-scroll">
         <header className="arena-hero rank-hero">
@@ -179,7 +182,7 @@ export function RankPage() {
           <section aria-label="Profile">
             <h2>Profile</h2>
             <p className="student-quiet">
-              Your name, gym, and start date print on the progress report and the self-assessment. The start date can stay blank. They stay on this phone.
+              Your name, gym, and start date print on the progress report and the self-assessment. The start date can stay blank. They stay on this device.
             </p>
             <StudentProfileFields report={report} commit={commit} />
           </section>
@@ -207,8 +210,7 @@ export function RankPage() {
               onRemoveBeltPhoto={(beltId, index) => setPhotos(removeKidsBeltPhoto(photos, beltId, index))}
               onGraduate={(choice) => {
                 setPendingMode('');
-                if (!run(graduateToAdult(report, choice))) return;
-                if (choice === 'blue') setCoachCheer(true);
+                run(graduateToAdult(report, choice));
               }}
               lineage={<LineageEditor lineage={rank.lineage ?? []} onSave={(lines) => run(setRankLineage(report, lines))} />}
               saveAwarded={saveKidsAwarded}
@@ -406,7 +408,7 @@ export function RankPage() {
             </section>
           ) : null}
           <p className="student-quiet">
-            Photos stay on this phone. Send to coach includes them when the file has room.
+            Photos stay on this device. Send to coach includes them when the file has room.
           </p>
           <p className="student-quiet">
             A Promotion test on the calendar is a reminder you add by hand. It does not fill a belt date. The calendar reads the dates you save here.
@@ -674,7 +676,7 @@ function StripePhotoMarks({
 
 function PhotoSavedLine({ show, token }: { show: boolean; token: number }) {
   if (!show) return null;
-  return <SaveConfirm message="Saved on this phone. Shows on your belt page." token={token} />;
+  return <SaveConfirm message="Saved on this device. Shows on your belt page." token={token} />;
 }
 
 function PhotoRow({
@@ -844,8 +846,8 @@ function BeltSystemSwitch({
   onConfirm: () => void;
 }) {
   const note = pending === 'kids'
-    ? 'Switch to kids belts? Your history stays. Your adult belts stay on this phone.'
-    : 'Switch to adult belts? Your history stays. Your kids belts stay on this phone.';
+    ? 'Switch to kids belts? Your history stays. Your adult belts stay on this device.'
+    : 'Switch to adult belts? Your history stays. Your kids belts stay on this device.';
   return (
     <section className="belt-system" aria-label="Belt system">
       <h2>Belt system</h2>
@@ -871,7 +873,7 @@ function BeltSystemSwitch({
         </div>
       ) : (
         <p className="student-quiet">
-          {mode === 'kids' ? 'IBJJF kids belts. Your adult belts stay on this phone.' : 'Adult stays the default. Kids belts stay saved if you switch.'}
+          {mode === 'kids' ? 'IBJJF kids belts. Your adult belts stay on this device.' : 'Adult stays the default. Kids belts stay saved if you switch.'}
         </p>
       )}
     </section>

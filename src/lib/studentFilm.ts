@@ -22,18 +22,18 @@ export const FILM_STORE = 'blobs';
 export const FILM_MAX = 200;
 
 export const FILM_EMPTY_ERROR = 'That video is empty.';
-export const FILM_TYPE_ERROR = 'Choose a video. Film a move records a video, and Pick from gallery takes a video from this phone.';
+export const FILM_TYPE_ERROR = 'Choose a video. Film a move records a video, and Pick from gallery takes a video from this device.';
 export const FILM_TITLE_ERROR = 'Add the technique or title.';
 export const FILM_DATE_ERROR = 'Use a date like YYYY-MM-DD.';
 export const FILM_FULL_ERROR = 'The filmed library is full. Delete one before filming another.';
 export const FILM_PHONE_FULL_ERROR =
-  'That video is too large for storage on this phone. Save it to a connected drive, or record a shorter clip.';
+  'That video is too large for storage on this device. Save it to a connected drive, or record a shorter clip.';
 export const FILM_PHONE_STORE_ERROR =
-  'This phone could not store that video. Try a connected drive, or check that site storage is allowed.';
+  'This device could not store that video. Try a connected drive, or check that site storage is allowed.';
 export const FILM_DRIVE_FAIL_ERROR =
-  'The drive did not save that video. It was not added to the library. You can keep it on this phone instead.';
+  'The drive did not save that video. It was not added to the library. You can keep it on this device instead.';
 export const FILM_PLAY_MISSING =
-  'That video is not on this phone. Connect the drive it was saved to, or restore a backup that includes the video file.';
+  'That video is not on this device. Connect the drive it was saved to, or restore a backup that includes the video file.';
 export const FILM_PLAY_DRIVE = 'That video could not be loaded from the drive. Check the connection and try again.';
 export const FILM_LARGE_NOTE = LARGE_MEDIA_NOTE;
 

@@ -29,7 +29,7 @@ export const COACH_CARD_CLOUD_COPY =
   'Share my card with my coach and your photos go to your coach through Advantage Cloud. They land in New student cards on the coach\'s Student Roster. Belt and stripes wait for your coach to approve.';
 
 export const COACH_FILE_LEAD_COPY =
-  'This file is optional. It stays on this phone until you send it. Your coach imports it on Student Roster with Import a student file, after accepting your card.';
+  'This file is optional. It stays on this device until you send it. Your coach imports it on Student Roster with Import a student file, after accepting your card.';
 
 export const COACH_FILE_CONTENTS_COPY =
   'It has what changed since your last file: profile, belt and stripes, A/B/C game, tournaments you entered (not ones you are considering), new self-assessments, opponent cards, and weight updates when you turn those on below. Opponent cards stay on unless you turn that section off, and a card that has not changed is not sent again. Each opponent card includes the name, gym, group, style, class, belt, eight ratings including sweeps, strengths, weaknesses, record, and notes. The file never includes photos, your journal, move permissions, or another student\'s private notes. For a full copy of your journal, use Download student packet or the spreadsheet in Connections.';
@@ -198,7 +198,7 @@ export function SharePage() {
               This takes a coach plan or coach feedback file. That is the JSON file a coach sends back to you. It is not the progress file from Make a file for my coach. A rank update file also imports here and waits for Accept or Dismiss.
             </p>
             <p>
-              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. A gym name or logo in the file is still stored when it is there, and ignored when an older file does not have one. Student screens no longer show a gym logo. You can still merge a progress file into the journal on this phone after you confirm. A student packet, or an older JSON backup, restores from Connections.
+              A coach plan or coach feedback file is a suggestion. Importing it does not change your rubric marks, checkpoints, journal, or goals. A gym name or logo in the file is still stored when it is there, and ignored when an older file does not have one. Student screens no longer show a gym logo. You can still merge a progress file into the journal on this device after you confirm. A student packet, or an older JSON backup, restores from Connections.
             </p>
             <button type="button" className="ink-btn ink-btn--save" onClick={downloadSample}>
               Download a sample coach file

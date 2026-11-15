@@ -64,7 +64,7 @@ test('instructor link is the existing seat invite link for an issued, unclaimed 
   const open = shareableInvites(seats);
   assert.deepEqual(open.map((row) => row.id), ['b']);
   assert.equal(instructorShareLink(open[0], 'https://gym.test'), instructorInviteLink('tok-b', 'https://gym.test'));
-  assert.equal(instructorShareLink(open[0], 'https://gym.test'), 'https://gym.test/instructors?invite=tok-b');
+  assert.equal(instructorShareLink(open[0], 'https://gym.test'), 'https://gym.test/account?invite=tok-b');
 });
 
 test('seat ticker reads the local archive against the seat cap', () => {

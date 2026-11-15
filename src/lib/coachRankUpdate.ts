@@ -1,14 +1,14 @@
 /**
- * One-way coach rank update.
- * The coach records a belt, stripe count, and promotion date.
- * The student accepts or dismisses it. Accept writes My rank and one journal card.
- * Dismiss leaves the student file alone. The same update id is decided once.
- * This never writes checklist marks. The student owns that list.
+ * Belt promotions and stripes are no longer sent from the coach to the student.
+ * New packets are not offered (rankSendOffer is always noop). If an older packet
+ * is still in the queue, accept consumes it without changing My rank. A free-text
+ * note on the packet, if any, is added to the journal. Dismiss leaves the student
+ * file alone. The same update id is decided once.
  */
 
 import { canonicalBelt } from './rosterStore.ts';
 import { addJournalEntry, viewJournalEntry } from './studentEdition.ts';
-import { isRankBelt, rankBeltLabel, setRankAwardedOn, setRankBelt, setRankTapeCount, setRankTapeDate } from './studentRank.ts';
+import { rankBeltLabel } from './studentRank.ts';
 import { exportProgressPacket, parseProgressPacket } from './progress/format.ts';
 import {
   PROGRESS_NOTE_MAX,
@@ -117,14 +117,15 @@ export function rankFieldsChanged(
   );
 }
 
-/** Unlinked cards never offer a send. A linked card offers one only after a real change. */
+/**
+ * The coach never sends a rank update. Linked students set their own belt in
+ * their app, and the roster follows their card share or assessment.
+ */
 export function rankSendOffer(
-  before: Pick<Student, 'belt' | 'lastPromotion' | 'stripes' | 'linkedStudentId'>,
-  after: Pick<Student, 'belt' | 'lastPromotion' | 'stripes' | 'linkedStudentId'>,
+  _before: Pick<Student, 'belt' | 'lastPromotion' | 'stripes' | 'linkedStudentId'>,
+  _after: Pick<Student, 'belt' | 'lastPromotion' | 'stripes' | 'linkedStudentId'>,
 ): 'send' | 'noop' {
-  if (!after.linkedStudentId) return 'noop';
-  if (!rankFieldsChanged(before, after)) return 'noop';
-  return 'send';
+  return 'noop';
 }
 
 export function buildCoachRankUpdate(input: {
@@ -249,22 +250,6 @@ function seen(ledger: UpdateLedger, updateId: string): boolean {
   return ledger.accepted.includes(updateId) || ledger.dismissed.includes(updateId);
 }
 
-function applyRank(report: StudentProgressReport, packet: CoachRankUpdatePacket, now: number): StudentProgressReport {
-  let next = report;
-  if (next.profile.belt !== packet.rankUpdate.belt) {
-    next = setRankBelt(next, packet.rankUpdate.belt, now);
-  }
-  if (!isRankBelt(next.profile.belt)) return next;
-  const count = packet.rankUpdate.stripeCount;
-  next = setRankTapeCount(next, count, now);
-  if (count === 0) return setRankAwardedOn(next, packet.rankUpdate.promotionDate, now);
-  next = setRankTapeDate(next, count - 1, packet.rankUpdate.promotionDate, now);
-  if (report.profile.belt !== packet.rankUpdate.belt) {
-    next = setRankAwardedOn(next, packet.rankUpdate.promotionDate, now);
-  }
-  return next;
-}
-
 export function acceptCoachRankUpdate(
   report: StudentProgressReport,
   packet: CoachRankUpdatePacket,
@@ -274,23 +259,26 @@ export function acceptCoachRankUpdate(
   if (packet.studentId !== report.studentId || seen(ledger, packet.updateId)) {
     return { report, ledger, applied: false };
   }
-  let next = applyRank(report, packet, now);
-  const sentence = rankUpdateSentence(packet);
-  const notes = packet.rankUpdate.note ? `${sentence}\n${packet.rankUpdate.note}` : sentence;
-  next = addJournalEntry(
-    next,
-    {
-      date: packet.rankUpdate.promotionDate,
-      className: 'Promotion',
-      gameTag: '',
-      techniques: [],
-      partners: '',
-      drills: '',
-      rolls: '',
-      notes,
-    },
-    now,
-  );
+  // Belt, stripes, and last-promotion on the packet are ignored. Only a
+  // free-text note may be added to the journal.
+  let next = report;
+  const note = packet.rankUpdate?.note?.trim();
+  if (note) {
+    next = addJournalEntry(
+      next,
+      {
+        date: packet.rankUpdate.promotionDate || new Date(now).toISOString().slice(0, 10),
+        className: 'Coach note',
+        gameTag: '',
+        techniques: [],
+        partners: '',
+        drills: '',
+        rolls: '',
+        notes: note,
+      },
+      now,
+    );
+  }
   if (!next.profile.gymName.trim() && packet.gym?.name) {
     next = { ...next, profile: { ...next.profile, gymName: packet.gym.name } };
   }

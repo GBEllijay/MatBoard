@@ -84,9 +84,8 @@ test('Coach reads Instructor in this section, with the same code name, id and ro
   assert.equal(rung.title, 'Advantage Instructor Edition');
   assert.equal(rung.rankLabel, 'INSTRUCTOR');
   assert.equal(rung.blurb, 'Daily lesson plans, videos, and enhanced training tools.');
-  // $49.99 is display only on this tile; the Coach product copy (and Stripe) still says $29.99.
   assert.equal(rung.cardPrice, '$49.99 one-time');
-  assert.equal(coach.cardPrice, '$29.99 one-time');
+  assert.equal(coach.cardPrice, '$49.99 one-time');
   assert.equal(rung.to, '/editions/instructor');
   assert.equal(coach.to, '/products');
   assert.equal(rung.status, 'This product is in alpha');
@@ -96,7 +95,7 @@ test('Coach reads Instructor in this section, with the same code name, id and ro
   assert.doesNotMatch(STOREFRONT_LADDER_NOTE, /Coach/);
   assert.match(STOREFRONT_LADDER_NOTE, /Instructor/);
   // The code name is unchanged.
-  assert.equal(coach.title, 'Advantage Coach');
+  assert.equal(coach.title, 'Advantage Instructor Edition');
 });
 
 test('every tier except Pro and Pro Plus Cloud is priced one-time; Pro is $99.99 + $5.99/mo; Cloud is $5.99/month', () => {
@@ -144,7 +143,7 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   assert.equal(pro.bar, 'red');
   assert.doesNotMatch(pro.blurb, /Includes/);
   // The shared product copy (and its code name) is untouched.
-  assert.match(proStep.blurb, /Includes Coach\.$/);
+  assert.match(proStep.blurb, /Includes Instructor Edition\.$/);
   assert.equal(pro.cardPrice, '$99.99 one-time');
   assert.equal(pro.to, '/editions/pro');
   // Pro is the plain red bar. Pro Plus Cloud keeps white | red | white. White keeps the live card.

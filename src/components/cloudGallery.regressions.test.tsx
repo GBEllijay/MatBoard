@@ -219,7 +219,7 @@ test('Gallery Cloud copy: failures are counted and shown instead of swallowed; o
   assert.deepEqual(mixed, { attempted: 3, copied: 1, waiting: 0, failed: 2, message: 'Advantage Cloud could not be reached.' });
   const line = cloudCopyLine(mixed!);
   assert.equal(line.tone, 'error');
-  assert.match(line.text, /Saved on this phone\. 2 of 3 did not copy to Advantage Cloud/);
+  assert.match(line.text, /Saved on this device\. 2 of 3 did not copy to Advantage Cloud/);
 
   const offCloud = await copyFilesToCloudGallery([file('f.jpg', 'image/jpeg')], {
     dateKey: '2026-11-12',

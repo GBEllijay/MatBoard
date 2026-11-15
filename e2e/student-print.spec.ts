@@ -101,7 +101,7 @@ test('print reports hide the seat bar, save a profile, and download matching PDF
   await seed(page);
 
   await page.goto('/coach');
-  await expect(page.getByRole('heading', { name: 'Advantage - Coach' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Advantage - Instructor Edition' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
   await expect(page.getByText('Signed in as')).toHaveCount(0);
 

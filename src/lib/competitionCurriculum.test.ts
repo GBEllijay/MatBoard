@@ -130,7 +130,7 @@ test('suggested cards keep timer, notes, and tree options in the requested place
   assert.equal(byKind.warmup?.timing, 'timer');
 });
 
-test('today saves on this phone and class folders use the designation', () => {
+test('today saves on this device and class folders use the designation', () => {
   storage.clear();
   const plan = emptyCurriculum();
   plan.coachName = 'Alex';

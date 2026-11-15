@@ -262,3 +262,29 @@ export async function handleCoachConnect(
 
   return json(400, { ok: false, error: 'Unknown action.' });
 }
+
+/**
+ * A signed coach connect code for `gym`, made server-side at email sign-in so a student or
+ * instructor who came in through an invite is linked to the academy in the same step, with no
+ * QR scan. Uses the gym's current key, so it is the same code the QR would show. Null when the
+ * gym has not made a coach connect code yet or Advantage Cloud storage is not bound.
+ */
+export async function coachConnectForLogin(
+  env: CoachConnectEnv,
+  gym: string,
+  via: string | null,
+): Promise<{ invite: string; gymName: string; via: string | null } | null> {
+  const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
+  if (!material || !env.GYM_MEDIA || !LICENSE_RE.test(gym)) return null;
+  let current: { key: string; name: string } | null = null;
+  try {
+    current = await readCurrent(env.GYM_MEDIA, gym);
+  } catch {
+    current = null;
+  }
+  if (!current) return null;
+  const claim: CoachConnectClaim = { typ: 'coach-connect', v: 1, gym, name: current.name, key: current.key };
+  if (via && isInstructorId(via)) claim.via = via;
+  const invite = await signJson(material.kid, claim, material.privateJwk);
+  return { invite, gymName: current.name, via: claim.via ?? null };
+}

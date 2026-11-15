@@ -173,7 +173,7 @@ test('the coach seat bar is hidden in Student Edition and stays on coach pages',
   await expect(page.getByRole('region', { name: 'Instructor seat' })).toHaveCount(0);
 
   await page.goto('/coach');
-  await expect(page.getByRole('heading', { name: 'Advantage - Coach' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Advantage - Instructor Edition' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Instructor seat' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
   await expect(page.getByText('Signed in as')).toHaveCount(0);

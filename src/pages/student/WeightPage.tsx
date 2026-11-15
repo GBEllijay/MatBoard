@@ -62,7 +62,7 @@ export function WeightPage() {
               addHref={nextEvent ? '' : to('/student/competitor')}
               onSave={(value) => commit(setWeighDate(report, value))}
             />
-            <p className="student-quiet">Weigh-ins stay on this phone. Advantage does not host them.</p>
+            <p className="student-quiet">Weigh-ins stay on this device. Advantage does not host them.</p>
             <UnitToggle unit={unit} group="Weight unit" onChange={(next) => commit(setWeightUnit(report, next))} />
             <GoalWeightField
               goal={goal}

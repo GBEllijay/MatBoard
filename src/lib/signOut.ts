@@ -127,6 +127,13 @@ function defaultLeave(path: string): void {
  */
 export async function signOutAndLeave(leave: (path: string) => void = defaultLeave): Promise<SignOutResult> {
   const cleanup = await signOutThisDevice();
+  // Also end the email sign-in session, when this browser has one. Data on the device still stays.
+  try {
+    const login = await import('./emailLogin.ts');
+    if (login.readLoginHint()) await login.endAccountSession();
+  } catch {
+    /* the session cookie still expires on its own */
+  }
   let noticeSaved = false;
   if (!cleanup.paidScreensCleared && cleanup.error) {
     noticeSaved = rememberCleanupFailure(cleanup.error);

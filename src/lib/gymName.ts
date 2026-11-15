@@ -6,6 +6,8 @@
  * New competitor cards can start from `readGymName()` when their own gym is empty.
  */
 
+import { noteLocalAcademyChange } from './syncTrigger.ts';
+
 export const GYM_NAME_STORAGE_KEY = 'matboard.gymName.v1';
 export const GYM_NAME_MAX = 80;
 const GYM_NAME_EVENT = 'matboard-gym-name';
@@ -75,4 +77,5 @@ export function writeGymName(value: string): void {
     /* quota / private mode */
   }
   emitGymName();
+  noteLocalAcademyChange();
 }

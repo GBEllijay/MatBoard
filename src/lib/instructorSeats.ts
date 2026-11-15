@@ -100,7 +100,7 @@ export const INSTRUCTOR_PERMISSION_FIELDS: readonly {
 export type InstructorPresetId = 'assistant-coach' | 'coach' | 'program-director' | 'instructors';
 
 /** Product plan behind a named invite tier. Not stored separately from the preset. */
-export type InstructorPlanName = 'Coach Unlimited' | 'Coach Unlimited + Pro' | 'Pro · Gallery';
+export type InstructorPlanName = 'Instructor Edition' | 'Instructor Edition + Pro' | 'Pro · Gallery';
 
 export type InstructorPreset = {
   id: InstructorPresetId;
@@ -126,7 +126,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'assistant-coach',
     label: 'Assistant coach',
-    plan: 'Coach Unlimited',
+    plan: 'Instructor Edition',
     detail: ['Lesson plans and daily videos', 'Full cloud and sharing in these menus'],
     permissions: {
       galleryUpload: false,
@@ -160,7 +160,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'coach',
     label: 'Coach',
-    plan: 'Coach Unlimited',
+    plan: 'Instructor Edition',
     detail: ['Lesson plans, daily videos, and uploads', 'Full cloud and sharing in these menus'],
     permissions: {
       galleryUpload: false,
@@ -177,7 +177,7 @@ export const INSTRUCTOR_PRESETS: readonly InstructorPreset[] = [
   {
     id: 'instructors',
     label: 'Instructors',
-    plan: 'Coach Unlimited + Pro',
+    plan: 'Instructor Edition + Pro',
     detail: [
       'Lessons, uploads, events, Pro Shop, and gallery',
       'Full cloud and sharing in these menus',
@@ -322,10 +322,16 @@ export function isInviteEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/**
+ * Invite link (and the QR, which encodes the same link). It opens the account page in invite
+ * mode with the invite filled in: the instructor enters the invited email and picks a password,
+ * which turns the seat on and makes the email + password login in one step.
+ * Older `/instructors?invite=` links are sent to the same screen (App.tsx).
+ */
 export function instructorInviteLink(token: string, origin: string): string {
   const base = origin.replace(/\/$/, '');
   const params = new URLSearchParams({ invite: token });
-  return `${base}/instructors?${params.toString()}`;
+  return `${base}/account?${params.toString()}`;
 }
 
 /**
@@ -983,6 +989,8 @@ export function installAcceptedSeat(input: {
   email: string;
   presetId: InstructorPresetId | null;
   inviteToken: string;
+  /** The owner's switches stored on the server (email sign-in). Replace whatever this device had. */
+  permissions?: Partial<InstructorPermissions> | null;
 }): { ok: true } | { ok: false; reason: 'storage' } {
   const archive = readArchive();
   const existing = archive.seats.find((row) => row.id === input.id || row.inviteToken === input.inviteToken);
@@ -993,9 +1001,15 @@ export function installAcceptedSeat(input: {
     status: 'active',
     issuedAt: Date.now(),
     presetId: normalizeInstructorPresetId(input.presetId),
-    permissions: permissionsForInvite(normalizeInstructorPresetId(input.presetId)),
+    permissions: permissionsForInvite(
+      normalizeInstructorPresetId(input.presetId),
+      input.permissions && Object.keys(input.permissions).length ? input.permissions : undefined,
+    ),
     inviteToken: input.inviteToken,
   };
+  if (existing && input.permissions && Object.keys(input.permissions).length) {
+    seat.permissions = normalizeInstructorPermissions(input.permissions);
+  }
   seat.status = 'active';
   seat.inviteToken = input.inviteToken;
   if (!existing) archive.seats.push(seat);

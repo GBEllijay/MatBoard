@@ -126,7 +126,7 @@ export function ScoutingPage() {
       <LeatherHeader title="Opponent card archive" />
       <div className="student-paper">
         <div className="student-sheet">
-          <p className="archive-help">Every saved opponent stays on this phone. Search, edit, and remove a card any time.</p>
+          <p className="archive-help">Every saved opponent stays on this device. Search, edit, and remove a card any time.</p>
           {sample ? <p className="archive-help">Sample opponents are labeled sample. They are not real students.</p> : null}
           <div className="student-actions">
             <button type="button" className="ink-btn" onClick={() => scoutingDownload(scoutingTemplateFileName(), scoutingCsvTemplate())}>

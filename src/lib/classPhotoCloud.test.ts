@@ -99,7 +99,7 @@ function cloudFetcher(env: GymCloudEnv): typeof fetch {
 
 test('the photo copy switches to Advantage Cloud only when Cloud is on', () => {
   assert.match(CLASS_PHOTO_PROMOTIONS_STAY, /Advantage does not host them/);
-  assert.match(CLASS_PHOTO_PROMOTIONS_SAVED_PHONE, /Saved on this phone/);
+  assert.match(CLASS_PHOTO_PROMOTIONS_SAVED_PHONE, /Saved on this device/);
   assert.equal(classPhotoStayCopy(false), CLASS_PHOTO_PROMOTIONS_STAY);
   assert.match(classPhotoStayCopy(true), /Uploaded to Advantage Cloud/);
   assert.match(CLASS_PHOTO_CLOUD_STAY, /Approved/);

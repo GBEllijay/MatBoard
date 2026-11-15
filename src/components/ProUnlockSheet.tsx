@@ -25,10 +25,10 @@ const COPY: Record<
   },
   coach: {
     title: 'Owner unlock',
-    body: 'Turns on Advantage Coach on this browser. Soft beta only — not a login.',
+    body: 'Turns on Advantage Instructor Edition on this browser. Soft beta only — not a login.',
     name: 'coach-unlock',
     placeholder: 'Owner code',
-    submit: 'Unlock Coach',
+    submit: 'Unlock Instructor Edition',
   },
   student: {
     title: 'Owner unlock',

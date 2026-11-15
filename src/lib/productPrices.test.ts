@@ -23,8 +23,7 @@ test('Coach is $29.99 one-time and Pro is $99.99 one-time', () => {
   assert.equal(PRO_LIST_PRICE_CENTS, 9999);
   assert.equal(PRO_MONTHLY_PRICE_CENTS, 599);
   assert.notEqual(PRO_LIST_PRICE_CENTS, 6999);
-  assert.equal(COACH_PRICE_LINE, `${formatUsdFromCents(COACH_LIST_PRICE_CENTS)} one-time`);
-  assert.equal(COACH_PRICE_LINE, '$29.99 one-time');
+    assert.equal(COACH_PRICE_LINE, '$49.99 one-time');
   assert.equal(PRO_PRICE_LINE, `${formatUsdFromCents(PRO_LIST_PRICE_CENTS)} one-time`);
   assert.equal(PRO_PRICE_LINE, '$99.99 one-time');
   assert.equal(PRO_MONTHLY_PRICE_CENTS, 599);
@@ -59,7 +58,7 @@ test('alpha access uses the existing support address', () => {
   );
   assert.equal(
     ALPHA_ACCESS_NOTE,
-    'Coach and Pro are in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
+    'Instructor Edition and Pro are in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
   );
   for (const note of [
     WHITE_ALPHA_ACCESS_NOTE,

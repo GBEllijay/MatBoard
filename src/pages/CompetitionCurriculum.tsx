@@ -81,7 +81,7 @@ function StudentsWorkingOn() {
   return (
     <section className="notes__card" aria-label="Students working on">
       <h2>Students working on</h2>
-      <p>Imported from each student’s progress file. It stays on this phone.</p>
+      <p>Imported from each student’s progress file. It stays on this device.</p>
       <ul className="roster-plan__list">
         {rows.map(({ student, plan }) => (
           <li key={student.id}>
@@ -320,18 +320,18 @@ export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boo
     const result = await exportCurriculumToDrive({ dateKey: todayKey, plan: planRef.current });
     if (result.status === 'needs-drive') {
       setConnectOpen(true);
-      setDriveNote('Connect your Drive, then click here again. This curriculum stays on this phone.');
+      setDriveNote('Connect your Drive, then click here again. This curriculum stays on this device.');
       return;
     }
     if (result.status === 'saved') {
-      setDriveNote('A copy is on your connected Drive. Videos stay on this phone.');
+      setDriveNote('A copy is on your connected Drive. Videos stay on this device.');
       return;
     }
     if (result.status === 'empty') {
-      setDriveNote('Add something to today first. An empty curriculum stays on this phone.');
+      setDriveNote('Add something to today first. An empty curriculum stays on this device.');
       return;
     }
-    setDriveNote('Saved on this phone. Your Drive could not take this curriculum.');
+    setDriveNote('Saved on this device. Your Drive could not take this curriculum.');
   };
 
   const linkedTree = (block: CurriculumBlock) => {
@@ -676,7 +676,7 @@ export function CompetitionCurriculumPage({ embedded = false }: { embedded?: boo
 
       <Sheet open={connectOpen} title={CONNECT_WITH_TITLE} onClose={() => setConnectOpen(false)} stacked>
         <p className="saver-sound-hint">
-          Sign in, then pick the gym folder. This curriculum text can be saved there. Videos stay on this phone.
+          Sign in, then pick the gym folder. This curriculum text can be saved there. Videos stay on this device.
         </p>
         <DriveConnectCard />
       </Sheet>

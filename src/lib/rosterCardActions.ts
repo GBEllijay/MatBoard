@@ -72,7 +72,7 @@ export function addToCompetitorRoster(rosterId: string, storage?: MemoryStore | 
   const draft = competitorDraftFromStudentCard(student, record);
   const card = addStudent(draft);
   if (!card) return { ok: false, error: 'Could not add this student to the Competitor Roster.' };
-  if (draft.stripes !== undefined) updateStudent(card.id, { stripes: draft.stripes });
+  if (draft.stripes !== undefined) updateStudent(card.id, { stripes: draft.stripes }, { source: 'follow-student-rank' });
   // The No photos flag follows the student onto the competitor card, with who set it.
   if (student.noPhotos) setNoPhotos(card.id, true, student.noPhotos);
   if (student.linkedStudentId) linkRosterCard(card.id, student.linkedStudentId);

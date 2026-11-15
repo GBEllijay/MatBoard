@@ -75,6 +75,9 @@ test('Kids bracket skins stay on the Pro suite and Coach Unlimited boards', () =
   assert.equal(kidsBracketSkinsAllowed('unlimited'), true);
   assert.equal(kidsBracketSkinsAllowed('coach'), false);
   assert.equal(kidsBracketSkinsAllowed(null), false);
+  // Instructor Edition, Pro, and seats (competitionSuiteOpen) get bracket skins on any board.
+  assert.equal(kidsBracketSkinsAllowed('coach', true), true);
+  assert.equal(kidsBracketSkinsAllowed(null, true), true);
   assert.equal(kidsBracketChromeOn(true, true), true);
   assert.equal(kidsBracketChromeOn(true, false), false);
   assert.equal(kidsBracketChromeOn(false, true), false);

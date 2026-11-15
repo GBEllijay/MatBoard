@@ -20,7 +20,7 @@ export function StudentCompetitorSwitch({ report }: { report: StudentProgressRep
       <ProfileSwitch
         on={on}
         label="I'm a competitor"
-        note={on ? 'Shows your Competitor section and tile. Stays on this phone.' : 'Competitor is hidden. Nothing is deleted.'}
+        note={on ? 'Shows your Competitor section and tile. Stays on this device.' : 'Competitor is hidden. Nothing is deleted.'}
         onToggle={() => setOn(!on)}
       />
       {on ? (

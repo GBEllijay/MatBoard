@@ -44,7 +44,7 @@ export function WhitePage() {
               screen or computer.
             </p>
             <p className="home__hint">
-              Match names stay on this phone. Pick a saved name and belt from the scoreboard.
+              Match names stay on this device. Pick a saved name and belt from the scoreboard.
             </p>
           </InstructionsButton>
           <FaqLink />

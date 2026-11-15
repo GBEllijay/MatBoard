@@ -1,3 +1,4 @@
+import { grantRowOpensPlusCloud, ownerCloudGrantOpen } from '../lib/advantageCloudMedia.ts';
 import { thumbprintJwk, verifyToken, type PublicJwk } from '../lib/entitlementToken.ts';
 import type { Door } from '../lib/entitlementToken.ts';
 import { ensureAccountForLicense, licenseForVerifiedEmail, primaryLicenseForAccount } from './accountId.ts';
@@ -6,7 +7,7 @@ import { keyedHash, normalizeEmail } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
 import type { EmailSender } from './emailSender.ts';
 import { expandGrants, tierForGrants } from './grantMatrix.ts';
-import { isPerpetualOwnerAcademyGrant, OWNER_SESSION_SECONDS } from './ownerCloudProvision.ts';
+import { isPerpetualOwnerGrant, OWNER_SESSION_SECONDS } from './ownerCloudProvision.ts';
 import { RESTORE_FROM_ADDRESS } from './paywallDecisions.ts';
 import { clientIp } from './rateLimit.ts';
 import {
@@ -229,7 +230,9 @@ export async function handleRestoreVerify(
   const grants = await grantsForLicense(db, licenseId, now());
   const doors = expandGrants(doorsFromStored(grants)) as Door[];
   if (!doors.length) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  const ownerAcademy = grants.some((grant) => isPerpetualOwnerAcademyGrant(grant) && grant.product === 'advantage-pro');
+  const ownerAcademy = grants.some((grant) => isPerpetualOwnerGrant(grant) && grant.product === 'advantage-pro');
+  // Same rule as gymCloud.ts lookupPlusCloud and devicePass.ts summarizeLicense.
+  const plusCloudGrant = grants.some((grant) => grantRowOpensPlusCloud(grant) || ownerCloudGrantOpen(grant));
   const deviceId = typeof body.deviceId === 'string' && body.deviceId.trim() ? body.deviceId.trim().slice(0, 80) : crypto.randomUUID();
   const material = signingMaterial(env.ENTITLEMENT_SIGNING_KEY, env.ENTITLEMENT_KEY_ID);
   const accountId = linked?.accountId ?? account?.id ?? '';
@@ -261,7 +264,9 @@ export async function handleRestoreVerify(
   const studentClaim = ownerAcademy ? null : await freeStudentRestoreShape(db, licenseId, now(), env);
   // Cloud comes from the cloud grant on this license. A previous phone's token
   // is not part of this request, and its flags are not copied.
-  const cloud = studentClaim || ownerAcademy ? null : await cloudAccessForLicense(db, licenseId, now());
+  const cloud = studentClaim || ownerAcademy ? null : plusCloudGrant ? { entitled: true } : await cloudAccessForLicense(db, licenseId, now());
+  // A code Pro row restores as the code pass it was, so Plus Cloud stays open.
+  const passSrc = plusCloudGrant ? 'code' : pro ? 'stripe' : 'code';
   const subs = ownerAcademy
     ? undefined
     : studentClaim
@@ -274,8 +279,8 @@ export async function handleRestoreVerify(
   const token = await issueToken(env.ENTITLEMENT_SIGNING_KEY, {
     licenseId,
     grants: doors,
-    tier: ownerAcademy ? 'owner' : studentClaim ? 'student' : tierForGrants(doors, pro ? 'stripe' : 'code'),
-    src: ownerAcademy ? 'owner' : studentClaim ? 'free' : pro ? 'stripe' : 'code',
+    tier: ownerAcademy ? 'owner' : studentClaim ? 'student' : tierForGrants(doors, passSrc),
+    src: ownerAcademy ? 'owner' : studentClaim ? 'free' : passSrc,
     deviceId,
     now: now(),
     kind: ownerAcademy ? 'owner-test' : studentClaim ? 'onetime' : pro ? 'pro' : 'onetime',

@@ -81,7 +81,7 @@ export const STOREFRONT_PROGRESS_EYEBROW = 'Progression';
 /** Owner: this heading opens the pre-Pass-2 product picker, not checkout. */
 export const STOREFRONT_PROGRESS_HEADING = 'Start with White. Grow into Pro.';
 
-export const STOREFRONT_ALPHA_NOTE = 'Student, Coach and Pro are in alpha testing.';
+export const STOREFRONT_ALPHA_NOTE = 'Student, Instructor Edition and Pro are in alpha testing.';
 
 export type StorefrontSoonId = 'student' | 'coach' | 'pro';
 
@@ -137,8 +137,8 @@ export const STOREFRONT_STEPS: readonly StorefrontStep[] = [
   {
     id: 'coach',
     rank: '03',
-    rankLabel: 'COACH',
-    title: 'Advantage Coach',
+    rankLabel: 'INSTRUCTOR',
+    title: 'Advantage Instructor Edition',
     blurb: 'Daily lesson plans, training videos and a technique tree. Includes White.',
     price: COACH_PRICE_LINE,
     cardPrice: COACH_PRICE_LINE,
@@ -152,7 +152,7 @@ export const STOREFRONT_STEPS: readonly StorefrontStep[] = [
     rankLabel: 'PRO',
     title: 'Advantage Pro',
     blurb:
-      'Academy management, shared drive, events, pro shop, gallery, instructor collaboration and student seats. Includes Coach.',
+      'Academy management, shared drive, events, pro shop, gallery, instructor collaboration and student seats. Includes Instructor Edition.',
     price: PRO_PRICE_LINE,
     cardPrice: '$99.99 one-time',
     to: PRODUCTS_PATH,
@@ -186,7 +186,7 @@ export const STOREFRONT_PICKER_LINKS = [
   },
   {
     id: 'coach',
-    label: 'Advantage Coach',
+    label: 'Advantage Instructor Edition',
     to: STOREFRONT_STEPS.find((step) => step.id === 'coach')?.to ?? PRODUCTS_PATH,
   },
 ] as const;

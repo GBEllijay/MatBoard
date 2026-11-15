@@ -29,7 +29,7 @@ test('plain Coach keeps Adult, locks Competition, and Kids starts with a Game be
   const competition = page.getByRole('radio', { name: 'Competition class', exact: true });
   await expect(adult).toHaveAttribute('aria-checked', 'true');
   await expect(competition).toBeDisabled();
-  await expect(page.getByText('Competition class is included with Coach Unlimited and Pro.')).toBeVisible();
+  await expect(page.getByText('Competition class is included with Instructor Edition and Pro.')).toBeVisible();
   const adultFill = await adult.evaluate((el) => getComputedStyle(el).backgroundColor);
   const addFill = await page.getByRole('button', { name: 'Add technique', exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(adultFill).toBe('rgb(0, 78, 186)');

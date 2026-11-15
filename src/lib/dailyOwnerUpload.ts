@@ -20,11 +20,11 @@ import { localDateKey } from './trainingNotesStore.ts';
 import type { GymActor } from './gymTree.ts';
 
 export const CLOUD_DAILY_MEDIA_LABEL = 'Upload daily videos and photos';
-export const CLOUD_PHOTO_PHONE_NOTE = 'Saved on this phone. Advantage Cloud did not store this photo.';
+export const CLOUD_PHOTO_PHONE_NOTE = 'Saved on this device. Advantage Cloud did not store this photo.';
 export const CLOUD_PHOTO_DRIVE_NOTE = 'Saved in the gallery folder. Advantage Cloud did not store this photo.';
 export const CLOUD_PHOTO_CLOUD_NOTE = 'Uploaded to Advantage Cloud.';
 export const CLOUD_PHOTO_FAILED_NOTE =
-  'Saved on this phone. The gallery folder could not take this photo. Advantage Cloud did not store it.';
+  'Saved on this device. The gallery folder could not take this photo. Advantage Cloud did not store it.';
 
 export function isDailyPhoto(file: File): boolean {
   if (file.type.startsWith('image/')) return true;

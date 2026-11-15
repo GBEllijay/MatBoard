@@ -207,7 +207,7 @@ test('the hub profiles sheet lists existing profiles above the add button', () =
   localStorage.clear();
 });
 
-test('the hub header shows a profile photo that stays on this phone', () => {
+test('the hub header shows a profile photo that stays on this device', () => {
   const portrait = 'data:image/jpeg;base64,AAAA';
   localStorage.setItem('matboard.studentPortrait.v1', JSON.stringify({ version: 1, dataUrl: portrait }));
   const hub = mount(<StudentHub />, '/student?student=1');

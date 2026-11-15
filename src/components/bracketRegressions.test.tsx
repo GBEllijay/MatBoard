@@ -569,8 +569,9 @@ test('one tap sets bracket size, and kids connector pairs stay on an eight-perso
   }
 });
 
-test('the kids Skin picker stays on Pro and Coach Unlimited, and off plain Coach', async () => {
-  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
+test('the kids Skin picker opens on Pro, Coach Unlimited, and Instructor Edition boards', async () => {
+  // Owner, 14 Nov 2026: Instructor Edition (coach unlock, no Pro) gets the full suite and its skins.
+  localStorage.removeItem(PRO_UNLOCK_STORAGE_KEY);
   localStorage.setItem('advantage.coachUnlocked', '1');
   resetTournament();
   setKidsEnabled(true);
@@ -578,16 +579,14 @@ test('the kids Skin picker stays on Pro and Coach Unlimited, and off plain Coach
 
   const coach = mount(<TournamentPage />, '/tournament?from=coach');
   try {
-    const skin = [...coach.host.querySelectorAll('button')].find((button) =>
-      (button.getAttribute('aria-label') || '').startsWith('Skin'),
-    );
-    assert.equal(skin, undefined);
-    assert.equal(coach.host.querySelector('main')?.classList.contains('tournament--kids'), false);
+    assert.equal(coach.host.querySelector('main')?.classList.contains('tournament--kids-dinos'), true);
+    assert.match(coach.host.querySelector('h1')?.textContent ?? '', /Tournament Software/);
   } finally {
     unmount(coach);
   }
+  localStorage.setItem(PRO_UNLOCK_STORAGE_KEY, '1');
 
-  for (const entry of ['/tournament?from=suite', '/tournament?from=unlimited'] as const) {
+  for (const entry of ['/tournament?from=suite', '/tournament?from=unlimited', '/tournament?from=coach'] as const) {
     setKidsEnabled(true);
     setKidsSkin('dinos');
     const board = mount(<TournamentPage />, entry);
@@ -884,7 +883,8 @@ test('the bracket title is editable on every skin and never shows the skin name'
     assert.equal(input.value, DEFAULT_BRACKET_HEADLINE);
     assert.equal(coach.host.querySelector('.tournament__tools .tournament__roundline') instanceof HTMLElement, true);
     assert.equal(coach.host.querySelector('.tournament__bar .tournament__roundline'), null);
-    assert.equal([...coach.host.querySelectorAll('button')].some((button) => button.textContent?.trim() === 'Skin'), false);
+    // Instructor Edition gets the full suite, so the from=coach board keeps the Skin button too.
+    assert.equal([...coach.host.querySelectorAll('button')].some((button) => button.textContent?.trim() === 'Skin'), true);
   } finally {
     unmount(coach);
     resetTournament();

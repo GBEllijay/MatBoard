@@ -6,7 +6,7 @@ const FACE = Buffer.from(
   'base64',
 );
 
-test('a profile photo stays on this phone and is still visible after reload', async ({ page }) => {
+test('a profile photo stays on this device and is still visible after reload', async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/student/profile?student=1');
@@ -22,7 +22,7 @@ test('a profile photo stays on this phone and is still visible after reload', as
   const avatar = page.locator('img.profile-avatar');
   await expect(avatar).toBeVisible();
   await expect(avatar).toHaveAttribute('alt', 'Profile photo');
-  await expect(page.getByRole('status')).toHaveText('Saved on this phone. Shows on your profile.');
+  await expect(page.getByRole('status')).toHaveText('Saved on this device. Shows on your profile.');
   await expect(page.getByRole('button', { name: 'Remove photo', exact: true })).toBeVisible();
   await expect(page.locator('label[for="profile-portrait-library"]')).toHaveText('Change photo');
 

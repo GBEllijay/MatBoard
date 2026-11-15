@@ -45,6 +45,7 @@ import {
   type GymProfile,
 } from '../lib/gymProfile.ts';
 import type { GymEvent } from '../lib/gymEvents.ts';
+import { academyProfileCloudSynced, subscribeSyncStatus } from '../lib/signedInSync.ts';
 import './gymSheet.css';
 
 function useEvents(): GymEvent[] {
@@ -103,6 +104,7 @@ export function GymCharacterSheet() {
   const collapsed = collapseOthers(instructors, view.kind === 'own' ? view.seatId : null);
   const gymName = deviceGymName || 'Your academy';
   const owner = !seat;
+  const profileInCloud = useSyncExternalStore(subscribeSyncStatus, academyProfileCloudSynced, () => false);
 
   const onLogoFile = (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.currentTarget;
@@ -145,7 +147,7 @@ export function GymCharacterSheet() {
           )}
           <div>
             <h2>{gymName}</h2>
-            <p>{cloud ? 'Advantage Cloud' : 'This device'}</p>
+            <p data-testid="academy-sync-label">{profileInCloud ? 'Advantage Cloud' : 'This device'}</p>
             {profile.foundedOn ? <p>Founded {profile.foundedOn}</p> : null}
             {profile.founders.trim() ? <p>Founders {profile.founders}</p> : null}
             {gymLineageText(profile) ? <p className="gym-lineage-read">{gymLineageText(profile)}</p> : null}
