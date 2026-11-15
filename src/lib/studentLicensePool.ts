@@ -29,7 +29,7 @@ export const STUDENT_LICENSE_GIVE = 'Invite a student (Student Edition only)';
 export const STUDENT_INVITE_TYP = 'student-invite';
 export const STUDENT_JOIN_PATH = '/join/student';
 export const STUDENT_CLAIM_KEPT_HIGHER =
-  'This phone already has a higher license, so Student Edition was not installed over it. You are still linked to the academy.';
+  'This device already has a higher license, so Student Edition was not installed over it. You are still linked to the academy.';
 export const STUDENT_LICENSE_EMPTY = 'No free Student licenses left.';
 export const STUDENT_LICENSE_REVOKED_MESSAGE =
   'This free Student license was revoked. Ask your coach for a new code.';
@@ -81,24 +81,96 @@ export function isStudentInviteValue(value: string): boolean {
 }
 
 /**
- * Public join page. Prefer the signed invite token in ?code=.
- * The gym name is a label, not the secret.
+ * Account invite screen for a student code or signed invite, with the email
+ * filled in when we have it. The gym name is a label only and is not part of the link:
+ * sign-in restores the academy from the invite itself.
  */
-export function studentInviteJoinUrl(origin: string, inviteOrCode: string, gymName = '', email = ''): string {
-  const params = new URLSearchParams({ code: inviteOrCode });
-  const name = gymName.trim().slice(0, 80);
-  if (name) params.set('gym', name);
+export function studentAccountInvitePath(invite: string, email = ''): string {
+  const params = new URLSearchParams({ invite });
   const address = email.trim().slice(0, 320);
   if (address && address.includes('@') && !/\s/.test(address)) params.set('email', address);
-  return `${origin.replace(/\/$/, '')}${STUDENT_JOIN_PATH}?${params.toString()}`;
+  return `/account?${params.toString()}`;
 }
 
-/** Older claim path. Still accepted for hex codes issued before the join page. */
-export function studentLicenseClaimUrl(origin: string, code: string, gymName = ''): string {
-  const base = `${origin.replace(/\/$/, '')}/student/claim/${code}`;
-  const name = gymName.trim().slice(0, 80);
-  if (!name) return base;
-  return `${base}?gym=${encodeURIComponent(name)}`;
+/**
+ * Invite link (and the QR, which encodes the same link). It opens the account page
+ * in invite mode: the student confirms the invited email and chooses a password,
+ * which turns Student Edition on and makes the email + password login in one step.
+ * The gymName argument is kept so existing callers do not change; it is not added
+ * to the address.
+ */
+export function studentInviteJoinUrl(origin: string, inviteOrCode: string, _gymName = '', email = ''): string {
+  return `${origin.replace(/\/$/, '')}${studentAccountInvitePath(inviteOrCode, email)}`;
+}
+
+/** Older helper name. New and old printed links now use the account invite screen. */
+export function studentLicenseClaimUrl(origin: string, code: string, gymName = '', email = ''): string {
+  return studentInviteJoinUrl(origin, code, gymName, email);
+}
+
+export const STUDENT_CLAIM_PATH_PREFIX = '/student/claim/';
+
+/**
+ * If this address is an older /join/student or /student/claim link, the account
+ * invite path it should become. Used on boot and by those routes so a QR scan
+ * never shows the old email-only claim form.
+ */
+export function studentJoinRedirectPath(pathname: string, search = ''): string | null {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const email = params.get('email') ?? '';
+  if (pathname === STUDENT_JOIN_PATH) {
+    const invite = params.get('code') ?? params.get('invite') ?? '';
+    return invite ? studentAccountInvitePath(invite, email) : null;
+  }
+  if (pathname.startsWith(STUDENT_CLAIM_PATH_PREFIX)) {
+    const raw = pathname.slice(STUDENT_CLAIM_PATH_PREFIX.length);
+    if (!raw) return null;
+    let invite = raw;
+    try {
+      invite = decodeURIComponent(raw);
+    } catch {
+      invite = raw;
+    }
+    return invite ? studentAccountInvitePath(invite, email) : null;
+  }
+  return null;
+}
+
+function typOfSignedInvite(value: string): string | null {
+  const parts = value.trim().split('.');
+  if (parts.length !== 3 || !parts[1]) return null;
+  try {
+    const padded = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = JSON.parse(atob(padded + '='.repeat((4 - (padded.length % 4)) % 4))) as { typ?: unknown };
+    return typeof json?.typ === 'string' ? json.typ : null;
+  } catch {
+    return null;
+  }
+}
+
+/** True when this value is a student license code, a signed student invite, or a link to one. */
+export function looksLikeStudentInvite(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  const candidates = [trimmed];
+  try {
+    const url = new URL(trimmed);
+    for (const key of ['code', 'invite']) {
+      const param = url.searchParams.get(key);
+      if (param) candidates.push(param);
+    }
+    const claim = url.pathname.match(/\/student\/claim\/([^/]+)$/);
+    if (claim?.[1]) {
+      try {
+        candidates.push(decodeURIComponent(claim[1]));
+      } catch {
+        candidates.push(claim[1]);
+      }
+    }
+  } catch {
+    /* not a link */
+  }
+  return candidates.some((candidate) => isStudentLicenseCode(candidate) || typOfSignedInvite(candidate) === STUDENT_INVITE_TYP);
 }
 
 /**

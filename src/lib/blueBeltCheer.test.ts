@@ -6,16 +6,19 @@ import {
   blueBeltPreviewSample,
   blueCheerSeen,
   claimBlueCheer,
+  claimStudentKidsToBlueCheer,
   cleanBirthYear,
   coachKidsToBlue,
   isKidsToBlueUpdate,
+  studentKidsToBlue,
+  STUDENT_BLUE_CHEER_ID,
 } from './blueBeltCheer.ts';
 import { buildCoachRankUpdate, dismissCoachRankUpdate, emptyUpdateLedger } from './coachRankUpdate.ts';
 import { exportProgressPacket, parseProgressPacket } from './progress/format.ts';
 import { blankStudentReport } from './studentEdition.ts';
 import { assignStudentId } from './studentIdentity.ts';
-import { beltModeOf, earlierKidRows } from './beltBook.ts';
-import { setBeltMode, setBirthYear, setKidsBelt, setKidsTapeCount, setRankBelt } from './studentRank.ts';
+import { beltModeOf } from './beltBook.ts';
+import { graduateToAdult, setBeltMode, setBirthYear, setKidsBelt, setKidsTapeCount, setRankBelt } from './studentRank.ts';
 
 const TODAY = new Date(2026, 10, 11);
 
@@ -69,7 +72,7 @@ test('gentle notes: under 16 by birth year, under a year of training, or missing
   assert.equal(cleanBirthYear('2030', TODAY), null);
 });
 
-test('kids file + coach Blue packet: confirm moves to adult blue, keeps kids belts, cheers once', () => {
+test('kids file + leftover Blue packet: confirm does not change My rank or cheer', () => {
   const report = kidFile();
   const packet = rankPacket('Blue');
   // The packet is the same v2 rank update. Nothing new rides on it.
@@ -79,15 +82,12 @@ test('kids file + coach Blue packet: confirm moves to adult blue, keeps kids bel
   const ledger = emptyUpdateLedger();
   const result = acceptCoachBlueBelt(report, packet, ledger, { birthYear: 2010 }, 30);
   assert.equal(result.applied, true);
-  assert.equal(result.cheer, true);
-  assert.equal(result.report.profile.belt, 'blue');
-  assert.equal(beltModeOf(result.report), 'adult');
-  assert.equal(result.report.rank?.awardedOn, '2026-11-10');
-  assert.equal(result.report.rank?.tapeCount, 0);
+  assert.equal(result.cheer, false);
+  assert.equal(result.report.profile.belt, report.profile.belt, 'a leftover promotion must not change My rank');
+  assert.equal(beltModeOf(result.report), 'kids');
   assert.equal(result.report.beltBook?.birthYear, 2010);
   assert.equal(result.report.beltBook?.kids?.beltId, 'green');
-  assert.equal(earlierKidRows(result.report).some((row) => row.label === 'Green' && row.tapeCount === 2), true);
-  assert.equal(result.report.journal.length, report.journal.length + 1);
+  assert.equal(result.report.beltBook?.kids?.tapeCount, 2);
   assert.deepEqual(result.ledger.accepted, ['rank-blue-1']);
 
   // The same update again never re-applies or re-cheers.
@@ -104,13 +104,13 @@ test('kids file + coach Blue packet: confirm moves to adult blue, keeps kids bel
   assert.equal(claimBlueCheer(store, 'stu-other', packet.updateId), true);
 });
 
-test('confirmed birth year is saved; stripes on the blue update still apply', () => {
+test('confirmed birth year is saved; stripes on a leftover blue update do not apply', () => {
   const report = kidFile('yellow');
   const result = acceptCoachBlueBelt(report, rankPacket('Blue', 'rank-blue-2', 'stu-kid', 1), emptyUpdateLedger(), { birthYear: 2009 }, 30);
   assert.equal(result.applied, true);
   assert.equal(result.report.beltBook?.birthYear, 2009);
-  assert.equal(result.report.profile.belt, 'blue');
-  assert.equal(result.report.rank?.tapeCount, 1);
+  assert.equal(result.report.profile.belt, report.profile.belt);
+  assert.equal(result.report.rank?.tapeCount, report.rank?.tapeCount);
 });
 
 test('adult promotions and other belts never take the blue-belt path or cheer', () => {
@@ -160,4 +160,68 @@ test('preview sample is a green-belt kid with a Blue update', () => {
   assert.equal(report.beltBook?.birthYear, 2010);
   assert.equal(isKidsToBlueUpdate(report, packet), true);
   assert.equal(packet.studentId, report.studentId);
+});
+
+test('student self-update: any kids belt to Blue cheers once; adult or Blue re-save does not', () => {
+  const store = memory();
+  const today = TODAY;
+  const at16 = (beltId: string) => {
+    let report = assignStudentId(blankStudentReport(10), 'stu-kid');
+    report = setBeltMode(report, 'kids', 11);
+    report = setBirthYear(report, today.getFullYear() - 16, 12);
+    report = setKidsBelt(report, beltId, 13);
+    return report;
+  };
+
+  for (const from of ['white', 'grey', 'grey-white', 'grey-black', 'yellow', 'yellow-black', 'orange', 'orange-white', 'green', 'green-white', 'green-black']) {
+    const before = at16(from);
+    const after = from === 'white' ? setRankBelt(setBeltMode(before, 'adult', 20), 'blue', 21) : graduateToAdult(before, 'blue', 20, today);
+    assert.equal(after.profile.belt, 'blue', from);
+    assert.equal(studentKidsToBlue(before, after), true, from);
+    const first = claimStudentKidsToBlueCheer(store, before, after);
+    // Shared profile id: only the first kids-to-Blue in this loop claims.
+    if (from === 'white') assert.equal(first, true, from);
+    else assert.equal(first, false, `${from} already claimed`);
+  }
+
+  // A different profile still gets one claim.
+  let other = assignStudentId(blankStudentReport(10), 'stu-other');
+  other = setBeltMode(other, 'kids', 11);
+  other = setBirthYear(other, today.getFullYear() - 16, 12);
+  other = setKidsBelt(other, 'green-black', 13);
+  const otherBlue = graduateToAdult(other, 'blue', 20, today);
+  assert.equal(claimStudentKidsToBlueCheer(store, other, otherBlue), true);
+  assert.equal(claimStudentKidsToBlueCheer(store, other, otherBlue), false);
+  assert.equal(blueCheerSeen(store, 'stu-other', STUDENT_BLUE_CHEER_ID), true);
+
+  // Adult White to Blue does not cheer.
+  const adultWhite = assignStudentId(blankStudentReport(10), 'stu-adult');
+  const adultBlue = setRankBelt(adultWhite, 'blue', 11);
+  assert.equal(adultBlue.profile.belt, 'blue');
+  assert.equal(studentKidsToBlue(adultWhite, adultBlue), false);
+  assert.equal(claimStudentKidsToBlueCheer(store, adultWhite, adultBlue), false);
+
+  // Already Blue, saving Blue again does not cheer.
+  assert.equal(studentKidsToBlue(adultBlue, setRankBelt(adultBlue, 'blue', 12)), false);
+  const stillBlue = { ...adultBlue, updatedAt: 99 };
+  assert.equal(studentKidsToBlue(adultBlue, stillBlue), false);
+
+  // Kids to Purple does not cheer.
+  const green = at16('green');
+  const purple = graduateToAdult(green, 'purple', 20, today);
+  assert.equal(purple.profile.belt, 'purple');
+  assert.equal(studentKidsToBlue(green, purple), false);
+  assert.equal(claimStudentKidsToBlueCheer(store, green, purple), false);
+});
+
+test('student self-update: a leftover coach Blue packet still does not cheer', () => {
+  const store = memory();
+  const report = kidFile('green-black');
+  const packet = rankPacket('Blue');
+  const result = acceptCoachBlueBelt(report, packet, emptyUpdateLedger(), { birthYear: 2010 }, 30);
+  assert.equal(result.applied, true);
+  assert.equal(result.cheer, false);
+  assert.equal(result.report.profile.belt, report.profile.belt);
+  assert.equal(studentKidsToBlue(report, result.report), false);
+  assert.equal(claimStudentKidsToBlueCheer(store, report, result.report), false);
 });

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useEntitlementSettled } from '../hooks/useEntitlementSettled';
-import { ownerEditionTarget } from '../lib/ownerHome';
 import { Link, useSearchParams } from 'react-router-dom';
 import { HistoryBackMark } from '../components/HistoryBackMark';
 import { AlphaAccessNote } from '../components/AlphaAccessNote';
@@ -9,6 +8,9 @@ import { HomeMark } from '../components/HomeMark';
 import { LearnMoreLink } from '../components/LearnMoreLink';
 import { OwnerTestSheet } from '../components/OwnerTestSheet';
 import { SignOutButton } from '../components/SignOutButton';
+import { AccountLink } from '../components/AccountLink';
+import { ReturningUserPrompt } from '../components/ReturningUserPrompt';
+import { homeTiles } from '../lib/productTiles';
 import { takeSignOutCleanupNotice } from '../lib/signOut';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { SiteFooter } from '../components/SiteFooter';
@@ -34,11 +36,8 @@ import {
   STUDENT_EDITION_NAME,
   STUDENT_HOME_DESCRIPTION,
   WHITE_HOME_DESCRIPTION,
-  coachDoorOpen,
-  homeConsoleLabel,
-  coachUnlimitedDoorOpen,
   mediaEditionDoorOpen,
-  proConsoleEntryOpen,
+  coachUnlimitedDoorOpen,
 } from '../lib/productNames';
 import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
@@ -61,15 +60,12 @@ import { TIER_BUY_PATHS } from '../lib/tierBuyPages';
 export function HomePage() {
   const door = useSeatDoor();
   const proUnlocked = door.proUnlocked;
-  const consoleLabel = homeConsoleLabel(door);
   const access = entitlementSnapshot();
-  const consoleOpen = proConsoleEntryOpen(door, access.claims, entitlementNowMs(), access.amnesty);
   const whiteUnlocked = useWhiteUnlocked();
   const coachUnlocked = useCoachUnlocked();
   const studentUnlocked = useStudentEditionUnlocked();
   const seat = useCurrentSeat();
   const seated = purchasePromptsHidden(seat);
-  const coachOpen = coachDoorOpen(proUnlocked, coachUnlocked, seated);
   const [params] = useSearchParams();
   const studentPreview = params.get('student') === '1';
   const studentOwner = {
@@ -83,25 +79,24 @@ export function HomePage() {
   const studentTo = studentPreview || !studentEditionEntitled(studentOwner) ? '/student?student=1' : studentHomeEntryPath(true);
   const cloudOpen = useProPlusCloudUnlocked();
   const settled = useEntitlementSettled();
-  const proTo = ownerEditionTarget({
-    entry: 'pro',
+  // One pure rule for every card (src/lib/productTiles.ts); a seat sees what its pass grants as open.
+  const tiles = homeTiles({
+    door,
+    claims: access.claims,
+    nowMs: entitlementNowMs(),
+    amnesty: access.amnesty,
     settled,
-    seated,
-    proConsoleOpen: consoleOpen,
+    whiteUnlocked,
+    coachUnlocked,
+    studentOpen,
+    studentDemo,
     cloudOpen,
   });
-  const cloudTo = ownerEditionTarget({
-    entry: 'pro-cloud',
-    settled,
-    seated,
-    proConsoleOpen: consoleOpen,
-    cloudOpen,
-  });
-  const openProHome = proTo === '/pro' && (!seated || Boolean(consoleLabel));
-  const openCloudHome = cloudOpen && cloudTo === '/pro-plus-cloud';
+  const openProHome = tiles.proTo === '/pro';
+  const openCloudHome = tiles.cloudButton;
   const instructorUnlimited = coachUnlimitedDoorOpen(door);
   const instructorOpenTo = instructorUnlimited ? COACH_UNLIMITED_PATH : '/coach';
-  const instructorOpenLabel = instructorUnlimited ? 'Open Advantage Instructor Edition' : 'Open Coach';
+  const instructorOpenLabel = instructorUnlimited ? 'Open Advantage Instructor Edition' : 'Open Instructor Edition';
   const [ownerTestOpen, setOwnerTestOpen] = useState(false);
   const [signOutNotice] = useState(() => takeSignOutCleanupNotice());
 
@@ -117,6 +112,7 @@ export function HomePage() {
             {signOutNotice} Access on this browser is still signed out.
           </p>
         ) : null}
+        <ReturningUserPrompt />
         <nav className="home__modes" aria-label="Products">
           {whiteUnlocked ? (
             <article className="mode-card mode-card--white">
@@ -151,7 +147,7 @@ export function HomePage() {
           {/* Same rule as /media: the Media door, or a live seat that grants Media Console. A seat without that preset does not shut a Media door that is already open. */}
           <MediaHomeCard open={mediaEditionDoorOpen(door)} />
 
-          {coachOpen ? (
+          {tiles.instructor === 'open' ? (
             <article className="mode-card mode-card--coach">
               <Link
                 className="mode-card__hit"
@@ -189,7 +185,7 @@ export function HomePage() {
             </article>
           )}
 
-          {openProHome || openCloudHome ? (
+          {tiles.pro === 'open' ? (
             <article className="mode-card mode-card--pro">
               <Link
                 className="mode-card__hit"
@@ -197,7 +193,7 @@ export function HomePage() {
                 tabIndex={-1}
                 aria-label={openProHome ? 'Open Pro Console' : PRO_PLUS_CLOUD_OPEN_LABEL}
               />
-              <ProHomeCopy />
+              <ProHomeCopy cloudLine={!seated} />
               <div className="mode-card__actions">
                 {openProHome ? (
                   <Link className="btn btn--white" to="/pro">
@@ -214,8 +210,8 @@ export function HomePage() {
           ) : (
             <article className="mode-card mode-card--pro mode-card--locked">
               <Link className="mode-card__hit" to={TIER_BUY_PATHS.pro} aria-label={`Advantage Pro, ${ALPHA_PRODUCT_STATUS}`} />
-              <ProHomeCopy />
-              {seated ? null : <p className="mode-card__price">{PRO_PRICE_LINE}</p>}
+              <ProHomeCopy cloudLine={!seated} />
+              {tiles.proPrice ? <p className="mode-card__price">{PRO_PRICE_LINE}</p> : null}
               <AlphaAccessNote note={EDITION_ALPHA_NOTE} display={EDITION_EMAIL_DISPLAY} />
               <div className="mode-card__actions">
                 <LearnMoreLink tier="pro" />
@@ -232,6 +228,8 @@ export function HomePage() {
             <button type="button" className="btn btn--ghost" onClick={() => setOwnerTestOpen(true)}>
               Owner test unlock
             </button>
+            {' '}
+            <AccountLink />
             {' '}
             <SignOutButton />
           </p>
@@ -347,13 +345,14 @@ function HomeLines({ lines }: { lines: readonly string[] }) {
   );
 }
 
-function ProHomeCopy() {
+/** A seat's academy already covers Cloud, so its card leaves out the Cloud add-on price. */
+function ProHomeCopy({ cloudLine }: { cloudLine: boolean }) {
   return (
     <>
       <BeltRail kind="black" bar="striped" />
       <strong>Advantage Pro</strong>
       <HomeLines lines={[...PRO_HOME_LINES, PRO_DRIVE_NOTE]} />
-      <HomeDescription text={CLOUD_ADDON_LINE} />
+      {cloudLine ? <HomeDescription text={CLOUD_ADDON_LINE} /> : null}
     </>
   );
 }

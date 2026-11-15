@@ -436,7 +436,7 @@ test('the print route still shows the self-assessment report', () => {
   const mounted = mount(<PrintReportPage kind="assessment" />, '/student/print/assessment?student=1');
   const { host } = mounted;
   assert.equal(host.querySelector('h1')?.textContent, 'Self-assessment');
-  assert.match(host.textContent ?? '', /No self-assessment saved on this phone/);
+  assert.match(host.textContent ?? '', /No self-assessment saved on this device/);
   control(host, 'button', 'Print');
   control(host, 'button', 'Download PDF');
   assert.equal(labeled(host, 'Back. Hold for Home.').getAttribute('href'), '/student/backup?student=1');

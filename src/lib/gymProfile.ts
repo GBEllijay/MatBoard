@@ -3,6 +3,8 @@
  * Founding date, founders, and lineage live here, on this device.
  */
 
+import { noteLocalAcademyChange } from './syncTrigger.ts';
+
 export const GYM_PROFILE_KEY = 'matboard.gymProfile.v1';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export const GYM_PROFILE_OPT_IN = ['assistant-coach', 'program-director', 'custom'] as const;
@@ -100,6 +102,15 @@ export function getGymProfileSnapshot(): GymProfile {
 
 export function writeGymProfile(patch: Partial<GymProfile>, store: MemoryStore | null = storage()): GymProfile {
   const next = sanitizeGymProfile({ ...readGymProfile(store), ...patch, v: 1 });
+  return persistGymProfile(next, store);
+}
+
+/** Replace the saved profile. Used when Cloud is the source, so a blank field stays blank. */
+export function replaceGymProfile(profile: GymProfile, store: MemoryStore | null = storage()): GymProfile {
+  return persistGymProfile(sanitizeGymProfile({ ...profile, v: 1 }), store);
+}
+
+function persistGymProfile(next: GymProfile, store: MemoryStore | null): GymProfile {
   try {
     store?.setItem(GYM_PROFILE_KEY, JSON.stringify(next));
   } catch {
@@ -108,6 +119,7 @@ export function writeGymProfile(patch: Partial<GymProfile>, store: MemoryStore |
   profileSnapshot = next;
   profileLoaded = true;
   listeners.forEach((fn) => fn());
+  noteLocalAcademyChange();
   return next;
 }
 

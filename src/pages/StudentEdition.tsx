@@ -173,7 +173,7 @@ export function StudentEditionPage() {
     } catch {
       code = raw;
     }
-    return <StudentLicenseClaimPage code={code} gymName={params.get('gym') ?? ''} />;
+    return <StudentLicenseClaimPage code={code} gymName={params.get('gym') ?? ''} initialEmail={params.get('email') ?? ''} />;
   }
   const open = studentEditionOpen(params, owner);
   if (!open) return <StudentClosed />;
@@ -279,7 +279,7 @@ function StudentDemoBanner() {
     link.download = 'advantage-student-demo-backup.json';
     link.click();
     URL.revokeObjectURL(url);
-    setDownloadNote('The download has started. That does not by itself mean the file is stored on this phone.');
+    setDownloadNote('The download has started. That does not by itself mean the file is stored on this device.');
   };
   return (
     <>
@@ -297,7 +297,7 @@ function StudentDemoBanner() {
       </div>
       {ask ? (
         <div className="student-demo-exit" role="dialog" aria-label="Save the demo before leaving">
-          <p>Save a copy before you leave the demo? A purchase that includes Student Edition can use the copy saved on this phone. White does not open Student Edition.</p>
+          <p>Save a copy before you leave the demo? A purchase that includes Student Edition can use the copy saved on this device. White does not open Student Edition.</p>
           <button type="button" onClick={download}>
             Download backup
           </button>
@@ -307,7 +307,7 @@ function StudentDemoBanner() {
           <button type="button" onClick={leave}>
             Leave without saving
           </button>
-          <p>Leave without saving keeps the copy on this phone for a later purchase. It does not copy it into a purchased edition. Moving between demo pages is not leaving.</p>
+          <p>Leave without saving keeps the copy on this device for a later purchase. It does not copy it into a purchased edition. Moving between demo pages is not leaving.</p>
           {downloadNote ? <p role="status">{downloadNote}</p> : null}
         </div>
       ) : null}

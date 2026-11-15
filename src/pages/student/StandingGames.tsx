@@ -188,7 +188,7 @@ export function StandingGames({
       {only ? (
         <p className="student-quiet">This is the game you are working on for competition.</p>
       ) : (
-        <p className="student-quiet">Each game saves on its own. Unsaved notes stay on this phone if you leave.</p>
+        <p className="student-quiet">Each game saves on its own. Unsaved notes stay on this device if you leave.</p>
       )}
       {visible.map((tag) => {
         const dirty = gameIsUnsaved(showing[tag], saved[tag]);

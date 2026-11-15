@@ -60,6 +60,10 @@ export type ClipboardCardProps = {
   gymLogo: string | null;
   belt: WornBeltPreview;
   onEditBelt?: () => void;
+  /** Optional note under the belt. Linked cards use this to say edits stay on the roster. */
+  rankLocked?: boolean;
+  rankNote?: string | null;
+  rankUnset?: boolean;
   beltLine: string;
   dates: DateFacts;
   startedOn: string;
@@ -172,13 +176,18 @@ export function CoachClipboardCard(props: ClipboardCardProps) {
             <div className="clipboard__brow">
               {props.onEditBelt ? (
                 <button type="button" className="clipboard__belt clipboard__tap" aria-label="Change belt and stripes" onClick={props.onEditBelt}>
-                  <WornBeltMark preview={props.belt} />
+                  {props.rankUnset ? (
+                    <span className="clipboard__rank-unset" data-testid="rank-unset">Not set yet</span>
+                  ) : (
+                    <WornBeltMark preview={props.belt} />
+                  )}
                 </button>
               ) : (
                 <span className="clipboard__belt">
                   <WornBeltMark preview={props.belt} />
                 </span>
               )}
+              {props.rankNote ? <p className="clipboard__rank-note" data-testid="student-owned-rank">{props.rankNote}</p> : null}
               {props.onEditBelt ? (
                 <button type="button" className="clipboard__pencil" aria-label="Edit belt and stripes" onClick={props.onEditBelt}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -542,7 +551,16 @@ const CARD_D8 = buildTopo(() => null);
  * eight area scores. Coach is the solid blue layer, Student self the dashed orange
  * layer; Both draws the two together, like the Scouting overlay. Display only.
  */
-export function CardDiamond({ coach, self }: { coach: Record<string, AssessmentScore> | null; self: Record<string, AssessmentScore> | null }) {
+export function CardDiamond({
+  coach,
+  self,
+  separateLabels = false,
+}: {
+  coach: Record<string, AssessmentScore> | null;
+  self: Record<string, AssessmentScore> | null;
+  /** Nudge or hide overlapping face names. Used by the inbox compare D8 on a narrow phone. */
+  separateLabels?: boolean;
+}) {
   const factors = { self: factorsFromRatings(coach), opponent: factorsFromRatings(self) };
   const parts = [
     coach ? `Coach: ${selfAssessmentShapeLabel(coach)}` : null,
@@ -553,6 +571,7 @@ export function CardDiamond({ coach, self }: { coach: Record<string, AssessmentS
       className="clipboard__d8"
       data-testid="card-d8"
       data-layers={[coach ? 'coach' : null, self ? 'self' : null].filter(Boolean).join(' ')}
+      data-separate-labels={separateLabels ? 'true' : undefined}
       role="img"
       aria-label={`Assessment D8. ${parts.join(' ')}`}
     >
@@ -570,6 +589,7 @@ export function CardDiamond({ coach, self }: { coach: Record<string, AssessmentS
         hue={1}
         chrome="bare"
         spin={false}
+        separateLabels={separateLabels}
         onFocus={() => {}}
         onSelect={() => {}}
         onDrill={() => {}}

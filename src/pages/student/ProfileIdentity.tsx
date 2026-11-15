@@ -42,7 +42,7 @@ export function useProfileMedia() {
       await saveProfilePortrait(saved);
       setPortrait(saved);
       setPortraitError('');
-      setPortraitNote('Saved on this phone. Shows on your profile.');
+      setPortraitNote('Saved on this device. Shows on your profile.');
       setPortraitSaved((pulse) => pulse + 1);
     } catch (err) {
       setPortraitSaved(0);
@@ -59,7 +59,7 @@ export function useProfileMedia() {
       setPortrait(null);
       setPortraitError('');
       setPortraitSaved(0);
-      setPortraitNote('Photo removed from this phone.');
+      setPortraitNote('Photo removed from this device.');
     },
     portraitNote,
     portraitSaved,
@@ -120,8 +120,8 @@ export function ProfileMedia({ media, kids = false }: { media: ReturnType<typeof
           <h2>Photo</h2>
           <p>
             {kids
-              ? 'Stays on this phone and shows on your profile. Nothing is uploaded. A parent can turn it on for reports.'
-              : 'Optional. Stays on this phone and shows on your profile. Nothing is uploaded unless you export a report or a backup with the switch on.'}
+              ? 'Stays on this device and shows on your profile. Nothing is uploaded. A parent can turn it on for reports.'
+              : 'Optional. Stays on this device and shows on your profile. Nothing is uploaded unless you export a report or a backup with the switch on.'}
           </p>
         </div>
         <div className="profile-photo__actions">
@@ -189,7 +189,7 @@ export function ProfileSwitches({ report }: { report: StudentProgressReport }) {
 
   const toggle = (mark: ProfileMark) => {
     setMarks(writeProfileMark(mode, mark, !visible[mark]));
-    setNote('Saved on this phone.');
+    setNote('Saved on this device.');
   };
 
   return (

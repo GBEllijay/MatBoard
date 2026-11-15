@@ -4,6 +4,7 @@
  * Advantage does not host the file.
  */
 
+import { noteLocalStudentChange } from './syncTrigger.ts';
 import {
   loadAcademyLink,
   loadPersonalDrive,
@@ -58,10 +59,10 @@ export const STUDENT_BACKUP_KIND = 'student-journal-backup';
 export const STUDENT_BACKUP_VERSION = 1;
 export const STUDENT_BACKUP_VIDEO_MAX_BYTES = 48 * 1024 * 1024;
 
-export const BACKUP_BEFORE_CLEAR = 'A backup is recommended before clearing data on this phone.';
+export const BACKUP_BEFORE_CLEAR = 'A backup is recommended before clearing data on this device.';
 export const CLEAR_CONFIRM_PHRASE = 'CLEAR';
 export const CLEAR_STUDENT_DEVICE_NOTE =
-  'This only affects Student Edition on this device. Coach tools, unlock codes, and drive connections stay.';
+  'This only affects Student Edition on this device. Instructor Edition tools, unlock codes, and drive connections stay.';
 export const CLEAR_STUDENT_DATA_ITEMS = [
   'Journal',
   'Rank and stripes',
@@ -74,10 +75,10 @@ export const CLEAR_STUDENT_DATA_ITEMS = [
   'Videos',
   'Profile photo',
   'Gym logo on My profile',
-  'Coach plans and coach feedback saved on this phone',
+  'Coach plans and coach feedback saved on this device',
 ] as const;
 export const BACKUP_REPLACE_WARN =
-  'Replace removes the journal on this phone and uses the backup instead. A backup of the current journal is recommended first.';
+  'Replace removes the journal on this device and uses the backup instead. A backup of the current journal is recommended first.';
 export const BACKUP_NOT_A_BACKUP =
   'That file is not a Student Edition backup. Use the student packet, or the older file from Back up my journal. A coach plan still imports from Import from coach.';
 
@@ -220,7 +221,7 @@ export function journalBackupConfirmation(filename: string, includeVideos: boole
   const videos = includeVideos
     ? 'Video files kept on this device are included.'
     : 'Video files kept on this device are not included.';
-  return `Backup saved. Saved on this phone as ${filename}. ${videos}`;
+  return `Backup saved. Saved on this device as ${filename}. ${videos}`;
 }
 
 export const BACKUP_FAILED_LEAD = 'Backup did not finish.';
@@ -357,7 +358,7 @@ export async function buildStudentBackup(input: {
       if (!found) {
         omitted.push({
           id: film.id,
-          reason: film.where === 'phone' ? 'The video file was not on this phone.' : 'The video file is in the connected drive, not in this backup.',
+          reason: film.where === 'phone' ? 'The video file was not on this device.' : 'The video file is in the connected drive, not in this backup.',
         });
         continue;
       }
@@ -676,9 +677,10 @@ export function applyBackupToMemory(
   // write it and do not clear a logo already stored on this phone.
   const base =
     mode === 'replace'
-      ? 'The backup replaced the journal on this phone. Saved on this phone.'
-      : 'The backup was merged into the journal on this phone. Saved on this phone.';
+      ? 'The backup replaced the journal on this device. Saved on this device.'
+      : 'The backup was merged into the journal on this device. Saved on this device.';
   const landed = file.profile && !sameProfile ? ` Restored into ${file.profile.name}.` : '';
+  noteLocalStudentChange(targetId);
   return {
     report: saved,
     films,

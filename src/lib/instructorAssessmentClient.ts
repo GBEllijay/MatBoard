@@ -137,7 +137,7 @@ export type InstructorSend =
 export const SEND_COPY: Record<Exclude<InstructorSend, { ok: true }>['reason'], string> = {
   'no-pass': 'Connect to your academy on Advantage Cloud first. Your coach can also use Make a file for my coach.',
   unbound: 'Advantage Cloud is not on this site. Use Make a file for my coach instead.',
-  denied: 'Your academy pass on this phone is not accepted. Ask your coach to reconnect you.',
+  denied: 'Your academy pass on this device is not accepted. Ask your coach to reconnect you.',
   busy: 'Your instructor already has your last ones waiting, or you just sent one. Try again later.',
   refused: 'Advantage Cloud did not take that check-in.',
   offline: 'Could not reach Advantage Cloud. Nothing was sent.',

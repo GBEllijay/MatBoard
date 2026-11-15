@@ -200,7 +200,7 @@ test('an undated stripe counts, can gain and lose a date, and survives backup', 
   });
   await page.goto('/student/connections?student=1');
   await page.getByRole('button', { name: 'Download student packet (.advantage)', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Saved on this phone');
+  await expect(page.getByRole('status')).toContainText('Saved on this device');
   await expect.poll(() => downloads.length).toBe(1);
   await page.getByRole('button', { name: 'Download spreadsheet (.csv)', exact: true }).click();
   await expect.poll(() => downloads.length).toBe(2);
@@ -238,7 +238,7 @@ test('an undated stripe counts, can gain and lose a date, and survives backup', 
 
   await page.goto('/student/connections?student=1');
   await page.getByLabel('Restore from backup').setInputFiles(await packetDownload!.path());
-  await page.getByRole('button', { name: 'Replace this phone', exact: true }).click();
+  await page.getByRole('button', { name: 'Replace this device', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('replaced');
   await page.goto('/student/rank?student=1');
   await expect(page.getByRole('button', { name: 'Stripe 1', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -267,7 +267,7 @@ test('an undated stripe counts, can gain and lose a date, and survives backup', 
   );
   await page.goto('/student/connections?student=1');
   await page.getByLabel('Restore from backup').setInputFiles(olderPath);
-  await page.getByRole('button', { name: 'Replace this phone', exact: true }).click();
+  await page.getByRole('button', { name: 'Replace this device', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('replaced');
   await page.goto('/student?student=1');
   await expect(page.getByRole('link', { name: 'Rank & Progress', exact: true })).toContainText('White · 1 stripe');

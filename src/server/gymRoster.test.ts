@@ -353,3 +353,77 @@ test('requests without Plus Cloud or without a bucket are refused', async () => 
   const signedOut = await handleGymRoster(new Request('https://advantagebjjtimer.com/api/gym/roster?op=state'), makeEnv(secret), () => now);
   assert.equal(signedOut.status, 401);
 });
+
+test('an instructor submit cannot overwrite a linked student belt; a newer student rank can', async () => {
+  const secret = await signingSecret();
+  const { env: makeEnv } = setup();
+  const env = makeEnv(secret);
+  const owner = await ownerToken(secret);
+  await call(env, '/api/gym/roster?op=submit', owner, {
+    backup: backup([student('h1', 'Haven', { belt: 'White', linkedStudentId: 'stu-haven' })]),
+  });
+  const first = (await state(env, owner)).body.master;
+  assert.equal(first?.roster.students[0].belt, 'White');
+  const coach = await seatToken(secret, 'seat-coach', 'coach');
+  await call(env, '/api/gym/roster?op=trust', owner, { on: true });
+  const stale = await call(env, '/api/gym/roster?op=submit', coach, {
+    backup: backup([student('h9', 'Haven', { belt: 'Blue', stripes: 2, linkedStudentId: 'stu-haven' })]),
+  });
+  assert.equal(stale.status, 200);
+  assert.equal((await stale.json() as { applied: boolean }).applied, true);
+  const afterStale = (await state(env, owner)).body.master;
+  const stillWhite = afterStale?.roster.students.find((row) => row.linkedStudentId === 'stu-haven');
+  assert.equal(stillWhite?.belt, 'White', 'instructor copy must not overwrite belt');
+  const fromStudent = await call(env, '/api/gym/roster?op=submit', coach, {
+    backup: backup([student('h9', 'Haven', { belt: 'Blue', stripes: 2, linkedStudentId: 'stu-haven', studentRankAt: 80 })]),
+  });
+  assert.equal(fromStudent.status, 200);
+  const master = (await state(env, owner)).body.master;
+  const haven = master?.roster.students.find((row) => row.linkedStudentId === 'stu-haven');
+  assert.equal(haven?.belt, 'Blue');
+  assert.equal(haven?.stripes, 2);
+  assert.equal(haven?.studentRankAt, 80);
+  assert.equal(master?.roster.students.filter((row) => row.linkedStudentId === 'stu-haven').length, 1);
+  const fromCoach = await call(env, '/api/gym/roster?op=submit', coach, {
+    backup: backup([student('h9', 'Haven', { belt: 'Purple', stripes: 1, linkedStudentId: 'stu-haven', coachRankAt: 120 })]),
+  });
+  assert.equal(fromCoach.status, 200);
+  const afterCoach = (await state(env, owner)).body.master;
+  const coached = afterCoach?.roster.students.find((row) => row.linkedStudentId === 'stu-haven');
+  assert.equal(coached?.belt, 'Purple', 'a later coach edit may update the master');
+  assert.equal(coached?.coachRankAt, 120);
+  const staleCoach = await call(env, '/api/gym/roster?op=submit', coach, {
+    backup: backup([student('h9', 'Haven', { belt: 'White', linkedStudentId: 'stu-haven', coachRankAt: 10 })]),
+  });
+  assert.equal(staleCoach.status, 200);
+  const stillPurple = (await state(env, owner)).body.master?.roster.students.find((row) => row.linkedStudentId === 'stu-haven');
+  assert.equal(stillPurple?.belt, 'Purple', 'an older coach edit must not overwrite the master');
+});
+
+test('only the owner can merge duplicate academy cards', async () => {
+  const secret = await signingSecret();
+  const { env: makeEnv } = setup();
+  const env = makeEnv(secret);
+  const owner = await ownerToken(secret);
+  const coach = await seatToken(secret, 'seat-coach', 'coach');
+  // Different belts so the usual name+belt match does not collapse them on submit.
+  await call(env, '/api/gym/roster?op=submit', owner, {
+    backup: backup([
+      student('h1', 'Haven', { belt: 'White', note: 'Coach note' }),
+      student('h2', 'Haven', { belt: 'Blue', division: 'Kids' }),
+    ]),
+  });
+  assert.equal((await call(env, '/api/gym/roster?op=merge-dupes', coach, { keepId: 'h1', dropId: 'h2' })).status, 403);
+  const merged = await call(env, '/api/gym/roster?op=merge-dupes', owner, { keepId: 'h1', dropId: 'h2' });
+  assert.equal(merged.status, 200);
+  const body = (await merged.json()) as { keptId: string; droppedId: string; name: string };
+  assert.equal(body.keptId, 'h1');
+  assert.equal(body.name, 'Haven');
+  const master = (await state(env, owner)).body.master;
+  const keep = master?.roster.students.find((row) => row.id === 'h1');
+  const drop = master?.roster.students.find((row) => row.id === 'h2');
+  assert.equal(keep?.note, 'Coach note');
+  assert.equal(keep?.division, 'Kids');
+  assert.equal(keep?.belt, 'White');
+  assert.ok(drop?.archivedAt);
+});

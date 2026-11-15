@@ -37,8 +37,46 @@
   background: rgba(110, 168, 255, 0.12);
 }
 
+/* Competition and Tournament Management (Design Critic Coach, Option B). */
+.instructor-tool--competition:active {
+  background: #08182f;
+}
+
+.instructor-tool__mark--competition {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  justify-self: end;
+}
+
+.instructor-tool__mark--competition svg {
+  display: block;
+  width: 92px;
+  height: 72px;
+}
+
+/* Option B: 4px tournament stripe on the icon tile's left edge, not a card belt rail. */
+.instructor-tool__stripe {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(to right, rgba(8, 10, 16, 0.55), rgba(8, 10, 16, 0.55) 1px, transparent 1px),
+    repeating-linear-gradient(to bottom, #1c6b30 0, #1c6b30 6px, #ffe24a 6px, #ffe24a 12px);
+  box-shadow: 1px 0 0 rgba(8, 10, 16, 0.45);
+}
+
 @media (orientation: landscape) and (min-width: 740px) {
   .instructor-tools {
     grid-template-columns: 1fr 1fr;
+  }
+
+  /* The long official title holds two lines in the 200px two-up text column. */
+  .instructor-tool--competition {
+    font-size: 1.03rem;
   }
 }

@@ -35,7 +35,7 @@ test('storefront sells White once and sends Buy Now to the existing checkout', (
 test('Pass 2 sections use the approved copy and woodblocks', () => {
   assert.equal(STOREFRONT_PROGRESS_EYEBROW, 'Progression');
   assert.equal(STOREFRONT_PROGRESS_HEADING, 'Start with White. Grow into Pro.');
-  assert.equal(STOREFRONT_ALPHA_NOTE, 'Student, Coach and Pro are in alpha testing.');
+  assert.equal(STOREFRONT_ALPHA_NOTE, 'Student, Instructor Edition and Pro are in alpha testing.');
   assert.deepEqual(
     STOREFRONT_NAV.map((item) => item.label),
     ['Scoreboard', 'Round timer'],
@@ -65,7 +65,7 @@ test('Pass 2 sections use the approved copy and woodblocks', () => {
 test('the three owner CTAs open the pre-Pass-2 picker and nothing else', () => {
   assert.deepEqual(
     STOREFRONT_PICKER_LINKS.map((link) => link.label),
-    ['Start with White. Grow into Pro.', 'Advantage – Student Edition', 'Advantage Coach'],
+    ['Start with White. Grow into Pro.', 'Advantage – Student Edition', 'Advantage Instructor Edition'],
   );
   for (const link of STOREFRONT_PICKER_LINKS) {
     assert.equal(link.to, '/products');
@@ -88,7 +88,7 @@ test('coming soon stays Student, Coach, Pro and does not sell Coach or Pro', () 
   );
   assert.deepEqual(
     STOREFRONT_COMING_SOON.map((item) => item.title),
-    ['Advantage – Student Edition', 'Advantage Coach', 'Advantage Pro'],
+    ['Advantage – Student Edition', 'Advantage Instructor Edition', 'Advantage Pro'],
   );
   assert.deepEqual(
     STOREFRONT_COMING_SOON.map((item) => item.to),
@@ -99,7 +99,7 @@ test('coming soon stays Student, Coach, Pro and does not sell Coach or Pro', () 
     [false, false, false],
   );
   assert.equal(STOREFRONT_COMING_SOON[0]?.price, '$19.99 one-time');
-  assert.equal(STOREFRONT_COMING_SOON[1]?.price, '$29.99 one-time');
+  assert.equal(STOREFRONT_COMING_SOON[1]?.price, '$49.99 one-time');
   assert.equal(STOREFRONT_COMING_SOON[2]?.price, '$99.99 one-time');
   assert.equal(STOREFRONT_COMING_SOON[2]?.cardPrice, '$99.99 one-time');
   assert.equal(STOREFRONT_COMING_SOON[0]?.blurb, 'A personal BJJ training journal.');
@@ -108,7 +108,7 @@ test('coming soon stays Student, Coach, Pro and does not sell Coach or Pro', () 
     'Daily lesson plans, training videos and a technique tree. Includes White.',
   );
   assert.match(STOREFRONT_COMING_SOON[2]?.blurb ?? '', /shared drive/);
-  assert.match(STOREFRONT_COMING_SOON[2]?.blurb ?? '', /Includes Coach/);
+  assert.match(STOREFRONT_COMING_SOON[2]?.blurb ?? '', /Includes Instructor Edition/);
   assert.equal(STOREFRONT_COMING_SOON[0]?.status, 'This product is in alpha');
   assert.equal(STOREFRONT_COMING_SOON[1]?.status, 'This product is in alpha');
   assert.equal(STOREFRONT_COMING_SOON[2]?.status, 'This product is in alpha');

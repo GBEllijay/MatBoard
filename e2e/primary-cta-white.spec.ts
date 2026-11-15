@@ -143,7 +143,7 @@ test('products, White, Coach, Pro, and media console primaries are white', async
 
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/coach');
-  await expect(page.getByRole('heading', { name: 'Advantage - Coach' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Advantage - Instructor Edition' })).toBeVisible();
   expect(await yellowControls(page)).toEqual([]);
   await shot(page, 'coach-desktop');
   await setSize(page, { width: 390, height: 844 });
@@ -279,7 +279,7 @@ test('owner unlock, roster Save, and student Sign in are white, and Win calls ar
   await page.goto('/products');
   await page.getByRole('button', { name: 'Advantage Instructor Edition, This product is in alpha' }).click();
   await page.getByRole('button', { name: 'Owner unlock' }).click();
-  const unlockCoach = page.getByRole('button', { name: 'Unlock Coach' });
+  const unlockCoach = page.getByRole('button', { name: 'Unlock Instructor Edition' });
   await page.mouse.move(0, 0);
   expectWhitePrimary(await paint(unlockCoach));
   await shot(page, 'unlock-coach-desktop');

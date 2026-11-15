@@ -35,19 +35,23 @@ export function applySubfactorScore(model: TopoModel, id: string, score: ReliefS
 
 /** Smallest split a face uses: 3×3, nine tiles. */
 export const FACE_GRID_MIN = 3;
-/** Largest split a face uses: 5×5, twenty-five tiles. More cards do not add a sixth row. */
-export const FACE_GRID_MAX = 5;
+/**
+ * Browser-safety clamp only (40×40 = 1,600 tiles on one face). Not a product cap.
+ * A student adding techniques one at a time will not reach this.
+ */
+export const FACE_GRID_SAFE = 40;
 
 /**
  * Rows per face for a card count. Up to 9 cards is 3×3 (9 tiles), 10–16 is 4×4 (16),
- * 17 or more is 5×5 (25). Past 25 the grid stays 5×5 and the strongest 25 are drawn.
+ * then the face keeps subdividing: 17–25 is 5×5, 26–36 is 6×6, and so on.
  */
 export function faceGridSize(count: number): number {
   const safe = Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
-  return Math.min(FACE_GRID_MAX, Math.max(FACE_GRID_MIN, Math.ceil(Math.sqrt(safe))));
+  const n = Math.max(FACE_GRID_MIN, Math.ceil(Math.sqrt(safe)));
+  return Math.min(FACE_GRID_SAFE, n);
 }
 
-/** Tiles a face can show for a card count: 9, 16, or 25. */
+/** Tiles a face can show for a card count: n×n, starting at 9. */
 export function faceTileCap(count: number): number {
   const n = faceGridSize(count);
   return n * n;
@@ -55,7 +59,7 @@ export function faceTileCap(count: number): number {
 
 /**
  * One octahedron. Each face carries exactly the moves it is given. Heights come from scoreFor.
- * `gridFor` may set the rows on one face (3 to 5). Without it, a face splits just enough for its moves.
+ * `gridFor` may set the rows on one face. Without it, a face splits just enough for its moves.
  */
 export function buildSubfactorTopo(
   faces: readonly FaceModel[],
@@ -107,10 +111,11 @@ export function buildSubfactorTopo(
     const face = topoFaces[faceIndex];
     const count = face?.moves.length ?? 0;
     const asked = gridFor?.(faceIndex);
-    const n =
+    const raw =
       asked != null && Number.isFinite(asked)
-        ? Math.min(FACE_GRID_MAX, Math.max(1, Math.round(asked)))
+        ? Math.max(1, Math.round(asked))
         : Math.max(1, Math.ceil(Math.sqrt(count)));
+    const n = Math.min(FACE_GRID_SAFE, raw);
     const [a, b, c] = corners.map((index) => vertices[index]);
     const pointAt = (i: number, j: number) => {
       const left = lerp(a, b, i / n);
@@ -183,7 +188,7 @@ export type FaceSlot = {
   y: number;
   /** Row from the apex, 0 first. */
   row: number;
-  /** Rows on this face: 3, 4, or 5 on the live diamond. */
+  /** Rows on this face: 3 or more on the live diamond. */
   grid: number;
 };
 

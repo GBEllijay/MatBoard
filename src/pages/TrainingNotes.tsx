@@ -20,6 +20,7 @@ import { LessonSectionVideo } from '../components/LessonSectionVideo';
 import { OpenMyDrive } from '../components/OpenMyDrive';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { useCoachPageSwipe } from '../hooks/useCoachSwipe';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useToolboxParent } from '../hooks/useToolboxParent';
 import {
@@ -133,7 +134,7 @@ import {
 } from '../lib/lessonTemplates';
 import { ADD_REPLAY_LABEL, MAX_REPLAYS, replayHeading } from '../lib/replayAnalysis';
 import { ReplayAnalysisCard } from '../components/ReplayAnalysisCard';
-import { COACH_BOARD_FROM, INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom } from '../lib/productNames';
+import { COACH_BOARD_FROM, INSTRUCTOR_COACH_ENTRY, UNLIMITED_LESSON_VALUE, carryHubFrom, competitionSuiteOpen } from '../lib/productNames';
 import { classHistoryHref } from '../lib/submenuNav';
 import { useSubmenuBack } from '../hooks/useSubmenuBack';
 import { listPhotos } from '../lib/photoStore';
@@ -250,6 +251,7 @@ export function TrainingNotesPage() {
   const proUnlocked = useProUnlocked();
   const [searchParams, setSearchParams] = useSearchParams();
   const seat = useCurrentSeat();
+  const coachUnlocked = useCoachUnlocked();
   const lessonMenu = seatMenuAllowed(seat, 'dailyLessonPlanAccess');
   const lessonCloud = menuCloudSharing(proUnlocked, seat, lessonMenu);
   /**
@@ -704,7 +706,11 @@ export function TrainingNotesPage() {
     });
   };
 
-  const competitionAllowed = proUnlocked || unlimitedPlan;
+  /**
+   * Competition class template. Instructor Edition includes the competition suite
+   * (owner, 14 Nov 2026), so it opens on the Coach-tools door: Instructor, Pro, or a seat.
+   */
+  const competitionAllowed = competitionSuiteOpen(proUnlocked, coachUnlocked, seat !== null) || unlimitedPlan;
   const showCompetition = activeLessonTemplate(plan) === 'competition' && competitionAllowed;
   const orderedBlocks = lessonBlocks(plan);
   const atMax = orderedBlocks.filter((block) => block.kind === 'technique').length >= MAX_TECHNIQUES;
@@ -813,7 +819,7 @@ export function TrainingNotesPage() {
       setDownloadNote(
         reason instanceof Error
           ? reason.message
-          : 'A Google Drive video could not be downloaded. Gallery copies already saved stay on this phone.',
+          : 'A Google Drive video could not be downloaded. Gallery copies already saved stay on this device.',
       );
     }
   };
@@ -1032,7 +1038,7 @@ export function TrainingNotesPage() {
             </div>
           </div>
         ) : null}
-        {!competitionAllowed ? <p className="notes__when">Competition class is included with Coach Unlimited and Pro.</p> : null}
+        {!competitionAllowed ? <p className="notes__when">Competition class is included with Instructor Edition and Pro.</p> : null}
         {showCompetition ? (
           <>
             <CompetitionCurriculumPage embedded />
@@ -1461,7 +1467,7 @@ export function TrainingNotesPage() {
           </div>
         ) : null}
         {!competitionAllowed ? (
-          <p className="notes__when">Competition class is included with Coach Unlimited and Pro.</p>
+          <p className="notes__when">Competition class is included with Instructor Edition and Pro.</p>
         ) : null}
         {unlimitedPlan ? null : <OpenMyDrive />}
         {unlimitedPlan && !showDownload ? <OpenMyDrive /> : null}

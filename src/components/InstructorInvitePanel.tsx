@@ -36,7 +36,7 @@ import {
 } from '../lib/instructorSeats';
 import { STUDENT_LICENSE_GIVE } from '../lib/studentLicensePool';
 import { issueStudentLicense } from '../lib/studentLicenseClient';
-import { issueSeatWithServer, syncLegacySeats } from '../lib/seatClient';
+import { issueSeatWithServer, saveSeatPermissionsOnServer, syncLegacySeats, syncSeatPermissions } from '../lib/seatClient';
 import { GalleryApprovalSwitch } from './GalleryApprovalSwitch';
 import { GalleryPendingLink } from './GalleryPendingNotice';
 import { qrDataUrl } from '../lib/qr';
@@ -151,7 +151,8 @@ export function InstructorInvitePanel() {
   }, [issued]);
 
   useEffect(() => {
-    void syncLegacySeats();
+    // Then copy each seat's switches to the server, so older invites sign in with them.
+    void syncLegacySeats().then(() => syncSeatPermissions());
   }, []);
 
   if (door.seat && inviteBlockedAsSeat(door.seat, entitlementSnapshot().claims)) {
@@ -399,6 +400,8 @@ export function InstructorInvitePanel() {
                     if (!draft) return;
                     const saved = updateInstructorSeatPermissions(seat.id, draft, draftPresetId);
                     if (!saved.ok) return;
+                    // Server copy, so the instructor's email sign-in restores these exact switches.
+                    void saveSeatPermissionsOnServer(saved.seat);
                     setEditingId(null);
                     setDraft(null);
                     setDraftPresetId(null);

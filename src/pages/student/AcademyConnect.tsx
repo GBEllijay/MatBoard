@@ -177,7 +177,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
     const parsed = parseAcademyInput(value);
     if (!parsed) {
       setPathway(null);
-      setError('That is not an academy link. Paste the link from your coach, or open the QR on this phone.');
+      setError('That is not an academy link. Paste the link from your coach, or open the QR on this device.');
       return;
     }
     setError('');
@@ -292,7 +292,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
     setShowId(false);
     setTick((n) => n + 1);
     setNearScanner(false);
-    setStatus(`You left ${result.left || 'your academy'}. Your journal, reports, and student ID stay on this phone.`);
+    setStatus(`You left ${result.left || 'your academy'}. Your journal, reports, and student ID stay on this device.`);
   };
 
   const removeOld = () => {
@@ -470,7 +470,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
               </div>
               <div className="am-row">
                 <span>Journal, photos &amp; weigh-ins</span>
-                <span>Stay on this phone</span>
+                <span>Stay on this device</span>
               </div>
             </div>
             <ShareCardWithCoach
@@ -512,7 +512,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
                 forgetAcademyFolder(localStorage);
                 setLinked(null);
                 setNearScanner(false);
-                setStatus('Academy folder disconnected on this phone. The folder itself is unchanged. Scan the gym QR to connect again.');
+                setStatus('Academy folder disconnected on this device. The folder itself is unchanged. Scan the gym QR to connect again.');
               }}
             >
               Disconnect academy folder
@@ -541,7 +541,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
             <>
               <h2>Leave {gymName || 'your academy'}?</h2>
               <p>
-                Your coach stops seeing new belt progress and you stop getting notes. Files from this gym are not accepted after you leave. Your journal, reports, and student ID stay on this phone. You can join again with the gym QR.
+                Your coach stops seeing new belt progress and you stop getting notes. Files from this gym are not accepted after you leave. Your journal, reports, and student ID stay on this device. You can join again with the gym QR.
               </p>
               <div className="am-two">
                 <button type="button" className={BTN} autoFocus onClick={() => setSheet(null)}>
@@ -556,7 +556,7 @@ export function AcademyConnect({ showHeading = true }: { showHeading?: boolean }
           {sheet.kind === 'switch' ? (
             <>
               <h2>Switch to {sheet.next.gymName || sheet.next.folderName}?</h2>
-              <p>This replaces {gymName || 'your academy'}. Only one academy can be connected at a time. Your journal stays on this phone.</p>
+              <p>This replaces {gymName || 'your academy'}. Only one academy can be connected at a time. Your journal stays on this device.</p>
               <div className="am-two">
                 <button type="button" className={BTN} autoFocus onClick={() => setSheet(null)}>
                   Cancel

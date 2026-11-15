@@ -84,7 +84,7 @@ test('the lesson page saves edits to my copy and keeps the phone copy for castin
   const page = readFileSync('src/pages/TrainingNotes.tsx', 'utf8');
   const lib = readFileSync('src/lib/advantageCloudMedia.ts', 'utf8');
   assert.match(page, /decideLessonOpen/);
-  assert.match(page, /saveDay\(dateKey, next, todayKey\)/, 'an opened plan is kept on this phone for the board and casting');
+  assert.match(page, /saveDay\(dateKey, next, todayKey\)/, 'an opened plan is kept on this device for the board and casting');
   assert.match(page, /writeLessonSource\(localStorage, lessonCloudRead\.instructorId, todayKey, 'mine'\)/);
   assert.match(page, /<LessonPlanSourceBar/);
   assert.match(lib, /planTarget: 'mine'/);

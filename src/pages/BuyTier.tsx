@@ -263,8 +263,8 @@ function BuyTierPage({ tier }: { tier: TierCopy }) {
                 <p>{carry.message}</p>
                 {carry.action === 'needs-choice' ? (
                   <div role="group" aria-label="Choose what to keep">
-                    <button type="button" onClick={() => setCarry({ ...carry, action: 'kept-real', message: 'The file already on this phone stays. The demo copy remains saved here.' })}>
-                      Keep the file on this phone
+                    <button type="button" onClick={() => setCarry({ ...carry, action: 'kept-real', message: 'The file already on this device stays. The demo copy remains saved here.' })}>
+                      Keep the file on this device
                     </button>
                     <button
                       type="button"

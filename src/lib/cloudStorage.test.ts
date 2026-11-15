@@ -118,7 +118,7 @@ test('Google Drive stays the default and launch providers are listed in owner or
   const dropbox = cloudStorage('dropbox');
   assert.equal(dropbox.phase, 'reserved');
   assert.equal(dropbox.isAvailable(), false);
-  assert.match(dropbox.unavailableMessage(), /not on the Coach and Pro launch list/);
+  assert.match(dropbox.unavailableMessage(), /not on the Instructor Edition and Pro launch list/);
   assert.doesNotMatch(dropbox.unavailableMessage(), /coming soon|coming for launch/i);
 });
 

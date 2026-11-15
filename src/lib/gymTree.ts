@@ -306,7 +306,7 @@ export const GALLERY_ROUTE_NOTE =
   'Class photos and short clips go to the gallery. They do not go in the instructor video folder.';
 
 export const STUDENT_GALLERY_HIDDEN =
-  'Students do not upload class photos. Send a file from your inbox, or keep the photo on this phone.';
+  'Students do not upload class photos. Send a file from your inbox, or keep the photo on this device.';
 
 export const DAILY_VIDEO_LANE_NOTE =
   'Daily training videos go in videos/daily. Older clips in Videos and training-videos stay where they are.';

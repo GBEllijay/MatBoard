@@ -56,19 +56,19 @@ export const DISTRIBUTE_LEAD =
   'This plan saves as you type. Upload for instructor distribution is optional.';
 export const DISTRIBUTE_BUTTON = 'Upload for instructor distribution';
 export const DISTRIBUTE_DONE =
-  'Saved on this phone. Distribution is optional and uses the gym Google Drive folder when it is connected. Lesson text and attached videos go in that folder, not on Advantage.';
+  'Saved on this device. Distribution is optional and uses the gym Google Drive folder when it is connected. Lesson text and attached videos go in that folder, not on Advantage.';
 
 export const OWNER_DRIVE_KICKER = 'Sunday review';
 export const OWNER_DRIVE_TITLE = 'Class plans in your Google Drive';
 export const OWNER_DRIVE_BODY =
-  'When the gym Google Drive folder is connected, a lesson plan saves there as the coach types, and attached technique videos are copied into a dated folder under Videos. Older clips already in that day’s training-videos folder stay there. This phone keeps those clips for offline play. Leaving the page or skipping upload still keeps the draft. Version history in that folder shows each coach’s week so you can choose what to keep. Advantage does not host the photos or videos.';
+  'When the gym Google Drive folder is connected, a lesson plan saves there as the coach types, and attached technique videos are copied into a dated folder under Videos. Older clips already in that day’s training-videos folder stay there. This device keeps those clips for offline play. Leaving the page or skipping upload still keeps the draft. Version history in that folder shows each coach’s week so you can choose what to keep. Advantage does not host the photos or videos.';
 export const OWNER_DRIVE_QUEUE =
-  'These rows are lesson text and Drive file ids on this phone. When Google Drive is connected, the lesson text and video files are in that folder. Advantage does not store the video files.';
+  'These rows are lesson text and Drive file ids on this device. When Google Drive is connected, the lesson text and video files are in that folder. Advantage does not store the video files.';
 
 /** Instructor Edition Sunday review card when the gym already has Advantage Cloud. */
 export const OWNER_CLOUD_TITLE = 'Class plans';
 export const OWNER_CLOUD_BODY =
-  'These rows are lesson drafts on this phone. Tap a class to open it, then approve, request changes, or reject.';
+  'These rows are lesson drafts on this device. Tap a class to open it, then approve, request changes, or reject.';
 export const OWNER_CLOUD_QUEUE = 'Lesson plans and videos save to Advantage Cloud for this gym.';
 
 export function ownerDriveTitle(cloudOn: boolean): string {
@@ -314,7 +314,7 @@ function setDriveNotice(next: DriveSaveNotice): void {
 }
 
 export function savedPhoneNotice(): string {
-  return 'Saved on this phone. Connect Google Drive, then save this day, to copy the lesson and videos into the gym folder for the gym owner and instructors. Until then, videos stay on this device and are not shared yet.';
+  return 'Saved on this device. Connect Google Drive, then save this day, to copy the lesson and videos into the gym folder for the gym owner and instructors. Until then, videos stay on this device and are not shared yet.';
 }
 
 /** Button on Daily Training Videos when the gym folder is not connected yet. */
@@ -368,7 +368,7 @@ export function trainingClipHandoff(input: {
     return { share: true, lead: TRAINING_CLOUD_LEAD, action: TRAINING_CLOUD_ACTION, warning: TRAINING_CLOUD_WARNING };
   }
   const warning = input.driveConnected
-    ? 'Until this day is saved, these clips stay on this device only and are not shared with the owner or other instructors yet. This phone keeps a copy for offline play.'
+    ? 'Until this day is saved, these clips stay on this device only and are not shared with the owner or other instructors yet. This device keeps a copy for offline play.'
     : 'Until Google Drive is connected and this day is saved, these clips stay on this device only and are not shared with the owner or other instructors yet.';
   const action = input.driveConnected
     ? 'Adding or replacing a clip saves this day into the gym Drive folder.'
@@ -426,13 +426,13 @@ export function drivePackageNotice(input: {
 }): string {
   if (input.unreachable && !input.lessonSaved) return savedPhoneNotice();
   if (!input.lessonSaved && input.uploaded > 0) {
-    return 'Videos saved to Google Drive. Lesson text is on this phone, and the next edit will try the folder again.';
+    return 'Videos saved to Google Drive. Lesson text is on this device, and the next edit will try the folder again.';
   }
   if (!input.lessonSaved) {
-    return 'Saved on this phone. Google Drive could not be updated, and the next edit will try again.';
+    return 'Saved on this device. Google Drive could not be updated, and the next edit will try again.';
   }
   if (input.failed > 0) {
-    const stay = input.failed === 1 ? '1 video stays on this phone' : `${input.failed} videos stay on this phone`;
+    const stay = input.failed === 1 ? '1 video stays on this device' : `${input.failed} videos stay on this device`;
     return `Lesson text saved to Google Drive. ${stay} and will try again on the next save.`;
   }
   if (input.uploaded > 0) {
@@ -440,7 +440,7 @@ export function drivePackageNotice(input: {
       input.uploaded === 1
         ? '1 video is in the gym folder for the gym owner and instructors.'
         : `${input.uploaded} videos are in the gym folder for the gym owner and instructors.`;
-    return `${savedDriveNotice(input.revisions)} ${clip} This phone keeps a copy for offline play.`;
+    return `${savedDriveNotice(input.revisions)} ${clip} This device keeps a copy for offline play.`;
   }
   return savedDriveNotice(input.revisions);
 }
@@ -906,7 +906,7 @@ async function uploadVideosWithoutLesson(dateKey: string, media: readonly Lesson
   const failed = pending.length - uploaded.length;
   await rememberUploadedClips(uploaded);
   if (failed > 0) {
-    const stay = failed === 1 ? '1 video stays on this phone' : `${failed} videos stay on this phone`;
+    const stay = failed === 1 ? '1 video stays on this device' : `${failed} videos stay on this device`;
     setDriveNotice({
       phase: 'error',
       text: `${stay} and will try again on the next save.`,
@@ -916,7 +916,7 @@ async function uploadVideosWithoutLesson(dateKey: string, media: readonly Lesson
   const clip = uploaded.length === 1 ? '1 video saved to Google Drive.' : `${uploaded.length} videos saved to Google Drive.`;
   setDriveNotice({
     phase: 'saved-drive',
-    text: `${clip} This phone keeps a copy for offline play.`,
+    text: `${clip} This device keeps a copy for offline play.`,
   });
 }
 

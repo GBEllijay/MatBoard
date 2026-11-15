@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   REQUIRE_APPROVAL_LABEL,
+  REQUIRE_APPROVAL_WHY,
   canSetGalleryApproval,
   writeGalleryApproval,
   type GalleryApprovalSettings,
@@ -16,7 +17,7 @@ function load(): GalleryApprovalSettings {
 }
 
 export const CLOUD_APPROVAL_OWNER_HINT =
-  "This is the gym-wide Advantage Cloud setting. Only the owner can change it. Photos that stay on this phone or go to Google Drive or OneDrive still use this device's own approval setting.";
+  "This is the gym-wide Advantage Cloud setting. Only the owner can change it. Photos that stay on this device or go to Google Drive or OneDrive still use this device's own approval setting.";
 
 export const CLOUD_APPROVAL_SEAT_HINT = 'Only the owner can change the Advantage Cloud approval setting.';
 
@@ -59,6 +60,7 @@ export function GalleryApprovalSwitch({ viewer }: { viewer: Viewer }) {
   return (
     <fieldset className="invite-form">
       <legend className="sr-only">Gallery approval</legend>
+      <p className="invite-form__note">{REQUIRE_APPROVAL_WHY}</p>
       <label>
         <input
           type="checkbox"

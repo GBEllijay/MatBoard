@@ -39,6 +39,7 @@ const { ENTITLEMENT_TOKEN_KEY } = await import('../lib/entitlement.ts');
 const { STUDENT_SIDE_TOKEN_KEY } = await import('../lib/passDowngrade.ts');
 const { applyClaimedStudentLicense } = await import('../lib/studentLicenseClient.ts');
 const { readFileSync } = await import('node:fs');
+const { addStudent, getRoster, linkRosterCard, resetRoster } = await import('../lib/rosterStore.ts');
 
 const b64 = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
 const fakeToken = (payload: unknown) => `${b64({ alg: 'ES256' })}.${b64(payload)}.c2ln`;
@@ -94,8 +95,9 @@ test('Self-assessment page wires the button under the form', () => {
   assert.match(page, /<SendToInstructor entry=\{savedOnDate\} studentName=\{report\.profile\.displayName\} \/>/);
 });
 
-test('Assessments waiting: badge count, eight scores, Mark seen; Reply only with the student card on this roster', async () => {
+test('Assessments waiting: badge count, eight scores, Mark seen; Reply is enabled once a card is auto-created from the assessment', async () => {
   localStorage.clear();
+  resetRoster();
   installGlobal('fetch', async () => new Response(JSON.stringify({ ok: false }), { status: 404 }));
   const submission = buildAssessmentSubmission({ entry: entry as never, studentId: 'stu-paige', profileId: 'default', studentName: 'Paige', now: 1 })!;
   const item = {
@@ -104,18 +106,33 @@ test('Assessments waiting: badge count, eight scores, Mark seen; Reply only with
   };
   localStorage.setItem(ASSESSMENTS_WAITING_KEY, JSON.stringify({ items: [item], owner: false, instructorId: 'seat-paige', checkedAt: 1 }));
   const none = await render(<AssessmentsWaiting roster={[]} />);
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
   assert.match(none.host.textContent ?? '', new RegExp(ASSESSMENTS_WAITING_TITLE));
   assert.equal(none.host.querySelector('[data-assessments-waiting]')?.getAttribute('data-assessments-waiting'), '1');
   assert.match(none.host.textContent ?? '', /Guard\/Control 4/);
   assert.match(none.host.textContent ?? '', /Mindset 5/);
-  assert.match(none.host.textContent ?? '', /Accept this student's card first/);
+  assert.doesNotMatch(none.host.textContent ?? '', /Accept this student's card first/);
+  const row = none.host.querySelector('[data-assessment-item]');
+  assert.equal(row?.classList.contains('roster-inbox-card'), true);
   const reply = [...none.host.querySelectorAll('button')].find((b) => b.textContent === 'Reply')!;
-  assert.equal(reply.hasAttribute('disabled'), true);
+  assert.equal(reply.hasAttribute('disabled'), false, 'Reply works without a prior card share');
   assert.ok([...none.host.querySelectorAll('button')].some((b) => b.textContent === 'Mark seen'));
+  const auto = getRoster().students.find((student) => student.linkedStudentId === 'stu-paige');
+  assert.ok(auto, 'a student card is created from the assessment');
+  assert.equal(auto?.name, 'Paige');
   await act(async () => none.root.unmount());
 
-  const card = { id: 'card-1', name: 'Paige R', belt: 'Blue', division: '', gym: '', photo: '', lastPromotion: '', lastPromotionDetail: '', note: '', checkedIn: false, rosterList: 'student', linkedStudentId: 'stu-paige' };
-  const linked = await render(<AssessmentsWaiting roster={[card as never]} />);
+  const before = getRoster().students.filter((student) => student.linkedStudentId === 'stu-paige').length;
+  const again = await render(<AssessmentsWaiting roster={[]} />);
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+  assert.equal(getRoster().students.filter((student) => student.linkedStudentId === 'stu-paige').length, before, 'a second load does not add another card');
+  await act(async () => again.root.unmount());
+
+  resetRoster();
+  const card = addStudent({ name: 'Paige R', belt: 'Blue', division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', note: '' }, { rosterList: 'student' })!;
+  linkRosterCard(card.id, 'stu-paige');
+  const linked = await render(<AssessmentsWaiting roster={getRoster().students} />);
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
   const open = [...linked.host.querySelectorAll('button')].find((b) => b.textContent === 'Reply')!;
   assert.equal(open.hasAttribute('disabled'), false);
   await act(async () => {
@@ -129,6 +146,7 @@ test('Assessments waiting: badge count, eight scores, Mark seen; Reply only with
 
 test('Roster shows Assessments waiting next to new student cards; the Clipboard Self view is no longer hard-coded empty', () => {
   const roster = readFileSync('src/pages/Roster.tsx', 'utf8');
+  assert.match(roster, /className="roster__inbox"/);
   assert.match(roster, /<PendingCardShares roster=\{roster\.students\} title="New student cards" \/>\s*<AssessmentsWaiting roster=\{roster\.students\} \/>/);
   const sheet = readFileSync('src/components/rosterCard/RosterCardSheet.tsx', 'utf8');
   assert.doesNotMatch(sheet, /assessmentSummary\(record\.coachAssessments, \[\], view\)/);

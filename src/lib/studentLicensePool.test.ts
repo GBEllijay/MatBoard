@@ -15,13 +15,17 @@ import {
   isStudentLicenseCode,
   studentCloudPathAllowed,
   isStudentInviteValue,
+  looksLikeStudentInvite,
+  studentAccountInvitePath,
   studentClaimWouldDowngrade,
   studentInviteJoinUrl,
+  studentJoinRedirectPath,
   studentLicenseClaimUrl,
   STUDENT_INVITE_TYP,
   STUDENT_JOIN_PATH,
   STUDENT_LICENSE_GIVE,
 } from './studentLicensePool.ts';
+import { accountInvitePath } from './emailLogin.ts';
 import { OWNER_ALPHA_LICENSE_ID } from './proBundleMath.ts';
 
 const STUDENT = 'student-license-id-1';
@@ -71,22 +75,32 @@ test('student cloud scope is only that student\'s own files', () => {
   assert.equal(studentCloudPathAllowed(`students/${STUDENT}/../roster/private/owner.json`, STUDENT), false);
 });
 
-test('claim links carry the code, and the home screen tip is on the claim page', () => {
+test('claim and join links open the account invite screen, and older paths redirect there', () => {
   const code = 'ab'.repeat(32);
   assert.equal(isStudentLicenseCode(code), true);
-  assert.equal(studentLicenseClaimUrl('https://advantagebjjtimer.com/', code, 'North Gym'), `https://advantagebjjtimer.com/student/claim/${code}?gym=North%20Gym`);
+  assert.equal(
+    studentLicenseClaimUrl('https://advantagebjjtimer.com/', code, 'North Gym'),
+    `https://advantagebjjtimer.com/account?${new URLSearchParams({ invite: code }).toString()}`,
+  );
+  assert.equal(
+    studentLicenseClaimUrl('https://advantagebjjtimer.com/', code, 'North Gym', 'marty@gym.test'),
+    `https://advantagebjjtimer.com/account?${new URLSearchParams({ invite: code, email: 'marty@gym.test' }).toString()}`,
+  );
+  assert.equal(studentAccountInvitePath(code, 'marty@gym.test'), accountInvitePath(code, 'marty@gym.test'));
+  assert.equal(studentJoinRedirectPath('/join/student', `?code=${code}&gym=North+Gym&email=marty@gym.test`), studentAccountInvitePath(code, 'marty@gym.test'));
+  assert.equal(studentJoinRedirectPath(`/student/claim/${code}`, '?email=marty@gym.test'), studentAccountInvitePath(code, 'marty@gym.test'));
+  assert.equal(studentJoinRedirectPath('/join/student', ''), null);
+  assert.equal(studentJoinRedirectPath('/student', `?code=${code}`), null);
   const page = readFileSync(new URL('../pages/student/StudentLicenseClaim.tsx', import.meta.url), 'utf8');
-  assert.match(page, /\{ADD_TO_HOME_TITLE\}/);
-  assert.match(page, /\{ADD_TO_HOME_IPHONE\}/);
-  assert.match(page, /\{ADD_TO_HOME_ANDROID\}/);
-  assert.match(page, /\{ADD_TO_HOME_EMAIL\}/);
+  assert.match(page, /Navigate to=\{studentClaimRedirectTo/);
+  assert.doesNotMatch(page, /Claim Student Edition/);
   assert.equal(ADD_TO_HOME_TITLE, 'Add Advantage to your Home Screen');
   assert.equal(ADD_TO_HOME_IPHONE, 'iPhone: Share > Add to Home Screen');
   assert.equal(ADD_TO_HOME_ANDROID, 'Android: Install / Add to Home screen');
   assert.equal(ADD_TO_HOME_EMAIL, 'then sign in with this same email inside the app if asked');
 });
 
-test('join links use /join/student and signed or hex codes are accepted', () => {
+test('join links open /account with the invite filled in, and signed or hex codes are accepted', () => {
   const code = 'ab'.repeat(32);
   const signed = 'aaa.bbb.ccc';
   assert.equal(isStudentInviteValue(code), true);
@@ -94,12 +108,20 @@ test('join links use /join/student and signed or hex codes are accepted', () => 
   assert.equal(isStudentInviteValue('not-a-code'), false);
   assert.equal(
     studentInviteJoinUrl('https://advantagebjjtimer.com/', signed, 'North Gym'),
-    `https://advantagebjjtimer.com/join/student?${new URLSearchParams({ code: signed, gym: 'North Gym' }).toString()}`,
+    `https://advantagebjjtimer.com/account?${new URLSearchParams({ invite: signed }).toString()}`,
   );
   assert.equal(
     studentInviteJoinUrl('https://advantagebjjtimer.com/', signed, 'North Gym', 'marty@gym.test'),
-    `https://advantagebjjtimer.com/join/student?${new URLSearchParams({ code: signed, gym: 'North Gym', email: 'marty@gym.test' }).toString()}`,
+    `https://advantagebjjtimer.com/account?${new URLSearchParams({ invite: signed, email: 'marty@gym.test' }).toString()}`,
   );
+  assert.equal(looksLikeStudentInvite(code), true);
+  assert.equal(looksLikeStudentInvite('not-a-code'), false);
+  const payload = Buffer.from(JSON.stringify({ typ: STUDENT_INVITE_TYP, code }), 'utf8').toString('base64url');
+  const studentTok = `aaaaaaaaaaa.${payload}.bbbbbbbbbbb`;
+  const seatTok = `aaaaaaaaaaa.${Buffer.from(JSON.stringify({ typ: 'seat-invite' }), 'utf8').toString('base64url')}.bbbbbbbbbbb`;
+  assert.equal(looksLikeStudentInvite(studentTok), true);
+  assert.equal(looksLikeStudentInvite(`https://advantagebjjtimer.com/join/student?code=${studentTok}`), true);
+  assert.equal(looksLikeStudentInvite(seatTok), false);
   assert.equal(STUDENT_JOIN_PATH, '/join/student');
   assert.equal(STUDENT_INVITE_TYP, 'student-invite');
   assert.equal(STUDENT_LICENSE_GIVE, 'Invite a student (Student Edition only)');
@@ -129,9 +151,14 @@ test('the Pro invite panel and public join page are wired to Student Edition onl
   assert.doesNotMatch(panel, /Instructor email/);
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
   assert.match(app, /path="\/join\/student"/);
+  assert.match(app, /studentJoinRedirectPath/);
   const share = readFileSync(new URL('../components/StudentLicenseShare.tsx', import.meta.url), 'utf8');
   assert.match(share, /Copy link/);
   assert.match(share, /Download QR PNG/);
   assert.match(share, /Share/);
   assert.match(share, /studentInviteJoinUrl/);
+  assert.match(share, /confirms their email, and chooses a password/);
+  const account = readFileSync(new URL('../pages/Account.tsx', import.meta.url), 'utf8');
+  assert.match(account, /INVITE_WELCOME_STUDENT/);
+  assert.match(account, /looksLikeStudentInvite\(inviteCode\)/);
 });

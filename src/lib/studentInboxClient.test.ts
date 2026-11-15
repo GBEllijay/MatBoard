@@ -68,7 +68,7 @@ test('rank delivery uses the cloud inbox when the bucket answers', async () => {
   assert.deepEqual(delivery, { mode: 'cloud', studentPass: 'one.two.three' });
 });
 
-test('rank delivery saves a file when this phone has no cloud sign-in', async () => {
+test('rank delivery saves a file when this device has no cloud sign-in', async () => {
   const delivery = await deliverRankUpdate(packet(), {
     token: '',
     license: '',

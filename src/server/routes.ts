@@ -60,6 +60,8 @@ export const API_SEATS_LIST_PATH = '/api/seats/list';
 
 export const API_SEATS_SYNC_PATH = '/api/seats/sync';
 
+export const API_SEATS_PERMISSIONS_PATH = '/api/seats/permissions';
+
 export const API_STUDENT_LICENSES_ISSUE_PATH = '/api/student-licenses/issue';
 
 export const API_STUDENT_LICENSES_LIST_PATH = '/api/student-licenses/list';

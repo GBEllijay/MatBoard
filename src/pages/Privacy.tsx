@@ -96,7 +96,7 @@ export function PrivacyPage() {
         <h3>5. How we use information</h3>
         <p>
           We use information to provide, operate, secure, maintain, and improve the Service; to
-          authenticate you and maintain cloud connections you request; to enable Coach Unlimited,
+          authenticate you and maintain cloud connections you request; to enable Instructor Edition,
           Pro, and related features that depend on your cloud storage; to unlock a purchase and
           provide support; to reply to alpha-access requests; to communicate with you about the
           Service when you contact us; and to comply with law.

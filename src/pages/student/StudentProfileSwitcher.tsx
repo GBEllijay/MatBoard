@@ -152,7 +152,7 @@ export function StudentProfileSwitcher({ detail = false }: { detail?: boolean })
           ? 'Enter a name.'
           : result.reason === 'portrait'
             ? 'That photo could not be used.'
-            : 'This phone cannot store another profile.',
+            : 'This device cannot store another profile.',
       );
       refresh();
       return;
@@ -264,7 +264,7 @@ export function StudentProfileSwitcher({ detail = false }: { detail?: boolean })
       {panel === 'add' ? (
         <div className="s-profiles__panel" role="region" aria-label={ADD_PROFILE_LABEL}>
           <h3>{ADD_PROFILE_LABEL}</h3>
-          <p>Name the profile. A portrait is optional. It stays on this phone.</p>
+          <p>Name the profile. A portrait is optional. It stays on this device.</p>
           <label>
             Name
             <input
@@ -325,7 +325,7 @@ export function StudentProfileSwitcher({ detail = false }: { detail?: boolean })
         <div className="s-profiles__panel" role="alertdialog" aria-label={`Delete ${pendingDelete.name}`}>
           <h3>Delete {pendingDelete.name}?</h3>
           <p>
-            This removes {pendingDelete.name}&apos;s journal, check-ins, rank, and the rest of that profile from this phone.
+            This removes {pendingDelete.name}&apos;s journal, check-ins, rank, and the rest of that profile from this device.
             The first profile stays.
           </p>
           <div className="s-profiles__actions">

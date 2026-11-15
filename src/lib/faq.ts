@@ -55,7 +55,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     paragraphs: [
       'No. History is optional. A belt or stripe can stay on No date. If you are not sure of the day, leave it blank. Do not invent a date to make the list look finished.',
       'When you do know a day, check your own records. Look at a photo you already have, a calendar, a certificate, or a note from your coach. You read those yourself. Advantage does not look through your photo library or Google Photos.',
-      'On My rank, Add date saves a calendar day. Photo attaches a picture you choose. Photos stay on this phone.',
+      'On My rank, Add date saves a calendar day. Photo attaches a picture you choose. Photos stay on this device.',
     ],
     links: [{ label: 'My rank', to: '/student/rank' }],
     keywords: 'stripes promotion date optional uncertain certificate',
@@ -183,7 +183,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     question: 'How do profile and belt photos work?',
     paragraphs: [
       'On My profile, use Take photo or Choose photo. On My rank, use Photo on the belt or stripe you are editing. You pick the file. Advantage does not scan your camera roll for promotion pictures.',
-      'Profile photos stay on this phone. Nothing is uploaded unless you export a report or a backup with that switch on. A file you make for your coach can include rank photos when the file has room.',
+      'Profile photos stay on this device. Nothing is uploaded unless you export a report or a backup with that switch on. A file you make for your coach can include rank photos when the file has room.',
     ],
     links: [
       { label: 'My profile', to: '/student/profile' },
@@ -197,7 +197,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     category: 'Backups',
     question: 'How do I back up, and how do I move to another phone?',
     paragraphs: [
-      'Open Backup & Print or Connections. Download student packet (.advantage) is the file that can restore this phone. It holds the journal, self-assessment, ranks, index cards, and a spreadsheet. After you choose that file, pick Merge with this phone or Replace this phone. Merge keeps notes that exist only on this phone. Replace removes the journal on this phone and uses the file. An older JSON backup still restores the same way.',
+      'Open Backup & Print or Connections. Download student packet (.advantage) is the file that can restore this device. It holds the journal, self-assessment, ranks, index cards, and a spreadsheet. After you choose that file, pick Merge with this device or Replace this device. Merge keeps notes that exist only on this device. Replace removes the journal on this device and uses the file. An older JSON backup still restores the same way.',
       'A spreadsheet or a PDF is for reading or printing. Those files do not restore the journal. The spreadsheet is also inside the packet.',
       'The journal lives on this device. Another phone, or a cleared browser, does not have it until you restore a packet. Clear all Student Edition data affects only Student Edition on this device. Back up first. Unlock codes and drive connections stay.',
       'You can connect Google Drive or OneDrive and copy the packet into that folder when you export. That copy happens because you exported. The app does not sync the journal on its own. Google Photos is not a backup folder in this build.',
@@ -217,8 +217,8 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
       'A student packet is your journal, self-assessment, rank, index cards, and the related notes in that file. An older JSON backup is the same idea in the previous file.',
       'Restore a purchase uses the email from checkout. Advantage emails a one-time code. Confirm puts the purchase on this device. It does not bring journal entries back. The code expires and works once. If it does not arrive in a few minutes, check your spam or junk folder.',
       'A Google Drive or OneDrive folder is a place you connect. The academy folder is one your coach shared. You sign in with your own account. Advantage Cloud, when a gym has it, is hosted sharing for that gym’s cloud tools. It is not a hosted copy of your personal journal. If Cloud sharing pauses, the screen can show the days left to download the gym folder. The journal on the phone is separate.',
-      'Buying an edition does not upload the journal. Work you type in the Student Edition demo on this phone can be saved into Student Edition when the purchase opens that edition and the real file is empty. Student, Media, Instructor, and Pro include Student Edition. White does not, so that demo stays on this phone and is not opened.',
-      'If Student Edition already has a file, choose Keep the file on this phone or Use the demo copy. The purchase does not replace the file unless you choose the demo copy. The sample seed on the demo screen is not kept. Video files and photos from the demo are not copied. The example technique cloud is not part of this save.',
+      'Buying an edition does not upload the journal. Work you type in the Student Edition demo on this device can be saved into Student Edition when the purchase opens that edition and the real file is empty. Student, Media, Instructor, and Pro include Student Edition. White does not, so that demo stays on this device and is not opened.',
+      'If Student Edition already has a file, choose Keep the file on this device or Use the demo copy. The purchase does not replace the file unless you choose the demo copy. The sample seed on the demo screen is not kept. Video files and photos from the demo are not copied. The example technique cloud is not part of this save.',
     ],
     links: [
       { label: 'Restore a purchase', to: '/restore' },
@@ -280,7 +280,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     question: 'How do instructor invites and free Student licenses work?',
     paragraphs: [
       'On Pro, the owner can generate an instructor invite. The role picks which menus open. The app does not email that invite, and it does not copy a student’s journal onto the new phone.',
-      'A student claims a free Student license with an email on this phone. That opens Student Edition here. If the gym uses Advantage Cloud, that license can open that student’s own academy inbox. It does not open coach lesson files, private coach notes, or other students.',
+      'A student claims a free Student license with an email on this device. That opens Student Edition here. If the gym uses Advantage Cloud, that license can open that student’s own academy inbox. It does not open coach lesson files, private coach notes, or other students.',
       'A paid Advantage Cloud add-on opens the gym’s Advantage Cloud files for an accepted instructor seat. What that seat can read or upload follows its role. A seat that was not accepted, or a gym without that add-on, does not get those files.',
       'That Cloud folder is not your personal journal, and it is not the Google Drive or OneDrive folder from the academy QR. A free Student license can still open only that student’s own academy inbox when the gym has Cloud. These are the access rules in the app.',
     ],

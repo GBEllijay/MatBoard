@@ -48,11 +48,11 @@ export function StudentNoPhotosSwitch({ studentId }: { studentId: string }) {
       downloadJsonFile(file.name, file.json);
       setStatus(
         result.flag.on
-          ? 'Saved. Give this file to your coach, or put it in your gym folder. No photos are shared from this phone.'
+          ? 'Saved. Give this file to your coach, or put it in your gym folder. No photos are shared from this device.'
           : 'Photos allowed. Give this file to your coach so the card updates.',
       );
     } else {
-      setStatus('Saved on this phone.');
+      setStatus('Saved on this device.');
     }
   };
 

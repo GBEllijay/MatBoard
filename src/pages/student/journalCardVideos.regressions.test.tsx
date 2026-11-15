@@ -143,7 +143,7 @@ test('the public demo offers every add source and keeps filmed videos in memory'
   button(host, 'Paste a video link');
   button(host, 'Choose a saved video');
   label(host, 'Film a move');
-  assert.match(host.textContent ?? '', /not saved to this phone/);
+  assert.match(host.textContent ?? '', /not saved to this device/);
   act(() => root.unmount());
 });
 

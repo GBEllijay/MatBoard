@@ -72,11 +72,11 @@ export function ExportChoices({
           disabled={locked}
           onChange={(event) => onIncludeAllProfiles(event.target.checked)}
         />
-        <span>Include every profile on this phone</span>
+        <span>Include every profile on this device</span>
       </label>
       <p className={paper ? 'student-export__note' : 's-export__note'}>
         {includeAllProfiles
-          ? `The packet includes all ${profileCount} profiles saved on this phone.`
+          ? `The packet includes all ${profileCount} profiles saved on this device.`
           : 'The packet includes the open profile. Turn this on to include every family profile.'}
       </p>
       <button type="button" className={paper ? 'ink-btn ink-btn--save' : 's-cta'} disabled={locked} onClick={() => onExport('packet')}>

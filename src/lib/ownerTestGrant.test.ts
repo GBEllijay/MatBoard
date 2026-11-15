@@ -103,6 +103,6 @@ test('sign out ends the Owner test seat and does not leave a signed-out bar', ()
   const unlimited = readFileSync(new URL('../pages/CoachUnlimited.tsx', import.meta.url), 'utf8');
   const coach = readFileSync(new URL('../pages/Coach.tsx', import.meta.url), 'utf8');
   assert.match(unlimited, /title="Instructor Edition"/);
-  assert.match(coach, /title="Advantage - Coach"/);
+  assert.match(coach, /title="Advantage - Instructor Edition"/);
   assert.doesNotMatch(unlimited, /Advantage - Coach Unlimited/);
 });

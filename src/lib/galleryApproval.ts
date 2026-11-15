@@ -10,6 +10,10 @@ export const GALLERY_APPROVAL_KEY = 'matboard.gym.galleryApproval.v1';
 export const REQUIRE_APPROVAL_LABEL =
   'Require approval before photos and videos go to the gallery.';
 
+/** Shown above the switch so the owner knows what each setting does. */
+export const REQUIRE_APPROVAL_WHY =
+  'On: photos and videos your instructors upload wait in your Review Inbox until you or an approver OKs them, so nothing reaches the gallery or the TV slideshow without a look first. Off: instructor uploads show right away. Your own uploads never wait.';
+
 export const APPROVAL_WAITING = 'Photos and videos are waiting for approval.';
 
 export const APPROVAL_DAY_LINK = 'Open Review Inbox';

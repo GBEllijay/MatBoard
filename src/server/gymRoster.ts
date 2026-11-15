@@ -19,6 +19,7 @@
  * - The owner's submissions apply at once. A seat's submissions are pending unless trust mode is on.
  * - The owner and an Instructors seat approve or reject. A seat never decides its own submission.
  * - Only the owner turns trust mode on or off.
+ * - Only the owner merges duplicate cards (op=merge-dupes). Belt on the master follows a later student submission, or a coach edit that is newer than the latest student submission.
  * - Private notes: each author writes only their own file. The owner reads every author's file.
  *   A seat reads only its own. They are never in master.json, pending files, or any student route.
  *
@@ -37,6 +38,7 @@ import {
   type RosterBackup,
   type RosterMergeReport,
 } from '../lib/rosterBackup.ts';
+import { mergeDuplicateStudents } from '../lib/rosterDuplicateCore.ts';
 import { canReassignInstructor, isInstructorId } from '../lib/instructorIdentity.ts';
 import { gymBytesUnder, readGymCloudActor, type GymCloudActor, type GymCloudEnv } from './gymCloud.ts';
 
@@ -136,7 +138,7 @@ async function applyToMaster(env: GymCloudEnv, actor: GymCloudActor, incoming: R
   const { next, report } = mergeRosterBackup(
     { roster: master.roster, cardFile: { cards: master.cards, settings: master.cardSettings }, privateNotes: {}, inbox: master.inbox, coachStores: master.coachStores },
     sharedRosterBackup(incoming),
-    { now: now.getTime() },
+    { now: now.getTime(), linkedProfile: 'incoming' },
   );
   const merged = buildRosterBackup({ ...next, privateNotes: {} }, { scope: 'shared', now });
   const failed = await writeJson(env, `${prefix(actor)}master.json`, merged, ROSTER_MASTER_MAX_BYTES);
@@ -308,6 +310,24 @@ export async function handleGymRoster(request: Request, env: GymCloudEnv, now: (
     const failed = await writeJson(env, `${prefix(actor)}master.json`, merged, ROSTER_MASTER_MAX_BYTES);
     if (failed) return failed;
     return json(200, { ok: true, linkedStudentId: linked, assignedInstructorId: instructorId, cards: hits.length });
+  }
+
+  if (op === 'merge-dupes') {
+    if (!role.isOwner) return json(403, { ok: false, error: 'Only the gym owner can merge duplicate roster cards.' });
+    const keepId = typeof body.keepId === 'string' ? body.keepId.trim() : '';
+    const dropId = typeof body.dropId === 'string' ? body.dropId.trim() : '';
+    if (!keepId || !dropId) return json(400, { ok: false, error: 'Choose which card to keep and which to merge.' });
+    const master = (await readMaster(env, actor)) ?? emptyShared(stamp);
+    const merged = mergeDuplicateStudents(master.roster.students, keepId, dropId, stamp.toISOString());
+    if (!merged.ok) return json(404, { ok: false, error: 'Those cards are not on the gym roster.' });
+    master.roster.students = merged.students;
+    const written = buildRosterBackup(
+      { roster: master.roster, cardFile: { cards: master.cards, settings: master.cardSettings }, privateNotes: {}, inbox: master.inbox, coachStores: master.coachStores },
+      { scope: 'shared', now: stamp },
+    );
+    const failed = await writeJson(env, `${prefix(actor)}master.json`, written, ROSTER_MASTER_MAX_BYTES);
+    if (failed) return failed;
+    return json(200, { ok: true, keptId: merged.kept.id, droppedId: merged.dropped.id, name: merged.kept.name });
   }
 
   if (op === 'trust') {

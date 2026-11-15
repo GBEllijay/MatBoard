@@ -52,7 +52,7 @@ test('the download window lasts 60 days and then the Cloud copy is treated as re
     cloudActive: false,
   });
   assert.deepEqual(gone, { phase: 'removed' });
-  assert.match(LAPSE_PAUSED, /Everything on this phone still works/);
+  assert.match(LAPSE_PAUSED, /Everything on this device still works/);
   assert.match(LAPSE_CONNECT, /Google Drive, OneDrive/);
   assert.match(LAPSE_REMOVED, /removed/);
   const source = readFileSync(new URL('./cloudLapse.ts', import.meta.url), 'utf8');

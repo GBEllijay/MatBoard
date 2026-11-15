@@ -91,7 +91,10 @@ export function IndexCardHost() {
   useEffect(() => {
     if (!open) return;
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') closeIndexCard();
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeIndexCard();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -282,7 +285,7 @@ export function IndexCardHost() {
                     ) : (
                       <span>
                         {video.title}
-                        <span className="d8sf-kicker">On this phone</span>
+                        <span className="d8sf-kicker">On this device</span>
                       </span>
                     )}
                   </li>

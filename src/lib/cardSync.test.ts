@@ -119,9 +119,10 @@ test('sendCardSync logs sends; the card shows last sent per field and the sent r
   assert.equal(state?.lastSent.rank?.mode, 'cloud');
   assert.equal(state?.lastSent['belt-progress']?.mode, 'file');
   assert.equal(state?.lastSent.assessment, undefined);
+  // A rank packet is stripped of promotions, so dates come only from the roster card.
   assert.deepEqual(
     { a: state?.rank.beltAchieved, s: state?.rank.lastStripeAwarded },
-    { a: '2025-06-01', s: '2026-10-01' },
+    { a: RANK_FIELD_DASH, s: '2026-10-01' },
   );
 });
 

@@ -63,7 +63,7 @@ async function googleToken(): Promise<string | null> {
 
 function driveSignInError(provider: AcademyProvider): string {
   const name = providerLabel(provider);
-  return `${name} needs a sign-in on this phone before a file can be saved there.`;
+  return `${name} needs a sign-in on this device before a file can be saved there.`;
 }
 
 /** A failed academy save: check whether the academy link went stale. Best effort, no sign-in popup. */

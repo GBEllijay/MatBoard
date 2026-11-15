@@ -1,8 +1,10 @@
 /**
  * Which names the crystalline diamond draws.
  * The resting view, including the small frame a factor button uses, shows the eight face names.
- * Technique names show for one face after a zoom past that frame, or after a tap drills into that face.
- * Zooming back to the frame, tapping that face again, or Reset view leaves only the face names.
+ * Technique names show for one face after a zoom past that frame, or after a tap turns names on.
+ * A tap toggles those names on and off and never changes zoom or pan.
+ * Zooming back to the frame, or Reset view, leaves only the face names. After a hide-tap,
+ * zoom and pan leave names hidden until the next tap (or Reset view).
  * A face keeps the technique tiles the factor map already gave it. An empty face adds none.
  */
 
@@ -34,6 +36,7 @@ export type CrystalLabelState = {
  * Default zoom hides every technique name.
  * Zoom past the resting frame, or a face drill, reveals one face:
  * the drilled face, otherwise the focused face, otherwise the face toward the camera.
+ * A hide-tap (`namesHidden`) keeps those names off even while zoomed, until the next tap.
  * Side-by-side comparison keeps those names off the DOM labels.
  * The factor overlay reveals technique names only for an open Sweeps face.
  */
@@ -45,8 +48,10 @@ export function crystalLabelState(input: {
   comparison: boolean;
   pair: boolean;
   sweepsFace: number;
+  namesHidden?: boolean;
 }): CrystalLabelState {
   if (input.pair) return { tier: 'faces', face: -1 };
+  if (input.namesHidden) return { tier: 'faces', face: -1 };
   const zoomed = zoomPastRest(input.zoom);
   const drilled = input.drilledFace >= 0;
   if (!zoomed && !drilled) return { tier: 'faces', face: -1 };
@@ -83,11 +88,23 @@ export function drillAfterZoom(before: number, after: number, drilledFace: numbe
 }
 
 /**
- * Tap again. Drop back to the resting frame so an earlier zoom-in
- * does not leave the technique names up.
+ * Tap-on / tap-off for technique names. Zoom and pan stay where they are.
+ * When names are showing, hide them. When they are hidden, show the tapped face.
  */
-export function zoomAfterClosingDrill(zoom: number): number {
-  return zoomPastRest(zoom) ? FOCUS_FRAME_ZOOM : zoom;
+export function toggleTechniqueNames(input: {
+  zoom: number;
+  drilledFace: number;
+  focusedFace: number;
+  frontFace: number;
+  comparison: boolean;
+  pair: boolean;
+  sweepsFace: number;
+  namesHidden: boolean;
+  tappedFace: number;
+}): { namesHidden: boolean; drilledFace: number } {
+  const showing = crystalLabelState(input).tier === 'techniques';
+  if (showing) return { namesHidden: true, drilledFace: -1 };
+  return { namesHidden: false, drilledFace: input.tappedFace };
 }
 
 /** Same camera the diamond stage uses. Zoom changes focal length, not this distance. */

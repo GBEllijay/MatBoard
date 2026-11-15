@@ -39,12 +39,12 @@ export function mediaConsoleDriveActions(input: {
 
 export function mediaConsoleGalleryLead(input: { cloudEntitled: boolean; driveConnected: boolean }): string {
   if (!input.cloudEntitled) {
-    return 'Add photos opens Take photo or Pick from gallery on this phone. Pick from Google Photos uses the connected library, including albums. Pick from Google Drive is an extra source. Photos and clips stay on this phone or computer. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.';
+    return 'Add photos opens Take photo or Pick from gallery on this device. Pick from Google Photos uses the connected library, including albums. Pick from Google Drive is an extra source. Photos and clips stay on this device. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.';
   }
   const drive = input.driveConnected
-    ? ' Import from Google Drive copies files onto this phone. The folder that is already connected stays connected.'
+    ? ' Import from Google Drive copies files onto this device. The folder that is already connected stays connected.'
     : '';
-  return `Add photos and Add videos keep a copy on this phone and upload to this gym's Advantage Cloud when the status below says it is ready. Each file shows its progress; anything already uploaded is skipped.${drive} Optional import copies files from Google Photos onto this phone. It does not replace Advantage Cloud. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.`;
+  return `Add photos and Add videos keep a copy on this device and upload to this gym's Advantage Cloud when the status below says it is ready. Each file shows its progress; anything already uploaded is skipped.${drive} Optional import copies files from Google Photos onto this device. It does not replace Advantage Cloud. Photos loop fullscreen; clips play through, muted by default. Press F for fullscreen on a computer plugged into the TV.`;
 }
 
 /** `cloudOn`: Advantage Cloud answered as on for this license, but this screen is not playing from it. */
@@ -53,7 +53,7 @@ export function playingFromCopy(home: GymHomeId, cloudOn = false): string {
   if (home === 'google-drive') return 'Playing from Google Drive.';
   if (home === 'onedrive') return 'Playing from OneDrive.';
   if (cloudOn) return PLAYING_FROM_PHONE_CLOUD;
-  return 'Playing from this phone. Connect Google Drive, OneDrive, Advantage Cloud, or a folder on this PC to use the same files on another device.';
+  return 'Playing from this device. Connect Google Drive, OneDrive, Advantage Cloud, or a folder on this PC to use the same files on another device.';
 }
 
 /** Ask the Worker whether R2 is bound. A missing binding, a 404, or HTML is not Cloud. */

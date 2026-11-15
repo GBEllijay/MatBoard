@@ -68,7 +68,7 @@ test('coach-rank-update validates and rejects checklist marks', () => {
   assert.equal(banned.ok, false);
 });
 
-test('accept writes rank and a journal card once; dismiss leaves the file alone', () => {
+test('accept ignores belt and stripes on a leftover packet; dismiss leaves the file alone', () => {
   const packet = sample();
   const report = assignStudentId(blankStudentReport(1), 'stu-alex', 1);
   const checklist = report.checklist;
@@ -77,11 +77,10 @@ test('accept writes rank and a journal card once; dismiss leaves the file alone'
   assert.equal(accepted.report.checklist, checklist);
   assert.equal(accepted.report.rubric, report.rubric);
   assert.equal(accepted.report.goals, report.goals);
-  assert.equal(accepted.report.profile.belt, 'blue');
-  assert.equal(accepted.report.rank?.tapeCount, 2);
-  assert.equal(accepted.report.rank?.tapeDates[1], '2026-11-03');
-  assert.match(latestJournalNotes(accepted.report), /Coach recorded Blue belt, stripe 2 on Nov 3/);
+  assert.equal(accepted.report.profile.belt, 'white', 'a leftover promotion packet must not change My rank');
+  assert.equal(accepted.report.rank, report.rank);
   assert.match(latestJournalNotes(accepted.report), /Nice work/);
+  assert.doesNotMatch(latestJournalNotes(accepted.report), /Coach recorded Blue belt/);
   assert.equal(accepted.report.profile.gymName, 'Advantage');
 
   const again = acceptCoachRankUpdate(accepted.report, packet, accepted.ledger, 90);
@@ -125,16 +124,15 @@ test('import queues a rank file and does not change the checklist', () => {
   assert.equal(readCoachQueue(store).length, 1);
 });
 
-test('an unlinked roster card does not offer a send', () => {
+test('the coach never offers a rank send, even on a linked card', () => {
   const before = { belt: 'White', lastPromotion: '', stripes: 0 as number | undefined };
   const after = { belt: 'Blue', lastPromotion: '2026-11-03', stripes: 2 as number | undefined };
   assert.equal(rankSendOffer(before, after), 'noop');
-  assert.equal(rankSendOffer({ ...before, linkedStudentId: 'stu-alex' }, { ...after, linkedStudentId: 'stu-alex' }), 'send');
+  assert.equal(rankSendOffer({ ...before, linkedStudentId: 'stu-alex' }, { ...after, linkedStudentId: 'stu-alex' }), 'noop');
   assert.equal(
     rankSendOffer({ ...after, linkedStudentId: 'stu-alex' }, { ...after, linkedStudentId: 'stu-alex' }),
     'noop',
   );
-  assert.equal(rankSendOffer({ ...before, stripes: undefined, linkedStudentId: 'stu-alex' }, { ...before, stripes: 0, linkedStudentId: 'stu-alex' }), 'noop');
 });
 
 test('linking a roster card keeps the student id across a later save', () => {
@@ -148,21 +146,28 @@ test('linking a roster card keeps the student id across a later save', () => {
     assert.equal(linkRosterCard(added.id, 'student-local'), null);
     const linked = linkRosterCard(added.id, 'stu-alex');
     assert.equal(linked?.linkedStudentId, 'stu-alex');
-    const saved = updateStudent(added.id, {
+    const blocked = updateStudent(added.id, {
       name: 'Alex',
       belt: 'Blue',
       division: '',
       gym: '',
       lastPromotion: '2026-11-03',
-      note: '',
+      note: 'Coach note',
       stripes: 2,
     });
+    assert.equal(blocked?.linkedStudentId, 'stu-alex');
+    assert.equal(blocked?.belt, 'Blue', 'the coach can edit belt on their own roster');
+    assert.equal(blocked?.stripes, 2);
+    assert.equal(blocked?.note, 'Coach note');
+    assert.ok((blocked?.coachRankAt ?? 0) > 0);
+    const saved = updateStudent(added.id, { belt: 'Blue', stripes: 2 }, { source: 'student-submission', now: 20 });
     assert.equal(saved?.linkedStudentId, 'stu-alex');
     assert.equal(saved?.stripes, 2);
     assert.equal(saved?.rosterList, 'student');
     const round = normalizeRoster(JSON.parse(JSON.stringify(getRoster())));
     assert.equal(round.students.find((row) => row.id === added.id)?.linkedStudentId, 'stu-alex');
     assert.equal(round.students.find((row) => row.id === added.id)?.stripes, 2);
+    assert.equal(round.students.find((row) => row.id === added.id)?.studentRankAt, 20);
   } finally {
     resetRoster();
   }

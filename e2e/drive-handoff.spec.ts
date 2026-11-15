@@ -205,8 +205,8 @@ test('the owner issues an invite and the coach submits through the gym folder', 
   });
   await page.goto('/instructors');
   await page.getByLabel('Email').fill('coach@gym.test');
-  await page.getByRole('radio', { name: 'Coach, Coach Unlimited. Lesson plans, daily videos, and uploads' }).click();
-  const selected = page.getByRole('radio', { name: 'Coach, Coach Unlimited. Lesson plans, daily videos, and uploads' });
+  await page.getByRole('radio', { name: 'Coach, Instructor Edition. Lesson plans, daily videos, and uploads' }).click();
+  const selected = page.getByRole('radio', { name: 'Coach, Instructor Edition. Lesson plans, daily videos, and uploads' });
   await expect(selected).toHaveClass(/binder-pick--on/);
   await page.getByRole('button', { name: 'Issue invite' }).click();
   await expect(page.getByRole('textbox', { name: 'Invite link', exact: true })).toBeVisible();
@@ -234,7 +234,7 @@ test('the owner issues an invite and the coach submits through the gym folder', 
   await expect(page.getByText('Nothing new in the gym Google Drive folder.')).toBeVisible();
   await expect(check).toHaveCSS('background-color', 'rgb(0, 78, 186)');
   await page.getByRole('button', { name: 'Upload for instructor distribution' }).click();
-  await expect(page.getByText('Saved on this phone.')).toBeVisible();
+  await expect(page.getByText('Saved on this device.')).toBeVisible();
 });
 
 test('the review inbox reads a submission from the gym folder', async ({ page }) => {

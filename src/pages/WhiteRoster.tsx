@@ -62,7 +62,7 @@ export function WhiteRosterPage() {
         <h1>Match names</h1>
       </header>
       <p className="white-roster__lead">
-        Competitor names and belt ranks for the scoreboard. Saved on this phone only.
+        Competitor names and belt ranks for the scoreboard. Saved on this device only.
       </p>
 
       <form

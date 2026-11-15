@@ -1,14 +1,14 @@
 /**
- * The claim page asks for an email, then shows the home screen tip.
+ * Older /join/student and /student/claim routes redirect to the account invite screen.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MemoryRouter } from 'react-router-dom';
-import { StudentLicenseClaimPage, StudentLicenseClaimSuccess } from './student/StudentLicenseClaim.tsx';
-import { ADD_TO_HOME_ANDROID, ADD_TO_HOME_EMAIL, ADD_TO_HOME_IPHONE, ADD_TO_HOME_TITLE } from '../lib/studentLicensePool.ts';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { StudentJoinPage, StudentLicenseClaimPage, studentClaimRedirectTo } from './student/StudentLicenseClaim.tsx';
+import { studentAccountInvitePath } from '../lib/studentLicensePool.ts';
 
 const dom = new Window({ url: 'http://localhost/student/claim/abc' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -36,16 +36,29 @@ async function settle() {
   }
 }
 
-async function mount(node: ReactNode) {
+function Where() {
+  const loc = useLocation();
+  return <div data-path={`${loc.pathname}${loc.search}`} />;
+}
+
+async function mountAt(entry: string, node: ReactNode, path: string) {
   const host = document.createElement('div');
   document.body.appendChild(host);
   const root = createRoot(host);
   await act(async () => {
-    root.render(<MemoryRouter>{node}</MemoryRouter>);
+    root.render(
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route path={path} element={node} />
+          <Route path="/account" element={<Where />} />
+        </Routes>
+      </MemoryRouter>,
+    );
   });
   await settle();
   return {
     host,
+    path: host.querySelector('[data-path]')?.getAttribute('data-path') ?? '',
     done() {
       act(() => root.unmount());
       host.remove();
@@ -53,36 +66,30 @@ async function mount(node: ReactNode) {
   };
 }
 
-test('claim page asks for the restore email before it claims', async () => {
-  const page = await mount(<StudentLicenseClaimPage code={CODE} gymName="North Gym" />);
-  assert.match(page.host.textContent ?? '', /Confirm the email/);
-  assert.equal(page.host.querySelector('input[aria-label="Email"]') instanceof view.HTMLInputElement, true);
-  assert.equal(page.host.textContent?.includes(ADD_TO_HOME_TITLE), false);
-  const broken = await mount(<StudentLicenseClaimPage code="not-a-code" gymName="" />);
-  assert.match(broken.host.textContent ?? '', /not a free Student license/);
-  assert.equal((broken.host.querySelector('button') as HTMLButtonElement).disabled, true);
-  broken.done();
+test('the claim page redirects to the account invite screen with the code and email', async () => {
+  const page = await mountAt(
+    '/student/claim',
+    <StudentLicenseClaimPage code={CODE} gymName="North Gym" initialEmail="marty@gym.test" />,
+    '/student/claim',
+  );
+  assert.equal(page.path, studentAccountInvitePath(CODE, 'marty@gym.test'));
+  assert.equal(page.path.startsWith('/account?'), true);
+  assert.match(page.path, /invite=/);
+  assert.match(page.path, /email=marty/);
+  assert.doesNotMatch(page.host.textContent ?? '', /Claim Student Edition/);
   page.done();
 });
 
-test('after a claim, the page tells the student how to add the home screen app and restore', async () => {
-  const page = await mount(<StudentLicenseClaimSuccess email="student@gym.test" gym="North Gym" cloud />);
-  const text = page.host.textContent ?? '';
-  assert.match(text, /This phone has Student Edition at North Gym/);
-  assert.match(text, new RegExp(ADD_TO_HOME_TITLE));
-  assert.match(text, new RegExp(ADD_TO_HOME_IPHONE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.match(text, new RegExp(ADD_TO_HOME_ANDROID.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.match(text, new RegExp(ADD_TO_HOME_EMAIL));
-  assert.match(text, /student@gym\.test/);
-  assert.match(text, /Coach lesson files, private coach notes, and other students stay closed/);
-  const restore = page.host.querySelector('a[href^="/restore"]');
-  assert.equal(restore?.getAttribute('href'), '/restore?email=student%40gym.test');
+test('the join page redirects a code and email to the same account invite screen', async () => {
+  const entry = `/join/student?${new URLSearchParams({ code: CODE, gym: 'North Gym', email: 'marty@gym.test' }).toString()}`;
+  const page = await mountAt(entry, <StudentJoinPage />, '/join/student');
+  assert.equal(page.path, studentAccountInvitePath(CODE, 'marty@gym.test'));
   page.done();
 });
 
-test('claim page prefills the issue-time email from the invite link', async () => {
-  const page = await mount(<StudentLicenseClaimPage code={CODE} gymName="North Gym" initialEmail="marty@gym.test" />);
-  const input = page.host.querySelector('input[aria-label="Email"]') as HTMLInputElement | null;
-  assert.equal(input?.value, 'marty@gym.test');
+test('a claim link with no code still lands on the account page', async () => {
+  assert.equal(studentClaimRedirectTo(''), '/account');
+  const page = await mountAt('/student/claim', <StudentLicenseClaimPage code="" gymName="" />, '/student/claim');
+  assert.equal(page.path, '/account');
   page.done();
 });

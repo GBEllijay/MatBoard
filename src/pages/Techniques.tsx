@@ -576,7 +576,7 @@ export function TechniquesPage() {
         const savedPlan = writeCurriculumBlockClip(card.blockId, saved.id, file.name || saved.label);
         if (!savedPlan) {
           void deleteUnusedTrainingClip(saved.id);
-          setPickerNote('That curriculum card is not on this phone anymore.');
+          setPickerNote('That curriculum card is not on this device anymore.');
           return;
         }
         if (previous && previous !== saved.id) void deleteUnusedTrainingClip(previous);
@@ -665,7 +665,7 @@ export function TechniquesPage() {
         const savedPlan = writeCurriculumBlockClip(card.blockId, saved.id, file.name || saved.label);
         if (!savedPlan) {
           void deleteUnusedTrainingClip(saved.id);
-          setPickerNote('That curriculum card is not on this phone anymore.');
+          setPickerNote('That curriculum card is not on this device anymore.');
           return;
         }
         if (previous && previous !== saved.id) void deleteUnusedTrainingClip(previous);

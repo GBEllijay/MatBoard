@@ -536,7 +536,7 @@ function ScheduleBackup({
     <fieldset className="schedule-edit__backup">
       <legend>Backup</legend>
       <p className="schedule-edit__hint">
-        Download a CSV before you clear site data or reset this phone. Import replaces the schedule
+        Download a CSV before you clear site data or reset this device. Import replaces the schedule
         on this device after you confirm. It does not merge. A class-only file replaces classes and
         leaves the gym name, QR, and notices in place.
       </p>
@@ -722,7 +722,7 @@ export function ScheduleEditor({
     <>
     <Sheet open={open} title="Edit class schedule" onClose={onClose}>
       <p className="schedule-edit__copy">
-        Fat-thumb fields for the gym TV board. Logo, QR, classes, and notices stay on this phone or
+        Fat-thumb fields for the gym TV board. Logo, QR, classes, and notices stay on this device or
         computer — nothing is uploaded. Save a CSV backup before you clear site data or reset the
         app.
       </p>

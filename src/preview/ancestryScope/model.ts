@@ -8,7 +8,7 @@
 export const AS_OF = '2026-11-08';
 
 export const EXAMPLE_NOTE =
-  'Example only. Nothing here is saved. These people are fictional. This is not a record from this phone.';
+  'Example only. Nothing here is saved. These people are fictional. This is not a record from this device.';
 
 export const ACADEMY_NAME = 'Northshore Academy';
 

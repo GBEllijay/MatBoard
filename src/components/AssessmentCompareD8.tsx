@@ -141,6 +141,7 @@ export function AssessmentCompareD8({
         <CardDiamond
           coach={coachScores}
           self={showSelfLayer ? selfScores : null}
+          separateLabels
         />
       ) : (
         <p className="assess-compare__empty">

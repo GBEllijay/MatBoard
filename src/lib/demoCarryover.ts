@@ -118,9 +118,9 @@ function realIsEmpty(text: string | null): boolean {
 
 function waitingMessage(open: ReadonlySet<string>): string {
   if (open.has('white') && !open.has('student')) {
-    return 'This purchase opens Advantage White. The Student Edition demo is still saved on this phone and was not opened, because White does not include Student Edition.';
+    return 'This purchase opens Advantage White. The Student Edition demo is still saved on this device and was not opened, because White does not include Student Edition.';
   }
-  return 'This purchase does not include Student Edition. The demo is still saved on this phone and was not copied into a locked edition.';
+  return 'This purchase does not include Student Edition. The demo is still saved on this device and was not copied into a locked edition.';
 }
 
 /**
@@ -151,13 +151,13 @@ export function planDemoCarryover(
     if (choice === 'use-demo') {
       return {
         action: 'adopted',
-        message: 'The demo copy replaced the Student Edition file on this phone because that choice was explicit.',
+        message: 'The demo copy replaced the Student Edition file on this device because that choice was explicit.',
         writeText: staged.text,
       };
     }
     return {
       action: 'needs-choice',
-      message: 'Student Edition already has a file on this phone. The demo copy was kept and was not copied over.',
+      message: 'Student Edition already has a file on this device. The demo copy was kept and was not copied over.',
       writeText: null,
     };
   }

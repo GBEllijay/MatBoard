@@ -36,13 +36,13 @@ export const RESTORE_OPENING = 'Opening this class…';
 export const RESTORE_EMPTY =
   'This day has no lesson plan or training videos in the gym Google Drive folder.';
 export const RESTORE_READY =
-  'This class is on the Daily Lesson Plan. Its training videos are on Daily Training Videos. They stay in Google Drive, and this phone keeps a copy for offline play.';
+  'This class is on the Daily Lesson Plan. Its training videos are on Daily Training Videos. They stay in Google Drive, and this device keeps a copy for offline play.';
 export const RESTORE_TODAY =
-  'This day is older than this phone keeps. The class is on today so you can run it. Its training videos are on Daily Training Videos. They stay in Google Drive, and this phone keeps a copy.';
+  'This day is older than this device keeps. The class is on today so you can run it. Its training videos are on Daily Training Videos. They stay in Google Drive, and this device keeps a copy.';
 export const RESTORE_LESSON_ONLY =
-  'The lesson plan is on this phone. This day has no training videos in Google Drive.';
+  'The lesson plan is on this device. This day has no training videos in Google Drive.';
 export const RESTORE_VIDEOS_ONLY =
-  'Training videos from that day are on Daily Training Videos. This phone keeps a copy. That folder had no lesson plan.';
+  'Training videos from that day are on Daily Training Videos. This device keeps a copy. That folder had no lesson plan.';
 
 export type RestoredVideoRef = {
   driveFileId: string;
@@ -245,7 +245,7 @@ export function restoreDriveDayNotice(input: {
   const miss = videoMissCopy(input.failed);
   if (input.plans > 0 && input.videoRefs === 0) {
     return input.placedOnToday
-      ? 'This day is older than this phone keeps. The class is on today so you can run it. This day has no training videos in Google Drive.'
+      ? 'This day is older than this device keeps. The class is on today so you can run it. This day has no training videos in Google Drive.'
       : RESTORE_LESSON_ONLY;
   }
   if (input.plans > 0) {

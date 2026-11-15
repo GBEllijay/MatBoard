@@ -4,6 +4,7 @@ import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
 import { ownerEditionTarget } from '../lib/ownerHome';
+import { AccountLink } from '../components/AccountLink';
 import { UpdateToLatestButton } from '../components/UpdateToLatestButton';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
@@ -72,6 +73,7 @@ export function StorefrontPage() {
               </div>
             </nav>
           </div>
+          <AccountLink className="sf-signin" />
         </div>
       </header>
 

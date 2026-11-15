@@ -14,7 +14,7 @@ test('Instructor tools keep the live routes and drop the left belt', () => {
   assert.match(page, /tool\.clearBout \? \(\) => unlinkBracketBout\(\)/);
   assert.match(page, /<BeltHeader kind="brown" worn title="Instructor Edition"/);
   assert.doesNotMatch(page, /BeltRail/);
-  assert.match(page, /className="instructor-tool"/);
+  assert.match(page, /'instructor-tool instructor-tool--competition' : 'instructor-tool'/);
   assert.deepEqual(
     COACH_UNLIMITED_TOOLS.map((tool) => tool.to),
     [
@@ -22,6 +22,7 @@ test('Instructor tools keep the live routes and drop the left belt', () => {
       '/techniques?from=unlimited',
       '/technique-tree?from=unlimited',
       '/student-roster',
+      '/competition?from=unlimited',
       '/match/control?from=unlimited',
       '/training/control?from=unlimited',
     ],
@@ -46,4 +47,20 @@ test('sign-out and the Pro menu labels stay in place', () => {
   assert.match(pro, /<span>Advantage Student Edition<\/span>/);
   assert.match(pro, /title: 'Advantage Media Edition'/);
   assert.doesNotMatch(pro, /[Jj]ournal/);
+});
+
+test('Competition and Tournament Management card: Option B stripe, medal mark, pressed and 1440 size', () => {
+  const css = readFileSync(new URL('./instructorTools.css', import.meta.url), 'utf8');
+  const medal = readFileSync(new URL('../components/CompetitionToolMark.tsx', import.meta.url), 'utf8');
+  assert.match(page, /instructor-tool instructor-tool--competition/);
+  assert.match(page, /<CompetitionToolMark \/>/);
+  assert.match(medal, /className="instructor-tool__stripe" aria-hidden="true"/);
+  assert.match(medal, /viewBox="0 0 92 72"/);
+  assert.match(medal, /fill="#ffe24a"/);
+  assert.match(medal, /fill="#4AAF45"/);
+  assert.doesNotMatch(medal, /currentColor/);
+  assert.match(css, /\.instructor-tool--competition:active \{\s*background: #08182f;/);
+  assert.match(css, /#1c6b30 0, #1c6b30 6px, #ffe24a 6px, #ffe24a 12px/);
+  assert.match(css, /\.instructor-tool--competition \{\s*font-size: 1\.03rem;/);
+  assert.match(css, /\.instructor-tool:focus-visible \{\s*outline: 3px solid #6ea8ff;\s*outline-offset: 3px;/);
 });

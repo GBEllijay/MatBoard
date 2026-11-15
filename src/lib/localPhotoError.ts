@@ -16,13 +16,13 @@ export function localPhotoError(error: unknown, label: 'photo' | 'logo'): string
       : 'That file is not a photo. Choose a JPEG, PNG, or WebP, or take a new photo.';
   }
   if (code === 'undecodable') {
-    return `This phone could not read that ${label}. Take a new photo, or choose a JPEG or PNG.`;
+    return `This device could not read that ${label}. Take a new photo, or choose a JPEG or PNG.`;
   }
   if (code === 'too-large') {
-    return `That ${label} is still too large to keep on this phone after shrinking it. Choose a different one.`;
+    return `That ${label} is still too large to keep on this device after shrinking it. Choose a different one.`;
   }
   if (code === 'unencoded') {
-    return `This phone could not prepare that ${label}. Try again, or choose a JPEG.`;
+    return `This device could not prepare that ${label}. Try again, or choose a JPEG.`;
   }
-  return `That ${label} could not be saved on this phone. Try again.`;
+  return `That ${label} could not be saved on this device. Try again.`;
 }
