@@ -16,6 +16,7 @@ import {
   syncStatusLabel,
   type AcademySyncDoc,
   type StudentSyncDoc,
+  getSyncStatus,
 } from './signedInSync.ts';
 
 const OTHER_PROFILE = 'pabcde123456';
@@ -197,4 +198,8 @@ test('pickWinningDoc never lets an empty remote wipe local data', () => {
   assert.equal(pick.source, 'local');
   assert.equal(pick.shouldUpload, true);
   assert.equal(pick.winner?.value, 'keep me');
+});
+
+test('getSyncStatus returns the same object while nothing changed, so the Account page does not re-render until it blanks', () => {
+  assert.equal(getSyncStatus(), getSyncStatus());
 });

@@ -157,16 +157,25 @@ function setStatus(next: SyncStatus): void {
   emitSync();
 }
 
+let cachedStatus: SyncStatus | null = null;
+
+/** Returns the same object while nothing changed, so React's useSyncExternalStore does not loop. */
+function sameStatus(a: SyncStatus, b: SyncStatus): boolean {
+  return a.kind === b.kind && a.lastSyncAt === b.lastSyncAt && a.academySynced === b.academySynced && a.error === b.error;
+}
+
 export function getSyncStatus(): SyncStatus {
   const meta = readSyncMeta();
-  if (!hasSessionHint()) {
-    return { kind: 'signed-out', lastSyncAt: null, academySynced: false, error: null };
-  }
-  return {
-    ...statusSnapshot,
-    lastSyncAt: statusSnapshot.lastSyncAt ?? meta.lastSyncAt,
-    academySynced: statusSnapshot.academySynced || meta.academySyncedAt != null,
-  };
+  const next: SyncStatus = !hasSessionHint()
+    ? { kind: 'signed-out', lastSyncAt: null, academySynced: false, error: null }
+    : {
+        ...statusSnapshot,
+        lastSyncAt: statusSnapshot.lastSyncAt ?? meta.lastSyncAt,
+        academySynced: statusSnapshot.academySynced || meta.academySyncedAt != null,
+      };
+  if (cachedStatus && sameStatus(cachedStatus, next)) return cachedStatus;
+  cachedStatus = next;
+  return next;
 }
 
 export function subscribeSyncStatus(fn: () => void): () => void {
