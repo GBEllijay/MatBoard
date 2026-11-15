@@ -4,9 +4,10 @@
  * Reply goes out through Coach Sync (sendCoachAssessment), prefilled from the student's own scores,
  * and lands in the student's "From your coach" inbox. The item is then marked responded.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import './assessmentsWaiting.css';
-import { sendCoachAssessment } from '../lib/cardSync';
+import { ensureAssessmentRosterCards, sendCoachAssessment } from '../lib/cardSync';
+import { syncActorFromToken } from '../lib/coachSync';
 import {
   assessmentsWaitingCount,
   markAssessment,
@@ -20,7 +21,9 @@ import { readCloudBearer } from '../lib/advantageCloudMedia';
 import { readRosterCard, updateRosterCard } from '../lib/rosterCardStore';
 import { AssessmentCompareD8, assessmentEntryFromScores } from './AssessmentCompareD8';
 import { downloadJsonFile } from './rosterCard/fileSave';
-import type { Student } from '../lib/rosterStore';
+import { getRoster, subscribeRoster, type Student } from '../lib/rosterStore';
+import { readStoredEntitlementToken } from '../lib/studentInboxClient';
+import { linkedRosterCardForStudent } from '../lib/rosterCardFromInbox';
 import { ASSESSMENT_FORM_AREAS, type AssessmentScores } from '../lib/studentAssessment';
 
 export const ASSESSMENTS_WAITING_TITLE = 'Assessments waiting';
@@ -64,10 +67,15 @@ export function AssessmentsWaiting({ roster }: { roster: readonly Student[] }) {
   const [replying, setReplying] = useState<string | null>(null);
   const state = readAssessmentsWaiting(store());
   const open = state.items.filter((item) => item.status !== 'responded');
+  const [, setRosterTick] = useState(0);
+  const waitingIds = open.map((item) => item.submission.studentId).join('|');
 
   const check = async () => {
     setChecking(true);
     const result = await refreshAssessmentsWaiting();
+    if (result.ok) {
+      await ensureAssessmentRosterCards(readAssessmentsWaiting(store()).items.filter((item) => item.status !== 'responded'));
+    }
     setChecking(false);
     if (!result.ok) {
       setStatus(result.error);
@@ -77,11 +85,21 @@ export function AssessmentsWaiting({ roster }: { roster: readonly Student[] }) {
     return true;
   };
 
+  useLayoutEffect(() => {
+    const unsub = subscribeRoster(() => setRosterTick((value) => value + 1));
+    const actor = syncActorFromToken(readStoredEntitlementToken());
+    void ensureAssessmentRosterCards(open, { actor });
+    return unsub;
+  }, [waitingIds]);
+
   useEffect(() => {
     // One pull when the roster opens, if this phone is signed in. No background polling.
     if (!readCloudBearer()) return;
-    void refreshAssessmentsWaiting().then((result) => {
+    void refreshAssessmentsWaiting().then(async (result) => {
       if (!result.ok && /Only an Instructor|not on this license|not active/.test(result.error)) setHidden(true);
+      if (result.ok) {
+        await ensureAssessmentRosterCards(readAssessmentsWaiting(store()).items.filter((item) => item.status !== 'responded'));
+      }
     });
   }, []);
 
@@ -91,10 +109,13 @@ export function AssessmentsWaiting({ roster }: { roster: readonly Student[] }) {
       <h3>
         {ASSESSMENTS_WAITING_TITLE} <AssessmentsWaitingBadge />
       </h3>
-      <p>Self-assessments students sent you. Reply sends your scores to their card through Coach Sync.</p>
+      <p>Self-assessments students sent you. If they do not already have a student card, one is added so you can reply. Reply sends your scores to their card through Coach Sync.</p>
       {open.length === 0 ? <p>No assessments waiting.</p> : null}
       {open.map((item) => {
-        const card = roster.find((row) => row.linkedStudentId === item.submission.studentId && !row.guestId) ?? null;
+        const card =
+          linkedRosterCardForStudent(roster, item.submission.studentId) ??
+          linkedRosterCardForStudent(getRoster().students, item.submission.studentId) ??
+          null;
         const self = assessmentEntryFromScores(
           item.id,
           item.submission.date,
@@ -122,7 +143,7 @@ export function AssessmentsWaiting({ roster }: { roster: readonly Student[] }) {
               />
             ) : null}
             {item.submission.note ? <p>{`Note: ${item.submission.note}`}</p> : null}
-            {!card ? <p>Accept this student&apos;s card first, then reply.</p> : null}
+            {!card ? <p>A student card could not be added for this assessment, so you cannot reply yet.</p> : null}
             <button type="button" className="btn" disabled={!card} onClick={() => setReplying(replying === item.id ? null : item.id)}>
               Reply
             </button>

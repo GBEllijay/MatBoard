@@ -88,6 +88,8 @@ import {
 import type { StudentCardShare } from './studentCardShare.ts';
 import { readCloudBearer } from './advantageCloudMedia.ts';
 import { submitGymRoster } from './gymRosterClient.ts';
+import { ensureRosterCardsForAssessments } from './rosterCardFromInbox.ts';
+import type { InstructorAssessmentItem } from './instructorAssessments.ts';
 import { buildRosterBackup } from './rosterBackup.ts';
 import type { TournamentRegistrationEvent } from './studentEvents.ts';
 import {
@@ -566,6 +568,29 @@ async function pushCardToMaster(card: Student, deps: { fetchImpl?: typeof fetch;
  * student who is already assigned. The card then goes to the academy master roster
  * under the same linkedStudentId, so attendance keeps one person key.
  */
+/** After an assessment list is loaded, add or link a Student Roster card for each new student, then push new cards the same way an accepted share is pushed. */
+export async function ensureAssessmentRosterCards(
+  items: readonly InstructorAssessmentItem[],
+  deps: {
+    actor?: SyncActor;
+    fetchImpl?: typeof fetch;
+    token?: string | null;
+    pushMaster?: (card: Student) => Promise<CardShareMasterPush>;
+  } = {},
+): Promise<{ created: Student[]; linked: Student[]; existing: Student[] }> {
+  const actor = deps.actor ?? currentActor();
+  const result = ensureRosterCardsForAssessments(items, { actor });
+  const changed = [...result.created, ...result.linked];
+  for (const card of changed) {
+    try {
+      await (deps.pushMaster ?? ((row: Student) => pushCardToMaster(row, deps)))(card);
+    } catch {
+      /* Best effort, same as acceptCardShare: the local card stays even if the academy copy fails. */
+    }
+  }
+  return result;
+}
+
 export async function acceptCardShare(
   shareId: string,
   target: { mode: 'new' } | { mode: 'merge'; cardId: string },

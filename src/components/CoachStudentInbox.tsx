@@ -21,6 +21,8 @@ import {
 import type { Student } from '../lib/rosterStore';
 import { applyStudentPhotoFlag, parseStudentPhotoFlag } from '../lib/studentPhotoFlag';
 import { CARD_SHARE_CHECK_FAILED, cardShareCheckNote } from '../lib/cardShareCheck';
+import { readCloudBearer } from '../lib/advantageCloudMedia';
+import { linkedRosterCardForStudent } from '../lib/rosterCardFromInbox';
 import { readRosterCard } from '../lib/rosterCardStore';
 import { AssessmentCompareD8, entriesFromScoreRows } from './AssessmentCompareD8';
 
@@ -87,11 +89,20 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
   const [, setTick] = useState(0);
   const shares = getPendingCardShares();
   const targets = roster.filter((row) => !row.guestId);
+
+  useEffect(() => {
+    // One pull when the roster opens, if this phone is signed in. Same as Assessments waiting.
+    if (!readCloudBearer()) return;
+    void refreshCardShares();
+  }, []);
+
   return (
     <section aria-label={title}>
       <h3>{title}</h3>
-      <p>A merge fills only blank fields. A shared photo waits for the head coach.</p>
-      {shares.map((share) => (
+      <p>A merge fills only blank fields. A shared photo waits for the head coach. If the student already has a card, Accept adds the share to that card.</p>
+      {shares.map((share) => {
+        const existing = linkedRosterCardForStudent(roster, share.studentId);
+        return (
         <article key={share.shareId} className="roster-inbox-card">
           <p>
             {share.card.name} · {share.card.belt || 'No belt'}
@@ -100,6 +111,18 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
             {share.photo ? ' · photo pending head coach' : ''}
             {share.viaInstructorId ? ` · scanned ${share.viaInstructorId === 'owner' ? "the owner's" : 'an instructor'} code` : ''}
           </p>
+          {existing ? (
+          <button
+            type="button"
+            className="btn"
+            onClick={async () => {
+              const result = await acceptCardShare(share.shareId, { mode: 'merge', cardId: existing.id });
+              setStatus(result.ok ? `Added to ${existing.name}'s card.${masterNote(result.master)}` : `Could not add to the card (${result.reason}).`);
+            }}
+          >
+            {`Accept onto ${existing.name}'s card`}
+          </button>
+          ) : (
           <button
             type="button"
             className="btn"
@@ -110,6 +133,7 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
           >
             Accept as new card
           </button>
+          )}
           <select
             aria-label={`Merge ${share.card.name} into`}
             value={mergeInto[share.shareId] ?? ''}
@@ -141,7 +165,8 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
             Decline
           </button>
         </article>
-      ))}
+        );
+      })}
       <button
         type="button"
         className="btn btn--ghost"

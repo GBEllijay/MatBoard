@@ -18,6 +18,7 @@ import { buildCoachAssessmentUpdate, readCoachOverlay, writeCoachOverlay } from 
 import { queueCoachUpdate, readCoachQueue } from '../lib/coachRankUpdate.ts';
 import { ASSESSMENTS_WAITING_KEY, buildAssessmentSubmission } from '../lib/instructorAssessmentClient.ts';
 import { assessmentItemId } from '../lib/instructorAssessments.ts';
+import { defaultRoster, replaceRosterState, resetRoster } from '../lib/rosterStore.ts';
 import { readFileSync } from 'node:fs';
 import { COACH_STUDENT_UPDATES_KEY, STUDENT_COACH_UPDATE_KIND } from '../lib/coachProgressFile.ts';
 import { blankStudentReport, saveStudentReport } from '../lib/studentEdition.ts';
@@ -309,6 +310,8 @@ test('Assessments waiting: Compare uses the submitted self scores over the roste
     rosterList: 'student' as const,
     linkedStudentId: 'stu-alex',
   };
+  resetRoster();
+  replaceRosterState({ ...defaultRoster(), students: [card] });
   updateRosterCard(card.id, (row) => ({
     ...row,
     coachAssessments: [{ id: 'saved-coach', date: '2026-11-08', note: '', scores: COACH_SCORES as never }],

@@ -195,10 +195,14 @@ export function acceptCardShare(
   if (!canAcceptCardShare(actor)) return { ok: false, reason: 'not-allowed' };
   const share = pendingCardShares(storage).find((row) => row.shareId === shareId);
   if (!share) return { ok: false, reason: 'not-pending' };
+  const already = roster.students.find((row) => row.linkedStudentId === share.studentId && !row.guestId);
+  // A card auto-created from an earlier assessment (or already linked) must be
+  // updated in place. Accept as new never adds a second card for the same student.
+  const action = target.mode === 'new' && already ? ({ mode: 'merge', cardId: already.id } as const) : target;
   let card: Student | null;
   let decision: 'accepted' | 'merged';
-  if (target.mode === 'merge') {
-    const current = roster.students.find((row) => row.id === target.cardId);
+  if (action.mode === 'merge') {
+    const current = roster.students.find((row) => row.id === action.cardId);
     if (!current) return { ok: false, reason: 'no-card' };
     if (current.guestId) return { ok: false, reason: 'guest' };
     if (current.linkedStudentId && current.linkedStudentId !== share.studentId) return { ok: false, reason: 'linked-elsewhere' };
