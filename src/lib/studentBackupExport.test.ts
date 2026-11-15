@@ -129,7 +129,7 @@ test('each export downloads one file and only the JSON backup moves Last backup'
   if (json.result.ok) {
     assert.equal(
       json.result.message,
-      'Backup saved. Saved on this phone as advantage-student-backup-2026-10-24.json. Video files kept on this device are not included. No academy folder or personal drive is connected.',
+      'Backup saved. Saved on this device as advantage-student-backup-2026-10-24.json. Video files kept on this device are not included. No academy folder or personal drive is connected.',
     );
   }
   assert.equal(backupStampLabel(readStudentBackupStamp(storage)), '2026-10-24');
@@ -243,7 +243,7 @@ test('drive copy sends only the file that was just exported', async () => {
     ['advantage-student-backup-2026-10-24.json'],
   ]);
   if (json.ok) {
-    assert.match(json.message, /Saved on this phone/);
+    assert.match(json.message, /Saved on this device/);
     assert.match(json.message, /Also saved in GB Ellijay on Google Drive/);
     assert.match(json.message, /Also saved in My journal on OneDrive/);
   }

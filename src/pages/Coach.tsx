@@ -52,7 +52,7 @@ export function CoachPage() {
               Gym TV: open this site on a computer plugged into the TV, then fullscreen Display,
               Rounds, Daily Training Videos, or Tournament Software. Press F for fullscreen. Daily
               Lesson Plan, Daily Training Videos, Technique Tree, Student Roster, and saved
-              brackets stay on this phone.
+              brackets stay on this device.
             </p>
             <p className="home__hint">
               Control from your phone. Cast the scoreboard to your TV, or open Display on a second

@@ -7,6 +7,8 @@
  * addStudentProfile itself stays open so tests can still create profiles.
  */
 
+import { noteLocalProfilesChange, noteStudentProfileSwitch } from './syncTrigger.ts';
+
 export const EXTRA_PROFILE_FIXTURE_KEY = 'matboard.studentEdition.extraProfiles.fixture';
 export const EXTRA_PROFILE_SLOTS_KEY = 'matboard.studentEdition.extraProfileSlots.v1';
 
@@ -277,6 +279,7 @@ export function addStudentProfile(
   };
   if (portrait) profile.portrait = portrait;
   writeRegistry(storage, { ...registry, profiles: [...registry.profiles, profile] });
+  noteLocalProfilesChange();
   return { ok: true, profile };
 }
 
@@ -288,6 +291,7 @@ export function renameStudentProfile(storage: StudentKeyStore, id: string, name:
     ...registry,
     profiles: registry.profiles.map((profile) => (profile.id === id ? { ...profile, name: clean } : profile)),
   });
+  noteLocalProfilesChange();
   return true;
 }
 
@@ -322,6 +326,7 @@ export function switchStudentProfile(storage: StudentKeyStore, id: string): bool
   const registry = ensureStudentProfiles(storage);
   if (!registry.profiles.some((profile) => profile.id === id)) return false;
   if (registry.activeId !== id) writeRegistry(storage, { ...registry, activeId: id });
+  noteStudentProfileSwitch(id);
   return true;
 }
 
@@ -340,6 +345,7 @@ export function deleteStudentProfile(storage: StudentKeyStore, id: string): bool
     activeId: registry.activeId === id ? DEFAULT_STUDENT_PROFILE_ID : registry.activeId,
     profiles,
   });
+  noteLocalProfilesChange();
   return true;
 }
 

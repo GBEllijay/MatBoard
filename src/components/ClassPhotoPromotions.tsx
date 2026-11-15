@@ -102,7 +102,7 @@ export function ClassPhotoPromotions({ dateKey, readOnly = false }: { dateKey: s
         }),
       );
     } catch (error) {
-      setNote(quotaAddNote(error) ?? 'Could not save that file on this phone. Try again.');
+      setNote(quotaAddNote(error) ?? 'Could not save that file on this device. Try again.');
     } finally {
       setBusy(false);
     }

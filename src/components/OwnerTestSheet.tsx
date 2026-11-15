@@ -65,7 +65,7 @@ export function OwnerTestSheet({ open, onClose }: Props) {
   return (
     <Sheet open={open} title="Owner test unlock" onClose={close}>
       <p className="home__unlock-copy">
-        Unlocks a tier on this phone or computer so you can test. It is not a customer code, and the address bar cannot turn it on.
+        Unlocks a tier on this device so you can test. It is not a customer code, and the address bar cannot turn it on.
       </p>
       <form className="home__unlock-form" onSubmit={submit}>
         <SecretField

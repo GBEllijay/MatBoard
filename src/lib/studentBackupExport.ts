@@ -197,7 +197,7 @@ export async function runStudentEditionExport(
     const file = exportFile(kind, built, names);
     download(file.name, file.bytes);
     const targets = connectedBackupTargets(storage);
-    const lead = kind === 'json' ? journalBackupConfirmation(file.name, options.includeVideos) : `Downloaded ${file.name} on this phone.`;
+    const lead = kind === 'json' ? journalBackupConfirmation(file.name, options.includeVideos) : `Downloaded ${file.name} on this device.`;
     if (!targets.length) {
       return { ok: true, filename: file.name, message: kind === 'json' ? `${lead} ${JSON_DRIVE_NOTE}` : lead };
     }

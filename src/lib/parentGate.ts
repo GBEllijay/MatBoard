@@ -45,7 +45,7 @@ export type ParentGateState = {
 
 export const PARENT_GATE_COPY = {
   held: 'Waiting for a parent to approve.',
-  lead: 'A parent approves each coach update before it shows on this phone.',
+  lead: 'A parent approves each coach update before it shows on this device.',
   pinWrong: 'Parent PIN did not match.',
   pinShape: 'Use a 4 to 8 digit PIN.',
 } as const;

@@ -258,19 +258,19 @@ test('parent approval blocks a student import and a coach import keeps local-onl
 
   let doc = coachSample();
   const extra = addChild(doc, doc.root!.id, 'branch');
-  doc = updateNode(extra.doc, extra.id!, { title: 'Only on this phone', notes: 'stay' });
+  doc = updateNode(extra.doc, extra.id!, { title: 'Only on this device', notes: 'stay' });
   const file = shareFromCoachTree(doc);
   const without = {
     ...file,
-    nodes: file.nodes.filter((node) => node.title !== 'Only on this phone'),
-    edges: file.edges.filter((edge) => file.nodes.some((node) => node.title !== 'Only on this phone' && (node.shareId === edge.fromId || node.shareId === edge.toId))),
+    nodes: file.nodes.filter((node) => node.title !== 'Only on this device'),
+    edges: file.edges.filter((edge) => file.nodes.some((node) => node.title !== 'Only on this device' && (node.shareId === edge.fromId || node.shareId === edge.toId))),
   };
   const imported = applyCoachImport(doc, {
     ...without,
     nodes: [...without.nodes, { shareId: 'brandnew', title: 'Gift wrap', kind: 'technique' }],
   });
   const titles = shareFromCoachTree(imported).nodes.map((node) => node.title);
-  assert.ok(titles.includes('Only on this phone'));
+  assert.ok(titles.includes('Only on this device'));
   assert.ok(titles.includes('Gift wrap'));
   assert.equal(imported.root?.notes, 'private coach note');
 });

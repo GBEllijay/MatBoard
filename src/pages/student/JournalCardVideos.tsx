@@ -207,7 +207,7 @@ export function JournalCardVideos({
     try {
       const id = newCardVideoId();
       if (mode.kind === 'phone' && picked) {
-        if ((await originCanStore(picked.size)) === false) throw new Error('This phone is out of room for that video. Free some space, or paste a link instead.');
+        if ((await originCanStore(picked.size)) === false) throw new Error('This device is out of room for that video. Free some space, or paste a link instead.');
         await store.put(id, picked);
       }
       const result = addCardVideo(report, entryId, draft, { id });
@@ -309,7 +309,7 @@ export function JournalCardVideos({
     <section id="class-videos" className="ink adv-card adv-card--wide journal-card-videos" aria-label="Class videos for this card" data-testid="journal-card-videos">
       <h2 className="ink__label">{`Class videos · ${date}`}</h2>
       <p className="student-quiet">
-        Film a move, pick one from your gallery, paste a link, or choose a saved video. Tag each one with the glossary term it shows. Phone videos stay on this phone. Nothing uploads to Advantage Cloud.
+        Film a move, pick one from your gallery, paste a link, or choose a saved video. Tag each one with the glossary term it shows. Phone videos stay on this device. Nothing uploads to Advantage Cloud.
       </p>
       {videos.length === 0 && older.here.length === 0 ? <p className="student-quiet">No class videos on this card yet.</p> : null}
       <ul className="journal-card-videos__list">
@@ -333,7 +333,7 @@ export function JournalCardVideos({
               <div className="student-card__confirm" role="group" aria-label={`Remove ${video.term.name} video`}>
                 <p>
                   Remove this video from the card?
-                  {video.source === 'phone' && !video.filmId ? ' The copy saved for this card is deleted from this phone.' : video.filmId || video.clipId ? ' It stays in the Video library.' : ''}
+                  {video.source === 'phone' && !video.filmId ? ' The copy saved for this card is deleted from this device.' : video.filmId || video.clipId ? ' It stays in the Video library.' : ''}
                 </p>
                 <button type="button" className="ink-btn" onClick={() => remove(video)}>
                   Confirm remove
@@ -399,10 +399,10 @@ export function JournalCardVideos({
         </div>
       ) : null}
       {mode.kind !== 'closed' && mode.kind !== 'older' ? form : null}
-      <p className="student-quiet">Film a move opens this phone&apos;s camera when the browser allows it. Some phones open the gallery instead. Nothing is saved until you tap Save.</p>
+      <p className="student-quiet">Film a move opens this device&apos;s camera when the browser allows it. Some phones open the gallery instead. Nothing is saved until you tap Save.</p>
       <DeviceMediaInput id={recordId} inputRef={recordRef} accept="video/*" capture={VIDEO_CAPTURE} onFiles={take} />
       <DeviceMediaInput id={galleryId} inputRef={galleryRef} accept="video/*" onFiles={take} />
-      {demo ? <p className="student-quiet">Demo: filmed videos play during this visit only and are not saved to this phone.</p> : null}
+      {demo ? <p className="student-quiet">Demo: filmed videos play during this visit only and are not saved to this device.</p> : null}
       {status ? <p role="status">{status}</p> : null}
       {error ? <p role="alert">{error}</p> : null}
       {older.elsewhere.length || anchors.length ? (
@@ -544,7 +544,7 @@ function PhoneVideo({
   if (missing) {
     return (
       <>
-        <p className="student-quiet">This video is not on this phone. It stays on the phone that saved it.</p>
+        <p className="student-quiet">This video is not on this device. It stays on the phone that saved it.</p>
         {libraryId ? <LibraryLink id={libraryId} label={label} /> : null}
       </>
     );

@@ -379,7 +379,7 @@ function LinkRow({
   archive: TechniqueTreeArchive;
 }) {
   const target = findTechniqueTarget(archive, link.treeId, link.nodeId);
-  const title = target?.title || 'Step no longer on this phone';
+  const title = target?.title || 'Step no longer on this device';
   return (
     <li className="plan-link">
       <div className="plan-link__name">

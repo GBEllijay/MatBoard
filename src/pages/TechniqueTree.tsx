@@ -127,7 +127,7 @@ export function TechniqueTreePage() {
   const commitArchive = (next: TechniqueTreeArchive) => {
     const saved = saveTechniqueArchive(next);
     setArchive(saved.archive);
-    setNote(saved.saved ? '' : saved.quota ? DEVICE_STORAGE_FULL_NOTE : 'Could not save these trees on this phone.');
+    setNote(saved.saved ? '' : saved.quota ? DEVICE_STORAGE_FULL_NOTE : 'Could not save these trees on this device.');
     return saved.archive;
   };
 
@@ -270,7 +270,7 @@ export function TechniqueTreePage() {
       {incoming ? (
         <section className="tree__confirm" aria-label="Review technique share">
           <p>
-            Review {incoming.file.name}. Nothing changes until you accept. Notes on this phone stay. Imported steps are not marked learned.
+            Review {incoming.file.name}. Nothing changes until you accept. Notes on this device stay. Imported steps are not marked learned.
           </p>
           <p>
             {incoming.add.length} new, {incoming.unchanged.length} already here, {incoming.conflicts.length} need a choice.
@@ -369,7 +369,7 @@ export function TechniqueTreePage() {
 
       <div className="tree__plan">
         {showLibrary ? (
-          <section className="tree__library" aria-label="Trees on this phone">
+          <section className="tree__library" aria-label="Trees on this device">
             <ul className="tree__library-list">
               {archive.trees.map((tree) => {
                 const base = tree.root?.title.trim() ?? '';
@@ -391,7 +391,7 @@ export function TechniqueTreePage() {
             </ul>
             {confirmDeleteTree ? (
               <div className="tree__confirm" role="group" aria-label={`Delete ${doc.name}`}>
-                <p>Delete {doc.name} from this phone?</p>
+                <p>Delete {doc.name} from this device?</p>
                 <div className="tree__library-actions">
                   <button type="button" className="btn btn--ghost" onClick={() => setConfirmDeleteTree(false)}>
                     Cancel
@@ -473,7 +473,7 @@ export function TechniqueTreePage() {
         {doc.root ? (
           <div className="tree__toolbar">
             <p className="tree__count">
-              {steps} {steps === 1 ? 'step' : 'steps'} on this phone
+              {steps} {steps === 1 ? 'step' : 'steps'} on this device
               {full ? '. This tree is full.' : ''}
             </p>
           </div>

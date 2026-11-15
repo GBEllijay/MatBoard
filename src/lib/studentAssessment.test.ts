@@ -62,7 +62,7 @@ function draft(date: string, note = '', value: AssessmentScores[keyof Assessment
   return { date, note, scores: scores(value) };
 }
 
-test('a check-in stays on this phone and reloads', () => {
+test('a check-in stays on this device and reloads', () => {
   const storage = memory();
   const saved = writeAssessments(storage, saveAssessment(emptyAssessments(), draft('2026-10-16', 'calm rounds', 3)));
   assert.equal(storage.getItem(ASSESSMENT_STORAGE_KEY)?.includes('calm rounds'), true);

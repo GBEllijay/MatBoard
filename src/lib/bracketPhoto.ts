@@ -41,7 +41,7 @@ export async function bracketPhotoFromFile(file: File): Promise<string> {
   });
   const dataUrl = await blobToDataUrl(blob);
   if (!dataUrl.startsWith('data:image/') || dataUrl.length > MAX_CHARS) {
-    throw new Error('That photo is too large for this phone.');
+    throw new Error('That photo is too large for this device.');
   }
   await assertOriginRoom(dataUrl.length);
   return dataUrl;

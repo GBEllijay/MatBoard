@@ -82,7 +82,7 @@ export function addPodiumPhoto(studentId: string, resultId: string, image: strin
   const student = podiumStudentKey(studentId);
   if (!ID_OK.test(resultId)) throw new Error('That result cannot keep photos.');
   if (!image.startsWith('data:image/') || image.length > RANK_PHOTO_MAX_CHARS) {
-    throw new Error('That photo is too large for this phone.');
+    throw new Error('That photo is too large for this device.');
   }
   const store = loadPodiumPhotoStore();
   const current = store.byStudent[student]?.[resultId] ?? [];

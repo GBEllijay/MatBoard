@@ -42,7 +42,7 @@ export const CLOUD_CHUNK_BYTES = 8 * 1024 * 1024;
 
 export const CLOUD_SIGN_IN_MESSAGE = 'Sign in on this device to use Advantage Cloud.';
 export const CLOUD_ROLE_MESSAGE = 'Assistant coaches can play and download these files. A coach uploads them.';
-export const CLOUD_SAVED_MESSAGE = 'Saved to Advantage Cloud. This phone keeps a copy.';
+export const CLOUD_SAVED_MESSAGE = 'Saved to Advantage Cloud. This device keeps a copy.';
 export const CLOUD_SENT_FOR_APPROVAL =
   'Sent to Advantage Cloud for approval. It shows after the owner or an Instructors seat approves it in Review Inbox.';
 export const CLOUD_DAILY_DROP_ONLY =

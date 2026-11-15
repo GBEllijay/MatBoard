@@ -1068,7 +1068,7 @@ export const OWN_SEND_FILE_MESSAGE =
   'This file is the one for your coach. It is not the file to import. Import from coach takes a coach plan or coach feedback file, the file a coach sends back to you.';
 
 export const SEND_TO_COACH_MERGE_PROMPT =
-  'You can still merge this progress file into the journal on this phone. Records that are only on this phone stay. A backup restores from Connections.';
+  'You can still merge this progress file into the journal on this device. Records that are only on this device stay. A backup restores from Connections.';
 
 export const BACKUP_PICKER_MESSAGE =
   'This is a Student Edition backup from Back up my journal. Restore it from Connections. It is not a coach plan or coach feedback file.';
@@ -1260,7 +1260,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       report: withGymName(report, gym, true),
       shelf,
       message: gym
-        ? 'Gym name and logo are stored on this phone. Your journal was not changed. Student screens no longer show a gym logo.'
+        ? 'Gym name and logo are stored on this device. Your journal was not changed. Student screens no longer show a gym logo.'
         : 'That gym file did not include a name or logo. Your journal was not changed.',
       error: '',
       gym,
@@ -1275,7 +1275,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       report: withGymName(suggestion.report, carried, false),
       shelf: { ...shelf, plan: merged.packet },
       message: merged.replaced
-        ? `${merged.packet.plan.title || 'Work on before next promotion'} is on this phone. Your rubric, journal, and personal goals were not changed.`
+        ? `${merged.packet.plan.title || 'Work on before next promotion'} is on this device. Your rubric, journal, and personal goals were not changed.`
         : coachFileKept(merged.conflicts),
       error: '',
       gym: carried,
@@ -1291,7 +1291,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
     report: withGymName(suggestion.report, carried, false),
     shelf: { ...shelf, feedback: merged.packet },
     message: merged.replaced
-      ? 'Coach feedback is on this phone. Your rubric, journal, and personal goals were not changed.'
+      ? 'Coach feedback is on this device. Your rubric, journal, and personal goals were not changed.'
       : coachFileKept(merged.conflicts),
     error: '',
     gym: carried,
@@ -1300,7 +1300,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
 
 function coachFileKept(conflicts: string[]): string {
   const detail = conflicts.join(' ').trim();
-  return detail ? `${detail} Nothing on this phone was changed.` : 'Nothing on this phone was changed.';
+  return detail ? `${detail} Nothing on this device was changed.` : 'Nothing on this device was changed.';
 }
 
 function studentFileIsBlank(report: StudentProgressReport): boolean {
@@ -1351,7 +1351,7 @@ export function mergeOwnStudentFile(
   if (studentFileIsBlank(local)) {
     return {
       report: structuredClone(incoming),
-      message: 'Merged this progress file into the journal on this phone.',
+      message: 'Merged this progress file into the journal on this device.',
       error: '',
     };
   }
@@ -1359,7 +1359,7 @@ export function mergeOwnStudentFile(
     return {
       report: local,
       message: '',
-      error: 'This progress file is for a different student. It was not merged. The journal on this phone was left as it is. A backup restores from Connections.',
+      error: 'This progress file is for a different student. It was not merged. The journal on this device was left as it is. A backup restores from Connections.',
     };
   }
   const merged = mergeStudentProgress(local, incoming);
@@ -1374,7 +1374,7 @@ export function mergeOwnStudentFile(
   if (beltUntouched) profile.belt = incoming.profile.belt;
   return {
     report: { ...merged.report, profile },
-    message: 'Merged this progress file into the journal on this phone. Records that were only on this phone were kept.',
+    message: 'Merged this progress file into the journal on this device. Records that were only on this device were kept.',
     error: '',
   };
 }
@@ -1425,7 +1425,7 @@ export function progressReportFiles(
   const json = exportProgressPacket(fitted);
   const csvName = jsonName.replace(/\.json$/, '.csv');
   const csv = exportProgressCsv(fitted);
-  const body = `The progress file ${jsonName} is on this phone. Attach that JSON. Advantage does not host the file.`;
+  const body = `The progress file ${jsonName} is on this device. Attach that JSON. Advantage does not host the file.`;
   const mailto = `mailto:?subject=${encodeURIComponent(SHARE_SUBJECT)}&body=${encodeURIComponent(body)}`;
   return { jsonName, json, csvName, csv, subject: SHARE_SUBJECT, mailto };
 }

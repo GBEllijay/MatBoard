@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HomeMark } from '../components/HomeMark';
 import { SecretField } from '../components/SecretField';
@@ -20,6 +20,7 @@ import { INSTRUCTOR_PERMISSION_FIELDS, instructorPreset, normalizeInstructorPres
 import { looksLikeStudentInvite } from '../lib/studentLicensePool';
 import { fetchRestoreCheckConfig, loadTurnstile, type TurnstileApi } from '../lib/turnstile';
 import { isWhiteRestoreEmail, restoreWhiteByEmail } from '../lib/whiteUnlock';
+import { shortLicenseIdOnDevice, syncStatusLabel, getSyncStatus, subscribeSyncStatus } from '../lib/signedInSync';
 
 /** Top of the invite screen when someone opens an instructor invite link or scans its QR code. */
 export const INVITE_WELCOME =
@@ -194,6 +195,19 @@ function InviteAccess({ invite }: { invite: InviteGrant }) {
   );
 }
 
+function AccountLicenseAndSync() {
+  const status = useSyncExternalStore(subscribeSyncStatus, getSyncStatus, getSyncStatus);
+  const license = shortLicenseIdOnDevice();
+  return (
+    <>
+      <p data-testid="account-license-id">
+        <strong>License id:</strong> {license || 'Not on this device yet'}
+      </p>
+      <p data-testid="account-sync-status">{syncStatusLabel(status)}</p>
+    </>
+  );
+}
+
 function Profile({ payload, onRefresh, busy }: { payload: LoginPayload; onRefresh: () => void; busy: boolean }) {
   const profile: AccountProfile = payload.profile;
   const grants = profile.license?.grants ?? [];
@@ -253,6 +267,7 @@ function Profile({ payload, onRefresh, busy }: { payload: LoginPayload; onRefres
                 ? `Ended ${dateText(profile.cloud.lapsedAt)}`
                 : 'Not on this license'}
         </p>
+        <AccountLicenseAndSync />
       </section>
       {profile.invites.length ? (
         <>
@@ -449,6 +464,7 @@ export function AccountPage() {
               <header className="buy__card">
                 <h2>Sign in</h2>
                 <p>Your email is your username. Sign in once on each device and it stays signed in.</p>
+                <AccountLicenseAndSync />
                 {!available ? (
                   <p className="buy__status" role="status">
                     Sign-in is not set up on this site yet. <Link to="/restore">Restore with an email code</Link> still works.

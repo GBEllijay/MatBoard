@@ -226,7 +226,7 @@ export function fitRankPictures(report: StudentProgressReport): StudentProgressR
     delete rank.pictureCount;
   }
   if (skipped) {
-    rank.pictureNote = `${skipped} promotion ${skipped === 1 ? 'photo' : 'photos'} stayed on this phone.`;
+    rank.pictureNote = `${skipped} promotion ${skipped === 1 ? 'photo' : 'photos'} stayed on this device.`;
   }
   return { ...report, rank };
 }

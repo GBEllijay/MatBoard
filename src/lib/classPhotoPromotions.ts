@@ -37,15 +37,15 @@ export const CLASS_PHOTO_PROMOTIONS_LABEL = "Today's class photo / promotions";
 export const CLASS_PHOTO_PROMOTIONS_ADD = 'Add photo or video';
 export const CLASS_PHOTO_PROMOTIONS_LEAD =
   'A class photo or a short clip. Take photo, Record, or Pick from gallery.';
-export const CLASS_PHOTO_PROMOTIONS_STAY = `${GALLERY_ROUTE_NOTE} Photos and clips stay on this phone. With Advantage Cloud on, they upload to this gym's Advantage Cloud. Without Cloud, when Google Drive or OneDrive is connected, the copy goes in the gallery folder there, and Advantage does not host them.`;
+export const CLASS_PHOTO_PROMOTIONS_STAY = `${GALLERY_ROUTE_NOTE} Photos and clips stay on this device. With Advantage Cloud on, they upload to this gym's Advantage Cloud. Without Cloud, when Google Drive or OneDrive is connected, the copy goes in the gallery folder there, and Advantage does not host them.`;
 export const CLASS_PHOTO_PROMOTIONS_SAVED_DRIVE =
-  'Saved in the gallery folder. A copy stays on this phone.';
+  'Saved in the gallery folder. A copy stays on this device.';
 export const CLASS_PHOTO_PROMOTIONS_SAVED_PHONE =
-  'Saved on this phone. Connect Google Drive or OneDrive to use the same gallery on another device.';
+  'Saved on this device. Connect Google Drive or OneDrive to use the same gallery on another device.';
 export const CLASS_PHOTO_PROMOTIONS_FAILED =
-  'Saved on this phone. Google Drive could not take this file.';
+  'Saved on this device. Google Drive could not take this file.';
 export const CLASS_PHOTO_CLOUD_UPLOADED = 'Uploaded to Advantage Cloud.';
-export const CLASS_PHOTO_CLOUD_FAILED = 'Saved on this phone. Advantage Cloud could not take this file.';
+export const CLASS_PHOTO_CLOUD_FAILED = 'Saved on this device. Advantage Cloud could not take this file.';
 export const CLASS_PHOTO_CLOUD_STAY = `${GALLERY_ROUTE_NOTE} Uploaded to Advantage Cloud. The owner's photos are Approved. When Cloud approval is on, Coach and Instructors photos are Pending until the owner or an Instructors seat approves them. When the owner turns Cloud approval off, those photos go straight to the gallery.`;
 export const CLASS_PHOTO_PROMOTIONS_SKIPPED =
   'That file is not a photo or video. Take photo, Record, or pick a photo or video from the gallery.';
@@ -100,7 +100,7 @@ export const CLASS_PHOTO_APPROVAL_ON =
   'Approval is on: new photos and clips wait as Pending until the owner or a named approver approves them in Review Inbox.';
 export const CLASS_PHOTO_APPROVAL_OFF = 'Approval is off: new photos and clips go straight to the gallery.';
 /** Cloud lane follows the owner's gym-wide setting, not this phone's local switch. */
-export const CLASS_PHOTO_CLOUD_RULE = 'The owner sets Cloud approval on Advantage Pro Plus Cloud. That gym-wide setting, not the switch on this phone, decides whether instructor Cloud uploads wait. The switch on this phone still only governs photos that stay here or go to Google Drive or OneDrive.';
+export const CLASS_PHOTO_CLOUD_RULE = 'The owner sets Cloud approval on Advantage Pro Plus Cloud. That gym-wide setting, not the switch on this device, decides whether instructor Cloud uploads wait. The switch on this device still only governs photos that stay here or go to Google Drive or OneDrive.';
 
 /**
  * `approvalRequired` is the gallery approval switch as this device reads it.
@@ -132,7 +132,7 @@ export function classPhotoPromotionKind(file: File): ClassPhotoPromotionKind | n
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
-      reject(new Error('This phone cannot store that file.'));
+      reject(new Error('This device cannot store that file.'));
       return;
     }
     const req = indexedDB.open(CLASS_PHOTO_PROMOTIONS_DB, DB_VERSION);

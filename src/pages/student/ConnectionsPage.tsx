@@ -241,7 +241,7 @@ function PersonalDrive() {
             onClick={() => {
               clearStudentDriveLink(localStorage, 'personal');
               setLinked(null);
-              setStatus('Personal drive disconnected on this phone. Files already in that folder stay there.');
+              setStatus('Personal drive disconnected on this device. Files already in that folder stay there.');
             }}
           >
             Disconnect my drive
@@ -364,7 +364,7 @@ function ExportAndPrint({
     <section className="ink" aria-label="Export and print">
       <h2>Export and print</h2>
       <p className="student-quiet">
-        Download student packet saves one file. That file restores this phone. It includes the journal, self-assessment, ranks, index cards, and a spreadsheet. The spreadsheet button downloads only the spreadsheet. If your gym does not use Advantage, print the progress report or the self-assessment and hand that page to your instructor.
+        Download student packet saves one file. That file restores this device. It includes the journal, self-assessment, ranks, index cards, and a spreadsheet. The spreadsheet button downloads only the spreadsheet. If your gym does not use Advantage, print the progress report or the self-assessment and hand that page to your instructor.
       </p>
       <ExportChoices
         variant="paper"
@@ -418,7 +418,7 @@ function ExportAndPrint({
             setPending(parsed.choice);
             setError('');
             setSavedNote('');
-            setStatus(parsed.choice.restorable ? 'Choose merge or replace. Merge keeps records that are only on this phone.' : '');
+            setStatus(parsed.choice.restorable ? 'Choose merge or replace. Merge keeps records that are only on this device.' : '');
           });
         }}
       />

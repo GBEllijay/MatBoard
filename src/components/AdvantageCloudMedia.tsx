@@ -287,7 +287,7 @@ export function AdvantageCloudPanel({ purpose, dateKey, planJson = '' }: Props) 
               checked={home === 'device'}
               onChange={() => chooseHome('device')}
             />
-            <span>This phone, Google Drive, or OneDrive</span>
+            <span>This device, Google Drive, or OneDrive</span>
           </label>
           <label>
             <input

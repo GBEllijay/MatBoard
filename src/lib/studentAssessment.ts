@@ -3,6 +3,7 @@
  * scouting cards: the student owns it, and Advantage does not host it.
  */
 
+import { noteLocalStudentChange } from './syncTrigger.ts';
 import type { StudentProgressReport } from './progress/types.ts';
 import { PROGRESS_NOTE_MAX } from './progress/types.ts';
 import { beginAppStudentSave, endAppStudentSave } from './studentDemo.ts';
@@ -187,6 +188,7 @@ export function writeAssessments(storage: MemoryStore, state: AssessmentState): 
   } finally {
     endAppStudentSave();
   }
+  noteLocalStudentChange();
   return loadAssessments(storage);
 }
 

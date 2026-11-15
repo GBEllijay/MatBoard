@@ -5,6 +5,7 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { installStudentMockGuard } from './lib/studentDemo';
 import { installStudentProfileScope } from './lib/studentProfiles';
+import { initSignedInSync } from './lib/signedInSync';
 import { initMatchSync } from './lib/matchStore';
 import { settleOneDriveRedirect } from './lib/oneDriveAuth';
 import { initRankingSync } from './lib/rankingStore';
@@ -18,6 +19,7 @@ installStudentMockGuard();
 // After the demo guard, so ?student=1 still overlays the default profile
 // and every other profile is stored under its own keys.
 installStudentProfileScope();
+initSignedInSync();
 initMatchSync();
 initTournamentSync();
 initRosterSync();

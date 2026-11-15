@@ -152,7 +152,7 @@ test('belt checkpoints, goals, coach suggestions, and the share file', async ({ 
       }),
     ),
   });
-  await expect(page.getByText('Coach feedback is on this phone.')).toBeVisible();
+  await expect(page.getByText('Coach feedback is on this device.')).toBeVisible();
 
   await page.getByRole('link', { name: BACK, exact: true }).click();
   const coach = page.getByRole('region', { name: 'From my coach' });

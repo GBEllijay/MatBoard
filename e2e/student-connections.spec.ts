@@ -95,7 +95,7 @@ test('film a move, connections, backup, and print stay beside the link library',
   await clear.click();
   const backUpFirst = page.getByRole('button', { name: 'Back up first' });
   await expect(backUpFirst).toBeVisible();
-  await expect(page.getByText('A backup is recommended before clearing data on this phone.')).toBeVisible();
+  await expect(page.getByText('A backup is recommended before clearing data on this device.')).toBeVisible();
   await expect(page.getByText('This only affects Student Edition on this device.')).toBeVisible();
   const firstBox = await backUpFirst.boundingBox();
   const continueBox = await page.getByRole('button', { name: 'Continue without a backup' }).boundingBox();
