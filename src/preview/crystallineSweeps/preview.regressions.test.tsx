@@ -523,8 +523,15 @@ test('default zoom hides technique labels; zoom-in or a face drill shows only th
   act(() => {
     (host.querySelector('[data-face-label="passing"]') as HTMLButtonElement).click();
   });
+  assert.equal(stage().dataset.namesHidden, 'on');
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  act(() => {
+    (host.querySelector('[data-face-label="passing"]') as HTMLButtonElement).click();
+  });
   assert.equal(stage().dataset.drilled, 'passing');
   assert.equal(stage().dataset.labelFace, 'passing');
+  assert.equal(stage().dataset.namesHidden, 'off');
   for (const node of techniqueNodes(host)) {
     const show = node.getAttribute('data-technique-face') === 'passing';
     assert.equal(node.getAttribute('data-label-policy'), show ? 'show' : 'hide');
@@ -534,8 +541,15 @@ test('default zoom hides technique labels; zoom-in or a face drill shows only th
     (host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click();
     (host.querySelector('[data-face-label="submissions"]') as HTMLButtonElement).click();
   });
+  assert.equal(stage().dataset.namesHidden, 'on');
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  act(() => {
+    (host.querySelector('[data-face-label="submissions"]') as HTMLButtonElement).click();
+  });
   assert.equal(stage().dataset.drilled, 'submissions');
   assert.equal(stage().dataset.labelFace, 'submissions');
+  assert.equal(stage().dataset.namesHidden, 'off');
   act(() => {
     (host.querySelector('[data-face-label="submissions"]') as HTMLButtonElement).click();
   });
@@ -560,6 +574,55 @@ test('default zoom hides technique labels; zoom-in or a face drill shows only th
   assert.equal(visibleTechniqueFaces(host).length, 0);
   assert.equal(host.querySelectorAll('.topo-controls button').length, 4);
   assert.equal(host.querySelectorAll('[data-face-button]').length, 8);
+  act(() => {
+    mounted.root.unmount();
+  });
+});
+
+test('tapping names toggles them and leaves zoom where it is', () => {
+  localStorage.clear();
+  const mounted = mount(<CrystallineSweepsPreview />);
+  const host = mounted.host;
+  const stage = () => {
+    const node = host.querySelector('.topo-stage');
+    if (!(node instanceof view.HTMLElement)) throw new Error('Missing stage');
+    return node;
+  };
+  act(() => {
+    (host.querySelector('[data-face-button="passing"]') as HTMLButtonElement).click();
+    (host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.labelTier, 'techniques');
+  assert.equal(stage().dataset.labelFace, 'passing');
+  const zoomed = stage().dataset.zoom;
+  assert.ok(zoomed);
+  act(() => {
+    (host.querySelector('[data-face-label="passing"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.namesHidden, 'on');
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  assert.equal(stage().dataset.zoom, zoomed);
+  act(() => {
+    (host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click();
+  });
+  const zoomedMore = stage().dataset.zoom;
+  assert.notEqual(zoomedMore, zoomed);
+  assert.equal(stage().dataset.namesHidden, 'on');
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(visibleTechniqueFaces(host).length, 0);
+  act(() => {
+    (host.querySelector('[data-face-label="passing"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.namesHidden, 'off');
+  assert.equal(stage().dataset.labelTier, 'techniques');
+  assert.equal(stage().dataset.zoom, zoomedMore);
+  act(() => {
+    (host.querySelector('[data-face-label="passing"]') as HTMLButtonElement).click();
+  });
+  assert.equal(stage().dataset.namesHidden, 'on');
+  assert.equal(stage().dataset.labelTier, 'faces');
+  assert.equal(stage().dataset.zoom, zoomedMore);
   act(() => {
     mounted.root.unmount();
   });

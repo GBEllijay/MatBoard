@@ -55,7 +55,7 @@ import {
   placeDiamondLabels,
   projectFit,
   tileShowsTechniqueLabel,
-  zoomAfterClosingDrill,
+  toggleTechniqueNames,
   zoomPastRest,
 } from './labels.ts';
 import { classifyTap, connectionLayout, demoCard, gridCells, growOffEdge, labelVisible, midpointQuarters, screenSides, sidesWithBack, subdivideTriangle, triangleArea, barycentric, walkDemo, assignDrillCells } from './demoLinks.ts';
@@ -624,8 +624,43 @@ test('default zoom hides technique names; zoom-in or a face drill shows one face
   assert.equal(drillAfterZoom(REST_ZOOM * ZOOM_STEP, FOCUS_FRAME_ZOOM, 5), -1);
   assert.equal(drillAfterZoom(REST_ZOOM, REST_ZOOM / ZOOM_STEP, 5), -1);
   assert.equal(drillAfterZoom(REST_ZOOM, REST_ZOOM * ZOOM_STEP, 5), 5);
-  assert.equal(zoomAfterClosingDrill(REST_ZOOM * ZOOM_STEP), FOCUS_FRAME_ZOOM);
-  assert.equal(zoomAfterClosingDrill(REST_ZOOM), REST_ZOOM);
+  assert.deepEqual(
+    crystalLabelState({ ...rest, zoom: REST_ZOOM * ZOOM_STEP, focusedFace: 4, namesHidden: true }),
+    { tier: 'faces', face: -1 },
+  );
+  assert.deepEqual(
+    crystalLabelState({ ...rest, drilledFace: 4, namesHidden: true }),
+    { tier: 'faces', face: -1 },
+  );
+  const zoomedIn = REST_ZOOM * ZOOM_STEP;
+  const hideTap = toggleTechniqueNames({
+    ...rest,
+    zoom: zoomedIn,
+    focusedFace: 4,
+    namesHidden: false,
+    tappedFace: 4,
+  });
+  assert.deepEqual(hideTap, { namesHidden: true, drilledFace: -1 });
+  assert.deepEqual(crystalLabelState({ ...rest, zoom: zoomedIn, focusedFace: 4, namesHidden: true }), {
+    tier: 'faces',
+    face: -1,
+  });
+  const showTap = toggleTechniqueNames({
+    ...rest,
+    zoom: zoomedIn,
+    focusedFace: 4,
+    namesHidden: true,
+    tappedFace: 5,
+  });
+  assert.deepEqual(showTap, { namesHidden: false, drilledFace: 5 });
+  assert.deepEqual(
+    crystalLabelState({ ...rest, zoom: zoomedIn, drilledFace: 5, focusedFace: 4, namesHidden: false }),
+    { tier: 'techniques', face: 5 },
+  );
+  const restShow = toggleTechniqueNames({ ...rest, namesHidden: false, tappedFace: 1 });
+  assert.deepEqual(restShow, { namesHidden: false, drilledFace: 1 });
+  const restHide = toggleTechniqueNames({ ...rest, drilledFace: 1, namesHidden: false, tappedFace: 1 });
+  assert.deepEqual(restHide, { namesHidden: true, drilledFace: -1 });
   assert.deepEqual(crystalLabelState({ ...rest, pair: true, zoom: 2, drilledFace: 2 }), { tier: 'faces', face: -1 });
   assert.deepEqual(crystalLabelState({ ...rest, comparison: true, zoom: 2, focusedFace: 1, frontFace: 1 }), { tier: 'faces', face: -1 });
   assert.deepEqual(
@@ -635,6 +670,30 @@ test('default zoom hides technique names; zoom-in or a face drill shows one face
   const drilledMindset = crystalLabelState({ ...rest, drilledFace: topo.faces.findIndex((face) => face.id === 'mindset') });
   assert.equal(tileShowsTechniqueLabel(drilledMindset, drilledMindset.face, false, false), false);
   assert.equal(faceShowsTechniqueLabels(drilledMindset, drilledMindset.face, 0, false), false);
+});
+
+test('name taps toggle visibility and never change zoom', () => {
+  const sweepsFace = 2;
+  const rest = {
+    zoom: REST_ZOOM * ZOOM_STEP,
+    drilledFace: -1,
+    focusedFace: 2,
+    frontFace: 2,
+    comparison: false,
+    pair: false,
+    sweepsFace,
+    namesHidden: false,
+    tappedFace: 2,
+  };
+  const zoom = rest.zoom;
+  const hidden = toggleTechniqueNames(rest);
+  assert.equal(hidden.namesHidden, true);
+  assert.equal(rest.zoom, zoom);
+  const stillHidden = crystalLabelState({ ...rest, zoom: zoom * ZOOM_STEP, namesHidden: true });
+  assert.deepEqual(stillHidden, { tier: 'faces', face: -1 });
+  const shown = toggleTechniqueNames({ ...rest, zoom: zoom * ZOOM_STEP, namesHidden: true, tappedFace: 3 });
+  assert.deepEqual(shown, { namesHidden: false, drilledFace: 3 });
+  assert.equal(zoom * ZOOM_STEP, REST_ZOOM * ZOOM_STEP * ZOOM_STEP);
 });
 
 test('repeated plus-zoom stays on the face, in front of the mesh, and inside the stage', () => {
