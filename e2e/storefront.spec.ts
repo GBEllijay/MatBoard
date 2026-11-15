@@ -33,8 +33,7 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Win by Advantage.', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: /Your gym's scoreboard and timer/ })).toBeVisible();
-  await expect(page.getByRole('heading', { name: /Run it from your phone/ })).toBeVisible();
+  await expect(page.getByText("Your Gym's Scoreboard, Round Timer, and Academy Enhancement Software. Cast to your TV from your phone or PC.")).toBeVisible();
   await expect(page.getByText('05:00', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Buy Advantage White — $9.99' })).toHaveAttribute('href', '/buy');
   await expect(page.getByRole('heading', { name: 'Round timer', exact: true })).toBeVisible();
