@@ -17,7 +17,7 @@ import {
   savePhotoReview,
   type StudentPhotoSubmission,
 } from './rosterPhotoApproval.ts';
-import type { Student, StudentDraft } from './rosterStore.ts';
+import type { Student, StudentDraft, StudentWriteOptions } from './rosterStore.ts';
 import { readStudentCardShare, type StudentCardShare } from './studentCardShare.ts';
 import { ensureRosterCardForStudent, identityFromShare } from './rosterCardFromInbox.ts';
 import { readStudentCoachUpdate, receiveStudentCoachUpdate, type UpdateReceive } from './coachProgressFile.ts';
@@ -175,7 +175,7 @@ export function cardShareMergePatch(share: StudentCardShare): Partial<StudentDra
 export type CardShareRoster = {
   students: readonly Student[];
   add(draft: StudentDraft, options: { rosterList: 'student' }): Student | null;
-  update(id: string, draft: Partial<StudentDraft>): Student | null;
+  update(id: string, draft: Partial<StudentDraft>, options?: StudentWriteOptions): Student | null;
   link(id: string, studentId: string): Student | null;
 };
 
@@ -226,7 +226,7 @@ export function acceptCardShare(
     if (current.guestId) return { ok: false, reason: 'guest' };
     if (current.linkedStudentId && current.linkedStudentId !== share.studentId) return { ok: false, reason: 'linked-elsewhere' };
     const patch = cardShareMergePatch(share);
-    card = Object.keys(patch).length ? roster.update(current.id, patch) : current;
+    card = Object.keys(patch).length ? roster.update(current.id, patch, { source: 'student-submission' }) : current;
     decision = 'merged';
   } else {
     card = roster.add(
@@ -242,7 +242,9 @@ export function acceptCardShare(
       { rosterList: 'student' },
     );
     // Stripes go through update: a new card stores them only when set.
-    if (card && share.card.stripes) card = roster.update(card.id, { stripes: share.card.stripes }) ?? card;
+    if (card && (share.card.belt || share.card.stripes)) {
+      card = roster.update(card.id, { belt: share.card.belt || card.belt, ...(share.card.stripes ? { stripes: share.card.stripes } : {}) }, { source: 'student-submission' }) ?? card;
+    }
     decision = 'accepted';
   }
   if (!card) return { ok: false, reason: 'invalid' };

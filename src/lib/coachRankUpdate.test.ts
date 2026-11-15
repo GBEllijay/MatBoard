@@ -125,16 +125,15 @@ test('import queues a rank file and does not change the checklist', () => {
   assert.equal(readCoachQueue(store).length, 1);
 });
 
-test('an unlinked roster card does not offer a send', () => {
+test('the coach never offers a rank send, even on a linked card', () => {
   const before = { belt: 'White', lastPromotion: '', stripes: 0 as number | undefined };
   const after = { belt: 'Blue', lastPromotion: '2026-11-03', stripes: 2 as number | undefined };
   assert.equal(rankSendOffer(before, after), 'noop');
-  assert.equal(rankSendOffer({ ...before, linkedStudentId: 'stu-alex' }, { ...after, linkedStudentId: 'stu-alex' }), 'send');
+  assert.equal(rankSendOffer({ ...before, linkedStudentId: 'stu-alex' }, { ...after, linkedStudentId: 'stu-alex' }), 'noop');
   assert.equal(
     rankSendOffer({ ...after, linkedStudentId: 'stu-alex' }, { ...after, linkedStudentId: 'stu-alex' }),
     'noop',
   );
-  assert.equal(rankSendOffer({ ...before, stripes: undefined, linkedStudentId: 'stu-alex' }, { ...before, stripes: 0, linkedStudentId: 'stu-alex' }), 'noop');
 });
 
 test('linking a roster card keeps the student id across a later save', () => {
@@ -148,21 +147,27 @@ test('linking a roster card keeps the student id across a later save', () => {
     assert.equal(linkRosterCard(added.id, 'student-local'), null);
     const linked = linkRosterCard(added.id, 'stu-alex');
     assert.equal(linked?.linkedStudentId, 'stu-alex');
-    const saved = updateStudent(added.id, {
+    const blocked = updateStudent(added.id, {
       name: 'Alex',
       belt: 'Blue',
       division: '',
       gym: '',
       lastPromotion: '2026-11-03',
-      note: '',
+      note: 'Coach note',
       stripes: 2,
     });
+    assert.equal(blocked?.linkedStudentId, 'stu-alex');
+    assert.equal(blocked?.belt, 'White', 'the instructor cannot change a linked belt');
+    assert.equal(blocked?.stripes, undefined);
+    assert.equal(blocked?.note, 'Coach note');
+    const saved = updateStudent(added.id, { belt: 'Blue', stripes: 2 }, { source: 'student-submission', now: 20 });
     assert.equal(saved?.linkedStudentId, 'stu-alex');
     assert.equal(saved?.stripes, 2);
     assert.equal(saved?.rosterList, 'student');
     const round = normalizeRoster(JSON.parse(JSON.stringify(getRoster())));
     assert.equal(round.students.find((row) => row.id === added.id)?.linkedStudentId, 'stu-alex');
     assert.equal(round.students.find((row) => row.id === added.id)?.stripes, 2);
+    assert.equal(round.students.find((row) => row.id === added.id)?.studentRankAt, 20);
   } finally {
     resetRoster();
   }

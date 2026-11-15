@@ -76,6 +76,7 @@ import {
 } from '../lib/rosterCsv';
 import { competitionSendOffer } from '../lib/coachCompetitionUpdate';
 import { rankSendOffer } from '../lib/coachRankUpdate';
+import { rosterRankHint, studentOwnsRosterRank } from '../lib/studentOwnedRank';
 import { seatPermissionAllows } from '../lib/instructorSeats';
 import { readGymName } from '../lib/gymName';
 import { useGymName } from '../hooks/useGymBrand';
@@ -592,7 +593,9 @@ export function RosterPage() {
         }}
         draft={editor?.draft ?? emptyDraft()}
         saveError={saveError}
-        focusStripes={Boolean(editor?.focusStripes)}
+        focusStripes={Boolean(editor?.focusStripes) && !Boolean(editor?.id && studentOwnsRosterRank(roster.students.find((row) => row.id === editor.id) ?? {}))}
+        rankLocked={Boolean(editor?.id && studentRoster && studentOwnsRosterRank(roster.students.find((row) => row.id === editor.id) ?? {}))}
+        rankHint={editor?.id ? rosterRankHint(roster.students.find((row) => row.id === editor.id) ?? { belt: '' }) : null}
         onChange={(draft) => setEditor((current) => (current ? { ...current, draft } : current))}
         onClose={() => {
           setSaveError('');
@@ -1056,7 +1059,14 @@ export function StudentCard({
           </div>
           {onOpenFace ? null : (
             <div className="roster-card__belt-row">
-              <BeltTip belt={student.belt} />
+              {student.rankUnset && studentOwnsRosterRank(student) ? (
+                <span className="roster-card__rank-unset">Not set yet</span>
+              ) : (
+                <BeltTip belt={student.belt} />
+              )}
+              {studentOwnsRosterRank(student) && !student.rankUnset ? (
+                <span className="roster-card__rank-note">Set by the student</span>
+              ) : null}
               {competitorSwitch ? (
                 <button
                   type="button"
@@ -1236,6 +1246,8 @@ function StudentEditor({
   draft,
   saveError,
   focusStripes = false,
+  rankLocked = false,
+  rankHint = null,
   onChange,
   onClose,
   onSave,
@@ -1253,6 +1265,9 @@ function StudentEditor({
   saveError: string;
   /** Opened from the card's belt: the Promotion stripes control is the belt. */
   focusStripes?: boolean;
+  /** Linked Student Edition cards: belt and stripes are read-only. */
+  rankLocked?: boolean;
+  rankHint?: string | null;
   onChange: (draft: StudentDraft) => void;
   onClose: () => void;
   onSave: () => void;
@@ -1429,7 +1444,7 @@ function StudentEditor({
                   />
                 </label>
               </div>
-              {linkedStudent ? null : (
+              {linkedStudent || rankLocked ? null : (
               <div className="clipboard__brow card-entry__brow">
                 <button type="button" className="card-entry__tap card-entry__beltslot" data-testid="card-entry-belt-slot" onClick={focusBelts}>
                   {draft.belt.trim() ? (
@@ -1449,6 +1464,16 @@ function StudentEditor({
                 </button>
               </p>
             ) : null}
+            {rankLocked ? (
+              <div className="card-entry__identity" data-testid="student-owned-rank">
+                {rankHint?.startsWith('Not set yet') ? (
+                  <strong>Not set yet</strong>
+                ) : (
+                  <RankBelt student={{ belt: draft.belt, stripes: draft.stripes ?? 0, lastPromotion: draft.lastPromotion }} />
+                )}
+                <p className="roster-edit__hint">{rankHint ?? 'Set by the student'}</p>
+              </div>
+            ) : null}
             {studentRoster || !noPhotos ? null : (
               <p className="roster-edit__hint card-entry__note" data-testid="editor-no-photos">
                 <strong>No photos</strong> · photos are off for this student.
@@ -1458,6 +1483,7 @@ function StudentEditor({
             <div className="card-entry__body">
               {linkedStudent ? null : (
               <>
+              {rankLocked ? null : (
               <fieldset className="roster-edit__belts card-entry__rack" ref={rackRef}>
                 <legend>Belt rank</legend>
                 <p className="roster-edit__hint">
@@ -1506,6 +1532,7 @@ function StudentEditor({
                   />
                 </label>
               </fieldset>
+              )}
               <div className="card-entry__facts">
                 <label className="card-entry__cell">
                   Division
@@ -1528,6 +1555,7 @@ function StudentEditor({
                   />
                 </label>
               </div>
+              {rankLocked ? null : (
               <div className="roster-edit__promotion card-entry__facts">
                 <label className="roster-edit__promotion-date card-entry__cell">
                   Last promotion
@@ -1569,6 +1597,7 @@ function StudentEditor({
                   </label>
                 ) : null}
               </div>
+              )}
               </>
               )}
               {!studentRoster && competitorId ? <CompetitorWorkspace competitorId={competitorId} /> : null}

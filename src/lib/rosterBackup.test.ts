@@ -176,26 +176,37 @@ describe('full roster backup format', () => {
     assert.equal(parsed.newerSchema, true);
   });
 
-  it('updates belt and profile for the same linked student when linkedProfile is incoming', () => {
+  it('updates name and gym from an instructor copy, but belt only from a newer student rank', () => {
     const local = sources([
       student({ id: 'h1', name: 'Haven', belt: 'White', division: '', gym: '', linkedStudentId: 'stu-haven', note: 'Coach note' }),
     ]);
-    const incoming = buildRosterBackup(
+    const instructorCopy = buildRosterBackup(
       sources([
         student({ id: 'h2', name: 'Haven Cole', belt: 'Blue', division: 'Kids', gym: 'GB', stripes: 2, linkedStudentId: 'stu-haven', note: 'Should not replace' }),
       ]),
       { scope: 'shared', now },
     );
-    const blanks = mergeRosterBackup(local, incoming, { now: now.getTime() });
+    const blanks = mergeRosterBackup(local, instructorCopy, { now: now.getTime() });
     assert.equal(blanks.next.roster.students[0].belt, 'White', 'default merge still fills blanks only');
     assert.equal(blanks.next.roster.students[0].note, 'Coach note');
-    const updated = mergeRosterBackup(local, incoming, { now: now.getTime(), linkedProfile: 'incoming' });
+    const profileOnly = mergeRosterBackup(local, instructorCopy, { now: now.getTime(), linkedProfile: 'incoming' });
+    const withoutRank = profileOnly.next.roster.students[0];
+    assert.equal(withoutRank.belt, 'White', 'instructor submit must not overwrite belt');
+    assert.equal(withoutRank.name, 'Haven Cole');
+    assert.equal(withoutRank.division, 'Kids');
+    assert.equal(withoutRank.gym, 'GB');
+    assert.equal(withoutRank.note, 'Coach note');
+    const fromStudent = buildRosterBackup(
+      sources([
+        student({ id: 'h3', name: 'Haven Cole', belt: 'Blue', division: 'Kids', gym: 'GB', stripes: 2, linkedStudentId: 'stu-haven', studentRankAt: 50 }),
+      ]),
+      { scope: 'shared', now },
+    );
+    const updated = mergeRosterBackup(local, fromStudent, { now: now.getTime(), linkedProfile: 'incoming' });
     const haven = updated.next.roster.students[0];
     assert.equal(haven.belt, 'Blue');
-    assert.equal(haven.name, 'Haven Cole');
-    assert.equal(haven.division, 'Kids');
-    assert.equal(haven.gym, 'GB');
     assert.equal(haven.stripes, 2);
+    assert.equal(haven.studentRankAt, 50);
     assert.equal(haven.note, 'Coach note');
     assert.equal(haven.id, 'h1');
   });

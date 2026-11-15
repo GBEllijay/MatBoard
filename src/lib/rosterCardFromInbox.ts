@@ -12,9 +12,11 @@ import {
   isArchivedStudent,
   isStudentRosterCard,
   linkRosterCard,
+  markRosterRankUnset,
   updateStudent,
   type Student,
   type StudentDraft,
+  type StudentWriteOptions,
 } from './rosterStore.ts';
 import { normalizeRosterPersonName } from './rosterPersonName.ts';
 export { normalizeRosterPersonName } from './rosterPersonName.ts';
@@ -23,7 +25,7 @@ import { isStableStudentId } from './studentIdentity.ts';
 export type InboxRoster = {
   students: readonly Student[];
   add(draft: StudentDraft, options: { rosterList: 'student' }): Student | null;
-  update(id: string, draft: Partial<StudentDraft>): Student | null;
+  update(id: string, draft: Partial<StudentDraft>, options?: StudentWriteOptions): Student | null;
   link(id: string, studentId: string): Student | null;
 };
 
@@ -114,10 +116,17 @@ export function ensureRosterCardForStudent(
   if (!draft) return { status: 'skipped', reason: 'invalid-card' };
   let card = roster.add(draft, { rosterList: 'student' });
   if (!card) return { status: 'skipped', reason: 'invalid-card' };
-  if (identity.stripes != null) card = roster.update(card.id, { stripes: identity.stripes }) ?? card;
   const linked = card.linkedStudentId === studentId ? card : roster.link(card.id, studentId) ?? card;
   if (!linked.linkedStudentId) return { status: 'skipped', reason: 'invalid-card' };
-  return { status: 'created', card: linked };
+  const hasStudentBelt = Boolean(identity.belt?.trim());
+  if (hasStudentBelt) {
+    const patch: Partial<StudentDraft> = { belt: identity.belt };
+    if (identity.stripes != null) patch.stripes = identity.stripes;
+    card = roster.update(linked.id, patch, { source: 'student-submission' }) ?? linked;
+    return { status: 'created', card };
+  }
+  const unset = markRosterRankUnset(linked.id) ?? { ...linked, rankUnset: true };
+  return { status: 'created', card: unset };
 }
 
 export function identityFromAssessment(item: InstructorAssessmentItem): InboxStudentIdentity {

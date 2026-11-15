@@ -5,6 +5,7 @@
  * sendBeltProgress, setCardComms, notices. This file adds no transport of its own.
  * Private coach notes live under their own key and only reach the coach's own backup.
  */
+import { rosterRankHint, studentOwnsRosterRank } from '../../lib/studentOwnedRank';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sheet } from '../Sheet';
 import { CoachClipboardCard, type AssessmentView } from './CoachClipboardCard';
@@ -383,7 +384,9 @@ export function RosterCardBody({
         gymLogo={gymLogo}
         belt={belt}
         onEditBelt={onEditBelt}
-        beltLine={belt.meta}
+        rankLocked={studentOwnsRosterRank(student)}
+        rankNote={rosterRankHint(student)}
+        beltLine={student.rankUnset ? 'Not set yet' : belt.meta}
         dates={dates}
         startedOn={record.trainingStartedOn}
         onStartedOn={(value) => updateRosterCard(student.id, (row) => ({ ...row, trainingStartedOn: value }))}

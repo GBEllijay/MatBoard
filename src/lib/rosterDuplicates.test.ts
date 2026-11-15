@@ -6,7 +6,8 @@ import {
   mergeDuplicateRosterCardsOnDevice,
   mergeDuplicateStudents,
 } from './rosterDuplicates.ts';
-import { addStudent, getRoster, isArchivedStudent, linkRosterCard, resetRoster } from './rosterStore.ts';
+import { addStudent, getRoster, isArchivedStudent, linkRosterCard,
+  updateStudent, resetRoster } from './rosterStore.ts';
 
 test('findRosterDuplicates groups by student id, then by normalized name', () => {
   resetRoster();
@@ -28,7 +29,10 @@ test('mergeDuplicateStudents keeps the chosen card, fills blanks, and archives t
   resetRoster();
   const keep = addStudent({ name: 'Haven', belt: 'White', division: '', gym: '', lastPromotion: '', lastPromotionDetail: '', note: 'Coach note' }, { rosterList: 'student' })!;
   const drop = addStudent({ name: 'Haven', belt: 'Blue', division: 'Kids', gym: 'GB', lastPromotion: '', lastPromotionDetail: '', note: '' }, { rosterList: 'student' })!;
+  linkRosterCard(keep.id, 'stu-haven');
   linkRosterCard(drop.id, 'stu-haven');
+  updateStudent(keep.id, { belt: 'White' }, { source: 'student-submission', now: 10 });
+  updateStudent(drop.id, { belt: 'Blue' }, { source: 'student-submission', now: 40 });
   const merged = mergeDuplicateStudents(getRoster().students, keep.id, drop.id);
   assert.ok(merged.ok);
   if (!merged.ok) return;
@@ -37,7 +41,7 @@ test('mergeDuplicateStudents keeps the chosen card, fills blanks, and archives t
   assert.equal(merged.kept.division, 'Kids');
   assert.equal(merged.kept.gym, 'GB');
   assert.equal(merged.kept.linkedStudentId, 'stu-haven');
-  assert.equal(merged.kept.belt, 'White', 'the kept card wins conflicts');
+  assert.equal(merged.kept.belt, 'Blue', 'newest student belt wins even if the owner kept the other card');
   assert.ok(isArchivedStudent(merged.dropped));
   const device = mergeDuplicateRosterCardsOnDevice(keep.id, drop.id);
   assert.ok(device.ok);

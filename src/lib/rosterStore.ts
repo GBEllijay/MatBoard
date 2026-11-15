@@ -33,6 +33,7 @@ import {
 import { competitorCardLinks, readRosterCard } from './rosterCardStore.ts';
 import { recordCheckIn, recordStudentAdded, recordStudentArchived, recordStudentDeleted, recordStudentRestored } from './gymEventLog.ts';
 import { isStableStudentId } from './studentIdentity.ts';
+import { studentOwnsRosterRank } from './studentOwnedRank.ts';
 import { isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 export const STORAGE_KEY = 'matboard.roster.v1';
@@ -105,10 +106,21 @@ export type Student = {
    */
   guestId?: string;
   /**
-   * Stripes on the belt the coach last saved. Omitted on older cards.
-   * 0 means the coach saved the belt with no stripe. This is not a checklist.
+   * Stripes on the belt. Omitted on older cards.
+   * 0 means the belt was saved with no stripe. This is not a checklist.
+   * On a linked student card, only the student's own share or assessment may set this.
    */
   stripes?: number;
+  /**
+   * True when this linked card was created before the student sent a belt.
+   * The editor shows "Not set yet" instead of the placeholder White belt.
+   */
+  rankUnset?: boolean;
+  /**
+   * When belt and stripes last came from the student's own card share,
+   * self-assessment, or update file. Omitted until then.
+   */
+  studentRankAt?: number;
   /**
    * Coach sync for this student. Omitted means on (older cards keep sending).
    * 'off' keeps the card fully local: no rank, competition, belt progress,
@@ -629,6 +641,7 @@ export function normalizeStudent(raw: unknown): Student | null {
   if (card.guestId) delete card.assignedInstructorId;
   copySyncSettings(row, card);
   copyArchive(row, card);
+  copyStudentRank(row, card);
   return card;
 }
 
@@ -640,6 +653,13 @@ function copyArchive(from: Partial<Student>, to: Student): void {
   if (typeof from.archivedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(from.archivedAt)) return;
   to.archivedAt = from.archivedAt;
   if (ARCHIVE_REASONS.some((reason) => reason === from.archivedReason)) to.archivedReason = from.archivedReason;
+}
+
+function copyStudentRank(from: Partial<Student>, to: Student): void {
+  if (from.rankUnset === true) to.rankUnset = true;
+  if (typeof from.studentRankAt === 'number' && Number.isFinite(from.studentRankAt) && from.studentRankAt > 0) {
+    to.studentRankAt = from.studentRankAt;
+  }
 }
 
 function copySyncSettings(from: Partial<Student>, to: Student): void {
@@ -994,24 +1014,50 @@ function importedRosterCard(row: Student, list: 'student' | 'competitor', used: 
   return competitor;
 }
 
-export function updateStudent(id: string, draft: Partial<StudentDraft>): Student | null {
+export type StudentWriteOptions = { source?: 'editor' | 'student-submission' | 'follow-student-rank'; now?: number };
+
+export function updateStudent(id: string, draft: Partial<StudentDraft>, options: StudentWriteOptions = {}): Student | null {
   const current = state.students.find((row) => row.id === id);
   if (!current) return null;
+  const lockRank = studentOwnsRosterRank(current) && options.source !== 'student-submission' && options.source !== 'follow-student-rank';
   const next = studentFromInput({
     id: current.id,
     name: draft.name ?? current.name,
-    belt: draft.belt ?? current.belt,
+    belt: lockRank ? current.belt : (draft.belt ?? current.belt),
     division: draft.division ?? current.division,
     gym: draft.gym ?? current.gym,
     photo: draft.photo !== undefined ? draft.photo : current.photo,
-    lastPromotion: draft.lastPromotion ?? current.lastPromotion,
-    lastPromotionDetail:
-      draft.lastPromotionDetail !== undefined ? draft.lastPromotionDetail : current.lastPromotionDetail,
+    lastPromotion: lockRank ? current.lastPromotion : (draft.lastPromotion ?? current.lastPromotion),
+    lastPromotionDetail: lockRank
+      ? current.lastPromotionDetail
+      : draft.lastPromotionDetail !== undefined
+        ? draft.lastPromotionDetail
+        : current.lastPromotionDetail,
     note: draft.note ?? current.note,
     checkedIn: current.checkedIn,
   });
   if (!next) return null;
-  const card = preserveRosterCard(current, next, draft);
+  const card = preserveRosterCard(current, next, lockRank ? { ...draft, stripes: undefined } : draft);
+  copyStudentRank(current, card);
+  if (options.source === 'student-submission' && studentOwnsRosterRank(card)) {
+    const hasBelt = Boolean(draft.belt?.trim());
+    const hasStripes = draft.stripes !== undefined && (draft.stripes > 0 || hasBelt);
+    if (hasBelt || hasStripes) {
+      card.studentRankAt = options.now ?? Date.now();
+      delete card.rankUnset;
+    }
+  }
+  commit(sortStudents(state.students.map((row) => (row.id === id ? card : row))));
+  return card;
+}
+
+/** Placeholder White stays stored, but the card displays as "Not set yet" until the student sends a belt. */
+export function markRosterRankUnset(id: string): Student | null {
+  const current = state.students.find((row) => row.id === id);
+  if (!current) return null;
+  if (current.studentRankAt) return current;
+  if (current.rankUnset) return current;
+  const card: Student = { ...current, rankUnset: true };
   commit(sortStudents(state.students.map((row) => (row.id === id ? card : row))));
   return card;
 }
@@ -1025,6 +1071,7 @@ function preserveRosterCard(current: Student, next: Student, draft: Partial<Stud
   if (stripes !== undefined) card.stripes = stripes;
   copySyncSettings(current, card);
   copyArchive(current, card);
+  copyStudentRank(current, card);
   // No photos: an editor upload never lands on the card.
   if (card.noPhotos) card.photo = '';
   return card;
@@ -1097,7 +1144,7 @@ export function fillBlankCompetitorFromLinkedStudent(
   if (!student) return competitor;
   const patch = blankCompetitorPatch(competitor, student, readRosterCard(student.id, storage));
   if (!patch) return competitor;
-  return updateStudent(competitorId, patch) ?? competitor;
+  return updateStudent(competitorId, patch, { source: 'follow-student-rank' }) ?? competitor;
 }
 
 /** One-time: this competitor card is the same person as a Student Roster card. */

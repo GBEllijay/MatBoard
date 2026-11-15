@@ -6,11 +6,12 @@ import {
   type DupableStudent,
   type RosterDupeGroup,
 } from '../lib/rosterDuplicates';
+import { rosterRankLabel } from '../lib/studentOwnedRank';
 import { getRoster, subscribeRoster } from '../lib/rosterStore';
 
 function label(row: DupableStudent): string {
-  const belt = row.belt || 'No belt';
-  const stripes = row.stripes ? ` · ${row.stripes} stripes` : '';
+  const belt = rosterRankLabel(row) || 'No belt';
+  const stripes = row.rankUnset ? '' : row.stripes ? ` · ${row.stripes} stripes` : '';
   const linked = row.linkedStudentId ? ' · linked' : '';
   return `${row.name} · ${belt}${stripes}${linked}`;
 }
@@ -86,7 +87,7 @@ export function AcademyRosterDupes({ cloud, onRefreshCloud }: { cloud: GymRoster
   return (
     <div className="roster__dupes" data-roster-dupes="">
       <h3>Possible duplicate cards</h3>
-      <p>These look like the same student. Keep one card; the other is archived. Only you can do this.</p>
+      <p>These look like the same student. Keep one card; the other is archived. Only you can do this. The belt stays whatever the student last sent — you are not choosing a belt.</p>
       {local.length ? (
         <>
           <h4>On this phone</h4>

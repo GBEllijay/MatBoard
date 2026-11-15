@@ -16,6 +16,7 @@
  */
 
 import { fillAssignedInstructor, isInstructorId } from './instructorIdentity.ts';
+import { isNewerStudentRank } from './studentOwnedRank.ts';
 import {
   type CoachInboxItemLike,
   type RosterCardFile,
@@ -46,6 +47,8 @@ export type BackupStudent = {
   assignedInstructorId?: string;
   guestId?: string;
   stripes?: number;
+  rankUnset?: boolean;
+  studentRankAt?: number;
   /** Roster sync layer: 'off' keeps the card local. */
   coachSync?: 'off';
   parentPhotoApproval?: true;
@@ -100,6 +103,8 @@ export function lightNormalizeRoster(raw: unknown): BackupRoster {
     if (isInstructorId(s.assignedInstructorId) && !student.guestId) student.assignedInstructorId = s.assignedInstructorId;
     // Same ceiling as rosterStore ROSTER_STRIPE_CAP (kids belts store up to 11 tapes).
     if (typeof s.stripes === 'number' && Number.isInteger(s.stripes) && s.stripes >= 0 && s.stripes <= 11) student.stripes = s.stripes;
+    if (s.rankUnset === true) student.rankUnset = true;
+    if (typeof s.studentRankAt === 'number' && Number.isFinite(s.studentRankAt) && s.studentRankAt > 0) student.studentRankAt = s.studentRankAt;
     if (s.coachSync === 'off') student.coachSync = 'off';
     if (s.parentPhotoApproval === true) student.parentPhotoApproval = true;
     if (typeof s.cardPhotoId === 'string' && ID_RE.test(s.cardPhotoId)) student.cardPhotoId = s.cardPhotoId;
@@ -442,12 +447,17 @@ function fillStudent(local: BackupStudent, incoming: BackupStudent, linkedProfil
   const samePerson =
     Boolean(local.linkedStudentId && incoming.linkedStudentId && local.linkedStudentId === incoming.linkedStudentId);
   if (samePerson && linkedProfile === 'incoming') {
-    // Instructor and academy copies of the same Student Edition id: newest profile wins.
+    // Name, division, and gym may follow a later instructor/academy copy.
+    // Belt and stripes follow only a newer student-owned submission, never a coach edit.
     if (incoming.name?.trim()) next.name = incoming.name;
-    if (incoming.belt?.trim()) next.belt = incoming.belt;
     if (incoming.division?.trim()) next.division = incoming.division;
     if (incoming.gym?.trim()) next.gym = incoming.gym;
-    if (incoming.stripes !== undefined && (incoming.stripes > 0 || incoming.belt?.trim())) next.stripes = incoming.stripes;
+    if (isNewerStudentRank(incoming, local)) {
+      if (incoming.belt?.trim()) next.belt = incoming.belt;
+      if (incoming.stripes !== undefined && (incoming.stripes > 0 || incoming.belt?.trim())) next.stripes = incoming.stripes;
+      if (incoming.studentRankAt) next.studentRankAt = incoming.studentRankAt;
+      delete next.rankUnset;
+    }
   }
   // The chosen card photo id travels with the photo it names.
   if (!local.photo && next.photo && incoming.cardPhotoId && !next.cardPhotoId) next.cardPhotoId = incoming.cardPhotoId;

@@ -117,14 +117,15 @@ export function rankFieldsChanged(
   );
 }
 
-/** Unlinked cards never offer a send. A linked card offers one only after a real change. */
+/**
+ * The coach never sends a rank update. Linked students set their own belt in
+ * their app, and the roster follows their card share or assessment.
+ */
 export function rankSendOffer(
-  before: Pick<Student, 'belt' | 'lastPromotion' | 'stripes' | 'linkedStudentId'>,
-  after: Pick<Student, 'belt' | 'lastPromotion' | 'stripes' | 'linkedStudentId'>,
+  _before: Pick<Student, 'belt' | 'lastPromotion' | 'stripes' | 'linkedStudentId'>,
+  _after: Pick<Student, 'belt' | 'lastPromotion' | 'stripes' | 'linkedStudentId'>,
 ): 'send' | 'noop' {
-  if (!after.linkedStudentId) return 'noop';
-  if (!rankFieldsChanged(before, after)) return 'noop';
-  return 'send';
+  return 'noop';
 }
 
 export function buildCoachRankUpdate(input: {

@@ -111,7 +111,7 @@ export function PendingCardShares({ roster, title = 'Student cards waiting' }: {
   return (
     <section aria-label={title}>
       <h3>{title}</h3>
-      <p>Shared student cards are added to the roster automatically, and an existing card is updated with the latest belt and profile. A shared photo waits for the head coach. You can remove a card from the roster if it was added by mistake.</p>
+      <p>Shared student cards are added to the roster automatically, and an existing card is updated with the latest belt and profile the student sent. Belt and stripes are set by the student, not the instructor. A shared photo waits for the head coach. You can remove a card from the roster if it was added by mistake.</p>
       {shares.map((share) => {
         const existing = linkedRosterCardForStudent(roster, share.studentId);
         return (
@@ -254,7 +254,7 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
   return (
     <div aria-label="Student updates waiting">
       <h3>Student updates waiting</h3>
-      <p>Adding fills only blank fields on the linked card, including a blank bout division from an entered tournament. Tournaments, weight, and opponent cards are kept with the student's updates. Belt and stripes change only when you approve them. Dismiss leaves that file off the card.</p>
+      <p>Adding fills only blank fields on the linked card, including a blank bout division from an entered tournament. Tournaments, weight, and opponent cards are kept with the student's updates. Belt and stripes in the file update the card automatically — they are set by the student. Dismiss leaves that file off the card.</p>
       {updates.map((update) => {
         const card = roster.find((row) => row.linkedStudentId === update.studentId && !row.guestId);
         const tournaments = update.competition?.tournaments ?? [];
@@ -316,10 +316,10 @@ export function PendingStudentUpdates({ roster, onStatus }: { roster: readonly S
                 onClick={() => {
                   const result = applyStudentUpdate(update.updateId, true);
                   const cards = update.scouting?.cards.length ? ` Opponent cards kept: ${update.scouting.cards.length}.` : '';
-                  done(result.ok ? `Added. Belt and stripes approved.${cards}` : result.reason === 'not-allowed' ? 'Only a Coach seat or the owner can approve belt changes.' : `Could not add (${result.reason}).`);
+                  done(result.ok ? `Added. The student's belt and stripes were applied.${cards}` : result.reason === 'not-allowed' ? 'Only a Coach seat or the owner can approve belt changes.' : `Could not add (${result.reason}).`);
                 }}
               >
-                Add and approve belt
+                Add, including the student's belt
               </button>
             ) : null}
             <button

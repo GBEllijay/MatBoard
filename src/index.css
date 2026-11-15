@@ -20497,3 +20497,22 @@ a.plan-pick {
   margin: 6px 0;
 }
 
+
+.clipboard__rank-note,
+.roster-card__rank-note,
+.roster-edit__hint {
+  /* rank note color stays with surrounding card text */
+}
+.clipboard__rank-note {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: inherit;
+}
+.clipboard__rank-unset,
+.roster-card__rank-unset {
+  font-weight: 650;
+}
+.roster-card__rank-note {
+  margin-left: 8px;
+  font-size: 0.8rem;
+}

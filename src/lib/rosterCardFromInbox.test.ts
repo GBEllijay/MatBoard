@@ -7,6 +7,7 @@ import {
   linkedRosterCardForStudent,
   normalizeRosterPersonName,
 } from './rosterCardFromInbox.ts';
+import { rosterRankLabel } from './studentOwnedRank.ts';
 import { acceptCardShare, receiveCardShare, type CardShareRoster } from './coachStudentInbox.ts';
 import { assessmentItemId } from './instructorAssessments.ts';
 import { createStudentCardShare } from './studentCardShare.ts';
@@ -51,6 +52,8 @@ test('ensureRosterCardForStudent creates a linked card from an assessment and is
   if (first.status !== 'created') return;
   assert.equal(first.card.name, 'Haven');
   assert.equal(first.card.belt, 'White');
+  assert.equal(first.card.rankUnset, true);
+  assert.equal(rosterRankLabel(first.card), 'Not set yet');
   assert.equal(first.card.rosterList, 'student');
   assert.equal(first.card.linkedStudentId, 'stu-haven');
   const second = ensureRosterCardForStudent({ studentId: 'stu-haven', name: 'Haven' }, { actor: 'owner' });
@@ -132,6 +135,8 @@ test('a later card share accepted as new merges into the auto-created linked car
   assert.equal(accepted.card.id, made.card.id);
   assert.equal(accepted.card.linkedStudentId, 'stu-haven');
   assert.equal(accepted.card.belt, 'Blue', 'the shared belt replaces the auto-default White');
+  assert.equal(accepted.card.rankUnset, undefined);
+  assert.ok((accepted.card.studentRankAt ?? 0) > 0);
   assert.equal(accepted.card.stripes, 2);
   assert.equal(accepted.card.division, 'Kids');
   assert.equal(accepted.card.gym, 'GB Ellijay');
@@ -143,12 +148,12 @@ test('a later card share accepted as new merges into the auto-created linked car
 test('a share with no division or gym leaves coach-set values, and a name-only share does not zero stripes', () => {
   resetRoster();
   const made = ensureRosterCardForStudent(
-    { studentId: 'stu-haven', name: 'Haven', division: 'Kids', gym: 'GB Ellijay', stripes: 2 },
+    { studentId: 'stu-haven', name: 'Haven', belt: 'White', division: 'Kids', gym: 'GB Ellijay', stripes: 2 },
     { actor: 'owner' },
   );
   assert.equal(made.status, 'created');
   if (made.status !== 'created') return;
-  const primed = updateStudent(made.card.id, { division: 'Kids', gym: 'GB Ellijay', stripes: 2 })!;
+  const primed = updateStudent(made.card.id, { division: 'Kids', gym: 'GB Ellijay' })!;
   assert.equal(primed.stripes, 2);
   const storage = testMemory();
   const named = createStudentCardShare({

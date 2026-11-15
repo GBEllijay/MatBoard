@@ -641,7 +641,7 @@ export function studentUpdateRankPatch(update: StudentCoachUpdate): Partial<Stud
 
 export type UpdateRoster = {
   students: readonly Student[];
-  update(id: string, draft: Partial<StudentDraft>): Student | null;
+  update(id: string, draft: Partial<StudentDraft>, options?: { source?: 'editor' | 'student-submission'; now?: number }): Student | null;
 };
 
 export type UpdateApply =
@@ -650,8 +650,8 @@ export type UpdateApply =
 
 /**
  * Apply a student update to the card linked to that student ID.
- * Blanks fill. Belt and stripes change only with `approveRank` from a seat
- * that may accept student cards.
+ * Blanks fill. Belt and stripes in the student's file apply automatically;
+ * the instructor does not approve or change them.
  */
 export function applyStudentCoachUpdate(
   storage: Store,
@@ -667,12 +667,14 @@ export function applyStudentCoachUpdate(
   if (!card) return { ok: false, reason: 'no-linked-card' };
   const patch: Partial<StudentDraft> = studentUpdateFillPatch(card, update);
   const rank = studentUpdateRankPatch(update);
-  let rankState: 'approved' | 'not-approved' | 'none' = rank ? 'not-approved' : 'none';
-  if (rank && options.approveRank) {
+  let rankState: 'approved' | 'not-approved' | 'none' = 'none';
+  if (rank) {
     Object.assign(patch, rank);
     rankState = 'approved';
   }
-  const saved = Object.keys(patch).length ? roster.update(card.id, patch) ?? card : card;
+  const saved = Object.keys(patch).length
+    ? roster.update(card.id, patch, { source: 'student-submission', now: options.now }) ?? card
+    : card;
   writeUpdates(storage, {
     pending: state.pending.filter((row) => row.updateId !== updateId),
     decided: [...state.decided, { updateId, decision: 'applied' as const, at: options.now ?? Date.now() }].slice(-200),
