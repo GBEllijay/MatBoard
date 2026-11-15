@@ -40,12 +40,12 @@ test('center Home logo stays larger than the corner back logo', async ({ page })
     await page.setViewportSize(viewport);
     for (const route of ROUTES) {
       await page.goto(route);
-      const back = page.locator('.play-exit img');
+      const back = page.locator('.play-exit .back-btn img, .play-exit img');
       const home = page.locator('.tier-home img, .home__logo');
       await expect(back, route).toBeVisible();
       await expect(home, route).toBeVisible();
       const ratio = await page.evaluate(() => {
-        const backImg = document.querySelector('.play-exit img');
+        const backImg = document.querySelector('.play-exit .back-btn img, .play-exit img');
         const homeImg = document.querySelector('.tier-home img') ?? document.querySelector('.home__logo');
         if (!(backImg instanceof HTMLElement) || !(homeImg instanceof HTMLElement)) return 0;
         const backWidth = backImg.getBoundingClientRect().width;
@@ -116,7 +116,7 @@ async function readMarks(page: Page) {
       b: { left: number; right: number; top: number; bottom: number } | null,
     ) => Boolean(a && b && a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1);
     const home = document.querySelector('.tier-home img') ?? document.querySelector('.home__logo');
-    const back = document.querySelector('.play-exit img');
+    const back = document.querySelector('.play-exit .back-btn img, .play-exit img');
     const homeBox = box(home);
     const backBox = box(back);
     const onMark = (rect: { left: number; top: number; width: number; height: number } | null, mark: Element | null) => {
@@ -136,14 +136,14 @@ async function readMarks(page: Page) {
   });
 }
 
-test('Home and back marks scroll away and return at the top', async ({ page }) => {
+test('Home logo scrolls away; the Back mark stays pinned at the top left', async ({ page }) => {
   await unlock(page);
   for (const viewport of PIN_VIEWPORTS) {
     await page.setViewportSize(viewport);
     for (const route of PIN_ROUTES) {
       await page.goto(route);
       const home = page.locator('.tier-home img, .home__logo').first();
-      const back = page.locator('.play-exit img');
+      const back = page.locator('.play-exit .back-btn img, .play-exit img');
       await expect(home, route).toBeVisible();
       await expect(back, route).toBeVisible();
       const before = await readMarks(page);
@@ -173,7 +173,8 @@ test('Home and back marks scroll away and return at the top', async ({ page }) =
       });
       const after = await readMarks(page);
       expect((after.home?.top ?? 0) < (before.home?.top ?? 0) - 30, `${route} home scrolls up`).toBe(true);
-      expect((after.back?.top ?? 0) < (before.back?.top ?? 0) - 30, `${route} back scrolls up`).toBe(true);
+      expect(Math.abs((after.back?.top ?? 0) - (before.back?.top ?? 0)), `${route} back stays pinned`).toBeLessThan(2);
+      expect(Math.abs((after.back?.left ?? 0) - (before.back?.left ?? 0)), `${route} back stays left`).toBeLessThan(2);
       expect(after.homeOverBoard, `${route} logo covers the scoreboard`).toBe(false);
       await page.evaluate(() => {
         const root = document.scrollingElement;

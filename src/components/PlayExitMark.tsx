@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { BackButton } from './BackButton';
 import { useHoldPress } from '../hooks/useHoldPress';
 import { exitPageFullscreen } from '../lib/fullscreen';
 import {
@@ -21,7 +22,7 @@ type Props = {
 };
 
 /**
- * Top-left Advantage mark on play and manage screens.
+ * Top-left Back mark on play and manage screens.
  * Short press keeps today's parent exit. Long press goes to the public home page.
  * Hub screens use HomeMark (a single brand link), not this control.
  * Score-box holds and folder-row drags are different targets, so they do not share this gesture.
@@ -137,7 +138,7 @@ export function PlayExitMark({ onExit, to = PLAY_EXIT_HOME }: Props) {
         onExit();
       }}
     >
-      <img src="/advantage-icon.png" alt="" draggable={false} width={713} height={713} />
+      <BackButton />
     </Link>
   );
 }

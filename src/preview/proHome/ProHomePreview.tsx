@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BeltHeader } from '../../components/BeltHeader';
 import { BeltRail } from '../../components/BeltRail';
+import { BackButton } from '../../components/BackButton';
 import { HomeMark } from '../../components/HomeMark';
 import { PRODUCTS_PATH } from '../../lib/productNames';
 import {
@@ -46,7 +47,7 @@ export function ProHomePreviewPage() {
           </>
         ) : (
           <Link className="play-exit" to={PRODUCTS_PATH} aria-label="Back">
-            <img src="/advantage-icon.png" alt="" width={44} height={44} />
+            <BackButton />
           </Link>
         )}
         {before ? null : <HomeMark />}

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { BackButton } from './BackButton';
 import { historyBackStep } from '../lib/historyBack';
 
 type Props = {
@@ -7,8 +8,8 @@ type Props = {
 };
 
 /**
- * Top-left Advantage mark that goes back one page in history.
- * Same look and corner as PlayExitMark (.play-exit). Center HomeMark stays the Home link.
+ * Top-left Back mark that goes back one page in history.
+ * Same corner and hit target as PlayExitMark (.play-exit). Center HomeMark stays the Home link.
  * The href is the fallback so it still works without JS and on middle-click.
  */
 export function HistoryBackMark({ fallback }: Props) {
@@ -29,7 +30,7 @@ export function HistoryBackMark({ fallback }: Props) {
         navigate(step);
       }}
     >
-      <img src="/advantage-icon.png" alt="" draggable={false} width={713} height={713} />
+      <BackButton />
     </Link>
   );
 }

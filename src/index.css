@@ -3382,6 +3382,18 @@ span.role-plan__mark {
     width: max(var(--mark-home), clamp(6.4rem, 12vw, 9.6rem));
   }
 
+  /* Instructor / suite left column: logo stays centered over the Advantage wordmark
+     at every width. Corner Back / Account are fixed and must not shift this mark.
+     /products keeps its own brand layout. */
+  .home__inner:has(> .suite > .belt-header) > .home__mark {
+    text-align: center;
+  }
+
+  .home__inner:has(> .suite > .belt-header) > .home__mark .home__logo {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .home h1 {
     font-size: clamp(2.05rem, 3.5vw, 3.15rem);
   }
@@ -3758,23 +3770,26 @@ span.role-plan__mark {
   z-index: 46;
 }
 
-/* Page back mark. It leads the page and scrolls away with it.
-   Timer, cast, and fullscreen boards pin their own copy below. */
+/* Page back mark. Pinned top-left in the header row at every width,
+   including Instructor suite pages, so it does not drift in the grid gutter. */
 .play-exit {
-  position: relative;
-  top: auto;
-  left: auto;
-  z-index: 1;
+  position: fixed;
+  top: calc(0.2rem + var(--safe-t));
+  left: calc(0.15rem + var(--safe-l));
+  z-index: 40;
   align-self: flex-start;
   width: 64px;
-  height: 64px;
-  padding: 0;
-  margin: calc(0.35rem + var(--safe-t)) 0 0.2rem calc(0.35rem + var(--safe-l));
+  height: auto;
+  min-height: 64px;
+  padding: 0 0 0.15rem;
+  margin: 0;
   border: 0;
   border-radius: 18px;
   background: radial-gradient(circle at 50% 48%, rgba(8, 10, 16, 0.28) 0%, rgba(8, 10, 16, 0.1) 46%, transparent 70%);
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   opacity: 0.42;
   appearance: none;
   -webkit-appearance: none;
@@ -3793,7 +3808,18 @@ span.role-plan__mark {
   z-index: 45;
 }
 
-.play-exit img {
+.play-exit .back-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.play-exit img,
+.play-exit .back-btn img,
+.play-exit .back-btn svg {
   width: var(--mark-back);
   height: var(--mark-back);
   flex-shrink: 0;
@@ -3802,6 +3828,80 @@ span.role-plan__mark {
   pointer-events: none;
   user-select: none;
   filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.45)) drop-shadow(0 1px 6px rgba(0, 0, 0, 0.7));
+}
+
+.back-btn__label {
+  display: block;
+  margin-top: 0.1rem;
+  padding: 0 0.3rem 0.05rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: #f5f1e8;
+  background: rgba(8, 10, 16, 0.78);
+}
+
+/* Same family as the Home logo, distinguished by the raised-fist pose. */
+.play-exit:has(.back-btn) {
+  opacity: 1;
+  background: none;
+}
+
+/* Top-right Sign in / Account. Pairs with the pinned Back mark as a header row. */
+.header-account {
+  position: fixed;
+  top: calc(0.35rem + var(--safe-t));
+  right: calc(0.35rem + var(--safe-r));
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.35rem 0.7rem 0.35rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 241, 232, 0.28);
+  background: #1A2740;
+  color: #F5F1E8;
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+  touch-action: manipulation;
+}
+
+.header-account__icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.header-account:focus-visible {
+  outline: 2px solid rgba(240, 194, 75, 0.55);
+  outline-offset: 2px;
+}
+
+.header-account:active {
+  opacity: 0.8;
+}
+
+/* Keep the in-flow Home logo clear of the pinned back mark on a narrow column. */
+@media (max-width: 739px) {
+  .home__inner:has(> .play-exit) {
+    padding-top: calc(0.5rem + var(--safe-t) + 80px);
+  }
+}
+
+/* Timer gym logo already sits in the top-right corner. Park Account just left of it. */
+body:has(.training__gym-logo) .header-account {
+  right: calc(0.55rem + 64px + var(--safe-r));
+}
+
+body:has(.training__gym-logo) .training--gym-logo .play-fs-slot,
+body:has(.header-account):has(.training__gym-logo) .play-fs-slot {
+  right: calc(0.55rem + 64px + 7.5rem + var(--safe-r));
 }
 
 .play-exit:focus-visible {
@@ -3929,9 +4029,14 @@ main.tree:has(> .tier-home) > .tree__bar {
 }
 
 
-.home .play-exit {
-  z-index: 30;
-  opacity: 0.9;
+.home .play-exit,
+.play-exit--history {
+  position: fixed;
+  top: calc(0.2rem + var(--safe-t));
+  left: calc(0.15rem + var(--safe-l));
+  z-index: 40;
+  margin: 0;
+  opacity: 0.94;
 }
 
 .techniques--play > .tier-home,
@@ -6836,10 +6941,12 @@ a.saver-folder--link {
   /* Phone landscape Controller: keep the Home mark small so it does not crowd Display / Cast. */
   .controller > .play-exit {
     width: 52px;
-    height: 52px;
+    height: auto;
+    min-height: 52px;
   }
 
-  .controller > .play-exit img {
+  .controller > .play-exit img,
+  .controller > .play-exit .back-btn img {
     width: 34px;
     height: 34px;
   }
@@ -7962,13 +8069,15 @@ a.saver-folder--link {
 .tournament--bright > .play-exit {
   opacity: 0.96;
   width: 52px;
-  height: 52px;
+  height: auto;
+  min-height: 52px;
   top: calc(0.28rem + var(--safe-t));
   left: calc(0.28rem + var(--safe-l));
   background: none;
 }
 
-.tournament--bright > .play-exit img {
+.tournament--bright > .play-exit img,
+.tournament--bright > .play-exit .back-btn img {
   width: 46px;
   height: 46px;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
@@ -8537,13 +8646,15 @@ a.saver-folder--link {
 .tournament--dark > .play-exit {
   opacity: 0.96;
   width: 52px;
-  height: 52px;
+  height: auto;
+  min-height: 52px;
   top: calc(0.28rem + var(--safe-t));
   left: calc(0.28rem + var(--safe-l));
   background: none;
 }
 
-.tournament--dark > .play-exit img {
+.tournament--dark > .play-exit img,
+.tournament--dark > .play-exit .back-btn img {
   width: 46px;
   height: 46px;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
@@ -19122,13 +19233,13 @@ a.plan-pick {
  * Corner logo is back. Center logo is Home, pinned at the top.
  * The page border reserves the band, so the title does not need extra padding.
  */
-@media (orientation: landscape) and (max-width: 1400px) {
-  .home__inner:has(> .play-exit) > .home__mark {
+@media (orientation: landscape), (min-width: 1100px) {
+  .home__inner:has(> .suite > .belt-header) > .home__mark {
     padding-top: 0;
     text-align: center;
   }
 
-  .home__inner:has(> .play-exit) > .home__mark .home__logo {
+  .home__inner:has(> .suite > .belt-header) > .home__mark .home__logo {
     margin-inline: auto;
   }
 }

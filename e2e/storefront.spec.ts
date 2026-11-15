@@ -172,7 +172,7 @@ test('Coach Unlimited landscape keeps the corner back off the center Home logo',
     await expect(back).toHaveAttribute('href', '/pro');
     await expect(home).toHaveAttribute('href', '/products');
     const overlap = await page.evaluate(() => {
-      const backImg = document.querySelector('.play-exit img');
+      const backImg = document.querySelector('.play-exit .back-btn img, .play-exit img');
       const homeImg = document.querySelector('.home__logo');
       if (!(backImg instanceof HTMLElement) || !(homeImg instanceof HTMLElement)) return true;
       const a = backImg.getBoundingClientRect();
