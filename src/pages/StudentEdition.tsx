@@ -173,7 +173,7 @@ export function StudentEditionPage() {
     } catch {
       code = raw;
     }
-    return <StudentLicenseClaimPage code={code} gymName={params.get('gym') ?? ''} />;
+    return <StudentLicenseClaimPage code={code} gymName={params.get('gym') ?? ''} initialEmail={params.get('email') ?? ''} />;
   }
   const open = studentEditionOpen(params, owner);
   if (!open) return <StudentClosed />;

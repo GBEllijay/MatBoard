@@ -17,12 +17,17 @@ import {
   type AccountRole,
 } from '../lib/emailLogin';
 import { INSTRUCTOR_PERMISSION_FIELDS, instructorPreset, normalizeInstructorPresetId } from '../lib/instructorSeats';
+import { looksLikeStudentInvite } from '../lib/studentLicensePool';
 import { fetchRestoreCheckConfig, loadTurnstile, type TurnstileApi } from '../lib/turnstile';
 import { isWhiteRestoreEmail, restoreWhiteByEmail } from '../lib/whiteUnlock';
 
-/** Top of the invite screen when someone opens an invite link or scans its QR code. */
+/** Top of the invite screen when someone opens an instructor invite link or scans its QR code. */
 export const INVITE_WELCOME =
   "You've been invited as an instructor. Enter the email this invite was sent to and choose a password.";
+
+/** Same screen, for a Student Edition invite link or QR. */
+export const INVITE_WELCOME_STUDENT =
+  "You've been invited to Student Edition. Enter the email this invite was sent to and choose a password.";
 
 /** The invite was already used to set a password for this email (409 from /api/login/invite). */
 export const INVITE_ALREADY_SET_UP = 'This email already has a password. Sign in with your email and password.';
@@ -479,7 +484,7 @@ export function AccountPage() {
                 <form className="buy__card" onSubmit={(event) => void onInvite(event)}>
                   {invited ? (
                     <p>
-                      <strong>{INVITE_WELCOME}</strong>
+                      <strong>{looksLikeStudentInvite(inviteCode) ? INVITE_WELCOME_STUDENT : INVITE_WELCOME}</strong>
                     </p>
                   ) : null}
                   <p>

@@ -249,11 +249,13 @@ test('a second try with the same invite answers 409, and the account page switch
   const account = readFileSync(new URL('../pages/Account.tsx', import.meta.url), 'utf8');
   assert.match(account, /result\.status === 409[\s\S]{0,200}setMode\('signin'\)[\s\S]{0,40}setNote\(INVITE_ALREADY_SET_UP\)/);
   assert.match(account, /INVITE_WELCOME/);
+  assert.match(account, /INVITE_WELCOME_STUDENT/);
 });
 
 test('after sign-in, an invite link or the homepage prompt goes back to the products page', async () => {
   const { accountReturnPath, accountInvitePath, ACCOUNT_SIGN_IN_FROM_HOME } = await import('./emailLogin.ts');
   assert.equal(accountInvitePath('a.b.c'), '/account?invite=a.b.c');
+  assert.equal(accountInvitePath('a.b.c', 'marty@gym.test'), '/account?invite=a.b.c&email=marty%40gym.test');
   assert.equal(accountReturnPath(new URLSearchParams('invite=a.b.c')), '/products');
   assert.equal(accountReturnPath(new URLSearchParams(ACCOUNT_SIGN_IN_FROM_HOME.split('?')[1])), '/products');
   assert.equal(accountReturnPath(new URLSearchParams('')), null, 'a plain visit to /account stays on the account page');

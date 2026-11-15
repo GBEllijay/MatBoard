@@ -41,8 +41,11 @@ export function accountReturnPath(params: URLSearchParams): '/products' | null {
 }
 
 /** Account page in invite mode with this invite filled in. The invite link and QR open it. */
-export function accountInvitePath(invite: string): string {
-  return `${ACCOUNT_PATH}?${new URLSearchParams({ invite }).toString()}`;
+export function accountInvitePath(invite: string, email = ''): string {
+  const params = new URLSearchParams({ invite });
+  const address = email.trim().slice(0, 320);
+  if (address && address.includes('@') && !/\s/.test(address)) params.set('email', address);
+  return `${ACCOUNT_PATH}?${params.toString()}`;
 }
 
 export type InviteGrant = {
