@@ -3817,6 +3817,7 @@ span.role-plan__mark {
   filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.45)) drop-shadow(0 1px 6px rgba(0, 0, 0, 0.7));
 }
 
+.play-exit .back-btn img,
 .play-exit .back-btn svg {
   width: 100%;
   height: 100%;
@@ -3824,9 +3825,9 @@ span.role-plan__mark {
   border-radius: 50%;
 }
 
-/* The penalty disc is the chrome, so drop the faint logo halo and keep the control readable. */
+/* Same family as the Home logo, distinguished by the raised-fist pose. */
 .play-exit:has(.back-btn) {
-  opacity: 0.94;
+  opacity: 1;
   background: none;
 }
 

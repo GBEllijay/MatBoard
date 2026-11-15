@@ -8,7 +8,7 @@ import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import { BACK_BUTTON_TONES, BackButton } from './BackButton.tsx';
+import { PENALTY_BACK_SRC, BackButton } from './BackButton.tsx';
 import { HistoryBackMark } from './HistoryBackMark.tsx';
 import { BACK_BUTTON_PREVIEW_PATH, BackButtonPreviewPage } from '../preview/backButton/BackButtonPreview.tsx';
 import { HeaderAccount } from './HeaderAccount.tsx';
@@ -71,29 +71,28 @@ test('the Back button keeps the 44px mark and 64px tap target', () => {
   assert.match(hit, /height:\s*64px;/);
 });
 
-test('the preview route is registered and shows both tones on light and dark headers', () => {
+test('the preview route is registered and shows the Back mark beside the Home logo', () => {
   assert.equal(BACK_BUTTON_PREVIEW_PATH, '/preview/back-button');
+  assert.equal(PENALTY_BACK_SRC, '/advantage-penalty-icon.png');
   assert.match(app, /BACK_BUTTON_PREVIEW_PATH/);
   assert.match(app, /BACK_BUTTON_LAYOUT_PREVIEW_PATH/);
   assert.match(app, /BackButtonLayoutPreviewPage/);
   assert.match(app, /BackButtonPreviewPage/);
-  assert.equal(BACK_BUTTON_TONES.penalty.disc, '#9B2433');
-  assert.equal(BACK_BUTTON_TONES.navy.disc, '#1A2740');
 
   const { root, host } = mount(<BackButtonPreviewPage />);
   assert.match(host.textContent ?? '', /Preview only/);
-  assert.match(host.textContent ?? '', /muted penalty red/i);
-  assert.match(host.textContent ?? '', /navy and cream/i);
-  const backs = host.querySelectorAll('a[aria-label="Back"]');
-  assert.equal(backs.length, 4);
-  for (const link of backs) {
-    assert.ok(link.querySelector('.back-btn svg'));
-    assert.equal(link.querySelectorAll('img').length, 0);
-  }
-  assert.ok(host.querySelector('.back-btn--penalty'));
-  assert.ok(host.querySelector('.back-btn--navy'));
+  assert.match(host.textContent ?? '', /Home logo/);
+  assert.match(host.textContent ?? '', /Back mark/);
+  assert.doesNotMatch(host.textContent ?? '', /muted penalty red/i);
+  assert.doesNotMatch(host.textContent ?? '', /navy and cream/i);
+  const logos = host.querySelectorAll('img[src="/advantage-icon.png"]');
+  const backs = host.querySelectorAll('img[src="/advantage-penalty-icon.png"]');
+  assert.ok(logos.length >= 2);
+  assert.ok(backs.length >= 2);
   assert.ok(host.querySelector('.bb-preview__header--dark'));
   assert.ok(host.querySelector('.bb-preview__header--light'));
+  const sampleBacks = host.querySelectorAll('a[aria-label="Back"] .back-btn img');
+  assert.ok(sampleBacks.length >= 2);
   const home = host.querySelector('.tier-home');
   assert.ok(home);
   assert.equal(home?.getAttribute('aria-label'), 'Home');
@@ -102,16 +101,17 @@ test('the preview route is registered and shows both tones on light and dark hea
   host.remove();
 });
 
-test('BackButton renders a 44px inline SVG and hides it from the accessibility tree', () => {
+test('BackButton renders the 44px penalty badge and hides it from the accessibility tree', () => {
   const { root, host } = mount(<BackButton />);
   const wrap = host.querySelector('.back-btn');
   assert.ok(wrap);
   assert.equal(wrap?.getAttribute('aria-hidden'), 'true');
-  const svg = wrap?.querySelector('svg');
-  assert.ok(svg);
-  assert.equal(svg?.getAttribute('width'), '44');
-  assert.equal(svg?.getAttribute('height'), '44');
-  assert.equal(svg?.getAttribute('viewBox'), '0 0 64 64');
+  const img = wrap?.querySelector('img');
+  assert.ok(img);
+  assert.equal(img?.getAttribute('src'), PENALTY_BACK_SRC);
+  assert.equal(img?.getAttribute('width'), '44');
+  assert.equal(img?.getAttribute('height'), '44');
+  assert.equal(img?.getAttribute('alt'), '');
   root.unmount();
   host.remove();
 });
@@ -122,8 +122,8 @@ test('HistoryBackMark keeps aria-label Back and the same fallback link', () => {
   assert.ok(link);
   assert.equal(link?.getAttribute('aria-label'), 'Back');
   assert.equal(link?.getAttribute('href'), '/');
-  assert.ok(link?.querySelector('.back-btn svg'));
-  assert.equal(link?.querySelectorAll('img').length, 0);
+  assert.ok(link?.querySelector(`.back-btn img[src="${PENALTY_BACK_SRC}"]`));
+  assert.equal(link?.querySelectorAll('img[src="/advantage-icon.png"]').length, 0);
   root.unmount();
   host.remove();
 });

@@ -104,10 +104,37 @@
   border-radius: 50%;
 }
 
+.bb-preview__zoom .back-btn img,
 .bb-preview__zoom .back-btn svg {
   width: 100%;
   height: 100%;
   display: block;
+  border-radius: 50%;
+}
+
+.bb-preview__pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 2rem;
+  align-items: flex-end;
+  margin: 0 0 1.4rem;
+}
+
+.bb-preview__pair figure {
+  margin: 0;
+  text-align: center;
+}
+
+.bb-preview__pair img {
+  display: block;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.bb-preview__pair figcaption {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .bb-preview__app {

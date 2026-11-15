@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
-import { BackButton, type BackButtonTone } from '../../components/BackButton';
+import { BackButton, PENALTY_BACK_SRC } from '../../components/BackButton';
 import { BeltHeader } from '../../components/BeltHeader';
 import { HomeMark } from '../../components/HomeMark';
 import { PlayExitMark } from '../../components/PlayExitMark';
 import { TierHomeMark } from '../../components/TierHomeMark';
+import { ADVANTAGE_MARK_SRC } from '../../lib/gymLogo';
 import './backButtonPreview.css';
 
 export const BACK_BUTTON_PREVIEW_PATH = '/preview/back-button';
@@ -11,21 +12,28 @@ export const BACK_BUTTON_LAYOUT_PREVIEW_PATH = '/preview/back-button-layout';
 
 const PREVIEW_BANNER = 'Preview only. Nothing here is live until you approve it.';
 
-function HeaderSample({
-  tone,
-  theme,
-  label,
-}: {
-  tone: BackButtonTone;
-  theme: 'dark' | 'light';
-  label: string;
-}) {
+function HeaderSample({ theme, label }: { theme: 'dark' | 'light'; label: string }) {
   return (
     <div className={`bb-preview__header bb-preview__header--${theme}`}>
       <Link className="play-exit" to="/" aria-label="Back">
-        <BackButton tone={tone} />
+        <BackButton />
       </Link>
       <p className="bb-preview__header-label">{label}</p>
+    </div>
+  );
+}
+
+function SideBySide({ size }: { size: number }) {
+  return (
+    <div className="bb-preview__pair">
+      <figure>
+        <img src={ADVANTAGE_MARK_SRC} alt="" width={size} height={size} />
+        <figcaption>Home logo, {size}px</figcaption>
+      </figure>
+      <figure>
+        <img className="bb-preview__pair-back" src={PENALTY_BACK_SRC} alt="" width={size} height={size} />
+        <figcaption>Back mark, {size}px</figcaption>
+      </figure>
     </div>
   );
 }
@@ -38,43 +46,27 @@ export function BackButtonPreviewPage() {
       </p>
       <h1>Back button</h1>
       <p>
-        The corner Back control uses the referee penalty signal — a raised fist — because a penalty
-        is a step back. A small back arrow sits under the figure, not beside the fist. The Advantage
-        logo stays Home, centered over the wordmark in the left column. Back is pinned top left and
-        Account is pinned top right, and neither one moves the Home logo.
+        The Back mark is the Advantage badge itself — same blue, yellow and white timer face, same
+        black silhouette — with the referee's arm raised in a penalty signal instead of pointing.
+        A penalty is a step back, so this pose means Back. The pointing logo stays Home.
       </p>
       <p>
         <Link to={BACK_BUTTON_LAYOUT_PREVIEW_PATH}>Open the Instructor header at this window width</Link>
-        {' — same pinned Back and Account, with the logo centered over Advantage.'}
+        {' — pinned Back top left, Account top right, logo centered over Advantage.'}
       </p>
 
-      <section aria-label="Primary penalty red">
-        <h2>Primary: muted penalty red</h2>
-        <div className="bb-preview__tones">
-          <HeaderSample tone="penalty" theme="dark" label="Dark header, 44px mark" />
-          <HeaderSample tone="penalty" theme="light" label="Light header, 44px mark" />
-        </div>
+      <section aria-label="Side by side with the Home logo">
+        <h2>Next to the Home logo</h2>
+        <p>Same size, same badge, different pose.</p>
+        <SideBySide size={44} />
+        <SideBySide size={176} />
       </section>
 
-      <section aria-label="Alternate navy">
-        <h2>Alternate: navy and cream</h2>
+      <section aria-label="On light and dark headers">
+        <h2>On a header, at button size</h2>
         <div className="bb-preview__tones">
-          <HeaderSample tone="navy" theme="dark" label="Dark header, navy control" />
-          <HeaderSample tone="navy" theme="light" label="Light header, navy control" />
-        </div>
-      </section>
-
-      <section aria-label="Zoomed pose">
-        <h2>Zoomed, so the pose is clear</h2>
-        <div className="bb-preview__zoom">
-          <div className="bb-preview__zoom-item">
-            <BackButton tone="penalty" />
-            <p>Penalty red</p>
-          </div>
-          <div className="bb-preview__zoom-item">
-            <BackButton tone="navy" />
-            <p>Navy</p>
-          </div>
+          <HeaderSample theme="dark" label="Dark header, 44px mark" />
+          <HeaderSample theme="light" label="Light header, 44px mark" />
         </div>
       </section>
 
