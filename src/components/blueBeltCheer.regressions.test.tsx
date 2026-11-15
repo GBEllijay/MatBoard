@@ -98,8 +98,11 @@ test('student: a leftover Blue packet is accepted without changing My rank', () 
   const { host, unmount } = mount(<CoachUpdateInbox />);
   click(button(host, /^Accept$/));
   assert.equal(host.querySelector('fieldset.blue-belt-confirm'), null);
-  assert.equal(beltModeOf(loadStudentReport(localStorage)), 'kids');
-  assert.equal(loadStudentReport(localStorage).profile.belt, 'green');
+  const savedRank = loadStudentReport(localStorage);
+  assert.equal(beltModeOf(savedRank), 'kids');
+  // Kids My rank lives on beltBook. setKidsBelt does not write profile.belt, which stays the blank default.
+  assert.equal(savedRank.beltBook?.kids?.beltId, 'green');
+  assert.equal(savedRank.profile.belt, 'white');
   assert.equal(readCoachQueue(localStorage).length, 0);
   assert.equal(host.querySelector('.kids-grandmaster'), null);
   unmount();
@@ -111,7 +114,8 @@ test('student: accepting a leftover Blue packet does not cheer or change the bel
   click(button(first.host, /^Accept$/));
   assert.equal(first.host.querySelector('.kids-grandmaster'), null);
   const saved = loadStudentReport(localStorage);
-  assert.equal(saved.profile.belt, 'green');
+  assert.equal(saved.beltBook?.kids?.beltId, 'green');
+  assert.equal(saved.profile.belt, 'white');
   assert.equal(beltModeOf(saved), 'kids');
   assert.deepEqual(readUpdateLedger(localStorage).accepted, ['rank-blue-ui-2']);
   first.unmount();
