@@ -3,7 +3,7 @@
  * Tapping a blank tile, or an empty pyramid slot, starts a new card on that face.
  * Zoom, pause, reset, and the factor buttons stay the stage's own controls.
  */
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TopoStage } from '../preview/crystallineSweeps/TopoStage.tsx';
 import { LIVE_ZOOM_MAX } from '../preview/crystallineSweeps/labels.ts';
 import { FACES } from '../preview/d8Subfactors/model.ts';
@@ -26,6 +26,7 @@ import {
   catalogLines,
   commitIndexCards,
   getIndexCardFile,
+  getOpenState,
   noteAddition,
   openTerm,
   startDraft,
@@ -147,6 +148,23 @@ export function LiveD8({ baseline }: { baseline?: FaceBaseline | null } = {}) {
     setZoomCommand((command) => ({ zoom: 1, id: (command?.id ?? 0) + 1 }));
   };
 
+  const collapseFace = () => {
+    setFocus(-1);
+    setHoldDiamond(false);
+    setZoomCommand((command) => ({ zoom: 1, id: (command?.id ?? 0) + 1 }));
+  };
+
+  useEffect(() => {
+    if (!faceId) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || getOpenState()) return;
+      event.preventDefault();
+      collapseFace();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [faceId]);
+
   return (
     <div
       className="d8-live d8sf"
@@ -175,9 +193,8 @@ export function LiveD8({ baseline }: { baseline?: FaceBaseline | null } = {}) {
           if (tile && isLiveFace(tile.faceId)) startDraft(tile.faceId);
         }}
         onFocus={(index) => {
-          if (index < 0) {
-            setFocus(-1);
-            setHoldDiamond(false);
+          if (index < 0 || index === focus) {
+            collapseFace();
             return;
           }
           setFocus(index);
@@ -216,7 +233,7 @@ export function LiveD8({ baseline }: { baseline?: FaceBaseline | null } = {}) {
       {drilled && faceId ? (
         <FaceList faceId={faceId} cards={cards} onBack={goDiamond} />
       ) : face && faceId ? (
-        <FaceReadout faceId={faceId} label={face.label} cards={cards.filter((card) => card.faceId === faceId)} slots={faceSlots(model, focus)} unrated={unratedLineNote(baseline)} />
+        <FaceReadout faceId={faceId} label={face.label} cards={cards.filter((card) => card.faceId === faceId)} slots={faceSlots(model, focus)} unrated={unratedLineNote(baseline)} onCollapse={collapseFace} />
       ) : (
         <FaceScores cards={cards} unrated={unratedLineNote(baseline)} />
       )}
@@ -384,23 +401,34 @@ function FaceReadout({
   cards,
   slots,
   unrated,
+  onCollapse,
 }: {
   faceId: IndexFaceId;
   label: string;
   cards: readonly LiveCard[];
   slots: ReturnType<typeof faceSlots>;
   unrated: string;
+  onCollapse: () => void;
 }) {
   const byId = new Map(cards.map((card) => [card.id, card]));
   return (
-    <div className="crystal-readout">
+    <div className="crystal-readout" data-testid="face-readout">
       <section aria-label={`${label} sub-factors`}>
-        <h2>{label}</h2>
+        <div className="d8-live-face-head">
+          <h2>
+            <button type="button" className="d8-live-face-title" data-testid="face-heading" aria-expanded="true" onClick={onCollapse}>
+              {label}
+            </button>
+          </h2>
+          <button type="button" data-testid="face-close" onClick={onCollapse}>
+            Close
+          </button>
+        </div>
         <p data-testid="face-score" aria-live="polite">
           {faceScoreLine(cards, faceId)}
         </p>
         <p>{`Average of every line on this face. ${unrated}`}</p>
-        <FacePyramid faceId={faceId} label={label} slots={slots} byId={byId} />
+        <FacePyramid label={label} slots={slots} byId={byId} />
         <CardList faceId={faceId} cards={cards} />
       </section>
     </div>
@@ -408,12 +436,10 @@ function FaceReadout({
 }
 
 function FacePyramid({
-  faceId,
   label,
   slots,
   byId,
 }: {
-  faceId: IndexFaceId;
   label: string;
   slots: ReturnType<typeof faceSlots>;
   byId: ReadonlyMap<string, LiveCard>;
@@ -426,28 +452,14 @@ function FacePyramid({
         {card ? (
           <IndexTermLink name={card.name} className="d8sf-term" />
         ) : (
-          <button
-            type="button"
-            className="d8sf-empty"
-            data-empty-slot={slot.tileIndex}
-            aria-label="Add"
-            onClick={(event) => {
-              event.stopPropagation();
-              startDraft(faceId);
-            }}
-          >
-            + Add
-          </button>
+          <span className="d8sf-empty d8sf-empty--blank" data-empty-slot={slot.tileIndex} />
         )}
       </div>
     );
   };
-  const onBlank = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) startDraft(faceId);
-  };
   if (grid <= 3) {
     return (
-      <div className="d8sf-pyramid" data-testid="face-pyramid" data-grid={grid} role="group" aria-label={`${label} slots`} onClick={onBlank}>
+      <div className="d8sf-pyramid" data-testid="face-pyramid" data-grid={grid} role="group" aria-label={`${label} slots`}>
         {slots.map((slot) => slotNode(slot, { left: `${slot.x}%`, top: `${slot.y}%` }))}
       </div>
     );
@@ -463,10 +475,9 @@ function FacePyramid({
       data-grid={grid}
       role="group"
       aria-label={`${label} slots`}
-      onClick={onBlank}
     >
       {rows.map((row, index) => (
-        <div key={index} className="d8-live-pyramid-row" data-row={index} onClick={onBlank}>
+        <div key={index} className="d8-live-pyramid-row" data-row={index}>
           {row.map((slot) => slotNode(slot))}
         </div>
       ))}

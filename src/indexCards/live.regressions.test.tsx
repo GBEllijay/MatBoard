@@ -164,7 +164,7 @@ test('a blank face slot creates a card, and a rating is still there after reload
     </IndexCardProvider>,
   );
   focusFace(mounted.host, 'sweeps');
-  click(mounted.host.querySelector('[data-empty-slot]'));
+  click(mounted.host.querySelector('[data-add-card="sweeps"]'));
   let card = mounted.host.querySelector('[data-testid="live-index-card"]');
   assert.equal(card?.getAttribute('data-term'), 'draft');
   assert.equal(card?.getAttribute('data-face'), 'sweeps');
@@ -254,7 +254,8 @@ test('the face score shows one decimal and the unrated line stays at 3', () => {
   click(host.querySelector('[aria-label="Hip bump sweep 5"]'));
   click(host.querySelector('[data-testid="live-index-card"] header button'));
   assert.match(host.querySelector('[data-testid="face-score"]')?.textContent ?? '', /Face score \d\.\d \/ 5/);
-  assert.equal(host.querySelector('[data-empty-slot]')?.textContent, '+ Add');
+  assert.equal(host.querySelectorAll('[data-add-card="sweeps"]').length, 1);
+  assert.equal([...host.querySelectorAll('button')].filter((node) => node.textContent?.trim() === '+ Add').length, 0);
   act(() => root.unmount());
   host.remove();
 });
@@ -410,6 +411,62 @@ test('each face grows from 9 to 16 to 25 tiles as cards are added, then keeps su
   // Other faces were not touched.
   assert.equal(tilesOn(host, 'sweeps'), 9);
   assert.equal(tilesOn(host, 'mindset'), 9);
+  act(() => root.unmount());
+  host.remove();
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+});
+
+test('an expanded face can be closed and returns to the eight-faces view', () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  const { root, host } = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  assert.ok(host.querySelector('[aria-label="Eight faces"]'));
+  assert.equal(host.querySelector('[data-testid="face-readout"]'), null);
+  focusFace(host, 'takedowns');
+  assert.ok(host.querySelector('[data-testid="face-readout"]'));
+  assert.ok(host.querySelector('[data-testid="face-pyramid"]'));
+  assert.equal(host.querySelector('[aria-label="Eight faces"]'), null);
+  assert.equal(host.querySelectorAll('[data-add-card="takedowns"]').length, 1);
+  assert.equal([...host.querySelectorAll('button')].filter((node) => node.textContent?.trim() === '+ Add').length, 0);
+  click(host.querySelector('[data-testid="face-close"]'));
+  assert.ok(host.querySelector('[aria-label="Eight faces"]'));
+  assert.equal(host.querySelector('[data-testid="face-readout"]'), null);
+  assert.equal(host.querySelector('[data-testid="face-pyramid"]'), null);
+  // Tap the heading to close.
+  focusFace(host, 'takedowns');
+  click(host.querySelector('[data-testid="face-heading"]'));
+  assert.ok(host.querySelector('[aria-label="Eight faces"]'));
+  assert.equal(host.querySelector('[data-testid="face-readout"]'), null);
+  // Escape closes when no card is open.
+  focusFace(host, 'takedowns');
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  });
+  assert.ok(host.querySelector('[aria-label="Eight faces"]'));
+  assert.equal(host.querySelector('[data-testid="face-readout"]'), null);
+  // Tapping the same face button again collapses it.
+  focusFace(host, 'takedowns');
+  assert.ok(host.querySelector('[data-testid="face-readout"]'));
+  focusFace(host, 'takedowns');
+  assert.ok(host.querySelector('[aria-label="Eight faces"]'));
+  assert.equal(host.querySelector('[data-testid="face-readout"]'), null);
+  // A face with many additions can still shrink back down.
+  act(() => {
+    commitIndexCards({ version: 1, cards: extraCards('passing', 24) });
+  });
+  focusFace(host, 'passing');
+  const pyramid = host.querySelector('[data-testid="face-pyramid"]') as HTMLElement;
+  assert.equal(pyramid.getAttribute('data-grid'), '6');
+  assert.equal(host.querySelectorAll('[data-list-card]').length, 30);
+  assert.equal(host.querySelectorAll('[data-add-card="passing"]').length, 1);
+  click(host.querySelector('[data-testid="face-close"]'));
+  assert.ok(host.querySelector('[aria-label="Eight faces"]'));
+  assert.equal(host.querySelector('[data-testid="face-readout"]'), null);
   act(() => root.unmount());
   host.remove();
   localStorage.clear();
@@ -670,7 +727,7 @@ test('Add is a gold primary action and Cancel is a quieter outline, apart from t
     </IndexCardProvider>,
   );
   focusFace(mounted.host, 'sweeps');
-  click(mounted.host.querySelector('[data-empty-slot]'));
+  click(mounted.host.querySelector('[data-add-card="sweeps"]'));
   const card = mounted.host.querySelector('[data-testid="live-index-card"]');
   const add = card?.querySelector('.d8sf-add-submit') as HTMLElement | null;
   const cancel = card?.querySelector('.d8sf-add-cancel') as HTMLElement | null;

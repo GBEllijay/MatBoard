@@ -157,6 +157,42 @@ body:has(.d8-live),
   font-weight: 750;
 }
 
+.d8-live .d8-live-face-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 6px;
+}
+
+.d8-live .d8-live-face-head h2 {
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+}
+
+.d8-live .crystal-readout button.d8-live-face-title {
+  min-height: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.d8-live .d8sf-empty--blank {
+  display: block;
+  min-width: 12px;
+  min-height: 12px;
+  pointer-events: none;
+  background: transparent;
+  border: 0;
+}
+
 .d8-live .crystal-readout p {
   margin: 0 0 8px;
   color: #3a3128;
