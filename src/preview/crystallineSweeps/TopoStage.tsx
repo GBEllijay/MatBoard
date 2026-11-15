@@ -25,7 +25,7 @@ import {
   placeDiamondLabels,
   projectFit,
   tileShowsTechniqueLabel,
-  zoomAfterClosingDrill,
+  toggleTechniqueNames,
   zoomPastRest,
   type DiamondLabel,
 } from './labels.ts';
@@ -87,12 +87,13 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
   const [paused, setPaused] = useState(
     () => !spin || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches),
   );
-  const [labelView, setLabelView] = useState({ zoom: REST_ZOOM, drilledFace: -1, frontFace: -1 });
+  const [labelView, setLabelView] = useState({ zoom: REST_ZOOM, drilledFace: -1, frontFace: -1, namesHidden: false });
   const view = useRef({
     rx: 0.28,
     ry: 0.4,
     zoom: REST_ZOOM,
     drilledFace: -1,
+    namesHidden: false,
     publishedFront: -2,
     paused,
     focus,
@@ -752,10 +753,12 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
         comparison: state.comparison,
         pair: paired,
         sweepsFace,
+        namesHidden: state.namesHidden,
       });
       stage.dataset.labelTier = labels.tier;
       stage.dataset.labelFace = labels.face >= 0 ? (model.faces[labels.face]?.id ?? '') : '';
       stage.dataset.drilled = state.drilledFace >= 0 ? (model.faces[state.drilledFace]?.id ?? '') : '';
+      stage.dataset.namesHidden = state.namesHidden ? 'on' : 'off';
       for (const node of tileNodes) node.hidden = true;
       projected.forEach((item) => {
         const tile = model.tiles[item.index];
@@ -1019,12 +1022,15 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
     setLabelView((current) => (current.drilledFace < 0 ? current : { ...current, drilledFace: -1 }));
   }, [focus]);
 
-  const publishLabels = (zoom: number, drilledFace: number) => {
+  const publishLabels = (zoom: number, drilledFace: number, namesHidden = view.current.namesHidden) => {
     view.current.zoom = zoom;
     view.current.drilledFace = drilledFace;
+    view.current.namesHidden = namesHidden;
     view.current.onZoom?.(zoom);
     setLabelView((current) =>
-      current.zoom === zoom && current.drilledFace === drilledFace ? current : { ...current, zoom, drilledFace },
+      current.zoom === zoom && current.drilledFace === drilledFace && current.namesHidden === namesHidden
+        ? current
+        : { ...current, zoom, drilledFace, namesHidden },
     );
   };
 
@@ -1074,18 +1080,23 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
     onFocus(index);
   };
 
+  const sweepsFace = model.faces.findIndex((face) => face.id === 'sweeps');
   const toggleDrill = (index: number) => {
     const state = view.current;
-    if (state.drilledFace === index) {
-      state.anim = null;
-      publishLabels(zoomAfterClosingDrill(state.zoom), -1);
-      onSelect(-1);
-      return;
-    }
-    focusFace(index, true);
+    const next = toggleTechniqueNames({
+      zoom: state.zoom,
+      drilledFace: state.drilledFace,
+      focusedFace: state.focus,
+      frontFace: labelView.frontFace,
+      comparison: state.comparison,
+      pair: state.pair,
+      sweepsFace,
+      namesHidden: state.namesHidden,
+      tappedFace: index,
+    });
+    publishLabels(state.zoom, next.drilledFace, next.namesHidden);
   };
 
-  const sweepsFace = model.faces.findIndex((face) => face.id === 'sweeps');
   const labels = crystalLabelState({
     zoom: labelView.zoom,
     drilledFace: labelView.drilledFace,
@@ -1094,6 +1105,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
     comparison,
     pair,
     sweepsFace,
+    namesHidden: labelView.namesHidden,
   });
 
   return (
@@ -1112,6 +1124,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
         data-label-tier={labels.tier}
         data-label-face={labels.face >= 0 ? (model.faces[labels.face]?.id ?? '') : ''}
         data-drilled={labelView.drilledFace >= 0 ? (model.faces[labelView.drilledFace]?.id ?? '') : ''}
+        data-names-hidden={labelView.namesHidden ? 'on' : 'off'}
         data-zoom={labelView.zoom}
         aria-label="Topographic octahedron of assessment factors"
         tabIndex={0}
@@ -1338,7 +1351,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
             state.ry = 0.4;
             state.anim = null;
             state.publishedFront = -2;
-            publishLabels(REST_ZOOM, -1);
+            publishLabels(REST_ZOOM, -1, false);
             const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
             state.paused = reduce;
             setPaused(reduce);
