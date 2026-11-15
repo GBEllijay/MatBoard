@@ -116,6 +116,7 @@ import { bootEntitlement, entitlementNowMs, entitlementReady, entitlementSnapsho
 import { paidChunkMenuAgrees, type PaidChunkId } from './lib/paidChunkAccess';
 import { proPlusCloudStripePro } from './lib/proPlusCloud';
 import { ACCOUNT_PATH, accountInvitePath } from './lib/emailLogin';
+import { studentJoinRedirectPath } from './lib/studentLicensePool';
 import { isSignedSeatInvite } from './lib/seatSunset';
 import { ProLockedPage } from './pages/ProLocked';
 import { BuyCoachPage, BuyMediaPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
@@ -150,6 +151,13 @@ function closedOrPaused(seated: boolean): string {
  */
 function consumeInviteDoorNow(): void {
   if (typeof window === 'undefined') return;
+  // Older student QR and links (/join/student, /student/claim/...) go to the same
+  // account invite screen. Nothing is claimed silently, so every student sets a password.
+  const studentTo = studentJoinRedirectPath(window.location.pathname, window.location.search);
+  if (studentTo) {
+    window.history.replaceState(window.history.state, '', studentTo);
+    return;
+  }
   const params = new URLSearchParams(window.location.search);
   const token = params.get('invite');
   // The account page owns its invite: email + new password turns the seat on and makes the login.

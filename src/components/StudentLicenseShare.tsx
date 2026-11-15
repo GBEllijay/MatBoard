@@ -265,7 +265,7 @@ export function StudentLicenseOwnerPanel({
     setIssuedEmail({ code: issued.code, email: trimmed });
     setEmail('');
     setNote(
-      `Code issued for ${trimmed}. The student scans it, confirms their email, then adds Advantage to their Home Screen.`,
+      `Code issued for ${trimmed}. The student scans it, confirms their email, and chooses a password.`,
     );
     await reload();
   };
@@ -298,7 +298,7 @@ export function StudentLicenseOwnerPanel({
     }
     setLeft(result.left);
     if (typeof result.cap === 'number' && result.cap > 0) setCap(result.cap);
-    setNote('Reset. The student can scan this same code on a new phone. This did not use another license.');
+    setNote('Reset. The student can scan this same code on a new phone and sign in. This did not use another license.');
     await reload();
   };
   const issued = rows.filter((row) => row.status === 'issued' || row.status === 'claimed');
@@ -311,7 +311,7 @@ export function StudentLicenseOwnerPanel({
       <p className="student-license__note">
         One scan uses one of your {cap} free Student Edition licenses. The link is single-use and does not expire until it
         is claimed or you revoke it. It opens Student Edition only, and never an instructor seat. Enter the student's
-        email before you issue the code so they can restore this Student Edition later.
+        email before you issue the code. They confirm that email and choose a password on the sign-in screen.
       </p>
       {left === 0 ? (
         <p role="status">{STUDENT_LICENSE_EMPTY}</p>
