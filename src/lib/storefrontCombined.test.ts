@@ -82,3 +82,21 @@ test('Media purple matches the Pro gallery purple belt cloth', () => {
   assert.match(index, /\.belt-header--purple \.belt-header__belt \{\s*--cloth: #6b2d91;/);
   assert.match(css, /#6b2d91/);
 });
+
+test('the public homepage header renders AccountLink at the top right', () => {
+  const css = readFileSync(new URL('../pages/storefront.css', import.meta.url), 'utf8');
+  const products = readFileSync(new URL('../pages/Home.tsx', import.meta.url), 'utf8');
+  assert.match(tsx, /import \{ AccountLink \} from '\.\.\/components\/AccountLink'/);
+  const pin = tsx.indexOf('className="sf-pin"');
+  const account = tsx.indexOf('<AccountLink');
+  const hero = tsx.indexOf('<StorefrontHero');
+  assert.ok(pin > 0 && account > pin && account < hero, 'AccountLink sits in the storefront header, above the hero');
+  assert.match(tsx, /<AccountLink className="sf-signin" \/>/);
+  // AccountLink already goes to /account. ACCOUNT_SIGN_IN_FROM_HOME would return to /products.
+  assert.doesNotMatch(tsx, /to=\{ACCOUNT_SIGN_IN_FROM_HOME\}/);
+  assert.match(css, /\.home\.home--store \.sf-signin \{[\s\S]*position: absolute;[\s\S]*right: 20px;/);
+  assert.match(css, /@media \(min-width: 601px\) \{[\s\S]*\.sf-signin \{[\s\S]*right: 40px;/);
+  // /products keeps its existing AccountLink and is otherwise unchanged by this work.
+  assert.match(products, /<AccountLink \/>/);
+  assert.doesNotMatch(products, /sf-signin/);
+});

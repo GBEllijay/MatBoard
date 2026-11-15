@@ -131,9 +131,37 @@
 }
 
 .home.home--store .sf-topbar {
-  position: static;
+  position: relative;
   background: #000;
   border-bottom: 0;
+}
+
+/* Top-right Sign in / Account. Absolute so the centered Scoreboard / Round timer
+   links stay put, and so the control does not sit on the logo below. */
+.home.home--store .sf-signin {
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  z-index: 2;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  padding: 8px 2px;
+}
+.home.home--store .sf-signin:hover,
+.home.home--store .sf-signin:focus-visible {
+  color: var(--sf-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (min-width: 601px) {
+  .home.home--store .sf-signin {
+    right: 40px;
+  }
 }
 
 .home.home--store .sf-nav {
