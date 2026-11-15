@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom';
 import { BackButton, type BackButtonTone } from '../../components/BackButton';
+import { BeltHeader } from '../../components/BeltHeader';
+import { HomeMark } from '../../components/HomeMark';
 import { PlayExitMark } from '../../components/PlayExitMark';
 import { TierHomeMark } from '../../components/TierHomeMark';
 import './backButtonPreview.css';
 
 export const BACK_BUTTON_PREVIEW_PATH = '/preview/back-button';
+export const BACK_BUTTON_LAYOUT_PREVIEW_PATH = '/preview/back-button-layout';
 
 const PREVIEW_BANNER = 'Preview only. Nothing here is live until you approve it.';
 
@@ -39,6 +42,10 @@ export function BackButtonPreviewPage() {
         is a step back. A small back arrow sits under the figure, not beside the fist. The Advantage
         logo stays Home, centered over the wordmark in the left column. Back is pinned top left and
         Account is pinned top right, and neither one moves the Home logo.
+      </p>
+      <p>
+        <Link to={BACK_BUTTON_LAYOUT_PREVIEW_PATH}>Open the Instructor header at this window width</Link>
+        {' — same pinned Back and Account, with the logo centered over Advantage.'}
       </p>
 
       <section aria-label="Primary penalty red">
@@ -82,5 +89,38 @@ export function BackButtonPreviewPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+/** Full-page Instructor header mock so the pinned Back, Account, and centered
+ *  Home logo can be checked at any window width without opening a paid door. */
+export function BackButtonLayoutPreviewPage() {
+  return (
+    <>
+      <p className="bb-preview__banner bb-preview-layout__banner" role="note">
+        Preview only. Instructor header at this window width. Nothing here is live until you
+        approve it.
+      </p>
+      <div className="home home--pro home--suite">
+        <div className="home__inner">
+          <PlayExitMark to={BACK_BUTTON_PREVIEW_PATH} />
+          <HomeMark
+            to="/"
+            motto="Win by Advantage"
+            tagline="Example layout. Not a live academy."
+          />
+          <section className="suite instructor-hub">
+            <BeltHeader kind="brown" worn title="Instructor Edition" />
+            <div className="bb-preview__example-card">
+              <p>Example instructor profile</p>
+              <p>
+                The logo stays centered over Advantage. Back stays top left. Account stays top
+                right. Scroll the page: Back and Account stay in the corners.
+              </p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </>
   );
 }

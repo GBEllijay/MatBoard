@@ -74,6 +74,8 @@ test('the Back button keeps the 44px mark and 64px tap target', () => {
 test('the preview route is registered and shows both tones on light and dark headers', () => {
   assert.equal(BACK_BUTTON_PREVIEW_PATH, '/preview/back-button');
   assert.match(app, /BACK_BUTTON_PREVIEW_PATH/);
+  assert.match(app, /BACK_BUTTON_LAYOUT_PREVIEW_PATH/);
+  assert.match(app, /BackButtonLayoutPreviewPage/);
   assert.match(app, /BackButtonPreviewPage/);
   assert.equal(BACK_BUTTON_TONES.penalty.disc, '#9B2433');
   assert.equal(BACK_BUTTON_TONES.navy.disc, '#1A2740');
@@ -185,4 +187,17 @@ test('the products page keeps mid-page Account and Sign out, and gets the pinned
   assert.equal(link?.getAttribute('href'), '/account');
   mounted.root.unmount();
   mounted.host.remove();
+});
+
+test('sample Back marks stay in their preview cards, and the layout preview uses the real suite header', () => {
+  const previewCss = readFileSync('src/preview/backButton/backButtonPreview.css', 'utf8');
+  const preview = readFileSync('src/preview/backButton/BackButtonPreview.tsx', 'utf8');
+  assert.match(
+    previewCss,
+    /\.bb-preview__header \.play-exit,[\s\S]*position:\s*absolute;/,
+  );
+  assert.match(preview, /BACK_BUTTON_LAYOUT_PREVIEW_PATH = '\/preview\/back-button-layout'/);
+  assert.match(preview, /home home--pro home--suite/);
+  assert.match(preview, /BeltHeader kind="brown"/);
+  assert.match(app, /BACK_BUTTON_LAYOUT_PREVIEW_PATH/);
 });

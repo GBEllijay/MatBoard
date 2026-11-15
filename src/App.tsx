@@ -56,7 +56,7 @@ import { INDEX_CARD_PATH, IndexCardPreviewPage } from './preview/indexCard/Index
 import { CRYSTAL_PREVIEW_PATH, CrystallineSweepsPreview } from './preview/crystallineSweeps/CrystallineSweepsPreview';
 import { D8_SUBFACTORS_PATH, D8SubfactorsPreview } from './preview/d8Subfactors/D8SubfactorsPreview';
 import { D8_GRID_PREVIEW_PATH, D8GridPreview } from './indexCards/D8GridPreview';
-import { BACK_BUTTON_PREVIEW_PATH, BackButtonPreviewPage } from './preview/backButton/BackButtonPreview';
+import { BACK_BUTTON_LAYOUT_PREVIEW_PATH, BACK_BUTTON_PREVIEW_PATH, BackButtonLayoutPreviewPage, BackButtonPreviewPage } from './preview/backButton/BackButtonPreview';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
 import { InstructorSheetPreviewPage } from './preview/instructorSheet/InstructorSheetPreview';
 import { ConnectCoachPreviewPage } from './preview/proHome/ConnectCoachPreview';
@@ -796,6 +796,7 @@ export default function App() {
       <Route path={D8_SUBFACTORS_PATH} element={<D8SubfactorsPreview />} />
       <Route path={D8_GRID_PREVIEW_PATH} element={<D8GridPreview />} />
       <Route path={BACK_BUTTON_PREVIEW_PATH} element={<BackButtonPreviewPage />} />
+      <Route path={BACK_BUTTON_LAYOUT_PREVIEW_PATH} element={<BackButtonLayoutPreviewPage />} />
       <Route path="/preview/student-ancestry" element={<StudentAncestryPreview />} />
       <Route path="/preview/student-hours" element={<StudentHoursPreview />} />
       <Route path="/student/*" element={<StudentEditionPage />} />

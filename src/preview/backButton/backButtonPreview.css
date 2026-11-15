@@ -3,7 +3,7 @@
 .bb-preview {
   min-height: 100dvh;
   margin: 0 auto;
-  padding: calc(0.8rem + var(--safe-t)) 1.1rem calc(2rem + var(--safe-b));
+  padding: calc(0.8rem + var(--safe-t) + 64px) 1.1rem calc(2rem + var(--safe-b));
   max-width: 40rem;
   color: var(--ink);
 }
@@ -42,10 +42,16 @@
   overflow: hidden;
 }
 
-.bb-preview__header .play-exit {
+/* Samples stay in the card. The real app Back is position:fixed; these must not follow it. */
+.bb-preview__header .play-exit,
+.bb-preview__app > .play-exit {
+  position: absolute;
+  top: 0.2rem;
+  left: 0.15rem;
+  z-index: 1;
+  margin: 0;
   opacity: 1;
   background: none;
-  margin: 0.2rem 0 0 0.15rem;
 }
 
 .bb-preview__header-label {
@@ -116,11 +122,6 @@
   color: #f5f1e8;
 }
 
-.bb-preview__app > .play-exit {
-  opacity: 1;
-  background: none;
-}
-
 .bb-preview__app > .tier-home {
   margin-top: 0.1rem;
 }
@@ -136,4 +137,32 @@
   text-align: center;
   font-size: 0.85rem;
   color: #9aa3b5;
+}
+
+.bb-preview-layout__banner {
+  position: relative;
+  z-index: 1;
+  margin: 0 auto;
+  max-width: 40rem;
+  padding: calc(0.7rem + var(--safe-t) + 64px) 1.1rem 0.6rem;
+}
+
+.bb-preview__example-card {
+  margin: 0.85rem 0 0;
+  padding: 1rem 1.1rem 1.15rem;
+  border-radius: 16px;
+  background: rgba(8, 16, 28, 0.45);
+  border: 1px solid rgba(245, 241, 232, 0.12);
+  color: #f5f1e8;
+}
+
+.bb-preview__example-card p {
+  margin: 0 0 0.45rem;
+  line-height: 1.4;
+}
+
+.bb-preview__example-card p:last-child {
+  margin-bottom: 0;
+  color: #9aa3b5;
+  font-size: 0.92rem;
 }
