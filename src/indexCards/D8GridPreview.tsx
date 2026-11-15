@@ -32,7 +32,7 @@ const SAMPLE_TERMS: Partial<Record<IndexFaceId, readonly string[]>> = {
     'Collar Drag',
     'Overhead Sweep',
   ],
-  // 6 + 23 = 29: 5×5 with the 25 strongest drawn and "+4 more".
+  // 6 + 24 = 30: 6×6, all 30 drawn as triangles.
   submissions: [
     'Armbar from guard',
     'Guillotine',
@@ -57,6 +57,7 @@ const SAMPLE_TERMS: Partial<Record<IndexFaceId, readonly string[]>> = {
     'Monoplata',
     'Von Flue Choke',
     'Bicep Slicer',
+    'Cross Collar Choke',
   ],
 };
 
@@ -102,7 +103,7 @@ export function D8GridPreview() {
         }}
       >
         Preview with sample cards. Nothing is saved. Takedowns has 9 cards (3×3), Passing 11 (4×4), Sweeps 18 (5×5),
-        Submissions 29 (5×5, +4 more). The other faces keep their 6 built-in lines (3×3).
+        Submissions 30 (6×6, every card drawn). The other faces keep their 6 built-in lines (3×3).
       </p>
       {ready ? <LiveD8 /> : null}
     </main>

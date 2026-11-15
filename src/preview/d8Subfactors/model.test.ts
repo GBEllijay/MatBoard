@@ -36,7 +36,7 @@ import {
   scoreFace,
 } from './model.ts';
 import { DIAMOND_CAP, ZOOM_LIST, averageRating, moreCount, moreLabel, strongestCards, type FaceCard } from './cards.ts';
-import { FACE_GRID_MAX, FACE_GRID_MIN, applySubfactorScore, buildSubfactorTopo, faceGridSize, faceSlots, faceTileCap, placeOnEmptySlot, showOnDiamond } from './topoModel.ts';
+import { FACE_GRID_MIN, FACE_GRID_SAFE, applySubfactorScore, buildSubfactorTopo, faceGridSize, faceSlots, faceTileCap, placeOnEmptySlot, showOnDiamond } from './topoModel.ts';
 
 test('six lines round to the same average as the conditioning and mindset rollup', () => {
   const vectors: readonly (readonly AssessmentScore[])[] = [
@@ -258,17 +258,21 @@ test('twelve cards keep nine on the diamond and average every card', () => {
   assert.equal(model.tiles.filter((tile) => tile.faceIndex === faceIndex).length, 9);
 });
 
-test('a face splits 3x3 up to 9 cards, 4x4 up to 16, 5x5 from 17, and never past 5x5', () => {
+test('a face splits 3x3 up to 9 cards, 4x4 up to 16, 5x5 from 17, then keeps subdividing', () => {
   assert.equal(FACE_GRID_MIN, 3);
-  assert.equal(FACE_GRID_MAX, 5);
+  assert.equal(FACE_GRID_SAFE, 40);
   for (const count of [0, 1, 6, 9]) assert.equal(faceGridSize(count), 3, String(count));
   for (const count of [10, 12, 16]) assert.equal(faceGridSize(count), 4, String(count));
-  for (const count of [17, 25, 26, 100]) assert.equal(faceGridSize(count), 5, String(count));
+  for (const count of [17, 25]) assert.equal(faceGridSize(count), 5, String(count));
+  for (const count of [26, 30, 36]) assert.equal(faceGridSize(count), 6, String(count));
+  assert.equal(faceGridSize(37), 7);
   assert.equal(faceGridSize(Number.NaN), 3);
   assert.equal(faceTileCap(9), 9);
   assert.equal(faceTileCap(10), 16);
   assert.equal(faceTileCap(17), 25);
-  assert.equal(faceTileCap(400), 25);
+  assert.equal(faceTileCap(30), 36);
+  assert.equal(faceTileCap(37), 49);
+  assert.equal(faceGridSize(FACE_GRID_SAFE * FACE_GRID_SAFE + 1), FACE_GRID_SAFE);
 });
 
 test('gridFor sets each face split, and the rows lay out 1, 3, 5, 7, 9 from the apex', () => {
@@ -300,4 +304,16 @@ test('a 5x5 face holds 25 cards and drops the rest', () => {
   const slots = faceSlots(small, faceIndex);
   assert.equal(slots.filter((slot) => slot.label).length, 11);
   assert.equal(slots.length, 16);
+});
+
+test('a rebuilt 6x6 face holds 30 cards on 36 tiles, all of them named', () => {
+  const cards = Array.from({ length: 30 }, (_, index) => ({ id: `c${index}`, name: `Card ${index}`, rating: 3 as const }));
+  const model = buildSubfactorTopo(FACES, () => null, () => faceGridSize(cards.length));
+  const faceIndex = model.faces.findIndex((face) => face.id === 'sweeps');
+  showOnDiamond(model, faceIndex, cards);
+  const slots = faceSlots(model, faceIndex);
+  assert.equal(slots.length, 36);
+  assert.equal(slots.filter((slot) => slot.label).length, 30);
+  assert.equal(model.faces[faceIndex]?.moves.length, 30);
+  assert.equal(model.tiles.filter((tile) => tile.faceIndex === faceIndex).length, 36);
 });
