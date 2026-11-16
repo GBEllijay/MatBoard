@@ -2,7 +2,8 @@
  * Signed-in profile sync. Academy profile and student D8 data (index cards,
  * ratings, glossary additions, and self-assessments) stay on the device and
  * also go to Advantage Cloud when the person is signed in, so every device
- * on this account sees the same updates.
+ * on this account sees the same updates. A student profile can also back up
+ * its own name, gym, belt, start date, and rank. Photos stay off this path.
  *
  * Storage is JSON in the existing GYM_MEDIA bucket, through GET/PUT
  * /api/login/sync (the session cookie is scoped to /api/login). Last write
@@ -18,12 +19,16 @@ import { setSyncTrigger, suppressSyncTrigger } from './syncTrigger.ts';
 import {
   academyDocIsEmpty,
   pickWinningDoc,
+  preserveStudentBasics,
   profilesDocIsEmpty,
+  studentBasicsIsMeaningful,
   studentDocIsEmpty,
   type AcademySyncDoc,
   type DocPick,
   type ProfilesSyncDoc,
+  type StudentSyncBasics,
   type StudentSyncDoc,
+  type StudentSyncRank,
 } from './signedInSyncDocs.ts';
 
 import { entitlementSnapshot } from './entitlement.ts';
@@ -33,7 +38,11 @@ import { readGymName, writeGymName } from './gymName.ts';
 import { readGymProfile, replaceGymProfile, sanitizeGymProfile } from './gymProfile.ts';
 import { loadIndexCards, writeIndexCards } from './indexCards.ts';
 import { ASSESSMENT_STORAGE_KEY, emptyAssessments, loadAssessments, writeAssessments } from './studentAssessment.ts';
+import { PROGRESS_BELTS, type ProgressBelt, type StudentRank } from './progress/types.ts';
+import { loadStudentReport, saveStudentReport, STUDENT_EDITION_STORAGE_KEY } from './studentEdition.ts';
+import { normalizeStoredRank } from './studentRank.ts';
 import {
+  bindStudentProfileStorage,
   DEFAULT_STUDENT_PROFILE_ID,
   isStudentProfileId,
   cleanStudentProfileName,
@@ -236,7 +245,7 @@ export function hasSessionHint(): boolean {
   }
 }
 
-export { academyDocIsEmpty, pickWinningDoc, profilesDocIsEmpty, studentDocIsEmpty } from './signedInSyncDocs.ts';
+export { academyDocIsEmpty, pickWinningDoc, preserveStudentBasics, profilesDocIsEmpty, studentDocIsEmpty } from './signedInSyncDocs.ts';
 
 export function collectAcademyDoc(store: MemoryStore | null = browserStore(), now = Date.now()): AcademySyncDoc {
   const meta = readSyncMeta(store);
@@ -253,6 +262,30 @@ export function collectAcademyDoc(store: MemoryStore | null = browserStore(), no
   return doc;
 }
 
+function syncRankWithoutPhotos(rank: StudentSyncRank | StudentRank | undefined): StudentRank | undefined {
+  if (!rank) return undefined;
+  const next = normalizeStoredRank(rank as Partial<StudentRank>);
+  delete next.pictures;
+  delete next.pictureNote;
+  delete next.pictureCount;
+  if (rank.degreeFocus?.length) next.degreeFocus = [...rank.degreeFocus];
+  return next;
+}
+
+function basicsFromLocalReport(store: MemoryStore, profileId: string): { basics?: StudentSyncBasics; reportUpdatedAt: number } {
+  const scoped = bindStudentProfileStorage(store, profileId);
+  if (!scoped.getItem(STUDENT_EDITION_STORAGE_KEY)) return { reportUpdatedAt: 0 };
+  const report = loadStudentReport(scoped);
+  const basics: StudentSyncBasics = {
+    displayName: report.profile.displayName,
+    gymName: report.profile.gymName,
+    belt: report.profile.belt,
+    startedOn: report.profile.startedOn,
+    rank: syncRankWithoutPhotos(report.rank),
+  };
+  return { basics: studentBasicsIsMeaningful(basics) ? basics : undefined, reportUpdatedAt: report.updatedAt };
+}
+
 export function collectStudentDoc(
   profileId: string,
   store: MemoryStore | null = browserStore(),
@@ -260,14 +293,16 @@ export function collectStudentDoc(
 ): StudentSyncDoc {
   const id = isStudentProfileId(profileId) ? profileId : DEFAULT_STUDENT_PROFILE_ID;
   const meta = readSyncMeta(store);
+  const fromReport = store ? basicsFromLocalReport(store, id) : { reportUpdatedAt: 0 };
   const doc: StudentSyncDoc = {
     v: 1,
-    updatedAt: meta.student[id]?.updatedAt || 0,
+    updatedAt: Math.max(meta.student[id]?.updatedAt || 0, fromReport.basics ? fromReport.reportUpdatedAt : 0),
     profileId: id,
     indexCards: loadIndexCards(store ?? { getItem: () => null }),
     glossaryAdditions: store ? loadAdditions(store) : emptyAdditions(),
     assessments: store ? loadAssessments(store) : emptyAssessments(),
   };
+  if (fromReport.basics) doc.basics = fromReport.basics;
   if (!doc.updatedAt && !studentDocIsEmpty(doc)) doc.updatedAt = now;
   return doc;
 }
@@ -311,6 +346,7 @@ export function applyAcademyDoc(doc: AcademySyncDoc, store: MemoryStore | null =
 export function applyStudentDoc(doc: StudentSyncDoc, store: MemoryStore | null = browserStore()): void {
   const release = suppressSyncTrigger();
   try {
+    const id = isStudentProfileId(doc.profileId) ? doc.profileId : DEFAULT_STUDENT_PROFILE_ID;
     if (store) {
       const cards = loadIndexCards({ getItem: () => JSON.stringify(doc.indexCards) });
       const additions = loadAdditions({ getItem: () => JSON.stringify(doc.glossaryAdditions) });
@@ -320,6 +356,25 @@ export function applyStudentDoc(doc: StudentSyncDoc, store: MemoryStore | null =
       writeIndexCards(store, cards);
       writeAdditions(store, additions);
       writeAssessments(store, assessments);
+      if (doc.basics) {
+        const scoped = bindStudentProfileStorage(store, id);
+        const report = loadStudentReport(scoped);
+        const belt = (PROGRESS_BELTS as readonly string[]).includes(doc.basics.belt)
+          ? (doc.basics.belt as ProgressBelt)
+          : report.profile.belt;
+        const rank = doc.basics.rank ? syncRankWithoutPhotos(doc.basics.rank) : undefined;
+        saveStudentReport(scoped, {
+          ...report,
+          profile: {
+            ...report.profile,
+            displayName: doc.basics.displayName,
+            gymName: doc.basics.gymName,
+            belt,
+            startedOn: doc.basics.startedOn,
+          },
+          ...(rank ? { rank } : {}),
+        });
+      }
       void import('../indexCards/store.ts')
         .then((mod) => {
           if (typeof mod.hydrateIndexCardsFromSync === 'function') {
@@ -329,7 +384,6 @@ export function applyStudentDoc(doc: StudentSyncDoc, store: MemoryStore | null =
         .catch(() => undefined);
     }
     const meta = readSyncMeta(store);
-    const id = isStudentProfileId(doc.profileId) ? doc.profileId : DEFAULT_STUDENT_PROFILE_ID;
     writeSyncMeta(
       {
         ...meta,
@@ -369,7 +423,10 @@ export function mergeAcademy(local: AcademySyncDoc, remote: AcademySyncDoc | nul
 }
 
 export function mergeStudent(local: StudentSyncDoc, remote: StudentSyncDoc | null): DocPick<StudentSyncDoc> {
-  return pickWinningDoc(local, remote, studentDocIsEmpty, (doc) => doc.updatedAt);
+  const pick = pickWinningDoc(local, remote, studentDocIsEmpty, (doc) => doc.updatedAt);
+  if (!pick.winner) return pick;
+  const winner = preserveStudentBasics(pick.winner, local, remote);
+  return winner === pick.winner ? pick : { ...pick, winner };
 }
 
 export function mergeProfiles(local: ProfilesSyncDoc, remote: ProfilesSyncDoc | null): DocPick<ProfilesSyncDoc> {
