@@ -151,6 +151,7 @@ export function ownerCloudGrantOpen(row: { product: string; source: string }): b
 /**
  * Assistant coach can play and download. Coach and Instructors can upload.
  * The owner can upload. A program director does not use daily videos or lesson plans.
+ * Gallery upload (`galleryUpload`) does not change these write rules.
  */
 export function cloudMediaAccess(input: {
   plusCloud: boolean;
@@ -164,6 +165,24 @@ export function cloudMediaAccess(input: {
   if (preset === 'coach' || preset === 'instructors') return { read: true, upload: true };
   if (preset === 'assistant-coach') return { read: true, upload: false };
   return { read: true, upload: false };
+}
+
+/**
+ * Who may read the gym's display gallery (approved class photos and approved
+ * daily videos). A seat with the Gallery upload switch on gets this even when
+ * `cloudMediaAccess` still denies general Cloud reading and every write.
+ * When `galleryUpload` is omitted, the preset's factory switch is used.
+ */
+export function cloudGalleryLibraryOpen(input: {
+  plusCloud: boolean;
+  kind: 'owner' | 'seat';
+  preset?: string | null;
+  galleryUpload?: boolean;
+}): boolean {
+  if (!input.plusCloud) return false;
+  if (cloudMediaAccess(input).read) return true;
+  if (typeof input.galleryUpload === 'boolean') return input.galleryUpload;
+  return input.preset === 'program-director' || input.preset === 'instructors';
 }
 
 /**
