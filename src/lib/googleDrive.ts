@@ -150,34 +150,68 @@ export type TodayDriveStatus = 'skipped' | 'loading' | 'disconnected' | 'needs-s
  * Download-button copy. An empty Drive folder is stated only after a real check.
  * A missing sign-in is a reconnect prompt, not a claim that the folder is empty.
  */
+export const CLOUD_TODAY_EMPTY = 'Nothing in Advantage Cloud for today.';
+export const CLOUD_TODAY_CHECKING = 'Checking Advantage Cloud…';
+export const CLOUD_TODAY_UNAVAILABLE = 'Advantage Cloud could not be checked.';
+export const CLOUD_TODAY_SIGN_IN =
+  "Sign in on this device to download today's videos from Advantage Cloud.";
+export const CLOUD_DRIVE_TODAY_EMPTY =
+  'Nothing in the shared gallery, Google Drive, or Advantage Cloud for today.';
+
+export type TodayCloudStatus = 'skipped' | 'loading' | 'ready' | 'error' | 'needs-sign-in';
+
+function todayCountPhrase(count: number, place: string, first: boolean): string {
+  if (first) {
+    return count === 1 ? `1 video in ${place}` : `${count} videos in ${place}`;
+  }
+  return count === 1 ? `1 in ${place}` : `${count} in ${place}`;
+}
+
+function joinTodaySources(parts: string[], day: string): string {
+  if (parts.length === 1) return `${parts[0]} for ${day}.`;
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]} for ${day}.`;
+  return `${parts[0]}, ${parts[1]}, and ${parts[2]} for ${day}.`;
+}
+
 export function todayDownloadCopy(input: {
   galleryStatus: 'loading' | 'ready' | 'error';
   galleryCount: number;
   driveStatus: TodayDriveStatus;
   driveCount: number;
+  /** Omitted or skipped leaves today's copy unchanged for phones that only check gallery and Drive. */
+  cloudStatus?: TodayCloudStatus;
+  cloudCount?: number;
   /** "today" on the current day. A past day uses its own label. */
   dayLabel?: string;
 }): string {
   const galleryCount = Math.max(0, input.galleryCount);
   const driveCount = Math.max(0, input.driveCount);
+  const cloudStatus = input.cloudStatus ?? 'skipped';
+  const cloudCount = Math.max(0, input.cloudCount ?? 0);
   const day = input.dayLabel?.trim() || 'today';
-  if (galleryCount + driveCount > 0) {
-    if (galleryCount && driveCount) {
-      const gallery =
-        galleryCount === 1 ? '1 video in the shared gallery' : `${galleryCount} videos in the shared gallery`;
-      const drive = driveCount === 1 ? '1 in Google Drive' : `${driveCount} in Google Drive`;
-      return `${gallery} and ${drive} for ${day}.`;
-    }
-    if (driveCount === 1) return `1 video in Google Drive for ${day}.`;
-    if (driveCount > 1) return `${driveCount} videos in Google Drive for ${day}.`;
-    return galleryTodayReadyCopy(galleryCount, day);
+  const parts: string[] = [];
+  if (galleryCount) parts.push(todayCountPhrase(galleryCount, 'the shared gallery', parts.length === 0));
+  if (cloudCount) parts.push(todayCountPhrase(cloudCount, 'Advantage Cloud', parts.length === 0));
+  if (driveCount) parts.push(todayCountPhrase(driveCount, 'Google Drive', parts.length === 0));
+  if (parts.length) {
+    if (galleryCount && !cloudCount && !driveCount) return galleryTodayReadyCopy(galleryCount, day);
+    return joinTodaySources(parts, day);
   }
-  if (input.galleryStatus === 'loading' || input.driveStatus === 'loading') return GALLERY_TODAY_CHECKING;
+  if (input.galleryStatus === 'loading' || input.driveStatus === 'loading' || cloudStatus === 'loading') {
+    return cloudStatus === 'loading' && input.galleryStatus !== 'loading' && input.driveStatus !== 'loading'
+      ? CLOUD_TODAY_CHECKING
+      : GALLERY_TODAY_CHECKING;
+  }
   if (input.driveStatus === 'error') return DRIVE_CHECK_FAILED;
-  if (input.galleryStatus === 'error' && (input.driveStatus === 'skipped' || input.driveStatus === 'disconnected')) {
+  if (cloudStatus === 'error') return CLOUD_TODAY_UNAVAILABLE;
+  if (input.galleryStatus === 'error' && (input.driveStatus === 'skipped' || input.driveStatus === 'disconnected') && cloudStatus === 'skipped') {
     return GALLERY_TODAY_UNAVAILABLE;
   }
+  if (cloudStatus === 'needs-sign-in' && input.driveStatus !== 'needs-sign-in') return CLOUD_TODAY_SIGN_IN;
   if (input.driveStatus === 'needs-sign-in') return DRIVE_SIGN_IN_AGAIN;
+  if (cloudStatus === 'ready' && (input.driveStatus === 'ready' || input.driveStatus === 'skipped' || input.driveStatus === 'disconnected')) {
+    return input.driveStatus === 'ready' ? CLOUD_DRIVE_TODAY_EMPTY : CLOUD_TODAY_EMPTY;
+  }
   if (input.driveStatus === 'ready') return DRIVE_TODAY_EMPTY;
   return GALLERY_TODAY_EMPTY;
 }

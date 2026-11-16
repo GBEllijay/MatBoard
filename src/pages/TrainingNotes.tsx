@@ -79,8 +79,8 @@ import {
 } from '../lib/driveHandoff';
 import {
   DISTRIBUTE_BUTTON,
-  DISTRIBUTE_DONE,
-  DISTRIBUTE_LEAD,
+  distributeDone,
+  distributeLead,
   flushLessonDriveDraft,
   getDriveNotice,
   lessonPlanForDrive,
@@ -91,12 +91,18 @@ import {
   subscribeDriveNotice,
 } from '../lib/lessonDrive';
 import {
+  CLOUD_DAILY_OPEN_ERROR,
   CLOUD_MEDIA_EVENT,
   cloudUploadSelected,
+  fetchCloudDailyVideoBlob,
   fetchCloudLessonPlan,
+  listApprovedCloudDailyVideos,
+  readCloudBearer,
+  readCloudMediaHome,
   resetMyCloudLessonPlan,
   saveCloudLessonTemplate,
   scheduleCloudLessonSave,
+  type CloudFileRow,
   type CloudLessonPlanRead,
 } from '../lib/advantageCloudMedia';
 import { decideLessonOpen, readLessonSource, writeLessonSource, type LessonPlanSource } from '../lib/lessonPlanCopies';
@@ -209,6 +215,11 @@ type DriveTodayState = {
   groups: DriveVideoGroup[];
 };
 
+type CloudTodayState = {
+  status: 'skipped' | 'loading' | 'ready' | 'error' | 'needs-sign-in';
+  videos: CloudFileRow[];
+};
+
 const idleDriveNotice = { phase: 'idle' as const, text: '' };
 
 function clipUrlForRef(ref: PlanVideoRef, videos: TodayVideos | null): string | undefined {
@@ -296,6 +307,7 @@ export function TrainingNotesPage() {
     groups: [],
   });
   const [driveTick, setDriveTick] = useState(0);
+  const [cloudToday, setCloudToday] = useState<CloudTodayState>({ status: 'skipped', videos: [] });
   // The board load is async. Until it finishes, `videos` can still be the previous day.
   // Adopting that board would stamp the wrong clips onto the plan just opened.
   const dayVideos = videos?.dateKey === viewKey ? videos : null;
@@ -431,6 +443,35 @@ export function TrainingNotesPage() {
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [viewKey, unlimitedPlan, driveTick]);
+
+  useEffect(() => {
+    if (!unlimitedPlan) {
+      setCloudToday({ status: 'skipped', videos: [] });
+      return;
+    }
+    const selected = readCloudMediaHome(typeof localStorage === 'undefined' ? null : localStorage) === 'advantage-cloud';
+    const token = readCloudBearer();
+    if (!selected || !token) {
+      setCloudToday({ status: selected && !token ? 'needs-sign-in' : 'skipped', videos: [] });
+      return;
+    }
+    let cancelled = false;
+    setCloudToday((current) => ({ ...current, status: 'loading' }));
+    const load = () => {
+      void listApprovedCloudDailyVideos({ dateKey: viewKey }).then((result) => {
+        if (!cancelled) setCloudToday(result);
+      });
+    };
+    load();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [viewKey, unlimitedPlan, lessonCloudTick]);
 
   useEffect(() => {
     if (!plan.id || searchParams.get('class') === plan.id) return;
@@ -777,15 +818,20 @@ export function TrainingNotesPage() {
 
   const galleryCount = galleryToday.status === 'ready' ? galleryToday.videos.length : 0;
   const driveCount = driveToday.status === 'ready' ? driveToday.videos.length : 0;
+  const cloudCount = cloudToday.status === 'ready' ? cloudToday.videos.length : 0;
+  const cloudOn = cloudToday.status === 'ready' || cloudToday.status === 'loading' || cloudUploadSelected();
   const galleryCopy = todayDownloadCopy({
     galleryStatus: galleryToday.status,
     galleryCount,
     driveStatus: driveToday.status,
     driveCount,
+    cloudStatus: cloudToday.status,
+    cloudCount,
     dayLabel: viewKey === todayKey ? 'today' : planDayTitle(viewKey, todayKey),
   });
-  const canDownloadToday = galleryCount + driveCount > 0;
-  const downloadBusy = galleryToday.status === 'loading' || driveToday.status === 'loading';
+  const canDownloadToday = galleryCount + driveCount + cloudCount > 0;
+  const downloadBusy =
+    galleryToday.status === 'loading' || driveToday.status === 'loading' || cloudToday.status === 'loading';
 
   const renameDriveClip = async (fileId: string, name: string) => {
     const silent = await requestDriveToken('silent');
@@ -803,11 +849,25 @@ export function TrainingNotesPage() {
       await downloadGalleryVideos(galleryToday.videos);
       index = galleryToday.videos.length;
     }
+    if (cloudCount) {
+      for (const video of cloudToday.videos) {
+        const blob = await fetchCloudDailyVideoBlob({ path: video.path });
+        if (!blob) {
+          setDownloadNote(CLOUD_DAILY_OPEN_ERROR);
+          continue;
+        }
+        saveBlobDownload(galleryVideoDownloadName(video.name, video.mime, index), blob);
+        index += 1;
+      }
+    }
     if (!driveCount) return;
+    const alreadySaved = cloudCount
+      ? 'The gallery and Advantage Cloud copies already saved.'
+      : 'The gallery copies already saved.';
     try {
       const token = await requestDriveToken('silent');
       if (!token) {
-        setDownloadNote('Sign in to Google Drive again to download those videos. The gallery copies already saved.');
+        setDownloadNote(`Sign in to Google Drive again to download those videos. ${alreadySaved}`);
         return;
       }
       for (const video of driveToday.videos) {
@@ -819,7 +879,7 @@ export function TrainingNotesPage() {
       setDownloadNote(
         reason instanceof Error
           ? reason.message
-          : 'A Google Drive video could not be downloaded. Gallery copies already saved stay on this device.',
+          : `A Google Drive video could not be downloaded. ${alreadySaved}`,
       );
     }
   };
@@ -1634,7 +1694,7 @@ export function TrainingNotesPage() {
                 {downloadNote}
               </p>
             ) : null}
-            {galleryToday.videos.length || driveToday.groups.length ? (
+            {galleryToday.videos.length || driveToday.groups.length || cloudToday.videos.length ? (
               <DriveVideoFolders
                 selectedDate={viewKey}
                 groups={driveToday.groups}
@@ -1642,6 +1702,10 @@ export function TrainingNotesPage() {
                   id: video.id,
                   label: video.label,
                   addedAt: video.addedAt,
+                }))}
+                cloud={cloudToday.videos.map((video) => ({
+                  id: video.path,
+                  label: video.name,
                 }))}
                 onRename={renameDriveClip}
               />
@@ -2116,7 +2180,7 @@ export function TrainingNotesPage() {
         {showDistribute && editingToday ? (
           <>
             <aside className="notes__distribute" aria-label="Instructor distribution">
-              <p>{DISTRIBUTE_LEAD}</p>
+              <p>{distributeLead(cloudOn)}</p>
               <button
                 type="button"
                 className="btn btn--ghost notes__distribute-btn"
@@ -2132,7 +2196,7 @@ export function TrainingNotesPage() {
                         ? mediaRefsFromVideoPlan(dayVideos.plan)
                         : [],
                   });
-                  setDistributeNote(revision ? DISTRIBUTE_DONE : DISTRIBUTE_LEAD);
+                  setDistributeNote(revision ? distributeDone(cloudOn) : distributeLead(cloudOn));
                 }}
               >
                 {DISTRIBUTE_BUTTON}

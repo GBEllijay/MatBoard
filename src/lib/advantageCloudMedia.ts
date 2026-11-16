@@ -1127,3 +1127,64 @@ export function setCloudReplayPending(pending: boolean): void {
 export function cloudReplayPendingSelected(): boolean {
   return replayPending;
 }
+
+export const CLOUD_DAILY_LIST_ERROR = 'Advantage Cloud could not be checked.';
+export const CLOUD_DAILY_SIGN_IN = 'Sign in on this device to download today\'s videos from Advantage Cloud.';
+export const CLOUD_DAILY_OPEN_ERROR = 'A video could not be opened from Advantage Cloud.';
+
+/** Approved daily videos only. Pending and rejected rows stay out. */
+export function isApprovedDailyCloudFile(row: Pick<CloudFileRow, 'path' | 'lane' | 'mime'>): boolean {
+  if (!isDailyVideoCloudPath(row.path)) return false;
+  if (row.lane && row.lane !== 'approved') return false;
+  const mime = (row.mime || '').toLowerCase();
+  return mime.startsWith('video/') || mime === 'application/octet-stream' || mime === '';
+}
+
+export type CloudDailyListResult =
+  | { status: 'needs-sign-in'; videos: CloudFileRow[] }
+  | { status: 'ready'; videos: CloudFileRow[] }
+  | { status: 'error'; videos: CloudFileRow[] };
+
+/** Today's approved daily videos for the lesson-plan download button. */
+export async function listApprovedCloudDailyVideos(input: {
+  dateKey: string;
+  token?: string;
+  fetcher?: CloudFetcher;
+}): Promise<CloudDailyListResult> {
+  const token = input.token ?? readCloudBearer();
+  if (!token || !isCalendarDateKey(input.dateKey)) return { status: 'needs-sign-in', videos: [] };
+  const fetcher = input.fetcher ?? fetch;
+  try {
+    const response = await fetcher(
+      cloudUrl(`/api/gym/cloud?op=list&purpose=daily-video&date=${encodeURIComponent(input.dateKey)}`),
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    if (response.status === 401 || response.status === 403) return { status: 'needs-sign-in', videos: [] };
+    if (!response.ok) return { status: 'error', videos: [] };
+    const body = (await response.json()) as { files?: CloudFileRow[] } | null;
+    const files = Array.isArray(body?.files) ? body.files : [];
+    return { status: 'ready', videos: files.filter(isApprovedDailyCloudFile) };
+  } catch {
+    return { status: 'error', videos: [] };
+  }
+}
+
+/** Bytes for one Cloud daily video. Null when the file cannot be opened. */
+export async function fetchCloudDailyVideoBlob(input: {
+  path: string;
+  token?: string;
+  fetcher?: CloudFetcher;
+}): Promise<Blob | null> {
+  const token = input.token ?? readCloudBearer();
+  if (!token || !input.path) return null;
+  const fetcher = input.fetcher ?? fetch;
+  try {
+    const response = await fetcher(cloudUrl(`/api/gym/cloud?op=file&path=${encodeURIComponent(input.path)}`), {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return null;
+    return response.blob();
+  } catch {
+    return null;
+  }
+}
