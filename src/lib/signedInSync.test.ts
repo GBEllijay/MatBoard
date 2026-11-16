@@ -5,8 +5,11 @@ import { emptyGymProfile } from './gymProfile.ts';
 import { writeIndexCards, type IndexCardFile, type StoredIndexCard } from './indexCards.ts';
 import { emptyAssessments } from './studentAssessment.ts';
 import { bindStudentProfileStorage, DEFAULT_STUDENT_PROFILE_ID } from './studentProfiles.ts';
+import { blankStudentReport, loadStudentReport, saveStudentReport } from './studentEdition.ts';
 import {
   academyDocIsEmpty,
+  applyStudentDoc,
+  collectStudentDoc,
   mergeAcademy,
   mergeProfiles,
   mergeStudent,
@@ -202,4 +205,36 @@ test('pickWinningDoc never lets an empty remote wipe local data', () => {
 
 test('getSyncStatus returns the same object while nothing changed, so the Account page does not re-render until it blanks', () => {
   assert.equal(getSyncStatus(), getSyncStatus());
+});
+
+function memoryStore() {
+  const raw = new Map<string, string>();
+  return {
+    getItem: (key: string) => raw.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      raw.set(key, value);
+    },
+    removeItem: (key: string) => {
+      raw.delete(key);
+    },
+  };
+}
+
+test('profile basics (belt and start date) survive a collect and apply round trip', () => {
+  const store = memoryStore();
+  const report = blankStudentReport(1);
+  report.profile.belt = 'blue';
+  report.profile.startedOn = '2020-01-15';
+  saveStudentReport(store, report);
+
+  const doc = collectStudentDoc(DEFAULT_STUDENT_PROFILE_ID, store, 100);
+  assert.equal(doc.basics?.belt, 'blue');
+  assert.equal(doc.basics?.startedOn, '2020-01-15');
+  assert.equal(studentDocIsEmpty(doc), false);
+
+  const fresh = memoryStore();
+  applyStudentDoc(doc, fresh);
+  const loaded = loadStudentReport(fresh);
+  assert.equal(loaded.profile.belt, 'blue');
+  assert.equal(loaded.profile.startedOn, '2020-01-15');
 });

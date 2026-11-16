@@ -20,10 +20,13 @@ import { primaryLicenseForAccount } from './accountId.ts';
 import {
   academyDocIsEmpty,
   profilesDocIsEmpty,
+  studentBasicsIsMeaningful,
   studentDocIsEmpty,
   type AcademySyncDoc,
   type ProfilesSyncDoc,
+  type StudentSyncBasics,
   type StudentSyncDoc,
+  type StudentSyncRank,
 } from '../lib/signedInSyncDocs.ts';
 import { LOGIN_UNAVAILABLE, readLoginSession, type LoginEnv } from './loginAccount.ts';
 import type { InboxBucket } from './studentInbox.ts';
@@ -123,6 +126,35 @@ function sanitizeAssessments(raw: unknown): StudentSyncDoc['assessments'] {
   return { entries: rows.filter((row) => row && typeof row === 'object').slice(0, 400) };
 }
 
+const PROGRESS_BELTS = new Set(['white', 'blue', 'purple', 'brown', 'black', 'grey', 'yellow', 'orange', 'green', 'coral', 'redWhite', 'red']);
+const PHOTO_KEYS = new Set(['pictures', 'pictureNote', 'pictureCount', 'image', 'photo', 'photoId']);
+
+function dropPhotoFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(dropPhotoFields);
+  if (!value || typeof value !== 'object') return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (PHOTO_KEYS.has(key) || (typeof item === 'string' && item.startsWith('data:'))) continue;
+    out[key] = dropPhotoFields(item);
+  }
+  return out;
+}
+
+function sanitizeBasics(raw: unknown): StudentSyncBasics | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const row = dropPhotoFields(raw) as Record<string, unknown>;
+  const beltRaw = typeof row.belt === 'string' ? row.belt.trim() : 'white';
+  const started = typeof row.startedOn === 'string' ? row.startedOn.trim().slice(0, 10) : '';
+  const basics: StudentSyncBasics = {
+    displayName: typeof row.displayName === 'string' ? row.displayName.trim().replace(/\s+/g, ' ').slice(0, 80) : '',
+    gymName: typeof row.gymName === 'string' ? row.gymName.trim().replace(/\s+/g, ' ').slice(0, 80) : '',
+    belt: PROGRESS_BELTS.has(beltRaw) ? beltRaw : 'white',
+    startedOn: DATE_RE.test(started) ? started : '',
+  };
+  if (row.rank && typeof row.rank === 'object') basics.rank = row.rank as StudentSyncRank;
+  return studentBasicsIsMeaningful(basics) ? basics : undefined;
+}
+
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 
 export type ProfileSyncEnv = LoginEnv & { GYM_MEDIA?: InboxBucket };
@@ -209,7 +241,7 @@ export function sanitizeStudentDoc(raw: unknown, fallbackId: string): StudentSyn
   const row = raw as Record<string, unknown>;
   const profileId = typeof row.profileId === 'string' && isStudentProfileId(row.profileId) ? row.profileId : fallbackId;
   if (!isStudentProfileId(profileId)) return null;
-  return {
+  const doc: StudentSyncDoc = {
     v: 1,
     updatedAt: asNumber(row.updatedAt),
     profileId,
@@ -217,6 +249,9 @@ export function sanitizeStudentDoc(raw: unknown, fallbackId: string): StudentSyn
     glossaryAdditions: sanitizeAdditions(row.glossaryAdditions),
     assessments: sanitizeAssessments(row.assessments),
   };
+  const basics = sanitizeBasics(row.basics);
+  if (basics) doc.basics = basics;
+  return doc;
 }
 
 export function sanitizeProfilesDoc(raw: unknown): ProfilesSyncDoc | null {

@@ -20,6 +20,29 @@ export type AcademySyncDoc = {
   };
 };
 
+/** Rank dates and stripes only. Promotion photos are not part of this type. */
+export type StudentSyncRank = {
+  id?: string;
+  belt?: string;
+  tapeCount?: number;
+  awardedOn?: string;
+  tapeDates?: string[];
+  highDegreeDates?: string[];
+  instructorBars?: boolean;
+  instructorBarsOn?: string;
+  history?: StudentSyncRank[];
+  lineage?: string[];
+  degreeFocus?: string[];
+};
+
+export type StudentSyncBasics = {
+  displayName: string;
+  gymName: string;
+  belt: string;
+  startedOn: string;
+  rank?: StudentSyncRank;
+};
+
 export type StudentSyncDoc = {
   v: 1;
   updatedAt: number;
@@ -27,6 +50,8 @@ export type StudentSyncDoc = {
   indexCards: { version: 1; cards: StudentSyncCard[] };
   glossaryAdditions: { version: 1; additions: unknown[] };
   assessments: { entries: unknown[] };
+  /** Name, belt, start date, and rank. Photos and videos are never stored here. */
+  basics?: StudentSyncBasics;
 };
 
 export type StudentSyncCard = {
@@ -69,10 +94,33 @@ function cardHasStudentWork(card: StudentSyncCard): boolean {
   );
 }
 
+function hasText(value: unknown): boolean {
+  return typeof value === 'string' && Boolean(value.trim());
+}
+
+/** True when basics is more than a blank default (empty name, white belt, no date, empty rank). */
+export function studentBasicsIsMeaningful(basics: StudentSyncBasics | null | undefined): boolean {
+  if (!basics) return false;
+  const rank = basics.rank;
+  const rankUsed = Boolean(
+    rank &&
+      ((rank.tapeCount ?? 0) > 0 ||
+        hasText(rank.awardedOn) ||
+        rank.instructorBars ||
+        hasText(rank.instructorBarsOn) ||
+        rank.history?.length ||
+        rank.tapeDates?.some(hasText) ||
+        rank.highDegreeDates?.some(hasText) ||
+        rank.lineage?.some(hasText) ||
+        rank.degreeFocus?.some(hasText)),
+  );
+  return Boolean(basics.displayName.trim() || basics.gymName.trim() || (basics.belt.trim() && basics.belt !== 'white') || basics.startedOn.trim() || rankUsed);
+}
+
 export function studentDocIsEmpty(doc: StudentSyncDoc | null | undefined): boolean {
   if (!doc) return true;
   const hasCards = doc.indexCards.cards.some(cardHasStudentWork);
-  return !hasCards && doc.glossaryAdditions.additions.length === 0 && doc.assessments.entries.length === 0;
+  return !hasCards && doc.glossaryAdditions.additions.length === 0 && doc.assessments.entries.length === 0 && !studentBasicsIsMeaningful(doc.basics);
 }
 
 export function profilesDocIsEmpty(doc: ProfilesSyncDoc | null | undefined): boolean {
