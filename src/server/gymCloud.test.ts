@@ -114,6 +114,7 @@ class MemoryBucket implements GymMediaBucket {
 function fakeDb(input: {
   grants?: { licenseId: string; product: string; source: string; sourceRef: string | null; status: string; endsAt: string | null; revokedAt: string | null }[];
   seat?: { status: string; revokedAt: string | null } | null;
+  inviteFeatures?: Record<string, boolean> | null;
 }): D1Database {
   return {
     prepare(sql: string) {
@@ -125,6 +126,22 @@ function fakeDb(input: {
           return { results: (sql.includes('FROM grants') ? input.grants ?? [] : []) as T[] };
         },
         async first<T>() {
+          if (sql.includes('FROM invite_selections')) {
+            if (!input.inviteFeatures) return null as T | null;
+            return {
+              kind: 'seat',
+              ref: 'seat-pd',
+              gym: 'lic-code',
+              issuerId: 'owner',
+              emailHash: null,
+              preset: 'program-director',
+              editions: '[]',
+              features: JSON.stringify(input.inviteFeatures),
+              createdAt: '2026-11-16T00:00:00.000Z',
+              redeemedAt: null,
+              redeemedLicenseId: null,
+            } as T;
+          }
           return (sql.includes('FROM seats') ? (input.seat ?? null) : null) as T | null;
         },
         async run() {
@@ -666,8 +683,9 @@ test('replay uploads from an assistant coach and a program director land pending
   const assistantStatus = (await (await call(env, '/api/gym/cloud?op=status', {}, assistant)).json()) as { canUpload: boolean; replayUpload: string };
   assert.equal(assistantStatus.canUpload, false);
   assert.equal(assistantStatus.replayUpload, 'pending');
-  const pdStatus = (await (await call(env, '/api/gym/cloud?op=status', {}, director)).json()) as { cloud: boolean; replayUpload: string };
-  assert.equal(pdStatus.cloud, false, 'PD still has no Cloud library');
+  const pdStatus = (await (await call(env, '/api/gym/cloud?op=status', {}, director)).json()) as { cloud: boolean; canUpload?: boolean; replayUpload: string };
+  assert.equal(pdStatus.cloud, true, 'a PD with Gallery upload can open the gym Cloud gallery');
+  assert.notEqual(pdStatus.canUpload, true);
   assert.equal(pdStatus.replayUpload, 'pending');
 
   // Assistant: pending, not lesson media.
@@ -832,7 +850,7 @@ test('a program director can only drop a video into today\'s daily videos, and a
   const status = await call(env, '/api/gym/cloud?op=status', {}, pd);
   assert.equal(status.status, 200);
   const statusBody = (await status.json()) as { cloud: boolean; dailyVideoDrop?: boolean; canUpload?: boolean };
-  assert.equal(statusBody.cloud, false, 'PD does not open the Cloud file list');
+  assert.equal(statusBody.cloud, true, 'a PD with Gallery upload can open the gym Cloud gallery');
   assert.equal(statusBody.dailyVideoDrop, true);
   assert.notEqual(statusBody.canUpload, true);
 
@@ -978,7 +996,7 @@ test('program director Camera window: reads videos/daily only; lessons, skins, g
     cloud: boolean;
     dailyVideoPlay?: boolean;
   };
-  assert.equal(status.cloud, false, 'still no general Cloud file list');
+  assert.equal(status.cloud, true, 'a PD with Gallery upload can open the gym Cloud gallery');
   assert.equal(status.dailyVideoPlay, true);
 
   // List today's videos: only videos/daily rows come back.
@@ -1210,9 +1228,11 @@ test('a paid Cloud add-on is the academy folder for an accepted instructor seat'
   const directorToken = ((await directorAccepted.json()) as { token: string }).token;
   const directorStatus = (await (await call(env, '/api/gym/cloud?op=status', {}, directorToken)).json()) as {
     cloud: boolean;
+    canUpload?: boolean;
     dailyVideoDrop?: boolean;
   };
-  assert.equal(directorStatus.cloud, false);
+  assert.equal(directorStatus.cloud, true, 'a claimed PD seat with Gallery upload can open the gym Cloud gallery');
+  assert.notEqual(directorStatus.canUpload, true);
   assert.equal(directorStatus.dailyVideoDrop, true);
   assert.equal((await call(env, '/api/gym/cloud?op=list&purpose=lesson&date=2026-11-03', {}, directorToken)).status, 403);
 
@@ -1472,4 +1492,88 @@ test('paid Cloud follows the stored subscription and a code exemption still open
   ]);
   assert.equal(lapsedClaims?.sub, licenseId);
   assert.notEqual(lapsedClaims?.subs?.cloud, true);
+});
+
+test('a Program Director with Gallery upload reads the gym Cloud gallery and cannot write it', async () => {
+  const secret = await signingSecret();
+  const bucket = new MemoryBucket();
+  bucket.objects.set('groups/lic-code/gallery/approved/2026-11-16/class.jpg', { bytes: Uint8Array.from([1, 2, 3]), type: 'image/jpeg' });
+  const grants = [
+    { licenseId: 'lic-code', product: 'advantage-pro', source: 'code', sourceRef: 'code:1', status: 'active', endsAt: null, revokedAt: null },
+  ];
+  const env: GymCloudEnv = {
+    GYM_MEDIA: bucket,
+    ENTITLEMENT_SIGNING_KEY: secret,
+    ENTITLEMENT_KEY_ID: 'k1',
+    ENTITLEMENTS_DB: fakeDb({ grants, seat: { status: 'claimed', revokedAt: null } }),
+  };
+  const pd = await token(secret, {
+    licenseId: 'lic-code',
+    grants: ['pro'],
+    tier: 'seat',
+    src: 'seat',
+    deviceId: 'device-pd',
+    now,
+    kind: 'seat',
+    gym: 'lic-code',
+    sid: 'seat-pd',
+    preset: 'program-director',
+  });
+  const status = (await (await call(env, '/api/gym/cloud?op=status', {}, pd)).json()) as { cloud: boolean; canUpload?: boolean };
+  assert.equal(status.cloud, true);
+  assert.notEqual(status.canUpload, true);
+  const listed = await call(env, '/api/gym/cloud?op=list&purpose=approved-media', {}, pd);
+  assert.equal(listed.status, 200);
+  const items = ((await listed.json()) as { items: { path: string }[] }).items;
+  assert.equal(items.some((item) => item.path === 'gallery/approved/2026-11-16/class.jpg'), true);
+  const photo = await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent('gallery/approved/2026-11-16/class.jpg')}`, {}, pd);
+  assert.equal(photo.status, 200);
+  assert.equal((await call(env, '/api/gym/cloud?op=list&purpose=gallery&lane=pending', {}, pd)).status, 403);
+  assert.equal(
+    (await call(env, '/api/gym/cloud', { method: 'POST', body: JSON.stringify({ action: 'gallery-approve', key: 'gallery/pending/2026-11-16/x.jpg' }) }, pd)).status,
+    403,
+  );
+  assert.equal(
+    (await call(env, '/api/gym/cloud', { method: 'POST', body: JSON.stringify({ action: 'start', purpose: 'gallery', dateKey: '2026-11-16', fileName: 'x.jpg', size: 3, mime: 'image/jpeg' }) }, pd)).status,
+    403,
+  );
+});
+
+test('a Program Director with Gallery upload off cannot read the gym Cloud gallery', async () => {
+  const secret = await signingSecret();
+  const bucket = new MemoryBucket();
+  bucket.objects.set('groups/lic-code/gallery/approved/2026-11-16/class.jpg', { bytes: Uint8Array.from([1, 2, 3]), type: 'image/jpeg' });
+  const grants = [
+    { licenseId: 'lic-code', product: 'advantage-pro', source: 'code', sourceRef: 'code:1', status: 'active', endsAt: null, revokedAt: null },
+  ];
+  const env: GymCloudEnv = {
+    GYM_MEDIA: bucket,
+    ENTITLEMENT_SIGNING_KEY: secret,
+    ENTITLEMENT_KEY_ID: 'k1',
+    ENTITLEMENTS_DB: fakeDb({
+      grants,
+      seat: { status: 'claimed', revokedAt: null },
+      inviteFeatures: { galleryUpload: false, dailyVideoUpload: true },
+    }),
+  };
+  const pd = await token(secret, {
+    licenseId: 'lic-code',
+    grants: ['pro'],
+    tier: 'seat',
+    src: 'seat',
+    deviceId: 'device-pd',
+    now,
+    kind: 'seat',
+    gym: 'lic-code',
+    sid: 'seat-pd',
+    preset: 'program-director',
+  });
+  const status = (await (await call(env, '/api/gym/cloud?op=status', {}, pd)).json()) as { cloud: boolean; dailyVideoDrop?: boolean };
+  assert.equal(status.cloud, false);
+  assert.equal(status.dailyVideoDrop, true, 'daily-video drop is unchanged');
+  assert.equal((await call(env, '/api/gym/cloud?op=list&purpose=approved-media', {}, pd)).status, 403);
+  assert.equal(
+    (await call(env, `/api/gym/cloud?op=file&path=${encodeURIComponent('gallery/approved/2026-11-16/class.jpg')}`, {}, pd)).status,
+    403,
+  );
 });

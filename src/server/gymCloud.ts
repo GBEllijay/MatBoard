@@ -17,6 +17,7 @@ import {
   cloudFullMessage,
   cloudListPrefix,
   cloudMaxUploadBytes,
+  cloudGalleryLibraryOpen,
   cloudMediaAccess,
   cloudReplayUpload,
   approvedReplayPath,
@@ -86,6 +87,7 @@ import type { D1Database } from './d1.ts';
 import { cloudAccessForLicense } from './cloudSubscription.ts';
 import { grantsForLicense } from './purchaseRecords.ts';
 import { signingMaterial } from './tokenIssue.ts';
+import { readInviteSelection, seatFeatures } from './inviteSelections.ts';
 
 export type R2HttpMetadata = { contentType?: string };
 
@@ -147,6 +149,11 @@ export type GymCloudActor = {
   replayUpload: ReplayCloudUpload;
   /** Program director: upload to today's daily videos only. */
   dailyDrop: boolean;
+  /**
+   * May read the gym's display gallery (approved photos and approved daily videos)
+   * even when `read` is false. Does not grant upload, approve, or delete.
+   */
+  galleryRead: boolean;
   /** This license has Advantage Cloud (Pro Plus Cloud). Used by the gym roster function. */
   plusCloud: boolean;
 };
@@ -250,22 +257,35 @@ async function actorForClaims(env: GymCloudEnv, claims: EntitlementClaims, now: 
       return json(403, { ok: false, error: 'This seat is not active.' });
     }
   }
-  const access = cloudMediaAccess({
-    plusCloud,
-    kind: seat ? 'seat' : 'owner',
-    preset: claims.preset ?? null,
-  });
+  const kind = seat ? 'seat' as const : 'owner' as const;
+  const preset = claims.preset ?? null;
+  const access = cloudMediaAccess({ plusCloud, kind, preset });
+  const galleryUpload = seat ? await seatGalleryUpload(env, claims.sid ?? '') : undefined;
   return {
     licenseId,
-    kind: seat ? 'seat' : 'owner',
-    preset: claims.preset ?? null,
+    kind,
+    preset,
     read: access.read,
     upload: access.upload,
     seatId: seat ? claims.sid ?? '' : '',
-    replayUpload: cloudReplayUpload({ plusCloud, kind: seat ? 'seat' : 'owner', preset: claims.preset ?? null }),
-    dailyDrop: cloudDailyVideoDrop({ plusCloud, kind: seat ? 'seat' : 'owner', preset: claims.preset ?? null }),
+    replayUpload: cloudReplayUpload({ plusCloud, kind, preset }),
+    dailyDrop: cloudDailyVideoDrop({ plusCloud, kind, preset }),
+    galleryRead: cloudGalleryLibraryOpen({ plusCloud, kind, preset, galleryUpload }),
     plusCloud,
   };
+}
+
+/** Stored seat switches when present, otherwise the preset's Gallery upload factory switch. */
+async function seatGalleryUpload(env: GymCloudEnv, seatId: string): Promise<boolean | undefined> {
+  const db = env.ENTITLEMENTS_DB;
+  if (db && seatId) {
+    const selection = await readInviteSelection(db, 'seat', seatId);
+    if (selection) {
+      const flag = seatFeatures(selection).features.galleryUpload;
+      if (typeof flag === 'boolean') return flag;
+    }
+  }
+  return undefined;
 }
 
 async function bytesUnder(bucket: GymMediaBucket, prefix: string): Promise<number> {
@@ -1114,33 +1134,34 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   if (request.method === 'GET') {
     const op = url.searchParams.get('op') ?? 'status';
     if (op === 'status') {
-      if (!actor.read) {
-        const pendingReplay = actor.replayUpload === 'pending';
-        if (!actor.dailyDrop && !pendingReplay) return json(200, { ok: true, cloud: false });
-        // Upload-only lanes. No usage numbers, no list, no files.
+      if (actor.read || actor.galleryRead) {
+        const [licenseUsedBytes, galleryApprovalRequired] = await Promise.all([
+          bytesUnder(bucket, `groups/${actor.licenseId}/`),
+          licenseGalleryApprovalRequired(env, actor.licenseId),
+        ]);
         return json(200, {
           ok: true,
-          cloud: false,
-          ...(pendingReplay ? { replayUpload: 'pending' as const } : {}),
-          ...(actor.dailyDrop ? { dailyVideoDrop: true, dailyVideoPlay: true, maxUploadBytes: maxUpload } : {}),
+          cloud: true,
+          canUpload: actor.upload,
+          replayUpload: actor.replayUpload,
+          galleryApprovalRequired,
+          licenseUsedBytes,
+          // Older builds still read this field. The quota is per license now.
+          bucketUsedBytes: licenseUsedBytes,
+          capBytes: cap,
+          softLimitBytes: cloudSoftLimitBytes(cap),
+          maxUploadBytes: maxUpload,
+          ...(actor.dailyDrop ? { dailyVideoDrop: true, dailyVideoPlay: true } : {}),
         });
       }
-      const [licenseUsedBytes, galleryApprovalRequired] = await Promise.all([
-        bytesUnder(bucket, `groups/${actor.licenseId}/`),
-        licenseGalleryApprovalRequired(env, actor.licenseId),
-      ]);
+      const pendingReplay = actor.replayUpload === 'pending';
+      if (!actor.dailyDrop && !pendingReplay) return json(200, { ok: true, cloud: false });
+      // Upload-only lanes. No usage numbers, no list, no files.
       return json(200, {
         ok: true,
-        cloud: true,
-        canUpload: actor.upload,
-        replayUpload: actor.replayUpload,
-        galleryApprovalRequired,
-        licenseUsedBytes,
-        // Older builds still read this field. The quota is per license now.
-        bucketUsedBytes: licenseUsedBytes,
-        capBytes: cap,
-        softLimitBytes: cloudSoftLimitBytes(cap),
-        maxUploadBytes: maxUpload,
+        cloud: false,
+        ...(pendingReplay ? { replayUpload: 'pending' as const } : {}),
+        ...(actor.dailyDrop ? { dailyVideoDrop: true, dailyVideoPlay: true, maxUploadBytes: maxUpload } : {}),
       });
     }
     if (op === 'gallery-approval') {
@@ -1225,7 +1246,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     }
     // The display gallery: approved class photos and approved daily videos, every day.
     if (op === 'list' && url.searchParams.get('purpose') === 'approved-media') {
-      if (!actor.read && !actor.dailyDrop) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
+      if (!actor.read && !actor.galleryRead) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
       return json(200, { ok: true, items: await listApprovedMedia(bucket, actor) });
     }
     if (op === 'list' && url.searchParams.get('purpose') === 'daily-review') {
@@ -1251,7 +1272,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       return json(200, { ok: true, days, cutoff, ...listed, licenseUsedBytes, capBytes: cap, softLimitBytes: cloudSoftLimitBytes(cap) });
     }
     // Program director Camera window: list and play today's videos only. Lessons, skins, and other paths stay closed.
-    if (!actor.read && actor.dailyDrop && (op === 'list' || op === 'file')) {
+    if (!actor.read && (actor.dailyDrop || actor.galleryRead) && (op === 'list' || op === 'file')) {
       if (op === 'list') {
         if ((url.searchParams.get('purpose') ?? 'daily-video') !== 'daily-video') {
           return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
@@ -1262,8 +1283,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       }
       const path = url.searchParams.get('path') ?? '';
       // Approved daily videos and approved class photos. Pending work stays closed.
-      const approvedGallery = parseGalleryCloudPath(path)?.lane === 'approved';
-      const key = isDailyVideoCloudPath(path) || approvedGallery ? cloudObjectKey(actor.licenseId, path) : null;
+      const approvedGallery = actor.galleryRead && parseGalleryCloudPath(path)?.lane === 'approved';
+      const key = (actor.dailyDrop && isDailyVideoCloudPath(path)) || approvedGallery ? cloudObjectKey(actor.licenseId, path) : null;
       if (!key) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
       if (!approvedGallery && (await dailyVideoLane(bucket, actor.licenseId, path)) !== 'approved') {
         return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });

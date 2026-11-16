@@ -20,6 +20,7 @@ import {
   cloudOverSoftLimit,
   cloudSoftLimitWarning,
   cloudListPrefix,
+  cloudGalleryLibraryOpen,
   cloudMediaAccess,
   cloudObjectKey,
   cloudPartPlan,
@@ -139,6 +140,18 @@ test('program director daily-video drop needs Plus Cloud and the PD preset, and 
   assert.equal(isDailyVideoCloudPath('lessons/current/2026-W45/2026-11-03.json'), false);
   assert.equal(isDailyVideoCloudPath('videos/daily/../lessons/x.json'), false);
   assert.match(CLOUD_DAILY_DROP_ONLY, /today's daily videos/);
+});
+
+
+test('a seat with Gallery upload can read the gym Cloud gallery and still cannot write it', () => {
+  const pd = { plusCloud: true, kind: 'seat' as const, preset: 'program-director' };
+  assert.deepEqual(cloudMediaAccess(pd), { read: false, upload: false });
+  assert.equal(cloudGalleryLibraryOpen(pd), true, 'the Program Director factory switch includes Gallery upload');
+  assert.equal(cloudGalleryLibraryOpen({ ...pd, galleryUpload: true }), true);
+  assert.equal(cloudGalleryLibraryOpen({ ...pd, galleryUpload: false }), false, 'a PD with Gallery upload off stays denied');
+  assert.equal(cloudGalleryLibraryOpen({ plusCloud: false, kind: 'seat', preset: 'program-director', galleryUpload: true }), false);
+  assert.equal(cloudGalleryLibraryOpen({ plusCloud: true, kind: 'seat', preset: 'coach', galleryUpload: false }), true, 'coach reading is unchanged');
+  assert.equal(cloudGalleryLibraryOpen({ plusCloud: true, kind: 'owner', galleryUpload: false }), true);
 });
 
 test('the per-gym cap defaults to 100 GB and a full upload says so in plain words', () => {
