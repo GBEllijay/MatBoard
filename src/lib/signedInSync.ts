@@ -19,6 +19,7 @@ import { setSyncTrigger, suppressSyncTrigger } from './syncTrigger.ts';
 import {
   academyDocIsEmpty,
   pickWinningDoc,
+  preserveStudentBasics,
   profilesDocIsEmpty,
   studentBasicsIsMeaningful,
   studentDocIsEmpty,
@@ -244,7 +245,7 @@ export function hasSessionHint(): boolean {
   }
 }
 
-export { academyDocIsEmpty, pickWinningDoc, profilesDocIsEmpty, studentDocIsEmpty } from './signedInSyncDocs.ts';
+export { academyDocIsEmpty, pickWinningDoc, preserveStudentBasics, profilesDocIsEmpty, studentDocIsEmpty } from './signedInSyncDocs.ts';
 
 export function collectAcademyDoc(store: MemoryStore | null = browserStore(), now = Date.now()): AcademySyncDoc {
   const meta = readSyncMeta(store);
@@ -422,7 +423,10 @@ export function mergeAcademy(local: AcademySyncDoc, remote: AcademySyncDoc | nul
 }
 
 export function mergeStudent(local: StudentSyncDoc, remote: StudentSyncDoc | null): DocPick<StudentSyncDoc> {
-  return pickWinningDoc(local, remote, studentDocIsEmpty, (doc) => doc.updatedAt);
+  const pick = pickWinningDoc(local, remote, studentDocIsEmpty, (doc) => doc.updatedAt);
+  if (!pick.winner) return pick;
+  const winner = preserveStudentBasics(pick.winner, local, remote);
+  return winner === pick.winner ? pick : { ...pick, winner };
 }
 
 export function mergeProfiles(local: ProfilesSyncDoc, remote: ProfilesSyncDoc | null): DocPick<ProfilesSyncDoc> {

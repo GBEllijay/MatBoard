@@ -123,6 +123,18 @@ export function studentDocIsEmpty(doc: StudentSyncDoc | null | undefined): boole
   return !hasCards && doc.glossaryAdditions.additions.length === 0 && doc.assessments.entries.length === 0 && !studentBasicsIsMeaningful(doc.basics);
 }
 
+/** If the winning doc has no meaningful basics, keep basics from an older copy. */
+export function preserveStudentBasics(
+  winner: StudentSyncDoc,
+  ...fallbacks: (StudentSyncDoc | null | undefined)[]
+): StudentSyncDoc {
+  if (studentBasicsIsMeaningful(winner.basics)) return winner;
+  for (const doc of fallbacks) {
+    if (doc && studentBasicsIsMeaningful(doc.basics)) return { ...winner, basics: doc.basics };
+  }
+  return winner;
+}
+
 export function profilesDocIsEmpty(doc: ProfilesSyncDoc | null | undefined): boolean {
   if (!doc) return true;
   return !doc.profiles.some((row) => row.id !== DEFAULT_PROFILE_ID);

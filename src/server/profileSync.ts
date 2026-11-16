@@ -19,6 +19,7 @@ import type { D1Database } from './d1.ts';
 import { primaryLicenseForAccount } from './accountId.ts';
 import {
   academyDocIsEmpty,
+  preserveStudentBasics,
   profilesDocIsEmpty,
   studentBasicsIsMeaningful,
   studentDocIsEmpty,
@@ -428,7 +429,8 @@ export async function handleProfileSync(
     if (body.student) {
       const incoming = sanitizeStudentDoc(body.student, profileId);
       const stored = sanitizeStudentDoc(await readJson(bucket, sKey), profileId);
-      const next = pickStored(incoming, stored, studentDocIsEmpty, (doc) => doc.updatedAt);
+      const picked = pickStored(incoming, stored, studentDocIsEmpty, (doc) => doc.updatedAt);
+      const next = picked ? preserveStudentBasics(picked, stored, incoming) : picked;
       if (next) {
         const failed = await writeJson(bucket, sKey, next, STUDENT_SYNC_MAX_BYTES);
         if (failed) return failed;
