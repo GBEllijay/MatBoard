@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } f
 import { createPortal } from 'react-dom';
 import { releaseTextFocus } from '../lib/keepFieldVisible';
 import { lockPageScroll, unlockPageScroll } from '../lib/pageScrollLock';
+import { armOptionsCloseGuard } from '../lib/optionsReopenGuard';
 import { popSheetLayer, pushSheetLayer } from '../lib/sheetLayer';
 
 type Props = {
@@ -31,14 +32,18 @@ export function Sheet({
   // Stay mounted for one commit after close so iOS receives blur before the
   // focused input is removed. Unmounting a focused field leaves the keyboard up.
   const [mounted, setMounted] = useState(open);
+  const wasOpenRef = useRef(open);
 
   useLayoutEffect(() => {
     if (open) {
       setMounted(true);
+      wasOpenRef.current = true;
       return;
     }
     releaseTextFocus(rootRef.current);
     setMounted(false);
+    if (wasOpenRef.current) armOptionsCloseGuard();
+    wasOpenRef.current = false;
   }, [open]);
 
   useEffect(() => {
@@ -54,6 +59,7 @@ export function Sheet({
 
   const closeFromPointer = (event: { button?: number; pointerId?: number; currentTarget: EventTarget | null }) => {
     if (event.button != null && event.button !== 0) return;
+    armOptionsCloseGuard();
     const node = event.currentTarget;
     if (
       node instanceof HTMLElement &&

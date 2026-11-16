@@ -85,6 +85,7 @@ const PHOTOS_QUEUE_AHEAD = 24;
 import { CloudGallerySection } from '../components/CloudGallerySection';
 import { PlayingFromLine } from '../components/PlayingFromLine';
 import { GALLERY_LINK_DONE, galleryItemShows, nextClassFromDays } from '../lib/gallerySchedule';
+import { optionsReopenBlocked } from '../lib/optionsReopenGuard';
 import { downloadDriveFile, getDriveBindingSnapshot, requestDriveToken, subscribeDriveBinding } from '../lib/googleDrive';
 import {
   PHOTOS_PICK_LABEL,
@@ -167,6 +168,7 @@ export function ScreensaverPage() {
   const [urlById, setUrlById] = useState<Record<string, string>>({});
   const [index, setIndex] = useState(0);
   const [options, setOptions] = useState(false);
+  const optionsClosedAtRef = useRef(0);
   const [playing, setPlaying] = useState(true);
   const [intervalSec, setIntervalSec] = useState(DEFAULT_INTERVAL_SEC);
   const [shuffle, setShuffle] = useState(DEFAULT_SHUFFLE);
@@ -1033,6 +1035,7 @@ export function ScreensaverPage() {
       onClick={(event) => {
         const target = event.target as HTMLElement;
         if (target.closest('.sheet, .chrome, .saver__empty, .btn, input, label, .play-fs, .play-exit, .tier-home, .tv-tip, .saver__unmute, .saver-batch, .week-cast.is-drift, .week-cast.is-paused, .month-cast.is-drift, .month-cast.is-paused')) return;
+        if (optionsReopenBlocked(optionsClosedAtRef.current, Date.now())) return;
         if (!muteVideo) setUnlockSound(true);
         if (slides.length) setOptions(true);
       }}
@@ -1142,6 +1145,7 @@ export function ScreensaverPage() {
         open={options}
         title={hubTitle}
         onClose={() => {
+          optionsClosedAtRef.current = Date.now();
           if (!muteVideo) setUnlockSound(true);
           setOptions(false);
         }}
