@@ -3887,6 +3887,18 @@ span.role-plan__mark {
   opacity: 0.8;
 }
 
+/* Close on a Media Console sheet pins in the same top-right corner as the
+   account button. Keep that button out of the way while a sheet is open, and
+   ignore the leftover tap for a short window after Close. */
+body:has(.sheet) .header-account {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+body.is-sheet-close-guard .header-account {
+  pointer-events: none;
+}
+
 /* Keep the in-flow Home logo clear of the pinned back mark on a narrow column. */
 @media (max-width: 739px) {
   .home__inner:has(> .play-exit) {

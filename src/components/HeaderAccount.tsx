@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ACCOUNT_PATH, LOGIN_EVENT, readLoginHint } from '../lib/emailLogin';
+import { accountButtonBlocked } from '../lib/optionsReopenGuard';
+import { isSheetLayerOpen } from '../lib/sheetLayer';
 
 /** Paths that already have a top-right Sign in / Account control, or are a TV display. */
 const HIDDEN_PATHS = new Set(['/', '/match']);
@@ -29,6 +31,12 @@ export function HeaderAccount() {
       to={ACCOUNT_PATH}
       aria-label={hint ? 'Account' : 'Sign in'}
       title={hint ? `Signed in as ${hint}` : 'Sign in with your email'}
+      onClick={(event) => {
+        if (isSheetLayerOpen() || accountButtonBlocked()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
     >
       <svg className="header-account__icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
         <circle cx="12" cy="8" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.8" />
