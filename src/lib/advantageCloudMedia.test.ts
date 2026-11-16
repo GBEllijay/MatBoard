@@ -382,3 +382,72 @@ test('replay Cloud uploads: direct for owner/Coach/Instructors, pending for Assi
   assert.deepEqual(parsePendingReplayPath(path!)?.seatId, 'seat-a');
   assert.ok(cloudObjectKey('owner-test', path!));
 });
+
+test('lesson-plan Cloud download lists approved daily videos and skips pending', async () => {
+  const { listApprovedCloudDailyVideos, fetchCloudDailyVideoBlob, isApprovedDailyCloudFile } = await import('./advantageCloudMedia.ts');
+  assert.equal(
+    isApprovedDailyCloudFile({ path: 'videos/daily/2026-11-16/a.mp4', mime: 'video/mp4' }),
+    true,
+  );
+  assert.equal(
+    isApprovedDailyCloudFile({ path: 'videos/daily/2026-11-16/b.mp4', mime: 'video/mp4', lane: 'pending' }),
+    false,
+  );
+  assert.equal(
+    isApprovedDailyCloudFile({ path: 'lessons/current/2026-W47/media/2026-11-16/a.mp4', mime: 'video/mp4' }),
+    false,
+  );
+
+  const unsigned = await listApprovedCloudDailyVideos({ dateKey: '2026-11-16', token: '', fetcher: (async () => new Response()) as typeof fetch });
+  assert.equal(unsigned.status, 'needs-sign-in');
+  assert.deepEqual(unsigned.videos, []);
+
+  const fetcher: typeof fetch = async (input) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    assert.match(url, /op=list/);
+    assert.match(url, /purpose=daily-video/);
+    assert.match(url, /date=2026-11-16/);
+    assert.doesNotMatch(url, /lanes=all/);
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        files: [
+          { name: 'ok.mp4', path: 'videos/daily/2026-11-16/ok.mp4', size: 12, mime: 'video/mp4' },
+          { name: 'wait.mp4', path: 'videos/daily/2026-11-16/wait.mp4', size: 8, mime: 'video/mp4', lane: 'pending' },
+          { name: 'plan.json', path: 'lessons/current/2026-W47/2026-11-16.json', size: 20, mime: 'application/json' },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+  const listed = await listApprovedCloudDailyVideos({ dateKey: '2026-11-16', token: 'seat-token', fetcher });
+  assert.equal(listed.status, 'ready');
+  assert.deepEqual(listed.videos.map((row) => row.name), ['ok.mp4']);
+
+  const forbidden = await listApprovedCloudDailyVideos({
+    dateKey: '2026-11-16',
+    token: 'seat-token',
+    fetcher: async () => new Response(JSON.stringify({ ok: false }), { status: 403 }),
+  });
+  assert.equal(forbidden.status, 'needs-sign-in');
+
+  const blob = await fetchCloudDailyVideoBlob({
+    path: 'videos/daily/2026-11-16/ok.mp4',
+    token: 'seat-token',
+    fetcher: async (input) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      assert.match(url, /op=file/);
+      assert.match(url, /path=videos%2Fdaily%2F2026-11-16%2Fok.mp4/);
+      return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'video/mp4' } });
+    },
+  });
+  assert.ok(blob);
+  assert.equal(blob.size, 3);
+
+  const missing = await fetchCloudDailyVideoBlob({
+    path: 'videos/daily/2026-11-16/ok.mp4',
+    token: 'seat-token',
+    fetcher: async () => new Response('nope', { status: 404 }),
+  });
+  assert.equal(missing, null);
+});

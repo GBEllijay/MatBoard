@@ -16,14 +16,20 @@ type GalleryClip = {
 
 type Row = DriveVideoPresentation & {
   key: string;
-  source: 'gallery' | 'drive';
+  source: 'gallery' | 'drive' | 'cloud';
   dateKey: string;
+};
+
+type CloudClip = {
+  id: string;
+  label: string;
 };
 
 type Props = {
   selectedDate: string;
   groups: readonly DriveVideoGroup[];
   gallery?: readonly GalleryClip[];
+  cloud?: readonly CloudClip[];
   onRename?: (fileId: string, name: string) => Promise<void>;
 };
 
@@ -47,6 +53,23 @@ function galleryRow(clip: GalleryClip, dateKey: string): Row {
   };
 }
 
+function cloudRow(clip: CloudClip, dateKey: string): Row {
+  const shortLabel = clip.label.trim() || 'Clip';
+  return {
+    key: `cloud-${clip.id}`,
+    source: 'cloud',
+    dateKey,
+    id: clip.id,
+    label: clip.label,
+    mime: 'video/mp4',
+    shortLabel,
+    timeLabel: 'Advantage Cloud',
+    displayLabel: `${shortLabel} · Advantage Cloud`,
+    detailLabel: '',
+    thumbnailLink: null,
+  };
+}
+
 function driveRow(video: DriveVideoGroup['videos'][number]): Row {
   return { ...video, key: `drive-${video.id}`, source: 'drive', dateKey: video.dateKey };
 }
@@ -55,7 +78,7 @@ function driveRow(video: DriveVideoGroup['videos'][number]): Row {
  * Collapsible date folders for the Daily Lesson Plan Drive video list.
  * The selected day starts open. Other days stay collapsed.
  */
-export function DriveVideoFolders({ selectedDate, groups, gallery = [], onRename }: Props) {
+export function DriveVideoFolders({ selectedDate, groups, gallery = [], cloud = [], onRename }: Props) {
   const [openDates, setOpenDates] = useState<ReadonlySet<string>>(() => new Set([selectedDate]));
   const [showAll, setShowAll] = useState<Record<string, boolean>>({});
   const [detailKey, setDetailKey] = useState<string | null>(null);
@@ -77,14 +100,18 @@ export function DriveVideoFolders({ selectedDate, groups, gallery = [], onRename
     heading: group.heading,
     rows: [
       ...(group.dateKey === selectedDate ? gallery.map((clip) => galleryRow(clip, group.dateKey)) : []),
+      ...(group.dateKey === selectedDate ? cloud.map((clip) => cloudRow(clip, group.dateKey)) : []),
       ...group.videos.map(driveRow),
     ],
   }));
-  if (gallery.length && !folders.some((folder) => folder.dateKey === selectedDate)) {
+  if ((gallery.length || cloud.length) && !folders.some((folder) => folder.dateKey === selectedDate)) {
     folders.unshift({
       dateKey: selectedDate,
       heading: videoDateFolderName(selectedDate),
-      rows: gallery.map((clip) => galleryRow(clip, selectedDate)),
+      rows: [
+        ...gallery.map((clip) => galleryRow(clip, selectedDate)),
+        ...cloud.map((clip) => cloudRow(clip, selectedDate)),
+      ],
     });
   }
   if (!folders.length) return null;

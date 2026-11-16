@@ -57,6 +57,20 @@ export const DISTRIBUTE_LEAD =
 export const DISTRIBUTE_BUTTON = 'Upload for instructor distribution';
 export const DISTRIBUTE_DONE =
   'Saved on this device. Distribution is optional and uses the gym Google Drive folder when it is connected. Lesson text and attached videos go in that folder, not on Advantage.';
+export const DISTRIBUTE_LEAD_CLOUD =
+  'This plan saves as you type. Upload for instructor distribution is optional. Attached videos go to Advantage Cloud for signed-in instructors.';
+export const DISTRIBUTE_DONE_CLOUD =
+  'Saved to Advantage Cloud. Signed-in instructors can play and download these videos.';
+
+/** Lead under the distribution button. Cloud wording never says videos stay only on this device. */
+export function distributeLead(cloudOn: boolean): string {
+  return cloudOn ? DISTRIBUTE_LEAD_CLOUD : DISTRIBUTE_LEAD;
+}
+
+/** Status after the optional distribution tap. */
+export function distributeDone(cloudOn: boolean): string {
+  return cloudOn ? DISTRIBUTE_DONE_CLOUD : DISTRIBUTE_DONE;
+}
 
 export const OWNER_DRIVE_KICKER = 'Sunday review';
 export const OWNER_DRIVE_TITLE = 'Class plans in your Google Drive';

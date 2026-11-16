@@ -18,6 +18,10 @@ import {
   DRIVE_SCOPES,
   DRIVE_SETUP_NEEDED,
   DRIVE_SIGN_IN_FAILED,
+  CLOUD_DRIVE_TODAY_EMPTY,
+  CLOUD_TODAY_EMPTY,
+  CLOUD_TODAY_SIGN_IN,
+  CLOUD_TODAY_UNAVAILABLE,
   DRIVE_TODAY_EMPTY,
   GOOGLE_CLIENT_ID_KEY,
   applyOwnedGoogleClientId,
@@ -1475,6 +1479,72 @@ test('today download copy stays honest when Drive was not checked', () => {
   assert.match(
     todayDownloadCopy({ galleryStatus: 'ready', galleryCount: 1, driveStatus: 'ready', driveCount: 2 }),
     /1 video in the shared gallery and 2 in Google Drive/,
+  );
+  assert.equal(
+    todayDownloadCopy({
+      galleryStatus: 'ready',
+      galleryCount: 0,
+      driveStatus: 'skipped',
+      driveCount: 0,
+      cloudStatus: 'ready',
+      cloudCount: 0,
+    }),
+    CLOUD_TODAY_EMPTY,
+  );
+  assert.equal(
+    todayDownloadCopy({
+      galleryStatus: 'ready',
+      galleryCount: 0,
+      driveStatus: 'ready',
+      driveCount: 0,
+      cloudStatus: 'ready',
+      cloudCount: 0,
+    }),
+    CLOUD_DRIVE_TODAY_EMPTY,
+  );
+  assert.equal(
+    todayDownloadCopy({
+      galleryStatus: 'ready',
+      galleryCount: 0,
+      driveStatus: 'skipped',
+      driveCount: 0,
+      cloudStatus: 'ready',
+      cloudCount: 3,
+    }),
+    '3 videos in Advantage Cloud for today.',
+  );
+  assert.equal(
+    todayDownloadCopy({
+      galleryStatus: 'ready',
+      galleryCount: 1,
+      driveStatus: 'ready',
+      driveCount: 2,
+      cloudStatus: 'ready',
+      cloudCount: 3,
+    }),
+    '1 video in the shared gallery, 3 in Advantage Cloud, and 2 in Google Drive for today.',
+  );
+  assert.equal(
+    todayDownloadCopy({
+      galleryStatus: 'ready',
+      galleryCount: 0,
+      driveStatus: 'skipped',
+      driveCount: 0,
+      cloudStatus: 'needs-sign-in',
+      cloudCount: 0,
+    }),
+    CLOUD_TODAY_SIGN_IN,
+  );
+  assert.equal(
+    todayDownloadCopy({
+      galleryStatus: 'ready',
+      galleryCount: 0,
+      driveStatus: 'skipped',
+      driveCount: 0,
+      cloudStatus: 'error',
+      cloudCount: 0,
+    }),
+    CLOUD_TODAY_UNAVAILABLE,
   );
 });
 

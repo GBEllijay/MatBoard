@@ -3,7 +3,10 @@ import test from 'node:test';
 import {
   DISTRIBUTE_BUTTON,
   DISTRIBUTE_DONE,
+  DISTRIBUTE_DONE_CLOUD,
   DISTRIBUTE_LEAD,
+  distributeDone,
+  distributeLead,
   LESSON_DRIVE_QUEUE_KEY,
   OWNER_DRIVE_BODY,
   OWNER_DRIVE_QUEUE,
@@ -145,6 +148,17 @@ test('Drive history keeps one draft per coach per day and drops file bytes', () 
   assert.match(DISTRIBUTE_LEAD, /optional/i);
   assert.equal(DISTRIBUTE_BUTTON, 'Upload for instructor distribution');
   assert.match(DISTRIBUTE_DONE, /not on Advantage/);
+  assert.equal(distributeLead(false), DISTRIBUTE_LEAD);
+  assert.equal(distributeDone(false), DISTRIBUTE_DONE);
+});
+
+test('distribution copy names Advantage Cloud when Cloud is on', () => {
+  assert.match(distributeLead(true), /Advantage Cloud for signed-in instructors/);
+  assert.equal(distributeDone(true), DISTRIBUTE_DONE_CLOUD);
+  assert.match(distributeDone(true), /Advantage Cloud/);
+  assert.match(distributeDone(true), /signed-in instructors/i);
+  assert.doesNotMatch(distributeLead(true), /not on Advantage|stay on this device/i);
+  assert.doesNotMatch(distributeDone(true), /not on Advantage|stay on this device/i);
 });
 
 test('slot media is an id and a name, and a Drive URL is refused', () => {
