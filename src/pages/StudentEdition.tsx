@@ -16,6 +16,14 @@ import { matchingGameTags, matchingResults, gameLetter } from '../lib/progress/c
 import { PROGRESS_NAME_MAX, type CompetitionResult, type MatchMethod, type MatchResult } from '../lib/progress/types.ts';
 import { isIsoDate } from '../lib/studentTools';
 import {
+  academyLinkOf,
+  STUDENT_CODE_FIRST_ACTIONS,
+  STUDENT_CODE_FIRST_LEAD,
+  STUDENT_CODE_FIRST_STEPS,
+  STUDENT_CODE_FIRST_TITLE,
+  type ClosedAcademyLink,
+} from '../lib/studentCodeFirst';
+import {
   JOURNAL_DRILLS_LABEL,
   JOURNAL_NOTES_LABEL,
   JOURNAL_PARTNERS_LABEL,
@@ -176,7 +184,7 @@ export function StudentEditionPage() {
     return <StudentLicenseClaimPage code={code} gymName={params.get('gym') ?? ''} initialEmail={params.get('email') ?? ''} />;
   }
   const open = studentEditionOpen(params, owner);
-  if (!open) return <StudentClosed />;
+  if (!open) return <StudentClosed link={academyLinkOf(params)} />;
 
   const screen = studentScreenNode(rest);
   return (
@@ -315,17 +323,37 @@ function StudentDemoBanner() {
   );
 }
 
-function StudentClosed() {
+function StudentClosed({ link }: { link: ClosedAcademyLink | null }) {
   return (
     <main className="home home--student">
       <div className="home__inner">
         <HomeMark to={PRODUCTS_PATH} />
         <div className="student-hub">
-          <header className="student-hub__band">
-            <LeatherSpine />
-            <h2>{STUDENT_EDITION_NAME}</h2>
-            <p>Student Edition opens with a code or a purchase. The demo uses sample data and does not unlock it.</p>
-          </header>
+          {link ? (
+            <header className="student-hub__band" data-testid="student-code-first">
+              <LeatherSpine />
+              <h2>{STUDENT_CODE_FIRST_TITLE}</h2>
+              <p>{STUDENT_CODE_FIRST_LEAD}</p>
+              <ol className="student-code-first__steps">
+                {STUDENT_CODE_FIRST_STEPS.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <p className="student-code-first__actions">
+                {STUDENT_CODE_FIRST_ACTIONS.map((action, index) => (
+                  <Link key={action.to} className={index === 0 ? 'btn btn--white' : 'btn btn--ghost'} to={action.to}>
+                    {action.label}
+                  </Link>
+                ))}
+              </p>
+            </header>
+          ) : (
+            <header className="student-hub__band">
+              <LeatherSpine />
+              <h2>{STUDENT_EDITION_NAME}</h2>
+              <p>Student Edition opens with a code or a purchase. The demo uses sample data and does not unlock it.</p>
+            </header>
+          )}
         </div>
         <SiteFooter />
       </div>

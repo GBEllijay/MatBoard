@@ -147,7 +147,7 @@ export async function restoreWhiteByEmail(
     }
     return {
       ok: true,
-      message: body.message || "If that address has a purchase, we've emailed a code.",
+      message: body.message || "If that address has a purchase or an instructor invite, we've emailed a code.",
       challengeId: typeof body.challengeId === 'string' ? body.challengeId : '',
     };
   } catch {

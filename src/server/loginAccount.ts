@@ -43,8 +43,15 @@ import {
 import { hashPassword, needsRehash, passwordProblem, verifyPassword } from './password.ts';
 import { bumpRate, licenseIdForEmail } from './purchaseRecords.ts';
 import { clientIp } from './rateLimit.ts';
-import { handleRestoreVerify, type RestoreEnv } from './restoreAccess.ts';
-import { seatEmailLabel, seatIdFromInvite, seatPassForLogin, type SeatEnv } from './seats.ts';
+import { checkRestoreChallenge, consumeRestoreChallenge, handleRestoreVerify, type RestoreEnv } from './restoreAccess.ts';
+import {
+  SEAT_ACCOUNT_BOUND,
+  openSeatForEmailHash,
+  seatEmailLabel,
+  seatInviteState,
+  seatPassForLogin,
+  type SeatEnv,
+} from './seats.ts';
 import { handleStudentLicenseClaim, readStudentInviteCode } from './studentLicenses.ts';
 import { STUDENT_LICENSE_SOURCE_PREFIX } from '../lib/studentLicensePool.ts';
 import { OWNER_INSTRUCTOR_ID } from '../lib/instructorIdentity.ts';
@@ -66,6 +73,20 @@ export const INVITE_FAILED = "That email and invite code don't match an open inv
 export const CODE_FAILED = "That email and code don't match.";
 export const LOGIN_UNAVAILABLE = 'Sign-in is not available yet.';
 export const ALREADY_HAS_PASSWORD = 'This email already has a password. Sign in, or use Forgot password.';
+
+/*
+ * Plain reasons for an instructor seat invite on /account?invite=. Each one is only shown to someone
+ * holding a real signed seat link (unguessable), so it does not reveal which emails exist.
+ * An unknown or unreadable invite, and every Student code failure, still get INVITE_FAILED.
+ */
+export const INVITE_REVOKED = 'This invite was revoked by the gym owner. Ask them for a new invite if that was a mistake.';
+export const INVITE_EXPIRED = 'This invite link has expired. Invites last 14 days. Ask the gym owner for a new link.';
+export const INVITE_REPLACED = 'This invite link was replaced by a newer one. Ask the gym owner for the latest link.';
+export const INVITE_EMAIL_MISMATCH = "That email isn't the one this invite was sent to. Use the address your gym owner or instructor invited.";
+export const INVITE_CLAIMED =
+  'This seat is already open on another device. To use it here, choose "First time after buying, or forgot password" and get an email code, or ask the gym owner to reset the seat.';
+
+export type InviteRefusal = 'invalid' | 'revoked' | 'expired' | 'replaced' | 'email' | 'claimed' | 'has-password';
 
 export type LoginEnv = RestoreEnv & SeatEnv & CoachConnectEnv;
 
@@ -522,10 +543,11 @@ export async function handleLoginInvite(
   const failBucket = `login-invite:${emailHash}`;
   if (!(await bumpRate(db, `login-ip:${ipKey}`, IP_LIMIT, stamp.getTime(), FAIL_WINDOW_MS))) return json(429, { ok: false, error: LOGIN_LOCKED });
   if ((await failCount(db, failBucket, stamp.getTime())) >= FAIL_LIMIT) return json(429, { ok: false, error: LOGIN_LOCKED });
-  const fail = async () => {
+  const refuse = async (status: number, reason: InviteRefusal, error: string) => {
     await bumpRate(db, failBucket, FAIL_LIMIT, stamp.getTime(), FAIL_WINDOW_MS);
-    return json(400, { ok: false, error: INVITE_FAILED });
+    return json(status, { ok: false, reason, error });
   };
+  const fail = () => refuse(400, 'invalid', INVITE_FAILED);
   const candidates = inviteCandidates(rawCode);
   const deviceId = cleanDevice(body.deviceId);
 
@@ -542,8 +564,9 @@ export async function handleLoginInvite(
       .prepare(`SELECT code, license_id AS gym, status, email_hash AS emailHash FROM student_codes WHERE code = ? LIMIT 1`)
       .bind(studentCode)
       .first<{ code: string; gym: string; status: string; emailHash: string | null }>();
+    // Student codes keep one generic answer (wrong email, wrong code, and revoked look alike).
     if (!row || row.status === 'revoked' || !row.emailHash || !timingSafeEqual(row.emailHash, emailHash)) return fail();
-    if (await readPassword(db, emailHash)) return json(409, { ok: false, error: ALREADY_HAS_PASSWORD });
+    if (await readPassword(db, emailHash)) return json(409, { ok: false, reason: 'has-password', error: ALREADY_HAS_PASSWORD });
     if (row.status === 'issued') {
       // Same claim the join page does: marks the code claimed, creates the Student grant, links the email.
       const claimed = await handleStudentLicenseClaim(
@@ -586,17 +609,25 @@ export async function handleLoginInvite(
 
   // 2) Instructor seat invite sent to this email.
   if (!matched) {
-    let seatId: string | null = null;
+    let state: Awaited<ReturnType<typeof seatInviteState>> = null;
     for (const candidate of candidates) {
-      seatId = await seatIdFromInvite(candidate, env, db);
-      if (seatId) break;
+      state = await seatInviteState(candidate, env, db, stamp);
+      if (state) break;
     }
-    if (!seatId) return fail();
+    if (!state) return fail();
+    const seatId = state.seatId;
     const seat = await seatEmailLabel(db, seatId);
-    if (!seat || seat.revoked || !seat.email) return fail();
+    if (!seat) return fail();
+    if (seat.revoked) return refuse(403, 'revoked', INVITE_REVOKED);
+    if (state.replaced) return refuse(400, 'replaced', INVITE_REPLACED);
+    if (state.expired) return refuse(400, 'expired', INVITE_EXPIRED);
+    if (!seat.email) return fail();
     const labelHash = await keyedHash(normalizeEmail(seat.email), pepper, 'email');
-    if (!timingSafeEqual(labelHash, emailHash)) return fail();
-    if (await readPassword(db, emailHash)) return json(409, { ok: false, error: ALREADY_HAS_PASSWORD });
+    if (!timingSafeEqual(labelHash, emailHash)) return refuse(400, 'email', INVITE_EMAIL_MISMATCH);
+    if (await readPassword(db, emailHash)) return json(409, { ok: false, reason: 'has-password', error: ALREADY_HAS_PASSWORD });
+    // Opened with the link on one device already. The link alone does not move it; the emailed
+    // code (mailbox proof) does, through /api/login/code.
+    if (seat.claimedDevice && seat.claimedDevice !== SEAT_ACCOUNT_BOUND) return refuse(409, 'claimed', INVITE_CLAIMED);
     const existing = await readInviteSelection(db, 'seat', seatId);
     if (!existing) {
       await recordInviteSelection(db, {
@@ -621,6 +652,74 @@ export async function handleLoginInvite(
   await db.prepare(`DELETE FROM rate_counters WHERE bucket = ?`).bind(failBucket).run();
   await writePassword(db, { emailHash, password, emailMask: maskEmail(email), licenseId, accountId: null, now: stamp });
   return signInResponse(db, env, { emailHash, emailMask: maskEmail(email), storedLicenseId: licenseId, body, request, now: stamp, fetchImpl });
+}
+
+/**
+ * Restore code for an address whose only record is an instructor seat (the Augustus case: an invite
+ * that was never opened, or a seat open on another device). The emailed code proves the mailbox the
+ * owner invited, so it sets the password and binds the seat to the account, like the invite link.
+ */
+async function seatCodeSignIn(
+  db: D1Database,
+  env: LoginEnv,
+  input: {
+    email: string;
+    emailHash: string;
+    challengeId: string;
+    code: string;
+    body: Record<string, unknown>;
+    request: Request;
+    now: Date;
+    fetchImpl?: typeof fetch;
+  },
+): Promise<Response> {
+  const pepper = env.CODE_HASH_PEPPER?.trim() ?? '';
+  const checked = await checkRestoreChallenge(db, pepper, input.challengeId, input.code, input.now);
+  if (!checked || !timingSafeEqual(checked.emailHash, input.emailHash)) return json(400, { ok: false, error: CODE_FAILED });
+  const seat = await openSeatForEmailHash(db, input.emailHash, pepper, input.now);
+  if (!seat) return json(400, { ok: false, error: CODE_FAILED });
+  if (!(await consumeRestoreChallenge(db, input.challengeId, input.now))) return json(400, { ok: false, error: CODE_FAILED });
+  // Sign-in finds seats through invite_selections by email hash. Seats issued before selections
+  // were stored (or synced from the owner's phone) get the same row the invite sign-in writes.
+  const existing = await readInviteSelection(db, 'seat', seat.seatId);
+  if (!existing) {
+    await recordInviteSelection(db, {
+      kind: 'seat',
+      ref: seat.seatId,
+      gym: seat.gym,
+      issuerId: OWNER_INSTRUCTOR_ID,
+      emailHash: input.emailHash,
+      preset: seat.preset,
+      editions: ['white', 'student', 'coach', 'pro'],
+      features: {},
+      now: input.now,
+    });
+  } else if (!existing.emailHash) {
+    await db
+      .prepare(`UPDATE invite_selections SET email_hash = ? WHERE invite_kind = 'seat' AND invite_ref = ?`)
+      .bind(input.emailHash, seat.seatId)
+      .run();
+  }
+  const licenseId = await licenseForEmail(db, input.email, pepper);
+  const reset = Boolean(await readPassword(db, input.emailHash));
+  const password = typeof input.body.password === 'string' ? input.body.password : '';
+  await writePassword(db, { emailHash: input.emailHash, password, emailMask: maskEmail(input.email), licenseId, accountId: null, now: input.now });
+  if (reset) {
+    await db
+      .prepare(`UPDATE login_sessions SET revoked_at = ? WHERE email_hash = ? AND revoked_at IS NULL`)
+      .bind(input.now.toISOString(), input.emailHash)
+      .run();
+  }
+  await db.prepare(`DELETE FROM rate_counters WHERE bucket = ?`).bind(`login-fail:${input.emailHash}`).run();
+  return signInResponse(db, env, {
+    emailHash: input.emailHash,
+    emailMask: maskEmail(input.email),
+    storedLicenseId: licenseId,
+    body: input.body,
+    request: input.request,
+    now: input.now,
+    fetchImpl: input.fetchImpl,
+  });
 }
 
 /** First password for a purchaser, and Forgot password, both through the restore email code. */
@@ -663,6 +762,10 @@ export async function handleLoginCode(
     db,
     () => stamp,
   );
+  if (verified.status === 409) {
+    const answer = (await verified.json().catch(() => ({}))) as { seatOnly?: boolean };
+    if (answer.seatOnly) return seatCodeSignIn(db, env, { email, emailHash, challengeId, code, body, request, now: stamp, fetchImpl });
+  }
   if (verified.status !== 200) return json(400, { ok: false, error: CODE_FAILED });
   const licenseId = await licenseForEmail(db, email, pepper);
   const reset = Boolean(await readPassword(db, emailHash));
