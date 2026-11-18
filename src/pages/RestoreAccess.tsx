@@ -36,6 +36,8 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
   const [note, setNote] = useState<string | null>(null);
   const [accountReference, setAccountReference] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The code matched an instructor seat, not a purchase: point to Account, which opens seats.
+  const [seatOnly, setSeatOnly] = useState(false);
   const [pending, setPending] = useState(false);
   const [check, setCheck] = useState<PersonCheck>('loading');
   const [turnstileToken, setTurnstileToken] = useState('');
@@ -164,6 +166,7 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
     event.preventDefault();
     setError(null);
     setNote(null);
+    setSeatOnly(false);
     if (!challengeId || !code.trim()) {
       setError("That code didn't work.");
       return;
@@ -188,8 +191,10 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
         grants?: string[];
         accountId?: string;
         extraProfileSlots?: number;
+        seatOnly?: boolean;
       };
       if (!response.ok || !body.ok || !body.token) {
+        setSeatOnly(body.seatOnly === true);
         setError(body.error || "That code didn't work.");
         setPending(false);
         return;
@@ -303,6 +308,13 @@ export function RestoreAccessPage({ deps = {} }: { deps?: RestoreDeps } = {}) {
           {error ? (
             <p className="buy__status buy__status--bad" role="alert">
               {error}
+            </p>
+          ) : null}
+          {seatOnly ? (
+            <p>
+              <Link className="btn btn--white" to="/account?tab=code">
+                Open Account
+              </Link>
             </p>
           ) : null}
           {note ? (

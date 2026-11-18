@@ -247,7 +247,7 @@ test('a second try with the same invite answers 409, and the account page switch
   assert.equal(again.status, 409);
   const { readFileSync } = await import('node:fs');
   const account = readFileSync(new URL('../pages/Account.tsx', import.meta.url), 'utf8');
-  assert.match(account, /result\.status === 409[\s\S]{0,200}setMode\('signin'\)[\s\S]{0,40}setNote\(INVITE_ALREADY_SET_UP\)/);
+  assert.match(account, /inviteAlreadySetUp\(result\)[\s\S]{0,200}setMode\('signin'\)[\s\S]{0,40}setNote\(INVITE_ALREADY_SET_UP\)/);
   assert.match(account, /INVITE_WELCOME/);
   assert.match(account, /INVITE_WELCOME_STUDENT/);
 });

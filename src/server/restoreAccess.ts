@@ -20,6 +20,7 @@ import {
 } from './purchaseRecords.ts';
 import { appVersionOf } from '../lib/appCapability.ts';
 import { cloudAccessForLicense } from './cloudSubscription.ts';
+import { openSeatForEmailHash } from './seats.ts';
 import { freeStudentRestoreShape } from './studentLicenses.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
 
@@ -28,9 +29,15 @@ const JSON_HEADERS = {
   'cache-control': 'no-store',
 };
 
-export const RESTORE_GENERIC = "If that address has a purchase, we've emailed a code.";
+export const RESTORE_GENERIC = "If that address has a purchase or an instructor invite, we've emailed a code.";
 export const RESTORE_UNAVAILABLE = 'Restore is not available yet.';
 export const RESTORE_CODE_FAILURE = "That code didn't work.";
+/**
+ * /api/restore/verify for an address whose only record is an open instructor seat. Only someone who
+ * typed the right emailed code sees this, so it reveals nothing to a stranger. The code is not spent.
+ */
+export const RESTORE_SEAT_USE_ACCOUNT =
+  "This email is on an instructor invite, not a purchase. Open Account, choose \"First time after buying, or forgot password\", and use the emailed code there to set your password and open your seat.";
 
 const HOUR = 60 * 60 * 1000;
 const EMAIL_LIMIT = 3;
@@ -53,13 +60,15 @@ function genericOk(challengeId: string): Response {
 }
 
 /** The code email. Code only: no link, so a mail scanner has nothing to open. */
-export function restoreEmailText(code: string): string {
+export function restoreEmailText(code: string, options: { seat?: boolean } = {}): string {
   return [
     'Your Advantage restore code:',
     '',
     code,
     '',
-    'Enter this code on the Advantage restore page. It expires in 15 minutes and works once.',
+    options.seat
+      ? 'This email has an instructor invite. On the Advantage Account page, choose "First time after buying, or forgot password", then enter this code with a new password. It expires in 15 minutes and works once.'
+      : 'Enter this code on the Advantage restore page. It expires in 15 minutes and works once.',
     '',
     `Sent from ${RESTORE_FROM_ADDRESS}. If you did not ask for this, you can ignore it.`,
   ].join('\n');
@@ -146,8 +155,12 @@ export async function handleRestoreRequest(
   if (licenseId) {
     await ensureAccountForLicense(db, { licenseId, email, pepper, now: stamp });
   }
+  // An address that is only on an instructor seat invite (pending, or claimed on another device)
+  // gets a code too. The answer below is the same either way, so nobody learns which addresses
+  // are invited. The code only proves the mailbox; /api/login/code turns it into a password + seat.
+  const seat = licenseId ? null : await openSeatForEmailHash(db, emailKey, pepper, stamp);
   const challengeId = crypto.randomUUID();
-  if (licenseId) {
+  if (licenseId || seat) {
     const code = restoreCode();
     const codeHash = await keyedHash(code, pepper, 'restore');
     const expires = new Date(stamp.getTime() + CODE_TTL_MS).toISOString();
@@ -160,10 +173,56 @@ export async function handleRestoreRequest(
     await sender.send({
       to: email,
       subject: 'Your Advantage restore code',
-      text: restoreEmailText(code),
+      text: restoreEmailText(code, { seat: !licenseId && Boolean(seat) }),
     });
   }
   return genericOk(challengeId);
+}
+
+/**
+ * Checks a restore code without spending it: unknown, used, expired, or out-of-attempts challenges
+ * fail, and a wrong code counts one attempt. Returns the challenge's email hash when the code matches.
+ */
+export async function checkRestoreChallenge(
+  db: D1Database,
+  pepper: string,
+  challengeId: string,
+  rawCode: unknown,
+  now: Date,
+): Promise<{ id: string; emailHash: string } | null> {
+  const code = typeof rawCode === 'string' ? rawCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+  if (!challengeId || !code || !pepper) return null;
+  const row = await db
+    .prepare(
+      `SELECT id, code_hash AS codeHash, email_hash AS emailHash, expires_at AS expiresAt, used_at AS usedAt, attempts
+       FROM restore_challenges WHERE id = ?`,
+    )
+    .bind(challengeId)
+    .first<{
+      id: string;
+      codeHash: string;
+      emailHash: string;
+      expiresAt: string;
+      usedAt: string | null;
+      attempts: number;
+    }>();
+  if (!row || row.usedAt || Number(row.attempts) >= MAX_ATTEMPTS) return null;
+  if (Date.parse(row.expiresAt) <= now.getTime()) return null;
+  const got = await keyedHash(code, pepper, 'restore');
+  if (got !== row.codeHash) {
+    await db.prepare(`UPDATE restore_challenges SET attempts = attempts + 1 WHERE id = ?`).bind(challengeId).run();
+    return null;
+  }
+  return { id: row.id, emailHash: row.emailHash };
+}
+
+/** Spends a checked code. False when another request already spent it. */
+export async function consumeRestoreChallenge(db: D1Database, challengeId: string, now: Date): Promise<boolean> {
+  const consumed = await db
+    .prepare(`UPDATE restore_challenges SET used_at = ? WHERE id = ? AND used_at IS NULL`)
+    .bind(now.toISOString(), challengeId)
+    .run();
+  return consumed.meta.changes === 1;
 }
 
 export async function handleRestoreVerify(
@@ -184,35 +243,8 @@ export async function handleRestoreVerify(
     return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
   }
   const challengeId = typeof body.challengeId === 'string' ? body.challengeId.trim() : '';
-  const code = typeof body.code === 'string' ? body.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
-  if (!challengeId || !code) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  const row = await db
-    .prepare(
-      `SELECT id, code_hash AS codeHash, email_hash AS emailHash, expires_at AS expiresAt, used_at AS usedAt, attempts
-       FROM restore_challenges WHERE id = ?`,
-    )
-    .bind(challengeId)
-    .first<{
-      id: string;
-      codeHash: string;
-      emailHash: string;
-      expiresAt: string;
-      usedAt: string | null;
-      attempts: number;
-    }>();
-  if (!row || row.usedAt || Number(row.attempts) >= MAX_ATTEMPTS) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  if (Date.parse(row.expiresAt) <= now().getTime()) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  const got = await keyedHash(code, pepper, 'restore');
-  if (got !== row.codeHash) {
-    await db.prepare(`UPDATE restore_challenges SET attempts = attempts + 1 WHERE id = ?`).bind(challengeId).run();
-    return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  }
-  const consumed = await db
-    .prepare(`UPDATE restore_challenges SET used_at = ? WHERE id = ? AND used_at IS NULL`)
-    .bind(now().toISOString(), challengeId)
-    .run();
-  if (consumed.meta.changes !== 1) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-
+  const row = await checkRestoreChallenge(db, pepper, challengeId, body.code, now());
+  if (!row) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
   const account = await db
     .prepare(`SELECT id FROM accounts WHERE email_hash = ? LIMIT 1`)
     .bind(row.emailHash)
@@ -225,7 +257,16 @@ export async function handleRestoreVerify(
         .bind(row.emailHash)
         .first<{ licenseId: string }>();
   const licenseId = fromAccount ?? identity?.licenseId ?? '';
-  if (!licenseId) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
+  if (!licenseId) {
+    // Seat-only address: the code is right, but this page restores purchases. Point to Account,
+    // which sets a password and opens the seat with the same kind of code. Not spent here.
+    if (await openSeatForEmailHash(db, row.emailHash, pepper, now())) {
+      return json(409, { ok: false, seatOnly: true, error: RESTORE_SEAT_USE_ACCOUNT });
+    }
+    await consumeRestoreChallenge(db, challengeId, now());
+    return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
+  }
+  if (!(await consumeRestoreChallenge(db, challengeId, now()))) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
   const linked = await ensureAccountForLicense(db, { licenseId, pepper, now: now() });
   const grants = await grantsForLicense(db, licenseId, now());
   const doors = expandGrants(doorsFromStored(grants)) as Door[];

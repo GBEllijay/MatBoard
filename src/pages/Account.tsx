@@ -8,6 +8,7 @@ import {
   accountReturnPath,
   fetchAccount,
   firstSignInWithInvite,
+  inviteAlreadySetUp,
   setPasswordWithEmailCode,
   signInWithPassword,
   type AccountProfile,
@@ -15,6 +16,7 @@ import {
   type LoginPayload,
   type LoginResult,
   type AccountRole,
+  type InviteRefusal,
 } from '../lib/emailLogin';
 import { INSTRUCTOR_PERMISSION_FIELDS, instructorPreset, normalizeInstructorPresetId } from '../lib/instructorSeats';
 import { looksLikeStudentInvite } from '../lib/studentLicensePool';
@@ -317,6 +319,8 @@ export function AccountPage() {
   // "Returning user?" prompt, so whatever the person bought or was given shows open there.
   const [returnTo, setReturnTo] = useState<string | null>(null);
   const [invited, setInvited] = useState(false);
+  // Why the last invite try failed, so the screen can offer the next step (the email code).
+  const [inviteRefusal, setInviteRefusal] = useState<InviteRefusal | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -325,6 +329,10 @@ export function AccountPage() {
       setInviteCode(invite);
       setMode('invite');
       setInvited(true);
+    } else {
+      // Links from other screens (Student Edition's "I have a code", /restore's seat answer).
+      const tab = params.get('tab');
+      if (tab === 'invite' || tab === 'code') setMode(tab);
     }
     setReturnTo(accountReturnPath(params));
     const preset = params.get('email');
@@ -380,7 +388,8 @@ export function AccountPage() {
     if (!passwordReady()) return;
     setPending(true);
     const result = await firstSignInWithInvite(email.trim(), inviteCode.trim(), password);
-    if (!result.ok && result.status === 409) {
+    setInviteRefusal(result.ok ? null : (result.reason ?? null));
+    if (inviteAlreadySetUp(result)) {
       // This email already set a password with its invite: sign in normally instead.
       setPending(false);
       setPassword('');
@@ -432,6 +441,7 @@ export function AccountPage() {
     setMode(next);
     setError(null);
     setNote(null);
+    setInviteRefusal(null);
   }
 
   const emailField = (
@@ -516,6 +526,13 @@ export function AccountPage() {
                   <button className="btn btn--white" type="submit" disabled={pending}>
                     {pending ? 'Setting up…' : 'Set password and sign in'}
                   </button>
+                  {inviteRefusal === 'claimed' ? (
+                    <p>
+                      <button type="button" className="home__text-btn" onClick={() => pick('code')}>
+                        Get an email code instead
+                      </button>
+                    </p>
+                  ) : null}
                 </form>
               ) : null}
               {mode === 'code' ? (
@@ -536,8 +553,8 @@ export function AccountPage() {
                 ) : (
                   <form className="buy__card" onSubmit={(event) => void onRequestCode(event)}>
                     <p>
-                      We email a one-time code to the address on your purchase. Enter it with a new password. You only need
-                      this the first time, or if you forget your password.
+                      We email a one-time code to the address on your purchase or your instructor invite. Enter it with a new
+                      password. You only need this the first time, or if you forget your password.
                     </p>
                     {emailField}
                     <div className="restore__turnstile" ref={check.host} data-testid="turnstile" />

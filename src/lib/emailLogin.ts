@@ -101,7 +101,28 @@ export type LoginPayload = {
   warning?: string;
 };
 
-export type LoginResult = { ok: true; payload: LoginPayload } | { ok: false; error: string; status: number; setup?: boolean };
+/** Why /api/login/invite refused an invite (server `reason`). Absent on older servers and other calls. */
+export type InviteRefusal = 'invalid' | 'revoked' | 'expired' | 'replaced' | 'email' | 'claimed' | 'has-password';
+
+const INVITE_REFUSALS: readonly InviteRefusal[] = ['invalid', 'revoked', 'expired', 'replaced', 'email', 'claimed', 'has-password'];
+
+export type LoginResult =
+  | { ok: true; payload: LoginPayload }
+  | { ok: false; error: string; status: number; setup?: boolean; reason?: InviteRefusal };
+
+export function inviteRefusalOf(value: unknown): InviteRefusal | undefined {
+  return typeof value === 'string' && (INVITE_REFUSALS as readonly string[]).includes(value) ? (value as InviteRefusal) : undefined;
+}
+
+/**
+ * The invite already set a password for this email, so the screen switches to Sign in.
+ * Older servers sent a bare 409 for that; a 409 with reason 'claimed' means something else.
+ */
+export function inviteAlreadySetUp(result: LoginResult): boolean {
+  if (result.ok) return false;
+  if (result.reason) return result.reason === 'has-password';
+  return result.status === 409;
+}
 
 export type MeResult = { signedIn: false; available: boolean } | { signedIn: true; payload: LoginPayload };
 
@@ -168,6 +189,7 @@ async function loginCall(path: string, body: Record<string, unknown>, fallback: 
         status,
         error: typeof answer.error === 'string' ? answer.error : fallback,
         ...(answer.setup === true ? { setup: true } : {}),
+        ...(inviteRefusalOf(answer.reason) ? { reason: inviteRefusalOf(answer.reason) } : {}),
       };
     }
     const payload = answer as unknown as LoginPayload;

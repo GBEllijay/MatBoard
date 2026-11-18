@@ -6,7 +6,9 @@ import { memoryEmailSender } from './emailSender.ts';
 import { readInviteSelection } from './inviteSelections.ts';
 import {
   CODE_FAILED,
+  INVITE_EMAIL_MISMATCH,
   INVITE_FAILED,
+  INVITE_REVOKED,
   LOGIN_FAILED,
   LOGIN_LOCKED,
   handleLogin,
@@ -337,9 +339,11 @@ test('pending instructor seat invite: email + invite link sets the password and 
 
   // Restore sends nothing here: a pending seat has no license. The invite itself is the code.
   const link = `${ORIGIN}/instructors?invite=${encodeURIComponent(seat.invite)}`;
+  // A real signed link with another email now says so plainly (only the link holder sees it).
   const wrong = await call(f, post('/api/login/invite', { email: 'someone.else@gmail.com', code: link, password: 'coach pass 12' }));
   assert.equal(wrong.status, 400);
-  assert.equal(wrong.body.error, INVITE_FAILED);
+  assert.equal(wrong.body.error, INVITE_EMAIL_MISMATCH);
+  assert.equal(wrong.body.reason, 'email');
   const first = await call(f, post('/api/login/invite', { email: 'coachone@gmail.com', code: link, password: 'coach pass 12', deviceId: 'coach-phone' }));
   assert.equal(first.status, 200, JSON.stringify(first.body));
   assert.equal(first.body.seat.seatId, seat.seatId);
@@ -409,8 +413,9 @@ test('seat issued before switches were stored: its preset menus restore, and a r
   const revoked = (await revokedIssue.json()) as { seatId: string; invite: string };
   await handleSeatRevoke(post('/api/seats/revoke', { token: owner.token, seatId: revoked.seatId }), f.env, f.db, () => NOW);
   const tried = await call(f, post('/api/login/invite', { email: 'late@gmail.com', code: revoked.invite, password: 'late pass 12' }));
-  assert.equal(tried.status, 400);
-  assert.equal(tried.body.error, INVITE_FAILED);
+  assert.equal(tried.status, 403);
+  assert.equal(tried.body.error, INVITE_REVOKED);
+  assert.equal(tried.body.reason, 'revoked');
 });
 
 test("device-only seat invite (today's production case): owner sync stores it, then email + invite link signs in with the owner's switches", async () => {

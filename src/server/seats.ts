@@ -8,7 +8,7 @@ import { claimForAccess } from './subscriptionAccess.ts';
 import { accessForLicense } from './subscriptionSync.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
 import { keyedHash, normalizeEmail } from './codeCrypto.ts';
-import { cleanFeatures, markInviteRedeemed, recordInviteSelection } from './inviteSelections.ts';
+import { cleanFeatures, inviteSelectionsForEmail, markInviteRedeemed, recordInviteSelection } from './inviteSelections.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
 
 const JSON_HEADERS = {
@@ -500,7 +500,14 @@ export async function seatPassForLogin(
 export async function seatEmailLabel(
   db: D1Database,
   seatId: string,
-): Promise<{ gym: string; email: string | null; preset: string | null; status: string; revoked: boolean } | null> {
+): Promise<{
+  gym: string;
+  email: string | null;
+  preset: string | null;
+  status: string;
+  revoked: boolean;
+  claimedDevice: string | null;
+} | null> {
   const row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(seatId).first<SeatRow>();
   if (!row) return null;
   return {
@@ -509,7 +516,94 @@ export async function seatEmailLabel(
     preset: row.preset,
     status: row.status,
     revoked: Boolean(row.revokedAt) || row.status === 'revoked',
+    claimedDevice: row.claimedDevice,
   };
+}
+
+/**
+ * Same "can this seat still be opened" rule as seatPassForLogin: not revoked, pending or claimed,
+ * and a pending invite that has not passed its 14-day expiry.
+ */
+function seatOpenNow(row: SeatRow, now: Date): boolean {
+  if (row.revokedAt || row.status === 'revoked') return false;
+  if (row.status !== 'pending' && row.status !== 'claimed' && row.status !== 'active') return false;
+  if (row.status === 'pending' && row.inviteExpiresAt && Date.parse(row.inviteExpiresAt) <= now.getTime()) return false;
+  return true;
+}
+
+export type OpenSeatMatch = { seatId: string; gym: string; preset: string | null; status: string };
+
+function openSeatMatch(row: SeatRow): OpenSeatMatch {
+  return { seatId: row.id, gym: row.gymLicenseId, preset: row.preset, status: row.status };
+}
+
+/**
+ * Open instructor seat for this email hash, for restore codes (PR 547 rebuilt on email sign-in).
+ * First the invite_selections email hash stored at issue time, then the seat's email label for
+ * seats issued before that, after the same normalization restore uses (Gmail dots, case).
+ * A claimed seat wins over a pending one; then the newest.
+ */
+export async function openSeatForEmailHash(
+  db: D1Database,
+  emailHash: string,
+  pepper: string,
+  now: Date,
+): Promise<OpenSeatMatch | null> {
+  if (!emailHash || !pepper) return null;
+  for (const selection of await inviteSelectionsForEmail(db, emailHash, 'seat')) {
+    const row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(selection.ref).first<SeatRow>();
+    if (row && seatOpenNow(row, now)) return openSeatMatch(row);
+  }
+  let rows: SeatRow[] = [];
+  try {
+    const found = await db
+      .prepare(
+        `SELECT ${SEAT_COLUMNS} FROM seats
+         WHERE revoked_at IS NULL AND status IN ('pending', 'claimed', 'active')
+           AND email_label IS NOT NULL AND trim(email_label) != ''`,
+      )
+      .all<SeatRow>();
+    rows = found.results ?? [];
+  } catch {
+    return null;
+  }
+  const matches: SeatRow[] = [];
+  for (const row of rows) {
+    if (!seatOpenNow(row, now)) continue;
+    const normalized = normalizeEmail(row.emailLabel ?? '');
+    if (!normalized) continue;
+    if ((await keyedHash(normalized, pepper, 'email')) === emailHash) matches.push(row);
+  }
+  matches.sort((left, right) => {
+    const claimed = Number(right.status !== 'pending') - Number(left.status !== 'pending');
+    if (claimed) return claimed;
+    return Date.parse(right.createdAt) - Date.parse(left.createdAt);
+  });
+  return matches[0] ? openSeatMatch(matches[0]) : null;
+}
+
+/**
+ * What an invite string says about its seat, for the /account?invite= sign-in screen.
+ * replaced: the owner reset the seat, so this older link's nonce no longer matches.
+ * expired: a signed link past its 14 days on a seat nobody has opened yet.
+ * Legacy device-made invites have no nonce or expiry. Null when this is not a seat invite.
+ */
+export async function seatInviteState(
+  invite: string,
+  env: SeatEnv,
+  db: D1Database,
+  now: Date,
+): Promise<{ seatId: string; replaced: boolean; expired: boolean } | null> {
+  const signed = await readInvite(invite, env);
+  if (signed && typeof signed.sid === 'string') {
+    const row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(signed.sid).first<SeatRow>();
+    if (!row || row.gymLicenseId !== signed.gym) return null;
+    const replaced = Boolean(row.inviteNonce && row.inviteNonce !== signed.nonce);
+    const pastExp = typeof signed.exp === 'number' && signed.exp <= Math.floor(now.getTime() / 1000);
+    return { seatId: row.id, replaced, expired: pastExp && row.status === 'pending' };
+  }
+  const seatId = await seatIdFromInvite(invite, env, db);
+  return seatId ? { seatId, replaced: false, expired: false } : null;
 }
 
 /**

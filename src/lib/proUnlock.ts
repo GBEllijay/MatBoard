@@ -98,15 +98,25 @@ export function stripFullOwnerStudentParam(search: URLSearchParams): URLSearchPa
   return new URLSearchParams(search);
 }
 
+/** A signed academy QR token (`/student/connections?coach=<a.b.c>`): it links an academy and never unlocks Coach. */
+const SIGNED_COACH_CONNECT = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+
+/** `?coach=` to strip at boot. The academy QR's signed token stays so the page can read it. */
+export function stripsCoachParam(value: string | null): boolean {
+  if (value == null) return false;
+  return !SIGNED_COACH_CONNECT.test(value.trim());
+}
+
 /** Drop unlock query keys without granting them. `?student=1` stays for demo mode. */
 export function consumeUnlockQueryNow(): void {
   if (typeof window === 'undefined') return;
   const url = new URL(window.location.href);
-  const had = url.searchParams.has('pro') || url.searchParams.has('unlock') || url.searchParams.has('coach');
+  const stripCoach = stripsCoachParam(url.searchParams.get('coach'));
+  const had = url.searchParams.has('pro') || url.searchParams.has('unlock') || stripCoach;
   if (!had) return;
   url.searchParams.delete('pro');
   url.searchParams.delete('unlock');
-  url.searchParams.delete('coach');
+  if (stripCoach) url.searchParams.delete('coach');
   const next = `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''}${url.hash}`;
   window.history.replaceState(window.history.state, '', next);
 }
