@@ -9,6 +9,7 @@ import {
   isDailyVideo,
   uploadDailyMediaFile,
 } from './dailyOwnerUpload.ts';
+import { listCloudFolder } from './advantageCloudFolders.ts';
 import { handleGymCloud, streamFrom, type GymCloudEnv, type GymMediaBucket } from '../server/gymCloud.ts';
 import { issueToken } from '../server/tokenIssue.ts';
 
@@ -79,6 +80,12 @@ test('a Cloud owner photo is approved and a coach photo waits in pending', async
   assert.equal(photo.cloud, true);
   assert.equal(photo.message, `${CLOUD_PHOTO_CLOUD_NOTE} Approved.`);
   assert.equal(objects.has('groups/lic-owner/gallery/approved/2026-11-10/class.jpg'), true);
+  assert.match(photo.message, /Gallery/);
+  // The daily photo is in the Gallery folder, which the TV slideshow plays. A daily video is not.
+  objects.set('groups/lic-owner/videos/daily/2026-11-10/drill.mp4', { bytes: new Uint8Array([1]), type: 'video/mp4' });
+  const gallery = await listCloudFolder({ folder: 'gallery', token: owner, fetcher });
+  assert.ok(gallery && !('error' in gallery));
+  assert.deepEqual(gallery.items.map((item) => item.path), ['gallery/approved/2026-11-10/class.jpg']);
   const coachToken = await issueToken(secret, {
     licenseId: 'owner-test',
     grants: ['pro'],

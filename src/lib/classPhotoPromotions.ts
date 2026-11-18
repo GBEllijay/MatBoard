@@ -44,9 +44,9 @@ export const CLASS_PHOTO_PROMOTIONS_SAVED_PHONE =
   'Saved on this device. Connect Google Drive or OneDrive to use the same gallery on another device.';
 export const CLASS_PHOTO_PROMOTIONS_FAILED =
   'Saved on this device. Google Drive could not take this file.';
-export const CLASS_PHOTO_CLOUD_UPLOADED = 'Uploaded to Advantage Cloud.';
+export const CLASS_PHOTO_CLOUD_UPLOADED = 'Uploaded to Advantage Cloud Gallery.';
 export const CLASS_PHOTO_CLOUD_FAILED = 'Saved on this device. Advantage Cloud could not take this file.';
-export const CLASS_PHOTO_CLOUD_STAY = `${GALLERY_ROUTE_NOTE} Uploaded to Advantage Cloud. The owner's photos are Approved. When Cloud approval is on, Coach and Instructors photos are Pending until the owner or an Instructors seat approves them. When the owner turns Cloud approval off, those photos go straight to the gallery.`;
+export const CLASS_PHOTO_CLOUD_STAY = `${GALLERY_ROUTE_NOTE} Uploaded to Advantage Cloud Gallery. The owner's photos are Approved. When Cloud approval is on, Coach and Instructors photos are Pending until the owner or an Instructors seat approves them. When the owner turns Cloud approval off, those photos go straight to Gallery.`;
 export const CLASS_PHOTO_PROMOTIONS_SKIPPED =
   'That file is not a photo or video. Take photo, Record, or pick a photo or video from the gallery.';
 

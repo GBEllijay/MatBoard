@@ -41,6 +41,15 @@ import {
   parseDailyVideoMarkerPath,
   galleryCloudPath,
   galleryDecisionAllowed,
+  cloudFolderApprovalAllowed,
+  cloudFolderDeleteAllowed,
+  sideFolderApprovedPath,
+  isCloudSideFolder,
+  parseSideFolderCloudPath,
+  sideFolderCloudPath,
+  sideFolderMimeAllowed,
+  CLOUD_SIDE_FOLDERS,
+  type CloudSideFolder,
   galleryDecisionPath,
   galleryUploadLane,
   parseGalleryCloudPath,
@@ -696,6 +705,67 @@ async function listGallery(
   return files;
 }
 
+export type CloudFolderRow = CloudFileRow & {
+  folder: 'gallery' | CloudSideFolder;
+  dateKey: string;
+  kind: 'photo' | 'video' | 'file';
+};
+
+/** Gallery for the folder view and the TV slideshow: approved Gallery files only. Daily videos stay out. */
+async function listGalleryFolder(bucket: GymMediaBucket, actor: Actor): Promise<CloudFolderRow[]> {
+  const rows: CloudFolderRow[] = [];
+  for (const file of await listGallery(bucket, actor, 'approved', '')) {
+    const parsed = parseGalleryCloudPath(file.path);
+    if (!parsed) continue;
+    rows.push({ ...file, folder: 'gallery', dateKey: parsed.dateKey, kind: mediaKindOf(file.mime, file.name) });
+  }
+  return sortForGallery(rows).slice(0, APPROVED_MEDIA_LIMIT);
+}
+
+async function listSideFolder(bucket: GymMediaBucket, actor: Actor, folder: CloudSideFolder): Promise<CloudFolderRow[]> {
+  const rows: CloudFolderRow[] = [];
+  const prefix = `groups/${actor.licenseId}/${folder}/`;
+  let cursor: string | undefined;
+  for (let page = 0; page < 20; page += 1) {
+    const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+    for (const object of listed.objects) {
+      const relative = relativePath(actor.licenseId, object.key);
+      const parsed = parseSideFolderCloudPath(relative);
+      // Pending uploads ({folder}/pending/) stay out until the owner approves them.
+      if (!parsed || parsed.folder !== folder || parsed.lane !== 'approved') continue;
+      const mime = object.httpMetadata?.contentType || 'application/octet-stream';
+      const kind = mime.startsWith('image/') ? 'photo' : mime.startsWith('video/') ? 'video' : 'file';
+      rows.push({ name: parsed.name, path: relative, size: object.size, mime, folder, dateKey: '', kind });
+    }
+    if (!listed.truncated || !listed.cursor) break;
+    cursor = listed.cursor;
+  }
+  return rows.sort((a, b) => a.name.localeCompare(b.name)).slice(0, APPROVED_MEDIA_LIMIT);
+}
+
+/** Pro Shop, Events, and Schedule uploads waiting for the owner. */
+async function listSideFolderPending(bucket: GymMediaBucket, actor: Actor): Promise<CloudFolderRow[]> {
+  const rows: CloudFolderRow[] = [];
+  for (const folder of CLOUD_SIDE_FOLDERS) {
+    const prefix = `groups/${actor.licenseId}/${folder}/pending/`;
+    let cursor: string | undefined;
+    for (let page = 0; page < 20; page += 1) {
+      const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+      for (const object of listed.objects) {
+        const relative = relativePath(actor.licenseId, object.key);
+        const parsed = parseSideFolderCloudPath(relative);
+        if (!parsed || parsed.lane !== 'pending') continue;
+        const mime = object.httpMetadata?.contentType || 'application/octet-stream';
+        const kind = mime.startsWith('image/') ? 'photo' : mime.startsWith('video/') ? 'video' : 'file';
+        rows.push({ name: parsed.name, path: relative, size: object.size, mime, folder, dateKey: '', kind });
+      }
+      if (!listed.truncated || !listed.cursor) break;
+      cursor = listed.cursor;
+    }
+  }
+  return rows;
+}
+
 async function listInstructor(
   bucket: GymMediaBucket,
   actor: Actor,
@@ -739,6 +809,8 @@ type StartBody = {
   key?: string;
   keys?: unknown;
   studentId?: string;
+  /** `cloud-folder` uploads: pro-shop, events, or schedule. */
+  folder?: string;
   uploadId?: string;
   id?: string;
   parts?: { partNumber?: number; etag?: string }[];
@@ -759,7 +831,8 @@ function isPurpose(value: string): value is CloudMediaPurpose {
     value === 'gallery' ||
     value === 'instructor-video' ||
     value === 'instructor-photo' ||
-    value === 'from-instructor'
+    value === 'from-instructor' ||
+    value === 'cloud-folder'
   );
 }
 
@@ -830,6 +903,9 @@ async function refuseDailyWrite(env: GymCloudEnv, actor: Actor, key: string): Pr
   return null;
 }
 
+export const CLOUD_FOLDER_WRITE_REFUSED = 'This seat cannot open the Advantage Cloud folders.';
+export const CLOUD_FOLDER_APPROVE_REFUSED = 'Only the owner can approve or reject Gallery, Pro Shop, Events, and Schedule uploads.';
+
 const LESSON_TEMPLATE_REFUSED = 'Only the owner or a Coach seat can update the gym template. Your edits save to your own plan.';
 
 async function readLessonJson(bucket: GymMediaBucket, key: string | null): Promise<{ exists: boolean; plan: unknown | null }> {
@@ -851,6 +927,15 @@ async function refuseFolderWrite(env: GymCloudEnv, actor: Actor, key: string): P
   const daily = await refuseDailyWrite(env, actor, key);
   if (daily) return daily;
   const relative = relativePath(actor.licenseId, key);
+  // Gallery, Pro Shop, Events, Schedule: anyone who can open the folders, in the lane the owner's switch sets.
+  const side = parseSideFolderCloudPath(relative);
+  if ((side || parseGalleryCloudPath(relative)) && !cloudFolderAccess(actor)) {
+    return json(403, { ok: false, error: CLOUD_FOLDER_WRITE_REFUSED });
+  }
+  if (side) {
+    const lane = galleryUploadLane({ kind: actor.kind, preset: actor.preset, approvalRequired: await licenseGalleryApprovalRequired(env, actor.licenseId) });
+    if (side.lane !== lane) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+  }
   // The gym template is never overwritten by an instructor's edit. Only the owner or a Coach seat replaces it.
   if (isTemplateLessonPath(relative) && !lessonTemplateWriteAllowed(actor)) {
     return json(403, { ok: false, error: LESSON_TEMPLATE_REFUSED });
@@ -873,6 +958,20 @@ async function refuseFolderWrite(env: GymCloudEnv, actor: Actor, key: string): P
     return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
   }
   return null;
+}
+
+/**
+ * Anyone who can open the Cloud folders may upload to them: the owner, and every
+ * seat with Cloud read or Media Gallery access. The lane (pending or approved)
+ * comes from galleryUploadLane, never from the client.
+ */
+function cloudFolderAccess(actor: Actor): boolean {
+  return actor.read || actor.galleryRead;
+}
+
+/** A Gallery, Pro Shop, Events, or Schedule key. */
+function isCloudFolderPath(relative: string): boolean {
+  return parseGalleryCloudPath(relative) !== null || parseSideFolderCloudPath(relative) !== null;
 }
 
 /** A pending-only seat may only write under its own pending prefix. */
@@ -924,6 +1023,7 @@ async function listPending(bucket: GymMediaBucket, actor: Actor): Promise<Pendin
 function mimeAllowed(purpose: CloudMediaPurpose, mime: string): boolean {
   if (purpose === 'lesson') return mime === 'application/json';
   if (purpose === 'gallery') return mime.startsWith('image/') || mime.startsWith('video/');
+  if (purpose === 'cloud-folder') return sideFolderMimeAllowed(mime);
   if (purpose === 'instructor-photo') return mime.startsWith('image/');
   if (purpose === 'instructor-video') return mime.startsWith('video/') || mime === 'application/octet-stream';
   if (purpose === 'from-instructor') {
@@ -996,13 +1096,17 @@ async function listCustomSkins(bucket: GymMediaBucket, licenseId: string): Promi
 }
 
 /** A class photo or daily video the owner (or an Instructors seat) may delete. */
-export function deletableCloudMediaPath(path: string): { source: 'gallery' | 'daily-video'; dateKey: string; name: string } | null {
+export function deletableCloudMediaPath(
+  path: string,
+): { source: 'gallery' | 'daily-video' | 'cloud-folder'; dateKey: string; name: string } | null {
   if (isDailyVideoCloudPath(path)) {
     const parts = path.split('/');
     return { source: 'daily-video', dateKey: parts[2] ?? '', name: parts[3] ?? '' };
   }
   const gallery = parseGalleryCloudPath(path);
   if (gallery) return { source: 'gallery', dateKey: gallery.dateKey, name: gallery.name };
+  const side = parseSideFolderCloudPath(path);
+  if (side) return { source: 'cloud-folder', dateKey: '', name: side.name };
   return null;
 }
 
@@ -1022,6 +1126,10 @@ export function companionKeysForDelete(licenseId: string, path: string): string[
     add(cloudObjectKey(licenseId, path));
     add(dailyVideoMarkerKey(licenseId, path, 'pending'));
     add(dailyVideoMarkerKey(licenseId, path, 'rejected'));
+    return keys;
+  }
+  if (parsed.source === 'cloud-folder') {
+    add(cloudObjectKey(licenseId, path));
     return keys;
   }
   for (const lane of ['pending', 'approved', 'rejected'] as const) {
@@ -1244,6 +1352,29 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
         return fileResponse(object);
       }
     }
+    // Advantage Cloud folders: Gallery (approved only, plays on the TV), Pro Shop, Events, Schedule.
+    // Same readers as the display gallery. canUpload / canDelete only report what start, put, and delete enforce.
+    if (op === 'list' && url.searchParams.get('purpose') === 'folder') {
+      if (!cloudFolderAccess(actor)) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
+      const folder = url.searchParams.get('folder') ?? '';
+      if (folder !== 'gallery' && !isCloudSideFolder(folder)) return json(400, { ok: false, error: 'Choose a folder.' });
+      const approvalRequired = await licenseGalleryApprovalRequired(env, actor.licenseId);
+      const uploadLane = galleryUploadLane({ kind: actor.kind, preset: actor.preset, approvalRequired });
+      return json(200, {
+        ok: true,
+        folder,
+        canUpload: true,
+        uploadLane,
+        canDelete: actor.read && cloudFolderDeleteAllowed({ kind: actor.kind, preset: actor.preset }),
+        canApprove: cloudFolderApprovalAllowed({ kind: actor.kind }),
+        items: folder === 'gallery' ? await listGalleryFolder(bucket, actor) : await listSideFolder(bucket, actor, folder),
+      });
+    }
+    // Pro Shop, Events, Schedule uploads waiting for the owner (Review Inbox). Same readers as gallery pending.
+    if (op === 'list' && url.searchParams.get('purpose') === 'folder-pending') {
+      if (!actor.read) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
+      return json(200, { ok: true, files: await listSideFolderPending(bucket, actor) });
+    }
     // The display gallery: approved class photos and approved daily videos, every day.
     if (op === 'list' && url.searchParams.get('purpose') === 'approved-media') {
       if (!actor.read && !actor.galleryRead) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
@@ -1283,7 +1414,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       }
       const path = url.searchParams.get('path') ?? '';
       // Approved daily videos and approved class photos. Pending work stays closed.
-      const approvedGallery = actor.galleryRead && parseGalleryCloudPath(path)?.lane === 'approved';
+      const approvedGallery =
+        actor.galleryRead && (parseGalleryCloudPath(path)?.lane === 'approved' || parseSideFolderCloudPath(path)?.lane === 'approved');
       const key = (actor.dailyDrop && isDailyVideoCloudPath(path)) || approvedGallery ? cloudObjectKey(actor.licenseId, path) : null;
       if (!key) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
       if (!approvedGallery && (await dailyVideoLane(bucket, actor.licenseId, path)) !== 'approved') {
@@ -1336,7 +1468,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
 
   /** Assistant coach / program director: replay clips and pictures only, and only as pending. */
   const pendingOnly = !actor.upload && actor.replayUpload === 'pending';
-  if (!actor.upload && !actor.dailyDrop && !pendingOnly) {
+  const folderUploader = cloudFolderAccess(actor);
+  if (!actor.upload && !actor.dailyDrop && !pendingOnly && !folderUploader) {
     return json(403, { ok: false, error: actor.read ? CLOUD_ROLE_MESSAGE : CLOUD_UNAVAILABLE_MESSAGE });
   }
   /**
@@ -1347,8 +1480,10 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   const dropRefused = () => json(403, { ok: false, error: CLOUD_DAILY_DROP_ONLY });
   const isDropKey = (key: string) => actor.dailyDrop && isDailyVideoCloudPath(relativePath(actor.licenseId, key));
   const isOwnPendingKey = (key: string) => pendingOnly && ownPendingKey(actor, key);
+  // Gallery, Pro Shop, Events, Schedule keys. refuseFolderWrite still checks the lane.
+  const isFolderKey = (key: string) => folderUploader && isCloudFolderPath(relativePath(actor.licenseId, key));
   const laneRefused = (key: string) =>
-    !dropOnly || isDropKey(key) || isOwnPendingKey(key)
+    !dropOnly || isDropKey(key) || isOwnPendingKey(key) || isFolderKey(key)
       ? null
       : pendingOnly && !actor.dailyDrop
         ? json(403, { ok: false, error: CLOUD_ROLE_MESSAGE })
@@ -1381,7 +1516,13 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (bytes.byteLength > maxUpload) return json(413, { ok: false, error: cloudTooLargeMessage(maxUpload) });
     const relative = relativePath(actor.licenseId, key);
     const mime = safeCloudMime(request.headers.get('content-type') ?? '', 'application/octet-stream');
-    if (dropOnly && !isOwnPendingKey(key) && !mimeAllowed('daily-video', mime)) {
+    if (parseGalleryCloudPath(relative) && !mimeAllowed('gallery', mime)) {
+      return json(400, { ok: false, error: 'Gallery files are photos or videos.' });
+    }
+    if (parseSideFolderCloudPath(relative) && !mimeAllowed('cloud-folder', mime)) {
+      return json(400, { ok: false, error: 'Folders take photos, videos, or PDFs.' });
+    }
+    if (dropOnly && !isOwnPendingKey(key) && !isFolderKey(key) && !mimeAllowed('daily-video', mime)) {
       return json(400, { ok: false, error: 'Daily videos are video files.' });
     }
     if (isCustomSkinImagePath(relative)) {
@@ -1456,10 +1597,30 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   }
 
   if (body.action === 'gallery-approve' || body.action === 'gallery-reject') {
-    if (!galleryDecisionAllowed({ kind: actor.kind, preset: actor.preset })) {
-      return json(403, { ok: false, error: 'Only the owner or an Instructors seat can approve or reject.' });
+    // Gallery, Pro Shop, Events, Schedule: the license owner decides. Not an Instructors seat.
+    if (!cloudFolderApprovalAllowed({ kind: actor.kind })) {
+      return json(403, { ok: false, error: CLOUD_FOLDER_APPROVE_REFUSED });
     }
     const path = typeof body.key === 'string' ? body.key : '';
+    const sidePending = parseSideFolderCloudPath(path)?.lane === 'pending' ? cloudObjectKey(actor.licenseId, path) : null;
+    if (sidePending) {
+      const pendingObject = await bucket.head(sidePending);
+      if (!pendingObject) return json(404, { ok: false, error: 'That file is not waiting for approval.' });
+      if (body.action === 'gallery-reject') {
+        // Only the pending copy goes. An approved file with the same name stays.
+        await deleteMediaKeys(bucket, actor.licenseId, [sidePending]);
+        return json(200, { ok: true, lane: 'rejected', deleted: true, path });
+      }
+      const approvedPath = sideFolderApprovedPath(path);
+      const approvedKey = approvedPath ? cloudObjectKey(actor.licenseId, approvedPath) : null;
+      if (!approvedPath || !approvedKey) return json(400, { ok: false, error: 'That file is not waiting for approval.' });
+      const room = await roomFor(bucket, approvedKey, pendingObject.size, cap);
+      if (!room.ok) return json(409, { ok: false, error: cloudFullMessage(room.used, cap) });
+      const copied = await copyGymObject(bucket, sidePending, approvedKey, pendingObject.size, pendingObject.httpMetadata?.contentType || 'image/jpeg');
+      if (!copied) return json(500, { ok: false, error: 'That did not save. Try again.' });
+      await bucket.delete(sidePending);
+      return json(200, { ok: true, lane: 'approved', path: approvedPath });
+    }
     const sourceKey = parseGalleryCloudPath(path)?.lane === 'pending' ? cloudObjectKey(actor.licenseId, path) : null;
     if (!sourceKey) return json(400, { ok: false, error: 'That photo is not waiting for approval.' });
     const object = await bucket.head(sourceKey);
@@ -1653,6 +1814,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     const laneOk =
       (purpose === 'daily-video' && actor.dailyDrop) ||
       (purpose === 'replay-pending' && pendingOnly) ||
+      ((purpose === 'gallery' || purpose === 'cloud-folder') && folderUploader) ||
       (ownInstructor &&
         instructorFolderAccess({ kind: actor.kind, seatId: actor.seatId, targetSeatId: actor.seatId, mode: 'write' }));
     if (!laneOk) return actor.dailyDrop ? dropRefused() : json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
@@ -1664,8 +1826,10 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       purpose === 'daily-video'
         ? 'Daily videos are video files.'
         : purpose === 'gallery'
-          ? 'Class photos are photo or video files.'
-          : 'That file type cannot go in the lesson plan.';
+          ? 'Gallery files are photos or videos.'
+          : purpose === 'cloud-folder'
+            ? 'Folders take photos, videos, or PDFs.'
+            : 'That file type cannot go in the lesson plan.';
     return json(400, { ok: false, error });
   }
   // Already in this gym's Cloud: answer with the existing path and send no bytes.
@@ -1678,11 +1842,15 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   }
   if (purpose === 'gallery') {
     const approvalRequired = await licenseGalleryApprovalRequired(env, actor.licenseId);
+    if (!folderUploader) return json(403, { ok: false, error: CLOUD_FOLDER_WRITE_REFUSED });
     const lane = galleryUploadLane({ kind: actor.kind, preset: actor.preset, approvalRequired });
-    if (!lane) return json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
     const galleryPath = galleryCloudPath(lane, dateKey, fileName);
     const galleryKey = galleryPath ? cloudObjectKey(actor.licenseId, galleryPath) : null;
     if (!galleryPath || !galleryKey) return json(400, { ok: false, error: 'That file name cannot be saved.' });
+    // A seat never replaces a photo that is already showing in Gallery. The owner can.
+    if (actor.kind !== 'owner' && lane === 'approved' && (await bucket.head(galleryKey))) {
+      return json(409, { ok: false, error: 'A file with that name is already in Gallery. Rename it and send again.' });
+    }
     const galleryRoom = await roomFor(bucket, galleryKey, size, cap);
     if (!galleryRoom.ok) return json(409, { ok: false, error: cloudFullMessage(galleryRoom.used, cap) });
     if (size > CLOUD_CHUNK_BYTES) {
@@ -1698,6 +1866,28 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       });
     }
     return json(200, { ok: true, mode: 'single', key: galleryKey, path: galleryPath, lane });
+  }
+  if (purpose === 'cloud-folder') {
+    if (!folderUploader) return json(403, { ok: false, error: CLOUD_FOLDER_WRITE_REFUSED });
+    const lane = galleryUploadLane({
+      kind: actor.kind,
+      preset: actor.preset,
+      approvalRequired: await licenseGalleryApprovalRequired(env, actor.licenseId),
+    });
+    const folderPath = sideFolderCloudPath(typeof body.folder === 'string' ? body.folder : '', fileName, lane);
+    const folderKey = folderPath ? cloudObjectKey(actor.licenseId, folderPath) : null;
+    if (!folderPath || !folderKey) return json(400, { ok: false, error: 'Choose Pro Shop, Events, or Schedule, and a file name.' });
+    // A seat never replaces a file that is already in the folder. The owner can.
+    if (actor.kind !== 'owner' && lane === 'approved' && (await bucket.head(folderKey))) {
+      return json(409, { ok: false, error: 'A file with that name is already in this folder. Rename it and send again.' });
+    }
+    const folderRoom = await roomFor(bucket, folderKey, size, cap);
+    if (!folderRoom.ok) return json(409, { ok: false, error: cloudFullMessage(folderRoom.used, cap) });
+    if (size > CLOUD_CHUNK_BYTES) {
+      const upload = await bucket.createMultipartUpload(folderKey, { httpMetadata: { contentType: mime } });
+      return json(200, { ok: true, mode: 'multipart', key: folderKey, path: folderPath, uploadId: upload.uploadId, partSize: CLOUD_CHUNK_BYTES, lane });
+    }
+    return json(200, { ok: true, mode: 'single', key: folderKey, path: folderPath, lane });
   }
   if (purpose === 'instructor-video' || purpose === 'instructor-photo') {
     const kind = purpose === 'instructor-video' ? 'videos' : 'photos';
