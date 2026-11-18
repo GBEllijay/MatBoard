@@ -1,9 +1,9 @@
 import { grantRowOpensPlusCloud, ownerCloudGrantOpen } from '../lib/advantageCloudMedia.ts';
 import { thumbprintJwk, verifyToken, type PublicJwk } from '../lib/entitlementToken.ts';
 import type { Door } from '../lib/entitlementToken.ts';
-import { ensureAccountForLicense, licenseForVerifiedEmail, primaryLicenseForAccount } from './accountId.ts';
+import { accountByEmail, ensureAccountForLicense, licenseForVerifiedEmail, primaryLicenseForAccount } from './accountId.ts';
 import { countExtraProfileSlots } from './profileSlots.ts';
-import { keyedHash, normalizeEmail } from './codeCrypto.ts';
+import { keyedHash, normalizeEmail, timingSafeEqual } from './codeCrypto.ts';
 import type { D1Database } from './d1.ts';
 import type { EmailSender } from './emailSender.ts';
 import { expandGrants, tierForGrants } from './grantMatrix.ts';
@@ -236,7 +236,7 @@ export async function handleRestoreVerify(
   const pepper = env.CODE_HASH_PEPPER.trim();
   const raw = await request.text();
   if (raw.length > 8_000) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  let body: { challengeId?: unknown; code?: unknown; deviceId?: unknown; publicJwk?: unknown } = {};
+  let body: { challengeId?: unknown; code?: unknown; email?: unknown; deviceId?: unknown; publicJwk?: unknown } = {};
   try {
     body = JSON.parse(raw) as typeof body;
   } catch {
@@ -245,10 +245,21 @@ export async function handleRestoreVerify(
   const challengeId = typeof body.challengeId === 'string' ? body.challengeId.trim() : '';
   const row = await checkRestoreChallenge(db, pepper, challengeId, body.code, now());
   if (!row) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  const account = await db
+  // Optional typed email. It has to be the address the code was sent to; then it lets an
+  // account saved with only a plain email (no email_hash) be found. Hash lookup comes first.
+  const typed = typeof body.email === 'string' ? normalizeEmail(body.email.trim().slice(0, 320)) : '';
+  if (typed) {
+    const typedHash = await keyedHash(typed, pepper, 'email');
+    if (!timingSafeEqual(typedHash, row.emailHash)) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
+  }
+  let account = await db
     .prepare(`SELECT id FROM accounts WHERE email_hash = ? LIMIT 1`)
     .bind(row.emailHash)
     .first<{ id: string }>();
+  if (!account && typed) {
+    const plain = await accountByEmail(db, typed, null);
+    if (plain) account = { id: plain.id };
+  }
   const fromAccount = account ? await primaryLicenseForAccount(db, account.id) : null;
   const identity = fromAccount
     ? null
@@ -267,7 +278,7 @@ export async function handleRestoreVerify(
     return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
   }
   if (!(await consumeRestoreChallenge(db, challengeId, now()))) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
-  const linked = await ensureAccountForLicense(db, { licenseId, pepper, now: now() });
+  const linked = await ensureAccountForLicense(db, { licenseId, ...(typed ? { email: typed } : {}), pepper, now: now() });
   const grants = await grantsForLicense(db, licenseId, now());
   const doors = expandGrants(doorsFromStored(grants)) as Door[];
   if (!doors.length) return json(400, { ok: false, error: RESTORE_CODE_FAILURE });
