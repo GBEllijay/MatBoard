@@ -56,3 +56,9 @@ test('boot keeps the academy QR token in the address (it never unlocks Coach) an
   assert.equal(previewCoachUnlockFromSearch(new URLSearchParams(`coach=${signed}`)), null);
   assert.equal(applyCoachUnlockSearch(new URLSearchParams(`coach=${signed}`)), false);
 });
+
+test('the in-app query cleaner uses the same rule as boot', () => {
+  const hook = readFileSync(new URL('../hooks/useUnlockQuery.ts', import.meta.url), 'utf8');
+  assert.match(hook, /stripsCoachParam\(searchParams\.get\('coach'\)\)/);
+  assert.doesNotMatch(hook, /searchParams\.has\('coach'\)/);
+});
