@@ -21,7 +21,7 @@ import {
   mediaKindOf,
   sortForGallery,
 } from './approvalLanes.ts';
-import { notifyCloudMedia, parseGalleryCloudPath, readCloudBearer, type CloudFileRow } from './advantageCloudMedia.ts';
+import { notifyCloudMedia, parseGalleryCloudPath, parseSideFolderCloudPath, readCloudBearer, type CloudFileRow } from './advantageCloudMedia.ts';
 
 type Fetcher = typeof fetch;
 
@@ -29,7 +29,8 @@ export const CLOUD_GALLERY_READ_ERROR = 'Could not read the Advantage Cloud gall
 
 function itemFrom(row: CloudFileRow & { dateKey?: string; source?: string }, source: ApprovalSource, lane: ApprovalLane): ApprovalItem | null {
   const dateKey = row.dateKey || (source === 'gallery' ? parseGalleryCloudPath(row.path)?.dateKey : row.path.split('/')[2]) || '';
-  if (!dateKey) return null;
+  // Pro Shop, Events, and Schedule files have no date in their key.
+  if (!dateKey && !parseSideFolderCloudPath(row.path)) return null;
   return {
     provider: 'advantage-cloud',
     source,
@@ -86,6 +87,18 @@ async function listLane(lane: ApprovalLane, source: ApprovalSource | undefined, 
       if (parseGalleryCloudPath(row.path)?.lane !== lane) continue;
       const item = itemFrom(row, 'gallery', lane);
       if (item) items.push(item);
+    }
+    if (lane === 'pending') {
+      // Pro Shop, Events, Schedule uploads waiting for the owner. Older servers answer 4xx: skip quietly.
+      const side = await fetcher('/api/gym/cloud?op=list&purpose=folder-pending', { headers });
+      if (side.ok) {
+        const sideBody = (await side.json()) as { files?: CloudFileRow[] };
+        for (const row of Array.isArray(sideBody.files) ? sideBody.files : []) {
+          if (parseSideFolderCloudPath(row.path)?.lane !== 'pending') continue;
+          const item = itemFrom(row, 'gallery', 'pending');
+          if (item) items.push(item);
+        }
+      }
     }
   }
   if ((!source || source === 'daily-video') && lane === 'pending') {

@@ -9,7 +9,9 @@
  *
  * Pro Shop, Events, and Schedule are flat folders (`pro-shop/`, `events/`,
  * `schedule/`), the same layout the gym tree uses in Google Drive and OneDrive.
- * The server decides who may upload or delete; this file only asks.
+ * Everyone who can open the folders may upload. While the owner's approval
+ * switch is on, a seat's upload waits (`gallery/pending/…`, `{folder}/pending/…`)
+ * until the owner approves it in Review Inbox. The server decides; this file only asks.
  */
 
 import type { ApprovalItem } from './approvalLanes.ts';
@@ -66,7 +68,7 @@ export type CloudFolderListing = {
   items: CloudFolderItem[];
   canUpload: boolean;
   canDelete: boolean;
-  /** Gallery only: where a new upload from this seat lands. */
+  /** Where a new upload from this seat lands: pending while the owner's approval switch is on. */
   uploadLane: 'approved' | 'pending' | null;
 };
 
@@ -149,8 +151,8 @@ export function gallerySlideshowItems(items: readonly CloudFolderItem[]): CloudF
 
 /**
  * Upload one file into a Cloud folder from this phone or any signed-in device.
- * Gallery uses the existing gallery upload (owner approved, Coach and Instructors
- * pending while Cloud approval is on). The other folders use `cloud-folder`.
+ * The owner's upload is live. A seat's upload waits for the owner while approval
+ * is on, and is live when it is off. Gallery uses `gallery`; the others `cloud-folder`.
  */
 export async function uploadToCloudFolder(input: {
   folder: CloudFolderId;

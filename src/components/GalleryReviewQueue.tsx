@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useCurrentSeat } from './SeatSessionBar';
-import { CLOUD_MEDIA_EVENT, galleryDecisionAllowed, notifyCloudMedia } from '../lib/advantageCloudMedia';
+import { CLOUD_MEDIA_EVENT, cloudFolderApprovalAllowed, galleryDecisionAllowed, notifyCloudMedia, parseSideFolderCloudPath } from '../lib/advantageCloudMedia';
 import {
   APPROVAL_WAITING,
   canApproveGallery,
@@ -20,10 +20,27 @@ import { publishGymFile } from '../lib/gymPublish';
 import { addFolderFiles } from '../lib/photoStore';
 
 /**
- * Pending class photos, short clips, and Advantage Cloud daily videos.
- * Approve and Reject are absent unless the owner, or a person the owner
- * named (Cloud: an Instructors seat), is looking.
+ * Pending class photos, short clips, Advantage Cloud daily videos, and
+ * pending Gallery, Pro Shop, Events, and Schedule uploads.
+ * Cloud folder rows: only the license owner sees Approve and Reject.
+ * Daily video rows keep their rule (the owner or an Instructors seat).
  */
+
+const SIDE_FOLDER_LABEL: Record<string, string> = { 'pro-shop': 'Pro Shop', events: 'Events', schedule: 'Schedule' };
+
+/** "Gallery photo", "Pro Shop file", "Daily video"… for one pending Cloud row. */
+export function cloudPendingLabel(item: Pick<ApprovalItem, 'source' | 'kind' | 'path'>): string {
+  if (item.source === 'daily-video') return 'Daily video';
+  const side = parseSideFolderCloudPath(item.path);
+  const folder = side ? SIDE_FOLDER_LABEL[side.folder] : 'Gallery';
+  const kind = /\.pdf$/i.test(item.path) ? 'file' : item.kind === 'video' ? 'clip' : 'photo';
+  return `${folder} ${kind}`;
+}
+
+/** Owner only for Cloud folder rows; daily videos keep the owner-or-Instructors rule. */
+export function canDecideCloudRow(item: Pick<ApprovalItem, 'source'>, viewer: { kind: 'owner' | 'seat'; preset?: string | null }): boolean {
+  return item.source === 'daily-video' ? galleryDecisionAllowed(viewer) : cloudFolderApprovalAllowed(viewer);
+}
 export function GalleryReviewQueue() {
   const seat = useCurrentSeat();
   const [rows, setRows] = useState<ClassPhotoPromotionItem[]>([]);
@@ -38,7 +55,7 @@ export function GalleryReviewQueue() {
     seatId: seat?.id,
     settings,
   });
-  const cloudAllowed = galleryDecisionAllowed(seat ? { kind: 'seat', preset: seat.presetId } : { kind: 'owner' });
+  const viewer = seat ? { kind: 'seat' as const, preset: seat.presetId } : { kind: 'owner' as const };
 
   const reload = () => {
     void listPendingClassPhotos()
@@ -64,7 +81,7 @@ export function GalleryReviewQueue() {
   }, [preview]);
 
   const decideCloud = async (item: ApprovalItem, decision: 'approve' | 'reject') => {
-    if (!cloudAllowed) return;
+    if (!canDecideCloudRow(item, viewer)) return;
     if (decision === 'reject' && pendingReject?.path !== item.path) {
       setPendingReject(item);
       return;
@@ -78,7 +95,7 @@ export function GalleryReviewQueue() {
         ? decision === 'approve'
           ? item.source === 'daily-video'
             ? "Approved. It shows in today's videos and the Advantage Cloud gallery."
-            : 'Approved. It is in the gallery on Advantage Cloud.'
+            : `Approved. It is in ${cloudPendingLabel(item).replace(/ (photo|clip|file)$/, '')} on Advantage Cloud.`
           : CLOUD_REJECT_DELETED_MESSAGE
         : result.message,
     );
@@ -129,10 +146,10 @@ export function GalleryReviewQueue() {
           {cloudRows.map((file) => (
             <li key={`${file.source}:${file.path}`} data-cloud-pending={file.path} data-cloud-source={file.source}>
               <span>
-                {file.dateKey} · {file.source === 'daily-video' ? 'Daily video' : file.kind === 'video' ? 'Gallery clip' : 'Gallery photo'} ·{' '}
-                {file.name} · Pending
+                {file.dateKey ? `${file.dateKey} · ` : ''}
+                {cloudPendingLabel(file)} · {file.name} · Pending
               </span>
-              {cloudAllowed ? (
+              {canDecideCloudRow(file, viewer) ? (
                 <>
                   <button type="button" onClick={() => void showPreview(file)}>
                     Preview

@@ -38,6 +38,7 @@ export const CLOUD_GALLERY_EMPTY = 'No photos or videos in Gallery yet.';
 export const CLOUD_GALLERY_HINT = CLOUD_FOLDERS_HINT;
 export const CLOUD_DELETE_CONFIRM_FILE = 'Delete this file from Advantage Cloud? This cannot be undone.';
 export const CLOUD_DRIVE_COPY_LABEL = 'Copy from Google Drive';
+export const CLOUD_FOLDER_WAITS_FOR_OWNER = "Approval is on. What you upload shows here after the owner approves it in Review Inbox.";
 export const CLOUD_DRIVE_CONNECT_LABEL = 'Connect Google Drive to copy';
 
 type LoadFolder = (folder: CloudFolderId) => Promise<CloudFolderListing | null | { error: string }>;
@@ -284,7 +285,7 @@ export function CloudGallerySection({
     setBusy(false);
     const parts: string[] = [];
     if (added) parts.push(`Added ${added} to ${label}.`);
-    if (waiting) parts.push(`${waiting} wait for approval in Review Inbox.`);
+    if (waiting) parts.push(`${waiting} wait for the owner's approval in Review Inbox.`);
     if (failed) parts.push(`${files.length - added - waiting} did not upload: ${failed}`);
     setNote(parts.join(' '));
     await loadFolder(folder);
@@ -365,6 +366,11 @@ export function CloudGallerySection({
         <h3>{cloudFolderInfo(openFolder).label}</h3>
       </div>
       <p className="cloud-gallery__hint">{cloudFolderInfo(openFolder).hint}</p>
+      {canUpload && listing?.uploadLane === 'pending' ? (
+        <p className="cloud-gallery__hint" data-cloud-folder-approval="">
+          {CLOUD_FOLDER_WAITS_FOR_OWNER}
+        </p>
+      ) : null}
       <div className="cloud-folder__actions">
         {openFolder === 'gallery' && slideshow.length ? (
           <button type="button" className="btn" data-cloud-gallery-play="" onClick={() => play(slideshow, 0)}>

@@ -443,3 +443,35 @@ test('cleanup lists videos for the chosen cutoff and only deletes after confirm'
   assert.match(host.querySelector('[data-cloud-cleanup-note]')?.textContent ?? '', /Deleted 1 video/);
   act(() => root.unmount());
 });
+
+test('Review Inbox: pending rows from all four folders; only the owner can decide them; daily videos keep their rule', async () => {
+  const { canDecideCloudRow, cloudPendingLabel } = await import('./GalleryReviewQueue.tsx');
+  const fetcher = (async (url: string | URL) => {
+    const href = String(url);
+    const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+    if (href.includes('purpose=gallery&lane=pending')) return json({ files: [{ name: 'wait.jpg', path: 'gallery/pending/2026-11-18/wait.jpg', size: 1, mime: 'image/jpeg' }] });
+    if (href.includes('purpose=folder-pending')) {
+      return json({
+        files: [
+          { name: 'gi.jpg', path: 'pro-shop/pending/gi.jpg', size: 1, mime: 'image/jpeg' },
+          { name: 'flyer.jpg', path: 'events/pending/flyer.jpg', size: 1, mime: 'image/jpeg' },
+          { name: 'Nov.pdf', path: 'schedule/pending/Nov.pdf', size: 1, mime: 'application/pdf' },
+        ],
+      });
+    }
+    if (href.includes('purpose=daily-review')) return json({ files: [{ name: 'c.mp4', path: 'videos/daily/2026-11-18/c.mp4', size: 1, mime: 'video/mp4', dateKey: '2026-11-18', lane: 'pending' }] });
+    return new Response('{}', { status: 404 });
+  }) as typeof fetch;
+  const pending = await advantageCloudLaneStore({ token: 'tok', fetcher }).list({ lane: 'pending' });
+  assert.ok(pending);
+  assert.deepEqual(pending.map((item) => cloudPendingLabel(item)).sort(), ['Daily video', 'Events photo', 'Gallery photo', 'Pro Shop photo', 'Schedule file']);
+  const owner = { kind: 'owner' as const };
+  for (const item of pending) {
+    assert.equal(canDecideCloudRow(item, owner), true, item.path);
+    for (const preset of ['coach', 'assistant-coach', 'program-director']) {
+      assert.equal(canDecideCloudRow(item, { kind: 'seat', preset }), false, `${preset} ${item.path}`);
+    }
+    // Instructors seat: not for Gallery, Pro Shop, Events, Schedule. Daily videos keep their old rule.
+    assert.equal(canDecideCloudRow(item, { kind: 'seat', preset: 'instructors' }), item.source === 'daily-video', item.path);
+  }
+});

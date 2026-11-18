@@ -296,6 +296,8 @@ const INSTRUCTOR_FOLDER_KEY = /^instructors\/[A-Za-z0-9_-]{1,80}\/(videos|photos
 export const CLOUD_SIDE_FOLDERS = ['pro-shop', 'events', 'schedule'] as const;
 export type CloudSideFolder = (typeof CLOUD_SIDE_FOLDERS)[number];
 const SIDE_FOLDER_KEY = /^(pro-shop|events|schedule)\/[A-Za-z0-9._-]{1,80}$/;
+/** A seat's upload waiting for the owner: `{folder}/pending/{file}`. The flat `{folder}/{file}` is approved. */
+const SIDE_FOLDER_PENDING_KEY = /^(pro-shop|events|schedule)\/pending\/[A-Za-z0-9._-]{1,80}$/;
 const FROM_INSTRUCTOR_KEY = /^students\/[A-Za-z0-9][A-Za-z0-9._-]{0,79}\/from-instructor\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
 
 /** Uploaded skins per license. The bytes still use the bucket cap below. */
@@ -332,6 +334,7 @@ export function cloudObjectKey(licenseId: string, relativePath: string): string 
     !PENDING_STATUS_KEY.test(relativePath) &&
     !GALLERY_KEY.test(relativePath) &&
     !SIDE_FOLDER_KEY.test(relativePath) &&
+    !SIDE_FOLDER_PENDING_KEY.test(relativePath) &&
     !INSTRUCTOR_FOLDER_KEY.test(relativePath) &&
     !FROM_INSTRUCTOR_KEY.test(relativePath)
   ) {
@@ -348,22 +351,30 @@ export function cloudObjectKey(licenseId: string, relativePath: string): string 
 export type GalleryCloudLane = 'pending' | 'approved' | 'rejected';
 
 /**
- * Owner photos go straight to approved. Coach and Instructors seats land in
- * pending when Cloud approval is on (the default), or approved when the owner
- * has turned that gym-wide setting off. The client cannot choose the lane.
- * Assistant coaches and program directors do not upload class photos.
+ * Owner uploads go straight to approved. Every seat that can open the Cloud
+ * folders (Instructors, Coach, Assistant Coach, Program Director, any seat with
+ * Media Gallery on) lands in pending while the owner's Cloud approval switch is
+ * on (the default), or approved when the owner has turned it off. The client
+ * cannot choose the lane. Whether the seat may open the folders at all is the
+ * server's actor check (`read` or `galleryRead`), not this function.
+ * Same rule for Gallery, Pro Shop, Events, and Schedule.
  */
 export function galleryUploadLane(input: {
   kind: 'owner' | 'seat';
   preset?: string | null;
-  /** License-level Cloud setting. Omit or true keeps today's pending-for-seats rule. */
+  /** License-level Cloud setting. Omit or true keeps the pending-for-seats rule. */
   approvalRequired?: boolean;
-}): 'pending' | 'approved' | null {
+}): 'pending' | 'approved' {
   if (input.kind === 'owner') return 'approved';
-  if (input.preset === 'coach' || input.preset === 'instructors') {
-    return input.approvalRequired === false ? 'approved' : 'pending';
-  }
-  return null;
+  return input.approvalRequired === false ? 'approved' : 'pending';
+}
+
+/**
+ * Who approves or rejects a pending Gallery, Pro Shop, Events, or Schedule file:
+ * the license owner only. Daily videos keep their own rule (galleryDecisionAllowed).
+ */
+export function cloudFolderApprovalAllowed(input: { kind: 'owner' | 'seat' }): boolean {
+  return input.kind === 'owner';
 }
 
 /** Owner, or an Instructors seat. A coach cannot approve their own upload. */
@@ -434,20 +445,32 @@ export function isCloudSideFolder(value: unknown): value is CloudSideFolder {
   return typeof value === 'string' && (CLOUD_SIDE_FOLDERS as readonly string[]).includes(value);
 }
 
-/** `pro-shop/{file}`, `events/{file}`, or `schedule/{file}`. Null for any other folder or a bad name. */
-export function sideFolderCloudPath(folder: string, fileName: string): string | null {
+/**
+ * Approved: `pro-shop/{file}`, `events/{file}`, `schedule/{file}` (every file
+ * uploaded before approval existed is here and counts as approved).
+ * Pending: `{folder}/pending/{file}`. Null for any other folder or a bad name.
+ */
+export function sideFolderCloudPath(folder: string, fileName: string, lane: 'approved' | 'pending' = 'approved'): string | null {
   if (!isCloudSideFolder(folder)) return null;
   const name = safePathSegment((fileName.split(/[/\\]/).pop() ?? '').trim(), 'file');
-  const path = `${folder}/${name}`;
-  return SIDE_FOLDER_KEY.test(path) ? path : null;
+  const path = lane === 'pending' ? `${folder}/pending/${name}` : `${folder}/${name}`;
+  return (lane === 'pending' ? SIDE_FOLDER_PENDING_KEY : SIDE_FOLDER_KEY).test(path) ? path : null;
 }
 
-export function parseSideFolderCloudPath(path: string): { folder: CloudSideFolder; name: string } | null {
-  if (!SIDE_FOLDER_KEY.test(path)) return null;
-  const slash = path.indexOf('/');
-  const folder = path.slice(0, slash);
+export function parseSideFolderCloudPath(path: string): { folder: CloudSideFolder; name: string; lane: 'approved' | 'pending' } | null {
+  const pending = SIDE_FOLDER_PENDING_KEY.test(path);
+  if (!pending && !SIDE_FOLDER_KEY.test(path)) return null;
+  const parts = path.split('/');
+  const folder = parts[0];
   if (!isCloudSideFolder(folder)) return null;
-  return { folder, name: path.slice(slash + 1) };
+  return { folder, name: parts[parts.length - 1], lane: pending ? 'pending' : 'approved' };
+}
+
+/** Pending `{folder}/pending/{file}` to its approved `{folder}/{file}`. */
+export function sideFolderApprovedPath(pendingPath: string): string | null {
+  const parsed = parseSideFolderCloudPath(pendingPath);
+  if (!parsed || parsed.lane !== 'pending') return null;
+  return sideFolderCloudPath(parsed.folder, parsed.name, 'approved');
 }
 
 /** Photos, videos, and PDFs (a printed schedule or flyer). */
@@ -456,12 +479,10 @@ export function sideFolderMimeAllowed(mime: string): boolean {
 }
 
 /**
- * Who may add to or delete from Pro Shop, Events, and Schedule: the same people
- * who may delete Cloud gallery media today (the owner and an Instructors seat).
- * Everyone who can open the Cloud gallery can view these folders. No seat gains
- * a write it did not already have somewhere in Cloud media.
+ * Who may delete from Gallery, Pro Shop, Events, and Schedule: the owner and an
+ * Instructors seat, the same rule as Cloud gallery delete before folders.
  */
-export function cloudSideFolderWriteAllowed(input: { kind: 'owner' | 'seat'; preset?: string | null }): boolean {
+export function cloudFolderDeleteAllowed(input: { kind: 'owner' | 'seat'; preset?: string | null }): boolean {
   return galleryDecisionAllowed(input);
 }
 

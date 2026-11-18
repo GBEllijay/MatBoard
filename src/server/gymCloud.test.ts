@@ -1494,7 +1494,7 @@ test('paid Cloud follows the stored subscription and a code exemption still open
   assert.notEqual(lapsedClaims?.subs?.cloud, true);
 });
 
-test('a Program Director with Gallery upload reads the gym Cloud gallery and cannot write it', async () => {
+test('a Program Director with Gallery upload reads the gym Cloud gallery, uploads as pending, and cannot approve', async () => {
   const secret = await signingSecret();
   const bucket = new MemoryBucket();
   bucket.objects.set('groups/lic-code/gallery/approved/2026-11-16/class.jpg', { bytes: Uint8Array.from([1, 2, 3]), type: 'image/jpeg' });
@@ -1535,8 +1535,17 @@ test('a Program Director with Gallery upload reads the gym Cloud gallery and can
   );
   assert.equal(
     (await call(env, '/api/gym/cloud', { method: 'POST', body: JSON.stringify({ action: 'start', purpose: 'gallery', dateKey: '2026-11-16', fileName: 'x.jpg', size: 3, mime: 'image/jpeg' }) }, pd)).status,
-    403,
+    200,
   );
+  const started = await call(env, '/api/gym/cloud', { method: 'POST', body: JSON.stringify({ action: 'start', purpose: 'gallery', dateKey: '2026-11-16', fileName: 'pd.jpg', size: 3, mime: 'image/jpeg' }) }, pd);
+  const opened = (await started.json()) as { path: string; key: string; lane: string };
+  assert.equal(opened.path, 'gallery/pending/2026-11-16/pd.jpg', 'the owner approval switch defaults on, so the upload waits');
+  const put = await call(env, `/api/gym/cloud?op=put&key=${encodeURIComponent(opened.key)}`, { method: 'PUT', body: 'jpg', headers: { 'content-type': 'image/jpeg' } }, pd);
+  assert.equal(put.status, 200);
+  const sneak = await call(env, `/api/gym/cloud?op=put&key=${encodeURIComponent('groups/lic-code/gallery/approved/2026-11-16/pd.jpg')}`, { method: 'PUT', body: 'jpg', headers: { 'content-type': 'image/jpeg' } }, pd);
+  assert.equal(sneak.status, 403, 'a seat cannot write straight into approved while approval is on');
+  const lessons = await call(env, `/api/gym/cloud?op=put&key=${encodeURIComponent('groups/lic-code/lessons/current/2026-W47/2026-11-16.json')}`, { method: 'PUT', body: '{}', headers: { 'content-type': 'application/json' } }, pd);
+  assert.equal(lessons.status, 403, 'folder upload does not open any other Cloud lane');
 });
 
 test('a Program Director with Gallery upload off cannot read the gym Cloud gallery', async () => {

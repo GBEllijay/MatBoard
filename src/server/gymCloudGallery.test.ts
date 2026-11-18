@@ -140,7 +140,7 @@ async function putPhoto(env: GymCloudEnv, bearer: string, key: string) {
   }, bearer);
 }
 
-test('gallery role matrix: owner approved, staff pending, approve and reject, revoked and student refused', async () => {
+test('gallery role matrix: owner approved, every seat pending, only the owner approves and rejects, revoked and student refused', async () => {
   const signing = await secret();
   const bucket = new MemoryBucket();
   const env: GymCloudEnv = {
@@ -207,8 +207,12 @@ test('gallery role matrix: owner approved, staff pending, approve and reject, re
   assert.equal(instructorOpened.path, 'gallery/pending/2026-11-10/instructor-class.jpg');
   assert.equal((await putPhoto(env, instructors, instructorOpened.key)).status, 200);
 
-  assert.equal((await start(env, assistant, 'nope.jpg')).status, 403);
-  assert.equal((await start(env, director, 'nope.jpg')).status, 403);
+  // Everyone with folder access uploads. With approval on, it waits for the owner.
+  for (const [who, seatToken] of [['assistant', assistant], ['director', director]] as const) {
+    const opened = await start(env, seatToken, `${who}.jpg`);
+    assert.equal(opened.status, 200, who);
+    assert.equal(((await opened.json()) as { path: string }).path, `gallery/pending/2026-11-10/${who}.jpg`);
+  }
   const studentStart = await start(env, student, 'nope.jpg');
   assert.equal(studentStart.status, 403);
   assert.equal(((await studentStart.json()) as { error?: string }).error, STUDENT_CLOUD_REFUSED);
@@ -231,11 +235,18 @@ test('gallery role matrix: owner approved, staff pending, approve and reject, re
     coach,
   );
   assert.equal(coachApprove.status, 403);
-  const approved = await call(
+  const instructorApprove = await call(
     env,
     '/api/gym/cloud',
     { method: 'POST', body: JSON.stringify({ action: 'gallery-approve', key: coachOpened.path }) },
     instructors,
+  );
+  assert.equal(instructorApprove.status, 403, 'only the owner approves Gallery uploads');
+  const approved = await call(
+    env,
+    '/api/gym/cloud',
+    { method: 'POST', body: JSON.stringify({ action: 'gallery-approve', key: coachOpened.path }) },
+    owner,
   );
   assert.equal(approved.status, 200);
   assert.equal(bucket.objects.has('groups/lic-owner1/gallery/approved/2026-11-10/coach-class.jpg'), true);
@@ -401,8 +412,12 @@ test('the owner can toggle Cloud gallery approval; seats cannot; uploads follow 
   );
   assert.equal(((await ignoredLane.json()) as { path: string }).path, 'gallery/approved/2026-11-10/ignored-lane.jpg');
 
-  assert.equal((await start(env, assistant, 'nope.jpg')).status, 403);
-  assert.equal((await start(env, director, 'nope.jpg')).status, 403);
+  // Approval off: anyone's upload goes live right away.
+  for (const [who, seatToken] of [['assistant', assistant], ['director', director]] as const) {
+    const opened = await start(env, seatToken, `${who}-open.jpg`);
+    assert.equal(opened.status, 200, who);
+    assert.equal(((await opened.json()) as { path: string }).path, `gallery/approved/2026-11-10/${who}-open.jpg`);
+  }
 
   const ownerOn = await call(
     env,
