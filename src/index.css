@@ -20494,6 +20494,20 @@ a.plan-pick {
 
 .cloud-gallery__tile { display: grid; gap: 4px; }
 .cloud-gallery__delete { justify-self: stretch; font-size: 0.8rem; }
+/* Advantage Cloud folders: Gallery, Pro Shop, Events, Schedule. Tap a folder to open it. */
+.cloud-folders { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.cloud-folders__open { width: 100%; min-height: 112px; display: grid; grid-template-rows: auto auto auto; justify-items: start; align-content: start; gap: 4px; padding: 12px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.08); color: inherit; text-align: left; cursor: pointer; position: relative; }
+.cloud-folders__open:focus-visible { outline: 3px solid #4c8dff; outline-offset: 2px; }
+.cloud-folders__open--gallery { background: rgba(31, 94, 220, 0.28); border-color: rgba(120, 170, 255, 0.55); }
+.cloud-folders__icon { width: 40px; height: 30px; border-radius: 4px 8px 6px 6px; background: linear-gradient(180deg, #ffd56a 0 30%, #f4b740 30% 100%); position: relative; box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25); }
+.cloud-folders__icon::before { content: ''; position: absolute; left: 0; top: -5px; width: 18px; height: 7px; border-radius: 3px 3px 0 0; background: #ffd56a; }
+.cloud-folders__label { font-weight: 700; font-size: 1rem; }
+.cloud-folders__count { font-size: 0.8rem; opacity: 0.8; }
+.cloud-folders__badge { position: absolute; top: 10px; right: 10px; font-size: 0.68rem; font-weight: 700; padding: 2px 6px; border-radius: 999px; background: #1f5edc; color: #fff; }
+.cloud-folder { display: grid; gap: 8px; }
+.cloud-folder__bar { display: flex; align-items: center; gap: 8px; }
+.cloud-folder__bar h3 { margin: 0; }
+.cloud-folder__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .cloud-cleanup { margin: 12px 0; display: grid; gap: 8px; }
 .cloud-cleanup__hint { margin: 0; opacity: 0.85; font-size: 0.9rem; }
 .cloud-cleanup__days { display: flex; gap: 8px; align-items: center; }

@@ -1,6 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import { CLOUD_MEDIA_EVENT, galleryDecisionAllowed } from '../lib/advantageCloudMedia';
-import { advantageCloudLaneStore, listApprovedCloudMedia } from '../lib/advantageCloudLanes';
+import { CLOUD_MEDIA_EVENT } from '../lib/advantageCloudMedia';
+import { advantageCloudLaneStore } from '../lib/advantageCloudLanes';
+import {
+  CLOUD_FOLDERS,
+  CLOUD_FOLDERS_HINT,
+  CLOUD_FOLDERS_TITLE,
+  CLOUD_FOLDER_EMPTY,
+  CLOUD_GALLERY_FOLDER_ACCEPT,
+  CLOUD_SIDE_FOLDER_ACCEPT,
+  cloudFolderInfo,
+  gallerySlideshowItems,
+  listCloudFolder,
+  uploadToCloudFolder,
+  type CloudFolderId,
+  type CloudFolderItem,
+  type CloudFolderListing,
+} from '../lib/advantageCloudFolders';
 import {
   CLOUD_DELETE_CONFIRM_PHOTO,
   CLOUD_DELETE_CONFIRM_VIDEO,
@@ -9,68 +24,115 @@ import {
   deleteCloudMedia,
 } from '../lib/cloudVideoCleanup';
 import type { ApprovalItem, ApprovalLaneStore } from '../lib/approvalLanes';
-import { useCurrentSeat } from './SeatSessionBar';
+import { localDateKey } from '../lib/trainingNotesStore';
 import { CloudDeleteConfirm } from './CloudDeleteConfirm';
 import { CloudVideoCleanup } from './CloudVideoCleanup';
 
-/** Seconds a photo stays up when the Cloud gallery plays as a slideshow. */
+/** Seconds a photo stays up when the Cloud Gallery plays as a slideshow. */
 export const CLOUD_SLIDE_PHOTO_SEC = 8;
 /** Photo thumbnails fetched up front. The rest load when the slideshow reaches them. */
 const THUMB_LIMIT = 24;
 
-export const CLOUD_GALLERY_TITLE = 'Advantage Cloud';
-export const CLOUD_GALLERY_EMPTY = 'No approved photos or videos in Advantage Cloud yet.';
-export const CLOUD_GALLERY_HINT =
-  'Approved class photos and daily videos saved in Advantage Cloud. They show on any signed-in phone or TV, not only this one.';
+export const CLOUD_GALLERY_TITLE = CLOUD_FOLDERS_TITLE;
+export const CLOUD_GALLERY_EMPTY = 'No photos or videos in Gallery yet.';
+export const CLOUD_GALLERY_HINT = CLOUD_FOLDERS_HINT;
+export const CLOUD_DELETE_CONFIRM_FILE = 'Delete this file from Advantage Cloud? This cannot be undone.';
+export const CLOUD_DRIVE_COPY_LABEL = 'Copy from Google Drive';
+export const CLOUD_DRIVE_CONNECT_LABEL = 'Connect Google Drive to copy';
+
+type LoadFolder = (folder: CloudFolderId) => Promise<CloudFolderListing | null | { error: string }>;
+type UploadFolder = (input: { folder: CloudFolderId; file: File; dateKey: string }) => ReturnType<typeof uploadToCloudFolder>;
 
 type Props = {
-  /** Tests pass a fake list and store. The page uses the signed-in Cloud. */
-  load?: typeof listApprovedCloudMedia;
+  /** Tests pass a fake folder list. The page uses the signed-in Cloud. */
+  load?: LoadFolder;
   store?: ApprovalLaneStore;
-  /** Owner or Instructors seat. Tests can set this so Delete stays hidden. */
+  /** Tests can force Delete on or off. The page uses what the server reports. */
   canManage?: boolean;
   remove?: typeof deleteCloudMedia;
+  upload?: UploadFolder;
+  /** Opens the existing Google Drive picker for Gallery. Picks are copied into Advantage Cloud Gallery. */
+  onCopyFromDrive?: () => void;
+  /** This device has Google Drive connected. When false the button offers to connect first. */
+  driveConnected?: boolean;
+  /** Tests can open a folder straight away. */
+  initialFolder?: CloudFolderId | null;
 };
 
+const defaultLoad: LoadFolder = (folder) => listCloudFolder({ folder });
+const defaultUpload: UploadFolder = (input) => uploadToCloudFolder(input);
+
+function asLaneItem(item: CloudFolderItem): ApprovalItem {
+  return { ...item, kind: item.kind === 'photo' ? 'photo' : 'video' };
+}
+
 /**
- * Approved Advantage Cloud media on the Gallery page (/slideshow?folder=gallery,
- * which Media Edition's Gallery link opens). Pending and rejected files never
- * reach this list: the server filters them. Renders nothing when this device
- * is not on Advantage Cloud.
+ * Advantage Cloud as folders on the Gallery page (/slideshow?folder=gallery).
+ * Gallery, Pro Shop, Events, Schedule: tap one to open it. Gallery is what the
+ * TV slideshow plays (approved photos and videos only). Renders nothing when
+ * this device is not on Advantage Cloud.
  */
-export function CloudGallerySection({ load = listApprovedCloudMedia, store, canManage, remove = deleteCloudMedia }: Props) {
-  const seat = useCurrentSeat();
-  const manage = canManage ?? galleryDecisionAllowed({ kind: seat ? 'seat' : 'owner', preset: seat?.presetId });
+export function CloudGallerySection({
+  load = defaultLoad,
+  store,
+  canManage,
+  remove = deleteCloudMedia,
+  upload = defaultUpload,
+  onCopyFromDrive,
+  driveConnected,
+  initialFolder = null,
+}: Props) {
   const storeRef = useRef<ApprovalLaneStore>(store ?? advantageCloudLaneStore());
-  const [items, setItems] = useState<ApprovalItem[] | null>(null);
+  const [listings, setListings] = useState<Partial<Record<CloudFolderId, CloudFolderListing>>>({});
+  const [checked, setChecked] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [error, setError] = useState('');
+  const [openFolder, setOpenFolder] = useState<CloudFolderId | null>(initialFolder);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  const [playList, setPlayList] = useState<CloudFolderItem[]>([]);
   const [playing, setPlaying] = useState<number | null>(null);
   const [slideUrl, setSlideUrl] = useState<string>('');
   const [slideNote, setSlideNote] = useState('');
-  const [pendingDelete, setPendingDelete] = useState<ApprovalItem | null>(null);
-  const [deleteNote, setDeleteNote] = useState('');
-  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<CloudFolderItem | null>(null);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const fileInput = useRef<HTMLInputElement | null>(null);
   const urls = useRef<string[]>([]);
+
+  const loadFolder = async (folder: CloudFolderId): Promise<'hidden' | 'ok' | 'error'> => {
+    const result = await load(folder);
+    if (result === null) return 'hidden';
+    if ('error' in result) {
+      setError(result.error);
+      return 'error';
+    }
+    setListings((current) => ({ ...current, [folder]: result }));
+    return 'ok';
+  };
 
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      const result = await load();
+      const gallery = await load('gallery');
       if (cancelled) return;
-      if (result === null) {
+      setChecked(true);
+      if (gallery === null) {
         setHidden(true);
         return;
       }
       setHidden(false);
-      if (!Array.isArray(result)) {
-        setError(result.error);
-        setItems([]);
+      if ('error' in gallery) {
+        setError(gallery.error);
         return;
       }
       setError('');
-      setItems(result);
+      setListings((current) => ({ ...current, gallery }));
+      for (const folder of CLOUD_FOLDERS) {
+        if (folder.id === 'gallery') continue;
+        const listed = await load(folder.id);
+        if (cancelled) return;
+        if (listed && !('error' in listed)) setListings((current) => ({ ...current, [folder.id]: listed }));
+      }
     };
     void run();
     const onCloud = () => void run();
@@ -81,13 +143,15 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store, canM
     };
   }, [load]);
 
+  const openItems = openFolder ? listings[openFolder]?.items ?? null : null;
+
   useEffect(() => {
-    if (!items?.length) return;
+    if (!openItems?.length) return;
     let cancelled = false;
-    const photos = items.filter((item) => item.kind === 'photo' && !thumbs[item.path]).slice(0, THUMB_LIMIT);
+    const photos = openItems.filter((item) => item.kind === 'photo' && !thumbs[item.path]).slice(0, THUMB_LIMIT);
     void (async () => {
       for (const item of photos) {
-        const blob = await storeRef.current.open(item);
+        const blob = await storeRef.current.open(asLaneItem(item));
         if (cancelled || !blob) continue;
         const url = URL.createObjectURL(blob);
         urls.current.push(url);
@@ -97,9 +161,9 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store, canM
     return () => {
       cancelled = true;
     };
-    // Thumbnails load once per list.
+    // Thumbnails load once per opened list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+  }, [openItems]);
 
   useEffect(() => {
     return () => {
@@ -107,7 +171,7 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store, canM
     };
   }, []);
 
-  const current = playing !== null && items ? items[playing] ?? null : null;
+  const current = playing !== null ? playList[playing] ?? null : null;
 
   useEffect(() => {
     if (!current) {
@@ -122,7 +186,7 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store, canM
       return;
     }
     setSlideUrl('');
-    void storeRef.current.open(current).then((blob) => {
+    void storeRef.current.open(asLaneItem(current)).then((blob) => {
       if (cancelled) return;
       if (!blob) {
         setSlideNote('That file could not be opened from Advantage Cloud.');
@@ -140,8 +204,8 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store, canM
   }, [current?.path]);
 
   const advance = () => {
-    if (!items?.length || playing === null) return;
-    setPlaying((playing + 1) % items.length);
+    if (!playList.length || playing === null) return;
+    setPlaying((playing + 1) % playList.length);
   };
 
   useEffect(() => {
@@ -153,37 +217,91 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store, canM
 
   if (hidden) return null;
 
-  const photos = items?.filter((item) => item.source === 'gallery') ?? [];
-  const videos = items?.filter((item) => item.source === 'daily-video') ?? [];
-  const indexOf = (item: ApprovalItem) => items?.indexOf(item) ?? 0;
+  const listing = openFolder ? listings[openFolder] ?? null : null;
+  const manage = canManage ?? listing?.canDelete ?? false;
+  const canUpload = canManage ?? listing?.canUpload ?? false;
+  const slideshow = gallerySlideshowItems(listings.gallery?.items ?? []);
 
-  const confirmDelete = async () => {
-    if (!pendingDelete) return;
-    setDeleteBusy(true);
-    const result = await remove({ paths: [pendingDelete.path] });
-    setDeleteBusy(false);
-    if (!result.ok) {
-      setDeleteNote(result.message || CLOUD_DELETE_FAILED);
-      return;
-    }
-    setDeleteNote(CLOUD_DELETE_DONE);
-    setPendingDelete(null);
-    if (playing !== null && items && items[playing]?.path === pendingDelete.path) setPlaying(null);
-    setItems((current) => current?.filter((item) => item.path !== pendingDelete.path) ?? current);
+  const play = (list: CloudFolderItem[], start: number) => {
+    setPlayList(list);
+    setPlaying(start);
   };
 
-  const tile = (item: ApprovalItem) => (
-    <li key={`${item.source}:${item.path}`} className="cloud-gallery__tile" data-cloud-gallery-item={item.path} data-cloud-source={item.source}>
-      <button type="button" className="cloud-gallery__open" onClick={() => setPlaying(indexOf(item))} aria-label={`Play ${item.name}`}>
+  const openFile = async (item: CloudFolderItem) => {
+    if (item.kind !== 'file') {
+      const viewable = (listing?.items ?? []).filter((row) => row.kind !== 'file');
+      play(viewable, Math.max(0, viewable.indexOf(item)));
+      return;
+    }
+    const blob = await storeRef.current.open(asLaneItem(item));
+    if (!blob) {
+      setNote('That file could not be opened from Advantage Cloud.');
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    urls.current.push(url);
+    window.open(url, '_blank', 'noopener');
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete || !openFolder) return;
+    setBusy(true);
+    const target = pendingDelete;
+    const result = await remove({ paths: [target.path] });
+    setBusy(false);
+    if (!result.ok) {
+      setNote(result.message || CLOUD_DELETE_FAILED);
+      return;
+    }
+    setNote(CLOUD_DELETE_DONE);
+    setPendingDelete(null);
+    if (current?.path === target.path) setPlaying(null);
+    setListings((all) => {
+      const folder = all[openFolder];
+      if (!folder) return all;
+      return { ...all, [openFolder]: { ...folder, items: folder.items.filter((item) => item.path !== target.path) } };
+    });
+  };
+
+  const onPicked = async (files: readonly File[]) => {
+    if (!openFolder || !files.length) return;
+    const folder = openFolder;
+    const label = cloudFolderInfo(folder).label;
+    setBusy(true);
+    let added = 0;
+    let waiting = 0;
+    let failed = '';
+    for (const [index, file] of files.entries()) {
+      setNote(`Uploading ${index + 1} of ${files.length} to ${label}…`);
+      const result = await upload({ folder, file, dateKey: localDateKey() });
+      if (!result.ok) {
+        failed = result.message;
+        continue;
+      }
+      if (result.lane === 'pending') waiting += 1;
+      else added += 1;
+    }
+    setBusy(false);
+    const parts: string[] = [];
+    if (added) parts.push(`Added ${added} to ${label}.`);
+    if (waiting) parts.push(`${waiting} wait for approval in Review Inbox.`);
+    if (failed) parts.push(`${files.length - added - waiting} did not upload: ${failed}`);
+    setNote(parts.join(' '));
+    await loadFolder(folder);
+  };
+
+  const tile = (item: CloudFolderItem) => (
+    <li key={item.path} className="cloud-gallery__tile" data-cloud-gallery-item={item.path} data-cloud-folder-item={item.folder}>
+      <button type="button" className="cloud-gallery__open" onClick={() => void openFile(item)} aria-label={`Open ${item.name}`}>
         {item.kind === 'photo' && thumbs[item.path] ? (
           <img src={thumbs[item.path]} alt={item.name} loading="lazy" />
         ) : (
           <span className="cloud-gallery__glyph" aria-hidden="true">
-            {item.kind === 'video' ? '▶' : '▢'}
+            {item.kind === 'video' ? '▶' : item.kind === 'file' ? 'PDF' : '▢'}
           </span>
         )}
         <span className="cloud-gallery__name">{item.name}</span>
-        <span className="cloud-gallery__date">{item.dateKey}</span>
+        {item.dateKey ? <span className="cloud-gallery__date">{item.dateKey}</span> : null}
       </button>
       {manage ? (
         <button
@@ -191,7 +309,7 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store, canM
           className="btn btn--ghost cloud-gallery__delete"
           data-cloud-delete={item.path}
           onClick={() => {
-            setDeleteNote('');
+            setNote('');
             setPendingDelete(item);
           }}
         >
@@ -201,51 +319,125 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store, canM
     </li>
   );
 
+  const folderGrid = (
+    <>
+      <p className="cloud-gallery__hint">{CLOUD_FOLDERS_HINT}</p>
+      <ul className="cloud-folders" aria-label="Advantage Cloud folders">
+        {CLOUD_FOLDERS.map((folder) => {
+          const count = listings[folder.id]?.items.length;
+          return (
+            <li key={folder.id}>
+              <button
+                type="button"
+                className={`cloud-folders__open${folder.id === 'gallery' ? ' cloud-folders__open--gallery' : ''}`}
+                data-cloud-folder-open={folder.id}
+                onClick={() => {
+                  setNote('');
+                  setOpenFolder(folder.id);
+                  void loadFolder(folder.id);
+                }}
+              >
+                <span className="cloud-folders__icon" aria-hidden="true" />
+                <span className="cloud-folders__label">{folder.label}</span>
+                <span className="cloud-folders__count">
+                  {typeof count === 'number' ? `${count} ${count === 1 ? 'file' : 'files'}` : '…'}
+                </span>
+                {folder.id === 'gallery' ? <span className="cloud-folders__badge">Plays on TV</span> : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {slideshow.length ? (
+        <button type="button" className="btn" data-cloud-gallery-play="" onClick={() => play(slideshow, 0)}>
+          Play Gallery slideshow ({slideshow.length})
+        </button>
+      ) : null}
+    </>
+  );
+
+  const openView = openFolder ? (
+    <div className="cloud-folder" data-cloud-folder={openFolder}>
+      <div className="cloud-folder__bar">
+        <button type="button" className="btn btn--ghost" data-cloud-folder-back="" onClick={() => setOpenFolder(null)}>
+          ‹ All folders
+        </button>
+        <h3>{cloudFolderInfo(openFolder).label}</h3>
+      </div>
+      <p className="cloud-gallery__hint">{cloudFolderInfo(openFolder).hint}</p>
+      <div className="cloud-folder__actions">
+        {openFolder === 'gallery' && slideshow.length ? (
+          <button type="button" className="btn" data-cloud-gallery-play="" onClick={() => play(slideshow, 0)}>
+            Play Gallery slideshow ({slideshow.length})
+          </button>
+        ) : null}
+        {canUpload ? (
+          <button type="button" className="btn" data-cloud-folder-upload={openFolder} disabled={busy} onClick={() => fileInput.current?.click()}>
+            Upload to {cloudFolderInfo(openFolder).label}
+          </button>
+        ) : null}
+        {openFolder === 'gallery' && canUpload && onCopyFromDrive ? (
+          <button type="button" className="btn btn--ghost" data-cloud-drive-copy={driveConnected ? 'ready' : 'connect'} disabled={busy} onClick={onCopyFromDrive}>
+            {driveConnected ? CLOUD_DRIVE_COPY_LABEL : CLOUD_DRIVE_CONNECT_LABEL}
+          </button>
+        ) : null}
+      </div>
+      {canUpload ? (
+        <input
+          ref={fileInput}
+          type="file"
+          multiple
+          hidden
+          data-cloud-folder-input={openFolder}
+          accept={openFolder === 'gallery' ? CLOUD_GALLERY_FOLDER_ACCEPT : CLOUD_SIDE_FOLDER_ACCEPT}
+          onChange={(event) => {
+            const files = [...(event.currentTarget.files ?? [])];
+            event.currentTarget.value = '';
+            void onPicked(files);
+          }}
+        />
+      ) : null}
+      {!listing ? <p role="status">Opening {cloudFolderInfo(openFolder).label}…</p> : null}
+      {listing && listing.items.length === 0 ? (
+        <p data-cloud-gallery-empty="">{openFolder === 'gallery' ? CLOUD_GALLERY_EMPTY : CLOUD_FOLDER_EMPTY}</p>
+      ) : null}
+      {listing && listing.items.length ? (
+        <ul className="cloud-gallery__grid" aria-label={`${cloudFolderInfo(openFolder).label} files`}>
+          {listing.items.map(tile)}
+        </ul>
+      ) : null}
+      {openFolder === 'gallery' && manage ? <CloudVideoCleanup /> : null}
+    </div>
+  ) : null;
+
   return (
     <section className="cloud-gallery" aria-label={CLOUD_GALLERY_TITLE} data-cloud-gallery="">
       <h2>{CLOUD_GALLERY_TITLE}</h2>
-      <p className="cloud-gallery__hint">{CLOUD_GALLERY_HINT}</p>
-      {items === null ? <p role="status">Checking Advantage Cloud…</p> : null}
+      {!checked ? <p role="status">Checking Advantage Cloud…</p> : null}
       {error ? (
         <p role="alert" className="cloud-gallery__error" data-cloud-gallery-error="">
           {error}
         </p>
       ) : null}
-      {items && !error && items.length === 0 ? <p data-cloud-gallery-empty="">{CLOUD_GALLERY_EMPTY}</p> : null}
-      {items && items.length ? (
-        <button type="button" className="btn" data-cloud-gallery-play="" onClick={() => setPlaying(0)}>
-          Play Advantage Cloud slideshow ({items.length})
-        </button>
-      ) : null}
-      {photos.length ? (
-        <>
-          <h3>Class photos and clips ({photos.length})</h3>
-          <ul className="cloud-gallery__grid" aria-label="Approved class photos and clips">
-            {photos.map(tile)}
-          </ul>
-        </>
-      ) : null}
-      {videos.length ? (
-        <>
-          <h3>Daily videos ({videos.length})</h3>
-          <ul className="cloud-gallery__grid" aria-label="Approved daily videos">
-            {videos.map(tile)}
-          </ul>
-        </>
-      ) : null}
-      {manage ? <CloudVideoCleanup /> : null}
+      {checked && !error ? (openFolder ? openView : folderGrid) : null}
       {pendingDelete ? (
         <CloudDeleteConfirm
           title="Delete from Advantage Cloud"
-          body={pendingDelete.kind === 'photo' ? CLOUD_DELETE_CONFIRM_PHOTO : CLOUD_DELETE_CONFIRM_VIDEO}
-          busy={deleteBusy}
+          body={
+            pendingDelete.kind === 'photo'
+              ? CLOUD_DELETE_CONFIRM_PHOTO
+              : pendingDelete.kind === 'video'
+                ? CLOUD_DELETE_CONFIRM_VIDEO
+                : CLOUD_DELETE_CONFIRM_FILE
+          }
+          busy={busy}
           onCancel={() => setPendingDelete(null)}
           onConfirm={() => void confirmDelete()}
         />
       ) : null}
-      {deleteNote ? (
-        <p role="status" data-cloud-delete-note="">
-          {deleteNote}
+      {note ? (
+        <p role="status" data-cloud-delete-note="" data-cloud-folder-note="">
+          {note}
         </p>
       ) : null}
       {current ? (
@@ -260,11 +452,11 @@ export function CloudGallerySection({ load = listApprovedCloudMedia, store, canM
             <p role="status">{slideNote || 'Opening from Advantage Cloud…'}</p>
           )}
           <div className="cloud-gallery__controls">
-            <button type="button" className="btn btn--ghost" onClick={() => setPlaying(((playing ?? 0) - 1 + (items?.length ?? 1)) % (items?.length ?? 1))}>
+            <button type="button" className="btn btn--ghost" onClick={() => setPlaying(((playing ?? 0) - 1 + playList.length) % Math.max(1, playList.length))}>
               Previous
             </button>
             <span>
-              {(playing ?? 0) + 1} of {items?.length ?? 0} · {current.name}
+              {(playing ?? 0) + 1} of {playList.length} · {current.name}
             </span>
             <button type="button" className="btn btn--ghost" onClick={advance}>
               Next

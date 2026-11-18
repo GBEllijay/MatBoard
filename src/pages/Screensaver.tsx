@@ -1103,7 +1103,7 @@ export function ScreensaverPage() {
             </p>
           ) : null}
           {galleryPage && !options && !cloudCustomer ? <CloudUploadQueuePanel /> : null}
-          {galleryPage && !options ? <CloudGallerySection /> : null}
+          {galleryPage && !options ? <CloudGallerySection onCopyFromDrive={() => openDrivePick('gallery', 'any')} driveConnected={Boolean(driveBinding)} /> : null}
           {focusConfig.ready && focusEmpty && focusCanUpload ? (
             <>
               <button type="button" className="btn" onClick={() => openAdd(focusFolder, 'photo')}>
@@ -1356,7 +1356,7 @@ export function ScreensaverPage() {
             );
           })}
         </div>
-        {galleryPage ? <CloudGallerySection /> : null}
+        {galleryPage ? <CloudGallerySection onCopyFromDrive={() => openDrivePick('gallery', 'any')} driveConnected={Boolean(driveBinding)} /> : null}
 
         <section className="saver-settings">
           <h3 className="saver-settings__title">Settings</h3>

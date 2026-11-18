@@ -178,7 +178,7 @@ test('an owner with Cloud on puts a daily photo in gallery/approved and does not
   assert.equal([...bucket.objects.keys()].some((key) => key.includes('/gallery/pending/')), false);
   assert.equal(
     classPhotoResultNote({ cloud: true, lane: 'approved', failed: false, needsDrive: false }),
-    'Uploaded to Advantage Cloud. Approved.',
+    'Uploaded to Advantage Cloud Gallery. Approved.',
   );
 });
 

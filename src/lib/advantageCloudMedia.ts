@@ -63,7 +63,9 @@ export type CloudMediaPurpose =
   | 'gallery'
   | 'instructor-video'
   | 'instructor-photo'
-  | 'from-instructor';
+  | 'from-instructor'
+  /** Pro Shop, Events, or Schedule folder (`body.folder` picks which). Gallery keeps `gallery`. */
+  | 'cloud-folder';
 export type CloudMediaHome = 'device' | 'advantage-cloud';
 
 export type CloudAccess = { read: boolean; upload: boolean };
@@ -286,6 +288,14 @@ const SKIN_IMAGE_KEY = /^skins\/[a-z0-9]{8,40}$/;
 const SKIN_META_KEY = /^skins\/[a-z0-9]{8,40}\.json$/;
 const GALLERY_KEY = /^gallery\/(pending|approved|rejected)\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
 const INSTRUCTOR_FOLDER_KEY = /^instructors\/[A-Za-z0-9_-]{1,80}\/(videos|photos)\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
+/**
+ * Pro Shop, Events, and Schedule folders in Advantage Cloud: `{folder}/{file}`.
+ * Same flat layout as the gym tree (`pro-shop/`, `events/`) in Drive and OneDrive.
+ * Gallery is not here: it keeps `gallery/{lane}/{date}/{file}`.
+ */
+export const CLOUD_SIDE_FOLDERS = ['pro-shop', 'events', 'schedule'] as const;
+export type CloudSideFolder = (typeof CLOUD_SIDE_FOLDERS)[number];
+const SIDE_FOLDER_KEY = /^(pro-shop|events|schedule)\/[A-Za-z0-9._-]{1,80}$/;
 const FROM_INSTRUCTOR_KEY = /^students\/[A-Za-z0-9][A-Za-z0-9._-]{0,79}\/from-instructor\/\d{4}-\d{2}-\d{2}\/[A-Za-z0-9._-]{1,80}$/;
 
 /** Uploaded skins per license. The bytes still use the bucket cap below. */
@@ -321,6 +331,7 @@ export function cloudObjectKey(licenseId: string, relativePath: string): string 
     !PENDING_REPLAY_KEY.test(relativePath) &&
     !PENDING_STATUS_KEY.test(relativePath) &&
     !GALLERY_KEY.test(relativePath) &&
+    !SIDE_FOLDER_KEY.test(relativePath) &&
     !INSTRUCTOR_FOLDER_KEY.test(relativePath) &&
     !FROM_INSTRUCTOR_KEY.test(relativePath)
   ) {
@@ -417,6 +428,41 @@ export function parseGalleryCloudPath(path: string): { lane: GalleryCloudLane; d
   const lane = match[1];
   if (lane !== 'pending' && lane !== 'approved' && lane !== 'rejected') return null;
   return { lane, dateKey: match[2], name: match[3] };
+}
+
+export function isCloudSideFolder(value: unknown): value is CloudSideFolder {
+  return typeof value === 'string' && (CLOUD_SIDE_FOLDERS as readonly string[]).includes(value);
+}
+
+/** `pro-shop/{file}`, `events/{file}`, or `schedule/{file}`. Null for any other folder or a bad name. */
+export function sideFolderCloudPath(folder: string, fileName: string): string | null {
+  if (!isCloudSideFolder(folder)) return null;
+  const name = safePathSegment((fileName.split(/[/\\]/).pop() ?? '').trim(), 'file');
+  const path = `${folder}/${name}`;
+  return SIDE_FOLDER_KEY.test(path) ? path : null;
+}
+
+export function parseSideFolderCloudPath(path: string): { folder: CloudSideFolder; name: string } | null {
+  if (!SIDE_FOLDER_KEY.test(path)) return null;
+  const slash = path.indexOf('/');
+  const folder = path.slice(0, slash);
+  if (!isCloudSideFolder(folder)) return null;
+  return { folder, name: path.slice(slash + 1) };
+}
+
+/** Photos, videos, and PDFs (a printed schedule or flyer). */
+export function sideFolderMimeAllowed(mime: string): boolean {
+  return mime.startsWith('image/') || mime.startsWith('video/') || mime === 'application/pdf';
+}
+
+/**
+ * Who may add to or delete from Pro Shop, Events, and Schedule: the same people
+ * who may delete Cloud gallery media today (the owner and an Instructors seat).
+ * Everyone who can open the Cloud gallery can view these folders. No seat gains
+ * a write it did not already have somewhere in Cloud media.
+ */
+export function cloudSideFolderWriteAllowed(input: { kind: 'owner' | 'seat'; preset?: string | null }): boolean {
+  return galleryDecisionAllowed(input);
 }
 
 export function instructorCloudPath(
@@ -555,7 +601,8 @@ export function cloudRelativePath(input: {
     input.purpose === 'gallery' ||
     input.purpose === 'instructor-video' ||
     input.purpose === 'instructor-photo' ||
-    input.purpose === 'from-instructor'
+    input.purpose === 'from-instructor' ||
+    input.purpose === 'cloud-folder'
   ) {
     return { ok: false, error: CLOUD_ROLE_MESSAGE };
   }
@@ -770,7 +817,7 @@ export type CloudUploadResume = {
 
 type CloudFetcher = typeof fetch;
 
-function cloudUrl(path: string): string {
+export function cloudUrl(path: string): string {
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://advantagebjjtimer.com';
   return new URL(path, origin).toString();
@@ -824,6 +871,8 @@ export async function uploadAdvantageCloudFile(input: {
   /** Ignored for the object path. The server picks the lane from the license setting and the actor role. */
   lane?: 'pending' | 'approved';
   studentId?: string;
+  /** `cloud-folder` only: pro-shop, events, or schedule. */
+  folder?: CloudSideFolder;
   onProgress?: (sent: number, total: number) => void;
   /** Content fingerprint (cloudFingerprint.ts). The server skips a file this gym already has. */
   fingerprint?: string;
@@ -865,6 +914,7 @@ export async function uploadAdvantageCloudFile(input: {
           mime: input.mime,
           ...(input.lane ? { lane: input.lane } : {}),
           ...(input.studentId ? { studentId: input.studentId } : {}),
+          ...(input.folder ? { folder: input.folder } : {}),
           ...(input.fingerprint ? { fingerprint: input.fingerprint } : {}),
           ...(input.purpose === 'lesson' ? { planTarget: input.planTarget === 'template' ? 'template' : 'mine' } : {}),
         }),

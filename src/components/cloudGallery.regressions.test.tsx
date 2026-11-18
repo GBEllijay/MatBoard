@@ -1,5 +1,5 @@
 /**
- * Advantage Cloud gallery view, Review Inbox daily-video rows, the client
+ * Advantage Cloud folder view (Gallery, Pro Shop, Events, Schedule), Review Inbox daily-video rows, the client
  * lane store, and the visible Cloud copy status on the Gallery page.
  */
 import assert from 'node:assert/strict';
@@ -84,54 +84,160 @@ function fakeStore(opened: string[]): ApprovalLaneStore {
   };
 }
 
-test('Cloud gallery lists approved photos and daily videos with thumbnails and plays them as a slideshow', async () => {
+type FolderItem = import('../lib/advantageCloudFolders.ts').CloudFolderItem;
+type FolderListing = import('../lib/advantageCloudFolders.ts').CloudFolderListing;
+const galleryPhoto: FolderItem = { ...photo, folder: 'gallery' };
+const galleryClip: FolderItem = {
+  ...photo,
+  folder: 'gallery',
+  path: 'gallery/approved/2026-11-12/clip.mp4',
+  name: 'clip.mp4',
+  dateKey: '2026-11-12',
+  mime: 'video/mp4',
+  kind: 'video',
+};
+const shopCard: FolderItem = { ...galleryPhoto, folder: 'pro-shop', path: 'pro-shop/gi.jpg', name: 'gi.jpg', dateKey: '' };
+function folders(byId: Partial<Record<string, FolderItem[]>>, rights = { canUpload: true, canDelete: true }) {
+  return async (folder: string): Promise<FolderListing> => ({
+    folder: folder as FolderListing['folder'],
+    items: byId[folder] ?? [],
+    canUpload: rights.canUpload,
+    canDelete: rights.canDelete,
+    uploadLane: folder === 'gallery' && rights.canUpload ? 'approved' : null,
+  });
+}
+
+test('Cloud shows four folders to tap instead of every image; Gallery opens and plays only Gallery', async () => {
   const opened: string[] = [];
-  const { root, host } = mount(<CloudGallerySection load={async () => [video, photo]} store={fakeStore(opened)} />);
+  const { root, host } = mount(
+    <CloudGallerySection load={folders({ gallery: [galleryClip, galleryPhoto], 'pro-shop': [shopCard] })} store={fakeStore(opened)} />,
+  );
   await flush();
   assert.ok(host.querySelector('[data-cloud-gallery]'));
   assert.match(host.textContent ?? '', /Advantage Cloud/);
-  assert.match(host.textContent ?? '', /Class photos and clips \(1\)/);
-  assert.match(host.textContent ?? '', /Daily videos \(1\)/);
+  const folderIds = [...host.querySelectorAll('[data-cloud-folder-open]')].map((node) => node.getAttribute('data-cloud-folder-open'));
+  assert.deepEqual(folderIds, ['gallery', 'pro-shop', 'events', 'schedule']);
+  assert.deepEqual(
+    [...host.querySelectorAll('.cloud-folders__label')].map((node) => node.textContent),
+    ['Gallery', 'Pro Shop', 'Events', 'Schedule'],
+  );
+  assert.doesNotMatch(host.textContent ?? '', /Class photos/);
+  // Folder view: no tiles and no thumbnails until a folder is opened.
+  assert.equal(host.querySelectorAll('[data-cloud-gallery-item]').length, 0);
+  assert.deepEqual(opened, []);
+  assert.match(host.querySelector('[data-cloud-folder-open="gallery"]')?.textContent ?? '', /2 files/);
+
+  await act(async () => (host.querySelector('[data-cloud-folder-open="gallery"]') as HTMLButtonElement).click());
+  await flush();
+  assert.ok(host.querySelector('[data-cloud-folder="gallery"]'));
   const tiles = [...host.querySelectorAll('[data-cloud-gallery-item]')].map((node) => node.getAttribute('data-cloud-gallery-item'));
-  assert.deepEqual(tiles.sort(), [photo.path, video.path].sort());
-  // Photo thumbnails come from op=file through the store. Videos are not fetched until played.
-  assert.deepEqual(opened, [photo.path]);
-  assert.ok(host.querySelector(`[data-cloud-gallery-item="${photo.path}"] img`));
+  assert.deepEqual(tiles.sort(), [galleryPhoto.path, galleryClip.path].sort());
+  assert.deepEqual(opened, [galleryPhoto.path], 'photo thumbnails come from op=file; videos wait until played');
+  assert.ok(host.querySelector(`[data-cloud-gallery-item="${galleryPhoto.path}"] img`));
 
   const play = host.querySelector('[data-cloud-gallery-play]') as HTMLButtonElement;
-  assert.match(play.textContent ?? '', /Play Advantage Cloud slideshow \(2\)/);
+  assert.match(play.textContent ?? '', /Play Gallery slideshow \(2\)/);
   await act(async () => play.click());
   await flush();
-  const slide = host.querySelector('[data-cloud-slide]');
-  assert.equal(slide?.getAttribute('data-cloud-slide'), video.path);
+  assert.equal(host.querySelector('[data-cloud-slide]')?.getAttribute('data-cloud-slide'), galleryClip.path);
   assert.ok(host.querySelector('.cloud-gallery__player video'));
-  assert.ok(opened.includes(video.path));
   const next = [...host.querySelectorAll('.cloud-gallery__controls button')].find((node) => node.textContent === 'Next') as HTMLButtonElement;
   await act(async () => next.click());
   await flush();
-  assert.equal(host.querySelector('[data-cloud-slide]')?.getAttribute('data-cloud-slide'), photo.path);
-  assert.ok(host.querySelector('.cloud-gallery__player img'));
+  assert.equal(host.querySelector('[data-cloud-slide]')?.getAttribute('data-cloud-slide'), galleryPhoto.path);
+  await act(async () => next.click());
+  await flush();
+  assert.equal(host.querySelector('[data-cloud-slide]')?.getAttribute('data-cloud-slide'), galleryClip.path, 'Pro Shop never joins the slideshow');
   const close = [...host.querySelectorAll('.cloud-gallery__controls button')].find((node) => node.textContent === 'Close') as HTMLButtonElement;
   await act(async () => close.click());
   assert.equal(host.querySelector('[data-cloud-slide]'), null);
+
+  await act(async () => (host.querySelector('[data-cloud-folder-back]') as HTMLButtonElement).click());
+  await flush();
+  await act(async () => (host.querySelector('[data-cloud-folder-open="pro-shop"]') as HTMLButtonElement).click());
+  await flush();
+  assert.deepEqual([...host.querySelectorAll('[data-cloud-gallery-item]')].map((node) => node.getAttribute('data-cloud-gallery-item')), [shopCard.path]);
+  assert.equal(host.querySelector('[data-cloud-folder="pro-shop"] [data-cloud-gallery-play]'), null, 'only Gallery offers the TV slideshow');
+  assert.ok(host.querySelector('[data-cloud-folder-upload="pro-shop"]'));
   act(() => root.unmount());
 });
 
-test('Cloud gallery renders nothing off Cloud, an empty line with nothing approved, and a visible error on failure', async () => {
+test('gallerySlideshowItems keeps Gallery photos and videos only', async () => {
+  const { gallerySlideshowItems } = await import('../lib/advantageCloudFolders.ts');
+  const pdf: FolderItem = { ...shopCard, folder: 'schedule', path: 'schedule/week.pdf', name: 'week.pdf', mime: 'application/pdf', kind: 'file' };
+  const galleryPdf: FolderItem = { ...galleryPhoto, path: 'gallery/approved/2026-11-12/x.pdf', kind: 'file' };
+  const pending: FolderItem = { ...galleryPhoto, lane: 'pending', path: 'gallery/pending/2026-11-12/wait.jpg' };
+  assert.deepEqual(
+    gallerySlideshowItems([galleryPhoto, shopCard, pdf, galleryClip, galleryPdf, pending]).map((item) => item.path),
+    [galleryPhoto.path, galleryClip.path],
+  );
+});
+
+test('Cloud folders render nothing off Cloud, an empty line in an empty folder, and a visible error on failure', async () => {
   const off = mount(<CloudGallerySection load={async () => null} store={fakeStore([])} />);
   await flush();
   assert.equal(off.host.querySelector('[data-cloud-gallery]'), null);
   act(() => off.root.unmount());
 
-  const empty = mount(<CloudGallerySection load={async () => []} store={fakeStore([])} />);
+  const empty = mount(<CloudGallerySection load={folders({})} store={fakeStore([])} initialFolder="gallery" />);
   await flush();
   assert.equal(empty.host.querySelector('[data-cloud-gallery-empty]')?.textContent, CLOUD_GALLERY_EMPTY);
+  assert.equal(empty.host.querySelector('[data-cloud-gallery-play]'), null);
   act(() => empty.root.unmount());
 
   const failed = mount(<CloudGallerySection load={async () => ({ error: CLOUD_GALLERY_READ_ERROR })} store={fakeStore([])} />);
   await flush();
   assert.equal(failed.host.querySelector('[data-cloud-gallery-error]')?.textContent, CLOUD_GALLERY_READ_ERROR);
   act(() => failed.root.unmount());
+});
+
+test('Gallery upload and Copy from Google Drive show only for uploaders; uploads go to the opened folder', async () => {
+  const viewer = mount(
+    <CloudGallerySection
+      load={folders({ gallery: [galleryPhoto] }, { canUpload: false, canDelete: false })}
+      store={fakeStore([])}
+      onCopyFromDrive={() => undefined}
+      driveConnected
+      initialFolder="gallery"
+    />,
+  );
+  await flush();
+  assert.equal(viewer.host.querySelector('[data-cloud-folder-upload]'), null);
+  assert.equal(viewer.host.querySelector('[data-cloud-drive-copy]'), null);
+  assert.equal(viewer.host.querySelector('[data-cloud-delete]'), null);
+  act(() => viewer.root.unmount());
+
+  let driveOpened = 0;
+  const sent: { folder: string; name: string }[] = [];
+  const { root, host } = mount(
+    <CloudGallerySection
+      load={folders({ gallery: [galleryPhoto] })}
+      store={fakeStore([])}
+      onCopyFromDrive={() => {
+        driveOpened += 1;
+      }}
+      driveConnected={false}
+      upload={async ({ folder, file }) => {
+        sent.push({ folder, name: file.name });
+        return { ok: true, path: `gallery/approved/2026-11-18/${file.name}`, lane: 'approved' };
+      }}
+      initialFolder="gallery"
+    />,
+  );
+  await flush();
+  const drive = host.querySelector('[data-cloud-drive-copy]') as HTMLButtonElement;
+  assert.equal(drive.getAttribute('data-cloud-drive-copy'), 'connect');
+  assert.match(drive.textContent ?? '', /Connect Google Drive/);
+  await act(async () => drive.click());
+  assert.equal(driveOpened, 1);
+  const input = host.querySelector('[data-cloud-folder-input="gallery"]') as HTMLInputElement;
+  assert.equal(input.getAttribute('accept'), 'image/*,video/*');
+  Object.defineProperty(input, 'files', { value: [new File(['x'], 'mat.jpg', { type: 'image/jpeg' })], configurable: true });
+  await act(async () => input.dispatchEvent(new Event('change', { bubbles: true })));
+  await flush();
+  assert.deepEqual(sent, [{ folder: 'gallery', name: 'mat.jpg' }]);
+  assert.match(host.querySelector('[data-cloud-folder-note]')?.textContent ?? '', /Added 1 to Gallery/);
+  act(() => root.unmount());
 });
 
 test('client lane store: approved-media list, daily review rows, decisions use the right action, op=file opens bytes', async () => {
@@ -235,7 +341,7 @@ test('Gallery Cloud copy: failures are counted and shown instead of swallowed; o
 test('Gallery page wiring: every gallery import path copies to Cloud and the old silent catch is gone', async () => {
   const { readFileSync } = await import('node:fs');
   const page = readFileSync('src/pages/Screensaver.tsx', 'utf8');
-  assert.match(page, /<CloudGallerySection \/>/);
+  assert.match(page, /<CloudGallerySection onCopyFromDrive=\{\(\) => openDrivePick\('gallery', 'any'\)\} driveConnected=/);
   assert.equal((page.match(/copyGalleryToCloud\(/g) ?? []).length >= 3, true, 'device, Google Photos, and Drive picks all copy');
   assert.match(page, /data-cloud-copy=/);
   const review = readFileSync('src/components/GalleryReviewQueue.tsx', 'utf8');
@@ -243,8 +349,10 @@ test('Gallery page wiring: every gallery import path copies to Cloud and the old
   assert.match(review, /Daily video/);
 });
 
-test('Delete on a Cloud gallery video waits for confirm, then removes the file; non-managers see no Delete', async () => {
-  const hidden = mount(<CloudGallerySection load={async () => [video, photo]} store={fakeStore([])} canManage={false} />);
+test('Delete on a Gallery video waits for confirm, then removes the file; non-managers see no Delete', async () => {
+  const hidden = mount(
+    <CloudGallerySection load={folders({ gallery: [galleryClip, galleryPhoto] })} store={fakeStore([])} canManage={false} initialFolder="gallery" />,
+  );
   await flush();
   assert.equal(hidden.host.querySelector('[data-cloud-delete]'), null);
   assert.equal(hidden.host.querySelector('[data-cloud-cleanup]'), null);
@@ -253,9 +361,10 @@ test('Delete on a Cloud gallery video waits for confirm, then removes the file; 
   const removed: string[][] = [];
   const { root, host } = mount(
     <CloudGallerySection
-      load={async () => [video, photo]}
+      load={folders({ gallery: [galleryClip, galleryPhoto] })}
       store={fakeStore([])}
       canManage
+      initialFolder="gallery"
       remove={async ({ paths }) => {
         removed.push(paths);
         return { ok: true, deleted: paths.length, licenseUsedBytes: 0, bucketUsedBytes: 0, capBytes: 8_000_000_000 };
@@ -263,7 +372,7 @@ test('Delete on a Cloud gallery video waits for confirm, then removes the file; 
     />,
   );
   await flush();
-  const del = host.querySelector(`[data-cloud-delete="${video.path}"]`) as HTMLButtonElement;
+  const del = host.querySelector(`[data-cloud-delete="${galleryClip.path}"]`) as HTMLButtonElement;
   assert.ok(del);
   await act(async () => del.click());
   await flush();
@@ -273,13 +382,13 @@ test('Delete on a Cloud gallery video waits for confirm, then removes the file; 
   await act(async () => cancel.click());
   await flush();
   assert.equal(host.querySelector('[data-cloud-delete-confirm]'), null);
-  await act(async () => (host.querySelector(`[data-cloud-delete="${video.path}"]`) as HTMLButtonElement).click());
+  await act(async () => (host.querySelector(`[data-cloud-delete="${galleryClip.path}"]`) as HTMLButtonElement).click());
   await flush();
   await act(async () => (host.querySelector('[data-cloud-delete-go]') as HTMLButtonElement).click());
   await flush();
-  assert.deepEqual(removed, [[video.path]]);
-  assert.equal(host.querySelector(`[data-cloud-gallery-item="${video.path}"]`), null);
-  assert.ok(host.querySelector(`[data-cloud-gallery-item="${photo.path}"]`));
+  assert.deepEqual(removed, [[galleryClip.path]]);
+  assert.equal(host.querySelector(`[data-cloud-gallery-item="${galleryClip.path}"]`), null);
+  assert.ok(host.querySelector(`[data-cloud-gallery-item="${galleryPhoto.path}"]`));
   act(() => root.unmount());
 });
 
