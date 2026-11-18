@@ -24,7 +24,7 @@ type Props = {
 
 export function OutcomePickSheet({ open, title, onClose, onPickWin, onPickDq, portal = false }: Props) {
   return (
-    <Sheet open={Boolean(open)} title={title} onClose={onClose} portal={portal}>
+    <Sheet open={Boolean(open)} title={title} onClose={onClose} portal={portal} pinClose>
       {open === 'win' ? (
         <div className="outcome-picks" role="list">
           {WIN_METHODS.map((method) => (

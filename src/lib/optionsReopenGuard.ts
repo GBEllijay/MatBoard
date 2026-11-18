@@ -65,8 +65,48 @@ export function armOptionsCloseGuard(
   }, windowMs);
 }
 
+/**
+ * How long the one leftover click after a Close tap is eaten. A phone sends
+ * that click right after pointerup, to whatever now sits under the finger
+ * (the timer, the scoreboard). Without this, Close reopened Training options
+ * on most timer skins and sent the Quick Result board to the Controller.
+ */
+export const LEFTOVER_CLICK_MS = 600;
+
+type ClickTarget = {
+  addEventListener(type: 'click', fn: (event: Event) => void, capture: boolean): void;
+  removeEventListener(type: 'click', fn: (event: Event) => void, capture: boolean): void;
+};
+
+let dropLeftover: (() => void) | undefined;
+
+/** Eat the next click anywhere on the page (capture phase), once, within `windowMs`. */
+export function swallowLeftoverClick(
+  windowMs = LEFTOVER_CLICK_MS,
+  target: ClickTarget | null = typeof window !== 'undefined' ? window : null,
+): void {
+  if (!target) return;
+  dropLeftover?.();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const onClick = (event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    done();
+  };
+  const done = () => {
+    if (timer) clearTimeout(timer);
+    target.removeEventListener('click', onClick, true);
+    if (dropLeftover === done) dropLeftover = undefined;
+  };
+  target.addEventListener('click', onClick, true);
+  timer = setTimeout(done, windowMs);
+  dropLeftover = done;
+}
+
 /** Test helper. */
 export function resetOptionsCloseGuard(body?: GuardBody | null): void {
+  dropLeftover?.();
   if (guardTimer) clearTimeout(guardTimer);
   guardTimer = undefined;
   lastClosedAt = 0;

@@ -371,6 +371,7 @@ export function MatchControllerPage() {
       </section>
       <Sheet
         className="sheet--help"
+        pinClose
         open={tvHelpOpen}
         title="How to show the scoreboard on a gym TV"
         onClose={() => setTvHelpOpen(false)}

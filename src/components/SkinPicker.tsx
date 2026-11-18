@@ -179,6 +179,8 @@ export function SkinPicker({
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // Handled here: the Options sheet underneath stays open.
+        event.preventDefault();
         setOpen(false);
         return;
       }

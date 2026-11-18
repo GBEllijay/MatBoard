@@ -5687,7 +5687,10 @@ button.tm-phase {
 
 .sheet__panel {
   position: relative;
-  /* 88dvh when there is no notch. A top inset keeps Close below the status bar. */
+  /* 88dvh when there is no notch. A top inset keeps Close below the status bar.
+     The vh line is for browsers without dvh, which would otherwise drop the
+     whole rule and let the sheet grow past the screen with Close out of reach. */
+  max-height: calc(88vh - env(safe-area-inset-top, 0px));
   max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top, 0px) - 0.5rem));
   overflow: auto;
   background-color: var(--mat-fill);
@@ -5718,7 +5721,35 @@ button.tm-phase {
   flex: 0 0 auto;
   position: relative;
   z-index: 2;
+  /* At least a 44px finger target on every skin (48px is the app's button height). */
+  min-width: 48px;
+  min-height: 48px;
   touch-action: manipulation;
+}
+
+/* Round timer Options and the scoreboard sheets: the title row and Close stay
+   pinned while only the body scrolls, so Close is always on screen. Same
+   layout as the Media Console dock-footer sheet. Side insets keep Close clear
+   of a landscape notch. */
+.sheet.sheet--pin-close .sheet__panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-left: max(1rem, var(--safe-l));
+  padding-right: max(1rem, var(--safe-r));
+}
+
+.sheet.sheet--pin-close .sheet__head,
+.sheet.sheet--pin-close .sheet__footer {
+  flex: 0 0 auto;
+}
+
+.sheet.sheet--pin-close .sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sheet.sheet--clipboard .sheet__panel {
