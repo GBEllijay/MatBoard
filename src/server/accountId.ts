@@ -53,7 +53,8 @@ async function accountById(db: D1Database, accountId: string): Promise<AccountRo
     .first<AccountRow>();
 }
 
-async function accountByEmail(db: D1Database, email: string, hash: string | null): Promise<AccountRow | null> {
+/** Account by keyed hash first, then by the plain normalized email (rows saved before hashes). */
+export async function accountByEmail(db: D1Database, email: string, hash: string | null): Promise<AccountRow | null> {
   if (hash) {
     const byHash = await db
       .prepare(`SELECT id, email_normalized AS email, email_hash AS emailHash FROM accounts WHERE email_hash = ? LIMIT 1`)
@@ -144,7 +145,9 @@ async function claimEmail(
   const account = await accountById(db, accountId);
   if (!account) return false;
   if (account.email === email && account.emailHash === hash) return true;
-  if (account.email && !replace) return false;
+  // Same address already on this account, but its hash was never stored: fill the hash in.
+  const fillHash = Boolean(account.email === email && !account.emailHash && hash);
+  if (account.email && !replace && !fillHash) return false;
   const stamp = stampOf(now);
   try {
     await db
@@ -153,7 +156,7 @@ async function claimEmail(
          SET email_normalized = ?, email_hash = ?, updated_at = ?
          WHERE id = ? AND (? = 1 OR email_normalized IS NULL)`,
       )
-      .bind(email, hash, stamp, accountId, replace ? 1 : 0)
+      .bind(email, hash, stamp, accountId, replace || fillHash ? 1 : 0)
       .run();
   } catch (error) {
     if (!isUniqueConflict(error)) throw error;
