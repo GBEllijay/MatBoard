@@ -43,3 +43,16 @@ test('the locked Student Edition page switches to this screen only for an academ
   const account = readFileSync(new URL('../pages/Account.tsx', import.meta.url), 'utf8');
   assert.match(account, /tab === 'invite' \|\| tab === 'code'/, '/account?tab=invite opens the invite tab');
 });
+
+test('boot keeps the academy QR token in the address (it never unlocks Coach) and still strips ?coach=1', async () => {
+  const { stripsCoachParam } = await import('./proUnlock.ts');
+  const { previewCoachUnlockFromSearch, applyCoachUnlockSearch } = await import('./coachUnlock.ts');
+  assert.equal(stripsCoachParam('1'), true);
+  assert.equal(stripsCoachParam('0'), true);
+  assert.equal(stripsCoachParam(''), true);
+  assert.equal(stripsCoachParam(null), false);
+  const signed = 'eyJhbGciOi.eyJ0eXAiOi.c2lnbmF0dXJl';
+  assert.equal(stripsCoachParam(signed), false);
+  assert.equal(previewCoachUnlockFromSearch(new URLSearchParams(`coach=${signed}`)), null);
+  assert.equal(applyCoachUnlockSearch(new URLSearchParams(`coach=${signed}`)), false);
+});
