@@ -20,6 +20,10 @@ installStudentMockGuard();
 // and every other profile is stored under its own keys.
 installStudentProfileScope();
 initSignedInSync();
+// Every buyer's small profile fields back up to Advantage Cloud (no photos or videos).
+void import('./lib/profileBackupBoot')
+  .then((mod) => mod.startProfileBackup())
+  .catch(() => undefined);
 initMatchSync();
 initTournamentSync();
 initRosterSync();
