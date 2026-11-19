@@ -7,7 +7,8 @@ import { instructorAllowanceForLicense, readHalfOffCode } from './proBundle.ts';
 import { claimForAccess } from './subscriptionAccess.ts';
 import { accessForLicense } from './subscriptionSync.ts';
 import { issueToken, signingMaterial } from './tokenIssue.ts';
-import { keyedHash, normalizeEmail } from './codeCrypto.ts';
+import { parseShortSeatInvite } from '../lib/seatShortInvite.ts';
+import { keyedHash, normalizeEmail, timingSafeEqual } from './codeCrypto.ts';
 import { cleanFeatures, inviteSelectionsForEmail, markInviteRedeemed, recordInviteSelection } from './inviteSelections.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
 
@@ -270,8 +271,15 @@ export async function handleSeatAccept(
       return json(400, { ok: false, error: 'This invite is not valid.' });
     }
   } else {
-    row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(invite).first<SeatRow>();
-    if (!row) return json(400, { ok: false, error: 'This invite is not valid.' });
+    const short = parseShortSeatInvite(invite);
+    row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(short?.sid ?? invite).first<SeatRow>();
+    // A short code (/i/<code>) must carry the seat's current nonce. A bare id works as before.
+    if (!row || (short && (!row.inviteNonce || !timingSafeEqual(row.inviteNonce, short.nonce)))) {
+      return json(400, { ok: false, error: 'This invite is not valid.' });
+    }
+    if (short && row.inviteExpiresAt && Date.parse(row.inviteExpiresAt) <= stamp.getTime()) {
+      return json(400, { ok: false, error: 'This invite has expired. Ask the owner for a new link.' });
+    }
   }
   if (row.revokedAt || row.status === 'revoked') return json(403, { ok: false, error: 'This seat was revoked.' });
   if (row.claimedDevice === SEAT_ACCOUNT_BOUND) {
@@ -594,6 +602,16 @@ export async function seatInviteState(
   db: D1Database,
   now: Date,
 ): Promise<{ seatId: string; replaced: boolean; expired: boolean } | null> {
+  const short = parseShortSeatInvite(invite);
+  if (short) {
+    const row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(short.sid).first<SeatRow>();
+    if (!row || row.legacy || !row.inviteNonce) return null;
+    return {
+      seatId: row.id,
+      replaced: !timingSafeEqual(row.inviteNonce, short.nonce),
+      expired: Boolean(row.inviteExpiresAt && Date.parse(row.inviteExpiresAt) <= now.getTime() && row.status === 'pending'),
+    };
+  }
   const signed = await readInvite(invite, env);
   if (signed && typeof signed.sid === 'string') {
     const row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(signed.sid).first<SeatRow>();
@@ -612,6 +630,11 @@ export async function seatInviteState(
  * the same bare token is what Accept already takes. Null when neither matches.
  */
 export async function seatIdFromInvite(invite: string, env: SeatEnv, db?: D1Database | null): Promise<string | null> {
+  const short = parseShortSeatInvite(invite);
+  if (short && db) {
+    const row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(short.sid).first<SeatRow>();
+    return row && !row.legacy && row.inviteNonce && timingSafeEqual(row.inviteNonce, short.nonce) ? row.id : null;
+  }
   const signed = await readInvite(invite, env);
   if (signed && typeof signed.sid === 'string') return signed.sid;
   const bare = invite.trim();

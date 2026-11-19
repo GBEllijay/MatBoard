@@ -146,7 +146,7 @@ export function CoachConnectQrPanel({
       </span>
       {saved ? (
         <div className="invite-link" role="status">
-          {src ? <img className="invite-link__qr" src={src} alt="Coach connect QR" width={180} height={180} /> : null}
+          {src ? <img className="invite-link__qr" src={src} alt="Coach connect QR" width={260} height={260} /> : null}
           <div className="invite-link__copy">
             <p>{saved.gymName ? `${saved.gymName} · ` : ''}Academy-wide · reusable · works until {seatViewer ? 'the owner replaces' : 'you replace'} it.</p>
             <label>

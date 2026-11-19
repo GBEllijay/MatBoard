@@ -120,6 +120,7 @@ import { proPlusCloudStripePro } from './lib/proPlusCloud';
 import { ACCOUNT_PATH, accountInvitePath } from './lib/emailLogin';
 import { studentJoinRedirectPath } from './lib/studentLicensePool';
 import { isSignedSeatInvite } from './lib/seatSunset';
+import { shortInviteCodeFromPath } from './lib/seatShortInvite';
 import { ProLockedPage } from './pages/ProLocked';
 import { BuyCoachPage, BuyMediaPage, BuyProPage, BuyStudentPage } from './pages/BuyTier';
 import { BuyWhitePage } from './pages/BuyWhite';
@@ -158,6 +159,12 @@ function consumeInviteDoorNow(): void {
   const studentTo = studentJoinRedirectPath(window.location.pathname, window.location.search);
   if (studentTo) {
     window.history.replaceState(window.history.state, '', studentTo);
+    return;
+  }
+  // Short instructor invite links (/i/<code>, the invite QR) open the same account invite screen.
+  const shortInvite = shortInviteCodeFromPath(window.location.pathname);
+  if (shortInvite) {
+    window.history.replaceState(window.history.state, '', accountInvitePath(shortInvite));
     return;
   }
   const params = new URLSearchParams(window.location.search);

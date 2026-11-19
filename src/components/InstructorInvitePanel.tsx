@@ -96,7 +96,7 @@ function InviteQr({ link, email }: { link: string; email: string }) {
     };
   }, [link]);
   if (!src) return null;
-  return <img className="invite-link__qr" src={src} alt={`QR for the invite to ${email}`} width={180} height={180} />;
+  return <img className="invite-link__qr" src={src} alt={`QR for the invite to ${email}`} width={260} height={260} />;
 }
 
 function SeatCapRequestNote() {
