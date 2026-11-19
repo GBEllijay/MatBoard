@@ -26,6 +26,7 @@ export function FocusShell({
   nextDisabled,
   summaryTitle,
   summaryText,
+  summaryExtra,
   hide,
   tabs,
   initialTab,
@@ -41,6 +42,8 @@ export function FocusShell({
   nextDisabled?: boolean;
   summaryTitle: string;
   summaryText: string;
+  /** Optional line under the step notes, such as the step's glossary card. */
+  summaryExtra?: ReactNode;
   hide: ReactNode;
   tabs: readonly FocusTab[];
   initialTab?: string;
@@ -117,6 +120,7 @@ export function FocusShell({
                 {summaryOpen ? 'Show less' : 'Show more'}
               </button>
             ) : null}
+            {summaryExtra}
         </div>
         <div className="focus-shell__drawer">
           <div className="focus-shell__tabs" role="tablist" aria-label="Class drawer">

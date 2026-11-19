@@ -192,6 +192,7 @@ function lessonTechniqueForDrive(tech: TechniqueBlock): TechniqueBlock {
     waterBreak: Boolean(tech.waterBreak),
   };
   if (tech.treeId) next.treeId = tech.treeId;
+  if (tech.glossaryCardId) next.glossaryCardId = tech.glossaryCardId;
   return next;
 }
 

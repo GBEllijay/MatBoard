@@ -1,0 +1,142 @@
+/* Glossary card under a Daily Lesson Plan drill title. */
+.lesson-glossary {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.lesson-glossary__chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.5rem 0.8rem;
+  border-radius: 14px;
+  border: 1px solid rgba(252, 192, 0, 0.35);
+  background: rgba(0, 78, 186, 0.22);
+  color: var(--ink);
+  text-align: left;
+}
+
+.lesson-glossary__chip.is-open {
+  border-color: var(--logo-yellow);
+}
+
+.lesson-glossary__kicker {
+  color: var(--gold-2);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lesson-glossary__title {
+  flex: 1 1 auto;
+  font-weight: 800;
+}
+
+.lesson-glossary__mine {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.lesson-glossary__body {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(8, 10, 16, 0.55);
+  color: var(--ink);
+}
+
+.lesson-glossary__body p {
+  margin: 0;
+}
+
+.lesson-glossary__aliases,
+.lesson-glossary__meta {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.lesson-glossary__definition--empty {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.lesson-glossary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.lesson-glossary--missing {
+  grid-template-columns: 1fr;
+  align-items: center;
+}
+
+.lesson-glossary__hint {
+  color: var(--ink);
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.lesson-glossary__add {
+  justify-self: start;
+}
+
+.lesson-glossary__form {
+  padding: 0.75rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid rgba(252, 192, 0, 0.35);
+  background: rgba(8, 10, 16, 0.55);
+}
+
+.lesson-glossary__form label {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--gold-2);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lesson-glossary__form input,
+.lesson-glossary__form select,
+.lesson-glossary__form textarea {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(8, 10, 16, 0.78);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  padding: 0.6rem 0.8rem;
+}
+
+.lesson-glossary__note {
+  margin: 0;
+  color: var(--ink);
+}
+
+.lesson-glossary__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-self: start;
+  min-height: 44px;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(252, 192, 0, 0.28);
+  background: rgba(0, 78, 186, 0.28);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}

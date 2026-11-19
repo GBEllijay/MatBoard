@@ -67,6 +67,14 @@ export type GlossaryBaseCard = {
   aliases: string[];
   definition: string;
   subFactor: string;
+  /**
+   * Set only on a card the instructor added (for example from a lesson
+   * technique title that was not in the glossary). Built-in cards never
+   * carry it. Custom cards sync with the account tree doc.
+   */
+  custom?: true;
+  /** When the custom card was added or last edited (ms). Custom cards only. */
+  addedAt?: number;
 };
 
 export type GlossaryBaseLinkSource =
@@ -276,6 +284,58 @@ export function findBaseCard(
   return catalog.cards.find((card) => card.glossaryTermId === term.id || card.termKey === term.id.replace(/^gl\./, '')) ?? null;
 }
 
+/** Longest definition kept on a card the instructor adds. */
+export const CUSTOM_DEFINITION_MAX = 600;
+/** Most instructor-added cards kept on one device. */
+export const CUSTOM_CARD_MAX = 500;
+
+/** True for a card the instructor added, not one of the built-in glossary cards. */
+export function isCustomGlossaryCard(card: Pick<GlossaryBaseCard, 'custom'>): boolean {
+  return card.custom === true;
+}
+
+export type AddCustomCardResult = {
+  catalog: GlossaryBaseCatalog;
+  card: GlossaryBaseCard | null;
+  status: 'added' | 'exists' | 'blank' | 'full';
+};
+
+/**
+ * Add an instructor card to the glossary. Minimal fields: a name, one of the
+ * eight D8 faces, and an optional short definition. A name that is already a
+ * card (same key) returns that card instead of a duplicate.
+ */
+export function addCustomGlossaryCard(
+  catalog: GlossaryBaseCatalog,
+  input: { title: string; faceId: GlossaryBaseFaceId; definition?: string },
+  now = Date.now(),
+): AddCustomCardResult {
+  const title = clampText(input.title, TITLE_MAX).trim().replace(/\s+/g, ' ');
+  // Card ids stay inside the sync id pattern (gbase. + at most 100 characters).
+  const key = termKey(title).slice(0, 90).replace(/-+$/, '');
+  if (!title || !key) return { catalog, card: null, status: 'blank' };
+  const existing = catalog.cards.find((card) => card.termKey === key || card.id === cardIdForTermKey(key));
+  if (existing) return { catalog, card: existing, status: 'exists' };
+  if (catalog.cards.filter((card) => card.custom).length >= CUSTOM_CARD_MAX) {
+    return { catalog, card: null, status: 'full' };
+  }
+  const faceId = isGlossaryBaseFace(input.faceId) ? input.faceId : 'guard-control';
+  const card: GlossaryBaseCard = {
+    id: cardIdForTermKey(key),
+    slotId: slotIdForTermKey(key),
+    glossaryTermId: `gl.${key}`,
+    termKey: key,
+    title,
+    faceId,
+    aliases: [],
+    definition: (input.definition ?? '').trim().slice(0, CUSTOM_DEFINITION_MAX),
+    subFactor: '',
+    custom: true,
+    addedAt: Math.max(1, Math.floor(now)),
+  };
+  return { catalog: { ...catalog, cards: [...catalog.cards, card] }, card, status: 'added' };
+}
+
 export function emptyGlossaryBaseCatalog(): GlossaryBaseCatalog {
   return { version: 1, cards: [], links: [], collisions: [], skipped: [] };
 }
@@ -398,8 +458,14 @@ function sanitizeCard(value: unknown, seen: Set<string>): GlossaryBaseCard | nul
     title,
     faceId,
     aliases,
-    definition: typeof raw.definition === 'string' ? raw.definition : '',
+    definition: typeof raw.definition === 'string' ? raw.definition.slice(0, CUSTOM_DEFINITION_MAX) : '',
     subFactor: typeof raw.subFactor === 'string' ? raw.subFactor : '',
+    ...(raw.custom === true
+      ? {
+          custom: true as const,
+          addedAt: typeof raw.addedAt === 'number' && Number.isFinite(raw.addedAt) && raw.addedAt > 0 ? Math.floor(raw.addedAt) : 1,
+        }
+      : {}),
   };
 }
 
@@ -565,7 +631,8 @@ export function ensureGlossaryBaseCards(
     JSON.stringify(previous.collisions) === JSON.stringify(merged.collisions) &&
     beforeIds.size === merged.cards.length &&
     merged.cards.every((card) => beforeIds.has(card.termKey));
-  if (unchanged && previous.cards.length === built.cards.length) {
+  const customCount = merged.cards.filter((card) => card.custom).length;
+  if (unchanged && previous.cards.length === built.cards.length + customCount) {
     return { catalog: merged, created: 0, reused: merged.cards.length, written: false, quota: false };
   }
   const write = writeCatalog(merged);
