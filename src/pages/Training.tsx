@@ -21,6 +21,7 @@ import { customSkinRecordId, isCustomSkinId } from '../lib/customSkin';
 import { formatMmSs } from '../lib/format';
 import { fullscreenElement } from '../lib/fullscreen';
 import { wantsRoundsFullscreen } from '../lib/roundsFullscreen';
+import { lastOptionsClosedAt, optionsReopenBlocked } from '../lib/optionsReopenGuard';
 import { safeTimerReturn } from '../lib/timerReturn';
 import { isPolishedTrainingSkin, trainingUsesAdvantageSkin, visibleTrainingSkin, whiteTimerSurfaceClass } from '../lib/trainingSkin';
 import { timerBackdropClasses, timerGymLogoSrc } from '../lib/timerBackdrop';
@@ -103,6 +104,8 @@ export function TrainingPage() {
           )
         )
           return;
+        // The tap that just closed Options must not open it again.
+        if (optionsReopenBlocked(lastOptionsClosedAt(), Date.now())) return;
         setOptions(true);
       }}
     >
@@ -180,7 +183,7 @@ export function TrainingPage() {
         </>
       )}
 
-      <Sheet open={options} title="Training options" onClose={() => setOptions(false)}>
+      <Sheet open={options} title="Training options" onClose={() => setOptions(false)} pinClose>
         <TrainingOptions onReset={() => setOptions(false)} />
       </Sheet>
     </main>

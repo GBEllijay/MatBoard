@@ -26,6 +26,7 @@ import { roundDisplay } from '../lib/roundDisplay';
 import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
 import { needsRefDecision } from '../lib/outcomes';
+import { lastOptionsClosedAt, optionsReopenBlocked } from '../lib/optionsReopenGuard';
 import { formatMmSs } from '../lib/format';
 import { dqDisappointedShouldPlay } from '../lib/dqDisappointed';
 import { grandmasterCheerKey, grandmasterMatchComplete, matchGrandmasterView } from '../lib/grandmasterCelebration';
@@ -82,6 +83,8 @@ export function MatchDisplayPage() {
     if (target.closest('a, button, .score, .tv-tip, .display__chrome, .display-splash')) return;
     // Landscape / fullscreen / TV: leave empty taps for play chrome (F, idle cursor). Portrait phone can open Controller.
     if (fs.active || fs.landscape || fs.tvStation) return;
+    // The tap that just closed a Win/DQ sheet must not open the Controller.
+    if (optionsReopenBlocked(lastOptionsClosedAt(), Date.now())) return;
     openController(endedWithoutWinner ? 'outcome' : undefined);
   };
 

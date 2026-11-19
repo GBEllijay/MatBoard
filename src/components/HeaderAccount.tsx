@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ACCOUNT_PATH, LOGIN_EVENT, readLoginHint } from '../lib/emailLogin';
 import { accountButtonBlocked } from '../lib/optionsReopenGuard';
-import { isSheetLayerOpen } from '../lib/sheetLayer';
+import { isSheetLayerOpen, subscribeSheetLayer } from '../lib/sheetLayer';
 
-/** Paths that already have a top-right Sign in / Account control, or are a TV display. */
-const HIDDEN_PATHS = new Set(['/', '/match']);
+/**
+ * Paths that already have a top-right Sign in / Account control, or are a TV display.
+ * The round timer (/training) is the TV display like /match: its top-right corner
+ * belongs to Fullscreen and the Training options Close.
+ */
+const HIDDEN_PATHS = new Set(['/', '/match', '/training']);
 
 /**
  * Top-right account control for app pages.
@@ -24,7 +28,9 @@ export function HeaderAccount() {
       window.removeEventListener('storage', update);
     };
   }, []);
-  if (HIDDEN_PATHS.has(pathname)) return null;
+  // Any open sheet owns the top-right corner (its Close). Do not rely on CSS :has() alone.
+  const sheetOpen = useSyncExternalStore(subscribeSheetLayer, isSheetLayerOpen, () => false);
+  if (HIDDEN_PATHS.has(pathname) || sheetOpen) return null;
   return (
     <Link
       className="header-account"
