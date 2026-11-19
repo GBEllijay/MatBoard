@@ -68,6 +68,12 @@ export type TechniqueBlock = {
    * Absent means a title match may still open a tree.
    */
   treeId?: string;
+  /**
+   * Glossary card this drill is connected to (`gbase.<key>`), set when the
+   * instructor adds the title to the glossary or connects it by hand.
+   * Absent means the title still matches a glossary card by name.
+   */
+  glossaryCardId?: string;
 };
 
 export type PlanVideoSection = 'warmup' | 'technique' | 'cooldown';
@@ -342,7 +348,8 @@ export function planHasContent(plan: TrainingNotesPlan): boolean {
       tech.notes.trim() ||
       tech.expected.trim() ||
       tech.waterBreak ||
-      Boolean(tech.treeId),
+      Boolean(tech.treeId) ||
+      Boolean(tech.glossaryCardId),
   );
 }
 
@@ -378,6 +385,12 @@ function sanitizeTechnique(value: unknown): { block: TechniqueBlock; repaired: b
       repaired = true;
     }
   }
+  let glossaryCardId: string | undefined;
+  if (raw && Object.prototype.hasOwnProperty.call(raw, 'glossaryCardId')) {
+    const value = typeof raw.glossaryCardId === 'string' ? raw.glossaryCardId.trim() : '';
+    if (/^gbase\.[a-z0-9-]{1,100}$/.test(value)) glossaryCardId = value;
+    else if (raw.glossaryCardId != null) repaired = true;
+  }
   return {
     repaired,
     block: {
@@ -388,6 +401,7 @@ function sanitizeTechnique(value: unknown): { block: TechniqueBlock; repaired: b
       expected,
       waterBreak: raw?.waterBreak === true,
       ...(treeId ? { treeId } : {}),
+      ...(glossaryCardId ? { glossaryCardId } : {}),
     },
   };
 }
