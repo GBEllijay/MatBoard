@@ -36,7 +36,9 @@ import {
   renameTree,
   saveTechniqueArchive,
   selectTree,
+  setNodeGlossaryCard,
   setRoot,
+  TECHNIQUE_TREE_STORAGE_KEY,
   toggleCollapsed,
   updateActive,
   updateNode,
@@ -48,6 +50,7 @@ import {
 import {
   emptyGlossaryPanelView,
   ensureGlossaryBaseCards,
+  GLOSSARY_BASE_STORAGE_KEY,
   linksFrom,
   saveGlossaryBaseCatalog,
   viewForCard,
@@ -56,7 +59,23 @@ import {
   type GlossaryPanelView,
 } from '../lib/glossaryBaseCards';
 import { TechniqueTreeDiamond } from './TechniqueTreeDiamond';
-import { GlossaryBaseCardsPanel, GlossaryLinkList, TreeConnectField } from './TechniqueTreeGlossary';
+import {
+  GlossaryBaseCardsPanel,
+  GlossaryLinkList,
+  IdentityConnections,
+  StepGlossaryLink,
+  TreeConnectField,
+} from './TechniqueTreeGlossary';
+import {
+  connectionsForIdentity,
+  edgesFromArchive,
+  edgesFromCards,
+  edgesFromCatalog,
+  type NamedEdge,
+} from '../lib/d8TreeLinks';
+import { stepIdentity, stepIdentityName } from '../lib/moveIdentity';
+import { TREE_CLOUD_EVENT } from '../lib/techniqueTreeCloud';
+import { useIndexCardFile, useLiveCards } from '../indexCards/store';
 
 export function TechniqueTreePage() {
   const navigate = useNavigate();
@@ -66,6 +85,8 @@ export function TechniqueTreePage() {
   useCoachPageSwipe();
   const requestedTreeId = searchParams.get('tree');
   const requestedNodeId = searchParams.get('node');
+  /** A glossary card id from an index card's "Open in Technique Tree". */
+  const requestedCardId = searchParams.get('card');
   const roster = useRosterState();
   const mentionIndex = useMemo(
     () => gamePlanMentionIndex(roster.students, roster.gamePlans),
@@ -96,6 +117,30 @@ export function TechniqueTreePage() {
     setGlossaryCatalog(ensureGlossaryBaseCards(archive).catalog);
   }, [archive]);
 
+  // A signed-in sync wrote a newer cloud copy of the trees onto this device.
+  useEffect(() => {
+    const reload = () => setArchive(loadTechniqueArchive());
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === TECHNIQUE_TREE_STORAGE_KEY || event.key === GLOSSARY_BASE_STORAGE_KEY) reload();
+    };
+    window.addEventListener(TREE_CLOUD_EVENT, reload);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(TREE_CLOUD_EVENT, reload);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
+  // One identity per move: tree steps, glossary cards, and D8 cards share links.
+  const cardFile = useIndexCardFile();
+  const liveCards = useLiveCards();
+  const liveCardsKey = liveCards.map((card) => `${card.id}:${card.name}`).join('|');
+  const allEdges = useMemo<NamedEdge[]>(
+    () => [...edgesFromCards(cardFile, liveCards), ...edgesFromArchive(archive), ...edgesFromCatalog(glossaryCatalog, archive)],
+    [cardFile, liveCardsKey, archive, glossaryCatalog],
+  );
+  const treeName = (id: string) => archive.trees.find((tree) => tree.id === id)?.name ?? null;
+
   useEffect(() => {
     if (!requestedTreeId) return;
     let cancelled = false;
@@ -123,6 +168,20 @@ export function TechniqueTreePage() {
       window.clearTimeout(timer);
     };
   }, [requestedTreeId, setSearchParams]);
+
+  useEffect(() => {
+    if (!requestedCardId) return;
+    const view = viewForCard(glossaryCatalog, requestedCardId);
+    if (view.openId === requestedCardId) {
+      setGlossaryView(view);
+      window.requestAnimationFrame(() => {
+        document.getElementById('tree-glossary-panel')?.scrollIntoView({ block: 'start' });
+      });
+    }
+    const next = new URLSearchParams(window.location.search);
+    next.delete('card');
+    setSearchParams(next, { replace: true });
+  }, [requestedCardId, glossaryCatalog, setSearchParams]);
 
   const commitArchive = (next: TechniqueTreeArchive) => {
     const saved = saveTechniqueArchive(next);
@@ -365,6 +424,9 @@ export function TechniqueTreePage() {
           const saved = saveGlossaryBaseCatalog(next);
           setGlossaryCatalog(saved.catalog);
         }}
+        archive={archive}
+        edges={allEdges}
+        onOpenStep={(treeId, nodeId) => navigate(`/technique-tree?tree=${encodeURIComponent(treeId)}&node=${encodeURIComponent(nodeId)}`)}
       />
 
       <div className="tree__plan">
@@ -533,6 +595,9 @@ export function TechniqueTreePage() {
                 const saved = saveGlossaryBaseCatalog(next);
                 setGlossaryCatalog(saved.catalog);
               }}
+              onLinkGlossary={(id, cardId) => commit(setNodeGlossaryCard(doc, id, cardId))}
+              edges={allEdges}
+              treeName={treeName}
             />
           </ul>
         ) : null}
@@ -557,6 +622,9 @@ function TreeNodeView({
   onConfirmDelete,
   onCatalogChange,
   onOpenGlossaryCard,
+  onLinkGlossary,
+  edges,
+  treeName,
 }: {
   node: TechniqueNode;
   doc: TechniqueTreeDoc;
@@ -573,6 +641,9 @@ function TreeNodeView({
   onConfirmDelete: (id: string) => void;
   onCatalogChange: (catalog: GlossaryBaseCatalog) => void;
   onOpenGlossaryCard?: (cardId: string) => void;
+  onLinkGlossary: (id: string, cardId: string | null | undefined) => void;
+  edges: readonly NamedEdge[];
+  treeName: (id: string) => string | null;
 }) {
   const titleRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -590,6 +661,15 @@ function TreeNodeView({
   const confirming = confirmId === node.id;
   const mentions = mentionsFor(node.id);
   const pinned = pinnedId === node.id;
+  const identity = stepIdentity(node);
+  // Links to this move from other trees, glossary cards, and D8 cards. This tree's own branches are already shown below.
+  const elsewhere = node.title.trim()
+    ? connectionsForIdentity({ cardId: identity.how === 'unlinked' ? null : identity.cardId, name: stepIdentityName(node) }, edges, {
+        skip: (edge) =>
+          (edge.source === 'tree' && edge.treeId === doc.id) ||
+          (edge.source === 'glossary' && edge.treeId === doc.id && edge.nodeId === node.id),
+      })
+    : [];
 
   return (
     <li className="tree__item">
@@ -649,9 +729,27 @@ function TreeNodeView({
           </p>
         ) : null}
 
+        {node.title.trim() ? (
+          <StepGlossaryLink
+            step={node}
+            catalog={catalog}
+            onLink={(cardId) => onLinkGlossary(node.id, cardId)}
+            onOpenCard={onOpenGlossaryCard}
+          />
+        ) : null}
+        {elsewhere.length ? (
+          <IdentityConnections
+            rows={elsewhere}
+            treeName={treeName}
+            onOpenCard={onOpenGlossaryCard}
+            testId="tree-step-elsewhere"
+            label="Also connected"
+          />
+        ) : null}
         <TreeConnectField
           catalog={catalog}
           from={{ type: 'tree', treeId: doc.id, nodeId: node.id, slotId: node.slotId, title: node.title }}
+          blockedIds={identity.cardId ? [`gl.${identity.cardId.slice('gbase.'.length)}`] : []}
           onCatalogChange={onCatalogChange}
         />
         <GlossaryLinkList
@@ -711,6 +809,9 @@ function TreeNodeView({
               onCancelDelete={onCancelDelete}
               onConfirmDelete={onConfirmDelete}
               onCatalogChange={onCatalogChange}
+              onLinkGlossary={onLinkGlossary}
+              edges={edges}
+              treeName={treeName}
             />
           ))}
         </ul>

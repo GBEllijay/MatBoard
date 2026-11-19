@@ -63,6 +63,10 @@ export type StudentSyncCard = {
   rating?: number;
   addedAt?: number;
   video?: unknown;
+  /** The student's own notes on the card. */
+  notes?: string;
+  /** Technique Tree connections added from the card, by card id. */
+  links?: { to: string; relation: 'leads' | 'defense'; name?: string }[];
   tree?: null;
 };
 
@@ -89,6 +93,8 @@ function cardHasStudentWork(card: StudentSyncCard): boolean {
       card.userName ||
       card.userFace ||
       card.video ||
+      (typeof card.notes === 'string' && card.notes.trim()) ||
+      (Array.isArray(card.links) && card.links.length > 0) ||
       (typeof card.addedAt === 'number' && card.addedAt > 0) ||
       (card.id && card.id.startsWith('custom:')),
   );

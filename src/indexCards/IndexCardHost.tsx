@@ -26,6 +26,7 @@ import {
 import { GLOSSARY_FACE_LABELS, glossaryTag, glossaryTerm, searchGlossary } from '../lib/glossary.ts';
 import { myMoveNames } from '../lib/glossaryAdditions.ts';
 import { FacePicker } from './FacePicker.tsx';
+import { CardNotes, CardTechniqueTree } from './CardTreeNotes.tsx';
 import type { AssessmentScore } from '../lib/studentAssessment.ts';
 import { loadFilms } from '../lib/studentFilm.ts';
 import { useStudentFile, useStudentPath } from '../pages/student/chrome.tsx';
@@ -252,6 +253,8 @@ export function IndexCardHost() {
           </form>
         )}
         {card ? <CardIdentity card={card} /> : null}
+        {card ? <CardTechniqueTree card={card} cards={cards} /> : null}
+        {card ? <CardNotes card={card} /> : null}
         {card ? (
           <section className="d8sf-index-block" aria-label="Journal">
             <h3>Your journal</h3>

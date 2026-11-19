@@ -16,6 +16,14 @@
 
 import { LOGIN_EVENT, readLoginHint } from './emailLogin.ts';
 import { setSyncTrigger, suppressSyncTrigger } from './syncTrigger.ts';
+import { applyTreeDoc, collectTreeDoc } from './techniqueTreeCloud.ts';
+import {
+  mergeTreeDocs,
+  sameTreeContent,
+  sanitizeTreeSyncDoc,
+  treeSyncDocIsEmpty,
+  type TreeSyncDoc,
+} from './techniqueTreeSync.ts';
 import {
   academyDocIsEmpty,
   pickWinningDoc,
@@ -66,6 +74,8 @@ export type SyncDocs = {
   academy: AcademySyncDoc | null;
   student: StudentSyncDoc | null;
   profiles: ProfilesSyncDoc | null;
+  /** The coach's own Technique Tree and glossary card links. Per account, never per student. */
+  tree?: TreeSyncDoc | null;
 };
 
 export type SyncStatusKind = 'signed-out' | 'syncing' | 'synced' | 'error';
@@ -462,6 +472,7 @@ type SyncResponse = {
   academy?: AcademySyncDoc | null;
   student?: StudentSyncDoc | null;
   profiles?: ProfilesSyncDoc | null;
+  tree?: TreeSyncDoc | null;
   canWriteAcademy?: boolean;
 };
 
@@ -546,15 +557,28 @@ export async function pullAndMergeSignedIn(options?: {
     const profilesPick = mergeProfiles(localProfiles, remote.profiles ?? null);
     if (profilesPick.source === 'remote' && profilesPick.winner) applyProfilesDoc(profilesPick.winner, store);
 
+    // Technique Tree: merged per tree and per link, not last-write-wins for the whole doc.
+    const localTree = collectTreeDoc(store, now);
+    const remoteTree = remote.tree ? sanitizeTreeSyncDoc(remote.tree) : null;
+    const mergedTree = mergeTreeDocs(localTree, remoteTree);
+    if (!sameTreeContent(mergedTree, localTree)) applyTreeDoc(mergedTree, store);
+    const uploadTree = !treeSyncDocIsEmpty(mergedTree) && !sameTreeContent(mergedTree, remoteTree);
+
     const toUpload: SyncDocs & { profileId: string } = {
       profileId,
       academy: academyPick.shouldUpload && (remote.canWriteAcademy !== false) ? academyPick.winner : null,
       student: studentPick.shouldUpload ? studentPick.winner : null,
       profiles: profilesPick.shouldUpload ? profilesPick.winner : null,
+      tree: uploadTree ? mergedTree : null,
     };
 
-    if (toUpload.academy || toUpload.student || toUpload.profiles) {
+    if (toUpload.academy || toUpload.student || toUpload.profiles || toUpload.tree) {
       const saved = await putRemote(toUpload, fetchImpl);
+      const savedTree = saved.ok !== false && saved.tree ? sanitizeTreeSyncDoc(saved.tree) : null;
+      if (savedTree && !sameTreeContent(savedTree, mergedTree)) {
+        // Another device saved in between; the server merged both. Keep that copy here too.
+        applyTreeDoc(mergeTreeDocs(mergedTree, savedTree), store);
+      }
       if (saved.ok === false) {
         const failed: SyncStatus = {
           kind: 'error',
@@ -685,5 +709,6 @@ setSyncTrigger((kind, profileId) => {
   if (kind === 'academy') noteLocalAcademyChange();
   else if (kind === 'student') noteLocalStudentChange(profileId);
   else if (kind === 'profiles') noteLocalProfilesChange();
+  else if (kind === 'tree') scheduleSignedInPush();
   else if (kind === 'switch' && profileId) void pullAndMergeSignedIn({ profileId });
 });
