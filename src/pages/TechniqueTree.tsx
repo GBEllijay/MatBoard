@@ -66,6 +66,8 @@ export function TechniqueTreePage() {
   useCoachPageSwipe();
   const requestedTreeId = searchParams.get('tree');
   const requestedNodeId = searchParams.get('node');
+  /** A glossary card id from an index card's "Open in Technique Tree". */
+  const requestedCardId = searchParams.get('card');
   const roster = useRosterState();
   const mentionIndex = useMemo(
     () => gamePlanMentionIndex(roster.students, roster.gamePlans),
@@ -123,6 +125,20 @@ export function TechniqueTreePage() {
       window.clearTimeout(timer);
     };
   }, [requestedTreeId, setSearchParams]);
+
+  useEffect(() => {
+    if (!requestedCardId) return;
+    const view = viewForCard(glossaryCatalog, requestedCardId);
+    if (view.openId === requestedCardId) {
+      setGlossaryView(view);
+      window.requestAnimationFrame(() => {
+        document.getElementById('tree-glossary-panel')?.scrollIntoView({ block: 'start' });
+      });
+    }
+    const next = new URLSearchParams(window.location.search);
+    next.delete('card');
+    setSearchParams(next, { replace: true });
+  }, [requestedCardId, glossaryCatalog, setSearchParams]);
 
   const commitArchive = (next: TechniqueTreeArchive) => {
     const saved = saveTechniqueArchive(next);

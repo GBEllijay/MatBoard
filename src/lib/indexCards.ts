@@ -42,6 +42,10 @@ const NAME_MAX = 80;
 const VIDEO_TITLE_MAX = 120;
 const VIDEO_HREF_MAX = 500;
 const CARD_MAX = 400;
+/** Longest note the student can keep on one card. */
+export const CARD_NOTES_MAX = 1000;
+/** Connections one card can hold. */
+export const CARD_LINKS_MAX = 24;
 
 export type CatalogLine = {
   id: string;
@@ -56,6 +60,24 @@ export type CardVideo = {
   title: string;
   href: string;
 };
+
+/** leads = this move leads to the other. defense = the other defends or counters this move. */
+export type CardLinkRelation = 'leads' | 'defense';
+
+/**
+ * A Technique Tree connection the student added from a card. `to` is the other card's id,
+ * or `gl.<key>` for a glossary move that is not on their D8 yet; `name` is then its glossary name.
+ */
+export type CardLink = {
+  to: string;
+  relation: CardLinkRelation;
+  name?: string;
+};
+
+/** Link target id for a glossary move that is not a D8 card. */
+export function glossaryLinkId(key: string): string {
+  return `gl.${key}`;
+}
 
 /** A stored move with no D8 face, from an old file or an import. Not drawn and never glossary-tagged. */
 export const UNSORTED_FACE = 'other';
@@ -75,6 +97,10 @@ export type StoredIndexCard = {
   rating?: AssessmentScore;
   addedAt?: number;
   video?: CardVideo | null;
+  /** The student's own notes on this card. Plain text. */
+  notes?: string;
+  /** Technique Tree connections added from this card. */
+  links?: CardLink[];
   /** Reserved for a later tree. Nothing draws this yet. */
   tree: null;
 };
@@ -101,6 +127,10 @@ export type LiveCard = {
   baseName: string;
   baseFaceId: IndexFaceId;
   video: CardVideo | null;
+  /** The student's notes. Empty when none. Optional so older sample cards still type-check. */
+  notes?: string;
+  /** Connections added from this card. */
+  links?: CardLink[];
   tree: null;
 };
 
@@ -223,7 +253,39 @@ function cleanCard(value: unknown): StoredIndexCard | null {
   if (typeof row.addedAt === 'number' && Number.isFinite(row.addedAt)) card.addedAt = row.addedAt;
   const video = cleanVideo(row.video);
   if (video) card.video = video;
+  const notes = cleanNotes(row.notes);
+  if (notes) card.notes = notes;
+  const links = cleanLinks(row.links, id);
+  if (links.length) card.links = links;
   return card;
+}
+
+/** Trimmed at the ends, line breaks kept, capped. Non-text is dropped. */
+export function cleanNotes(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value.replace(/\r\n?/g, '\n').trim().slice(0, CARD_NOTES_MAX);
+}
+
+/** Valid, de-duplicated connections. A card never links to itself. */
+export function cleanLinks(value: unknown, selfId: string): CardLink[] {
+  if (!Array.isArray(value)) return [];
+  const out: CardLink[] = [];
+  const seen = new Set<string>();
+  for (const row of value) {
+    if (!row || typeof row !== 'object') continue;
+    const item = row as Partial<CardLink>;
+    const to = typeof item.to === 'string' ? item.to.trim() : '';
+    const relation = item.relation === 'defense' ? 'defense' : item.relation === 'leads' ? 'leads' : null;
+    if (!to || to.length > 80 || to === selfId || !relation) continue;
+    const name = typeof item.name === 'string' ? cleanName(item.name) : '';
+    if (to.startsWith('gl.') && !name) continue;
+    const key = `${relation}:${to}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(name ? { to, relation, name } : { to, relation });
+    if (out.length >= CARD_LINKS_MAX) break;
+  }
+  return out;
 }
 
 function cleanName(value: string): string {
@@ -260,6 +322,8 @@ export function assembleCards(catalog: readonly CatalogLine[], file: IndexCardFi
       baseName: saved.name,
       baseFaceId: faceId,
       video: saved.video ?? null,
+      notes: saved.notes ?? '',
+      links: saved.links ?? [],
       tree: null,
     });
   }
@@ -287,6 +351,8 @@ function liveFromCatalog(line: CatalogLine, saved: StoredIndexCard | undefined, 
     baseName: line.name,
     baseFaceId: line.faceId,
     video: saved?.video ?? null,
+    notes: saved?.notes ?? '',
+    links: saved?.links ?? [],
     tree: null,
   };
 }
@@ -296,11 +362,16 @@ export function unsortedCards(file: IndexCardFile): StoredIndexCard[] {
   return file.cards.filter((card) => card.faceId === UNSORTED_FACE);
 }
 
-function keepEdits(file: IndexCardFile, id: string): Pick<StoredIndexCard, 'userName' | 'userFace'> {
+type KeptFields = Pick<StoredIndexCard, 'userName' | 'userFace' | 'notes' | 'links'>;
+
+/** The student's own name, face, notes, and connections survive a rating or video save. */
+function keepEdits(file: IndexCardFile, id: string): KeptFields {
   const saved = file.cards.find((card) => card.id === id);
-  const keep: Pick<StoredIndexCard, 'userName' | 'userFace'> = {};
+  const keep: KeptFields = {};
   if (saved?.userName) keep.userName = saved.userName;
   if (saved?.userFace) keep.userFace = saved.userFace;
+  if (saved?.notes) keep.notes = saved.notes;
+  if (saved?.links?.length) keep.links = saved.links;
   return keep;
 }
 
@@ -337,6 +408,8 @@ export function withCardEdit(
       tree: null,
     };
     if (saved?.rating) next.rating = saved.rating;
+    if (saved?.notes) next.notes = saved.notes;
+    if (saved?.links?.length) next.links = saved.links;
     if (key !== termKey(line.name)) next.userName = name;
     if (edit.faceId !== line.faceId) next.userFace = edit.faceId;
     return { file: upsert(file, next) };
@@ -429,6 +502,72 @@ export function withVideo(catalog: readonly CatalogLine[], file: IndexCardFile, 
   };
   if (current.touched) next.rating = current.rating;
   return upsert(file, next);
+}
+
+/**
+ * Save the student's notes on any card, built-in or their own. A blank note clears it.
+ * Rating, video, name, face, and connections stay as they are.
+ */
+export function withCardNotes(catalog: readonly CatalogLine[], file: IndexCardFile, id: string, notes: string): IndexCardFile {
+  return withStoredCard(catalog, file, id, (card) => {
+    const clean = cleanNotes(notes);
+    const next = { ...card };
+    if (clean) next.notes = clean;
+    else delete next.notes;
+    return next;
+  });
+}
+
+/** Add a Technique Tree connection from one card to another. Same connection twice is a no-op. */
+export function withCardLink(
+  catalog: readonly CatalogLine[],
+  file: IndexCardFile,
+  fromId: string,
+  link: CardLink,
+): IndexCardFile {
+  const cards = assembleCards(catalog, file);
+  const known = cards.some((card) => card.id === link.to) || (link.to.startsWith('gl.') && Boolean(link.name?.trim()));
+  if (!known || link.to === fromId) return file;
+  return withStoredCard(catalog, file, fromId, (card) => {
+    const links = cleanLinks([...(card.links ?? []), link], card.id);
+    if (links.length === (card.links ?? []).length) return card;
+    return { ...card, links };
+  });
+}
+
+/** Remove one connection added from a card. */
+export function withoutCardLink(catalog: readonly CatalogLine[], file: IndexCardFile, fromId: string, link: CardLink): IndexCardFile {
+  const saved = file.cards.find((card) => card.id === fromId);
+  if (!saved?.links?.some((row) => row.to === link.to && row.relation === link.relation)) return file;
+  return withStoredCard(catalog, file, fromId, (card) => {
+    const links = (card.links ?? []).filter((row) => !(row.to === link.to && row.relation === link.relation));
+    const next = { ...card };
+    if (links.length) next.links = links;
+    else delete next.links;
+    return next;
+  });
+}
+
+/**
+ * Change one stored card, writing a stored copy of a built-in move first if needed.
+ * A built-in move that only gets notes or connections keeps no addedAt, so its place on the D8 does not change.
+ */
+function withStoredCard(
+  catalog: readonly CatalogLine[],
+  file: IndexCardFile,
+  id: string,
+  change: (card: StoredIndexCard) => StoredIndexCard,
+): IndexCardFile {
+  const saved = file.cards.find((card) => card.id === id);
+  if (saved) {
+    const next = change(saved);
+    return next === saved ? file : upsert(file, next);
+  }
+  const current = assembleCards(catalog, file).find((card) => card.id === id);
+  if (!current) return file;
+  const base: StoredIndexCard = { id: current.id, faceId: current.faceId, name: current.name, tree: null };
+  const next = change(base);
+  return next === base ? file : upsert(file, next);
 }
 
 export function withCustomCard(

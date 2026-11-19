@@ -3,7 +3,15 @@
  * Tapping a blank tile, or an empty pyramid slot, starts a new card on that face.
  * Zoom, pause, reset, and the factor buttons stay the stage's own controls.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import type { D8Branch } from '../preview/crystallineSweeps/branches.ts';
+import { branchState } from '../lib/d8TreeLinks.ts';
+import { coachDoorOpen } from '../lib/productNames.ts';
+import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
+import { useProUnlocked } from '../hooks/useProUnlocked';
+import { useCurrentSeat } from '../components/SeatSessionBar';
+import { useTreeEdges } from './treeLinks.ts';
 import { TopoStage } from '../preview/crystallineSweeps/TopoStage.tsx';
 import { LIVE_ZOOM_MAX } from '../preview/crystallineSweeps/labels.ts';
 import { FACES } from '../preview/d8Subfactors/model.ts';
@@ -45,6 +53,26 @@ import './liveD8.css';
  */
 const LIVE_LIST_ZOOM = LIVE_ZOOM_MAX + 1;
 export const D8_STAGE_HEIGHT_KEY = 'matboard.student.d8StageHeight.v1';
+/** Branches on or off on the live D8, remembered on this device. Off until the student turns them on. */
+export const D8_BRANCHES_KEY = 'matboard.student.d8Branches.v1';
+
+function readFlag(key: string): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeFlag(key: string, on: boolean) {
+  try {
+    localStorage.setItem(key, on ? '1' : '0');
+  } catch {
+    /* private mode */
+  }
+}
+
+const NO_BRANCHES: readonly D8Branch[] = [];
 /** About 1.5× the old 420px stage. */
 export const D8_STAGE_DEFAULT = 630;
 export const D8_STAGE_MIN = 260;
@@ -128,6 +156,32 @@ export function LiveD8({ baseline }: { baseline?: FaceBaseline | null } = {}) {
   const faceId = face && isLiveFace(face.id) ? face.id : null;
   const drilled = Boolean(faceId && zoom >= LIVE_LIST_ZOOM && !holdDiamond);
   const expanded = stageHeight >= d8StageMax() - 8;
+  const { edges } = useTreeEdges(cards);
+  const cardsKey = cards.map((card) => `${card.faceId}:${card.id}:${card.rating}:${card.tile}:${card.name}`).join('|');
+  const state = useMemo(() => branchState(model, cards, edges), [model, cardsKey, edges]);
+  const [showBranches, setShowBranches] = useState(() => readFlag(D8_BRANCHES_KEY));
+  const [xrayOnly, setXrayOnly] = useState(false);
+  const [chainPick, setChainPick] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const chains = state.kind === 'ready' ? state.chains : [];
+  const xrayMode = showBranches || xrayOnly;
+  const picked = chains[chainPick] ?? chains[0] ?? null;
+  const chain = playing && xrayMode && picked ? picked : null;
+  const branches = showBranches && state.kind === 'ready' ? state.branches : NO_BRANCHES;
+  const coachOpen = coachDoorOpen(useProUnlocked(), useCoachUnlocked(), useCurrentSeat() !== null);
+
+  useEffect(() => {
+    if (chainPick >= chains.length && chainPick !== 0) setChainPick(0);
+    if (!chains.length && playing) setPlaying(false);
+  }, [chains.length, chainPick, playing]);
+
+  const toggleBranches = () => {
+    setShowBranches((on) => {
+      writeFlag(D8_BRANCHES_KEY, !on);
+      if (on) setPlaying(false);
+      return !on;
+    });
+  };
 
   const rememberHeight = (next: number) => {
     const height = clampD8StageHeight(next);
@@ -204,6 +258,10 @@ export function LiveD8({ baseline }: { baseline?: FaceBaseline | null } = {}) {
           if (id) openTerm(id);
         }}
         onDrill={() => undefined}
+        branches={branches}
+        xray={xrayMode}
+        chain={chain}
+        onChainStop={() => setPlaying(false)}
       />
       <button
         type="button"
@@ -229,7 +287,67 @@ export function LiveD8({ baseline }: { baseline?: FaceBaseline | null } = {}) {
         <button type="button" data-testid="d8-fit" onClick={() => rememberHeight(expanded ? D8_STAGE_DEFAULT : d8StageMax())}>
           {expanded ? 'Fit' : 'Expand'}
         </button>
+        <button type="button" data-testid="d8-branches" aria-pressed={showBranches} onClick={toggleBranches}>
+          {showBranches ? 'Branches on' : 'Branches'}
+        </button>
+        <button
+          type="button"
+          data-testid="d8-xray"
+          aria-pressed={xrayMode}
+          disabled={showBranches}
+          title={showBranches ? 'X-ray stays on while branches show' : undefined}
+          onClick={() => setXrayOnly((on) => !on)}
+        >
+          {xrayMode ? 'X-ray on' : 'X-ray'}
+        </button>
+        {xrayMode && chains.length ? (
+          <button type="button" data-testid="d8-chain" aria-pressed={playing} onClick={() => setPlaying((on) => !on)}>
+            {playing ? 'Stop chain' : 'Follow the chain'}
+          </button>
+        ) : null}
       </div>
+      {xrayMode && chains.length ? (
+        <label className="d8-live-chain-pick">
+          <span className="d8sf-kicker">Chain</span>
+          <select
+            aria-label="Chain"
+            data-testid="d8-chain-pick"
+            value={String(Math.min(chainPick, chains.length - 1))}
+            onChange={(event) => {
+              setChainPick(Number(event.target.value));
+              setPlaying(true);
+            }}
+          >
+            {chains.map((row, index) => (
+              <option key={row.id} value={String(index)}>
+                {row.names.join(' → ')}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {showBranches && state.kind !== 'ready' ? (
+        <div className="d8-live-branch-hint" data-testid="d8-branches-empty" role="status">
+          <p>{state.hint}</p>
+          <p className="gl-note">
+            {coachOpen ? (
+              <>
+                <Link to="/technique-tree" data-testid="d8-open-tree">
+                  Open Technique Tree
+                </Link>
+                {' or open a card and tap Add a connection.'}
+              </>
+            ) : (
+              'Open any card on your D8 and tap Add a connection.'
+            )}
+          </p>
+        </div>
+      ) : null}
+      {showBranches && state.kind === 'ready' ? (
+        <p className="gl-note d8-live-branch-note" data-testid="d8-branches-note">
+          {`${state.branches.length} ${state.branches.length === 1 ? 'branch' : 'branches'} from your Technique Tree and card connections. Tap a line to see which moves it joins.`}
+        </p>
+      ) : null}
       {drilled && faceId ? (
         <FaceList faceId={faceId} cards={cards} onBack={goDiamond} />
       ) : face && faceId ? (

@@ -105,6 +105,27 @@ function sanitizeIndexCards(raw: unknown): StudentSyncDoc['indexCards'] {
         card.video = { title, href };
       }
     }
+    if (typeof row.notes === 'string') {
+      const notes = row.notes.replace(/\r\n?/g, '\n').trim().slice(0, 1000);
+      if (notes) card.notes = notes;
+    }
+    if (Array.isArray(row.links)) {
+      const links: { to: string; relation: 'leads' | 'defense'; name?: string }[] = [];
+      const seenLinks = new Set<string>();
+      for (const raw of row.links) {
+        if (!raw || typeof raw !== 'object') continue;
+        const link = raw as Record<string, unknown>;
+        const to = typeof link.to === 'string' ? link.to.trim() : '';
+        const relation = link.relation === 'leads' || link.relation === 'defense' ? link.relation : null;
+        if (!to || to.length > 80 || to === id || !relation || seenLinks.has(`${relation}:${to}`)) continue;
+        const name = typeof link.name === 'string' ? link.name.trim().replace(/\s+/g, ' ').slice(0, 80) : '';
+        if (to.startsWith('gl.') && !name) continue;
+        seenLinks.add(`${relation}:${to}`);
+        links.push(name ? { to, relation, name } : { to, relation });
+        if (links.length >= 24) break;
+      }
+      if (links.length) card.links = links;
+    }
     cards.push(card);
     if (cards.length >= 400) break;
   }

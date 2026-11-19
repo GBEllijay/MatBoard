@@ -201,3 +201,111 @@
 .d8-live-sheet .d8sf-add .d8sf-kicker {
   color: #c9d3e0;
 }
+
+/* Technique Tree and notes blocks on the index card. */
+.gl-tree-group h4 {
+  margin: 8px 0 4px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gl-tree-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.gl-tree-source {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.gl-tree-remove {
+  margin-left: auto;
+  font-size: 0.8rem;
+}
+
+.gl-tree-add select {
+  width: 100%;
+  min-height: 44px;
+}
+
+.gl-tree-open {
+  align-self: center;
+  font-weight: 700;
+  color: inherit;
+}
+
+.gl-card-notes textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 84px;
+  padding: 8px 10px;
+  border: 2px solid currentColor;
+  border-radius: 10px;
+  font: inherit;
+  resize: vertical;
+}
+
+.gl-tree-add {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.gl-tree-add .d8sf-kicker {
+  margin: 0;
+}
+
+.gl-tree-relations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gl-tree-relations button {
+  min-height: 40px;
+  padding: 0 0.8rem;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: 700 0.85rem Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.gl-tree-relations button[aria-checked='true'] {
+  background: #004eba;
+  border-color: #004eba;
+  color: #fff;
+}
+
+.gl-tree-add input[type='search'] {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 2px solid currentColor;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.gl-tree-options {
+  position: static;
+  margin: 0;
+}
+
+/* Card sheet buttons and fields are styled broadly; keep the picked relation and the light fields readable. */
+.d8sf-index .gl-tree-relations button[aria-checked='true'] {
+  background: #004eba;
+  border-color: #004eba;
+  color: #fff;
+}
+
+.d8sf-index .gl-tree-add input[type='search'],
+.d8sf-index .gl-card-notes textarea {
+  background: #fffdf7;
+  color: #14202e;
+  border-color: #14202e;
+}
