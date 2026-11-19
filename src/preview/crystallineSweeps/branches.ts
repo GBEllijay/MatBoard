@@ -167,3 +167,96 @@ export function nextBranchSelection(current: number, hit: number): number {
   if (hit < 0) return -1;
   return hit === current ? -1 : hit;
 }
+
+/** A multi-step path along the tree, face to face. tiles[i] → tiles[i + 1] is one arc. */
+export type D8Chain = { id: string; tiles: number[]; names: string[]; sample: boolean };
+
+/** Travel time along one arc, the pause on each tip, and the hold before the loop restarts. */
+export const CHAIN_TRAVEL_MS = 1100;
+export const CHAIN_PAUSE_MS = 450;
+export const CHAIN_HOLD_MS = 1000;
+
+function tileFinder(model: TopoModel) {
+  const byName = new Map<string, TopoTile>();
+  for (const tile of model.tiles) {
+    if (tile.move && !byName.has(tile.move.name.toLowerCase())) byName.set(tile.move.name.toLowerCase(), tile);
+  }
+  return (name: string) => byName.get(name.toLowerCase()) ?? byName.get((catalogNameFor(name) ?? '').toLowerCase());
+}
+
+/**
+ * Follow "leads to" links from a start technique, several steps deep.
+ * Each step takes the first outgoing link that is on the diamond and not already on the path,
+ * preferring one on a different face so the chain crosses the D8.
+ */
+export function followChain(model: TopoModel, start: string, maxSteps = 4, edges: readonly TreeEdge[] = sampleTreeEdges()): D8Chain | null {
+  const find = tileFinder(model);
+  const first = find(start);
+  if (!first?.move) return null;
+  const tiles = [first.index];
+  const names = [first.move.name];
+  let current = first;
+  for (let step = 0; step < maxSteps; step += 1) {
+    const options = edges
+      .filter((edge) => find(edge.from)?.index === current.index)
+      .map((edge) => find(edge.to))
+      .filter((tile): tile is TopoTile => Boolean(tile?.move) && !tiles.includes(tile!.index));
+    const next = options.find((tile) => tile.faceIndex !== current.faceIndex) ?? options[0];
+    if (!next?.move) break;
+    tiles.push(next.index);
+    names.push(next.move.name);
+    current = next;
+  }
+  if (tiles.length < 2) return null;
+  return { id: `chain:${names.join('>')}`, tiles, names, sample: true };
+}
+
+/** A fixed list of technique names, for the owner's example chain. Names not on the diamond are skipped. */
+export function namedChain(model: TopoModel, names: readonly string[]): D8Chain | null {
+  const find = tileFinder(model);
+  const tiles: number[] = [];
+  const shown: string[] = [];
+  for (const name of names) {
+    const tile = find(name);
+    if (!tile?.move || tiles.includes(tile.index)) continue;
+    tiles.push(tile.index);
+    shown.push(tile.move.name);
+  }
+  return tiles.length >= 2 ? { id: `chain:${shown.join('>')}`, tiles, names: shown, sample: true } : null;
+}
+
+/** One arc per step, tip to tip, in path order. */
+export function chainArcs(model: TopoModel, chain: D8Chain, relief: number, segments = BRANCH_SEGMENTS): Float64Array[] {
+  const arcs: Float64Array[] = [];
+  for (let i = 0; i + 1 < chain.tiles.length; i += 1) {
+    const from = model.tiles[chain.tiles[i]];
+    const to = model.tiles[chain.tiles[i + 1]];
+    arcs.push(from && to ? arcPoints(tileTip(from, relief), tileTip(to, relief), segments) : new Float64Array(0));
+  }
+  return arcs;
+}
+
+export type ChainFrame = {
+  /** Arc being travelled, or the last arc while holding. */
+  step: number;
+  /** 0..1 along that arc. */
+  t: number;
+  /** Tips lit so far, as indexes into chain.tiles. */
+  lit: number;
+  /** Name to show: the tip just reached, or the start before the first arc lands. */
+  name: number;
+  holding: boolean;
+};
+
+/** Where the moving highlight is at a given time. Loops forever. Pure, so it is cheap per frame. */
+export function chainFrame(elapsedMs: number, arcCount: number): ChainFrame {
+  const steps = Math.max(1, arcCount);
+  const per = CHAIN_TRAVEL_MS + CHAIN_PAUSE_MS;
+  const cycle = steps * per + CHAIN_HOLD_MS;
+  const time = ((elapsedMs % cycle) + cycle) % cycle;
+  if (time >= steps * per) return { step: steps - 1, t: 1, lit: steps + 1, name: steps, holding: true };
+  const step = Math.floor(time / per);
+  const local = time - step * per;
+  if (local >= CHAIN_TRAVEL_MS) return { step, t: 1, lit: step + 2, name: step + 1, holding: false };
+  return { step, t: local / CHAIN_TRAVEL_MS, lit: step + 1, name: step, holding: false };
+}

@@ -484,3 +484,11 @@ button.topo-label-face,
 .d8-branch-list li[aria-current='true'] {
   color: #ffd27a;
 }
+
+.crystal-toggle select[data-chain-pick] {
+  flex: 1 1 100%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}

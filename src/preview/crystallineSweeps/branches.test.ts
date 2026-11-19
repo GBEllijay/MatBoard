@@ -3,7 +3,14 @@ import assert from 'node:assert/strict';
 import { buildTopo, demoLevel, TOPO_R, type Vec } from './topo.ts';
 import {
   BRANCH_SEGMENTS,
+  CHAIN_HOLD_MS,
+  CHAIN_PAUSE_MS,
+  CHAIN_TRAVEL_MS,
   arcControl,
+  chainArcs,
+  chainFrame,
+  followChain,
+  namedChain,
   arcPoints,
   branchArcs,
   branchStroke,
@@ -121,4 +128,48 @@ test('tap picks the nearest branch within reach, and toggles', () => {
 test('x-ray swaps only the alpha of a fill', () => {
   assert.equal(withAlpha('rgba(10,20,30,0.55)', 0.12), 'rgba(10,20,30,0.12)');
   assert.equal(withAlpha('#ffffff', 0.12), '#ffffff');
+});
+
+test('a chain follows leads-to links in order, crossing faces, without repeats', () => {
+  const chain = followChain(model, 'Closed guard', 4);
+  assert.ok(chain);
+  assert.deepEqual(chain.names.slice(0, 3), ['Closed guard', 'Scissor sweep', 'Mount']);
+  assert.equal(new Set(chain.tiles).size, chain.tiles.length);
+  for (let i = 0; i + 1 < chain.tiles.length; i += 1) {
+    assert.notEqual(model.tiles[chain.tiles[i]].faceIndex, model.tiles[chain.tiles[i + 1]].faceIndex, `step ${i} crosses a face`);
+  }
+  const arcs = chainArcs(model, chain, 1);
+  assert.equal(arcs.length, chain.tiles.length - 1);
+  for (let i = 0; i + 1 < arcs.length; i += 1) {
+    assert.deepEqual([...arcs[i].slice(-3)].map((v) => v.toFixed(9)), [...arcs[i + 1].slice(0, 3)].map((v) => v.toFixed(9)), 'each arc starts where the last one ended');
+  }
+  assert.equal(followChain(model, 'Not a technique'), null);
+});
+
+test('the owner example chain keeps its order and maps Armbar to the catalog row', () => {
+  const chain = namedChain(model, ['Mount', 'Armbar from guard', 'Wrist lock']);
+  assert.deepEqual(chain?.names, ['Mount', 'Armbar from guard', 'Wrist lock']);
+  assert.equal(namedChain(model, ['Mount']), null);
+});
+
+test('the moving highlight walks the arcs in order, lights each tip, then holds and loops', () => {
+  assert.deepEqual(chainFrame(0, 3), { step: 0, t: 0, lit: 1, name: 0, holding: false });
+  const mid = chainFrame(CHAIN_TRAVEL_MS / 2, 3);
+  assert.equal(mid.step, 0);
+  assert.ok(Math.abs(mid.t - 0.5) < 1e-9);
+  assert.deepEqual(chainFrame(CHAIN_TRAVEL_MS + 1, 3), { step: 0, t: 1, lit: 2, name: 1, holding: false });
+  const per = CHAIN_TRAVEL_MS + CHAIN_PAUSE_MS;
+  assert.equal(chainFrame(per + 10, 3).step, 1);
+  assert.equal(chainFrame(2 * per + 10, 3).step, 2);
+  const hold = chainFrame(3 * per + 10, 3);
+  assert.equal(hold.holding, true);
+  assert.equal(hold.lit, 4);
+  assert.equal(hold.name, 3);
+  assert.deepEqual(chainFrame(3 * per + CHAIN_HOLD_MS, 3), chainFrame(0, 3), 'loops back to the start');
+  let last = -1;
+  for (let ms = 0; ms < 3 * per; ms += 50) {
+    const frame = chainFrame(ms, 3);
+    assert.ok(frame.step >= last, 'steps never go backwards inside one loop');
+    last = frame.step;
+  }
 });

@@ -17,6 +17,10 @@ import {
   XRAY_FRONT_ALPHA,
   branchArcs,
   branchStroke,
+  chainArcs,
+  chainFrame,
+  proximity,
+  type D8Chain,
   hitBranch,
   nextBranchSelection,
   segmentDepth,
@@ -87,6 +91,10 @@ type Props = {
   xray?: boolean;
   /** Fired when a branch is tapped, and with null when it is cleared. */
   onBranchTap?: (branch: D8Branch | null) => void;
+  /** Follow the chain: a highlight travels arc to arc along this path and loops. Null or omitted is off. */
+  chain?: D8Chain | null;
+  /** Any tap on the stage while a chain plays asks the host to stop it. */
+  onChainStop?: () => void;
 };
 
 const NO_BRANCHES: readonly D8Branch[] = [];
@@ -100,10 +108,11 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill, onEmptyTile, onZoom, meshHidden = false, zoomCommand = null, fitZoom = false, separateLabels = false, legend = 'chips', branches = NO_BRANCHES, xray = false, onBranchTap }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill, onEmptyTile, onZoom, meshHidden = false, zoomCommand = null, fitZoom = false, separateLabels = false, legend = 'chips', branches = NO_BRANCHES, xray = false, onBranchTap, chain = null, onChainStop }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
+  const chainNameRef = useRef<HTMLParagraphElement | null>(null);
   const [paused, setPaused] = useState(
     () => !spin || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches),
   );
@@ -162,6 +171,12 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
     branchHits: [] as BranchHit[],
     branchSel: -1,
     selectBranch: (_index: number) => {},
+    chain: null as D8Chain | null,
+    chainArcs: [] as Float64Array[],
+    chainFor: null as null | { chain: D8Chain; relief: number },
+    chainStart: 0,
+    chainName: '',
+    onChainStop: undefined as undefined | (() => void),
     api: null as null | {
       grow: (target: string) => void
       enter: (target: string, corners: [Vec, Vec, Vec]) => void
@@ -188,6 +203,12 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
   view.current.separateLabels = separateLabels;
   view.current.branches = branches;
   view.current.xray = xray;
+  if (view.current.chain !== chain) {
+    view.current.chain = chain;
+    view.current.chainStart = typeof performance === 'undefined' ? 0 : performance.now();
+    view.current.chainName = '';
+  }
+  view.current.onChainStop = onChainStop;
   view.current.selectBranch = (index) => {
     const next = index >= 0 && index < branches.length ? index : -1;
     view.current.branchSel = next;
@@ -705,7 +726,8 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
         }
       });
       const showBranches = !paired && !comparing && state.branches.length > 0;
-      const xrayOn = !paired && !comparing && (state.xray || showBranches);
+      const chainOn = !paired && !comparing && Boolean(state.chain && state.chain.tiles.length >= 2);
+      const xrayOn = !paired && !comparing && (state.xray || showBranches || chainOn);
       state.branchHits.length = 0;
       if (showBranches) {
         if (!state.arcFor || state.arcFor.branches !== state.branches || state.arcFor.relief !== state.relief) {
@@ -741,7 +763,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
         if (poly.layer === 'branch') {
           const chosen = poly.branch === state.branchSel;
           const stroke = branchStroke(poly.z, chosen);
-          const dim = state.branchSel >= 0 && !chosen ? 0.35 : 1;
+          const dim = chainOn ? 0.3 : state.branchSel >= 0 && !chosen ? 0.35 : 1;
           context.beginPath();
           context.moveTo(poly.points[0][0], poly.points[0][1]);
           context.lineTo(poly.points[1][0], poly.points[1][1]);
@@ -1040,6 +1062,106 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
           }
         }
       }
+      if (chainOn && state.chain) {
+        const chainPath = state.chain;
+        if (!state.chainFor || state.chainFor.chain !== chainPath || state.chainFor.relief !== state.relief) {
+          state.chainArcs = chainArcs(model, chainPath, state.relief, BRANCH_SEGMENTS);
+          state.chainFor = { chain: chainPath, relief: state.relief };
+        }
+        const arcs = state.chainArcs;
+        const at = chainFrame(now - state.chainStart, arcs.length);
+        const project = (arc: Float64Array, k: number) => {
+          const point = rot([arc[k], arc[k + 1], arc[k + 2]]);
+          return { xy: screen(point), z: point[2] };
+        };
+        context.setLineDash([]);
+        context.lineCap = 'round';
+        let head: { xy: [number, number]; z: number } | null = null;
+        for (let i = 0; i <= at.step && i < arcs.length; i += 1) {
+          const arc = arcs[i];
+          const count = arc.length / 3 - 1;
+          if (count < 1) continue;
+          const travelled = i < at.step ? count : at.t * count;
+          const whole = Math.floor(travelled);
+          let prev = project(arc, 0);
+          for (let j = 1; j <= whole; j += 1) {
+            const next = project(arc, j * 3);
+            const near = proximity((prev.z + next.z) / 2);
+            context.beginPath();
+            context.moveTo(prev.xy[0], prev.xy[1]);
+            context.lineTo(next.xy[0], next.xy[1]);
+            context.strokeStyle = i < at.step ? `rgba(255,190,90,${0.45 + 0.4 * near})` : `rgba(255,226,150,${0.7 + 0.3 * near})`;
+            context.lineWidth = 2.2 + 2.6 * near;
+            context.stroke();
+            prev = next;
+          }
+          if (i === at.step) {
+            const frac = travelled - whole;
+            if (frac > 0 && whole < count) {
+              const next = project(arc, (whole + 1) * 3);
+              const xy: [number, number] = [prev.xy[0] + (next.xy[0] - prev.xy[0]) * frac, prev.xy[1] + (next.xy[1] - prev.xy[1]) * frac];
+              const z = prev.z + (next.z - prev.z) * frac;
+              context.beginPath();
+              context.moveTo(prev.xy[0], prev.xy[1]);
+              context.lineTo(xy[0], xy[1]);
+              context.strokeStyle = 'rgba(255,236,170,1)';
+              context.lineWidth = 2.2 + 2.6 * proximity(z);
+              context.stroke();
+              head = { xy, z };
+            } else head = prev;
+          }
+        }
+        context.lineCap = 'butt';
+        const tipAt = (k: number) => {
+          if (k === 0) return arcs[0] ? project(arcs[0], 0) : null;
+          const arc = arcs[k - 1];
+          return arc && arc.length >= 3 ? project(arc, arc.length - 3) : null;
+        };
+        for (let k = 0; k < at.lit && k < chainPath.tiles.length; k += 1) {
+          const tip = tipAt(k);
+          if (!tip) continue;
+          context.beginPath();
+          context.arc(tip.xy[0], tip.xy[1], k === at.name ? 12 : 9, 0, Math.PI * 2);
+          context.fillStyle = k === at.name ? 'rgba(255,210,122,.35)' : 'rgba(255,210,122,.18)';
+          context.fill();
+          context.strokeStyle = '#ffd27a';
+          context.lineWidth = k === at.name ? 2.6 : 1.6;
+          context.stroke();
+        }
+        if (head && !at.holding && at.t < 1) {
+          const radius = 4 + 3 * proximity(head.z);
+          context.beginPath();
+          context.arc(head.xy[0], head.xy[1], radius * 2.2, 0, Math.PI * 2);
+          context.fillStyle = 'rgba(255,236,170,.25)';
+          context.fill();
+          context.beginPath();
+          context.arc(head.xy[0], head.xy[1], radius, 0, Math.PI * 2);
+          context.fillStyle = '#fff8e0';
+          context.fill();
+        }
+        const current = chainPath.names[at.name] ?? '';
+        const labelTip = tipAt(at.name);
+        if (current && labelTip) {
+          context.font = '12px sans-serif';
+          context.textAlign = 'center';
+          const text = current.slice(0, 22);
+          const width = Math.max(48, text.length * 7 + 12);
+          const y = labelTip.xy[1] - 26;
+          context.fillStyle = 'rgba(7,19,36,.94)';
+          context.fillRect(labelTip.xy[0] - width / 2, y - 10, width, 19);
+          context.strokeStyle = '#ffd27a';
+          context.lineWidth = 1;
+          context.strokeRect(labelTip.xy[0] - width / 2, y - 10, width, 19);
+          context.fillStyle = '#fff4d6';
+          context.fillText(text, labelTip.xy[0], y + 4);
+        }
+        const label = `${at.name + 1}/${chainPath.names.length} · ${current}`;
+        if (label !== state.chainName) {
+          state.chainName = label;
+          stage.dataset.chainStep = String(at.name);
+        }
+        if (chainNameRef.current && chainNameRef.current.textContent !== label) chainNameRef.current.textContent = label;
+      } else if (stage.dataset.chainStep) delete stage.dataset.chainStep;
       if (comparing && sweepsOpen && state.selected >= 0 && state.links.length && !state.grown.length) {
         const anchor = projected.find((item) => item.index === state.selected);
         if (anchor) {
@@ -1319,6 +1441,10 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
           }
           const rect = event.currentTarget.getBoundingClientRect();
           const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
+          if (state.chain && state.onChainStop && !state.comparison && !state.pair) {
+            state.onChainStop();
+            return;
+          }
           if (state.branches.length && !state.comparison && !state.pair && !state.activeScreen) {
             const hit = hitBranch(point, state.branchHits);
             if (hit >= 0 || state.branchSel >= 0) {
@@ -1461,7 +1587,10 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
           ))}
         </div>
       </div>
-      {branches.length && branchSel >= 0 && branches[branchSel] ? (
+      {chain ? (
+        <p ref={chainNameRef} className="topo-branch-names topo-chain-name" data-chain-name="" aria-live="polite" />
+      ) : null}
+      {!chain && branches.length && branchSel >= 0 && branches[branchSel] ? (
         <p className="topo-branch-names" data-branch-names="">
           {branches[branchSel].fromName} → {branches[branchSel].toName}
         </p>

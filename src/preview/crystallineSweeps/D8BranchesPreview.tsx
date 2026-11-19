@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import { PREVIEW_BANNER } from './adapter.ts';
 import { TopoStage } from './TopoStage.tsx';
 import { buildTopo, demoLevel } from './topo.ts';
-import { BRANCH_SAMPLE_NOTE, branchesFromTree, type D8Branch } from './branches.ts';
+import { BRANCH_SAMPLE_NOTE, branchesFromTree, followChain, namedChain, type D8Branch, type D8Chain } from './branches.ts';
 import './crystallineSweeps.css';
 
 export const D8_BRANCHES_PATH = '/preview/d8-branches';
@@ -21,6 +21,19 @@ export function D8BranchesPreview() {
   const [xray, setXray] = useState(params.get('xray') === '1');
   const [focus, setFocus] = useState(-1);
   const [tapped, setTapped] = useState<D8Branch | null>(null);
+  const chains = useMemo(
+    () =>
+      [
+        { label: 'From the tree', chain: followChain(model, 'Closed guard', 4) },
+        { label: 'Owner example', chain: namedChain(model, ['Mount', 'Armbar from guard', 'Wrist lock']) },
+      ].filter((row): row is { label: string; chain: D8Chain } => Boolean(row.chain)),
+    [model],
+  );
+  const [chainPick, setChainPick] = useState(params.get('chain') === 'example' ? 1 : 0);
+  const [playing, setPlaying] = useState(params.get('play') === '1');
+  const xrayMode = show || xray;
+  const picked = chains[chainPick] ?? chains[0];
+  const chain = playing && xrayMode && picked ? picked.chain : null;
   const branches = show ? all : NONE;
   const faceName = (tile: number) => model.faces[model.tiles[tile]?.faceIndex ?? -1]?.name ?? '';
   return (
@@ -44,6 +57,33 @@ export function D8BranchesPreview() {
               {show ? 'X-ray on while branches show' : xray ? 'X-ray on' : 'X-ray off'}
             </button>
           </div>
+          {xrayMode && chains.length ? (
+            <div className="crystal-toggle" role="group" aria-label="Follow the chain">
+              <button type="button" aria-pressed={playing} data-chain-toggle="" onClick={() => setPlaying((value) => !value)}>
+                {playing ? 'Stop the chain' : 'Follow the chain'}
+              </button>
+              <select
+                aria-label="Chain"
+                data-chain-pick=""
+                value={String(chainPick)}
+                onChange={(event) => {
+                  setChainPick(Number(event.target.value));
+                  setPlaying(true);
+                }}
+              >
+                {chains.map((row, index) => (
+                  <option key={row.chain.id} value={String(index)}>
+                    {row.label}: {row.chain.names.join(' → ')}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          {chain ? (
+            <p className="crystal-style-note" data-chain-note="">
+              Example chain, not a saved technique tree. The highlight runs each arc to the next tip and loops. Tap the diamond to stop.
+            </p>
+          ) : null}
           <p className="crystal-style-note">
             {show
               ? 'Each line runs from one pyramid tip, through the middle of the diamond, to a technique on another face. Nearer lines are brighter and thicker. Tap a line to see its two techniques. Tap it again, or empty space, to clear.'
@@ -65,6 +105,8 @@ export function D8BranchesPreview() {
             branches={branches}
             xray={xray}
             onBranchTap={setTapped}
+            chain={chain}
+            onChainStop={() => setPlaying(false)}
             onFocus={setFocus}
             onSelect={() => undefined}
             onDrill={() => undefined}
