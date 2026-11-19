@@ -7,8 +7,12 @@
  *   accounts/{accountId}/account-sync/academy-profile.json   (no license yet)
  *   accounts/{accountId}/account-sync/profiles.json
  *   accounts/{accountId}/account-sync/profiles/{profileId}/student.json
+ *   accounts/{accountId}/account-sync/technique-tree.json   (coach's own trees)
  *
- * No D1 migration. Last write wins per document by updatedAt. An empty
+ * No D1 migration. Last write wins per document by updatedAt, except the
+ * Technique Tree doc, which is merged per tree and per link (see
+ * techniqueTreeSync.ts). The tree doc is per account only; it is never put in
+ * a student doc, so nothing flows from an instructor to a student. An empty
  * incoming document never overwrites a document that already has data.
  * Only the academy owner can read or write the academy profile, so every
  * owner device on that license shares it. Student docs are per account and
@@ -29,6 +33,14 @@ import {
   type StudentSyncDoc,
   type StudentSyncRank,
 } from '../lib/signedInSyncDocs.ts';
+import {
+  mergeTreeDocs,
+  sameTreeContent,
+  sanitizeTreeSyncDoc,
+  treeSyncDocIsEmpty,
+  TREE_SYNC_MAX_BYTES,
+  type TreeSyncDoc,
+} from '../lib/techniqueTreeSync.ts';
 import { LOGIN_UNAVAILABLE, readLoginSession, type LoginEnv } from './loginAccount.ts';
 import type { InboxBucket } from './studentInbox.ts';
 
@@ -36,7 +48,8 @@ export const ACCOUNT_SYNC_PATH = '/api/login/sync';
 export const ACADEMY_SYNC_MAX_BYTES = 700_000;
 export const STUDENT_SYNC_MAX_BYTES = 1_500_000;
 export const PROFILES_SYNC_MAX_BYTES = 80_000;
-export const SYNC_BODY_MAX_CHARS = 1_000_000;
+export const SYNC_BODY_MAX_CHARS = 2_500_000;
+export { TREE_SYNC_MAX_BYTES };
 const LOGO_MAX_CHARS = 350_000;
 const DEFAULT_STUDENT_PROFILE_ID = 'default';
 const PROFILE_ID_RE = /^p[a-z0-9]{10,20}$/;
@@ -204,6 +217,11 @@ function academyKeyFor(licenseId: string | null, accountId: string): string | nu
 function profilesKey(accountId: string): string | null {
   const id = safeSegment(accountId, 90);
   return id ? `accounts/${id}/account-sync/profiles.json` : null;
+}
+
+function treeKey(accountId: string): string | null {
+  const id = safeSegment(accountId, 90);
+  return id ? `accounts/${id}/account-sync/technique-tree.json` : null;
 }
 
 function studentKey(accountId: string, profileId: string): string | null {
@@ -479,6 +497,20 @@ export async function handleProfileSync(
       profiles = sanitizeProfilesDoc(await readJson(bucket, pKey));
     }
 
+    const tKey = treeKey(accountId);
+    let tree: TreeSyncDoc | null = tKey ? sanitizeTreeSyncDoc(await readJson(bucket, tKey)) : null;
+    if (tKey && body.tree) {
+      const incoming = sanitizeTreeSyncDoc(body.tree);
+      if (incoming && !treeSyncDocIsEmpty(incoming)) {
+        const merged = mergeTreeDocs(tree, incoming);
+        if (!sameTreeContent(merged, tree)) {
+          const failed = await writeJson(bucket, tKey, merged, TREE_SYNC_MAX_BYTES);
+          if (failed) return failed;
+        }
+        tree = merged;
+      }
+    }
+
     if (body.academy && !resolved.canWriteAcademy) {
       // The student D8 still saves. The academy profile is owner-only.
     }
@@ -491,6 +523,7 @@ export async function handleProfileSync(
       academy,
       student,
       profiles,
+      tree,
     });
   }
 
@@ -503,6 +536,8 @@ export async function handleProfileSync(
   const academy = resolved.canWriteAcademy && academyKey ? sanitizeAcademyDoc(await readJson(bucket, academyKey)) : null;
   const student = sanitizeStudentDoc(await readJson(bucket, sKey), profileId);
   const profiles = sanitizeProfilesDoc(await readJson(bucket, pKey));
+  const tKey = treeKey(accountId);
+  const tree = tKey ? sanitizeTreeSyncDoc(await readJson(bucket, tKey)) : null;
 
   return json(200, {
     ok: true,
@@ -512,5 +547,6 @@ export async function handleProfileSync(
     academy,
     student,
     profiles,
+    tree,
   });
 }

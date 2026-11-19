@@ -10,15 +10,19 @@
  *   with the signed-in D8 data).
  * Nothing here writes a record. No example graph is used.
  *
- * Name mapping, first hit wins:
- * 1. the card's own name, tile name, or built-in name;
- * 2. the glossary term or one of its aliases ("Triangle" → "Triangle choke");
- * 3. the D8 line the glossary rolls that term up to ("Armbar from guard" → "Armbar from mount");
- * 4. a unique word-prefix match ("Knee slice" → "Knee slice pass").
+ * Name mapping (see moveIdentity.ts), first hit wins:
+ * 1. the card's own name, tile name, or built-in name (case, punctuation, and
+ *    plural folded);
+ * 2. the glossary headword or one of its aliases ("Juji gatame" → "Armbar").
+ * Nothing else: a glossary roll-up line or a shared prefix is a different
+ * move, so "Armbar from guard" never becomes "Armbar from mount".
  * A name with no hit, or with two equally good hits, is left off the D8.
+ * A tree step linked to a glossary card by hand goes by that card's name; a
+ * step the coach unlinked matches by its exact name only.
  */
 
-import { GLOSSARY, GLOSSARY_FACE_LABELS, glossaryTerm } from './glossary.ts';
+import { GLOSSARY, GLOSSARY_FACE_LABELS } from './glossary.ts';
+import { glossaryCardIdForName, glossaryNameKeys, glossaryTermForName, moveKey, stepIdentity, stepIdentityName, type StepLike } from './moveIdentity.ts';
 import { termKey, type CardLinkRelation, type IndexCardFile, type LiveCard } from './indexCards.ts';
 import type { GlossaryBaseCatalog } from './glossaryBaseCards.ts';
 import type { TechniqueNode, TechniqueTreeArchive } from './techniqueTreeStore.ts';
@@ -39,6 +43,12 @@ export type NamedEdge = {
   /** Where the link lives in the Technique Tree, for "Open in Technique Tree". */
   treeId?: string;
   nodeId?: string;
+  /** The coach unlinked this end from the glossary, so it matches by its exact name only. */
+  fromExact?: boolean;
+  toExact?: boolean;
+  /** Glossary base card id of each end, when it has one. */
+  fromCard?: string | null;
+  toCard?: string | null;
 };
 
 export const BRANCHES_EMPTY_HINT = 'Add connections in your Technique Tree to see branches.';
@@ -52,6 +62,28 @@ function walk(node: TechniqueNode | null, visit: (node: TechniqueNode, parent: T
   for (const child of node.children) walk(child, visit, node);
 }
 
+function stepEdge(a: TechniqueNode, b: TechniqueNode, relation: CardLinkRelation, treeId: string): NamedEdge | null {
+  const from = stepIdentityName(a);
+  const to = stepIdentityName(b);
+  if (!from || !to) return null;
+  const left = stepIdentity(a);
+  const right = stepIdentity(b);
+  const edge: NamedEdge = { from, to, relation, source: 'tree', treeId, nodeId: a.id, fromCard: left.cardId, toCard: right.cardId };
+  if (left.how === 'unlinked') edge.fromExact = true;
+  if (right.how === 'unlinked') edge.toExact = true;
+  return edge;
+}
+
+/** Find a step anywhere in the saved trees. */
+export function findStep(archive: TechniqueTreeArchive | null | undefined, treeId: string, nodeId: string): TechniqueNode | null {
+  const tree = archive?.trees.find((row) => row.id === treeId);
+  let found: TechniqueNode | null = null;
+  walk(tree?.root ?? null, (node) => {
+    if (!found && node.id === nodeId) found = node;
+  });
+  return found;
+}
+
 /** Every step in every saved tree on this device, as name → name links. */
 export function edgesFromArchive(archive: TechniqueTreeArchive | null | undefined): NamedEdge[] {
   if (!archive) return [];
@@ -61,33 +93,56 @@ export function edgesFromArchive(archive: TechniqueTreeArchive | null | undefine
     walk(tree.root, (node, parent) => {
       bySlot.set(node.slotId, node);
       if (!parent) return;
-      const from = parent.title.trim();
-      const to = node.title.trim();
-      if (!from || !to) return;
-      out.push({ from, to, relation: node.kind === 'defense' ? 'defense' : 'leads', source: 'tree', treeId: tree.id, nodeId: parent.id });
+      const edge = stepEdge(parent, node, node.kind === 'defense' ? 'defense' : 'leads', tree.id);
+      if (edge) out.push(edge);
     });
     for (const link of tree.links ?? []) {
       const a = bySlot.get(link.fromSlotId);
       const b = bySlot.get(link.toSlotId);
-      const from = a?.title.trim() ?? '';
-      const to = b?.title.trim() ?? '';
-      if (!a || !from || !to) continue;
-      out.push({ from, to, relation: link.relation === 'defense' ? 'defense' : 'leads', source: 'tree', treeId: tree.id, nodeId: a.id });
+      if (!a || !b) continue;
+      const edge = stepEdge(a, b, link.relation === 'defense' ? 'defense' : 'leads', tree.id);
+      if (edge) out.push(edge);
     }
   }
   return out;
 }
 
-/** Links saved on the Technique Tree glossary cards. */
-export function edgesFromCatalog(catalog: GlossaryBaseCatalog | null | undefined): NamedEdge[] {
+/**
+ * Links saved on the Technique Tree glossary cards. A link from a tree step
+ * uses that step's current name and glossary card, read from the archive.
+ */
+export function edgesFromCatalog(
+  catalog: GlossaryBaseCatalog | null | undefined,
+  archive: TechniqueTreeArchive | null = null,
+): NamedEdge[] {
   if (!catalog) return [];
   const titles = new Map(catalog.cards.map((card) => [card.id, card.title]));
   const out: NamedEdge[] = [];
   for (const link of catalog.links) {
     const to = titles.get(link.toCardId)?.trim() ?? '';
-    const from = (link.from.type === 'card' ? titles.get(link.from.cardId) : link.from.title)?.trim() ?? '';
+    let from = '';
+    let fromCard: string | null = null;
+    let fromExact = false;
+    if (link.from.type === 'card') {
+      from = titles.get(link.from.cardId)?.trim() ?? '';
+      fromCard = link.from.cardId;
+    } else {
+      const step: StepLike = findStep(archive, link.from.treeId, link.from.nodeId) ?? { title: link.from.title };
+      from = stepIdentityName(step);
+      const identity = stepIdentity(step);
+      fromCard = identity.cardId;
+      fromExact = identity.how === 'unlinked';
+    }
     if (!from || !to) continue;
-    const edge: NamedEdge = { from, to, relation: link.relation === 'defense' ? 'defense' : 'leads', source: 'glossary' };
+    const edge: NamedEdge = {
+      from,
+      to,
+      relation: link.relation === 'defense' ? 'defense' : 'leads',
+      source: 'glossary',
+      fromCard,
+      toCard: link.toCardId,
+    };
+    if (fromExact) edge.fromExact = true;
     if (link.from.type === 'tree') {
       edge.treeId = link.from.treeId;
       edge.nodeId = link.from.nodeId;
@@ -108,26 +163,30 @@ export function edgesFromCards(file: IndexCardFile, cards: readonly LiveCard[]):
       const toName = to?.name ?? link.name ?? '';
       if (!from || !toName) continue;
       // A glossary move that is not a card keeps its gl. id, so it can be removed, and maps by name.
-      out.push({ from: from.name, to: toName, fromId: from.id, toId: link.to, relation: link.relation, source: 'card' });
+      out.push({
+        from: from.name,
+        to: toName,
+        fromId: from.id,
+        toId: link.to,
+        relation: link.relation,
+        source: 'card',
+        fromCard: glossaryCardIdForName(from.name) ?? glossaryCardIdForName(from.baseName),
+        toCard: link.to.startsWith('gl.') ? `gbase.${link.to.slice(3)}` : glossaryCardIdForName(toName) ?? (to ? glossaryCardIdForName(to.baseName) : null),
+      });
     }
   }
   return out;
 }
 
-/** Glossary keys for a name: the term and its aliases, only when the name is the term or an alias. */
-function glossaryKeys(name: string): { names: string[]; rollup: string | null } {
-  const term = glossaryTerm(name);
-  if (!term) return { names: [], rollup: null };
-  const key = termKey(name);
-  const own = termKey(term.term) === key || term.aliases.some((alias) => termKey(alias) === key);
-  const names = own ? [term.term, ...term.aliases].map(termKey).filter(Boolean) : [];
-  const rollup = term.subFactor ? termKey(term.subFactor) : null;
-  return { names, rollup };
+/** Identity keys for a name through the glossary: the headword and aliases, only when the name IS one of them. */
+function glossaryKeys(name: string): string[] {
+  const term = glossaryTermForName(name);
+  return term ? glossaryNameKeys(term) : [];
 }
 
-export type CardMatcher = (name: string, id?: string) => LiveCard | null;
+export type CardMatcher = (name: string, id?: string, exact?: boolean) => LiveCard | null;
 
-/** Name → live card, by the tiers in the file comment. */
+/** Name → live card, by the two safe tiers in the file comment. */
 export function cardMatcher(cards: readonly LiveCard[]): CardMatcher {
   const byId = new Map(cards.map((card) => [card.id, card]));
   const direct = new Map<string, LiveCard | null>();
@@ -139,34 +198,27 @@ export function cardMatcher(cards: readonly LiveCard[]): CardMatcher {
     else if (had && had.id !== card.id) map.set(key, null);
   };
   for (const card of cards) {
-    for (const name of [card.name, card.tile, card.baseName]) put(direct, termKey(name), card);
+    for (const name of [card.name, card.tile, card.baseName]) put(direct, moveKey(name), card);
   }
   for (const card of cards) {
     for (const name of [card.name, card.tile, card.baseName]) {
-      for (const key of glossaryKeys(name).names) if (!direct.has(key)) put(alias, key, card);
+      for (const key of glossaryKeys(name)) if (!direct.has(key)) put(alias, key, card);
     }
   }
-  const directKeys = [...direct.keys()];
   const cache = new Map<string, LiveCard | null>();
-  return (name: string, id?: string) => {
+  return (name: string, id?: string, exact = false) => {
     if (id && byId.has(id)) return byId.get(id)!;
-    const key = termKey(name);
+    const key = moveKey(name);
     if (!key) return null;
+    if (exact) return direct.get(key) ?? null;
     if (cache.has(key)) return cache.get(key)!;
     let hit: LiveCard | null | undefined = direct.get(key);
     if (hit === undefined) {
-      const glossary = glossaryKeys(name);
-      for (const other of glossary.names) {
+      for (const other of glossaryKeys(name)) {
         hit = direct.get(other) ?? alias.get(other);
         if (hit !== undefined) break;
       }
-      if (hit === undefined && glossary.rollup) hit = direct.get(glossary.rollup);
       if (hit === undefined) hit = alias.get(key);
-    }
-    if (hit === undefined) {
-      const prefix = directKeys.filter((other) => other.startsWith(`${key}-`) || key.startsWith(`${other}-`));
-      const found = new Set(prefix.map((other) => direct.get(other)).filter((card): card is LiveCard => Boolean(card)).map((card) => card.id));
-      hit = found.size === 1 ? byId.get([...found][0]) ?? null : null;
     }
     const result = hit ?? null;
     cache.set(key, result);
@@ -189,8 +241,8 @@ export function resolveLinks(cards: readonly LiveCard[], edges: readonly NamedEd
   const match = cardMatcher(cards);
   const out = new Map<string, ResolvedLink>();
   for (const edge of edges) {
-    const from = match(edge.from, edge.fromId);
-    const to = match(edge.to, edge.toId);
+    const from = match(edge.from, edge.fromId, edge.fromExact);
+    const to = match(edge.to, edge.toId, edge.toExact);
     if (!from || !to || from.id === to.id) continue;
     const key = `${from.id}>${to.id}>${edge.relation}`;
     const had = out.get(key);
@@ -347,8 +399,8 @@ export function cardTree(card: LiveCard, cards: readonly LiveCard[], edges: read
   const match = cardMatcher(cards);
   const tree: CardTree = { leadsTo: [], defenses: [], comesFrom: [], counters: [], treeStep: null };
   for (const edge of edges) {
-    const from = match(edge.from, edge.fromId);
-    const to = match(edge.to, edge.toId);
+    const from = match(edge.from, edge.fromId, edge.fromExact);
+    const to = match(edge.to, edge.toId, edge.toExact);
     const removable = edge.source === 'card' && edge.fromId && edge.toId ? { from: edge.fromId, to: edge.toId, relation: edge.relation } : undefined;
     if (from?.id === card.id && to?.id !== card.id) {
       if (!tree.treeStep && edge.treeId && edge.nodeId && edge.source === 'tree') tree.treeStep = { treeId: edge.treeId, nodeId: edge.nodeId };
@@ -369,7 +421,9 @@ export function treeStepFor(card: LiveCard, cards: readonly LiveCard[], archive:
   for (const tree of archive.trees) {
     let found: string | null = null;
     walk(tree.root, (node) => {
-      if (!found && node.title.trim() && match(node.title)?.id === card.id) found = node.id;
+      if (found || !node.title.trim()) return;
+      const unlinked = stepIdentity(node).how === 'unlinked';
+      if (match(stepIdentityName(node), undefined, unlinked)?.id === card.id) found = node.id;
     });
     if (found) return { treeId: tree.id, nodeId: found };
   }
@@ -379,9 +433,8 @@ export function treeStepFor(card: LiveCard, cards: readonly LiveCard[], archive:
 /** Glossary card id in the Technique Tree for this card, when the move is a glossary term. */
 export function glossaryCardIdFor(card: LiveCard): string | null {
   for (const name of [card.name, card.baseName, card.tile]) {
-    const term = glossaryTerm(name);
-    const key = termKey(name);
-    if (term && (termKey(term.term) === key || term.aliases.some((alias) => termKey(alias) === key))) return `gbase.${term.key}`;
+    const term = glossaryTermForName(name);
+    if (term) return `gbase.${term.key}`;
   }
   return null;
 }
@@ -446,4 +499,52 @@ export function connectionOptions(query: string, cards: readonly LiveCard[], sel
   const seen = new Set(out.map((row) => row.id));
   for (const row of glossary) if (!seen.has(row.id)) { seen.add(row.id); out.push(row); }
   return out.slice(0, limit);
+}
+
+export type IdentityConnection = {
+  /** leads: this move leads to `name`; from: `name` leads here; defense: `name` defends this; counters: this defends `name`. */
+  direction: 'leads' | 'from' | 'defense' | 'counters';
+  name: string;
+  /** Glossary base card of the other end, when it has one. */
+  cardId: string | null;
+  source: LinkSource;
+  treeId?: string;
+  nodeId?: string;
+};
+
+/**
+ * Everything connected to one move identity, from every source: the trees,
+ * the glossary card links, and the student's D8 card connections. The move is
+ * known by its glossary card id when it has one, otherwise by its name.
+ * Repeats (same other move, same direction) are shown once.
+ */
+export function connectionsForIdentity(
+  identity: { cardId: string | null; name: string },
+  edges: readonly NamedEdge[],
+  options: { skip?: (edge: NamedEdge) => boolean } = {},
+): IdentityConnection[] {
+  const key = moveKey(identity.name);
+  const isMe = (card: string | null | undefined, name: string, exact?: boolean) =>
+    identity.cardId && card && !exact ? card === identity.cardId : !!key && moveKey(name) === key;
+  const out: IdentityConnection[] = [];
+  const seen = new Set<string>();
+  for (const edge of edges) {
+    if (options.skip?.(edge)) continue;
+    const fromMe = isMe(edge.fromCard, edge.from, edge.fromExact);
+    const toMe = isMe(edge.toCard, edge.to, edge.toExact);
+    if (fromMe === toMe) continue;
+    const direction: IdentityConnection['direction'] = fromMe
+      ? edge.relation === 'leads' ? 'leads' : 'defense'
+      : edge.relation === 'leads' ? 'from' : 'counters';
+    const name = fromMe ? edge.to : edge.from;
+    const cardId = (fromMe ? edge.toCard : edge.fromCard) ?? null;
+    const dedupe = `${direction}|${cardId ?? moveKey(name)}`;
+    if (seen.has(dedupe)) continue;
+    seen.add(dedupe);
+    const row: IdentityConnection = { direction, name, cardId, source: edge.source };
+    if (edge.treeId) row.treeId = edge.treeId;
+    if (edge.nodeId) row.nodeId = edge.nodeId;
+    out.push(row);
+  }
+  return out;
 }

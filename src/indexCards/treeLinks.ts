@@ -8,6 +8,7 @@ import { edgesFromArchive, edgesFromCards, edgesFromCatalog, type NamedEdge } fr
 import { loadGlossaryBaseCatalog, GLOSSARY_BASE_STORAGE_KEY, type GlossaryBaseCatalog } from '../lib/glossaryBaseCards.ts';
 import { TECHNIQUE_TREE_STORAGE_KEY, sanitizeArchive, type TechniqueTreeArchive } from '../lib/techniqueTreeStore.ts';
 import type { LiveCard } from '../lib/indexCards.ts';
+import { TREE_CLOUD_EVENT } from '../lib/techniqueTreeCloud.ts';
 import { useIndexCardFile } from './store.ts';
 
 export type DeviceTree = { archive: TechniqueTreeArchive | null; catalog: GlossaryBaseCatalog | null; stamp: string };
@@ -50,10 +51,12 @@ export function useDeviceTree(): DeviceTree {
     };
     window.addEventListener('storage', onStorage);
     window.addEventListener('focus', refresh);
+    window.addEventListener(TREE_CLOUD_EVENT, refresh);
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('focus', refresh);
+      window.removeEventListener(TREE_CLOUD_EVENT, refresh);
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
@@ -64,7 +67,7 @@ export function useDeviceTree(): DeviceTree {
 export function useTreeEdges(cards: readonly LiveCard[]): { edges: NamedEdge[]; tree: DeviceTree } {
   const tree = useDeviceTree();
   const file = useIndexCardFile();
-  const deviceEdges = useMemo(() => [...edgesFromArchive(tree.archive), ...edgesFromCatalog(tree.catalog)], [tree]);
+  const deviceEdges = useMemo(() => [...edgesFromArchive(tree.archive), ...edgesFromCatalog(tree.catalog, tree.archive)], [tree]);
   // Live cards are rebuilt on every render; key on what the edges read so the result stays the same object.
   const cardsKey = cards.map((card) => `${card.id}:${card.name}`).join('|');
   const edges = useMemo(() => [...edgesFromCards(file, cards), ...deviceEdges], [file, cardsKey, deviceEdges]);

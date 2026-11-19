@@ -9,6 +9,11 @@ import type { InboxBucket } from './studentInbox.ts';
 import { DEFAULT_STUDENT_PROFILE_ID } from '../lib/studentProfiles.ts';
 import type { AcademySyncDoc, StudentSyncDoc } from '../lib/signedInSyncDocs.ts';
 import { emptyGymProfile } from '../lib/gymProfile.ts';
+import { SYNC_BODY_MAX_CHARS } from './profileSync.ts';
+import { pullAndMergeSignedIn } from '../lib/signedInSync.ts';
+import { LOGIN_HINT_KEY } from '../lib/emailLogin.ts';
+import { TECHNIQUE_TREE_STORAGE_KEY } from '../lib/techniqueTreeStore.ts';
+import { GLOSSARY_BASE_STORAGE_KEY } from '../lib/glossaryBaseCards.ts';
 
 const PEPPER = 'sync-test-pepper';
 const NOW = new Date('2026-11-14T23:20:00.000Z');
@@ -235,4 +240,174 @@ test('student D8 documents for two profiles stay isolated', async () => {
     defaultGet.body.student.indexCards.cards.some((row: { name: string }) => row.name === 'Drop seoi'),
     false,
   );
+});
+
+function treeSyncDoc(updatedAt: number, trees: { id: string; name: string; base: string; at: number }[]) {
+  return {
+    v: 1,
+    updatedAt,
+    activeId: trees[0]?.id ?? '',
+    trees: trees.map((row) => ({
+      at: row.at,
+      tree: {
+        id: row.id,
+        name: row.name,
+        root: { id: `${row.id}-root`, slotId: `${row.id}-slot`, kind: 'root', title: row.base, notes: '', collapsed: false, children: [] },
+      },
+    })),
+    removedTrees: {},
+    links: [],
+    removedLinks: {},
+  };
+}
+
+test('the Technique Tree saves per account, merges across devices, and never lands in a student doc', async () => {
+  const f = await fixture();
+  const { licenseId } = await recordPurchase(f.db, {
+    email: 'coach@gym.test',
+    product: 'advantage-pro',
+    source: 'stripe_payment',
+    sourceRef: 'cs_tree_sync',
+    sessionId: 'cs_tree_sync',
+    pepper: PEPPER,
+    now: NOW,
+  });
+  const phone = await openSession(f, 'coach@gym.test', licenseId);
+
+  const first = await call(
+    f,
+    put('/api/login/sync', { profileId: 'default', tree: treeSyncDoc(100, [{ id: 't1', name: 'Guard', base: 'Closed guard', at: 100 }]) }, phone.cookie),
+  );
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  assert.equal(first.body.tree.trees[0].tree.root.title, 'Closed guard');
+
+  // Second device saves a different tree; the server keeps both.
+  const second = await call(
+    f,
+    put('/api/login/sync', { profileId: 'default', tree: treeSyncDoc(200, [{ id: 't2', name: 'Passing', base: 'Half guard', at: 200 }]) }, phone.cookie),
+  );
+  assert.deepEqual(second.body.tree.trees.map((row: { tree: { id: string } }) => row.tree.id), ['t1', 't2']);
+
+  // An older edit of t1 does not overwrite the newer one.
+  const stale = await call(
+    f,
+    put('/api/login/sync', { profileId: 'default', tree: treeSyncDoc(50, [{ id: 't1', name: 'Guard', base: 'Old name', at: 50 }]) }, phone.cookie),
+  );
+  assert.equal(stale.body.tree.trees[0].tree.root.title, 'Closed guard');
+
+  // An empty incoming tree doc never wipes the stored one.
+  const empty = await call(f, put('/api/login/sync', { profileId: 'default', tree: treeSyncDoc(999, []) }, phone.cookie));
+  assert.equal(empty.body.tree.trees.length, 2);
+
+  const fromGet = await call(f, get('/api/login/sync?profile=default', phone.cookie));
+  assert.equal(fromGet.body.tree.trees.length, 2);
+
+  const keys = [...f.bucket.objects.keys()];
+  assert.deepEqual(keys.filter((key) => key.includes('technique-tree')), [`accounts/${phone.accountId}/account-sync/technique-tree.json`]);
+  for (const key of keys.filter((row) => row.endsWith('student.json'))) {
+    assert.equal(f.bucket.objects.get(key)!.includes('Closed guard'), false, 'not copied into a student doc');
+  }
+
+  // A different person (another account) never sees this tree.
+  const other = await recordPurchase(f.db, {
+    email: 'kid@gym.test',
+    product: 'advantage-student',
+    source: 'stripe_payment',
+    sourceRef: 'cs_tree_other',
+    sessionId: 'cs_tree_other',
+    pepper: PEPPER,
+    now: NOW,
+  });
+  const kid = await openSession(f, 'kid@gym.test', other.licenseId);
+  assert.notEqual(kid.accountId, phone.accountId);
+  const kidGet = await call(f, get('/api/login/sync?profile=default', kid.cookie));
+  assert.equal(kidGet.body.tree, null);
+});
+
+test('a too-large Technique Tree doc is refused, nothing stored', async () => {
+  const f = await fixture();
+  const { licenseId } = await recordPurchase(f.db, {
+    email: 'big@gym.test',
+    product: 'advantage-pro',
+    source: 'stripe_payment',
+    sourceRef: 'cs_tree_big',
+    sessionId: 'cs_tree_big',
+    pepper: PEPPER,
+    now: NOW,
+  });
+  const session = await openSession(f, 'big@gym.test', licenseId);
+  const huge = { profileId: 'default', tree: treeSyncDoc(1, [{ id: 't1', name: 'Guard', base: 'x', at: 1 }]), pad: 'x'.repeat(SYNC_BODY_MAX_CHARS + 10) };
+  const refused = await call(f, put('/api/login/sync', huge, session.cookie));
+  assert.equal(refused.status, 400);
+  assert.equal([...f.bucket.objects.keys()].some((key) => key.includes('technique-tree')), false);
+});
+
+test('two devices: the Technique Tree survives a signed-in sync round trip (mocked fetch, in-memory server)', async () => {
+  const f = await fixture();
+  const { licenseId } = await recordPurchase(f.db, {
+    email: 'roundtrip@gym.test',
+    product: 'advantage-pro',
+    source: 'stripe_payment',
+    sourceRef: 'cs_tree_rt',
+    sessionId: 'cs_tree_rt',
+    pepper: PEPPER,
+    now: NOW,
+  });
+  const session = await openSession(f, 'roundtrip@gym.test', licenseId);
+  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(String(input), ORIGIN);
+    const headers = new Headers(init?.headers);
+    headers.set('cookie', session.cookie);
+    const request = new Request(url, { method: init?.method ?? 'GET', headers, body: init?.body ?? null });
+    return handleLogin(request, f.env, f.db, () => NOW, async () => new Response('{}', { status: 404 }));
+  }) as typeof fetch;
+
+  const mem = (seed: Record<string, string> = {}) => {
+    const map = new Map(Object.entries(seed));
+    return { getItem: (key: string) => map.get(key) ?? null, setItem: (key: string, value: string) => void map.set(key, value), removeItem: (key: string) => void map.delete(key) };
+  };
+  const g = globalThis as { localStorage?: unknown };
+  const previous = g.localStorage;
+  g.localStorage = mem({ [LOGIN_HINT_KEY]: 'roundtrip@gym.test' });
+  try {
+    const guard = {
+      version: 2,
+      activeId: 'tA',
+      trees: [
+        {
+          id: 'tA',
+          name: 'Guard game',
+          root: {
+            id: 'rA', slotId: 'sA', kind: 'root', title: 'Base Position', notes: '', collapsed: false, glossaryCardId: 'gbase.closed-guard',
+            children: [{ id: 'cA', slotId: 'sB', kind: 'branch', title: 'Scissor sweep', notes: '', collapsed: false, children: [] }],
+          },
+        },
+      ],
+    };
+    const phone = mem({
+      [TECHNIQUE_TREE_STORAGE_KEY]: JSON.stringify(guard),
+      [GLOSSARY_BASE_STORAGE_KEY]: JSON.stringify({
+        version: 1,
+        cards: [],
+        links: [{ id: 'gl1', from: { type: 'card', cardId: 'gbase.closed-guard' }, toCardId: 'gbase.kimura', relation: 'branch', label: '' }],
+        collisions: [],
+        skipped: [],
+      }),
+    });
+    const pushed = await pullAndMergeSignedIn({ profileId: 'default', store: phone, fetchImpl, now: 1000 });
+    assert.equal(pushed.kind, 'synced', JSON.stringify(pushed));
+
+    const laptop = mem();
+    const pulled = await pullAndMergeSignedIn({ profileId: 'default', store: laptop, fetchImpl, now: 2000 });
+    assert.equal(pulled.kind, 'synced');
+    const archive = JSON.parse(laptop.getItem(TECHNIQUE_TREE_STORAGE_KEY)!);
+    assert.equal(archive.trees[0].root.title, 'Base Position');
+    assert.equal(archive.trees[0].root.glossaryCardId, 'gbase.closed-guard');
+    assert.equal(archive.trees[0].root.children[0].title, 'Scissor sweep');
+    const catalog = JSON.parse(laptop.getItem(GLOSSARY_BASE_STORAGE_KEY)!);
+    assert.deepEqual(catalog.links.map((row: { id: string }) => row.id), ['gl1']);
+    assert.ok([...f.bucket.objects.keys()].includes(`accounts/${session.accountId}/account-sync/technique-tree.json`));
+  } finally {
+    g.localStorage = previous;
+  }
 });

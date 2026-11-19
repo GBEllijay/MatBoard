@@ -94,14 +94,26 @@ test('glossary card links in the Technique Tree are read too', () => {
   );
 });
 
-test('names map to D8 cards: exact, glossary alias, glossary roll-up, unique prefix; unknown stays off', () => {
+test('names map to D8 cards only by exact name, glossary alias, or safe normalization', () => {
   const match = cardMatcher(liveCards());
   assert.equal(match('closed guard')?.id, 'pos.closed-guard');
+  assert.equal(match('CLOSED-GUARD!')?.id, 'pos.closed-guard', 'case and punctuation');
+  assert.equal(match('Closed guards')?.id, 'pos.closed-guard', 'plural');
   assert.equal(match('Triangle')?.id, 'sub.triangle', 'glossary alias');
-  assert.equal(match('Armbar from guard')?.id, 'sub.armbar-mount', 'glossary rolls Armbar up to the D8 armbar line');
-  assert.equal(match('Knee slice')?.id, 'pass.knee-slice', 'unique prefix');
+  assert.equal(match('Hip escapes')?.id, 'escape.shrimp', 'glossary alias, plural');
   assert.equal(match('Wrist lock'), null);
   assert.equal(match('Posture up'), null);
+});
+
+test('a move never maps to a different technique', () => {
+  const match = cardMatcher(liveCards());
+  assert.equal(match('Armbar from guard'), null, 'not the D8 line Armbar from mount');
+  assert.equal(match('Armbar'), null, 'the glossary roll-up line is a different move');
+  assert.equal(match('Juji gatame'), null, 'alias of Armbar, still not Armbar from mount');
+  assert.equal(match('Knee slice'), null, 'a shared prefix is not the same move as Knee slice pass');
+  assert.equal(match('Armbar from mount')?.id, 'sub.armbar-mount', 'its own exact name still works');
+  assert.equal(match('Mount', undefined, true)?.id, 'pos.mount', 'exact-only lookups still match the exact name');
+  assert.equal(match('Triangle', undefined, true), null, 'exact-only lookups skip glossary aliases');
 });
 
 test("a student's own move matches by its own name", () => {
@@ -119,8 +131,9 @@ test('branches join only moves drawn on the diamond, once per pair, leads-to onl
   const names = branches.map((branch) => `${branch.fromName}>${branch.toName}`);
   assert.ok(names.includes('Closed Guard>Scissor sweep'));
   assert.ok(names.includes('Mount>Cross collar choke'));
-  assert.ok(names.includes('Mount>Armbar from mount'), 'mapped through the glossary');
-  assert.ok(names.includes('Closed Guard>Knee slice pass'));
+  assert.ok(!names.some((name) => name.includes('Armbar')), 'Armbar from guard is not Armbar from mount, so it stays off');
+  assert.ok(!names.some((name) => name.includes('Knee slice')), 'Knee slice is not Knee slice pass');
+  assert.ok(names.includes('Closed Guard>Triangle choke'), 'glossary alias');
   assert.ok(!names.some((name) => name.includes('Posture')), 'defense and unknown names stay off');
   const keys = branches.map((branch) => [branch.from, branch.to].sort((a, b) => a - b).join(':'));
   assert.equal(new Set(keys).size, keys.length);
@@ -169,7 +182,11 @@ test('card tree lists leads-to, defenses, and comes-from, keeping names that are
   const cards = liveCards();
   const edges = edgesFromArchive(sampleArchive());
   const guard = cardTree(cards.find((card) => card.id === 'pos.closed-guard')!, cards, edges);
-  assert.deepEqual(guard.leadsTo.map((row) => row.name), ['Scissor sweep', 'Triangle choke', 'Knee slice pass']);
+  assert.deepEqual(guard.leadsTo.map((row) => [row.name, row.cardId]), [
+    ['Scissor sweep', 'sweep.scissor'],
+    ['Triangle choke', 'sub.triangle'],
+    ['Knee slice', null],
+  ]);
   assert.deepEqual(guard.defenses.map((row) => [row.name, row.cardId]), [['Posture up', null]]);
   assert.deepEqual(guard.treeStep, { treeId: 'tree-a', nodeId: guard.treeStep?.nodeId });
   const mount = cardTree(cards.find((card) => card.id === 'pos.mount')!, cards, edges);
@@ -205,16 +222,17 @@ test('inline connection search: D8 cards and own moves first, then glossary move
   assert.ok(!connectionOptions('closed guard', cards, 'pos.mount').some((row) => row.kind === 'glossary' && row.name === 'Closed Guard'), 'a glossary move already on the D8 is listed once');
 });
 
-test('a glossary move that is not on the D8 can be linked by name and maps through the glossary', () => {
+test('a glossary move that is not on the D8 can be linked by name and stays its own move', () => {
   const file = withCardLink(catalog, emptyIndexCards(), 'pos.mount', { to: 'gl.armbar', relation: 'leads', name: 'Armbar' });
   assert.deepEqual(file.cards[0].links, [{ to: 'gl.armbar', relation: 'leads', name: 'Armbar' }]);
   assert.equal(withCardLink(catalog, emptyIndexCards(), 'pos.mount', { to: 'gl.armbar', relation: 'leads' }).cards.length, 0, 'needs a name');
   const cards = liveCards(file);
   const edges = edgesFromCards(file, cards);
   const mount = cardTree(cards.find((card) => card.id === 'pos.mount')!, cards, edges);
-  assert.equal(mount.leadsTo[0].cardId, 'sub.armbar-mount');
+  assert.deepEqual([mount.leadsTo[0].name, mount.leadsTo[0].cardId], ['Armbar', null], 'never Armbar from mount');
   assert.deepEqual(mount.leadsTo[0].removable, { from: 'pos.mount', to: 'gl.armbar', relation: 'leads' });
+  assert.equal(edges[0].toCard, 'gbase.armbar', 'same identity as the Armbar glossary card');
   const model = liveModel(cards);
   const state = branchState(model, cards, edges);
-  assert.equal(state.kind, 'ready');
+  assert.equal(state.kind, 'unmatched', 'Armbar is not on the D8, so no branch is drawn');
 });

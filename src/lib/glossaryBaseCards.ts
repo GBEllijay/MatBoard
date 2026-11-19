@@ -6,8 +6,10 @@
  * picking a glossary suggestion.
  *
  * Storage key: `matboard.coach.techniqueTree.glossaryBase.v1`
- * This module never reads or writes `matboard.coach.techniqueTree.v1`, so the
- * instructor's own trees stay as they are.
+ * This module never writes `matboard.coach.techniqueTree.v1`. A tree step and
+ * a glossary card are the same move when the names match (see
+ * moveIdentity.ts); that is worked out when links are read, so neither store
+ * is rewritten. Links sync with the signed-in account (techniqueTreeSync.ts).
  */
 
 import { GLOSSARY, GLOSSARY_FACE_LABELS } from './glossary.ts';
@@ -15,6 +17,7 @@ import { glossaryTermById, matchGlossary, type GlossaryMatch } from './glossaryM
 import { isIndexFaceId, termKey } from './indexCards.ts';
 import { asRecord, clampText } from './plainValue.ts';
 import { isStorageQuotaError } from './storageQuota.ts';
+import { stampGlossaryLinks } from './techniqueTreeStamps.ts';
 import { TITLE_MAX, type TechniqueTreeArchive, type TechniqueTreeDoc } from './techniqueTreeStore.ts';
 
 export const GLOSSARY_BASE_STORAGE_KEY = 'matboard.coach.techniqueTree.glossaryBase.v1';
@@ -504,6 +507,7 @@ export function sanitizeGlossaryBaseCatalog(
 
 function writeCatalog(catalog: GlossaryBaseCatalog): { saved: boolean; quota: boolean } {
   try {
+    stampGlossaryLinks(localStorage.getItem(GLOSSARY_BASE_STORAGE_KEY), catalog.links);
     localStorage.setItem(GLOSSARY_BASE_STORAGE_KEY, JSON.stringify(catalog));
     return { saved: true, quota: false };
   } catch (error) {
@@ -536,8 +540,8 @@ export function saveGlossaryBaseCatalog(
 /**
  * Seed or refresh the built-in cards. Idempotent: existing cards and instructor
  * links are kept, missing cards are added, and the instructor's own tree
- * archive is never written. A same-name step in a user tree is reported and
- * not merged with the glossary card.
+ * archive is never written. Same-name steps are still listed in
+ * `collisions` for older readers; the UI now treats them as the same move.
  */
 export function ensureGlossaryBaseCards(
   archive: TechniqueTreeArchive | null = null,

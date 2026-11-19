@@ -30,6 +30,9 @@ import {
   glossaryQuerySpans,
   type GlossaryMatch,
 } from '../lib/glossaryMatch.ts';
+import { connectionsForIdentity, type IdentityConnection, type NamedEdge } from '../lib/d8TreeLinks.ts';
+import { stepIdentity, type StepLike } from '../lib/moveIdentity.ts';
+import type { TechniqueNode, TechniqueTreeArchive } from '../lib/techniqueTreeStore.ts';
 import './techniqueTreeGlossary.css';
 
 export function GlossaryBaseCardsPanel({
@@ -38,12 +41,20 @@ export function GlossaryBaseCardsPanel({
   view,
   onViewChange,
   onShowOnDiamond,
+  archive = null,
+  edges = [],
+  onOpenStep,
 }: {
   catalog: GlossaryBaseCatalog;
   onCatalogChange: (catalog: GlossaryBaseCatalog) => void;
   view?: GlossaryPanelView;
   onViewChange?: (view: GlossaryPanelView) => void;
   onShowOnDiamond?: (faceId: GlossaryBaseFaceId, cardId: string) => void;
+  /** The coach's trees, so a card can list the steps that are this move. */
+  archive?: TechniqueTreeArchive | null;
+  /** Every saved link (trees, glossary links, D8 card connections). */
+  edges?: readonly NamedEdge[];
+  onOpenStep?: (treeId: string, nodeId: string) => void;
 }) {
   const [internal, setInternal] = useState<GlossaryPanelView>(emptyGlossaryPanelView());
   const current = view ?? internal;
@@ -78,9 +89,9 @@ export function GlossaryBaseCardsPanel({
       <div className="tree-glossary__head">
         <h2>Glossary base cards</h2>
         <p className="tree-glossary__lead">
-          {GLOSSARY_BASE_CARD_TOTAL} solo cards from the glossary, one for each term on all eight D8 faces.
-          They start with no links. Tap a link to open that card and add the next connection. Your own
-          trees stay separate, even when a name matches.
+          {GLOSSARY_BASE_CARD_TOTAL} cards from the glossary, one for each term on all eight D8 faces. A
+          tree step with the same name or a glossary alias is the same move, so its links show here, on
+          your D8 card, and in your trees. Link a step to a different card, or unlink it, from the step.
         </p>
       </div>
       {trailCards.length > 1 ? (
@@ -145,6 +156,9 @@ export function GlossaryBaseCardsPanel({
               onOpenCard={openCard}
               onShowOnDiamond={onShowOnDiamond}
               onCatalogChange={onCatalogChange}
+              archive={archive}
+              edges={edges}
+              onOpenStep={onOpenStep}
             />
           ))}
         </ul>
@@ -161,6 +175,9 @@ function GlossaryCard({
   onOpenCard,
   onShowOnDiamond,
   onCatalogChange,
+  archive,
+  edges,
+  onOpenStep,
 }: {
   card: GlossaryBaseCard;
   catalog: GlossaryBaseCatalog;
@@ -169,8 +186,18 @@ function GlossaryCard({
   onOpenCard: (cardId: string) => void;
   onShowOnDiamond?: (faceId: GlossaryBaseFaceId, cardId: string) => void;
   onCatalogChange: (catalog: GlossaryBaseCatalog) => void;
+  archive: TechniqueTreeArchive | null;
+  edges: readonly NamedEdge[];
+  onOpenStep?: (treeId: string, nodeId: string) => void;
 }) {
-  const collisions = catalog.collisions.filter((row) => row.glossaryTermId === card.glossaryTermId);
+  const steps = open ? stepsForCard(archive, card.id) : [];
+  const treeName = (id: string) => archive?.trees.find((tree) => tree.id === id)?.name ?? null;
+  const elsewhere = open
+    ? connectionsForIdentity({ cardId: card.id, name: card.title }, edges, {
+        // Links saved on this card are listed below with Unlink.
+        skip: (edge) => edge.source === 'glossary' && (!edge.treeId || edge.toCard === card.id),
+      })
+    : [];
   const source: GlossaryBaseLinkSource = { type: 'card', cardId: card.id };
   const links = linksFrom(catalog, source);
   const incoming = linksTo(catalog, card.id);
@@ -207,12 +234,31 @@ function GlossaryCard({
                 Show on the D8 Shape
               </button>
             ) : null}
-            {collisions.map((row) => (
-              <p key={`${row.treeId}-${row.nodeId}`} className="tree-glossary__collision">
-                A step named {row.nodeTitle} already exists in {row.treeName}. This glossary card stays
-                separate.
-              </p>
-            ))}
+            {steps.length ? (
+              <ul className="tree-glossary__links tree-ident__steps" data-testid="tree-glossary-steps" aria-label="Tree steps that are this move">
+                {steps.map((row) => (
+                  <li key={`${row.treeId}-${row.node.id}`} data-how={row.how}>
+                    {onOpenStep ? (
+                      <button type="button" className="tree-glossary__link" onClick={() => onOpenStep(row.treeId, row.node.id)}>
+                        Step {row.node.title || 'Untitled'} in {row.treeName}
+                      </button>
+                    ) : (
+                      <span>
+                        Step {row.node.title || 'Untitled'} in {row.treeName}
+                      </span>
+                    )}
+                    <small className="tree-ident__source">{row.how === 'linked' ? 'linked by you' : 'same name'}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <IdentityConnections
+              rows={elsewhere}
+              treeName={treeName}
+              onOpenCard={onOpenCard}
+              testId="tree-glossary-elsewhere"
+              label="From your trees and D8 cards"
+            />
             <TreeConnectField
               catalog={catalog}
               from={source}
@@ -487,4 +533,205 @@ export function TreeConnectField({
       ) : null}
     </div>
   );
+}
+
+const STEP_PICK_MAX = 8;
+
+/** Glossary cards whose name or alias contains every word typed. */
+export function searchGlossaryCards(catalog: GlossaryBaseCatalog, query: string, max = STEP_PICK_MAX): GlossaryBaseCard[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const hit = (text: string) => {
+    const lower = text.toLowerCase();
+    return words.every((word) => lower.includes(word));
+  };
+  const exact: GlossaryBaseCard[] = [];
+  const rest: GlossaryBaseCard[] = [];
+  for (const card of catalog.cards) {
+    if (hit(card.title)) exact.push(card);
+    else if (card.aliases.some(hit)) rest.push(card);
+    if (exact.length >= max) break;
+  }
+  return [...exact, ...rest].slice(0, max);
+}
+
+const DIRECTION_TEXT: Record<IdentityConnection['direction'], string> = {
+  leads: 'Leads to',
+  from: 'Comes from',
+  defense: 'Defended by',
+  counters: 'Defends',
+};
+
+function sourceText(row: IdentityConnection, treeName: (id: string) => string | null): string {
+  if (row.source === 'card') return 'D8 card';
+  if (row.source === 'glossary') return row.treeId ? `Glossary link from ${treeName(row.treeId) ?? 'a tree'}` : 'Glossary card';
+  return row.treeId ? `Tree: ${treeName(row.treeId) ?? 'another tree'}` : 'Tree';
+}
+
+/** Connections for one move from every place they were added. Read-only; remove them where they were made. */
+export function IdentityConnections({
+  rows,
+  treeName,
+  onOpenCard,
+  testId,
+  label,
+}: {
+  rows: readonly IdentityConnection[];
+  treeName: (id: string) => string | null;
+  onOpenCard?: (cardId: string) => void;
+  testId: string;
+  label: string;
+}) {
+  if (!rows.length) return null;
+  return (
+    <div className="tree-ident__elsewhere">
+      <p className="tree-ident__heading">{label}</p>
+      <ul className="tree-glossary__links" data-testid={testId} aria-label={label}>
+        {rows.map((row) => (
+          <li key={`${row.direction}-${row.cardId ?? row.name}-${row.source}`} data-direction={row.direction} data-source={row.source}>
+            {row.cardId && onOpenCard ? (
+              <button type="button" className="tree-glossary__link" onClick={() => onOpenCard(row.cardId!)}>
+                {DIRECTION_TEXT[row.direction]} {row.name}
+              </button>
+            ) : (
+              <span>
+                {DIRECTION_TEXT[row.direction]} {row.name}
+              </span>
+            )}
+            <small className="tree-ident__source">{sourceText(row, treeName)}</small>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * The glossary card a tree step is. Matched by name or alias on its own;
+ * the coach can link a different card by hand, or unlink it.
+ */
+export function StepGlossaryLink({
+  step,
+  catalog,
+  onLink,
+  onOpenCard,
+}: {
+  step: StepLike & { id: string };
+  catalog: GlossaryBaseCatalog;
+  onLink: (cardId: string | null | undefined) => void;
+  onOpenCard?: (cardId: string) => void;
+}) {
+  const [picking, setPicking] = useState(false);
+  const [query, setQuery] = useState('');
+  const inputId = useId();
+  const identity = stepIdentity(step);
+  const card = identity.cardId ? findBaseCard(catalog, identity.cardId) : null;
+  const options = useMemo(() => searchGlossaryCards(catalog, query), [catalog, query]);
+  return (
+    <div className="tree-ident" data-testid="tree-step-identity" data-how={identity.how} data-card-id={card?.id ?? ''}>
+      {card ? (
+        <p className="tree-ident__line">
+          <span className="tree-chip tree-chip--glossary">Glossary</span>
+          {onOpenCard ? (
+            <button type="button" className="tree-glossary__link" data-testid="tree-step-open-card" onClick={() => onOpenCard(card.id)}>
+              {card.title}
+            </button>
+          ) : (
+            <span>{card.title}</span>
+          )}
+          <small>{identity.how === 'linked' ? 'linked by you' : 'same name'}</small>
+        </p>
+      ) : (
+        <p className="tree-ident__line">
+          <span className="tree-chip">Glossary</span>
+          <span>{identity.how === 'unlinked' ? 'Unlinked by you' : 'Not linked to a glossary card'}</span>
+        </p>
+      )}
+      <div className="tree-ident__actions">
+        <button
+          type="button"
+          className="btn btn--ghost"
+          data-testid="tree-step-link"
+          aria-expanded={picking}
+          onClick={() => {
+            setPicking((open) => !open);
+            setQuery('');
+          }}
+        >
+          {card ? 'Change glossary card' : 'Link to glossary card'}
+        </button>
+        {card ? (
+          <button type="button" className="btn btn--ghost" data-testid="tree-step-unlink" onClick={() => onLink(null)}>
+            Unlink
+          </button>
+        ) : null}
+        {identity.how === 'unlinked' || identity.how === 'linked' ? (
+          <button type="button" className="btn btn--ghost" data-testid="tree-step-auto" onClick={() => onLink(undefined)}>
+            Match by name
+          </button>
+        ) : null}
+      </div>
+      {picking ? (
+        <div className="tree-ident__pick">
+          <label className="tree-connect__label" htmlFor={inputId}>
+            Find a glossary card
+          </label>
+          <input
+            id={inputId}
+            data-testid="tree-step-link-search"
+            value={query}
+            autoComplete="off"
+            autoCapitalize="sentences"
+            placeholder="Closed guard"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          {query.trim() ? (
+            options.length ? (
+              <ul className="tree-ident__options" data-testid="tree-step-link-options">
+                {options.map((option) => (
+                  <li key={option.id}>
+                    <button
+                      type="button"
+                      className="tree-connect__option"
+                      data-card-id={option.id}
+                      onClick={() => {
+                        onLink(option.id);
+                        setPicking(false);
+                        setQuery('');
+                      }}
+                    >
+                      <span>{option.title}</span>
+                      <small>{glossaryBaseFaceLabel(option.faceId)}</small>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="tree-ident__empty">No glossary card matches that name.</p>
+            )
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Tree steps that are this glossary card, by name, alias, or a link the coach made. */
+export function stepsForCard(
+  archive: TechniqueTreeArchive | null | undefined,
+  cardId: string,
+): { treeId: string; treeName: string; node: TechniqueNode; how: 'linked' | 'auto' }[] {
+  const out: { treeId: string; treeName: string; node: TechniqueNode; how: 'linked' | 'auto' }[] = [];
+  for (const tree of archive?.trees ?? []) {
+    const visit = (node: TechniqueNode | null) => {
+      if (!node) return;
+      const identity = stepIdentity(node);
+      if (identity.cardId === cardId && (identity.how === 'linked' || identity.how === 'auto')) {
+        out.push({ treeId: tree.id, treeName: tree.name, node, how: identity.how });
+      }
+      node.children.forEach(visit);
+    };
+    visit(tree.root);
+  }
+  return out;
 }

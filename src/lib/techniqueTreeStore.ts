@@ -52,6 +52,7 @@
 
 import { asRecord, clampText } from './plainValue.ts';
 import { isStorageQuotaError } from './storageQuota.ts';
+import { stampTreeArchive } from './techniqueTreeStamps.ts';
 
 export const TECHNIQUE_TREE_STORAGE_KEY = 'matboard.coach.techniqueTree.v1';
 export const DEFAULT_TREE_NAME = 'Technique Tree';
@@ -80,6 +81,12 @@ export type TechniqueNode = {
   notes: string;
   collapsed: boolean;
   children: TechniqueNode[];
+  /**
+   * Which glossary base card this step is. A string is a link the person
+   * picked, null means they unlinked it, and missing means match by name or
+   * glossary alias.
+   */
+  glossaryCardId?: string | null;
 };
 
 /** A step that is not a nested copy: a follow-up, a second parent, or a return to an existing node. */
@@ -369,18 +376,41 @@ function sanitizeNode(
     repaired = true;
   }
 
-  return {
-    node: {
-      id: id.id,
-      slotId: slot.id,
-      kind,
-      title,
-      notes,
-      collapsed,
-      children,
-    },
-    repaired,
+  const node: TechniqueNode = {
+    id: id.id,
+    slotId: slot.id,
+    kind,
+    title,
+    notes,
+    collapsed,
+    children,
   };
+  if (raw?.glossaryCardId === null) node.glossaryCardId = null;
+  else if (typeof raw?.glossaryCardId === 'string' && GLOSSARY_CARD_ID_RE.test(raw.glossaryCardId.trim())) {
+    node.glossaryCardId = raw.glossaryCardId.trim();
+  } else if (raw?.glossaryCardId !== undefined) repaired = true;
+
+  return { node, repaired };
+}
+
+const GLOSSARY_CARD_ID_RE = /^gbase\.[a-z0-9-]{1,100}$/;
+
+/** Link a step to a glossary card, unlink it (null), or go back to name matching (undefined). */
+export function setNodeGlossaryCard(
+  doc: TechniqueTreeDoc,
+  id: string,
+  cardId: string | null | undefined,
+): TechniqueTreeDoc {
+  if (!doc.root) return doc;
+  if (typeof cardId === 'string' && !GLOSSARY_CARD_ID_RE.test(cardId)) return doc;
+  const root = updateAt(doc.root, id, (node) => {
+    if (node.glossaryCardId === cardId) return node;
+    const next: TechniqueNode = { ...node };
+    if (cardId === undefined) delete next.glossaryCardId;
+    else next.glossaryCardId = cardId;
+    return next;
+  });
+  return root === doc.root ? doc : { ...doc, root };
 }
 
 function sanitizeTreeDoc(
@@ -484,6 +514,7 @@ export function sanitizeArchive(value: unknown): { archive: TechniqueTreeArchive
 
 function writeArchive(archive: TechniqueTreeArchive): { saved: boolean; quota: boolean } {
   try {
+    stampTreeArchive(localStorage.getItem(TECHNIQUE_TREE_STORAGE_KEY), archive);
     localStorage.setItem(TECHNIQUE_TREE_STORAGE_KEY, JSON.stringify(archive));
     return { saved: true, quota: false };
   } catch (error) {
