@@ -83,6 +83,21 @@ import { CloudUploadQueuePanel } from '../components/CloudUploadQueuePanel';
 /** Google Photos imports wait while this many Cloud uploads are unfinished. */
 const PHOTOS_QUEUE_AHEAD = 24;
 import { CloudGallerySection } from '../components/CloudGallerySection';
+import { CloudEventsPanel } from '../components/CloudEventsPanel';
+import { DeviceToCloudMigration } from '../components/DeviceToCloudMigration';
+import { useCloudMediaFolders, useCloudRowUrls, useLeaveWarning } from '../hooks/useCloudMediaFolders';
+import {
+  CLOUD_VIDEO_DEVICE_ONLY,
+  NETWORKED_FOLDERS,
+  cloudFolderOfDevice,
+  folderBackingNote,
+  isCloudRow,
+  mergeBackedRows,
+  uniqueCloudFileName,
+} from '../lib/cloudMediaFolders';
+import { uploadToCloudFolder } from '../lib/advantageCloudFolders';
+import { notifyCloudMedia } from '../lib/advantageCloudMedia';
+import { shrinkPhotoForStore } from '../lib/imageShrink';
 import { PlayingFromLine } from '../components/PlayingFromLine';
 import { GALLERY_LINK_DONE, galleryItemShows, nextClassFromDays } from '../lib/gallerySchedule';
 import { optionsReopenBlocked } from '../lib/optionsReopenGuard';
@@ -123,6 +138,7 @@ import {
   FOLDERS,
   fileMatchesFolder,
   folderById,
+  isAcceptedVideoFile,
   getSaverPrefs,
   INTERVAL_PRESETS_SEC,
   isFolderId,
@@ -211,6 +227,17 @@ export function ScreensaverPage() {
     driveConnected: Boolean(driveBinding),
   });
   const cloudCustomer = passSettled && cloudEntitled;
+  /** Gallery, Pro Shop, and Events show the gym's Advantage Cloud folders when this device is signed in to Cloud. */
+  const cloudMedia = useCloudMediaFolders(cloudCustomer);
+  const cloudBacked = cloudMedia.backing === 'cloud';
+  /** Uploads this page started that have not finished. Leaving the page would stop them. */
+  const [cloudSending, setCloudSending] = useState(false);
+  const queuePending = useSyncExternalStore(
+    cloudUploadQueue.subscribe,
+    () => cloudUploadQueue.pendingCount() > 0,
+    () => false,
+  );
+  useLeaveWarning(cloudSending || queuePending);
   const photosBinding = useSyncExternalStore(subscribePhotosBinding, getPhotosBindingSnapshot, () => null);
   useEffect(() => {
     if (photosBinding) setPhotosConnectOpen(false);
@@ -262,11 +289,15 @@ export function ScreensaverPage() {
     );
     return nextClassFromDays(dates, todayKey);
   }, [todayKey]);
-  const queue = useMemo(
-    () => playableItems(photos, folderPlay).filter((item) => galleryItemShows(item, todayKey, nextClass)),
-    [photos, folderPlay, todayKey, nextClass],
+  const mediaRows = useMemo(
+    () => mergeBackedRows({ backing: cloudMedia.backing, deviceRows: photos, cloudRows: cloudMedia.rows }),
+    [cloudMedia.backing, cloudMedia.rows, photos],
   );
-  const shopList = useMemo(() => itemsInFolder(photos, 'shop'), [photos]);
+  const queue = useMemo(
+    () => playableItems(mediaRows, folderPlay).filter((item) => galleryItemShows(item, todayKey, nextClass)),
+    [mediaRows, folderPlay, todayKey, nextClass],
+  );
+  const shopList = useMemo(() => itemsInFolder(mediaRows, 'shop'), [mediaRows]);
   const slides = useMemo(
     () =>
       insertScheduleCastSlide(
@@ -354,6 +385,22 @@ export function ScreensaverPage() {
   }, [order.length]);
 
   const currentSlide = slides[order[index] ?? 0];
+  /** Cloud rows: read the slide on screen, the next two, and the open folder's list. */
+  const wantedCloudIds = useMemo(() => {
+    const ids: string[] = [];
+    const push = (row: StoredPhoto | undefined) => {
+      if (row?.cloudPath && !ids.includes(row.id)) ids.push(row.id);
+    };
+    for (let step = 0; step < 3 && order.length; step += 1) {
+      const slide = slides[order[(index + step) % order.length] ?? 0];
+      if (slide?.kind === 'media') push(slide.item);
+      else if (slide?.kind === 'shop') slide.items.forEach(push);
+    }
+    if (options && openSection && openSection !== 'schedule') itemsInFolder(mediaRows, openSection).slice(0, 40).forEach(push);
+    return ids;
+  }, [slides, order, index, options, openSection, mediaRows]);
+  const cloudUrls = useCloudRowUrls(cloudMedia.rows, wantedCloudIds);
+  const srcById = useMemo(() => ({ ...urlById, ...cloudUrls }), [urlById, cloudUrls]);
   const currentPhoto = currentSlide?.kind === 'media' ? currentSlide.item : undefined;
   const showEventCast = Boolean(
     currentPhoto &&
@@ -361,7 +408,7 @@ export function ScreensaverPage() {
       eventsCastMode !== 'images' &&
       (eventsCastMode === 'images-qr-logo' || currentPhoto.qrLinks.length > 0),
   );
-  const current = currentPhoto ? urlById[currentPhoto.id] : undefined;
+  const current = currentPhoto ? srcById[currentPhoto.id] : undefined;
   const currentIsVideo = Boolean(currentPhoto && isVideoItem(currentPhoto));
 
   const advance = useCallback(() => {
@@ -395,10 +442,35 @@ export function ScreensaverPage() {
   };
 
   const persistFolderOrder = async (folderId: FolderId, orderedIds: string[]) => {
-    setPhotos((rows) => withFolderOrder(rows, folderId, orderedIds));
+    const cloudIds = orderedIds.filter((id) => mediaRows.some((row) => row.id === id && isCloudRow(row)));
+    const deviceIds = orderedIds.filter((id) => !cloudIds.includes(id));
+    if (cloudIds.length) await cloudMedia.reorder(folderId, cloudIds);
+    if (!deviceIds.length) return;
+    setPhotos((rows) => withFolderOrder(rows, folderId, deviceIds));
     try {
-      await reorderFolderItems(folderId, orderedIds);
+      await reorderFolderItems(folderId, deviceIds);
     } catch {
+      await refresh();
+    }
+  };
+
+  /** One item edit: Cloud rows save to Advantage Cloud for every device, device rows stay here. */
+  const editItem = async (
+    folderId: FolderId,
+    id: string,
+    fields: Partial<StoredPhoto>,
+    onDevice: () => Promise<void>,
+  ) => {
+    const row = mediaRows.find((item) => item.id === id);
+    if (row && isCloudRow(row)) {
+      await cloudMedia.update(folderId, id, fields);
+      return;
+    }
+    setPhotos((rows) => rows.map((item) => (item.id === id ? { ...item, ...fields } : item)));
+    try {
+      await onDevice();
+    } catch (error) {
+      setBatchStatus({ tone: 'error', text: error instanceof Error && error.message ? error.message : 'That change did not save on this device.' });
       await refresh();
     }
   };
@@ -552,6 +624,11 @@ export function ScreensaverPage() {
         }
         if (!files.length) continue;
         opened += files.length;
+        if (cloudBacked && NETWORKED_FOLDERS.includes(folderId)) {
+          added += await sendFilesToCloud(folderId, files.map((row) => row.file));
+          if (folderId === 'gallery') await cloudUploadQueue.whenBelow(PHOTOS_QUEUE_AHEAD);
+          continue;
+        }
         added += await addDriveMediaFiles(files, folderId, {
           onProgress: (progress) => {
             setBatchStatus({ tone: 'progress', text: folderSaveProgressLabel(progress) });
@@ -621,6 +698,7 @@ export function ScreensaverPage() {
           };
         },
         save: async (files, report) => {
+          if (cloudBacked && NETWORKED_FOLDERS.includes(folderId)) return sendFilesToCloud(folderId, files.map((row) => row.file));
           const added = await addDriveMediaFiles([...files], folderId, { onProgress: report });
           if (folderId === 'gallery' && added) driveSaved.push(...files.map((row) => row.file));
           return added;
@@ -708,6 +786,90 @@ export function ScreensaverPage() {
     setCloudCopy(summary ? cloudCopyLine(summary) : null);
   };
 
+  /**
+   * Cloud-backed folders: picks go to the matching Advantage Cloud folder, not this device.
+   * Gallery photos join the upload queue (progress, retry, cancel). Gallery videos stay on
+   * this device and are never sent to Cloud from here. Pro Shop and Events photos are
+   * shrunk like device cards and sent one at a time with a default name.
+   * Returns how many files were saved or queued.
+   */
+  const sendFilesToCloud = async (folderId: FolderId, files: readonly File[]): Promise<number> => {
+    const folder = folderById(folderId);
+    const dateKey = localDateKey();
+    if (folderId === 'gallery') {
+      const videos = files.filter((file) => isAcceptedVideoFile(file));
+      const pictures = files.filter((file) => !isAcceptedVideoFile(file) && fileMatchesFolder(file, folder));
+      let saved = 0;
+      if (videos.length) {
+        saved += await addFolderFiles([...videos], 'gallery');
+        setPickerNote(CLOUD_VIDEO_DEVICE_ONLY);
+        await refresh();
+      }
+      if (pictures.length) {
+        setCloudCopy(null);
+        cloudUploadQueue.add(galleryQueueInputs(pictures, dateKey));
+        saved += pictures.length;
+      }
+      return saved;
+    }
+    const pictures = files.filter((file) => fileMatchesFolder(file, folder));
+    if (!pictures.length) return 0;
+    const cloudFolder = cloudFolderOfDevice(folderId);
+    if (cloudFolder === 'gallery') return 0;
+    const existing = itemsInFolder(mediaRows, folderId).filter((row) => isCloudRow(row));
+    let nextOrder = existing.reduce((max, row) => Math.max(max, row.sortOrder), -1);
+    const failures: string[] = [];
+    let sent = 0;
+    let waiting = 0;
+    setCloudSending(true);
+    try {
+      for (const [i, file] of pictures.entries()) {
+        setBatchStatus({ tone: 'progress', text: `Sending ${i + 1} of ${pictures.length} to Advantage Cloud ${folder.label}… Keep this page open.` });
+        let blob: Blob = file;
+        try {
+          blob = await shrinkPhotoForStore(file);
+        } catch {
+          /* Send the original when it cannot be shrunk. */
+        }
+        const mime = blob.type.startsWith('image/') ? blob.type : file.type || 'image/jpeg';
+        const named = new File([blob], uniqueCloudFileName(file.name || folder.labelPrefix, mime), { type: mime });
+        const result = await uploadToCloudFolder({ folder: cloudFolder, file: named, dateKey });
+        if (!result.ok) {
+          failures.push(result.message);
+          continue;
+        }
+        if (result.lane === 'pending') {
+          waiting += 1;
+          continue;
+        }
+        sent += 1;
+        nextOrder += 1;
+        if (cloudMedia.canEdit(folderId)) {
+          const saved = await cloudMedia.patch(folderId, {
+            items: { [result.path]: { label: `${folder.labelPrefix} ${existing.length + sent}`, sortOrder: nextOrder, playEnabled: true } },
+          });
+          if (!saved.ok) failures.push(saved.message);
+        }
+      }
+    } finally {
+      setCloudSending(false);
+    }
+    notifyCloudMedia();
+    await cloudMedia.reload();
+    if (failures.length) {
+      showBatchError(
+        folderId,
+        `${sent ? `Sent ${sent} to Advantage Cloud ${folder.label}. ` : ''}${failures.length} did not send: ${failures[0]}`,
+      );
+    } else if (waiting) {
+      setBatchStatus({ tone: 'saved', text: 'Waiting' });
+      setPickerNote(`${APPROVAL_WAITING} They show in ${folder.label} after the owner approves them.`);
+    } else if (sent) {
+      setBatchStatus({ tone: 'saved', text: 'Saved to Advantage Cloud' });
+    }
+    return sent + waiting;
+  };
+
   const onFiles = async (files: readonly File[]) => {
     if (savingRef.current) return;
     const kind = addKind;
@@ -782,6 +944,20 @@ export function ScreensaverPage() {
       return;
     }
 
+    if (cloudBacked && NETWORKED_FOLDERS.includes(folderId)) {
+      savingRef.current = true;
+      setPickerNote('');
+      try {
+        const sent = await sendFilesToCloud(folderId, matched);
+        if (sent) setPlaying(true);
+      } catch (error) {
+        showBatchError(folderId, error instanceof Error ? error.message : 'Those files did not send to Advantage Cloud.');
+      } finally {
+        savingRef.current = false;
+      }
+      return;
+    }
+
     savingRef.current = true;
     setPickerNote('');
     setBatchStatus({
@@ -818,8 +994,9 @@ export function ScreensaverPage() {
           await copyGalleryToCloud(matched, false);
         } else if (purpose) {
           const dateKey = localDateKey();
+          const failed: string[] = [];
           for (const file of matched) {
-            await publishGymFile({
+            const published = await publishGymFile({
               purpose,
               role: 'owner',
               kind: file.type.startsWith('video/') ? 'video' : 'photo',
@@ -827,8 +1004,15 @@ export function ScreensaverPage() {
               fileName: file.name || (purpose === 'pro-shop' ? 'product-card' : 'photo'),
               bytes: file,
               mime: file.type || (file.type.startsWith('video/') ? 'video/mp4' : 'image/jpeg'),
-            }).catch(() => undefined);
+            }).catch((error: unknown) => ({ failed: true, message: error instanceof Error ? error.message : '' }));
+            if (published.failed) failed.push(published.message || 'The gym folder did not answer.');
           }
+          // Saved here either way. Say so when the gym-folder copy did not go, instead of hiding it.
+          setCloudCopy(
+            failed.length
+              ? { tone: 'error', text: `Saved on this device. ${failed.length} of ${matched.length} did not copy to the gym folder: ${failed[0]}` }
+              : null,
+          );
         }
       }
       await refresh();
@@ -873,7 +1057,7 @@ export function ScreensaverPage() {
     </div>
   );
 
-  const focusEmpty = itemsInFolder(photos, focusFolder).length === 0;
+  const focusEmpty = itemsInFolder(mediaRows, focusFolder).length === 0;
   const focusCanUpload =
     !seat ||
     (focusFolder === 'shop'
@@ -882,7 +1066,7 @@ export function ScreensaverPage() {
         ? seatPermissionAllows(seat.permissions, 'eventsAccess')
         : seatPermissionAllows(seat.permissions, 'galleryUpload'));
   const emptyCopy =
-    photos.length === 0
+    mediaRows.length === 0
       ? focusFolder === 'gallery'
         ? mediaConsoleGalleryLead({ cloudEntitled: cloudCustomer, driveConnected: Boolean(driveBinding) })
         : `${focusConfig.emptyCopy} Press F for fullscreen on a computer plugged into the TV.`
@@ -1067,7 +1251,7 @@ export function ScreensaverPage() {
         <ShopCastSlide
           key={currentSlide.items.map((item) => `${item.id}:${item.buyUrl}`).join('|')}
           items={currentSlide.items}
-          srcById={urlById}
+          srcById={srcById}
           mode={shopCastMode}
           logoUrl={gymLogoUrl}
         />
@@ -1079,6 +1263,10 @@ export function ScreensaverPage() {
           mode={eventsCastMode}
           logoUrl={gymLogoUrl}
         />
+      ) : currentPhoto?.cloudPath && !current ? (
+        <div className="saver__frame" role="status" aria-label="Opening from Advantage Cloud">
+          <p className="saver-caption">Opening from Advantage Cloud…</p>
+        </div>
       ) : current && currentPhoto ? (
         <SaverSlide
           key={currentPhoto.id}
@@ -1094,7 +1282,7 @@ export function ScreensaverPage() {
       ) : (
         <div className="saver__empty" onClick={(e) => e.stopPropagation()}>
           <h1>{hubTitle}</h1>
-          <PlayingFromLine />
+          <PlayingFromLine cloudBacked={cloudBacked} />
           <p>{emptyCopy}</p>
           {cloudCustomer ? <AdvantageCloudHome showQueue={!options} /> : null}
           {galleryPage && cloudCopy ? (
@@ -1163,7 +1351,7 @@ export function ScreensaverPage() {
         }
       >
         {beltInSheet ? beltHeader : null}
-        <PlayingFromLine />
+        <PlayingFromLine cloudBacked={cloudBacked} />
         {options && batchStatus ? (
           <BatchStatus panel status={batchStatus} onDismiss={() => setBatchStatus(null)} />
         ) : null}
@@ -1186,6 +1374,23 @@ export function ScreensaverPage() {
           </p>
         ) : null}
         <CloudUploadQueuePanel />
+        {cloudBacked ? (
+          <DeviceToCloudMigration
+            deviceRows={photos}
+            snapshots={cloudMedia.snapshots}
+            patch={cloudMedia.patch}
+            onDone={async () => {
+              notifyCloudMedia();
+              await cloudMedia.reload();
+            }}
+          />
+        ) : null}
+        {cloudMedia.checking ? <p className="saver-folder__empty" role="status">Checking Advantage Cloud…</p> : null}
+        {!cloudBacked && cloudCustomer && cloudMedia.error ? (
+          <p className="saver-cloud-copy saver-cloud-copy--error" role="alert">
+            {cloudMedia.error} Showing what is saved on this device.
+          </p>
+        ) : null}
 
         <div className="saver-folders">
           {FOLDERS.filter((folder) => {
@@ -1203,8 +1408,14 @@ export function ScreensaverPage() {
               folder={folder}
               open={openSection === folder.id}
               playEnabled={folderPlay[folder.id]}
-              items={itemsInFolder(photos, folder.id)}
-              thumbById={urlById}
+              items={itemsInFolder(mediaRows, folder.id)}
+              thumbById={srcById}
+              notice={[
+                folderBackingNote({ backing: cloudMedia.backing, cloudEntitled: cloudCustomer }),
+                cloudBacked && cloudMedia.error ? cloudMedia.error : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
               onToggle={(next) => {
                 setOpenSection((current) => {
                   if (next) return folder.id;
@@ -1229,7 +1440,7 @@ export function ScreensaverPage() {
                   : undefined
               }
               onClear={
-                folder.ready
+                folder.ready && !cloudBacked
                   ? async () => {
                       await clearFolder(folder.id);
                       await refresh();
@@ -1237,79 +1448,46 @@ export function ScreensaverPage() {
                     }
                   : undefined
               }
-              onRename={async (id, label) => {
-                await renamePhoto(id, label);
-                setPhotos((rows) => rows.map((row) => (row.id === id ? { ...row, label } : row)));
-              }}
+              onRename={async (id, label) => editItem(folder.id, id, { label }, () => renamePhoto(id, label))}
               onRemove={async (id) => {
-                await removePhoto(id);
+                const row = mediaRows.find((item) => item.id === id);
+                if (row && isCloudRow(row)) {
+                  if (!cloudMedia.canDelete(folder.id)) {
+                    setBatchStatus({ tone: 'error', text: 'Only the owner or an Instructors seat can delete from Advantage Cloud.' });
+                    return;
+                  }
+                  // A Cloud delete removes it from every device, so ask first.
+                  if (typeof window !== 'undefined' && !window.confirm('Delete this from Advantage Cloud for every device? This cannot be undone.')) return;
+                  await cloudMedia.remove(folder.id, id);
+                  return;
+                }
+                try {
+                  await removePhoto(id);
+                } catch (error) {
+                  setBatchStatus({ tone: 'error', text: error instanceof Error && error.message ? error.message : 'That item could not be removed.' });
+                }
                 await refresh();
               }}
-              onItemPlayToggle={async (id, enabled) => {
-                setPhotos((rows) =>
-                  rows.map((row) => (row.id === id ? { ...row, playEnabled: enabled } : row)),
-                );
-                try {
-                  await setItemPlay(id, enabled);
-                } catch {
-                  await refresh();
-                }
-              }}
+              onItemPlayToggle={async (id, enabled) => editItem(folder.id, id, { playEnabled: enabled }, () => setItemPlay(id, enabled))}
               onReorder={async (orderedIds) => persistFolderOrder(folder.id, orderedIds)}
               onBuyUrl={
                 folder.id === 'shop'
-                  ? async (id, buyUrl) => {
-                      setPhotos((rows) =>
-                        rows.map((row) => (row.id === id ? { ...row, buyUrl } : row)),
-                      );
-                      try {
-                        await setItemBuyUrl(id, buyUrl);
-                      } catch {
-                        await refresh();
-                      }
-                    }
+                  ? async (id, buyUrl) => editItem(folder.id, id, { buyUrl }, () => setItemBuyUrl(id, buyUrl))
                   : undefined
               }
               onStartsSlide={
                 folder.id === 'shop'
-                  ? async (id, startsSlide) => {
-                      setPhotos((rows) =>
-                        rows.map((row) => (row.id === id ? { ...row, startsSlide } : row)),
-                      );
-                      try {
-                        await setItemStartsSlide(id, startsSlide);
-                      } catch {
-                        await refresh();
-                      }
-                    }
+                  ? async (id, startsSlide) => editItem(folder.id, id, { startsSlide }, () => setItemStartsSlide(id, startsSlide))
                   : undefined
               }
               onQrLinks={
                 folder.id === 'events'
-                  ? async (id, qrLinks) => {
-                      setPhotos((rows) =>
-                        rows.map((row) => (row.id === id ? { ...row, qrLinks } : row)),
-                      );
-                      try {
-                        await setItemQrLinks(id, qrLinks);
-                      } catch {
-                        await refresh();
-                      }
-                    }
+                  ? async (id, qrLinks) => editItem(folder.id, id, { qrLinks }, () => setItemQrLinks(id, qrLinks))
                   : undefined
               }
               onGalleryChange={
                 folder.id === 'gallery'
-                  ? async (id, patch) => {
-                      setPhotos((rows) =>
-                        rows.map((row) => (row.id === id ? { ...row, ...patch } : row)),
-                      );
-                      try {
-                        await setGalleryDetails(id, patch);
-                      } catch {
-                        await refresh();
-                      }
-                    }
+                  ? async (id, patch) => editItem(folder.id, id, patch, () => setGalleryDetails(id, patch))
                   : undefined
               }
               onLinkTechniques={
@@ -1341,6 +1519,16 @@ export function ScreensaverPage() {
                   : undefined
               }
             />
+            {folder.id === 'events' && cloudBacked && openSection === 'events' && cloudMedia.snapshots.events ? (
+              <CloudEventsPanel
+                tiles={itemsInFolder(mediaRows, 'events')
+                  .filter((row) => row.cloudPath)
+                  .map((row) => ({ path: row.cloudPath!, label: row.label, thumb: srcById[row.id] }))}
+                events={cloudMedia.snapshots.events.index.events}
+                canEdit={cloudMedia.canEdit('events')}
+                onPatch={(patch) => cloudMedia.patch('events', patch)}
+              />
+            ) : null}
             {folder.id === 'gallery' ? (
               <ClassScheduleEntry
                 open={openSection === 'schedule'}

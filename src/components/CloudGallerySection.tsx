@@ -26,6 +26,7 @@ import {
 import type { ApprovalItem, ApprovalLaneStore } from '../lib/approvalLanes';
 import { localDateKey } from '../lib/trainingNotesStore';
 import { CloudDeleteConfirm } from './CloudDeleteConfirm';
+import { CloudEventsFromCloud } from './CloudEventsPanel';
 import { CloudVideoCleanup } from './CloudVideoCleanup';
 
 /** Seconds a photo stays up when the Cloud Gallery plays as a slideshow. */
@@ -413,6 +414,13 @@ export function CloudGallerySection({
         </ul>
       ) : null}
       {openFolder === 'gallery' && manage ? <CloudVideoCleanup /> : null}
+      {openFolder === 'events' && listing ? (
+        <CloudEventsFromCloud
+          tiles={listing.items
+            .filter((item) => item.kind === 'photo')
+            .map((item) => ({ path: item.path, label: item.name, thumb: thumbs[item.path] }))}
+        />
+      ) : null}
     </div>
   ) : null;
 

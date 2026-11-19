@@ -158,6 +158,13 @@ export type StoredPhoto = PlaylistItem & {
   techniqueClipId: string;
   /** Loop timer in seconds from that technique slot. 0 uses the slideshow timer. */
   loopSec: number;
+  /**
+   * Set when this row is a file in the gym's Advantage Cloud folder, not a copy on this device.
+   * The blob is empty; the page reads the bytes from Cloud when it needs them.
+   */
+  cloudPath?: string;
+  /** Cloud Events: the event this photo is grouped under. */
+  cloudEventId?: string;
 };
 
 export const DEFAULT_SHUFFLE = false;
