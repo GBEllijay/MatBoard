@@ -10,6 +10,7 @@ import { OwnerTestSheet } from '../components/OwnerTestSheet';
 import { SignOutButton } from '../components/SignOutButton';
 import { AccountLink } from '../components/AccountLink';
 import { ReturningUserPrompt } from '../components/ReturningUserPrompt';
+import { BackupLoginPrompt } from '../components/BackupLoginPrompt';
 import { homeTiles } from '../lib/productTiles';
 import { takeSignOutCleanupNotice } from '../lib/signOut';
 import { useCurrentSeat } from '../components/SeatSessionBar';
@@ -113,6 +114,7 @@ export function HomePage() {
           </p>
         ) : null}
         <ReturningUserPrompt />
+        <BackupLoginPrompt />
         <nav className="home__modes" aria-label="Products">
           {whiteUnlocked ? (
             <article className="mode-card mode-card--white">
