@@ -444,3 +444,16 @@ body:has(.d8-live),
 .d8-live-branch-note {
   margin: 6px 0 0;
 }
+
+/* The full-screen sheet styles buttons broadly; keep the D8 tool row as pills. */
+.d8-live.d8sf .d8-live-tools button {
+  border: 2px solid var(--d8-ink);
+  background: rgba(244, 240, 228, 0.94);
+  color: var(--d8-ink);
+}
+
+.d8-live.d8sf .d8-live-tools button[aria-pressed='true'] {
+  background: var(--d8-blue);
+  border-color: var(--d8-blue);
+  color: #fff;
+}
