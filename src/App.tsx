@@ -55,6 +55,7 @@ import { TERM_CARD_PATH, TermCardPreviewPage } from './preview/termCard/TermCard
 import { INDEX_CARD_PATH, IndexCardPreviewPage } from './preview/indexCard/IndexCardPreview';
 import { CRYSTAL_PREVIEW_PATH, CrystallineSweepsPreview } from './preview/crystallineSweeps/CrystallineSweepsPreview';
 import { D8_SUBFACTORS_PATH, D8SubfactorsPreview } from './preview/d8Subfactors/D8SubfactorsPreview';
+import { D8_BRANCHES_PATH, D8BranchesPreview } from './preview/crystallineSweeps/D8BranchesPreview';
 import { D8_GRID_PREVIEW_PATH, D8GridPreview } from './indexCards/D8GridPreview';
 import { BACK_BUTTON_LAYOUT_PREVIEW_PATH, BACK_BUTTON_PREVIEW_PATH, BackButtonLayoutPreviewPage, BackButtonPreviewPage } from './preview/backButton/BackButtonPreview';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
@@ -801,6 +802,8 @@ export default function App() {
       <Route path={CRYSTAL_PREVIEW_PATH} element={<CrystallineSweepsPreview />} />
       {/* Isolated sub-factor diamond. Direct link only. It does not write a check-in. */}
       <Route path={D8_SUBFACTORS_PATH} element={<D8SubfactorsPreview />} />
+      {/* Inside technique-tree branches on the D8. Direct link only. Example data stays in memory. */}
+      <Route path={D8_BRANCHES_PATH} element={<D8BranchesPreview />} />
       <Route path={D8_GRID_PREVIEW_PATH} element={<D8GridPreview />} />
       <Route path={BACK_BUTTON_PREVIEW_PATH} element={<BackButtonPreviewPage />} />
       <Route path={BACK_BUTTON_LAYOUT_PREVIEW_PATH} element={<BackButtonLayoutPreviewPage />} />

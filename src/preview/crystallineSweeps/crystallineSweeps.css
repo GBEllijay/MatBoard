@@ -462,3 +462,33 @@ button.topo-label-face,
   font-size: 14px;
   font-weight: 700;
 }
+
+.topo-branch-names {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 210, 122, 0.8);
+  border-radius: 8px;
+  background: rgba(7, 19, 36, 0.92);
+  color: #fff4d6;
+  font-size: 14px;
+  text-align: center;
+}
+
+.d8-branch-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.d8-branch-list li[aria-current='true'] {
+  color: #ffd27a;
+}
+
+.crystal-toggle select[data-chain-pick] {
+  flex: 1 1 100%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
