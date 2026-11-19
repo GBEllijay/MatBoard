@@ -20691,3 +20691,55 @@ a.plan-pick {
   margin-left: 8px;
   font-size: 0.8rem;
 }
+
+/* "Create a login to back up" card on the products home and Student Edition home. */
+.backup-prompt {
+  margin: 0.75rem 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(255, 214, 102, 0.45);
+  border-radius: 12px;
+  background: rgba(10, 18, 34, 0.82);
+  color: #f4f6fb;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.backup-prompt p {
+  margin: 0;
+}
+
+.backup-prompt__body {
+  margin-top: 0.35rem !important;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.backup-prompt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  align-items: center;
+  margin-top: 0.7rem !important;
+}
+
+.backup-prompt__go {
+  min-height: 40px;
+  padding: 0.45rem 1rem;
+}
+
+/* Private / incognito warning. Same strip as the in-app browser hint, a little stronger. */
+.private-hint {
+  /* Pinned to the bottom so the fixed Back and Sign in corners never cover it. */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  padding: 0.7rem 0.9rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
+  background: #3a1d12;
+  border-bottom: 0;
+  border-top: 2px solid #ff8c5a;
+  color: #fff4ec;
+  font-size: 0.9rem;
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.45);
+}

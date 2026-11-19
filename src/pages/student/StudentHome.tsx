@@ -8,6 +8,7 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 import { studentDemoRequested } from '../../lib/studentDemo';
 import { todayIso } from '../../lib/studentEdition';
 import { readStreakTarget, streakLabel, streakWeekLine, trainingStreak } from '../../lib/trainingStreak';
+import { BackupLoginPrompt } from '../../components/BackupLoginPrompt';
 import { BodyScanSection } from './BodyScan';
 import { useStudentFile, useStudentPath } from './chrome';
 import { useProfileMedia } from './ProfileIdentity';
@@ -48,6 +49,8 @@ export function StudentHome() {
   return (
     <StudentHub
       sheet={
+        <>
+        <BackupLoginPrompt />
         <section className="student-home" aria-label="My character sheet" data-testid="student-home">
           <StudentCardLayout
             home
@@ -56,6 +59,7 @@ export function StudentHome() {
             bodyScan={<BodyScanSection key={zone} report={report} commit={commit} to={to} focusZone={zone} forceOpen={params.get('scan') === '1'} />}
           />
         </section>
+        </>
       }
     />
   );

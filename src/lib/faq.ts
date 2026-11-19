@@ -290,6 +290,61 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     ],
     keywords: 'seat invite claim license cloud inbox',
   },
+  {
+    id: 'built-for-safari',
+    category: 'Phone and browser',
+    question: 'Which browser should I use on my phone?',
+    paragraphs: [
+      'Advantage is built for Safari on iPhone. That is where we test it first, and that is where it works best.',
+      'Add it to your Home Screen once and open it from that icon after that. It opens full screen, like an app, and your notes stay put.',
+      'Other browsers work too. On Android, Chrome is the best fit.',
+    ],
+    links: [{ label: 'How to add it to your Home Screen', to: '/faq#add-to-home-screen' }],
+    keywords: 'iphone ipad ios safari chrome brave firefox best browser which',
+  },
+  {
+    id: 'add-to-home-screen',
+    category: 'Phone and browser',
+    question: 'How do I add Advantage to my Home Screen on iPhone?',
+    paragraphs: [
+      'Open advantagebjjtimer.com in Safari, in a normal tab (not private). Then follow these steps. After that, open Advantage from the icon instead of a browser tab.',
+    ],
+    steps: [
+      'Tap the Share button (the square with the arrow pointing up).',
+      'Scroll down and tap Add to Home Screen.',
+      'Tap Add. The Advantage icon shows up next to your other apps.',
+    ],
+    keywords: 'install icon home screen share add app pwa iphone ipad safari',
+  },
+  {
+    id: 'private-browsing',
+    category: 'Phone and browser',
+    question: 'Why didn’t my stuff save? I was in private browsing.',
+    paragraphs: [
+      'Private browsing (Safari Private, Chrome Incognito, Brave Private) throws away everything a site saves as soon as you close the tab. Advantage keeps your profile, journal, and roster in the browser, so in a private tab it all disappears when the tab closes.',
+      'If you see the private browsing warning on the screen, open Advantage in a normal tab and add it to your Home Screen. Anything you entered in the private tab is not coming back, sorry.',
+      'A login helps too. Once you sign in, your profile, belt, and academy details back up to your account, so a new phone or a cleared browser can get them back.',
+    ],
+    links: [
+      { label: 'Add it to your Home Screen', to: '/faq#add-to-home-screen' },
+      { label: 'Sign in or create a login', to: '/account' },
+    ],
+    keywords: 'incognito private window lost data disappeared not saved erased wiped',
+  },
+  {
+    id: 'android-install',
+    category: 'Phone and browser',
+    question: 'How do I install Advantage on Android?',
+    paragraphs: [
+      'Open advantagebjjtimer.com in Chrome, then follow these steps. After that, open Advantage from its icon. Other Android browsers have a similar Add to Home screen choice in their menu.',
+    ],
+    steps: [
+      'Tap the three-dot menu at the top right.',
+      'Tap Install app (on some phones it says Add to Home screen).',
+      'Tap Install. Advantage shows up with your other apps.',
+    ],
+    keywords: 'android chrome install app pwa home screen samsung pixel',
+  },
 ];
 
 export function faqCategories(entries: readonly FaqEntry[] = FAQ_ENTRIES): string[] {

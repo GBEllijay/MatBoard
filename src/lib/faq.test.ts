@@ -54,3 +54,16 @@ test('search matches every word and a topic can narrow it', () => {
   assert.equal(faqHref('/restore', true), '/restore');
   assert.equal(faqHref('/student/rank', false), '/student/rank');
 });
+
+test('phone and browser answers: Safari on iPhone, Home Screen, private browsing, Android install', () => {
+  const byId = new Map(FAQ_ENTRIES.map((entry) => [entry.id, entry]));
+  for (const id of ['built-for-safari', 'add-to-home-screen', 'private-browsing', 'android-install']) {
+    assert.equal(byId.get(id)?.category, 'Phone and browser', id);
+  }
+  assert.match(text, /built for Safari on iPhone/);
+  assert.match(text, /Tap the Share button/);
+  assert.match(text, /tap Add to Home Screen/);
+  assert.match(text, /Private browsing .* throws away everything/);
+  assert.match(text, /Tap Install app/);
+  assert.equal(filterFaq(FAQ_ENTRIES, 'incognito', FAQ_ALL)[0]?.id, 'private-browsing');
+});

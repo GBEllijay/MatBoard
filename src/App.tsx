@@ -133,6 +133,7 @@ import { MEDIA_EDITION_OLD_PATH, MEDIA_EDITION_PATH } from './lib/mediaEdition';
 import { RestoreAccessPage } from './pages/RestoreAccess';
 import { AccountPage } from './pages/Account';
 import { InAppBrowserHint } from './components/InAppBrowserHint';
+import { PrivateBrowsingBanner } from './components/PrivateBrowsingBanner';
 import { WhitePage } from './pages/White';
 import { WhiteRosterPage } from './pages/WhiteRoster';
 
@@ -471,6 +472,7 @@ export default function App() {
     <HeaderAccount />
     <SeatSessionChrome />
     <InAppBrowserHint />
+    <PrivateBrowsingBanner />
     <LegacyAccessNotice />
     <PaymentGraceBanner />
     <InviteDoor>
