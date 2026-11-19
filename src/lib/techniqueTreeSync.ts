@@ -16,6 +16,8 @@
  *  - Trees: union by tree id. When both sides have the same tree, the side
  *    with the newer edit time for that tree wins (whole tree).
  *  - Glossary links: union by source + target + relation.
+ *  - Instructor-added glossary cards (`custom`): union by card id; the newer
+ *    edit wins. The built-in cards are never uploaded.
  *  - Removals: a removed tree or link is remembered with its removal time.
  *    It stays removed unless the other side edited or re-added it later.
  *  - Nothing else is ever deleted by a merge.
@@ -36,13 +38,43 @@ export type GlossaryBaseLink = {
   label: string;
 };
 
+/** An instructor-added glossary card. Same fields as GlossaryBaseCard, kept here so the server does not load the glossary. */
+export type GlossarySyncCard = {
+  id: string;
+  slotId: string;
+  glossaryTermId: string;
+  termKey: string;
+  title: string;
+  faceId: string;
+  aliases: string[];
+  definition: string;
+  subFactor: string;
+  custom: true;
+  addedAt: number;
+};
+
+/** The eight D8 faces a glossary card can sit on. Same list as GLOSSARY_BASE_FACE_IDS. */
+const SYNC_CARD_FACES = new Set([
+  'guard-control',
+  'passing',
+  'sweeps',
+  'takedowns',
+  'escapes-defense',
+  'submissions',
+  'mindset',
+  'conditioning',
+]);
+
 /** Two devices can each hold the full cap of trees, so a merged doc may carry both sets. */
 export const TREE_SYNC_MAX_TREES = MAX_TREES * 2;
 export const TREE_SYNC_MAX_LINKS = 2000;
 export const TREE_SYNC_MAX_BYTES = 1_200_000;
+export const TREE_SYNC_MAX_CARDS = 500;
+const CARD_DEFINITION_MAX = 600;
 
 export type TreeSyncRow = { tree: TechniqueTreeDoc; at: number };
 export type TreeSyncLinkRow = { link: GlossaryBaseLink; at: number };
+export type TreeSyncCardRow = { card: GlossarySyncCard; at: number };
 
 export type TreeSyncDoc = {
   v: 1;
@@ -52,10 +84,12 @@ export type TreeSyncDoc = {
   removedTrees: Record<string, number>;
   links: TreeSyncLinkRow[];
   removedLinks: Record<string, number>;
+  /** Instructor-added glossary cards. Missing on docs written before cards synced. */
+  cards?: TreeSyncCardRow[];
 };
 
 export function emptyTreeSyncDoc(): TreeSyncDoc {
-  return { v: 1, updatedAt: 0, activeId: '', trees: [], removedTrees: {}, links: [], removedLinks: {} };
+  return { v: 1, updatedAt: 0, activeId: '', trees: [], removedTrees: {}, links: [], removedLinks: {}, cards: [] };
 }
 
 export function treeSyncDocIsEmpty(doc: TreeSyncDoc | null | undefined): boolean {
@@ -63,6 +97,7 @@ export function treeSyncDocIsEmpty(doc: TreeSyncDoc | null | undefined): boolean
   return (
     doc.trees.length === 0 &&
     doc.links.length === 0 &&
+    !doc.cards?.length &&
     Object.keys(doc.removedTrees).length === 0 &&
     Object.keys(doc.removedLinks).length === 0
   );
@@ -132,6 +167,34 @@ export function sanitizeSyncLink(value: unknown): GlossaryBaseLink | null {
   return { id, from, toCardId, relation, label: text(raw.label, TITLE_MAX) };
 }
 
+/** Clean one instructor-added glossary card. Returns null for junk or a built-in card. */
+export function sanitizeSyncCard(value: unknown): GlossarySyncCard | null {
+  const raw = record(value);
+  if (!raw || raw.custom !== true) return null;
+  const id = text(raw.id, 120);
+  if (!CARD_ID_RE.test(id)) return null;
+  const key = id.slice('gbase.'.length);
+  const title = text(raw.title, TITLE_MAX);
+  const faceId = text(raw.faceId, 40);
+  if (!title || !SYNC_CARD_FACES.has(faceId)) return null;
+  const aliases = Array.isArray(raw.aliases)
+    ? raw.aliases.map((alias) => text(alias, TITLE_MAX)).filter(Boolean).slice(0, 12)
+    : [];
+  return {
+    id,
+    slotId: text(raw.slotId, 120) || `gslot.${key}`,
+    glossaryTermId: text(raw.glossaryTermId, 120) || `gl.${key}`,
+    termKey: key,
+    title,
+    faceId,
+    aliases,
+    definition: text(raw.definition, CARD_DEFINITION_MAX),
+    subFactor: text(raw.subFactor, TITLE_MAX),
+    custom: true,
+    addedAt: stamp(raw.addedAt) || 1,
+  };
+}
+
 /** Server and device both run this on anything they did not build themselves. */
 export function sanitizeTreeSyncDoc(raw: unknown): TreeSyncDoc | null {
   const row = record(raw);
@@ -158,6 +221,16 @@ export function sanitizeTreeSyncDoc(raw: unknown): TreeSyncDoc | null {
     linkKeys.add(key);
     links.push({ link, at: stamp(entry?.at) || 1 });
   }
+  const cards: TreeSyncCardRow[] = [];
+  const cardIds = new Set<string>();
+  for (const item of Array.isArray(row.cards) ? row.cards : []) {
+    if (cards.length >= TREE_SYNC_MAX_CARDS) break;
+    const entry = record(item);
+    const card = sanitizeSyncCard(entry?.card);
+    if (!card || cardIds.has(card.id)) continue;
+    cardIds.add(card.id);
+    cards.push({ card, at: stamp(entry?.at) || card.addedAt || 1 });
+  }
   const activeId = text(row.activeId, 80);
   return {
     v: 1,
@@ -167,6 +240,7 @@ export function sanitizeTreeSyncDoc(raw: unknown): TreeSyncDoc | null {
     removedTrees: tombstones(row.removedTrees),
     links,
     removedLinks: tombstones(row.removedLinks),
+    cards,
   };
 }
 
@@ -227,6 +301,19 @@ export function mergeTreeDocs(a: TreeSyncDoc | null, b: TreeSyncDoc | null): Tre
     links.push({ link, at: best.at });
   }
 
+  const cardOrder: string[] = [];
+  const bestCard = new Map<string, { at: number; value: GlossarySyncCard }>();
+  for (const row of [...(left.cards ?? []), ...(right.cards ?? [])]) {
+    if (!bestCard.has(row.card.id)) cardOrder.push(row.card.id);
+    const candidate = { at: row.at, value: row.card };
+    if (newer(bestCard.get(row.card.id), candidate)) bestCard.set(row.card.id, candidate);
+  }
+  const cards: TreeSyncCardRow[] = [];
+  for (const id of cardOrder) {
+    const best = bestCard.get(id);
+    if (best) cards.push({ card: best.value, at: best.at });
+  }
+
   const ids = new Set(trees.map((row) => row.tree.id));
   const activeId = ids.has(left.activeId) ? left.activeId : ids.has(right.activeId) ? right.activeId : trees[0]?.tree.id ?? '';
   return {
@@ -237,6 +324,7 @@ export function mergeTreeDocs(a: TreeSyncDoc | null, b: TreeSyncDoc | null): Tre
     removedTrees: trimTombstones(removedTrees, TREE_TOMBSTONE_MAX),
     links: links.slice(0, TREE_SYNC_MAX_LINKS),
     removedLinks: trimTombstones(removedLinks, TREE_TOMBSTONE_MAX),
+    cards: cards.slice(0, TREE_SYNC_MAX_CARDS),
   };
 }
 
@@ -248,6 +336,7 @@ function contentKey(doc: TreeSyncDoc | null): string {
     links: [...doc.links].map((row) => [glossaryLinkKey(row.link), row.at, row.link]).sort((x, y) => (x[0] < y[0] ? -1 : 1)),
     removedTrees: sorted(doc.removedTrees),
     removedLinks: sorted(doc.removedLinks),
+    cards: [...(doc.cards ?? [])].sort((x, y) => (x.card.id < y.card.id ? -1 : 1)),
   });
 }
 

@@ -15,6 +15,8 @@ import { CoachPlanExport } from '../components/CoachPlanExport';
 import { CollaborationGate, useCurrentSeat } from '../components/SeatSessionBar';
 import { AdvantageCloudPanel } from '../components/AdvantageCloudMedia';
 import { ClassTimeField } from '../components/ClassTimeField';
+import { LessonGlossaryCard, LessonGlossaryLink } from '../components/LessonGlossaryCard';
+import { lessonGlossaryHref } from '../lib/lessonGlossary';
 import { ExpectedDurationField } from '../components/ExpectedDurationField';
 import { LessonSectionVideo } from '../components/LessonSectionVideo';
 import { OpenMyDrive } from '../components/OpenMyDrive';
@@ -740,6 +742,9 @@ export function TrainingNotesPage() {
     setConfirmPlanId(null);
   };
 
+  /** Glossary links from this lesson keep the page's hub query, like the Technique Tree link. */
+  const glossaryHref = (cardId?: string | null) => carryHubFrom(lessonGlossaryHref(cardId), searchParams.toString());
+
   const patchTechnique = (id: string, patch: Partial<TechniqueBlock>) => {
     commit({
       ...plan,
@@ -935,6 +940,9 @@ export function TrainingNotesPage() {
     ? orderedBlocks.findIndex((block, index) => blockKey(block, index) === focusAsideKey)
     : -1;
   const summaryBlock = asideIndex >= 0 ? orderedBlocks[asideIndex] : resolvedStep ? focusBlocks[resolvedStep.blockIndex] : null;
+  /** The drill on the stage, so its glossary card shows under the notes (match only; add it from Details). */
+  const summaryTech =
+    summaryBlock?.kind === 'technique' ? plan.techniques.find((item) => item.id === summaryBlock.id) : undefined;
   const summaryCopy = summaryBlock ? lessonBlockCopy(plan, summaryBlock) : { title: '', notes: '', expected: '', water: false };
   const summaryOrdinals = summaryBlock
     ? {
@@ -993,6 +1001,7 @@ export function TrainingNotesPage() {
             readOnly={!editingToday}
             onChange={(patch) => patchTechnique(tech.id, patch)}
             media={sectionMedia({ role: 'technique', index: techniqueOrdinal - 1 }, heading, tech, { treeOnly: true })}
+            glossaryHref={glossaryHref}
           />
           {tools}
         </>
@@ -1335,6 +1344,16 @@ export function TrainingNotesPage() {
             nextDisabled={!resolvedStep || stepCursor >= videoSteps.length - 1}
             summaryTitle={summaryTitle}
             summaryText={summaryCopy.notes}
+            summaryExtra={summaryTech ? (
+              <LessonGlossaryCard
+                techId={`summary-${summaryTech.id}`}
+                title={summaryTech.title}
+                glossaryCardId={summaryTech.glossaryCardId}
+                readOnly
+                hrefFor={glossaryHref}
+                onConnect={() => undefined}
+              />
+            ) : null}
             hide={<LessonScreenHide />}
             tabs={[
               { id: 'plan', label: 'Plan', panel: planPanel },
@@ -1417,6 +1436,7 @@ export function TrainingNotesPage() {
                         onChange={(event) => commit({ ...plan, lessonTitle: event.target.value })}
                       />
                     </label>
+                    <LessonGlossaryLink to={glossaryHref()} />
                     <ClassTimeField
                       id="notes-class-time"
                       value={plan.classTime}
@@ -1918,6 +1938,7 @@ export function TrainingNotesPage() {
               />
             </label>
           </div>
+          <LessonGlossaryLink to={glossaryHref()} />
           <ClassTimeField
             id="notes-class-time"
             value={plan.classTime}
@@ -1988,6 +2009,7 @@ export function TrainingNotesPage() {
                   readOnly={!editingToday}
                   onChange={(patch) => patchTechnique(tech.id, patch)}
                   media={sectionMedia({ role: 'technique', index: techniqueOrdinal - 1 }, heading, tech)}
+                  glossaryHref={glossaryHref}
                 />
               ) : null}
               {block.kind === 'game' && game ? (
@@ -2285,12 +2307,15 @@ function TechniqueBlockView({
   readOnly,
   onChange,
   media,
+  glossaryHref,
 }: {
   index: number;
   tech: TechniqueBlock;
   readOnly: boolean;
   onChange: (patch: Partial<TechniqueBlock>) => void;
   media?: ReactNode;
+  /** Builds a link into the glossary (keeps the page's hub query). */
+  glossaryHref?: (cardId?: string | null) => string;
 }) {
   const number = index + 1;
   const titleId = `notes-tech-${tech.id}`;
@@ -2323,6 +2348,14 @@ function TechniqueBlockView({
             onChange={(event) => onChange({ title: event.target.value })}
           />
         </label>
+        <LessonGlossaryCard
+          techId={tech.id}
+          title={tech.title}
+          glossaryCardId={tech.glossaryCardId}
+          readOnly={readOnly}
+          hrefFor={glossaryHref}
+          onConnect={(glossaryCardId) => onChange({ glossaryCardId })}
+        />
         <div className="notes__field">
           <div className="notes__field-bar">
             <label htmlFor={notesId}>Notes</label>

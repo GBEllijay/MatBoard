@@ -13,7 +13,7 @@ import {
   type TechniqueTreeDoc,
 } from './techniqueTreeStore.ts';
 import { glossaryLinkKey, readTreeStamps, writeTreeStamps } from './techniqueTreeStamps.ts';
-import { sanitizeSyncLink, sanitizeTreeSyncDoc, type TreeSyncDoc } from './techniqueTreeSync.ts';
+import { sanitizeSyncCard, sanitizeSyncLink, sanitizeTreeSyncDoc, type TreeSyncDoc } from './techniqueTreeSync.ts';
 
 type Store = { getItem: (key: string) => string | null; setItem: (key: string, value: string) => void };
 
@@ -38,28 +38,35 @@ export function collectTreeDoc(store: Store | null, now = Date.now()): TreeSyncD
   const trees = (archive?.trees ?? [])
     .filter((tree) => !untouchedDefault(tree))
     .map((tree) => ({ tree, at: stamps.trees[tree.id] || 1 }));
-  const rawCatalog = store ? (parse(store.getItem(GLOSSARY_BASE_STORAGE_KEY)) as { links?: unknown } | null) : null;
+  const rawCatalog = store ? (parse(store.getItem(GLOSSARY_BASE_STORAGE_KEY)) as { links?: unknown; cards?: unknown } | null) : null;
   const links = (Array.isArray(rawCatalog?.links) ? rawCatalog.links : [])
     .map(sanitizeSyncLink)
     .filter((link): link is NonNullable<typeof link> => !!link)
     .map((link) => ({ link, at: stamps.links[glossaryLinkKey(link)] || 1 }));
+  // Instructor-added glossary cards ride along. The built-in cards never upload.
+  const cards = (Array.isArray(rawCatalog?.cards) ? rawCatalog.cards : [])
+    .map(sanitizeSyncCard)
+    .filter((card): card is NonNullable<typeof card> => !!card)
+    .map((card) => ({ card, at: card.addedAt || 1 }));
   const latest = Math.max(
     0,
     ...trees.map((row) => row.at),
     ...links.map((row) => row.at),
+    ...cards.map((row) => row.at),
     ...Object.values(stamps.removedTrees),
     ...Object.values(stamps.removedLinks),
   );
   const doc = sanitizeTreeSyncDoc({
     v: 1,
-    updatedAt: latest > 1 ? latest : trees.length || links.length ? now : 0,
+    updatedAt: latest > 1 ? latest : trees.length || links.length || cards.length ? now : 0,
     activeId: archive?.activeId ?? '',
     trees,
     removedTrees: stamps.removedTrees,
     links,
     removedLinks: stamps.removedLinks,
+    cards,
   });
-  return doc ?? { v: 1, updatedAt: 0, activeId: '', trees: [], removedTrees: {}, links: [], removedLinks: {} };
+  return doc ?? { v: 1, updatedAt: 0, activeId: '', trees: [], removedTrees: {}, links: [], removedLinks: {}, cards: [] };
 }
 
 /** Write a merged doc onto this device. Existing local data is kept unless the merge removed it. */
@@ -79,8 +86,23 @@ export function applyTreeDoc(doc: TreeSyncDoc, store: Store | null): void {
     }
 
     const rawCatalog = parse(store.getItem(GLOSSARY_BASE_STORAGE_KEY)) as Record<string, unknown> | null;
-    if (rawCatalog || doc.links.length) {
-      const catalog = sanitizeGlossaryBaseCatalog({ ...(rawCatalog ?? {}), links: doc.links.map((row) => row.link) });
+    const docCards = doc.cards ?? [];
+    if (rawCatalog || doc.links.length || docCards.length) {
+      // Cards first, so links to an instructor-added card from another device are kept.
+      const localCards = Array.isArray(rawCatalog?.cards) ? (rawCatalog.cards as unknown[]) : [];
+      const incoming = new Map(docCards.map((row) => [row.card.id, row.card]));
+      const cards: unknown[] = localCards.map((card) => {
+        const id = card && typeof card === 'object' ? (card as { id?: unknown }).id : undefined;
+        if (typeof id !== 'string' || !incoming.has(id)) return card;
+        const next = incoming.get(id);
+        incoming.delete(id);
+        const localAt = (card as { custom?: unknown; addedAt?: unknown }).custom === true
+          ? Number((card as { addedAt?: unknown }).addedAt) || 0
+          : Number.POSITIVE_INFINITY; // a built-in card with this id stays built-in
+        return next && next.addedAt > localAt ? next : card;
+      });
+      for (const card of incoming.values()) cards.push(card);
+      const catalog = sanitizeGlossaryBaseCatalog({ ...(rawCatalog ?? {}), cards, links: doc.links.map((row) => row.link) });
       store.setItem(GLOSSARY_BASE_STORAGE_KEY, JSON.stringify(catalog));
     }
 
