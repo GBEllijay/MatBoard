@@ -180,3 +180,25 @@ test('legitimate paths still work: fresh link, same device again, legacy device 
   assert.equal(viaCode.status, 200, JSON.stringify(viaCode.body));
   assert.equal(viaCode.body.seat.seatId, onPhone.seatId);
 });
+
+test('the /i/ short code (PR 580) is a valid credential with the same checks; the bare id still is not', async () => {
+  const { shortCodeForSignedSeatInvite } = await import('../lib/seatShortInvite.ts');
+  const f = await fixture();
+  const owner = await ownerPro(f);
+
+  const fresh = await issueSeat(f, owner, 'short@gym.test');
+  const code = shortCodeForSignedSeatInvite(fresh.invite) ?? '';
+  assert.equal((await accept(f, fresh.seatId, 'attacker')).status, 400);
+  assert.equal((await accept(f, code, 'short-phone')).status, 200);
+  assert.equal((await accept(f, code, 'short-phone')).status, 200, 'same device again');
+  assert.equal((await accept(f, code, 'other-phone')).status, 409);
+
+  const old = await issueSeat(f, owner, 'late.short@gym.test', new Date(NOW.getTime() - 15 * DAY));
+  assert.equal((await accept(f, shortCodeForSignedSeatInvite(old.invite) ?? '', 'late-phone')).status, 400);
+
+  const reset = await issueSeat(f, owner, 'reset.short@gym.test');
+  const again = await handleSeatReset(post('/api/seats/reset', { token: owner, seatId: reset.seatId }), f.env, f.db, () => NOW);
+  const freshCode = shortCodeForSignedSeatInvite(((await again.json()) as { invite: string }).invite) ?? '';
+  assert.equal((await accept(f, shortCodeForSignedSeatInvite(reset.invite) ?? '', 'reset-phone')).status, 400, 'old code after reset');
+  assert.equal((await accept(f, freshCode, 'reset-phone')).status, 200);
+});
