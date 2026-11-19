@@ -5,6 +5,7 @@
  * Slideshow bytes for an approved photo still use functions/api/gym/media.ts.
  */
 
+import { applyCloudIndexPatch, cloudIndexKey, isCloudIndexFolder, normalizeCloudIndex, type CloudIndexFolder, type CloudMediaIndex } from '../lib/cloudMediaIndex.ts';
 import {
   CLOUD_CHUNK_BYTES,
   CLOUD_DAILY_DROP_ONLY,
@@ -820,6 +821,8 @@ type StartBody = {
   fingerprint?: string;
   /** Lesson plan JSON: `mine` (default) or `template` (owner / Coach). */
   planTarget?: string;
+  /** `media-index`: field-level changes to one folder's details (src/lib/cloudMediaIndex.ts). */
+  patch?: unknown;
 };
 
 function isPurpose(value: string): value is CloudMediaPurpose {
@@ -968,6 +971,32 @@ async function refuseFolderWrite(env: GymCloudEnv, actor: Actor, key: string): P
 function cloudFolderAccess(actor: Actor): boolean {
   return actor.read || actor.galleryRead;
 }
+
+/** Gallery, Pro Shop, and Events details: the small JSON beside the files. */
+async function readMediaIndex(bucket: GymMediaBucket, licenseId: string, folder: CloudIndexFolder): Promise<CloudMediaIndex> {
+  const key = cloudIndexKey(licenseId, folder);
+  const object = key ? await bucket.get(key) : null;
+  if (!object) return normalizeCloudIndex(folder, null);
+  try {
+    return normalizeCloudIndex(folder, JSON.parse(await new Response(object.body).text()) as unknown);
+  } catch {
+    return normalizeCloudIndex(folder, null);
+  }
+}
+
+/**
+ * Who may change names, buy links, QR links, order, and events: anyone whose
+ * upload goes live. The owner always; a seat only while the approval switch is off.
+ * A seat whose uploads wait for the owner cannot change what is already showing.
+ */
+async function mediaIndexEditAllowed(env: GymCloudEnv, actor: Actor): Promise<boolean> {
+  if (!cloudFolderAccess(actor)) return false;
+  if (actor.kind === 'owner') return true;
+  const approvalRequired = await licenseGalleryApprovalRequired(env, actor.licenseId);
+  return galleryUploadLane({ kind: actor.kind, preset: actor.preset, approvalRequired }) === 'approved';
+}
+
+export const MEDIA_INDEX_EDIT_REFUSED = 'Approval is on. Only the owner can change names, links, and events in these folders.';
 
 /** A Gallery, Pro Shop, Events, or Schedule key. */
 function isCloudFolderPath(relative: string): boolean {
@@ -1352,6 +1381,14 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
         return fileResponse(object);
       }
     }
+    // Names, buy links, QR links, order, and events for Gallery, Pro Shop, and Events.
+    if (op === 'media-index') {
+      if (!cloudFolderAccess(actor)) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
+      const folder = url.searchParams.get('folder') ?? '';
+      if (!isCloudIndexFolder(folder)) return json(400, { ok: false, error: 'Choose Gallery, Pro Shop, or Events.' });
+      const [index, canEdit] = await Promise.all([readMediaIndex(bucket, actor.licenseId, folder), mediaIndexEditAllowed(env, actor)]);
+      return json(200, { ok: true, folder, index, canEdit });
+    }
     // Advantage Cloud folders: Gallery (approved only, plays on the TV), Pro Shop, Events, Schedule.
     // Same readers as the display gallery. canUpload / canDelete only report what start, put, and delete enforce.
     if (op === 'list' && url.searchParams.get('purpose') === 'folder') {
@@ -1641,6 +1678,21 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (!copied) return json(500, { ok: false, error: 'That did not save. Try again.' });
     await bucket.delete(sourceKey);
     return json(200, { ok: true, lane: 'approved', path: targetPath });
+  }
+
+  if (body.action === 'media-index') {
+    const folder = (body as { folder?: unknown }).folder;
+    if (!isCloudIndexFolder(folder)) return json(400, { ok: false, error: 'Choose Gallery, Pro Shop, or Events.' });
+    if (!(await mediaIndexEditAllowed(env, actor))) {
+      return json(403, { ok: false, error: cloudFolderAccess(actor) ? MEDIA_INDEX_EDIT_REFUSED : CLOUD_FOLDER_WRITE_REFUSED });
+    }
+    const key = cloudIndexKey(actor.licenseId, folder);
+    if (!key) return json(400, { ok: false, error: 'That folder is not in this license.' });
+    const current = await readMediaIndex(bucket, actor.licenseId, folder);
+    const merged = applyCloudIndexPatch(current, body.patch, stamp);
+    if (!merged.ok) return json(400, { ok: false, error: merged.error });
+    await bucket.put(key, new TextEncoder().encode(JSON.stringify(merged.index)), { httpMetadata: { contentType: 'application/json' } });
+    return json(200, { ok: true, folder, index: merged.index });
   }
 
   if (body.action === 'daily-approve' || body.action === 'daily-reject') {

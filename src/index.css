@@ -20691,3 +20691,20 @@ a.plan-pick {
   margin-left: 8px;
   font-size: 0.8rem;
 }
+
+/* Networked Media Console folders: Cloud events grouping and the one-time device send. */
+.cloud-events { display: grid; gap: 10px; margin: 10px 0; padding: 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.18); }
+.cloud-events h4 { margin: 0; }
+.cloud-events__grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.cloud-events__tile { display: grid; gap: 4px; padding: 6px; border-radius: 10px; border: 2px solid transparent; background: #fffdf7; color: #1f1f1f; cursor: pointer; font-size: 0.75rem; }
+.cloud-events__tile.is-on { border-color: #6a3fb5; }
+.cloud-events__tile input { justify-self: start; }
+.cloud-events__tile img, .cloud-events__thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: #2b2b2b; display: block; }
+.cloud-events__tile span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cloud-events__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cloud-event { display: grid; gap: 6px; border-radius: 10px; padding: 10px; border: 1px solid rgba(255, 255, 255, 0.18); }
+.cloud-event label { display: grid; gap: 2px; font-size: 0.85rem; }
+.cloud-events__strip { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.cloud-events__strip li { display: grid; gap: 2px; width: 88px; font-size: 0.7rem; }
+.cloud-events__strip img { width: 88px; height: 88px; object-fit: cover; border-radius: 6px; }
+.saver-migrate { display: grid; gap: 8px; margin: 10px 0; padding: 12px; border-radius: 12px; border: 1px dashed rgba(255, 255, 255, 0.35); }

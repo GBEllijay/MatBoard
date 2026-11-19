@@ -20,8 +20,11 @@ function snapshotHome(cloudBound: boolean): GymHomeId {
   });
 }
 
-/** One sentence naming the gallery the slideshow is using. */
-export function PlayingFromLine() {
+export const PLAYING_FROM_NETWORKED =
+  'Playing from Advantage Cloud. Gallery, Pro Shop, and Events show the same items on every signed-in phone, computer, and TV.';
+
+/** One sentence naming the gallery the slideshow is using. `cloudBacked`: the top folders are the Cloud folders. */
+export function PlayingFromLine({ cloudBacked = false }: { cloudBacked?: boolean } = {}) {
   const [cloudBound, setCloudBound] = useState(false);
   const cloudOn = useAdvantageCloudOn();
   const home = useSyncExternalStore(
@@ -47,5 +50,5 @@ export function PlayingFromLine() {
       cancel = true;
     };
   }, []);
-  return <p className="playing-from">{playingFromCopy(home, cloudOn)}</p>;
+  return <p className="playing-from">{cloudBacked ? PLAYING_FROM_NETWORKED : playingFromCopy(home, cloudOn)}</p>;
 }
