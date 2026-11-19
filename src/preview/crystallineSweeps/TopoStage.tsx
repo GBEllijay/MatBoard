@@ -12,6 +12,18 @@ import {
   EXAMPLE_SELF_SWEEPS,
   type CompareFactors,
 } from './overlay.ts';
+import {
+  BRANCH_SEGMENTS,
+  XRAY_FRONT_ALPHA,
+  branchArcs,
+  branchStroke,
+  hitBranch,
+  nextBranchSelection,
+  segmentDepth,
+  withAlpha,
+  type BranchHit,
+  type D8Branch,
+} from './branches.ts';
 import { assignDrillCells, barycentric, classifyTap, connectionLayout, labelVisible, midpointQuarters, pointToSegment, screenSides } from './demoLinks.ts';
 import {
   FOCUS_FRAME_ZOOM,
@@ -69,7 +81,15 @@ type Props = {
   separateLabels?: boolean;
   /** chips is the default factor buttons. select is a compact face dropdown for the Instructor D12. */
   legend?: 'chips' | 'select';
+  /** Technique-tree branches drawn through the inside of the diamond. Omitted or empty leaves the D8 unchanged. */
+  branches?: readonly D8Branch[];
+  /** Fades the front faces so the inside shows. Always on while branches show. */
+  xray?: boolean;
+  /** Fired when a branch is tapped, and with null when it is cleared. */
+  onBranchTap?: (branch: D8Branch | null) => void;
 };
+
+const NO_BRANCHES: readonly D8Branch[] = [];
 
 type Proj = {
   index: number;
@@ -80,13 +100,14 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill, onEmptyTile, onZoom, meshHidden = false, zoomCommand = null, fitZoom = false, separateLabels = false, legend = 'chips' }: Props) {
+export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill, onEmptyTile, onZoom, meshHidden = false, zoomCommand = null, fitZoom = false, separateLabels = false, legend = 'chips', branches = NO_BRANCHES, xray = false, onBranchTap }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
   const [paused, setPaused] = useState(
     () => !spin || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches),
   );
+  const [branchSel, setBranchSel] = useState(-1);
   const [labelView, setLabelView] = useState({ zoom: REST_ZOOM, drilledFace: -1, frontFace: -1, namesHidden: false });
   const view = useRef({
     rx: 0.28,
@@ -134,6 +155,13 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
     fitZoom: false,
     separateLabels: false,
     anchor: [0, 0, 0] as Vec,
+    branches: NO_BRANCHES as readonly D8Branch[],
+    xray: false,
+    arcs: [] as Float64Array[],
+    arcFor: null as null | { branches: readonly D8Branch[]; relief: number },
+    branchHits: [] as BranchHit[],
+    branchSel: -1,
+    selectBranch: (_index: number) => {},
     api: null as null | {
       grow: (target: string) => void
       enter: (target: string, corners: [Vec, Vec, Vec]) => void
@@ -158,6 +186,15 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
   view.current.onZoom = onZoom;
   view.current.fitZoom = fitZoom;
   view.current.separateLabels = separateLabels;
+  view.current.branches = branches;
+  view.current.xray = xray;
+  view.current.selectBranch = (index) => {
+    const next = index >= 0 && index < branches.length ? index : -1;
+    view.current.branchSel = next;
+    setBranchSel(next);
+    onBranchTap?.(next >= 0 ? branches[next] : null);
+  };
+  if (view.current.branchSel >= branches.length) view.current.branchSel = -1;
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -416,7 +453,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
       const lightLength = Math.hypot(...light) || 1;
       const lit = light.map((value) => value / lightLength) as Vec;
       const projected: Proj[] = [];
-      const polys: { index: number; points: [number, number][]; z: number; light: number; front: boolean; shade: number; layer: 'base' | 'self' | 'opponent' }[] = [];
+      const polys: { index: number; points: [number, number][]; z: number; light: number; front: boolean; shade: number; layer: 'base' | 'self' | 'opponent' | 'branch'; branch?: number }[] = [];
       const comparing = state.comparison;
       const paired = state.pair;
       const sweepsOpen = comparing && !paired && !state.compareFactors && state.focus >= 0 && model.faces[state.focus]?.id === 'sweeps';
@@ -667,10 +704,55 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
           polys.push({ index, points: item.screen, z: item.z, light: 0.5 + 0.5 * Math.max(0, shade), front: item.front, shade, layer: 'base' });
         }
       });
+      const showBranches = !paired && !comparing && state.branches.length > 0;
+      const xrayOn = !paired && !comparing && (state.xray || showBranches);
+      state.branchHits.length = 0;
+      if (showBranches) {
+        if (!state.arcFor || state.arcFor.branches !== state.branches || state.arcFor.relief !== state.relief) {
+          state.arcs = branchArcs(model, state.branches, state.relief, BRANCH_SEGMENTS);
+          state.arcFor = { branches: state.branches, relief: state.relief };
+        }
+        state.arcs.forEach((arc, branch) => {
+          let prev: Vec | null = null;
+          let prevScreen: [number, number] | null = null;
+          for (let i = 0; i + 2 < arc.length; i += 3) {
+            const point = rot([arc[i], arc[i + 1], arc[i + 2]]);
+            const flat = screen(point);
+            if (prev && prevScreen) {
+              polys.push({ index: -1, points: [prevScreen, flat], z: segmentDepth(prev[2], point[2]), light: 0, front: false, shade: 0, layer: 'branch', branch });
+              state.branchHits.push({ branch, a: prevScreen, b: flat });
+            }
+            prev = point;
+            prevScreen = flat;
+          }
+        });
+      }
+      stage.dataset.branches = showBranches ? String(state.branches.length) : '0';
+      stage.dataset.xray = xrayOn ? 'on' : 'off';
+      stage.dataset.branchSelected = showBranches && state.branchSel >= 0 ? (state.branches[state.branchSel]?.id ?? '') : '';
+      if (showBranches && state.branchHits.length) {
+        const mid = state.branchHits[Math.floor(BRANCH_SEGMENTS / 2)];
+        if (mid) stage.dataset.branchProbe = `${((mid.a[0] + mid.b[0]) / 2).toFixed(1)},${((mid.a[1] + mid.b[1]) / 2).toFixed(1)}`;
+      } else delete stage.dataset.branchProbe;
       state.projected = projected;
       if (!paired) context.clearRect(0, 0, state.width, state.height);
       polys.sort((a, b) => a.z - b.z);
       for (const poly of polys) {
+        if (poly.layer === 'branch') {
+          const chosen = poly.branch === state.branchSel;
+          const stroke = branchStroke(poly.z, chosen);
+          const dim = state.branchSel >= 0 && !chosen ? 0.35 : 1;
+          context.beginPath();
+          context.moveTo(poly.points[0][0], poly.points[0][1]);
+          context.lineTo(poly.points[1][0], poly.points[1][1]);
+          context.setLineDash([]);
+          context.lineCap = 'round';
+          context.strokeStyle = chosen ? `rgba(255,210,122,${stroke.alpha})` : `rgba(190,245,255,${stroke.alpha * dim})`;
+          context.lineWidth = stroke.width;
+          context.stroke();
+          context.lineCap = 'butt';
+          continue;
+        }
         const tile = poly.index >= 0 ? model.tiles[poly.index] : undefined;
         const bow =
           state.style === 'curved' &&
@@ -710,8 +792,10 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
         else if (!tile || !model.faces[tile.faceIndex]?.moves.length) fill = `rgba(70,80,100,${0.25 + 0.3 * poly.shade})`;
         else if (!tile.move || tile.offset == null) fill = `rgba(24,60,90,${0.16 + 0.16 * Math.max(0, poly.shade)})`;
         else fill = toneFill(tileToneFor(tile.move.id, tile.faceId), k, chosen, state.hue);
-        context.fillStyle = fill;
+        const faded = xrayOn && poly.layer === 'base' && poly.front;
+        context.fillStyle = faded ? withAlpha(fill, XRAY_FRONT_ALPHA) : fill;
         context.fill();
+        if (faded) context.globalAlpha = 0.4;
         const unrated = poly.layer === 'base' && Boolean(tile?.move) && tile?.offset == null;
         context.setLineDash(poly.layer === 'opponent' || unrated ? [5, 3] : []);
         context.strokeStyle =
@@ -723,6 +807,7 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
         context.lineWidth = chosen ? 2.2 : poly.layer === 'opponent' ? 1.3 : 0.7;
         context.stroke();
         context.setLineDash([]);
+        if (faded) context.globalAlpha = 1;
       }
       let frontIndex = -1;
       let frontScore = 0.12;
@@ -918,6 +1003,43 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
           }
         }
       }
+      if (showBranches && state.branchSel >= 0) {
+        const arc = state.arcs[state.branchSel];
+        const branch = state.branches[state.branchSel];
+        if (arc && arc.length >= 6 && branch) {
+          const ends: [Vec, string][] = [
+            [[arc[0], arc[1], arc[2]], branch.fromName],
+            [[arc[arc.length - 3], arc[arc.length - 2], arc[arc.length - 1]], branch.toName],
+          ];
+          context.font = '11px sans-serif';
+          context.textAlign = 'center';
+          for (const [tip, name] of ends) {
+            const at = screen(rot(tip));
+            context.setLineDash([]);
+            context.beginPath();
+            context.arc(at[0], at[1], 11, 0, Math.PI * 2);
+            context.fillStyle = 'rgba(255,210,122,.22)';
+            context.fill();
+            context.strokeStyle = '#ffd27a';
+            context.lineWidth = 2.4;
+            context.stroke();
+            context.beginPath();
+            context.arc(at[0], at[1], 3.5, 0, Math.PI * 2);
+            context.fillStyle = '#fff4d6';
+            context.fill();
+            const text = name.slice(0, 20);
+            const width = Math.max(44, text.length * 6.5 + 10);
+            const y = at[1] - 24;
+            context.fillStyle = 'rgba(7,19,36,.92)';
+            context.fillRect(at[0] - width / 2, y - 9, width, 17);
+            context.strokeStyle = 'rgba(255,210,122,.8)';
+            context.lineWidth = 1;
+            context.strokeRect(at[0] - width / 2, y - 9, width, 17);
+            context.fillStyle = '#fff4d6';
+            context.fillText(text, at[0], y + 4);
+          }
+        }
+      }
       if (comparing && sweepsOpen && state.selected >= 0 && state.links.length && !state.grown.length) {
         const anchor = projected.find((item) => item.index === state.selected);
         if (anchor) {
@@ -1011,6 +1133,12 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
       observer?.disconnect();
     };
   }, [model]);
+
+  useEffect(() => {
+    if (view.current.branchSel < 0) return;
+    view.current.branchSel = -1;
+    setBranchSel(-1);
+  }, [branches]);
 
   useEffect(() => {
     view.current.pendingPath = [...drillPath];
@@ -1191,6 +1319,13 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
           }
           const rect = event.currentTarget.getBoundingClientRect();
           const point: [number, number] = [event.clientX - rect.left, event.clientY - rect.top];
+          if (state.branches.length && !state.comparison && !state.pair && !state.activeScreen) {
+            const hit = hitBranch(point, state.branchHits);
+            if (hit >= 0 || state.branchSel >= 0) {
+              state.selectBranch(nextBranchSelection(state.branchSel, hit));
+              return;
+            }
+          }
           const active = state.activeScreen;
           if (active && inTri(point, active[0], active[1], active[2])) {
             const now = performance.now();
@@ -1326,6 +1461,11 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
           ))}
         </div>
       </div>
+      {branches.length && branchSel >= 0 && branches[branchSel] ? (
+        <p className="topo-branch-names" data-branch-names="">
+          {branches[branchSel].fromName} → {branches[branchSel].toName}
+        </p>
+      ) : null}
       {chrome === 'full' ? (
       <>
       <div className="topo-controls">
