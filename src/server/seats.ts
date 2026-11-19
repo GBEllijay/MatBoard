@@ -272,13 +272,21 @@ export async function handleSeatAccept(
     }
   } else {
     const short = parseShortSeatInvite(invite);
-    row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(short?.sid ?? invite).first<SeatRow>();
-    // A short code (/i/<code>) must carry the seat's current nonce. A bare id works as before.
-    if (!row || (short && (!row.inviteNonce || !timingSafeEqual(row.inviteNonce, short.nonce)))) {
-      return json(400, { ok: false, error: 'This invite is not valid.' });
-    }
-    if (short && row.inviteExpiresAt && Date.parse(row.inviteExpiresAt) <= stamp.getTime()) {
-      return json(400, { ok: false, error: 'This invite has expired. Ask the owner for a new link.' });
+    if (short) {
+      // Short code (/i/<code>): the seat's current nonce is the credential.
+      row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ?`).bind(short.sid).first<SeatRow>();
+      if (!row || !row.inviteNonce || !timingSafeEqual(row.inviteNonce, short.nonce)) {
+        return json(400, { ok: false, error: 'This invite is not valid.' });
+      }
+      if (row.inviteExpiresAt && Date.parse(row.inviteExpiresAt) <= stamp.getTime()) {
+        return json(400, { ok: false, error: 'This invite has expired. Ask the owner for a new link.' });
+      }
+    } else {
+      // A bare string is only a credential for a legacy device-made seat, whose invite token is its
+      // seat id (registered by /api/seats/sync). A server-issued seat needs its signed invite or short
+      // code: its id alone (readable inside any old link) must not skip the expiry and reset checks.
+      row = await db.prepare(`SELECT ${SEAT_COLUMNS} FROM seats WHERE id = ? AND legacy = 1`).bind(invite).first<SeatRow>();
+      if (!row) return json(400, { ok: false, error: 'This invite is not valid.' });
     }
   }
   if (row.revokedAt || row.status === 'revoked') return json(403, { ok: false, error: 'This seat was revoked.' });
