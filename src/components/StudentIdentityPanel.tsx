@@ -75,7 +75,7 @@ export function StudentIdentityPanel({ connected }: { connected: boolean }) {
               Copy student ID
             </button>
           </div>
-          {qr ? <img src={qr} alt="QR for your student ID" width={180} height={180} /> : null}
+          {qr ? <img className="qr-code" src={qr} alt="QR for your student ID" width={260} height={260} /> : null}
         </>
       ) : (
         <button type="button" className="ink-btn" onClick={show}>

@@ -15,6 +15,7 @@
  */
 
 import { readGymName } from './gymName.ts';
+import { SHORT_INVITE_PATH_PREFIX, shortCodeForSignedSeatInvite } from './seatShortInvite.ts';
 import { FREE_INSTRUCTOR_SEATS, instructorSeatAllowance } from './proBundleMath.ts';
 import { legacySeatBlocked } from './seatSunset.ts';
 import { entitlementSnapshot } from './entitlement.ts';
@@ -327,9 +328,14 @@ export function isInviteEmail(value: string): boolean {
  * mode with the invite filled in: the instructor enters the invited email and picks a password,
  * which turns the seat on and makes the email + password login in one step.
  * Older `/instructors?invite=` links are sent to the same screen (App.tsx).
+ * A signed seat invite becomes `/i/<code>`, which App.tsx turns into `/account?invite=<code>`.
  */
 export function instructorInviteLink(token: string, origin: string): string {
   const base = origin.replace(/\/$/, '');
+  // Server-issued seats get the short /i/<code> link so the QR stays readable by a phone camera.
+  // Legacy device-made tokens keep the long /account?invite= link (seatShortInvite.ts).
+  const short = shortCodeForSignedSeatInvite(token);
+  if (short) return `${base}${SHORT_INVITE_PATH_PREFIX}${short}`;
   const params = new URLSearchParams({ invite: token });
   return `${base}/account?${params.toString()}`;
 }

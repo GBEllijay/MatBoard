@@ -188,7 +188,7 @@ export function AcademyPathwayPanel() {
             {row.pathway.folderName}
             {row.pathway.gymName ? ` · ${row.pathway.gymName}` : ''}
           </p>
-          <img src={row.qr} alt={`QR for the ${providerLabel(row.pathway.provider)} academy folder`} width={180} height={180} />
+          <img className="qr-code" src={row.qr} alt={`QR for the ${providerLabel(row.pathway.provider)} academy folder`} width={260} height={260} />
           <label>
             Academy link
             <input aria-label={`${providerLabel(row.pathway.provider)} academy link`} readOnly value={row.url} />

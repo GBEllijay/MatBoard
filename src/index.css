@@ -2311,11 +2311,18 @@ span.role-plan__mark {
   gap: 0.55rem;
 }
 
-.invite-link__qr {
-  width: 180px;
-  height: 180px;
+/* QR codes on phones. The image carries its own 4-module white quiet zone (lib/qr.ts), so the
+   code is shown square-cornered and unclipped: no radius, padding or overflow cuts into it. */
+.invite-link__qr,
+.qr-code {
+  display: block;
+  width: min(260px, 100%);
+  height: auto;
+  aspect-ratio: 1;
   background: #fff;
-  border-radius: 12px;
+  border-radius: 0;
+  overflow: visible;
+  justify-self: start;
 }
 
 /* Shared belt headers. Cloth colors are the existing belt-rail accents. */
