@@ -117,7 +117,7 @@ test('one academy-wide code: stable, reusable by every instructor, never uses a 
   const again = await issue();
   const keyOf = (invite: string) => JSON.parse(Buffer.from(invite.split('.')[1], 'base64url').toString()).key as string;
   assert.equal(keyOf(again), keyOf(first), 'showing the QR again (another device) is the same code');
-  const keyObjects = () => [...bucket.objects.keys()].filter((key) => key.includes('coach-connect'));
+  const keyObjects = () => [...bucket.objects.keys()].filter((key) => key.includes('coach-connect') && !key.includes('/coach-connect/links/'));
   assert.deepEqual(keyObjects(), [`groups/${LICENSE}/coach-connect/current.json`]);
   assert.equal([...bucket.objects.keys()].some((key) => /seat/i.test(key)), false, 'no seat record');
 

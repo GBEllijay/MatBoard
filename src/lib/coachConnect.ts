@@ -20,13 +20,16 @@ import { saveCoachVia } from './instructorAssessmentClient.ts';
 
 export const COACH_CONNECT_PARAM = 'coach';
 export const COACH_CONNECT_LINK_KEY = 'matboard.coachConnect.link.v1';
+const SHORT_RE = /^cc_[A-Za-z0-9_-]{8,80}\/[A-Za-z0-9_-]{22}$/;
+const SHORT_CODE_RE = /^[A-Za-z0-9_-]{8,80}\/[A-Za-z0-9_-]{22}$/;
 const SIGNED_RE = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
 type Store = { getItem(key: string): string | null; setItem(key: string, value: string): void; removeItem?(key: string): void };
 
 /** The link an instructor opens or scans. Lands on Connect to my academy. */
-export function coachConnectUrl(invite: string, origin: string): string {
+export function coachConnectUrl(invite: string, origin: string, shortCode?: string): string {
   const root = origin.trim().replace(/\/$/, '');
+  if (shortCode && SHORT_CODE_RE.test(shortCode)) return `${root}/c/${shortCode}`;
   return `${root}/student/connections?${COACH_CONNECT_PARAM}=${encodeURIComponent(invite)}`;
 }
 
@@ -36,12 +39,23 @@ export function parseCoachConnectInput(value: string): string | null {
   if (!text) return null;
   try {
     const url = new URL(text, 'https://advantage.local');
+    const short = url.pathname.match(/^\/c\/([A-Za-z0-9_-]{8,80}\/[A-Za-z0-9_-]{22})\/?$/);
+    if (short) return `cc_${short[1]}`;
     const token = url.searchParams.get(COACH_CONNECT_PARAM);
     if (token && SIGNED_RE.test(token)) return token;
   } catch {
     /* a bare token still gets a chance */
   }
-  return SIGNED_RE.test(text) ? text : null;
+  return SIGNED_RE.test(text) || SHORT_RE.test(text) ? text : null;
+}
+
+/** True for the short `/c/<license>/<id>` link (the coach connect QR since Nov 18). */
+export function isShortCoachConnectLink(link: string): boolean {
+  try {
+    return /^\/c\/[A-Za-z0-9_-]{8,80}\/[A-Za-z0-9_-]{22}\/?$/.test(new URL(link, 'https://advantage.local').pathname);
+  } catch {
+    return false;
+  }
 }
 
 export type SavedCoachConnect = { link: string; gymName: string; savedAt: number };
@@ -102,7 +116,7 @@ export async function issueCoachConnect(
       return { ok: false, error: typeof body.error === 'string' ? body.error : 'Could not make the coach connect QR.' };
     }
     const saved: SavedCoachConnect = {
-      link: coachConnectUrl(body.invite, input.origin),
+      link: coachConnectUrl(body.invite, input.origin, typeof body.shortCode === 'string' ? body.shortCode : undefined),
       gymName: typeof body.gymName === 'string' ? body.gymName : input.gymName,
       savedAt: Date.now(),
     };
@@ -135,7 +149,7 @@ export async function acceptCoachConnect(
     if (!membership) return { ok: false, error: 'This coach connect link is not valid.' };
     // Who showed the code. The signed code is kept as proof for card shares and Send to my instructor.
     const viaInstructorId = typeof body.viaInstructorId === 'string' ? body.viaInstructorId : null;
-    saveCoachVia(storage, { gym: body.gym, gymName, viaInstructorId, proof: invite });
+    saveCoachVia(storage, { gym: body.gym, gymName, viaInstructorId, proof: typeof body.invite === 'string' ? body.invite : invite });
     return { ok: true, gym: body.gym, gymName, membership, viaInstructorId };
   } catch {
     return { ok: false, error: 'Could not reach Advantage Cloud. Try again when you are online.' };
@@ -162,7 +176,7 @@ export async function fetchCurrentCoachConnect(
       return {
         ok: true,
         saved: {
-          link: coachConnectUrl(body.invite, input.origin),
+          link: coachConnectUrl(body.invite, input.origin, typeof body.shortCode === 'string' ? body.shortCode : undefined),
           gymName: typeof body.gymName === 'string' ? body.gymName : '',
           savedAt: Date.now(),
         },

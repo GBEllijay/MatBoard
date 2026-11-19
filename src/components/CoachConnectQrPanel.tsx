@@ -14,6 +14,8 @@ import {
   fetchCurrentCoachConnect,
   issueCoachConnect,
   readSavedCoachConnect,
+  isShortCoachConnectLink,
+  COACH_CONNECT_LINK_KEY,
   type SavedCoachConnect,
 } from '../lib/coachConnect';
 import { entitlementSnapshot } from '../lib/entitlement';
@@ -57,11 +59,19 @@ export function CoachConnectQrPanel({
 
   // Seat: read the academy's current code. Owner with nothing saved here: pick up the code made on another device.
   useEffect(() => {
-    if (!seatViewer && (!ownerCloud || saved)) return;
+    // An owner phone that saved the older long link picks up the short /c/ link once (read only).
+    if (!seatViewer && (!ownerCloud || (saved && isShortCoachConnectLink(saved.link)))) return;
     let alive = true;
     void fetchCurrentCoachConnect({ origin: window.location.origin }).then((result) => {
       if (!alive) return;
       if (result.ok) {
+        if (!seatViewer) {
+          try {
+            localStorage.setItem(COACH_CONNECT_LINK_KEY, JSON.stringify(result.saved));
+          } catch {
+            /* the QR still shows this time */
+          }
+        }
         setSaved(result.saved);
         setSeatState('ok');
         return;

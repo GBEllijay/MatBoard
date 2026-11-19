@@ -101,6 +101,56 @@ async function readCurrentKey(bucket: InboxBucket, license: string): Promise<str
   return (await readCurrent(bucket, license))?.key ?? null;
 }
 
+/** Opaque, deterministic 128-bit lookup id for this exact signed claim (including gym/key/via).
+ * The stored value stays the full signed invite: redirects and pasted links use the existing
+ * signature, current-key and instructor-attribution checks. No new D1 table or key rotation.
+ */
+export function coachConnectShortPath(license: string, id: string): string {
+  return `groups/${license}/coach-connect/links/${id}.json`;
+}
+
+const SHORT_ID_RE = /^[A-Za-z0-9_-]{22}$/;
+
+/** `<license>/<id>` from a /c/ short link, or null. */
+export function parseCoachConnectShortCode(code: string): { license: string; id: string } | null {
+  const match = code.trim().match(/^([A-Za-z0-9_-]{8,80})\/([A-Za-z0-9_-]{22})$/);
+  return match && LICENSE_RE.test(match[1]) && SHORT_ID_RE.test(match[2]) ? { license: match[1], id: match[2] } : null;
+}
+
+async function saveShortLink(bucket: InboxBucket, claim: CoachConnectClaim, invite: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(claim)));
+  const id = btoa(String.fromCharCode(...new Uint8Array(digest).slice(0, 16)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  const path = coachConnectShortPath(claim.gym, id);
+  if (!(await bucket.get(path))) {
+    await bucket.put(path, JSON.stringify({ invite }), { httpMetadata: { contentType: 'application/json' } });
+  }
+  return `${claim.gym}/${id}`;
+}
+
+export async function readCoachConnectShortInvite(bucket: InboxBucket, code: string): Promise<string | null> {
+  const parsed = parseCoachConnectShortCode(code);
+  if (!parsed) return null;
+  const object = await bucket.get(coachConnectShortPath(parsed.license, parsed.id));
+  if (!object) return null;
+  try {
+    const row = JSON.parse(await objectText(object)) as { invite?: unknown };
+    return typeof row.invite === 'string' && row.invite.length <= 4000 ? row.invite : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Read-only HTTP redirect; it never joins an academy or mints access. */
+export async function handleCoachConnectShortRedirect(request: Request, env: CoachConnectEnv, code: string): Promise<Response> {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed.', { status: 405 });
+  const invite = env.GYM_MEDIA ? await readCoachConnectShortInvite(env.GYM_MEDIA, code) : null;
+  if (!invite) return new Response('This coach connect link is not valid.', { status: 404, headers: { 'cache-control': 'no-store' } });
+  const target = new URL('/student/connections', request.url);
+  target.searchParams.set('coach', invite);
+  return new Response(null, { status: 302, headers: { location: target.toString(), 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' } });
+}
+
 /**
  * An instructor seat on this gym, not locked, whose academy has Advantage Cloud.
  * Seats only read the current code. They never make or replace it.
@@ -220,7 +270,8 @@ export async function handleCoachConnect(
     const via = viaForClaims(claims);
     if (via) claim.via = via;
     const invite = await signJson(material.kid, claim, material.privateJwk);
-    return json(200, { ok: true, invite, gym: license, gymName: current.name, owner: !isSeat, via: via ?? null });
+    const shortCode = await saveShortLink(bucket, claim, invite);
+    return json(200, { ok: true, invite, shortCode, gym: license, gymName: current.name, owner: !isSeat, via: via ?? null });
   }
 
   if (body.action === 'issue' || body.action === 'rotate') {
@@ -246,18 +297,20 @@ export async function handleCoachConnect(
     }
     const claim: CoachConnectClaim = { typ: 'coach-connect', v: 1, gym: claims.sub, name, key, via: OWNER_INSTRUCTOR_ID };
     const invite = await signJson(material.kid, claim, material.privateJwk);
-    return json(200, { ok: true, invite, gym: claim.gym, gymName: claim.name, rotated, via: OWNER_INSTRUCTOR_ID });
+    const shortCode = await saveShortLink(bucket, claim, invite);
+    return json(200, { ok: true, invite, shortCode, gym: claim.gym, gymName: claim.name, rotated, via: OWNER_INSTRUCTOR_ID });
   }
 
   if (body.action === 'accept') {
-    const invite = typeof body.invite === 'string' ? body.invite.trim() : '';
+    const rawInvite = typeof body.invite === 'string' ? body.invite.trim() : '';
+    const invite = rawInvite.startsWith('cc_') ? await readCoachConnectShortInvite(bucket, rawInvite.slice(3)) ?? '' : rawInvite;
     if (!invite) return json(400, { ok: false, error: 'This coach connect link is not valid.' });
     const claim = readCoachConnectClaim(await readSignedJson(invite, keys));
     if (!claim) return json(400, { ok: false, error: 'This coach connect link is not valid.' });
     if ((await readCurrentKey(bucket, claim.gym)) !== claim.key) {
       return json(400, { ok: false, error: 'This coach connect QR was replaced. Ask the gym owner for the current one.' });
     }
-    return json(200, { ok: true, gym: claim.gym, gymName: claim.name, viaInstructorId: claim.via ?? null });
+    return json(200, { ok: true, gym: claim.gym, gymName: claim.name, viaInstructorId: claim.via ?? null, ...(invite !== rawInvite ? { invite } : {}) });
   }
 
   return json(400, { ok: false, error: 'Unknown action.' });
