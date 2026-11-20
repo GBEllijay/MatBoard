@@ -14,6 +14,7 @@ import { EMPTY_JOURNAL, INDEX_CARDS_STORAGE_KEY, NEUTRAL_NOTE } from '../lib/ind
 import { GLOSSARY_ADDITIONS_KEY } from '../lib/glossaryAdditions.ts';
 import { CAMERA_Z, LIVE_ZOOM_MAX, MESH_RADIUS, NEAR_GAP, projectFit } from '../preview/crystallineSweeps/labels.ts';
 import { D8_STAGE_DEFAULT, D8_STAGE_HEIGHT_KEY, d8FaceGrids, d8StageMax } from './LiveD8.tsx';
+import { activateTopoFace } from '../preview/crystallineSweeps/TopoStage.tsx';
 import { D8GridPreview, d8GridSampleFile } from './D8GridPreview.tsx';
 import { IndexTermText } from './IndexTermLink.tsx';
 import { IndexCardProvider } from './IndexCardHost.tsx';
@@ -39,6 +40,7 @@ installGlobal('localStorage', view.localStorage);
 installGlobal('sessionStorage', view.sessionStorage);
 installGlobal('HTMLElement', view.HTMLElement);
 installGlobal('HTMLInputElement', view.HTMLInputElement);
+installGlobal('HTMLSelectElement', view.HTMLSelectElement);
 installGlobal('HTMLTextAreaElement', view.HTMLTextAreaElement);
 installGlobal('HTMLFormElement', view.HTMLFormElement);
 installGlobal('SVGElement', view.SVGElement);
@@ -81,7 +83,15 @@ function typeInto(input: HTMLInputElement, value: string) {
 }
 
 function focusFace(host: HTMLElement, id: string) {
-  click(host.querySelector(`[data-face-button="${id}"]`));
+  act(() => {
+    activateTopoFace(host, id);
+  });
+}
+
+function faceSelect(host: HTMLElement): HTMLSelectElement {
+  const select = host.querySelector('[data-testid="topo-face-select"]');
+  assert.ok(select instanceof HTMLSelectElement);
+  return select;
 }
 
 function seedJournal() {
@@ -738,6 +748,63 @@ test('Add is a gold primary action and Cancel is a quieter outline, apart from t
   assert.equal(add.getAttribute('type'), 'submit');
   assert.equal(cancel.getAttribute('type'), 'button');
   assert.equal(Boolean(chips.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING), true);
+  act(() => mounted.root.unmount());
+  mounted.host.remove();
+});
+
+test('the live D8 uses one face menu, selecting a face opens it, and Reset view returns to all faces', () => {
+  localStorage.clear();
+  resetIndexCardStoreForTests();
+  const mounted = mount(
+    <IndexCardProvider>
+      <LiveD8 />
+    </IndexCardProvider>,
+  );
+  const host = mounted.host;
+  const select = faceSelect(host);
+  assert.equal(host.querySelectorAll('.topo-legend button').length, 0);
+  const options = [...select.querySelectorAll('option')].map((option) => option.textContent ?? '');
+  assert.equal(options[0], 'All 8 faces');
+  assert.equal(select.value, '');
+  const faces = [
+    'Guard/Control',
+    'Passing',
+    'Sweeps',
+    'Takedowns',
+    'Escapes/Defense',
+    'Submissions',
+    'Conditioning',
+    'Mindset',
+  ];
+  assert.equal(options.length, 9);
+  faces.forEach((name, index) => {
+    assert.match(options[index + 1], new RegExp(`^${index + 1}\\. ${name.replace('/', '\\/')} \\(\\d+\\)$`));
+  });
+  assert.match(host.textContent ?? '', /Tap a face, or pick one from the menu/);
+  assert.equal(host.querySelector('[aria-label="Eight faces"]') != null, true);
+
+  focusFace(host, 'sweeps');
+  assert.equal(faceSelect(host).value, String(faces.indexOf('Sweeps')));
+  assert.equal(host.querySelector('[data-testid="face-heading"]')?.textContent, 'Sweeps');
+  assert.ok(host.querySelector('[data-testid="face-card-list"][aria-label="Sweeps cards"]'));
+  assert.equal(host.querySelector('[aria-label="Eight faces"]'), null);
+
+  act(() => {
+    activateTopoFace(host, '');
+  });
+  assert.equal(faceSelect(host).value, '');
+  assert.ok(host.querySelector('[aria-label="Eight faces"]'));
+  assert.equal(host.querySelector('[data-testid="face-card-list"]'), null);
+
+  focusFace(host, 'guard-control');
+  assert.equal(faceSelect(host).value, '0');
+  assert.equal(host.querySelector('[data-testid="face-heading"]')?.textContent, 'Guard/Control');
+  assert.ok(host.querySelector('[data-testid="face-card-list"][aria-label="Guard/Control cards"]'));
+  act(() => {
+    (host.querySelector('.topo-reset') as HTMLButtonElement).click();
+  });
+  assert.equal(faceSelect(host).value, '');
+  assert.ok(host.querySelector('[aria-label="Eight faces"]'));
   act(() => mounted.root.unmount());
   mounted.host.remove();
 });

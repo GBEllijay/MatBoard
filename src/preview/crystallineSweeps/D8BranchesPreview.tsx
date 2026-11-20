@@ -102,6 +102,7 @@ export function D8BranchesPreview() {
             hue={1}
             fitZoom
             separateLabels
+            legend="select"
             branches={branches}
             xray={xray}
             onBranchTap={setTapped}
