@@ -80,6 +80,7 @@ import './student/progressPages.css';
 import './student/beltWeave.css';
 import './student/journalPages.css';
 import './student/advantageJournal.css';
+import './student/competeNavy.css';
 import { StudentFaqPage } from './Faq';
 import { ProfileReportPage } from './student/ProfileReport';
 import { StudentLicenseClaimPage } from './student/StudentLicenseClaim';

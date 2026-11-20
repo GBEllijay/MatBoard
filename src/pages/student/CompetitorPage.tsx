@@ -105,7 +105,7 @@ export function CompetitorPage() {
   if (legacyAssessment) return <Navigate to={legacyAssessment} replace />;
 
   return (
-    <main className="student student-frame student--arena">
+    <main className="student student-frame student--arena student--compete">
       <StudentMarks />
       <div className="arena-scroll">
         <div className="arena-column">

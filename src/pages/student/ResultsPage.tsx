@@ -159,7 +159,7 @@ export function ResultsPage() {
   });
 
   return (
-    <main className="student student-frame student--arena">
+    <main className="student student-frame student--arena student--compete">
       <StudentMarks />
       <LeatherHeader title="Results" />
       <div className="student-paper">

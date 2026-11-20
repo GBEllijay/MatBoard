@@ -1,0 +1,150 @@
+/**
+ * Competitor & tournament working screens (Upcoming tournaments, Results).
+ * Matte navy / journal-card paint, same tokens as the hub menu paint and
+ * Advantage journal cards. Weigh-ins and Calendar keep their own styles.
+ * The notebook snippet on Competitor (JournalGate) stays lined paper.
+ */
+
+.student.student--arena.student--compete {
+  --arena-bg: #071422;
+  --arena-card: #0c2344;
+  --arena-fill: #102848;
+  --arena-line: #004eba;
+  --arena-text: #f5f1e8;
+  --arena-muted: #d7e6ff;
+  --arena-blue: #6ea8ff;
+  color: var(--arena-text);
+  background-color: #071422;
+  background-image:
+    radial-gradient(900px 420px at 0% -10%, rgba(34, 211, 238, 0.14), transparent 55%),
+    radial-gradient(800px 480px at 100% 0%, rgba(28, 79, 212, 0.38), transparent 50%);
+}
+
+.student.student--arena.student--compete .arena-scroll,
+.student.student--arena.student--compete .arena-hero,
+.student.student--arena.student--compete .student-paper,
+.student.student--arena.student--compete .student-sheet,
+.student.student--arena.student--compete .student-leather {
+  background-color: transparent;
+  background-image: none;
+}
+
+.student.student--arena.student--compete .arena-hero {
+  box-shadow: 0 1px 0 rgba(110, 168, 255, 0.28);
+}
+
+.student.student--arena.student--compete .arena-hero::after,
+.student.student--arena.student--compete .arena-node {
+  background: #071422;
+  border-color: #6ea8ff;
+}
+
+.student.student--arena.student--compete .arena-hero h1,
+.student.student--arena.student--compete .student-leather h1,
+.student.student--arena.student--compete h2,
+.student.student--arena.student--compete .ink__label {
+  color: #f5f1e8;
+}
+
+.student.student--arena.student--compete .student-quiet,
+.student.student--arena.student--compete .arena-kicker,
+.student.student--arena.student--compete .arena-muted {
+  color: #d7e6ff;
+}
+
+.student.student--arena.student--compete .arena-block,
+.student.student--arena.student--compete .ink:not(.arena-journal),
+.student.student--arena.student--compete .tournament-card,
+.student.student--arena.student--compete .comp-form,
+.student.student--arena.student--compete .comp-list > li,
+.student.student--arena.student--compete .comp-earlier {
+  background: #0c2344;
+  border: 1.5px solid #004eba;
+  border-radius: 18px;
+  color: #f5f1e8;
+  box-shadow: none;
+}
+
+.student.student--arena.student--compete .ink-btn,
+.student.student--arena.student--compete .student-choice,
+.student.student--arena.student--compete .assess-tap,
+.student.student--arena.student--compete .assess-link,
+.student.student--arena.student--compete .arena-rank__link,
+.student.student--arena.student--compete a.ink-btn {
+  background: #0c2344;
+  color: #f5f1e8;
+  border: 1.5px solid #004eba;
+  box-shadow: none;
+}
+
+.student.student--arena.student--compete .ink-btn--save,
+.student.student--arena.student--compete a.ink-btn.ink-btn--save,
+.student.student--arena.student--compete .arena-rank__link {
+  background: #004eba;
+  color: #f5f1e8;
+  border-color: #6ea8ff;
+  box-shadow: none;
+}
+
+.student.student--arena.student--compete .student-choice.is-on,
+.student.student--arena.student--compete .assess-tap.is-on {
+  background: #004eba;
+  color: #f5f1e8;
+  box-shadow: 0 0 0 2px #6ea8ff;
+}
+
+.student.student--arena.student--compete .ink-btn:focus-visible,
+.student.student--arena.student--compete .ink-btn--save:focus-visible,
+.student.student--arena.student--compete .student-choice:focus-visible,
+.student.student--arena.student--compete .arena-rank__link:focus-visible {
+  outline: 3px solid #6ea8ff;
+  outline-offset: 3px;
+}
+
+.student.student--arena.student--compete input:not([type='file']):not([type='checkbox']):not([type='hidden']),
+.student.student--arena.student--compete textarea,
+.student.student--arena.student--compete select {
+  background: #102848;
+  color: #f5f1e8;
+  border: 1.5px solid #004eba;
+  border-radius: 12px;
+  box-shadow: none;
+  color-scheme: dark;
+}
+
+.student.student--arena.student--compete input::placeholder,
+.student.student--arena.student--compete textarea::placeholder {
+  color: #9bb6e0;
+}
+
+/* Lined notebook snippet on Competitor stays paper with dark ink. */
+.student.student--arena.student--compete .arena-journal {
+  background-color: #f4f0e4;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    rgba(116, 158, 196, 0.62) 28px
+  );
+  color: #1c140e;
+  border: 2px solid #1c140e;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+.student.student--arena.student--compete .arena-journal,
+.student.student--arena.student--compete .arena-journal h1,
+.student.student--arena.student--compete .arena-journal h2,
+.student.student--arena.student--compete .arena-journal h3,
+.student.student--arena.student--compete .arena-journal p,
+.student.student--arena.student--compete .arena-journal .ink__label {
+  color: #1c140e;
+}
+
+.student.student--arena.student--compete .arena-journal .ink-btn,
+.student.student--arena.student--compete .arena-journal a:not(.play-exit):not(.tier-home) {
+  background-image: none;
+  background-color: rgba(244, 240, 228, 0.92);
+  color: #004eba;
+  border: 2px solid #1c140e;
+  box-shadow: none;
+}
