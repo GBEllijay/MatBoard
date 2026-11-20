@@ -150,6 +150,9 @@ export function RosterPage() {
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const fromCompetitors = searchParams.get('from') === 'competitors';
+  const fromCompetitionSuite =
+    searchParams.get('from') === 'suite' || searchParams.get('from') === 'competition';
+  const competitorPaint = fromCompetitors || fromCompetitionSuite;
   const studentRoster = isCoachStudentRoster(pathname, searchParams.get('from'));
   const coachRoster =
     !studentRoster &&
@@ -344,7 +347,7 @@ export function RosterPage() {
   );
 
   return (
-    <main className={studentRoster || coachRoster ? 'roster roster--coach' : fromCompetitors ? 'roster cms' : 'roster'}>
+    <main className={studentRoster ? 'roster roster--coach' : competitorPaint ? 'roster cms' : coachRoster ? 'roster roster--coach' : 'roster'}>
       <SubmenuMarks
         to={exitPath}
         onExit={() => {

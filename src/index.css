@@ -18497,8 +18497,8 @@ a.plan-pick {
 
 /*
   Competitor Management working screens.
-  Cream title, white actions, and blue On states — same console paint as the
-  instructor hub. Coach roster stays on the older treatment.
+  Matte navy journal cards and navy actions, same tokens as the hub menu paint.
+  Blue On states stay. Coach and Student rosters keep their own treatment.
 */
 .cms .roster__bar {
   align-items: center;
@@ -18508,28 +18508,36 @@ a.plan-pick {
   flex: 1 1 16rem;
   padding: 0.9rem 1rem 0.95rem;
   border-radius: 18px;
-  background: var(--white);
-  color: var(--white-ink);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  background: #0c2344;
+  color: #f5f1e8;
+  border: 1.5px solid #004eba;
+  box-shadow: none;
 }
 
 .cms .roster__eyebrow {
-  color: var(--logo-blue);
+  color: #6ea8ff;
 }
 
 .cms .roster__brand h1 {
-  color: var(--white-ink);
+  color: #f5f1e8;
 }
 
 .cms .btn:not(.btn--ghost):not(.btn--blue) {
-  background: var(--white);
-  color: var(--white-ink);
+  background: #0c2344;
+  color: #f5f1e8;
+  border: 1.5px solid #004eba;
+  box-shadow: none;
+}
+
+.cms .btn:not(.btn--ghost):not(.btn--blue):focus-visible {
+  outline: 3px solid #6ea8ff;
+  outline-offset: 3px;
 }
 
 .cms .btn--ghost {
   background: rgba(0, 78, 186, 0.42);
-  border-color: rgba(255, 255, 255, 0.32);
-  color: var(--ink);
+  border-color: rgba(110, 168, 255, 0.45);
+  color: #f5f1e8;
 }
 
 .cms .roster-card .btn.roster-card__checkin:not(.btn--ghost),
@@ -18540,8 +18548,20 @@ a.plan-pick {
 
 .cms .roster-card,
 .cms .plan-layer,
-.cms .ready-row {
-  border-color: rgba(255, 255, 255, 0.16);
+.cms .ready-row,
+.cms .empty-hint {
+  background: #0c2344;
+  border: 1.5px solid #004eba;
+  box-shadow: none;
+  color: #f5f1e8;
+}
+
+.cms .empty-hint__title {
+  color: #f5f1e8;
+}
+
+.cms .empty-hint__body {
+  color: #d7e6ff;
 }
 
 .cms .roster-card__photo,
@@ -18596,10 +18616,10 @@ a.plan-pick {
 .cms .sheet input,
 .cms .sheet textarea,
 .cms .roster textarea {
-  background: var(--white);
-  color: var(--white-ink);
-  color-scheme: light;
-  border: 0;
+  background: #102848;
+  color: #f5f1e8;
+  color-scheme: dark;
+  border: 1.5px solid #004eba;
 }
 
 .cms .roster__search input::placeholder,
@@ -18609,7 +18629,7 @@ a.plan-pick {
 .cms .sheet input::placeholder,
 .cms .sheet textarea::placeholder,
 .cms .roster textarea::placeholder {
-  color: #5c6370;
+  color: #9bb6e0;
 }
 
 .cms .ready-pick:focus-visible,
@@ -18618,7 +18638,51 @@ a.plan-pick {
 .cms .plan-pick:focus-visible,
 .cms .plan-chip:focus-visible,
 .cms .plan-link a:focus-visible {
-  outline-color: #fff;
+  outline-color: #6ea8ff;
+}
+
+/*
+  Dark Tournament Software chrome only (not Bright Bracket, not Kids skins).
+  Matte navy page and navy action / headline pills. Bracket slot paints stay.
+*/
+.tournament--dark:not(.tournament--kids) {
+  background-color: #071422;
+  background-image:
+    radial-gradient(90% 70% at 50% 0%, rgba(28, 79, 212, 0.28), transparent 52%),
+    linear-gradient(180deg, #0c2344 0%, #071422 48%, #050b14 100%);
+}
+
+.tournament--dark:not(.tournament--kids) .bracket-headline__pill {
+  background: #0c2344;
+  border: 1.5px solid #004eba;
+  box-shadow: none;
+}
+
+.tournament--dark:not(.tournament--kids) .bracket-headline__pill input {
+  color: #f5f1e8;
+  -webkit-text-fill-color: #f5f1e8;
+  caret-color: #f5f1e8;
+}
+
+.tournament--dark:not(.tournament--kids) .bracket-headline__pill input::placeholder {
+  color: #9bb6e0;
+  -webkit-text-fill-color: #9bb6e0;
+}
+
+.tournament--dark:not(.tournament--kids) .tournament__actions .btn:not(.btn--ghost):not(.btn--blue),
+.tournament--dark:not(.tournament--kids) .tournament__confirm .btn:not(.btn--ghost):not(.btn--blue),
+.tournament--dark:not(.tournament--kids) .tournament__tools .btn:not(.btn--ghost):not(.btn--blue) {
+  background: #0c2344;
+  color: #f5f1e8;
+  border: 1.5px solid #004eba;
+  box-shadow: none;
+}
+
+.tournament--dark:not(.tournament--kids) .tournament__fill-note {
+  background: #0c2344;
+  color: #f5f1e8;
+  border: 1.5px solid #004eba;
+  box-shadow: none;
 }
 
 .buy {

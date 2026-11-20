@@ -108,8 +108,9 @@
 }
 
 .student.student--arena.student--archive .ink-btn--save {
-  background: #ffffff;
-  color: #0e1726;
+  background: #0c2344;
+  color: #f5f1e8;
+  border: 1.5px solid #004eba;
   box-shadow: none;
 }
 
