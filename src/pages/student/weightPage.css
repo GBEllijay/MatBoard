@@ -1,0 +1,29 @@
+/**
+ * Weight page only. The empty countdown used to paint the same wording three
+ * times — a large white heading ("Set a competition weigh-in date"), a muted
+ * "Competition weigh-in" caption, and the form's "Competition weigh-in date"
+ * label — which read as doubled blue/white labels on a TV. The form keeps the
+ * single visible label. This file also restyles Add weigh-in off the hard-to-
+ * read white paper CTA onto the matte-navy / gold treatment.
+ */
+
+.student.student--weight .weight-add-btn.ink-btn.ink-btn--save {
+  background: #0c2344;
+  color: #fcc000;
+  border: 2px solid #fcc000;
+  box-shadow: none;
+  font-weight: 700;
+}
+
+@media (hover: hover) {
+  .student.student--weight .weight-add-btn.ink-btn.ink-btn--save:hover:not(:disabled) {
+    background: #132c54;
+    color: #ffd65a;
+    border-color: #ffd65a;
+  }
+}
+
+.student.student--weight .weight-add-btn.ink-btn.ink-btn--save:focus-visible {
+  outline: 3px solid #fcc000;
+  outline-offset: 3px;
+}

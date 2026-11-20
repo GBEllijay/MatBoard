@@ -24,6 +24,7 @@ import { ADD_TOURNAMENT_LABEL } from '../../lib/studentHubMenu';
 import { todayIso } from '../../lib/studentEdition';
 import { LeatherHeader, StudentMarks, useStudentFile, useStudentPath } from './chrome';
 import { Link } from 'react-router-dom';
+import './weightPage.css';
 
 export function WeightPage() {
   const to = useStudentPath();
@@ -48,7 +49,7 @@ export function WeightPage() {
   const notes = shown.filter((row) => row.note.trim());
 
   return (
-    <main className="student student-frame student--arena">
+    <main className="student student-frame student--arena student--weight">
       <StudentMarks />
       <LeatherHeader title="Weight" />
       <div className="student-paper">
@@ -133,7 +134,7 @@ export function WeightPage() {
                 <input aria-label="Weigh-in note" value={note} onChange={(event) => setNote(event.target.value)} />
               </label>
               {error ? <p role="alert">{error}</p> : null}
-              <button type="submit" className="ink-btn ink-btn--save">
+              <button type="submit" className="ink-btn ink-btn--save weight-add-btn">
                 Add weigh-in
               </button>
             </form>
@@ -184,13 +185,6 @@ function WeightCountdownBlock({
   useEffect(() => {
     setValue(countdown?.date ?? '');
   }, [countdown?.date]);
-  const label = countdown == null ? 'Set a competition weigh-in date' : countdownLabel(countdown.days);
-  const detail =
-    countdown == null
-      ? 'The countdown starts when you save a date.'
-      : countdown.source === 'tournament'
-        ? ''
-        : countdown.date;
   return (
     <div className="weight-count-block">
       {addHref ? (
@@ -202,19 +196,25 @@ function WeightCountdownBlock({
           </Link>
         </div>
       ) : null}
-      <p className="weight-count" role="status" aria-live="polite">
-        <span className="weight-count__days">{label}</span>
-        <span className="ink__label">{countdown == null ? 'Competition weigh-in' : 'Until weigh-in'}</span>
-        {countdown?.source === 'tournament' ? (
-          <span className="student-quiet weight-count__detail">
-            <span className="weight-target__name">{countdown.tournamentName}</span>
-            <span className="weight-target__date">{countdown.date}</span>
-            <span>Save a date if the weigh-in is a different day.</span>
-          </span>
-        ) : (
-          <span className="student-quiet">{detail}</span>
-        )}
-      </p>
+      {countdown == null ? (
+        <p className="student-quiet" role="status" aria-live="polite">
+          The countdown starts when you save a date.
+        </p>
+      ) : (
+        <p className="weight-count" role="status" aria-live="polite">
+          <span className="weight-count__days">{countdownLabel(countdown.days)}</span>
+          <span className="ink__label">Until weigh-in</span>
+          {countdown.source === 'tournament' ? (
+            <span className="student-quiet weight-count__detail">
+              <span className="weight-target__name">{countdown.tournamentName}</span>
+              <span className="weight-target__date">{countdown.date}</span>
+              <span>Save a date if the weigh-in is a different day.</span>
+            </span>
+          ) : (
+            <span className="student-quiet">{countdown.date}</span>
+          )}
+        </p>
+      )}
       <form
         className="comp-form"
         onSubmit={(event) => {

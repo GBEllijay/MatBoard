@@ -1,0 +1,23 @@
+import { spawnSync } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
+import { build } from 'esbuild';
+import { paidChunksStub } from './paidChunksStub.mjs';
+
+mkdirSync('.regression-cache', { recursive: true });
+const outfile = '.regression-cache/weight-page.test.mjs';
+await build({
+  entryPoints: ['src/pages/student/weightPage.regressions.test.tsx'],
+  bundle: true,
+  loader: { '.css': 'empty' },
+  format: 'esm',
+  platform: 'node',
+  outfile,
+  packages: 'external',
+  external: ['node:test', 'node:assert', 'node:assert/strict', 'node:fs'],
+  jsx: 'automatic',
+  logLevel: 'silent',
+  plugins: [paidChunksStub],
+});
+
+const result = spawnSync(process.execPath, ['--test', '--test-force-exit', outfile], { stdio: 'inherit' });
+process.exit(result.status ?? 1);
