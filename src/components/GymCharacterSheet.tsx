@@ -35,6 +35,10 @@ import { GYM_NAME_MAX, readGymName, subscribeGymName, writeGymName } from '../li
 import { academyCloudTileVisible } from '../lib/advantageCloudMedia.ts';
 import { readCloudLapse } from '../lib/cloudLapse.ts';
 import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud.ts';
+import { AcademyBeltChain } from './AcademyBeltChain.tsx';
+import { AcademyFounders } from './AcademyFounders.tsx';
+import { AcademyLineageEditor } from './AcademyLineageEditor.tsx';
+import { formatFoundedDate } from '../lib/academyIdentity.ts';
 import {
   getGymProfileSnapshot,
   gymLineageText,
@@ -148,25 +152,29 @@ export function GymCharacterSheet() {
           <div>
             <h2>{gymName}</h2>
             <p data-testid="academy-sync-label">{profileInCloud ? 'Advantage Cloud' : 'This device'}</p>
-            {profile.foundedOn ? <p>Founded {profile.foundedOn}</p> : null}
-            {profile.founders.trim() ? <p>Founders {profile.founders}</p> : null}
-            {gymLineageText(profile) ? <p className="gym-lineage-read">{gymLineageText(profile)}</p> : null}
-            {owner ? (
-              <button
-                type="button"
-                className="gym-edit"
-                aria-expanded={editing}
-                data-testid="academy-edit"
-                onClick={() => {
-                  if (editing) writeGymName(readGymName().trim());
-                  setEditing((open) => !open);
-                }}
-              >
-                {editing ? 'Done' : '✎ Edit academy profile'}
-              </button>
+            {profile.foundedOn ? (
+              <p className="gym-id__founded">{formatFoundedDate(profile.foundedOn)?.longLabel ?? `Founded ${profile.foundedOn}`}</p>
             ) : null}
           </div>
         </div>
+        <AcademyFounders founders={profile.founders} foundedOn={profile.foundedOn} />
+        {gymLineageText(profile) ? (
+          <AcademyBeltChain lineage={gymLineageText(profile)} gymName={gymName} logoSrc={logo} />
+        ) : null}
+        {owner ? (
+          <button
+            type="button"
+            className="gym-edit"
+            aria-expanded={editing}
+            data-testid="academy-edit"
+            onClick={() => {
+              if (editing) writeGymName(readGymName().trim());
+              setEditing((open) => !open);
+            }}
+          >
+            {editing ? 'Done' : '✎ Edit academy profile'}
+          </button>
+        ) : null}
         {owner && editing ? (
           <form className="gym-fields" onSubmit={(event) => event.preventDefault()}>
             <label>
@@ -208,15 +216,21 @@ export function GymCharacterSheet() {
                 Teaching ancestry of this academy: who it was founded under, and who that teacher was under. Not instructors who have taught or visited.
               </p>
               {gymLineageVisible(profile) ? (
-                <label>
-                  Lineage
-                  <textarea
-                    aria-label="Lineage"
+                <>
+                  <AcademyLineageEditor
                     value={profile.lineage}
-                    maxLength={240}
-                    onChange={(event) => writeGymProfile({ lineage: event.target.value })}
+                    onChange={(lineage) => writeGymProfile({ lineage })}
                   />
-                </label>
+                  <label>
+                    Lineage
+                    <textarea
+                      aria-label="Lineage"
+                      value={profile.lineage}
+                      maxLength={240}
+                      onChange={(event) => writeGymProfile({ lineage: event.target.value })}
+                    />
+                  </label>
+                </>
               ) : null}
             </div>
             <fieldset>

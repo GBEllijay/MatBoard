@@ -438,9 +438,10 @@ test('a Cloud owner sees usage on the academy card and the details keep the crea
     assert.equal(metric.getAttribute('aria-expanded'), 'false');
     assert.match(metric.textContent ?? '', /96/);
     assert.match(metric.textContent ?? '', /MB/);
-    assert.match(metric.textContent ?? '', /This license/);
-    assert.match(metric.textContent ?? '', /397/);
-    assert.match(metric.textContent ?? '', /of 8 GB/);
+    assert.match(metric.textContent ?? '', /This gym/);
+    assert.match(metric.textContent ?? '', /8/);
+    assert.match(metric.textContent ?? '', /GB/);
+    assert.match(metric.textContent ?? '', /Limit/);
     assert.equal(sheet.host.querySelector('[data-zone="stats"]')?.querySelector('[data-testid="cloud-usage-metric"]'), null);
     const tenure = sheet.host.querySelector('[data-zone="tenure"]');
     const cloudZone = sheet.host.querySelector('[data-zone="cloud"]');
@@ -449,8 +450,8 @@ test('a Cloud owner sees usage on the academy card and the details keep the crea
     assert.equal(cloudZone?.querySelector('[data-testid="cloud-usage-metric"]'), metric);
     assert.equal(sheet.host.querySelector('.cloud-home'), null);
     assert.equal(document.querySelector('[role="dialog"]'), null);
-    assert.match(metric.getAttribute('aria-label') ?? '', /This license is using 96 MB/);
-    assert.match(metric.getAttribute('aria-label') ?? '', /397 MB of 8 GB/);
+    assert.match(metric.getAttribute('aria-label') ?? '', /This gym is using 96 MB/);
+    assert.match(metric.getAttribute('aria-label') ?? '', /of 8 GB/);
 
     await act(async () => {
       metric.click();
@@ -458,8 +459,8 @@ test('a Cloud owner sees usage on the academy card and the details keep the crea
     const dialog = document.querySelector('[role="dialog"]');
     assert.ok(dialog);
     assert.equal(metric.getAttribute('aria-expanded'), 'true');
-    assert.match(dialog?.textContent ?? '', /This license is using 96 MB/);
-    assert.match(dialog?.textContent ?? '', /Advantage Cloud is using 397 MB of 8 GB/);
+    assert.match(dialog?.textContent ?? '', /This gym is using 96 MB/);
+    assert.match(dialog?.textContent ?? '', /of 8 GB in Advantage Cloud/);
     assert.ok((dialog?.textContent ?? '').includes(CLOUD_ROLE_HOME));
     assert.match(dialog?.textContent ?? '', /assistant coach can play and download/i);
     assert.match(dialog?.textContent ?? '', /does not need Google Drive or OneDrive/);
@@ -478,7 +479,7 @@ test('a Cloud owner sees usage on the academy card and the details keep the crea
     });
     await settle();
     assert.ok(calls.filter((url) => url.includes('/api/gym/cloud')).length > before);
-    assert.match(document.querySelector('[role="dialog"]')?.textContent ?? '', /397 MB of 8 GB/);
+    assert.match(document.querySelector('[role="dialog"]')?.textContent ?? '', /of 8 GB in Advantage Cloud/);
 
     const close = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Close');
     await act(async () => {
@@ -592,5 +593,52 @@ test('canceling the academy logo rights sheet leaves the logo unsaved', async ()
   assert.equal(document.querySelector('[data-testid="image-rights-confirm"]'), null);
   assert.equal(readGymLogo(), null);
   assert.match(sheet.host.textContent ?? '', /Upload a gym logo/);
+  await sheet.unmount();
+});
+
+test('founders and lineage render as separate graphic blocks, and a hidden line leaves no gap', async () => {
+  blankProfile();
+  writeGymName('Valley Ridge Jiu-Jitsu');
+  writeGymProfile({
+    foundedOn: '2019-09-01',
+    founders: 'Marcus Reid, Elena Vance',
+    lineage: 'Professor Fabio Costa,\nGrand Master Carlos Gracie Jr.,\nGrand Master Helio Gracie,\nGrand Master Carlos Gracie Sr.',
+    lineageVisible: true,
+  });
+  const sheet = await renderSheet();
+  assert.match(sheet.host.querySelector('.gym-id__founded')?.textContent ?? '', /Founded Sep 1, 2019/);
+  const founders = sheet.host.querySelector('[data-testid="academy-founders"]') as HTMLElement;
+  const lineage = sheet.host.querySelector('[data-testid="academy-lineage"]') as HTMLElement;
+  assert.ok(founders);
+  assert.ok(lineage);
+  assert.equal(founders.getAttribute('data-founders-style'), 'nameplates');
+  assert.equal(lineage.getAttribute('data-lineage-style'), 'rail');
+  assert.match(founders.textContent ?? '', /Marcus Reid/);
+  assert.match(founders.textContent ?? '', /Elena Vance/);
+  assert.match(lineage.textContent ?? '', /Carlos Gracie Sr/);
+  assert.match(lineage.textContent ?? '', /Fabio Costa/);
+  assert.match(lineage.textContent ?? '', /This academy/);
+  const zoneKids = [...(sheet.host.querySelector('[data-zone="identity"]')?.children ?? [])];
+  assert.ok(zoneKids.indexOf(founders) < zoneKids.indexOf(lineage));
+  assert.equal(lineage.querySelectorAll('[data-belt="red"]').length >= 2, true);
+  assert.equal(/shield|laurel/i.test(sheet.host.innerHTML), false);
+  assert.equal(sheet.host.querySelector('.gym-lineage-read'), null);
+  await openEditor(sheet.host);
+  const toggle = sheet.host.querySelector('[role="switch"]') as HTMLButtonElement;
+  await act(async () => {
+    toggle.click();
+  });
+  assert.equal(sheet.host.querySelector('[data-testid="academy-lineage"]'), null);
+  assert.ok(sheet.host.querySelector('[data-testid="academy-founders"]'));
+  assert.equal(readGymProfile().lineage.includes('Fabio Costa'), true);
+  await sheet.unmount();
+});
+
+test('an empty founders field hides the founders band', async () => {
+  blankProfile();
+  writeGymProfile({ founders: '', lineage: 'Carlson Gracie', lineageVisible: true });
+  const sheet = await renderSheet();
+  assert.equal(sheet.host.querySelector('[data-testid="academy-founders"]'), null);
+  assert.ok(sheet.host.querySelector('[data-testid="academy-lineage"]'));
   await sheet.unmount();
 });

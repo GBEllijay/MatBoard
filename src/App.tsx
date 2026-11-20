@@ -84,6 +84,7 @@ import { ProPlusCloudPage } from './pages/ProPlusCloud';
 import { StorefrontPage } from './pages/Storefront';
 import { FaqPage } from './pages/Faq';
 import { CompactLineageCard, ExpandedLineageLine } from './preview/ownerLineage/OwnerLineageViews';
+import { ACADEMY_IDENTITY_PATH, AcademyIdentityPreview } from './preview/academyIdentity/AcademyIdentityPreview';
 import { PrivacyPage } from './pages/Privacy';
 import { InstructorCollaborationPage } from './pages/InstructorCollaboration';
 import { MatchControllerPage } from './pages/MatchController';
@@ -816,6 +817,7 @@ export default function App() {
       <Route path="/preview/video-library" element={<VideoLibraryPreview />} />
       {/* Public owner preview. The live working tree stays at /student/working. */}
       <Route path="/preview/personal-graph" element={<PersonalGraphPreviewPage />} />
+      <Route path={ACADEMY_IDENTITY_PATH} element={<AcademyIdentityPreview />} />
       <Route path="/preview/lineage-card" element={<CompactLineageCard />} />
       <Route path="/preview/lineage-line" element={<ExpandedLineageLine />} />
       {/* Isolated instructor-sheet concept. Not in edition menus, and it does not write a profile. */}
