@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import { AcademyBeltChain } from '../../components/AcademyBeltChain.tsx';
 import { AcademyFounders } from '../../components/AcademyFounders.tsx';
 import { AcademyLineageEditor } from '../../components/AcademyLineageEditor.tsx';
-import { academyMonogram, formatFoundedDate, type FoundersStyle, type LineageStyle } from '../../lib/academyIdentity.ts';
+import { DEFAULT_FOUNDERS_STYLE, DEFAULT_LINEAGE_STYLE, academyMonogram, formatFoundedDate, type FoundersStyle, type LineageStyle } from '../../lib/academyIdentity.ts';
 import '../../components/gymSheet.css';
 import './academyIdentity.css';
 import {
@@ -27,8 +27,8 @@ import {
 export { ACADEMY_IDENTITY_PATH };
 
 export function AcademyIdentityPreview() {
-  const [foundersStyle, setFoundersStyle] = useState<FoundersStyle>('nameplates');
-  const [lineageStyle, setLineageStyle] = useState<LineageStyle>('rail');
+  const [foundersStyle, setFoundersStyle] = useState<FoundersStyle>(DEFAULT_FOUNDERS_STYLE);
+  const [lineageStyle, setLineageStyle] = useState<LineageStyle>(DEFAULT_LINEAGE_STYLE);
   const [demo, setDemo] = useState<LineageDemo>('short');
   const [lineageDraft, setLineageDraft] = useState(previewLineageText('edit'));
   const [foundersDraft, setFoundersDraft] = useState(PREVIEW_FOUNDERS);

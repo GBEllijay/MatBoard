@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import {
+  DEFAULT_LINEAGE_STYLE,
   academyMonogram,
   collapsedAncestorIndices,
   displayLineageSteps,
@@ -41,7 +42,7 @@ export function AcademyBeltChain({
   gymName,
   logoSrc,
   example = false,
-  style = 'rail',
+  style = DEFAULT_LINEAGE_STYLE,
 }: {
   lineage: string;
   gymName: string;

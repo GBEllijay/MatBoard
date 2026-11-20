@@ -611,8 +611,10 @@ test('founders and lineage render as separate graphic blocks, and a hidden line 
   const lineage = sheet.host.querySelector('[data-testid="academy-lineage"]') as HTMLElement;
   assert.ok(founders);
   assert.ok(lineage);
-  assert.equal(founders.getAttribute('data-founders-style'), 'nameplates');
-  assert.equal(lineage.getAttribute('data-lineage-style'), 'rail');
+  assert.equal(founders.getAttribute('data-founders-style'), 'crest');
+  assert.equal(lineage.getAttribute('data-lineage-style'), 'ribbon');
+  assert.ok(founders.querySelector('.acad-crest-strip'));
+  assert.ok(lineage.querySelector('.acad-ribbon'));
   assert.match(founders.textContent ?? '', /Marcus Reid/);
   assert.match(founders.textContent ?? '', /Elena Vance/);
   assert.match(lineage.textContent ?? '', /Carlos Gracie Sr/);

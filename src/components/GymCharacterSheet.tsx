@@ -38,7 +38,7 @@ import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud.ts';
 import { AcademyBeltChain } from './AcademyBeltChain.tsx';
 import { AcademyFounders } from './AcademyFounders.tsx';
 import { AcademyLineageEditor } from './AcademyLineageEditor.tsx';
-import { formatFoundedDate } from '../lib/academyIdentity.ts';
+import { DEFAULT_FOUNDERS_STYLE, DEFAULT_LINEAGE_STYLE, formatFoundedDate } from '../lib/academyIdentity.ts';
 import {
   getGymProfileSnapshot,
   gymLineageText,
@@ -157,9 +157,9 @@ export function GymCharacterSheet() {
             ) : null}
           </div>
         </div>
-        <AcademyFounders founders={profile.founders} foundedOn={profile.foundedOn} />
+        <AcademyFounders founders={profile.founders} foundedOn={profile.foundedOn} style={DEFAULT_FOUNDERS_STYLE} />
         {gymLineageText(profile) ? (
-          <AcademyBeltChain lineage={gymLineageText(profile)} gymName={gymName} logoSrc={logo} />
+          <AcademyBeltChain lineage={gymLineageText(profile)} gymName={gymName} logoSrc={logo} style={DEFAULT_LINEAGE_STYLE} />
         ) : null}
         {owner ? (
           <button

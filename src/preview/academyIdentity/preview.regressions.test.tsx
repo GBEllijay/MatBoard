@@ -50,7 +50,7 @@ function unmount(root: Root, host: HTMLElement) {
   host.remove();
 }
 
-test('the preview card separates founders from lineage and starts on nameplates plus classic rail', () => {
+test('the preview card separates founders from lineage and starts on Crest strip plus Heritage ribbon', () => {
   localStorage.clear();
   const { root, host } = mount(<AcademyIdentityPreview />);
   assert.match(host.textContent ?? '', new RegExp(PREVIEW_BANNER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
@@ -58,13 +58,20 @@ test('the preview card separates founders from lineage and starts on nameplates 
   assert.match(host.textContent ?? '', /Marcus Reid/);
   assert.match(host.textContent ?? '', /Elena Vance/);
   assert.match(host.textContent ?? '', /Founded Sep 1, 2019/);
-  assert.equal(host.querySelector('[data-testid="academy-founders"]')?.getAttribute('data-founders-style'), 'nameplates');
-  assert.equal(host.querySelector('[data-testid="academy-lineage"]')?.getAttribute('data-lineage-style'), 'rail');
+  assert.equal(host.querySelector('[data-testid="academy-founders"]')?.getAttribute('data-founders-style'), 'crest');
+  assert.equal(host.querySelector('[data-testid="academy-lineage"]')?.getAttribute('data-lineage-style'), 'ribbon');
   assert.match(host.textContent ?? '', /Carlos Gracie Sr/);
   assert.match(host.textContent ?? '', /Daniel Souza/);
   assert.match(host.textContent ?? '', /This academy/);
   assert.equal(host.textContent?.includes(PREVIEW_FOUNDERS.split(',')[0] ?? 'Marcus'), true);
-  assert.equal(host.querySelector('.acad-rail'), host.querySelector('[data-lineage-style="rail"] .acad-rail'));
+  assert.ok(host.querySelector('.acad-crest-strip'));
+  assert.ok(host.querySelector('.acad-ribbon'));
+  assert.equal(host.querySelector('[data-testid="founders-style-crest"]')?.getAttribute('aria-pressed'), 'true');
+  assert.equal(host.querySelector('[data-testid="lineage-style-ribbon"]')?.getAttribute('aria-pressed'), 'true');
+  assert.equal(host.querySelector('[data-testid="founders-style-nameplates"]')?.getAttribute('aria-pressed'), 'false');
+  assert.equal(host.querySelector('[data-testid="lineage-style-rail"]')?.getAttribute('aria-pressed'), 'false');
+  assert.ok(host.querySelector('[data-testid="founders-style-plaque"]'));
+  assert.ok(host.querySelector('[data-testid="lineage-style-cards"]'));
   assert.equal((host.querySelector('[data-testid="academy-lineage"]')?.compareDocumentPosition(host.querySelector('[data-testid="academy-founders"]') as Node) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING, 0);
   const founders = host.querySelector('[data-testid="academy-founders"]') as HTMLElement;
   const lineage = host.querySelector('[data-testid="academy-lineage"]') as HTMLElement;
@@ -78,6 +85,8 @@ test('the preview card separates founders from lineage and starts on nameplates 
 test('founders and lineage style pickers update the card and never write a gym profile', () => {
   localStorage.clear();
   const { root, host } = mount(<AcademyIdentityPreview />);
+  assert.equal(host.querySelector('[data-testid="academy-founders"]')?.getAttribute('data-founders-style'), 'crest');
+  assert.equal(host.querySelector('[data-testid="academy-lineage"]')?.getAttribute('data-lineage-style'), 'ribbon');
   act(() => {
     (host.querySelector('[data-testid="founders-style-plaque"]') as HTMLButtonElement).click();
     (host.querySelector('[data-testid="lineage-style-cards"]') as HTMLButtonElement).click();
@@ -86,6 +95,14 @@ test('founders and lineage style pickers update the card and never write a gym p
   assert.equal(host.querySelector('[data-testid="academy-lineage"]')?.getAttribute('data-lineage-style'), 'cards');
   assert.ok(host.querySelector('.acad-plaque'));
   assert.ok(host.querySelector('.acad-cards'));
+  act(() => {
+    (host.querySelector('[data-testid="founders-style-nameplates"]') as HTMLButtonElement).click();
+    (host.querySelector('[data-testid="lineage-style-rail"]') as HTMLButtonElement).click();
+  });
+  assert.equal(host.querySelector('[data-testid="academy-founders"]')?.getAttribute('data-founders-style'), 'nameplates');
+  assert.equal(host.querySelector('[data-testid="academy-lineage"]')?.getAttribute('data-lineage-style'), 'rail');
+  assert.ok(host.querySelector('.acad-founders__chips'));
+  assert.ok(host.querySelector('.acad-rail'));
   act(() => {
     (host.querySelector('[data-testid="founders-style-crest"]') as HTMLButtonElement).click();
     (host.querySelector('[data-testid="lineage-style-ribbon"]') as HTMLButtonElement).click();

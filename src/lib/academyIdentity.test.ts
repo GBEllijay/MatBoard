@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
+  DEFAULT_FOUNDERS_STYLE,
+  DEFAULT_LINEAGE_STYLE,
   HISTORICAL_MASTERS,
   academyMonogram,
   collapsedAncestorIndices,
@@ -130,4 +132,9 @@ test('suggested auto-fill walks up to three teachers and respects the 16-name ca
   assert.equal(remainingStepSlots(14), 2);
   assert.equal(academyMonogram('Valley Ridge Jiu-Jitsu'), 'VRJ');
   assert.equal(academyMonogram('Northridge Jiu-Jitsu'), 'NJJ');
+});
+
+test('the live Identity card default is Crest strip plus Heritage ribbon', () => {
+  assert.equal(DEFAULT_FOUNDERS_STYLE, 'crest');
+  assert.equal(DEFAULT_LINEAGE_STYLE, 'ribbon');
 });

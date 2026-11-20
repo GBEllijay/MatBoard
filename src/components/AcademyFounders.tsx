@@ -1,14 +1,14 @@
 /**
  * Founders band for the academy Identity card.
  * Hidden when no founders are entered. Style variants are for the preview picker;
- * the live card uses nameplate badges.
+ * the live card uses the crest strip.
  */
-import { formatFoundedDate, parseFounders, type FoundersStyle } from '../lib/academyIdentity.ts';
+import { DEFAULT_FOUNDERS_STYLE, formatFoundedDate, parseFounders, type FoundersStyle } from '../lib/academyIdentity.ts';
 
 export function AcademyFounders({
   founders,
   foundedOn = '',
-  style = 'nameplates',
+  style = DEFAULT_FOUNDERS_STYLE,
 }: {
   founders: string;
   foundedOn?: string;

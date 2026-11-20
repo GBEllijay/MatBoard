@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { collapsedAncestorIndices, parseLineage, searchMasters } from '../../lib/academyIdentity.ts';
+import { DEFAULT_FOUNDERS_STYLE, DEFAULT_LINEAGE_STYLE, collapsedAncestorIndices, parseLineage, searchMasters } from '../../lib/academyIdentity.ts';
 import {
   ACADEMY_IDENTITY_PATH,
+  FOUNDERS_STYLE_OPTIONS,
+  LINEAGE_STYLE_OPTIONS,
   PREVIEW_ACADEMY,
   PREVIEW_FOUNDERS,
   PREVIEW_LONG_LINEAGE,
@@ -46,4 +48,19 @@ test('belt chain and editor source never use a shield or laurel crest', () => {
     const source = readFileSync(file, 'utf8');
     assert.equal(/crestSVG|crest-wrap|laurel|viewBox=\"0 0 72 80\"/i.test(source), false, String(file));
   }
+});
+
+test('preview style options keep all six looks, and default to Crest strip plus Heritage ribbon', () => {
+  assert.deepEqual(
+    FOUNDERS_STYLE_OPTIONS.map((option) => option.id),
+    ['nameplates', 'plaque', 'crest'],
+  );
+  assert.deepEqual(
+    LINEAGE_STYLE_OPTIONS.map((option) => option.id),
+    ['rail', 'cards', 'ribbon'],
+  );
+  assert.equal(FOUNDERS_STYLE_OPTIONS.find((option) => option.id === 'crest')?.label, 'Crest strip');
+  assert.equal(LINEAGE_STYLE_OPTIONS.find((option) => option.id === 'ribbon')?.label, 'Heritage ribbon');
+  assert.equal(DEFAULT_FOUNDERS_STYLE, 'crest');
+  assert.equal(DEFAULT_LINEAGE_STYLE, 'ribbon');
 });

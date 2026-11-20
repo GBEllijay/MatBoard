@@ -37,8 +37,8 @@ export type FoundersStyle = 'nameplates' | 'plaque' | 'crest';
 export type LineageStyle = 'rail' | 'cards' | 'ribbon';
 export const FOUNDERS_STYLES = ['nameplates', 'plaque', 'crest'] as const;
 export const LINEAGE_STYLES = ['rail', 'cards', 'ribbon'] as const;
-export const DEFAULT_FOUNDERS_STYLE: FoundersStyle = 'nameplates';
-export const DEFAULT_LINEAGE_STYLE: LineageStyle = 'rail';
+export const DEFAULT_FOUNDERS_STYLE: FoundersStyle = 'crest';
+export const DEFAULT_LINEAGE_STYLE: LineageStyle = 'ribbon';
 
 export type SuggestedMaster = {
   name: string;
