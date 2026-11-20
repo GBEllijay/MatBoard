@@ -535,11 +535,21 @@ test('month grid reuses the Class Schedule navy board and glowing today tile', (
   assert.match(css, /\.cal-day\.is-today[\s\S]*?box-shadow: inset 0 0 0 1\.5px rgba\(0, 78, 186, 0\.75\);/);
   assert.match(css, /\.cal-day\.is-today > span:first-child \{[\s\S]*?background: transparent;[\s\S]*?color: #fff;/);
   assert.doesNotMatch(css, /\.cal-day\.is-today > span:first-child \{[^}]*background: #f5f5f7/);
+  assert.match(css, /student--calendar \{[\s\S]*?background: #0a0f17;/);
+  assert.match(css, /\.arena-hero,[\s\S]*?\.fund-hero \{[\s\S]*?background: #0a0f17;[\s\S]*?box-shadow: 0 1px 0 rgba\(255, 255, 255, 0\.06\);/);
+  assert.match(css, /\.cal-nav \.ink-btn \{[\s\S]*?background: #111926;[\s\S]*?color: #dfe5ee;/);
+  assert.doesNotMatch(css, /\.cal-nav \.ink-btn \{[^}]*background: #2c2c2e/);
+  assert.doesNotMatch(css, /\.student-demo-banner|\.header-account/);
   assert.doesNotMatch(css, /Gracie Barra/i);
 
   const mounted = mount();
   const todayButton = mounted.host.querySelector('[aria-current="date"]');
   assert.ok(todayButton?.classList.contains('cal-day'));
   assert.ok(todayButton?.classList.contains('is-today'));
+  const prev = [...mounted.host.querySelectorAll('button')].find((node) => node.textContent === 'Previous month');
+  const next = [...mounted.host.querySelectorAll('button')].find((node) => node.textContent === 'Next month');
+  assert.ok(prev?.classList.contains('ink-btn'));
+  assert.ok(next?.classList.contains('ink-btn'));
+  assert.ok(prev?.closest('.cal-nav'));
   unmount(mounted);
 });
