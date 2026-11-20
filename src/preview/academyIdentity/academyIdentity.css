@@ -1,0 +1,162 @@
+.aid-preview {
+  min-height: 100dvh;
+  margin: 0;
+  background: #0a1628;
+  color: #f2f1ed;
+  font-family: Inter, system-ui, sans-serif;
+}
+.aid-preview__bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 10px 12px 12px;
+  background: rgba(10, 22, 40, 0.96);
+  border-bottom: 1px solid #1e4a7a;
+  backdrop-filter: blur(8px);
+}
+.aid-preview__banner {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #d7e6ff;
+}
+.aid-preview__badge {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6ea8ff;
+  border: 1px solid #2a5a96;
+  border-radius: 999px;
+  padding: 2px 7px;
+  vertical-align: 1px;
+}
+.aid-preview__group { margin-top: 8px; }
+.aid-preview__label {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6ea8ff;
+}
+.aid-preview__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.aid-preview__pills button {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #3a5678;
+  background: #102038;
+  color: #f2f1ed;
+  cursor: pointer;
+}
+.aid-preview__pills button[aria-pressed='true'] {
+  border-color: #6ea8ff;
+  background: #004eba;
+  box-shadow: 0 0 0 1px #6ea8ff;
+}
+.aid-preview__stage {
+  padding: 14px 14px 40px;
+  max-width: 430px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.aid-card {
+  background: linear-gradient(180deg, rgba(12, 35, 68, 0.92), rgba(6, 16, 31, 0.94));
+  border: 1.5px solid #004eba;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(110, 168, 255, 0.18), 0 0 24px rgba(0, 78, 186, 0.25);
+}
+.aid-card::before,
+.aid-card::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #6ea8ff;
+  pointer-events: none;
+  z-index: 1;
+}
+.aid-card::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.aid-card::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+.aid-card .sheet-zone { padding: 10px 12px 12px; display: grid; gap: 6px; }
+.aid-card .sheet-cap {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6ea8ff;
+}
+.aid-card .gym-id { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.aid-card .gym-id__logo,
+.aid-mono-logo {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #102038;
+  border: 1.5px solid #cfd6e2;
+}
+.aid-mono-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 3px #0a1a30;
+}
+.aid-mono-logo strong {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.aid-mono-logo span {
+  margin-top: 3px;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6ea8ff;
+}
+.aid-card .gym-id h2 { margin: 0; font-size: 20px; line-height: 1.15; overflow-wrap: anywhere; }
+.aid-card .gym-id p { margin: 2px 0 0; font-size: 14px; color: #9aa3b5; }
+.aid-card .gym-edit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #6ea8ff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+}
+.aid-card .gym-fields { display: grid; gap: 8px; margin-top: 4px; }
+.aid-card .gym-fields > label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; }
+.aid-card .gym-fields input,
+.aid-card .gym-fields textarea {
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  background: rgba(6, 16, 31, 0.65);
+  color: inherit;
+  font: inherit;
+}
+.aid-card .gym-fields textarea { min-height: 72px; resize: vertical; }
+.aid-card .gym-sheet__note { margin: 0; font-size: 13px; color: #9aa3b5; font-weight: 500; }
