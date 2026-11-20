@@ -63,7 +63,7 @@ type Props = {
   hue: number;
   /** Face indexes to stroke on the solid. Empty leaves the diamond unchanged. */
   marked?: readonly number[];
-  /** bare hides the zoom, pause, reset, and factor buttons for the sheet thumbnail. */
+  /** bare hides the zoom, pause, reset, and face menu for the sheet thumbnail. */
   chrome?: 'full' | 'bare';
   /** False keeps the diamond still. The full D8 page spins. */
   spin?: boolean;
@@ -75,7 +75,7 @@ type Props = {
   onEmptyTile?: (index: number) => void;
   /** Fired when the camera zoom changes, including Reset view. */
   onZoom?: (zoom: number) => void;
-  /** Hides the mesh during a card drill without removing zoom, pause, reset, or the factor buttons. */
+  /** Hides the mesh during a card drill without removing zoom, pause, reset, or the face menu. */
   meshHidden?: boolean;
   /** Parent asks for an exact zoom, for Back from a card drill. */
   zoomCommand?: { zoom: number; id: number } | null;
@@ -83,7 +83,7 @@ type Props = {
   fitZoom?: boolean;
   /** Live D8: one face of technique names, no edge-on pile-up. */
   separateLabels?: boolean;
-  /** chips is the default factor buttons. select is a compact face dropdown for the Instructor D12. */
+  /** select is the compact face menu, used on Live D8 and the Instructor D12. chips keeps the older factor buttons. */
   legend?: 'chips' | 'select';
   /** Technique-tree branches drawn through the inside of the diamond. Omitted or empty leaves the D8 unchanged. */
   branches?: readonly D8Branch[];
@@ -108,7 +108,37 @@ type Proj = {
   center: [number, number];
 };
 
-export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill, onEmptyTile, onZoom, meshHidden = false, zoomCommand = null, fitZoom = false, separateLabels = false, legend = 'chips', branches = NO_BRANCHES, xray = false, onBranchTap, chain = null, onChainStop }: Props) {
+
+/**
+ * Pick a face from the compact menu, or click a legacy chip. Pass an empty
+ * string to return to the unselected overview (All faces).
+ */
+export function activateTopoFace(root: ParentNode, faceId: string): void {
+  const select = root.querySelector<HTMLSelectElement>('[data-testid="topo-face-select"]');
+  if (select) {
+    const value =
+      faceId === ''
+        ? ''
+        : (select.querySelector<HTMLOptionElement>(`option[data-face-button="${faceId}"]`)?.value ?? '');
+    if (faceId !== '' && value === '') return;
+    const proto = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    proto?.set?.call(select, value);
+    const key = Object.keys(select).find((name) => name.startsWith('__reactProps'));
+    const props = key
+      ? (select as unknown as Record<string, { onChange?: (event: { target: HTMLSelectElement; currentTarget: HTMLSelectElement }) => void }>)[key]
+      : null;
+    if (props?.onChange) {
+      props.onChange({ target: select, currentTarget: select });
+      return;
+    }
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
+  }
+  if (!faceId) return;
+  root.querySelector<HTMLButtonElement>(`button[data-face-button="${faceId}"]`)?.click();
+}
+
+export function TopoStage({ model, style, focus, selected, comparison, pair, compareFactors = null, links, drillPath, relief, hue, marked = [], chrome = 'full', spin = true, onExpand, onFocus, onSelect, onDrill, onEmptyTile, onZoom, meshHidden = false, zoomCommand = null, fitZoom = false, separateLabels = false, legend = 'select', branches = NO_BRANCHES, xray = false, onBranchTap, chain = null, onChainStop }: Props) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelsRef = useRef<HTMLDivElement | null>(null);
@@ -1646,10 +1676,15 @@ export function TopoStage({ model, style, focus, selected, comparison, pair, com
               focusFace(Number(next), false);
             }}
           >
-            <option value="">Choose a face</option>
+            <option value="">All {model.faces.length} faces</option>
             {model.faces.map((face, index) => (
-              <option key={face.id} value={String(index)} data-face-button={face.id}>
-                {index + 1}. {face.name}
+              <option
+                key={face.id}
+                value={String(index)}
+                data-face-button={face.id}
+                data-on-trail={marked.includes(index) ? 'true' : 'false'}
+              >
+                {faceOptionLabel(face, index, showFaceCounts(model.faces))}
               </option>
             ))}
           </select>
@@ -1698,6 +1733,15 @@ function inTri(point: [number, number], a: [number, number], b: [number, number]
   const bc = sign(point, b, c);
   const ca = sign(point, c, a);
   return !((ab < 0 || bc < 0 || ca < 0) && (ab > 0 || bc > 0 || ca > 0));
+}
+
+function showFaceCounts(faces: readonly { moves: readonly unknown[] }[]): boolean {
+  return faces.some((face) => face.moves.length > 1);
+}
+
+function faceOptionLabel(face: { name: string; moves: readonly unknown[] }, index: number, showCount: boolean): string {
+  const base = `${index + 1}. ${face.name}`;
+  return showCount ? `${base} (${face.moves.length})` : base;
 }
 
 export function scoreLabel(score: ReliefScore | null): string {

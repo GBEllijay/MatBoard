@@ -1,7 +1,7 @@
 /**
  * The student sheet's D8. Tapping a term opens the shared index card.
  * Tapping a blank tile, or an empty pyramid slot, starts a new card on that face.
- * Zoom, pause, reset, and the factor buttons stay the stage's own controls.
+ * Zoom, pause, reset, and the face menu stay the stage's own controls.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -12,7 +12,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useCurrentSeat } from '../components/SeatSessionBar';
 import { useTreeEdges } from './treeLinks.ts';
-import { TopoStage } from '../preview/crystallineSweeps/TopoStage.tsx';
+import { activateTopoFace, TopoStage } from '../preview/crystallineSweeps/TopoStage.tsx';
 import { LIVE_ZOOM_MAX } from '../preview/crystallineSweeps/labels.ts';
 import { FACES } from '../preview/d8Subfactors/model.ts';
 import { buildSubfactorTopo, faceGridSize, faceSlots, faceTileCap, showOnDiamond } from '../preview/d8Subfactors/topoModel.ts';
@@ -143,6 +143,7 @@ export function SheetD8Thumb({ onExpand, baseline }: { onExpand: () => void; bas
 }
 
 export function LiveD8({ baseline }: { baseline?: FaceBaseline | null } = {}) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const cards = useShownCards(baseline);
   const model = useMesh(cards);
   const [focus, setFocus] = useState(-1);
@@ -221,6 +222,7 @@ export function LiveD8({ baseline }: { baseline?: FaceBaseline | null } = {}) {
 
   return (
     <div
+      ref={rootRef}
       className="d8-live d8sf"
       data-testid="live-d8"
       data-stage-height={stageHeight}
@@ -240,6 +242,7 @@ export function LiveD8({ baseline }: { baseline?: FaceBaseline | null } = {}) {
         hue={1}
         fitZoom
         separateLabels
+        legend="select"
         zoomCommand={zoomCommand}
         onZoom={setZoom}
         onEmptyTile={(tileIndex) => {
@@ -353,7 +356,13 @@ export function LiveD8({ baseline }: { baseline?: FaceBaseline | null } = {}) {
       ) : face && faceId ? (
         <FaceReadout faceId={faceId} label={face.label} cards={cards.filter((card) => card.faceId === faceId)} slots={faceSlots(model, focus)} unrated={unratedLineNote(baseline)} onCollapse={collapseFace} />
       ) : (
-        <FaceScores cards={cards} unrated={unratedLineNote(baseline)} />
+        <FaceScores
+          cards={cards}
+          unrated={unratedLineNote(baseline)}
+          onPickFace={(id) => {
+            if (rootRef.current) activateTopoFace(rootRef.current, id);
+          }}
+        />
       )}
     </div>
   );
@@ -406,19 +415,27 @@ function strongest(cards: readonly LiveCard[]): LiveCard[] {
     .slice(0, faceTileCap(cards.length));
 }
 
-function FaceScores({ cards, unrated }: { cards: readonly LiveCard[]; unrated: string }) {
+function FaceScores({
+  cards,
+  unrated,
+  onPickFace,
+}: {
+  cards: readonly LiveCard[];
+  unrated: string;
+  onPickFace: (faceId: IndexFaceId) => void;
+}) {
   return (
     <div className="crystal-readout">
       <section aria-label="Eight faces">
         <h2>Eight faces</h2>
-        <p>Tap a face, or use the factor buttons. {`Each score is the average of every line. ${unrated}`}</p>
+        <p>Tap a face, or pick one from the menu. {`Each score is the average of every line. ${unrated}`}</p>
         <ul className="d8sf-face-scores">
           {FACES.map((face) => {
             if (!isLiveFace(face.id)) return null;
             const score = faceScoreExact(cards, face.id).toFixed(1);
             return (
               <li key={face.id}>
-                <button type="button" onClick={() => document.querySelector<HTMLButtonElement>(`[data-face-button="${face.id}"]`)?.click()}>
+                <button type="button" onClick={() => onPickFace(face.id)}>
                   <span>{face.label}</span>
                   <span>{score} / 5</span>
                 </button>

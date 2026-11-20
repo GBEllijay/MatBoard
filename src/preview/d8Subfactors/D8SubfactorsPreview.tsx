@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PREVIEW_BANNER } from '../crystallineSweeps/adapter.ts';
-import { TopoStage } from '../crystallineSweeps/TopoStage.tsx';
+import { activateTopoFace, TopoStage } from '../crystallineSweeps/TopoStage.tsx';
 import '../crystallineSweeps/crystallineSweeps.css';
 import type { AssessmentScore } from '../../lib/studentAssessment.ts';
 import type { AxisId } from '../assessmentRadar/model.ts';
@@ -229,9 +229,9 @@ export function D8SubfactorsPreview() {
     const line = subfactorById(id);
     if (!line) return;
     pending.current = id;
-    const button = document.querySelector<HTMLButtonElement>(`[data-face-button="${line.faceId}"]`);
-    if (button) {
-      button.click();
+    const host = document.querySelector('.crystal.d8sf') ?? document;
+    if (host.querySelector('[data-testid="topo-face-select"], button[data-face-button]')) {
+      activateTopoFace(host, line.faceId);
       return;
     }
     pending.current = null;
@@ -274,6 +274,7 @@ export function D8SubfactorsPreview() {
           drillPath={[]}
           relief={1}
           hue={1}
+          legend="select"
           marked={marked}
           meshHidden={drilled}
           zoomCommand={zoomCommand}
@@ -347,7 +348,7 @@ export function D8SubfactorsPreview() {
             ) : (
               <section aria-label="Eight faces">
                 <h2>Eight faces</h2>
-                <p>Tap a face, or use the factor buttons. Each score is the rounded average of its lines. Sample ratings can change here. They are not saved.</p>
+                <p>Tap a face, or pick one from the menu. Each score is the rounded average of its lines. Sample ratings can change here. They are not saved.</p>
                 <ul className="d8sf-face-scores">
                   {FACES.map((item) => {
                     const mine = cardsOn(item.id);
@@ -355,7 +356,7 @@ export function D8SubfactorsPreview() {
                     const extra = moreLabel(mine.length);
                     return (
                       <li key={item.id}>
-                        <button type="button" onClick={() => document.querySelector<HTMLButtonElement>(`[data-face-button="${item.id}"]`)?.click()}>
+                        <button type="button" onClick={() => activateTopoFace(document.querySelector('.crystal.d8sf') ?? document, item.id)}>
                           <span>{item.label}</span>
                           <span>{score == null ? 'Not rated' : `${score} / 5`}</span>
                         </button>

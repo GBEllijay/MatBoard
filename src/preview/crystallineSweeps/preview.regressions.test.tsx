@@ -13,6 +13,7 @@ import { STUDENT_EDITION_STORAGE_KEY } from '../../lib/studentEdition.ts';
 import { TECHNIQUE_TREE_STORAGE_KEY } from '../../lib/techniqueTreeStore.ts';
 import { PREVIEW_STORAGE_KEY } from '../../lib/techniqueTreePreview.ts';
 import { CRYSTAL_PREVIEW_PATH, CrystallineSweepsPreview } from './CrystallineSweepsPreview.tsx';
+import { activateTopoFace } from './TopoStage.tsx';
 
 const dom = new Window({ url: 'http://localhost/preview/crystalline-sweeps' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -28,6 +29,7 @@ installGlobal('document', view.document);
 installGlobal('localStorage', view.localStorage);
 installGlobal('sessionStorage', view.sessionStorage);
 installGlobal('HTMLElement', view.HTMLElement);
+installGlobal('HTMLSelectElement', view.HTMLSelectElement);
 installGlobal('SVGElement', view.SVGElement);
 installGlobal('Element', view.Element);
 installGlobal('Node', view.Node);
@@ -100,7 +102,7 @@ test('example relief, list selection, curved toggle, and back do not write stora
   });
   assert.equal(host.querySelector('[data-style]')?.getAttribute('data-style'), 'curved');
   act(() => {
-    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'sweeps');
   });
   assert.match(host.textContent ?? '', /Scissor sweep/, host.textContent?.slice(0, 500) ?? '');
   act(() => {
@@ -122,11 +124,11 @@ test('example relief, list selection, curved toggle, and back do not write stora
   });
   assert.match(host.textContent ?? '', /Not rated/);
   act(() => {
-    (host.querySelector('[data-face-button="passing"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'passing');
   });
   assert.match(host.textContent ?? '', /Saved check-in: 5 \/ 5/);
   act(() => {
-    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'sweeps');
   });
   act(() => {
     labeled(host, 'Scissor sweep').click();
@@ -140,7 +142,7 @@ test('example relief, list selection, curved toggle, and back do not write stora
   assert.match(host.textContent ?? '', /not a prediction/i);
   assert.match(host.textContent ?? '', /Example self is higher/);
   act(() => {
-    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'sweeps');
   });
   assert.match(host.textContent ?? '', /sweep\.scissor/);
   act(() => {
@@ -260,7 +262,7 @@ test('a tree link opens the saved node and history back returns to the preview',
   );
   const host = mounted.host;
   act(() => {
-    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'sweeps');
   });
   assert.match(host.textContent ?? '', /Only the note I saved/);
   const category = host.querySelector('a[href="/technique-tree?tree=tree-sweeps&node=node-sweeps"]');
@@ -291,7 +293,7 @@ test('keyboard can choose a move from the list and Escape clears it', () => {
   const mounted = mount(<CrystallineSweepsPreview />);
   const host = mounted.host;
   act(() => {
-    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'sweeps');
   });
   const button = labeled(host, 'Flower sweep');
   act(() => {
@@ -327,7 +329,7 @@ test('double-tap walks Mount to Armbar to Wrist lock without writing storage', (
     return found;
   };
   act(() => {
-    (host.querySelector('[data-face-button="guard-control"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'guard-control');
   });
   const mountButton = moveNamed('Mount');
   act(() => {
@@ -389,10 +391,13 @@ test('double-tap walks Mount to Armbar to Wrist lock without writing storage', (
   });
 });
 
-test('factor buttons still jump to that face and the bottom controls stay', () => {
+test('the face menu still jumps to that face and the bottom controls stay', () => {
   localStorage.clear();
   const mounted = mount(<CrystallineSweepsPreview />);
   const host = mounted.host;
+  const select = host.querySelector('[data-testid="topo-face-select"]') as HTMLSelectElement;
+  assert.ok(select);
+  assert.equal(host.querySelectorAll('.topo-legend button').length, 0);
   assert.equal(host.querySelectorAll('.topo-controls button').length, 4);
   assert.ok(host.querySelector('[aria-label="Zoom in"]'));
   assert.ok(host.querySelector('[aria-label="Zoom out"]'));
@@ -407,17 +412,24 @@ test('factor buttons still jump to that face and the bottom controls stay', () =
     ['conditioning', 'Conditioning face'],
     ['mindset', 'Mindset face'],
   ];
+  const optionLabels = [...select.querySelectorAll('option')].map((option) => option.textContent ?? '');
+  assert.equal(optionLabels[0], 'All 8 faces');
+  faces.forEach(([id], index) => {
+    assert.match(optionLabels[index + 1], new RegExp(`^${index + 1}\\. `));
+    assert.equal(select.querySelector(`[data-face-button="${id}"]`) != null, true);
+  });
   for (const [id, label] of faces) {
-    const button = host.querySelector(`[data-face-button="${id}"]`) as HTMLButtonElement;
     act(() => {
-      button.click();
+      activateTopoFace(host, id);
     });
-    assert.equal(button.getAttribute('aria-pressed'), 'true');
+    const option = select.querySelector(`[data-face-button="${id}"]`) as HTMLOptionElement;
+    assert.equal(select.value, option.value);
     assert.ok(host.querySelector(`[aria-label="${label}"]`), label);
   }
   act(() => {
     labeled(host, 'Reset view').click();
   });
+  assert.equal(select.value, '');
   assert.ok(host.querySelector('[aria-label="Eight faces"]'));
   assert.equal(host.querySelectorAll('[data-face-button]').length, 8);
   act(() => {
@@ -471,12 +483,12 @@ test('default zoom hides technique labels; zoom-in or a face drill shows only th
     assert.equal(node.getAttribute('data-label-policy'), 'hide');
   }
   act(() => {
-    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'sweeps');
   });
   assert.equal(stage().dataset.labelTier, 'faces');
   assert.equal(stage().dataset.drilled, '');
   assert.equal(visibleTechniqueFaces(host).length, 0);
-  assert.equal((host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).getAttribute('aria-pressed'), 'true');
+  assert.equal((host.querySelector('[data-testid="topo-face-select"]') as HTMLSelectElement).value, (host.querySelector('[data-face-button="sweeps"]') as HTMLOptionElement).value);
   act(() => {
     (host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click();
   });
@@ -589,7 +601,7 @@ test('tapping names toggles them and leaves zoom where it is', () => {
     return node;
   };
   act(() => {
-    (host.querySelector('[data-face-button="passing"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'passing');
     (host.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click();
   });
   assert.equal(stage().dataset.labelTier, 'techniques');

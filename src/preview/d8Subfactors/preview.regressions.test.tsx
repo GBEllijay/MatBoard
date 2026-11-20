@@ -12,6 +12,7 @@ import { PREVIEW_BANNER } from '../crystallineSweeps/adapter.ts';
 import { CONDITIONING_ITEMS, MINDSET_GOALS } from '../../lib/studentAssessment.ts';
 import { EMPTY_JOURNAL, EMPTY_VIDEOS } from '../termCard/model.ts';
 import { D8_SUBFACTORS_PATH, D8SubfactorsPreview } from './D8SubfactorsPreview.tsx';
+import { activateTopoFace } from '../crystallineSweeps/TopoStage.tsx';
 import { DUPLICATE_NAME, FACES, SAMPLE_CHIP, SUBFACTOR_DISCLAIMER } from './model.ts';
 import { EMPTY_BRANCHES } from './cards.ts';
 
@@ -30,6 +31,7 @@ installGlobal('localStorage', view.localStorage);
 installGlobal('sessionStorage', view.sessionStorage);
 installGlobal('HTMLElement', view.HTMLElement);
 installGlobal('HTMLInputElement', view.HTMLInputElement);
+installGlobal('HTMLSelectElement', view.HTMLSelectElement);
 installGlobal('SVGElement', view.SVGElement);
 installGlobal('Element', view.Element);
 installGlobal('Node', view.Node);
@@ -61,9 +63,12 @@ test('sample ratings update the face score and the scissor chain stays in memory
   assert.equal(host.querySelector('.d8sf-sample')?.textContent, SAMPLE_CHIP);
   assert.match(host.textContent ?? '', /Proposed/);
   assert.equal(SUBFACTOR_DISCLAIMER.includes('D8 score'), true);
-  const faces = [...host.querySelectorAll('[data-face-button]')];
+  const select = host.querySelector('[data-testid="topo-face-select"]') as HTMLSelectElement;
+  assert.ok(select);
+  assert.equal(host.querySelectorAll('.topo-legend button').length, 0);
+  const faces = [...select.querySelectorAll('[data-face-button]')];
   assert.equal(faces.length, 8);
-  for (const button of faces) assert.match(button.textContent ?? '', /\(6\)/);
+  for (const option of faces) assert.match(option.textContent ?? '', /\(6\)/);
   assert.ok(host.querySelector('[aria-label="Zoom in"]'));
   assert.ok(host.querySelector('[aria-label="Zoom out"]'));
   assert.ok(host.querySelector('[data-spin]'));
@@ -76,7 +81,7 @@ test('sample ratings update the face score and the scissor chain stays in memory
   for (const node of techniqueLabels()) assert.equal((node as HTMLElement).hidden, true);
 
   act(() => {
-    (host.querySelector('[data-face-button="sweeps"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'sweeps');
   });
   assert.equal(stage().dataset.labelTier, 'faces');
   assert.equal(stage().dataset.drilled, '');
@@ -128,11 +133,11 @@ test('sample ratings update the face score and the scissor chain stays in memory
   for (const node of techniqueLabels()) assert.equal((node as HTMLElement).hidden, true);
 
   act(() => {
-    (host.querySelector('[data-face-button="conditioning"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'conditioning');
   });
   for (const item of CONDITIONING_ITEMS) assert.match(host.textContent ?? '', new RegExp(item.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   act(() => {
-    (host.querySelector('[data-face-button="mindset"]') as HTMLButtonElement).click();
+    activateTopoFace(host, 'mindset');
   });
   for (const goal of MINDSET_GOALS) assert.match(host.textContent ?? '', new RegExp(goal.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.equal(localStorage.getItem(ASSESSMENT_STORAGE_KEY), 'kept');
@@ -161,7 +166,9 @@ function click(node: Element | null | undefined) {
 }
 
 function focusFace(host: HTMLElement, id: string) {
-  click(host.querySelector(`[data-face-button="${id}"]`));
+  act(() => {
+    activateTopoFace(host, id);
+  });
 }
 
 function addCard(host: HTMLElement, name: string, rating?: number) {

@@ -93,8 +93,14 @@ body:has(.d8-live),
   gap: 8px;
 }
 
+.d8-live .topo-legend[data-legend='select'] {
+  display: block;
+  width: 100%;
+}
+
 .d8-live .topo-controls button,
 .d8-live .topo-legend button,
+.d8-live .topo-legend__select,
 .d8-live-tools button,
 .d8-live .crystal-readout button,
 .d8-live .d8sf-card-list + button,
@@ -118,6 +124,7 @@ body:has(.d8-live),
 }
 
 .d8-live .topo-legend button:focus-visible,
+.d8-live .topo-legend__select:focus-visible,
 .d8-live .topo-controls button:focus-visible,
 .d8-live-tools button:focus-visible,
 .d8-live .crystal-readout button:focus-visible {
