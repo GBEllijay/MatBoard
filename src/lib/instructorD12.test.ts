@@ -3,7 +3,7 @@ import test from 'node:test';
 import { SHEET_AXIS_IDS } from '../preview/assessmentRadar/model.ts';
 import { TOPO_R, buildTopo, faceCentroid, type Vec } from '../preview/crystallineSweeps/topo.ts';
 import { DIAMOND_LAYOUT, diamondFaces } from './staticDiamond.ts';
-import { buildD12Topo, buildDodecahedron, pentagonPlanarError } from './instructorD12Topo.ts';
+import { D12_FACE_SLICES, buildD12Topo, buildDodecahedron, pentagonPlanarError } from './instructorD12Topo.ts';
 import {
   INSTRUCTOR_D12_FACE_IDS,
   INSTRUCTOR_D12_FACES,
@@ -181,7 +181,7 @@ test('the instructor D12 topo is a regular dodecahedron in approved face order',
   assert.equal(model.vertices.length, 20);
   assert.equal(model.faces.length, 12);
   assert.equal(model.faceCorners.length, 12);
-  assert.equal(model.tiles.length, 36);
+  assert.equal(model.tiles.length, 12 * D12_FACE_SLICES);
   assert.ok(model.faceCorners.every((corners) => corners.length === 5));
   assert.deepEqual(
     model.faces.map((face) => face.id),
@@ -195,8 +195,9 @@ test('the instructor D12 topo is a regular dodecahedron in approved face order',
     const corners = model.faceCorners[index]!.map((vertex) => model.vertices[vertex]!);
     assert.ok(pentagonPlanarError(corners) < 1e-6, `face ${index} should be planar`);
     const onFace = model.tiles.filter((tile) => tile.faceIndex === index);
-    assert.equal(onFace.length, 3);
-    assert.ok(onFace.every((tile) => tile.move?.id === INSTRUCTOR_D12_FACE_IDS[index]));
+    assert.equal(onFace.length, D12_FACE_SLICES);
+    // Check-in scores do not become face-wide moves. Empty faces stay blank tiles.
+    assert.ok(onFace.every((tile) => tile.move == null && tile.apex == null));
   }
   const mid = faceCentroid([
     [0, 0, 0],

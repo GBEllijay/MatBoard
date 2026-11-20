@@ -47,10 +47,13 @@ export function InstructorD12Panel({ seatId }: { seatId: string | null }) {
   return (
     <div className="ip-d12" data-testid="instructor-d12">
       <h3>Instructor D12</h3>
-      <p className="ip-quiet">Twelve teaching faces, scored 1–5. Ratings stay on this browser.</p>
+      <p className="ip-quiet">
+        Twelve teaching faces. Add cards on a face; the face score is their average, and a card you have
+        not rated stays at 3. The daily check-in below is a separate 1–5. Ratings stay on this browser.
+      </p>
+      <LiveD12 scores={saved} seatKey={seatKey} />
       {hasSaved ? (
         <>
-          <LiveD12 scores={saved} />
           <button
             type="button"
             className="ip-expand"
@@ -73,8 +76,8 @@ export function InstructorD12Panel({ seatId }: { seatId: string | null }) {
         </>
       ) : (
         <p className="ip-quiet" data-testid="instructor-d12-empty">
-          No teaching shape ratings yet. Rate each face 1–5 and save to see your Instructor D12 here.
-          Sample scores are not shown.
+          No teaching shape check-in yet. Rate each face 1–5 and save. This check-in is separate from
+          the card scores on the D12. Sample scores are not shown.
         </p>
       )}
       {hasSaved && !showForm ? (

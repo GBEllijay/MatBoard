@@ -1,0 +1,101 @@
+/* Card readout and editor on the live instructor D12. Stage paint stays in instructorSheet.css. */
+
+.ip-d12-live {
+  display: grid;
+  gap: 12px;
+}
+
+.ip-d12-live .d12-live-readout,
+.ip-d12-live .crystal-readout {
+  color: var(--ip-ink, #f5f1e8);
+}
+
+.ip-d12-live .crystal-readout h2,
+.ip-d12-live .d12-live-face-title {
+  margin: 0;
+  color: var(--ip-ink, #f5f1e8);
+  font-size: 1.1rem;
+}
+
+.ip-d12-live .d12-live-face-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ip-d12-live .d12-live-face-head h2 {
+  margin: 0;
+}
+
+.ip-d12-live button.d12-live-face-title {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ip-d12-live .crystal-readout p {
+  margin: 8px 0;
+  color: rgba(245, 241, 232, 0.82);
+  font-size: 0.95rem;
+}
+
+.ip-d12-live .crystal-readout button,
+.ip-d12-live [data-add-card],
+.ip-d12-live [data-testid='d12-add-card'] {
+  min-height: 36px;
+  padding: 0.2rem 0.85rem;
+  border: 2px solid #1c140e;
+  border-radius: 999px;
+  background: rgba(244, 240, 228, 0.94);
+  color: #1c140e;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ip-d12-live .d8sf-face-scores button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ip-d12-live .d12-card-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #9ec4ff;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  min-height: 0;
+}
+
+.ip-d12-live .d12-live-sheet {
+  color: #1c140e;
+}
+
+.ip-d12-live .d8sf-index select,
+.ip-d12-live .d8sf-index input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 0.25rem 0.7rem;
+  border: 2px solid #1c140e;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.ip-d12-live .d12-rate-saved[data-on='true'] {
+  min-height: 1.2em;
+  color: #0b5;
+  font-weight: 700;
+}

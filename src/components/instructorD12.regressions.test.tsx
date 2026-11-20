@@ -11,6 +11,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { InstructorSheet } from './InstructorSheet.tsx';
 import { INSTRUCTOR_D12_STORAGE_KEY } from '../lib/instructorD12.ts';
+import { INSTRUCTOR_D12_CARDS_STORAGE_KEY } from '../lib/instructorD12Cards.ts';
 import { INSTRUCTOR_PROFILE_STORAGE_KEY } from '../lib/instructorProfile.ts';
 import { ASSESSMENT_STORAGE_KEY } from '../lib/studentAssessment.ts';
 import { STUDENT_FILE_STORAGE_KEY } from '../lib/studentDemo.ts';
@@ -64,6 +65,7 @@ if (typeof view.matchMedia !== 'function') {
 
 function clearSheetStorage() {
   localStorage.removeItem(INSTRUCTOR_D12_STORAGE_KEY);
+  localStorage.removeItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY);
   localStorage.removeItem(INSTRUCTOR_PROFILE_STORAGE_KEY);
   localStorage.removeItem(ASSESSMENT_STORAGE_KEY);
   localStorage.removeItem(STUDENT_FILE_STORAGE_KEY);
@@ -139,8 +141,8 @@ test('the instructor profile shows the student cards, an empty D12, and keeps sa
   assert.equal(student.querySelector('[data-testid="instructor-d12"]'), null);
   const empty = d12.querySelector('[data-testid="instructor-d12-empty"]');
   assert.ok(empty, 'expected a clear empty state when nothing is saved');
-  assert.match(empty?.textContent ?? '', /No teaching shape ratings yet/);
-  assert.equal(d12.querySelector('[data-testid="instructor-d12-visual"]'), null);
+  assert.match(empty?.textContent ?? '', /No teaching shape check-in yet/);
+  assert.ok(d12.querySelector('[data-testid="instructor-d12-visual"]'), 'the D12 is on screen so cards can be added before a check-in');
   assert.equal(d12.querySelector('[data-testid="instructor-d12-scores"]'), null);
   const pressed = [...d12.querySelectorAll('button[aria-pressed="true"]')];
   assert.equal(pressed.length, 0, 'empty state must not pre-select sample scores');
