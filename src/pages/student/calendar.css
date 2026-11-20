@@ -2,6 +2,9 @@
  * Student calendar only. Reuses the Competitor arena tokens and the
  * Fundamentals hero, stack, and pick controls. The journal stays on the
  * notebook styles in student-edition.css.
+ *
+ * The month grid matches the Class Schedule month-cast / week-cast navy
+ * board and its glowing blue today tile (logo-blue inset ring).
  */
 
 .student.student--calendar .fund-stack {
@@ -57,57 +60,82 @@
 
 .student.student--arena.student--calendar .cal-grid.ink {
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 2px 0;
-  padding: 12px 2px 10px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #0a0f17;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .student.student--calendar .cal-dow {
   min-height: 28px;
-  color: var(--arena-muted);
+  padding: 0.28rem 0.15rem;
+  color: #dfe5ee;
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  text-align: center;
+  background: #111926;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.student.student--calendar .cal-dow:nth-child(7n) {
+  border-right: 0;
 }
 
 .student.student--calendar .cal-day {
   min-height: 48px;
   padding: 2px 0 1px;
   border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--arena-text);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0;
+  background: #0d131c;
+  color: #dfe5ee;
   font-size: 16px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   touch-action: manipulation;
 }
 
+.student.student--calendar .cal-day:nth-child(7n) {
+  border-right: 0;
+}
+
+.student.student--calendar .cal-day:nth-last-child(-n + 7) {
+  border-bottom: 0;
+}
+
 .student.student--calendar button.cal-day:active {
   transform: scale(0.98);
 }
 
-.student.student--calendar .cal-day.is-today {
+.student.student--calendar .cal-day.has-journal {
+  background: #162033;
+}
+
+.student.student--calendar .cal-day.is-today,
+.student.student--calendar .cal-day.has-journal.is-today {
+  position: relative;
+  z-index: 1;
   border-color: transparent;
-  background: transparent;
+  background: rgba(0, 78, 186, 0.13);
+  box-shadow: inset 0 0 0 1.5px rgba(0, 78, 186, 0.75);
 }
 
 .student.student--calendar .cal-day.is-today > span:first-child {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  background: #f5f5f7;
-  color: #000000;
-}
-
-.student.student--calendar .cal-day.has-journal {
-  background: var(--arena-fill);
+  background: transparent;
+  color: #fff;
+  font-weight: 800;
 }
 
 .student.student--calendar .cal-day--out {
-  color: rgba(255, 255, 255, 0.28);
+  color: rgba(223, 229, 238, 0.38);
+  background: #0a0f17;
 }
 
 .student.student--calendar .cal-dot {
