@@ -21,10 +21,8 @@ import {
 } from './instructorD12Topo.ts';
 import {
   D12_CONFIRM_DELETE_CARD,
-  D12_DEFAULT_FACE_VIEW,
   D12_DEFAULT_SHAPE_METRIC,
   D12_DELETE_CARD,
-  D12_FACE_VIEWS,
   D12_KEEP_CARD,
   D12_SHAPE_METRICS,
   DUPLICATE_NAME,
@@ -310,7 +308,7 @@ test('after a removal, remaining cards are re-laid center-out until the grid shr
   assert.equal(d12FaceSlots(shrunk, faceIndex).filter((slot) => slot.moveId).length, 5);
 });
 
-test('shape metric and face-view labels default like the live D8, and the toggle never writes storage', () => {
+test('shape metric labels default to card ratings, and applying a metric never writes storage', () => {
   assert.deepEqual(
     D12_SHAPE_METRICS.map((item) => [item.id, item.label]),
     [
@@ -319,14 +317,6 @@ test('shape metric and face-view labels default like the live D8, and the toggle
     ],
   );
   assert.equal(D12_DEFAULT_SHAPE_METRIC, 'card-ratings');
-  assert.deepEqual(
-    D12_FACE_VIEWS.map((item) => [item.id, item.label]),
-    [
-      ['map', 'Map'],
-      ['cards', 'Cards'],
-    ],
-  );
-  assert.equal(D12_DEFAULT_FACE_VIEW, 'cards');
   assert.equal(D12_DELETE_CARD, 'Delete');
   assert.equal(D12_CONFIRM_DELETE_CARD, 'Confirm delete');
   assert.equal(D12_KEEP_CARD, 'Keep card');

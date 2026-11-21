@@ -16,11 +16,9 @@ import {
 import { INSTRUCTOR_D12_FACES, type InstructorD12FaceId, type InstructorD12Scores } from '../lib/instructorD12';
 import {
   D12_CONFIRM_DELETE_CARD,
-  D12_DEFAULT_FACE_VIEW,
   D12_DEFAULT_SHAPE_METRIC,
   D12_DELETE_CARD,
   D12_DELETE_PROMPT,
-  D12_FACE_VIEWS,
   D12_KEEP_CARD,
   D12_SHAPE_METRICS,
   DUPLICATE_NAME,
@@ -35,7 +33,6 @@ import {
   removeInstructorD12Card,
   saveInstructorD12Cards,
   shownD12CardRating,
-  type D12FaceView,
   type D12ShapeMetric,
   type InstructorD12Card,
 } from '../lib/instructorD12Cards';
@@ -69,7 +66,6 @@ export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', re
   const [focus, setFocus] = useState(-1);
   const [open, setOpen] = useState<OpenState>(null);
   const [metric, setMetric] = useState<D12ShapeMetric>(D12_DEFAULT_SHAPE_METRIC);
-  const [faceView, setFaceView] = useState<D12FaceView>(D12_DEFAULT_FACE_VIEW);
 
   const commit = (next: InstructorD12Card[]) => {
     if (controlled) return;
@@ -84,7 +80,7 @@ export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', re
   const collapseFace = () => setFocus(-1);
 
   return (
-    <div ref={rootRef} className="ip-d12-live" data-testid="instructor-d12-visual" data-metric={metric} data-face-view={faceView}>
+    <div ref={rootRef} className="ip-d12-live" data-testid="instructor-d12-visual" data-metric={metric}>
       <TopoStage
         model={model}
         style="pyramid"
@@ -141,8 +137,6 @@ export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', re
           label={face.label}
           cards={d12CardsOnFace(cards, faceId)}
           slots={d12FaceSlots(model, focus)}
-          view={faceView}
-          onView={setFaceView}
           readOnly={controlled}
           onCollapse={collapseFace}
           onOpen={(id) => setOpen({ kind: 'card', id })}
@@ -243,8 +237,6 @@ function FaceReadout({
   label,
   cards,
   slots,
-  view,
-  onView,
   readOnly,
   onCollapse,
   onOpen,
@@ -254,8 +246,6 @@ function FaceReadout({
   label: string;
   cards: readonly InstructorD12Card[];
   slots: ReturnType<typeof d12FaceSlots>;
-  view: D12FaceView;
-  onView: (view: D12FaceView) => void;
   readOnly: boolean;
   onCollapse: () => void;
   onOpen: (id: string) => void;
@@ -264,8 +254,8 @@ function FaceReadout({
   const filled = slots.filter((slot) => slot.label).length;
   const byId = new Map(cards.map((card) => [card.id, card]));
   return (
-    <div className="crystal-readout d12-live-readout" data-testid="d12-face-readout" data-face-view={view}>
-      <section aria-label={`${label} cards`}>
+    <div className="crystal-readout d12-live-readout" data-testid="d12-face-readout">
+      <section aria-label={`${label} face`}>
         <div className="d12-live-face-head">
           <h2>
             <button type="button" className="d12-live-face-title" data-testid="d12-face-heading" aria-expanded="true" onClick={onCollapse}>
@@ -280,23 +270,9 @@ function FaceReadout({
           {d12CardFaceScoreLine(cards, faceId)}
         </p>
         <p>{`Average of every card on this face. A card you have not rated stays at 3. ${filled} of ${slots.length} tiles have a card.`}</p>
-        <div className="d12-live-face-views" role="group" aria-label="Face view" data-testid="d12-face-view">
-          {D12_FACE_VIEWS.map((choice) => (
-            <button
-              key={choice.id}
-              type="button"
-              aria-pressed={view === choice.id}
-              data-testid={`d12-face-view-${choice.id}`}
-              onClick={() => onView(choice.id)}
-            >
-              {choice.label}
-            </button>
-          ))}
-        </div>
-        {view === 'map' ? (
-          <FaceMap label={label} slots={slots} byId={byId} readOnly={readOnly} onOpen={onOpen} onAdd={onAdd} />
-        ) : (
-          <ul className="d8sf-card-list" data-testid="d12-face-card-list">
+        <FaceMap label={label} slots={slots} byId={byId} readOnly={readOnly} onOpen={onOpen} onAdd={onAdd} />
+        <section data-testid="d12-face-card-list" aria-label={`${label} cards`}>
+          <ul className="d8sf-card-list">
             {d12CardsInPlaceOrder(cards).map((item) => (
               <li key={item.id} data-list-card={item.id}>
                 <button type="button" className="d12-card-link" onClick={() => onOpen(item.id)}>
@@ -306,12 +282,12 @@ function FaceReadout({
               </li>
             ))}
           </ul>
-        )}
-        {readOnly ? null : (
-          <button type="button" data-add-card={faceId} data-testid="d12-add-face-card" onClick={onAdd}>
-            Add
-          </button>
-        )}
+          {readOnly ? null : (
+            <button type="button" data-add-card={faceId} data-testid="d12-add-face-card" onClick={onAdd}>
+              Add
+            </button>
+          )}
+        </section>
       </section>
     </div>
   );

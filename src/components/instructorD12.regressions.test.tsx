@@ -260,7 +260,7 @@ test('Pro and Pro + Cloud do not remount the instructor identity card', () => {
   assert.match(readFileSync('src/pages/CoachUnlimited.tsx', 'utf8'), /<InstructorSheet \/>/);
 });
 
-test('the D12 deletes a card, toggles map and metrics, and never mixes the two stores', async () => {
+test('the D12 deletes a card, shows map and cards together, toggles metrics, and never mixes the two stores', async () => {
   clearSheetStorage();
   const mounted = await renderSheet();
   const d12 = mounted.host.querySelector('[data-testid="instructor-d12"]') as HTMLElement;
@@ -284,15 +284,12 @@ test('the D12 deletes a card, toggles map and metrics, and never mixes the two s
   await click(speaking);
   const readout = d12.querySelector('[data-testid="d12-face-readout"]') as HTMLElement;
   assert.ok(readout);
-  assert.equal(readout.getAttribute('data-face-view'), 'cards');
-  assert.ok(readout.querySelector('[data-testid="d12-face-card-list"]'));
-  assert.equal(readout.querySelector('[data-testid="face-pyramid"]'), null);
-  await click(readout.querySelector('[data-testid="d12-face-view-map"]') as HTMLElement);
-  assert.equal(readout.getAttribute('data-face-view'), 'map');
-  assert.ok(readout.querySelector('[data-testid="face-pyramid"]'));
-  assert.equal(readout.querySelector('[data-testid="d12-face-card-list"]'), null);
-  await click(readout.querySelector('[data-testid="d12-face-view-cards"]') as HTMLElement);
-  assert.ok(readout.querySelector('[data-testid="d12-face-card-list"]'));
+  assert.equal(readout.querySelector('[data-testid="d12-face-view"]'), null);
+  assert.ok(readout.querySelector('[data-testid="face-pyramid"]'), 'focused face shows the 2D map');
+  assert.ok(readout.querySelector('[data-testid="d12-face-card-list"]'), 'focused face shows the card list');
+  const pyramid = readout.querySelector('[data-testid="face-pyramid"]') as HTMLElement;
+  const list = readout.querySelector('[data-testid="d12-face-card-list"]') as HTMLElement;
+  assert.equal(Boolean(pyramid.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING), true, 'map sits above the card list, like LiveD8 FaceReadout');
 
   const cardBtn = [...readout.querySelectorAll('[data-list-card] button')].find((node) =>
     node.textContent?.includes('Intro / end-of-class message'),

@@ -100,15 +100,13 @@
   font-weight: 700;
 }
 
-.ip-d12-live .d12-live-tools,
-.ip-d12-live .d12-live-face-views {
+.ip-d12-live .d12-live-tools {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.ip-d12-live .d12-live-tools button[aria-pressed='true'],
-.ip-d12-live .d12-live-face-views button[aria-pressed='true'] {
+.ip-d12-live .d12-live-tools button[aria-pressed='true'] {
   background: #004eba;
   color: #f4f0e4;
 }

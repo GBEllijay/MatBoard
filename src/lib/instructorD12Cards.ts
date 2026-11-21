@@ -30,16 +30,6 @@ export type D12ShapeMetric = (typeof D12_SHAPE_METRICS)[number]['id'];
 /** Live D8 shapes from cards by default; check-in is a separate source. */
 export const D12_DEFAULT_SHAPE_METRIC: D12ShapeMetric = 'card-ratings';
 
-export const D12_FACE_VIEWS = [
-  { id: 'map', label: 'Map' },
-  { id: 'cards', label: 'Cards' },
-] as const;
-
-export type D12FaceView = (typeof D12_FACE_VIEWS)[number]['id'];
-
-/** Start on the card list, then toggle to the 2D face map. */
-export const D12_DEFAULT_FACE_VIEW: D12FaceView = 'cards';
-
 export const D12_DELETE_CARD = 'Delete';
 export const D12_CONFIRM_DELETE_CARD = 'Confirm delete';
 export const D12_KEEP_CARD = 'Keep card';
