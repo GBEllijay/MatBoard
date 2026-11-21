@@ -53,7 +53,11 @@ export type InstructorJournalEntry = {
   id: string;
   date: string;
   classLabel?: string;
+  /** Schedule occurrence id (weekly slot or special:id) when the entry is tied to the class board. */
+  slotId?: string;
   whoInClass?: string;
+  /** Student Edition ids for people listed in whoInClass, when known. */
+  whoInClassIds?: string[];
   /** Private after-class reflection. Excluded from student bundle unless shareReflection is true. */
   reflection: string;
   shareReflection?: boolean;
@@ -91,7 +95,9 @@ export type StudentShareBundle = {
 export type InstructorJournalDraft = {
   date?: string;
   classLabel?: string;
+  slotId?: string;
   whoInClass?: string;
+  whoInClassIds?: string[];
   reflection: string;
   shareReflection?: boolean;
   classNotes?: string;
@@ -196,11 +202,17 @@ function cleanEntry(raw: unknown): InstructorJournalEntry | null {
   const date = cleanDate(typeof row.date === 'string' ? row.date : undefined);
   const classLabel = cleanLine(typeof row.classLabel === 'string' ? row.classLabel : '', LABEL_MAX);
   const whoInClass = cleanLine(typeof row.whoInClass === 'string' ? row.whoInClass : '', WHO_MAX);
+  const slotId = typeof row.slotId === 'string' ? row.slotId.trim().slice(0, 80) : '';
+  const whoInClassIds = Array.isArray(row.whoInClassIds)
+    ? [...new Set(row.whoInClassIds.filter((id): id is string => typeof id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(id)))].slice(0, 80)
+    : [];
   const tags = cleanTags(row.tags);
   const createdAt = typeof row.createdAt === 'number' && Number.isFinite(row.createdAt) ? row.createdAt : 0;
   const entry: InstructorJournalEntry = { id, date, reflection, createdAt };
   if (classLabel) entry.classLabel = classLabel;
+  if (slotId) entry.slotId = slotId;
   if (whoInClass) entry.whoInClass = whoInClass;
+  if (whoInClassIds.length) entry.whoInClassIds = whoInClassIds;
   if (row.shareReflection === true && reflection) entry.shareReflection = true;
   if (classNotes) entry.classNotes = classNotes;
   if (row.shareClassNotes === true && classNotes) entry.shareClassNotes = true;
@@ -367,7 +379,9 @@ export function addInstructorJournalEntry(
     id: newInstructorJournalId('ij', at),
     date: draft.date,
     classLabel: draft.classLabel,
+    slotId: draft.slotId,
     whoInClass: draft.whoInClass,
+    whoInClassIds: draft.whoInClassIds,
     reflection: draft.reflection,
     shareReflection: draft.shareReflection === true,
     classNotes: draft.classNotes,

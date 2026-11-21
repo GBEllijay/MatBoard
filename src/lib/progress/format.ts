@@ -13,7 +13,7 @@ import { highDatesForCount } from '../blackBeltDegrees.ts';
 import { dedupeRankHistory, expandLineage, stripeDateText } from '../studentRank.ts';
 import { asRecord } from '../plainValue.ts';
 import { readWorkingGraph } from '../workingTechniques.ts';
-import { readCoachAssessment, readCoachBeltProgress, readCoachNote } from './syncPackets.ts';
+import { readCoachAssessment, readCoachBeltProgress, readCoachNote, readClassRecap } from './syncPackets.ts';
 import { canonicalFundamentalsCatalogId } from './catalog.ts';
 import { mergeJournalCardVideos, readJournalCardVideos } from './cardVideos.ts';
 import { emptyCompetition, seedGamesFromJournal } from './competition.ts';
@@ -104,6 +104,7 @@ import {
   type CoachAssessmentPacket,
   type CoachGymLogoPacket,
   type CoachNotePacket,
+  type ClassRecapPacket,
   type CoachRankUpdatePacket,
   type CoachPlanFocus,
   type CoachPlanPacket,
@@ -312,7 +313,8 @@ export function parseProgressValue(raw: unknown): ProgressParse {
     kind === 'coach-belt-progress-update' ||
     kind === 'coach-assessment-update' ||
     kind === 'coach-gym-logo-update' ||
-    kind === 'coach-note-update'
+    kind === 'coach-note-update' ||
+    kind === 'class-recap-update'
   ) {
     const typedUpdate =
       kind === 'coach-rank-update' ||
@@ -320,7 +322,8 @@ export function parseProgressValue(raw: unknown): ProgressParse {
       kind === 'coach-belt-progress-update' ||
       kind === 'coach-assessment-update' ||
       kind === 'coach-gym-logo-update' ||
-      kind === 'coach-note-update';
+      kind === 'coach-note-update' ||
+      kind === 'class-recap-update';
     if (carriesStudentMark(record) || (typedUpdate && carriesChecklist(record))) {
       errors.push('A coach file cannot set student marks, checkpoints, journal, or goals.');
     }
@@ -406,6 +409,21 @@ export function parseProgressValue(raw: unknown): ProgressParse {
       studentId,
       updatedAt,
       coachNote: readCoachNote(record.coachNote, errors),
+      issuedAt: readTime(record.issuedAt, 'issuedAt', errors),
+      updateId: readId(record.updateId, 'Update id', errors),
+    };
+    const gym = attachGym(record);
+    if (gym) value.gym = gym;
+    return errors.length ? { ok: false, errors } : { ok: true, value };
+  }
+  if (kind === 'class-recap-update') {
+    const value: ClassRecapPacket = {
+      schemaVersion: PROGRESS_SCHEMA_VERSION,
+      kind,
+      id,
+      studentId,
+      updatedAt,
+      recap: readClassRecap(record.recap, errors),
       issuedAt: readTime(record.issuedAt, 'issuedAt', errors),
       updateId: readId(record.updateId, 'Update id', errors),
     };

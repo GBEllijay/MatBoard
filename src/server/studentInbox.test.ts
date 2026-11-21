@@ -283,7 +283,7 @@ test('every typed sync packet is stored; assistant and director seats are refuse
     const refused = await call(bucket, keys.secret, 'POST', 'https://advantage.test/api/gym/inbox', { ...body, packet: marked }, owner);
     assert.equal(refused.status, 400, update.kind);
   }
-  assert.equal(bucket.objects.size, 6);
+  assert.equal(bucket.objects.size, 7);
 });
 
 test('photo chain: student pass submits, parent stamp required, head coach only, never auto-published, nothing deleted', async () => {

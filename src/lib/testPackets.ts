@@ -1,6 +1,7 @@
 /** Test helpers only: one sample packet of every coach → student kind. */
 import { buildCoachCompetitionUpdate } from './coachCompetitionUpdate.ts';
 import { buildCoachRankUpdate } from './coachRankUpdate.ts';
+import { buildClassRecapUpdate } from './classRecap.ts';
 import {
   buildCoachAssessmentUpdate,
   buildCoachBeltProgressUpdate,
@@ -82,6 +83,21 @@ export function everyTestPacket(studentId = 'stu-alex', now = 50): SyncPacket[] 
         journalDate: '2026-11-02',
         now,
         updateId: `note-${studentId}`,
+      }),
+    ),
+    must(
+      buildClassRecapUpdate({
+        studentId,
+        recap: {
+          entryId: 'journal.1',
+          date: '2026-11-03',
+          className: 'Evening Gi',
+          notes: 'Break posture before the collar drag.',
+          techniques: ['Collar drag'],
+          videos: [],
+        },
+        now,
+        updateId: `recap-${studentId}`,
       }),
     ),
     must(

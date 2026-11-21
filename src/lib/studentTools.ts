@@ -41,6 +41,7 @@ import {
   type CoachCompetitionUpdatePacket,
   type CoachGymLogoPacket,
   type CoachNotePacket,
+  type ClassRecapPacket,
   type CoachFeedbackPacket,
   type CoachGymBrand,
   type CoachRankUpdatePacket,
@@ -1058,7 +1059,7 @@ export type CoachImportResult = {
    * Belt progress or a coach assessment (accept or dismiss, kept beside the
    * student's own data), or a gym logo (optional "Update?" prompt only).
    */
-  pendingSyncPacket?: CoachBeltProgressPacket | CoachAssessmentPacket | CoachGymLogoPacket | CoachNotePacket;
+  pendingSyncPacket?: CoachBeltProgressPacket | CoachAssessmentPacket | CoachGymLogoPacket | CoachNotePacket | ClassRecapPacket;
   /** Student inbox code carried beside a coach file, when the coach had one. */
   inboxPass?: string;
 };
@@ -1150,6 +1151,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
     record.kind === 'coach-belt-progress-update' ||
     record.kind === 'coach-assessment-update' ||
     record.kind === 'coach-note-update' ||
+    record.kind === 'class-recap-update' ||
     record.kind === 'coach-gym-logo-update'
   ) {
     const parsed = parseProgressPacket(text);
@@ -1158,6 +1160,7 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
       (parsed.value.kind !== 'coach-belt-progress-update' &&
         parsed.value.kind !== 'coach-assessment-update' &&
         parsed.value.kind !== 'coach-note-update' &&
+        parsed.value.kind !== 'class-recap-update' &&
         parsed.value.kind !== 'coach-gym-logo-update')
     ) {
       if (!parsed.ok && parsed.errors.some((line) => line.includes('cannot set student marks'))) {
@@ -1180,7 +1183,9 @@ export function applyCoachFile(report: StudentProgressReport, shelf: CoachShelf,
           ? 'Your coach shared belt progress. Accept or dismiss it. Your checklist was not changed.'
           : parsed.value.kind === 'coach-note-update'
             ? 'Your coach sent a note. Accept to add it under your journal entry. Your own words are not changed.'
-            : 'Your coach shared an assessment. Accept or dismiss it. Your self-assessment was not changed.';
+            : parsed.value.kind === 'class-recap-update'
+              ? 'Your coach sent a class recap. Add to my Journal adds a recap card. Your own words are not changed.'
+              : 'Your coach shared an assessment. Accept or dismiss it. Your self-assessment was not changed.';
     return { report, shelf, message, error: '', gym, pendingSyncPacket: parsed.value };
   }
   if (record.kind === 'coach-competition-update') {

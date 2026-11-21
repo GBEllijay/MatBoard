@@ -205,6 +205,7 @@ export const PROGRESS_PACKET_KINDS = [
   'coach-assessment-update',
   'coach-gym-logo-update',
   'coach-note-update',
+  'class-recap-update',
 ] as const;
 export type ProgressPacketKind = (typeof PROGRESS_PACKET_KINDS)[number];
 
@@ -1170,6 +1171,25 @@ export type CoachNotePacket = PacketBase & {
   updateId: string;
 };
 
+/** Class recap or absentee copy. Notes, techniques, and https links only. No class roster. */
+export type ClassRecapBody = {
+  entryId: string;
+  date: string;
+  className: string;
+  notes: string;
+  techniques: string[];
+  videos: { title: string; href: string }[];
+  absentee?: boolean;
+};
+
+export type ClassRecapPacket = PacketBase & {
+  kind: 'class-recap-update';
+  recap: ClassRecapBody;
+  gym?: CoachGymBrand;
+  issuedAt: number;
+  updateId: string;
+};
+
 export type ProgressPacket =
   | StudentProgressReport
   | CoachPlanPacket
@@ -1179,7 +1199,8 @@ export type ProgressPacket =
   | CoachBeltProgressPacket
   | CoachAssessmentPacket
   | CoachGymLogoPacket
-  | CoachNotePacket;
+  | CoachNotePacket
+  | ClassRecapPacket;
 
 export type ProgressParse =
   | { ok: true; value: ProgressPacket }

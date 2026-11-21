@@ -181,6 +181,8 @@ export function packetHasNote(packet: CoachInboxPacket): boolean {
       return packet.competitionUpdate.matches.some((match) => match.note.trim().length > 0);
     case 'coach-note-update':
       return true;
+    case 'class-recap-update':
+      return true;
   }
 }
 
@@ -221,6 +223,11 @@ export function cardChangeLines(packet: CoachInboxPacket): string[] {
     }
     case 'coach-note-update':
       return [`Coach note for ${shortPromotionDate(packet.coachNote.journalDate || packet.coachNote.issuedOn)}`];
+    case 'class-recap-update': {
+      const name = packet.recap.className.trim() || 'class';
+      const label = packet.recap.absentee ? 'Absentee copy' : 'Class recap';
+      return [`${label}: ${name}`, `Date: ${shortPromotionDate(packet.recap.date)}`];
+    }
   }
 }
 

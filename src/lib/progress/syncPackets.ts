@@ -15,6 +15,7 @@ import {
   type CoachBenchmarkStatus,
   type CoachBenchmarkView,
   type CoachNote,
+  type ClassRecapBody,
 } from './types.ts';
 
 /**
@@ -173,4 +174,56 @@ export function readCoachNote(raw: unknown, errors: string[]): CoachNote {
     journalDate: realSyncDay(journalDate) ? journalDate : '',
     note: note.slice(0, COACH_NOTE_MAX),
   };
+}
+
+export const CLASS_RECAP_NOTE_MAX = 2000;
+
+export function readClassRecap(raw: unknown, errors: string[]): ClassRecapBody {
+  const empty: ClassRecapBody = { entryId: '', date: '1970-01-01', className: '', notes: '', techniques: [], videos: [] };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    errors.push('The class recap is missing.');
+    return empty;
+  }
+  const row = raw as Record<string, unknown>;
+  const date = typeof row.date === 'string' ? row.date.trim() : '';
+  if (!realSyncDay(date)) errors.push('The class recap needs a real date.');
+  const notes = typeof row.notes === 'string' ? row.notes.trim() : '';
+  if (notes.length > CLASS_RECAP_NOTE_MAX) errors.push(`Class notes can be up to ${CLASS_RECAP_NOTE_MAX} characters.`);
+  const techniques: string[] = [];
+  if (Array.isArray(row.techniques)) {
+    const seen = new Set<string>();
+    for (const item of row.techniques) {
+      const name = typeof item === 'string' ? item.trim() : '';
+      const key = name.toLocaleLowerCase();
+      if (!name || seen.has(key)) continue;
+      seen.add(key);
+      techniques.push(name.slice(0, 80));
+      if (techniques.length >= 12) break;
+    }
+  }
+  const videos: { title: string; href: string }[] = [];
+  if (Array.isArray(row.videos)) {
+    const seen = new Set<string>();
+    for (const item of row.videos) {
+      if (!item || typeof item !== 'object') continue;
+      const video = item as { title?: unknown; href?: unknown };
+      const href = typeof video.href === 'string' ? video.href.trim() : '';
+      const title = typeof video.title === 'string' ? video.title.trim().slice(0, 80) : '';
+      if (!/^https:\/\//i.test(href) || seen.has(href)) continue;
+      seen.add(href);
+      videos.push({ title: title || 'Class video', href });
+      if (videos.length >= 8) break;
+    }
+  }
+  if (!notes && !techniques.length && !videos.length) errors.push('Nothing is marked to share with students yet.');
+  const recap: ClassRecapBody = {
+    entryId: typeof row.entryId === 'string' ? row.entryId.trim().slice(0, 80) : '',
+    date: realSyncDay(date) ? date : empty.date,
+    className: typeof row.className === 'string' ? row.className.trim().slice(0, 100) : '',
+    notes: notes.slice(0, CLASS_RECAP_NOTE_MAX),
+    techniques,
+    videos,
+  };
+  if (row.absentee === true) recap.absentee = true;
+  return recap;
 }

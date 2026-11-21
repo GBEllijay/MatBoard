@@ -234,8 +234,8 @@ test('decline (dismiss) records the id and leaves the report alone', () => {
 test('receive: accept-card kinds queue, the logo goes to the prompt, not the queue', () => {
   const storage = testMemory();
   const results = everyTestPacket().map((packet) => receiveSyncPacket(storage, packet));
-  assert.deepEqual(results, ['queued', 'queued', 'queued', 'queued', 'queued', 'logo-started']);
-  assert.equal(readCoachQueue(storage).length, 5);
+  assert.deepEqual(results, ['queued', 'queued', 'queued', 'queued', 'queued', 'queued', 'logo-started']);
+  assert.equal(readCoachQueue(storage).length, 6);
   assert.equal(receiveSyncPacket(storage, everyTestPacket()[0], 'someone-else'), 'ignored');
 });
 
@@ -250,7 +250,7 @@ test('file fallback round trip: the saved file imports on the student phone', ()
   }
   assert.deepEqual(
     readCoachQueue(storage).map((packet) => packet.updateId).sort(),
-    ['assess-stu-alex', 'belt-stu-alex', 'comp-stu-alex', 'note-stu-alex', 'rank-stu-alex'],
+    ['assess-stu-alex', 'belt-stu-alex', 'comp-stu-alex', 'note-stu-alex', 'rank-stu-alex', 'recap-stu-alex'],
   );
   assert.equal(readGymLogoSync(storage).shown?.dataUrl, TEST_LOGO);
 });
@@ -261,7 +261,7 @@ test('gym folder round trip delivers only this student’s packets', async () =>
   for (const packet of everyTestPacket('stu-other')) await sendSyncPacketToFolder(folder, packet);
   const storage = testMemory();
   const results = await takeSyncPacketsFromFolder(folder, storage, 'stu-alex');
-  assert.equal(results.filter((row) => row === 'queued').length, 5);
+  assert.equal(results.filter((row) => row === 'queued').length, 6);
   assert.equal(readCoachQueue(storage).every((packet) => packet.studentId === 'stu-alex'), true);
 });
 

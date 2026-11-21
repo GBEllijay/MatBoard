@@ -16,6 +16,7 @@ import {
   type CoachAssessmentPacket,
   type CoachBeltProgressPacket,
   type CoachNotePacket,
+  type ClassRecapPacket,
   type CoachCompetitionUpdatePacket,
   type CoachGymBrand,
   type CoachRankUpdatePacket,
@@ -60,7 +61,8 @@ export type CoachInboxPacket =
   | CoachCompetitionUpdatePacket
   | CoachBeltProgressPacket
   | CoachAssessmentPacket
-  | CoachNotePacket;
+  | CoachNotePacket
+  | ClassRecapPacket;
 
 /** Every coach → student kind the inbox queue keeps. */
 export const COACH_INBOX_KINDS = [
@@ -69,6 +71,7 @@ export const COACH_INBOX_KINDS = [
   'coach-belt-progress-update',
   'coach-assessment-update',
   'coach-note-update',
+  'class-recap-update',
 ] as const;
 
 export function isCoachInboxPacket(value: { kind: string }): value is CoachInboxPacket {

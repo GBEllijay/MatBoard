@@ -30,7 +30,7 @@ test('off by default: every packet type follows the current flow unchanged', () 
   const storage = testMemory();
   assert.equal(parentGateOn(storage), false);
   const results = everyTestPacket().map((packet) => receiveSyncPacket(storage, packet));
-  assert.deepEqual(results, ['queued', 'queued', 'queued', 'queued', 'queued', 'logo-started']);
+  assert.deepEqual(results, ['queued', 'queued', 'queued', 'queued', 'queued', 'queued', 'logo-started']);
   assert.equal(heldForParent(storage).length, 0);
   const report = assignStudentId(blankStudentReport(10), 'stu-alex', 10);
   const plan = importCoachText(storage, report, sampleCoachPlanFile('stu-alex', 80).json);
@@ -41,20 +41,20 @@ test('off by default: every packet type follows the current flow unchanged', () 
 test('on: every packet type is held until a parent approves (cloud, file, coach plan)', async () => {
   const storage = await gated();
   const results = everyTestPacket().map((packet) => receiveSyncPacket(storage, packet));
-  assert.deepEqual(results, ['parent-hold', 'parent-hold', 'parent-hold', 'parent-hold', 'parent-hold', 'parent-hold']);
+  assert.deepEqual(results, ['parent-hold', 'parent-hold', 'parent-hold', 'parent-hold', 'parent-hold', 'parent-hold', 'parent-hold']);
   // Nothing reached the student: no accept cards, no logo, no prompt.
   assert.equal(readCoachQueue(storage).length, 0);
   assert.equal(readGymLogoSync(storage).latest, null);
   assert.equal(gymLogoPromptDue(storage), false);
   // A repeat pull does not hold twice.
   receiveSyncPacket(storage, everyTestPacket()[0]);
-  assert.equal(heldForParent(storage).length, 6);
+  assert.equal(heldForParent(storage).length, 7);
 
   const report = assignStudentId(blankStudentReport(10), 'stu-alex', 10);
   const plan = importCoachText(storage, report, sampleCoachPlanFile('stu-alex', 80).json);
   assert.equal(plan.kind, 'parent-hold');
   assert.equal(loadCoachShelf(storage).plan, null);
-  assert.equal(heldForParent(storage).length, 7);
+  assert.equal(heldForParent(storage).length, 8);
 });
 
 test('parent approve hands each packet on; the student still accepts', async () => {
@@ -71,7 +71,7 @@ test('parent approve hands each packet on; the student still accepts', async () 
     else importCoachText(storage, report, decided.item.text, { parentApproved: true });
   }
   assert.equal(heldForParent(storage).length, 0);
-  assert.equal(readCoachQueue(storage).length, 5);
+  assert.equal(readCoachQueue(storage).length, 6);
   assert.ok(readGymLogoSync(storage).shown);
   assert.ok(loadCoachShelf(storage).plan);
 });

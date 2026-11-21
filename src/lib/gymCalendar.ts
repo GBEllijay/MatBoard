@@ -335,6 +335,71 @@ export function classesOnDay(classes: readonly WeeklyClassSlot[], day: Weekday):
   return sortClasses(classes.filter((row) => row.day === day));
 }
 
+/** One dated meeting of a weekly slot, or a dated special notice. */
+export type GymClassOccurrence = {
+  slotId: string;
+  date: string;
+  time: string;
+  title: string;
+  location: string;
+  subtitle: string;
+  kind: 'class' | 'special';
+  /** "6:00 AM Morning Gi" or the special title. */
+  label: string;
+};
+
+export function weekdayOfIso(iso: string): Weekday | null {
+  if (!normalizeIsoDate(iso)) return null;
+  const [year, month, day] = iso.split('-').map(Number);
+  return weekdayFromJsDay(new Date(year, month - 1, day).getDay());
+}
+
+/** Weekly slots that fall on `iso`, plus specials pinned to that day. */
+export function occurrencesOnDate(
+  state: Pick<GymCalendarState, 'classes' | 'specials'>,
+  iso: string,
+): GymClassOccurrence[] {
+  const date = normalizeIsoDate(iso);
+  if (!date) return [];
+  const weekday = weekdayOfIso(date);
+  const out: GymClassOccurrence[] = [];
+  if (weekday) {
+    for (const slot of classesOnDay(state.classes, weekday)) {
+      const title = slot.title.trim() || 'Class';
+      out.push({
+        slotId: slot.id,
+        date,
+        time: slot.time,
+        title,
+        location: slot.location,
+        subtitle: slot.subtitle,
+        kind: 'class',
+        label: `${formatClassTime(slot.time)} ${title}`.trim(),
+      });
+    }
+  }
+  for (const special of state.specials) {
+    if (special.date !== date) continue;
+    const title = special.title.trim() || special.body.trim();
+    if (!title) continue;
+    out.push({
+      slotId: `special:${special.id}`,
+      date,
+      time: '',
+      title,
+      location: '',
+      subtitle: special.body.trim() === title ? '' : special.body.trim(),
+      kind: 'special',
+      label: title,
+    });
+  }
+  return out;
+}
+
+export function dateHasGymClass(state: Pick<GymCalendarState, 'classes' | 'specials'>, iso: string): boolean {
+  return occurrencesOnDate(state, iso).length > 0;
+}
+
 /** Days that actually have a class. Empty board falls back to Mon–Sun so the layout still reads. */
 export function boardWeekdays(classes: readonly WeeklyClassSlot[]): Weekday[] {
   const present = new Set(classes.map((row) => row.day));
@@ -667,5 +732,20 @@ export function normalizeGymCalendar(raw: unknown): GymCalendarState {
     castEnabled: parsed.castEnabled === false ? false : true,
     classes: sortClasses(classes),
     specials: sortSpecials(specials),
+  };
+}
+
+/** Public board only: weekly slots and specials. Logos stay local. Cast is off on the published copy. */
+export function scheduleForPublish(raw: GymCalendarState): GymCalendarState {
+  const clean = normalizeGymCalendar(raw);
+  return {
+    version: 1,
+    title: clean.title,
+    qrUrl: clean.qrUrl,
+    notes: clean.notes,
+    template: clean.template,
+    castEnabled: false,
+    classes: clean.classes,
+    specials: clean.specials,
   };
 }

@@ -48,11 +48,13 @@ import {
   type CoachGymLogoPacket,
   type CoachNote,
   type CoachNotePacket,
+  type ClassRecapPacket,
   type StudentProgressReport,
 } from './progress/types.ts';
 import type { Student } from './rosterStore.ts';
 import { receiveGymLogo } from './studentGymMark.ts';
 import { holdForParent, parentGateOn } from './parentGate.ts';
+import { applyClassRecapToJournal, classRecapSentence, isClassRecapPacket } from './classRecap.ts';
 import { deliverRankUpdate, type InboxDelivery } from './studentInboxClient.ts';
 
 export const SYNC_PACKET_KINDS = [...COACH_INBOX_KINDS, 'coach-gym-logo-update'] as const;
@@ -439,7 +441,7 @@ export function appendCoachNoteToJournal(
  */
 export function acceptCoachSyncUpdate(
   report: StudentProgressReport,
-  packet: CoachBeltProgressPacket | CoachAssessmentPacket | CoachNotePacket,
+  packet: CoachBeltProgressPacket | CoachAssessmentPacket | CoachNotePacket | ClassRecapPacket,
   ledger: UpdateLedger,
   overlay: CoachOverlay,
   now = Date.now(),
@@ -449,6 +451,15 @@ export function acceptCoachSyncUpdate(
   }
   let next: CoachOverlay;
   let nextReport = report;
+  if (isClassRecapPacket(packet)) {
+    nextReport = applyClassRecapToJournal(report, packet, now);
+    return {
+      report: nextReport,
+      ledger: { ...ledger, accepted: [...ledger.accepted, packet.updateId].slice(-LEDGER_MAX) },
+      overlay,
+      applied: true,
+    };
+  }
   if (packet.kind === 'coach-note-update') {
     nextReport = appendCoachNoteToJournal(report, packet, now);
     const entry: CoachOverlayNote = {
@@ -509,9 +520,12 @@ const STATUS_LABEL: Record<CoachBenchmarkStatus, string> = {
   ready: 'Ready',
 };
 
-export function coachSyncSentence(packet: CoachBeltProgressPacket | CoachAssessmentPacket | CoachNotePacket): string {
+export function coachSyncSentence(packet: CoachBeltProgressPacket | CoachAssessmentPacket | CoachNotePacket | ClassRecapPacket): string {
   if (packet.kind === 'coach-note-update') {
     return `Coach note for your journal on ${coachNoteDay(packet)}. Accept adds it under your own entry; your words stay as written.`;
+  }
+  if (packet.kind === 'class-recap-update') {
+    return classRecapSentence(packet);
   }
   if (packet.kind === 'coach-belt-progress-update') {
     const ready = packet.beltProgress.benchmarks.filter((mark) => mark.coachStatus === 'ready').length;

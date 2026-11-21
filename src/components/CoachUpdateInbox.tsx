@@ -412,6 +412,15 @@ export function CoachUpdateInbox() {
         <AssessmentCompareD8 coachEntries={[pendingCoachEntry]} selfEntries={loadAssessments(localStorage).entries} />
       ) : null}
       {packet.kind === 'coach-note-update' ? <p>{packet.coachNote.note}</p> : null}
+      {packet.kind === 'class-recap-update' ? (
+        <div>
+          {packet.recap.absentee ? <p>Absentee copy</p> : null}
+          {packet.recap.className ? <p>{packet.recap.className}</p> : null}
+          {packet.recap.notes ? <p>{packet.recap.notes}</p> : null}
+          {packet.recap.techniques.length ? <p>{`Techniques: ${packet.recap.techniques.join(', ')}`}</p> : null}
+          {packet.recap.videos.length ? <p>{`Videos: ${packet.recap.videos.map((video) => video.title).join(', ')}`}</p> : null}
+        </div>
+      ) : null}
       {packet.kind === 'coach-rank-update' && packet.rankUpdate.note ? <p>{packet.rankUpdate.note}</p> : null}
       {packet.kind === 'coach-competition-update'
         ? packet.competitionUpdate.matches.map((match) => (
@@ -453,7 +462,9 @@ export function CoachUpdateInbox() {
           ? 'Accept adds this to My rank and a journal card. Dismiss leaves your rank and journal as they are. Your checklist is not changed.'
           : packet.kind === 'coach-competition-update'
             ? 'Accept adds this tournament and these matches. A match you already wrote stays. Dismiss leaves your results alone.'
-            : "Accept keeps your coach's view beside your own. Your checklist, marks, and self-assessment are not changed."}
+            : packet.kind === 'class-recap-update'
+              ? 'Add to my Journal adds a recap card for this class. Your own words stay as written. Dismiss leaves your journal alone.'
+              : "Accept keeps your coach's view beside your own. Your checklist, marks, and self-assessment are not changed."}
       </p>
       {note ? (
         <p role="alert">{note}</p>
@@ -500,7 +511,7 @@ export function CoachUpdateInbox() {
       ) : (
       <div className="coach-update__actions">
         <button type="button" className="ink-btn ink-btn--save" onClick={() => finish('accept')}>
-          {kidsToBlue ? 'Accept blue belt' : 'Accept'}
+          {kidsToBlue ? 'Accept blue belt' : packet.kind === 'class-recap-update' ? 'Add to my Journal' : 'Accept'}
         </button>
         <button type="button" className="ink-btn" onClick={() => finish('dismiss')}>
           Dismiss
