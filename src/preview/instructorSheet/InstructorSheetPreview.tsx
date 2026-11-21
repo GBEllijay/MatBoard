@@ -6,7 +6,15 @@
 import { useMemo, useState } from 'react';
 import { BeltHeader } from '../../components/BeltHeader';
 import { LiveD12 } from '../../components/LiveD12';
+import { InstructorJournalSection } from '../../components/InstructorJournalSection';
 import { instructorD12StarterCards } from '../../lib/instructorD12Cards';
+import { INSTRUCTOR_D12_SAMPLE_LINKS } from '../../lib/instructorD12Mastery';
+import {
+  INSTRUCTOR_GOALS_SAMPLE,
+  INSTRUCTOR_JOURNAL_SAMPLE,
+  type InstructorGoal,
+  type InstructorJournalEntry,
+} from '../../lib/instructorJournal';
 import { StaticDiamond } from '../../components/StaticDiamond';
 import { d12AxesFromScores } from '../../lib/instructorD12';
 import { InstructorIdentityCard } from '../instructorProfile/InstructorIdentityCard';
@@ -49,6 +57,16 @@ export function InstructorSheetPreviewPage() {
   // Product default is off. This sample starts on so the D8 is visible.
   const [showOwnD8, setShowOwnD8] = useState(true);
   const [notes, setNotes] = useState('');
+  const starterCards = useMemo(() => instructorD12StarterCards(), []);
+  const [journalEntries, setJournalEntries] = useState<InstructorJournalEntry[]>(() =>
+    INSTRUCTOR_JOURNAL_SAMPLE.map((entry) => ({
+      ...entry,
+      tags: entry.tags ? [...entry.tags] : undefined,
+      techniques: entry.techniques ? entry.techniques.map((item) => ({ ...item })) : undefined,
+      videos: entry.videos ? entry.videos.map((video) => ({ ...video })) : undefined,
+    })),
+  );
+  const [goals, setGoals] = useState<InstructorGoal[]>(() => INSTRUCTOR_GOALS_SAMPLE.map((goal) => ({ ...goal })));
 
   return (
     <main className="ip-preview">
@@ -151,10 +169,17 @@ export function InstructorSheetPreviewPage() {
       <section className="ip-card" aria-label="Instructor D12" data-testid="instructor-d12">
         <h2>Instructor D12</h2>
         <p className="ip-quiet">
-          Twelve teaching faces with starter cards on Public Speaking and Preparation. Fictional sample. Nothing is saved.
+          Twelve teaching faces with starter cards on Public Speaking and Preparation, plus a few sample Path to Mastery connections. Fictional sample. You can try cards and connections here; nothing is saved.
         </p>
         <div className="ip-d12">
-          <LiveD12 scores={INSTRUCTOR_D12_SAMPLE} cards={instructorD12StarterCards()} readOnly />
+          <LiveD12
+            scores={INSTRUCTOR_D12_SAMPLE}
+            cards={starterCards}
+            links={INSTRUCTOR_D12_SAMPLE_LINKS}
+            journalEntries={journalEntries}
+            goals={goals}
+            sandbox
+          />
           <ul className="ip-d8-scores ip-d12-scores" data-testid="d12-scores">
             {d12Faces.map((face) => (
               <li key={face.id}>
@@ -199,6 +224,18 @@ export function InstructorSheetPreviewPage() {
             )}
           </div>
         ) : null}
+      </section>
+
+      <section className="ip-card" aria-label="Instructor journal" data-testid="instructor-journal-card">
+        <h2>Instructor journal</h2>
+        <InstructorJournalSection
+          entries={journalEntries}
+          goals={goals}
+          cards={starterCards}
+          sandbox
+          onChangeEntries={setJournalEntries}
+          onChangeGoals={setGoals}
+        />
       </section>
 
       <section className="ip-card" aria-label="Notes">

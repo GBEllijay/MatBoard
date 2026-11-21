@@ -3,9 +3,14 @@
  * chrome as LiveD8 / TopoStage, with the twelve-faced dodecahedron instead of
  * the student octahedron. Instructors can add and rate cards on a face.
  * Face scores roll up from those cards. The daily check-in is not written here.
+ *
+ * Path to Mastery connections between cards and faces show as branches
+ * through the inside of the D12, with X-ray and Follow the chain, the same
+ * controls the student D8 uses for its Technique Tree.
  */
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { activateTopoFace, TopoStage } from '../preview/crystallineSweeps/TopoStage';
+import type { D8Branch } from '../preview/crystallineSweeps/branches';
 import {
   applyD12ShapeMetric,
   buildD12Topo,
@@ -13,74 +18,179 @@ import {
   d12FaceSlots,
   showOnD12Face,
 } from '../lib/instructorD12Topo';
-import { INSTRUCTOR_D12_FACES, type InstructorD12FaceId, type InstructorD12Scores } from '../lib/instructorD12';
+import { INSTRUCTOR_D12_FACES, type InstructorD12Scores } from '../lib/instructorD12';
 import {
-  D12_CONFIRM_DELETE_CARD,
   D12_DEFAULT_SHAPE_METRIC,
-  D12_DELETE_CARD,
-  D12_DELETE_PROMPT,
-  D12_KEEP_CARD,
   D12_SHAPE_METRICS,
-  DUPLICATE_NAME,
-  addInstructorD12Card,
   d12CardFaceScoreExact,
   d12CardFaceScoreLine,
-  d12CardRatingNote,
   d12CardsInPlaceOrder,
   d12CardsOnFace,
   loadInstructorD12Cards,
-  rateInstructorD12Card,
-  removeInstructorD12Card,
   saveInstructorD12Cards,
   shownD12CardRating,
   type D12ShapeMetric,
   type InstructorD12Card,
 } from '../lib/instructorD12Cards';
-import type { AssessmentScore } from '../lib/studentAssessment';
+import {
+  PATH_TO_MASTERY,
+  cleanD12Links,
+  d12ChainForCard,
+  d12MasteryState,
+  loadInstructorD12Links,
+  saveInstructorD12Links,
+  type D12Link,
+} from '../lib/instructorD12Mastery';
+import { instructorFaceDefinition } from '../lib/instructorGlossary';
+import { formatJournalDate } from '../lib/journalCopy';
+import {
+  EMPTY_INSTRUCTOR_JOURNAL,
+  instructorJournalMentionsForFace,
+  loadInstructorGoals,
+  loadInstructorJournal,
+  subscribeInstructorJournal,
+  type InstructorGoal,
+  type InstructorJournalEntry,
+} from '../lib/instructorJournal';
+import { D12CardSheet, type D12SheetOpen } from './D12CardSheet';
+import type { InstructorD12FaceId } from '../lib/instructorD12';
 import '../preview/crystallineSweeps/crystallineSweeps.css';
 import '../preview/d8Subfactors/d8Subfactors.css';
 import './liveD12.css';
 
-const SCALE = [1, 2, 3, 4, 5] as const;
+const NO_BRANCHES: readonly D8Branch[] = [];
 
 type Props = {
   scores?: InstructorD12Scores | null;
-  /** When set, these cards are shown and nothing is written. */
+  /** Cards to show instead of the saved file. Read-only unless `sandbox` is set. */
   cards?: InstructorD12Card[];
+  /** Path to Mastery connections to show instead of the saved file. */
+  links?: readonly D12Link[];
+  /** Journal entries to read for Your journal mentions instead of the saved file. */
+  journalEntries?: readonly InstructorJournalEntry[];
+  /** Teaching goals to read for Your journal mentions instead of the saved file. */
+  goals?: readonly InstructorGoal[];
   seatKey?: string;
   readOnly?: boolean;
+  /** Preview mode: cards and links can be changed on the page, but nothing is saved anywhere. */
+  sandbox?: boolean;
 };
 
-type OpenState =
-  | null
-  | { kind: 'draft'; faceId: InstructorD12FaceId | null }
-  | { kind: 'card'; id: string };
-
-export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', readOnly = false }: Props) {
+export function LiveD12({
+  scores = null,
+  cards: cardsProp,
+  links: linksProp,
+  journalEntries: journalProp,
+  goals: goalsProp,
+  seatKey = 'owner',
+  readOnly = false,
+  sandbox = false,
+}: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const controlled = cardsProp != null || readOnly;
+  const writable = !readOnly && (cardsProp == null || sandbox);
+  const persist = writable && !sandbox && cardsProp == null;
   const [stored, setStored] = useState<InstructorD12Card[]>(() =>
     cardsProp != null ? cardsProp.map((card) => ({ ...card })) : loadInstructorD12Cards(localStorage, seatKey),
   );
-  const cards = cardsProp != null ? cardsProp : stored;
+  const [storedLinks, setStoredLinks] = useState<D12Link[]>(() =>
+    linksProp != null ? cleanD12Links(linksProp) : cardsProp != null || readOnly ? [] : loadInstructorD12Links(localStorage, seatKey),
+  );
+  const [liveJournal, setLiveJournal] = useState<InstructorJournalEntry[]>(() =>
+    journalProp != null || sandbox || readOnly ? [] : loadInstructorJournal(localStorage, seatKey),
+  );
+  const [liveGoals, setLiveGoals] = useState<InstructorGoal[]>(() =>
+    goalsProp != null || sandbox || readOnly ? [] : loadInstructorGoals(localStorage, seatKey),
+  );
+  useEffect(() => {
+    if (journalProp != null || sandbox || readOnly) return;
+    const reload = () => {
+      setLiveJournal(loadInstructorJournal(localStorage, seatKey));
+      setLiveGoals(loadInstructorGoals(localStorage, seatKey));
+    };
+    reload();
+    return subscribeInstructorJournal(reload);
+  }, [journalProp, sandbox, readOnly, seatKey]);
+  const cards = cardsProp != null && !sandbox ? cardsProp : stored;
+  const links = storedLinks;
+  const journalEntries = journalProp ?? liveJournal;
+  const goals = goalsProp ?? liveGoals;
   const [focus, setFocus] = useState(-1);
-  const [open, setOpen] = useState<OpenState>(null);
+  const [open, setOpen] = useState<D12SheetOpen | null>(null);
   const [metric, setMetric] = useState<D12ShapeMetric>(D12_DEFAULT_SHAPE_METRIC);
+  const [showBranches, setShowBranches] = useState(false);
+  const [xrayOnly, setXrayOnly] = useState(false);
+  const [chainPick, setChainPick] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [pathNote, setPathNote] = useState('');
 
-  const commit = (next: InstructorD12Card[]) => {
-    if (controlled) return;
-    const saved = saveInstructorD12Cards(next, localStorage, seatKey);
-    setStored(saved);
+  const commitCards = (next: InstructorD12Card[]) => {
+    if (!writable) return;
+    setStored(persist ? saveInstructorD12Cards(next, localStorage, seatKey) : next.map((card) => ({ ...card })));
+  };
+
+  const commitLinks = (next: D12Link[]) => {
+    if (!writable) return;
+    setStoredLinks(persist ? saveInstructorD12Links(next, localStorage, seatKey) : cleanD12Links(next));
   };
 
   const model = useMesh(cards, scores, metric);
+  const cardsKey = cards.map((card) => `${card.faceId}:${card.id}:${card.name}`).join('|');
+  const linksKey = links.map((link) => `${link.from}>${link.to}>${link.relation}`).join('|');
+  const mastery = useMemo(() => d12MasteryState(model, cards, links), [model, cardsKey, linksKey]);
+  const chains = mastery.kind === 'ready' ? mastery.chains : [];
+  const xrayMode = showBranches || xrayOnly;
+  const picked = chains[chainPick] ?? chains[0] ?? null;
+  const chain = playing && xrayMode && picked ? picked : null;
+  const branches = showBranches && mastery.kind === 'ready' ? mastery.branches : NO_BRANCHES;
   const face = focus >= 0 ? INSTRUCTOR_D12_FACES[focus] : null;
   const faceId = face?.id ?? null;
 
+  useEffect(() => {
+    if (chainPick >= chains.length && chainPick !== 0) setChainPick(0);
+    if (!chains.length && playing) setPlaying(false);
+  }, [chains.length, chainPick, playing]);
+
   const collapseFace = () => setFocus(-1);
 
+  const toggleBranches = () => {
+    setShowBranches((on) => {
+      if (on) setPlaying(false);
+      return !on;
+    });
+    setPathNote('');
+  };
+
+  /** From a card: turn on branches and X-ray, then play the chain that runs through it. */
+  const viewOnPath = (cardId: string) => {
+    const card = cards.find((item) => item.id === cardId);
+    setOpen(null);
+    setShowBranches(true);
+    const hit = d12ChainForCard(model, cardId, chains);
+    if (hit) {
+      setChainPick(hit.index);
+      setPlaying(true);
+      setPathNote(`Following ${hit.chain.names.join(' → ')}.`);
+    } else {
+      setPlaying(false);
+      setPathNote(
+        card
+          ? `No Connects to chain runs through ${card.name} yet. Add a Connects to or Builds on connection on its card.`
+          : '',
+      );
+    }
+    rootRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  };
+
   return (
-    <div ref={rootRef} className="ip-d12-live" data-testid="instructor-d12-visual" data-metric={metric}>
+    <div
+      ref={rootRef}
+      className="ip-d12-live"
+      data-testid="instructor-d12-visual"
+      data-metric={metric}
+      data-xray={xrayMode ? 'on' : 'off'}
+      data-branches={showBranches ? 'on' : 'off'}
+      data-chain={chain ? chain.id : ''}
+    >
       <TopoStage
         model={model}
         style="pyramid"
@@ -109,7 +219,7 @@ export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', re
           if (id) setOpen({ kind: 'card', id });
         }}
         onEmptyTile={(tileIndex) => {
-          if (controlled) return;
+          if (!writable) return;
           const tile = model.tiles[tileIndex];
           const id = tile?.faceId as string | undefined;
           if (id && INSTRUCTOR_D12_FACES.some((item) => item.id === id)) {
@@ -117,6 +227,10 @@ export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', re
           }
         }}
         onDrill={() => undefined}
+        branches={branches}
+        xray={xrayMode}
+        chain={chain}
+        onChainStop={() => setPlaying(false)}
       />
       <div className="d12-live-tools" role="group" aria-label="Shape metric" data-testid="d12-shape-metric">
         {D12_SHAPE_METRICS.map((choice) => (
@@ -131,13 +245,72 @@ export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', re
           </button>
         ))}
       </div>
+      <div className="d12-live-tools d12-live-path-tools" role="group" aria-label={PATH_TO_MASTERY} data-testid="d12-path-tools">
+        <span className="d8sf-kicker d12-live-path-kicker">{PATH_TO_MASTERY}</span>
+        <button type="button" data-testid="d12-branches" aria-pressed={showBranches} onClick={toggleBranches}>
+          {showBranches ? 'Branches on' : 'Branches'}
+        </button>
+        <button
+          type="button"
+          data-testid="d12-xray"
+          aria-pressed={xrayMode}
+          disabled={showBranches}
+          title={showBranches ? 'X-ray stays on while branches show' : undefined}
+          onClick={() => setXrayOnly((on) => !on)}
+        >
+          {xrayMode ? 'X-ray on' : 'X-ray'}
+        </button>
+        {xrayMode && chains.length ? (
+          <button type="button" data-testid="d12-chain" aria-pressed={playing} onClick={() => setPlaying((on) => !on)}>
+            {playing ? 'Stop chain' : 'Follow the chain'}
+          </button>
+        ) : null}
+      </div>
+      {xrayMode && chains.length ? (
+        <label className="d12-live-chain-pick">
+          <span className="d8sf-kicker">Chain</span>
+          <select
+            aria-label="Chain"
+            data-testid="d12-chain-pick"
+            value={String(Math.min(chainPick, chains.length - 1))}
+            onChange={(event) => {
+              setChainPick(Number(event.target.value));
+              setPlaying(true);
+            }}
+          >
+            {chains.map((row, index) => (
+              <option key={row.id} value={String(index)}>
+                {row.names.join(' → ')}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {showBranches && mastery.kind !== 'ready' ? (
+        <div className="d12-live-branch-hint" data-testid="d12-branches-empty" role="status">
+          <p>{mastery.hint}</p>
+        </div>
+      ) : null}
+      {showBranches && mastery.kind === 'ready' ? (
+        <p className="gl-note d12-live-branch-note" data-testid="d12-branches-note">
+          {`${mastery.branches.length} ${mastery.branches.length === 1 ? 'branch' : 'branches'} from your ${PATH_TO_MASTERY} connections.`}
+        </p>
+      ) : null}
+      {pathNote ? (
+        <p className="gl-note d12-live-branch-note" data-testid="d12-path-note" aria-live="polite">
+          {pathNote}
+        </p>
+      ) : null}
       {face && faceId ? (
         <FaceReadout
           faceId={faceId}
           label={face.label}
           cards={d12CardsOnFace(cards, faceId)}
+          allCards={cards}
           slots={d12FaceSlots(model, focus)}
-          readOnly={controlled}
+          journalEntries={journalEntries}
+          goals={goals}
+          readOnly={!writable}
           onCollapse={collapseFace}
           onOpen={(id) => setOpen({ kind: 'card', id })}
           onAdd={() => setOpen({ kind: 'draft', faceId })}
@@ -145,7 +318,7 @@ export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', re
       ) : (
         <FaceScores
           cards={cards}
-          readOnly={controlled}
+          readOnly={!writable}
           onPickFace={(id) => {
             if (rootRef.current) activateTopoFace(rootRef.current, id);
           }}
@@ -153,12 +326,17 @@ export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', re
         />
       )}
       {open ? (
-        <CardDialog
+        <D12CardSheet
           open={open}
           cards={cards}
-          readOnly={controlled}
+          links={links}
+          journalEntries={journalEntries}
+          goals={goals}
+          readOnly={!writable}
           onClose={() => setOpen(null)}
-          onCommit={commit}
+          onCommitCards={commitCards}
+          onCommitLinks={commitLinks}
+          onViewOnPath={viewOnPath}
         />
       ) : null}
     </div>
@@ -236,7 +414,10 @@ function FaceReadout({
   faceId,
   label,
   cards,
+  allCards,
   slots,
+  journalEntries,
+  goals,
   readOnly,
   onCollapse,
   onOpen,
@@ -245,7 +426,10 @@ function FaceReadout({
   faceId: InstructorD12FaceId;
   label: string;
   cards: readonly InstructorD12Card[];
+  allCards: readonly InstructorD12Card[];
   slots: ReturnType<typeof d12FaceSlots>;
+  journalEntries: readonly InstructorJournalEntry[];
+  goals: readonly InstructorGoal[];
   readOnly: boolean;
   onCollapse: () => void;
   onOpen: (id: string) => void;
@@ -253,6 +437,10 @@ function FaceReadout({
 }) {
   const filled = slots.filter((slot) => slot.label).length;
   const byId = new Map(cards.map((card) => [card.id, card]));
+  const faceJournal = useMemo(
+    () => instructorJournalMentionsForFace(journalEntries, goals, faceId, allCards),
+    [journalEntries, goals, faceId, allCards],
+  );
   return (
     <div className="crystal-readout d12-live-readout" data-testid="d12-face-readout">
       <section aria-label={`${label} face`}>
@@ -269,6 +457,7 @@ function FaceReadout({
         <p data-testid="face-score" aria-live="polite">
           {d12CardFaceScoreLine(cards, faceId)}
         </p>
+        <p className="gl-note" data-testid="d12-face-definition">{instructorFaceDefinition(faceId)}</p>
         <p>{`Average of every card on this face. A card you have not rated stays at 3. ${filled} of ${slots.length} tiles have a card.`}</p>
         <FaceMap label={label} slots={slots} byId={byId} readOnly={readOnly} onOpen={onOpen} onAdd={onAdd} />
         <section data-testid="d12-face-card-list" aria-label={`${label} cards`}>
@@ -286,6 +475,27 @@ function FaceReadout({
             <button type="button" data-add-card={faceId} data-testid="d12-add-face-card" onClick={onAdd}>
               Add
             </button>
+          )}
+        </section>
+        <section className="d12-face-journal" data-testid="d12-face-journal" aria-label={`${label} journal`}>
+          <h3>Your journal</h3>
+          {faceJournal.entries.length === 0 && faceJournal.goals.length === 0 ? (
+            <p className="gl-note">{EMPTY_INSTRUCTOR_JOURNAL}</p>
+          ) : (
+            <ul className="d8sf-notes">
+              {faceJournal.entries.map((entry) => (
+                <li key={entry.id}>
+                  <strong>{formatJournalDate(entry.date)}</strong>
+                  {` · ${entry.line}`}
+                </li>
+              ))}
+              {faceJournal.goals.map((goal) => (
+                <li key={goal.id}>
+                  <strong>{goal.done ? 'Goal done' : 'Goal'}</strong>
+                  {` · ${goal.text}`}
+                </li>
+              ))}
+            </ul>
           )}
         </section>
       </section>
@@ -336,200 +546,3 @@ function FaceMap({
     </div>
   );
 }
-
-function CardDialog({
-  open,
-  cards,
-  readOnly,
-  onClose,
-  onCommit,
-}: {
-  open: Exclude<OpenState, null>;
-  cards: readonly InstructorD12Card[];
-  readOnly: boolean;
-  onClose: () => void;
-  onCommit: (cards: InstructorD12Card[]) => void;
-}) {
-  const existing = open.kind === 'card' ? cards.find((item) => item.id === open.id) ?? null : null;
-  const [draftName, setDraftName] = useState('');
-  const [draftFace, setDraftFace] = useState<InstructorD12FaceId | null>(open.kind === 'draft' ? open.faceId : existing?.faceId ?? null);
-  const [draftRating, setDraftRating] = useState<AssessmentScore>(3);
-  const [draftError, setDraftError] = useState<string | null>(null);
-  const [savedAt, setSavedAt] = useState(0);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  useEffect(() => {
-    setConfirmDelete(false);
-    if (open.kind !== 'draft') return;
-    setDraftName('');
-    setDraftFace(open.faceId);
-    setDraftRating(3);
-    setDraftError(null);
-  }, [open]);
-
-  useEffect(() => {
-    if (!savedAt) return;
-    const timer = window.setTimeout(() => setSavedAt(0), 2000);
-    return () => window.clearTimeout(timer);
-  }, [savedAt]);
-
-  useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  const faceId = open.kind === 'draft' ? draftFace : existing?.faceId ?? null;
-  const faceLabel = faceId ? INSTRUCTOR_D12_FACES.find((face) => face.id === faceId)?.label ?? faceId : 'Pick a face';
-  const rating = existing ? shownD12CardRating(existing.rating) : draftRating;
-
-  const saveDraft = (event?: FormEvent) => {
-    event?.preventDefault();
-    if (readOnly) return;
-    if (!faceId) {
-      setDraftError('Pick a face.');
-      return;
-    }
-    const added = addInstructorD12Card(cards, faceId, draftName, draftRating);
-    if ('error' in added) {
-      setDraftError(added.error === 'duplicate' ? DUPLICATE_NAME : 'Enter a name.');
-      return;
-    }
-    onCommit(added.cards);
-    onClose();
-  };
-
-  return (
-    <div
-      className="d8sf-sheet d12-live-sheet"
-      role="dialog"
-      aria-modal="true"
-      aria-label={existing ? `${existing.name} card` : `${faceLabel} new card`}
-      data-testid="instructor-d12-card-dialog"
-    >
-      <button type="button" className="d8sf-scrim" aria-label="Close card" onClick={onClose} />
-      <article className="d8sf-index" aria-label={existing ? `${existing.name} card` : `${faceLabel} new card`}>
-        {existing ? (
-          <header className="d8sf-index-head">
-            <h2 className="d8sf-index-title">{existing.name}</h2>
-            <button type="button" onClick={onClose}>
-              Close
-            </button>
-          </header>
-        ) : (
-          <form className="d8sf-add" onSubmit={saveDraft}>
-            <label className="d8sf-field">
-              <span className="d8sf-kicker">Name</span>
-              <input
-                aria-label="New card name"
-                data-testid="d12-new-card-name"
-                value={draftName}
-                autoFocus
-                autoComplete="off"
-                placeholder="Name this card"
-                onChange={(event) => {
-                  setDraftName(event.target.value);
-                  setDraftError(null);
-                }}
-              />
-            </label>
-            <label className="d8sf-field">
-              <span className="d8sf-kicker">Face</span>
-              <select
-                aria-label="Card face"
-                data-testid="d12-new-card-face"
-                value={draftFace ?? ''}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setDraftFace(INSTRUCTOR_D12_FACES.some((face) => face.id === value) ? (value as InstructorD12FaceId) : null);
-                  setDraftError(null);
-                }}
-              >
-                <option value="">Pick a face</option>
-                {INSTRUCTOR_D12_FACES.map((face) => (
-                  <option key={face.id} value={face.id}>
-                    {face.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="d8sf-add-actions">
-              <button type="submit" className="d8sf-add-submit" data-testid="d12-new-card-save">
-                Add
-              </button>
-              <button type="button" className="d8sf-add-cancel" onClick={onClose}>
-                Cancel
-              </button>
-            </div>
-            {draftError ? (
-              <p className="d8sf-add-error" role="alert">
-                {draftError}
-              </p>
-            ) : null}
-          </form>
-        )}
-        <section className="d8sf-index-block" aria-label="Rating">
-          <h3>Rate it</h3>
-          <div className="d8sf-rates" role="group" aria-label={existing ? `Rate ${existing.name}` : 'Rate new card'}>
-            {SCALE.map((value) => (
-              <button
-                key={value}
-                type="button"
-                className="d8sf-rate"
-                aria-pressed={rating === value}
-                aria-label={existing ? `${existing.name} ${value}` : `New card ${value}`}
-                data-testid={existing ? `d12-card-rate-${value}` : `d12-new-card-rate-${value}`}
-                disabled={readOnly}
-                onClick={() => {
-                  if (readOnly) return;
-                  if (!existing) {
-                    setDraftRating(value);
-                    return;
-                  }
-                  onCommit(rateInstructorD12Card(cards, existing.id, value));
-                  setSavedAt(Date.now());
-                }}
-              >
-                {value}
-              </button>
-            ))}
-          </div>
-          <p className="d8sf-index-hint">{d12CardRatingNote(existing ? existing.rating : draftRating)}</p>
-          <p className="d12-rate-saved" data-testid="d12-rating-saved" data-on={savedAt ? 'true' : 'false'} aria-live="polite">
-            {savedAt ? 'Saved' : ''}
-          </p>
-        </section>
-        {existing && !readOnly ? (
-          confirmDelete ? (
-            <div className="d12-card-delete" role="group" aria-label="Delete this card" data-testid="d12-card-delete-confirm-group">
-              <p>{D12_DELETE_PROMPT}</p>
-              <button
-                type="button"
-                data-testid="d12-card-delete-confirm"
-                onClick={() => {
-                  onCommit(removeInstructorD12Card(cards, existing.id));
-                  onClose();
-                }}
-              >
-                {D12_CONFIRM_DELETE_CARD}
-              </button>
-              <button type="button" data-testid="d12-card-delete-keep" onClick={() => setConfirmDelete(false)}>
-                {D12_KEEP_CARD}
-              </button>
-            </div>
-          ) : (
-            <button type="button" data-testid="d12-card-delete" onClick={() => setConfirmDelete(true)}>
-              {D12_DELETE_CARD}
-            </button>
-          )
-        ) : null}
-      </article>
-    </div>
-  );
-}
-
