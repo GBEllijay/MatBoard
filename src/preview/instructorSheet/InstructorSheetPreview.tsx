@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { BeltHeader } from '../../components/BeltHeader';
 import { LiveD12 } from '../../components/LiveD12';
 import { instructorD12StarterCards } from '../../lib/instructorD12Cards';
+import { INSTRUCTOR_D12_SAMPLE_LINKS } from '../../lib/instructorD12Mastery';
 import { StaticDiamond } from '../../components/StaticDiamond';
 import { d12AxesFromScores } from '../../lib/instructorD12';
 import { InstructorIdentityCard } from '../instructorProfile/InstructorIdentityCard';
@@ -151,10 +152,10 @@ export function InstructorSheetPreviewPage() {
       <section className="ip-card" aria-label="Instructor D12" data-testid="instructor-d12">
         <h2>Instructor D12</h2>
         <p className="ip-quiet">
-          Twelve teaching faces with starter cards on Public Speaking and Preparation. Fictional sample. Nothing is saved.
+          Twelve teaching faces with starter cards on Public Speaking and Preparation, plus a few sample Path to Mastery connections. Fictional sample. You can try cards and connections here; nothing is saved.
         </p>
         <div className="ip-d12">
-          <LiveD12 scores={INSTRUCTOR_D12_SAMPLE} cards={instructorD12StarterCards()} readOnly />
+          <LiveD12 scores={INSTRUCTOR_D12_SAMPLE} cards={instructorD12StarterCards()} links={INSTRUCTOR_D12_SAMPLE_LINKS} sandbox />
           <ul className="ip-d8-scores ip-d12-scores" data-testid="d12-scores">
             {d12Faces.map((face) => (
               <li key={face.id}>

@@ -13,6 +13,9 @@ import { ASSESSMENT_STORAGE_KEY } from '../../lib/studentAssessment.ts';
 import { PREVIEW_STORAGE_KEYS } from '../instructorProfile/model.ts';
 import { InstructorSheetPreviewPage } from './InstructorSheetPreview.tsx';
 import { INSTRUCTOR_D12_FACES, d12AxesFromScores } from '../../lib/instructorD12.ts';
+import { INSTRUCTOR_D12_STORAGE_KEY } from '../../lib/instructorD12.ts';
+import { INSTRUCTOR_D12_CARDS_STORAGE_KEY } from '../../lib/instructorD12Cards.ts';
+import { INSTRUCTOR_D12_LINKS_STORAGE_KEY } from '../../lib/instructorD12Mastery.ts';
 import { INSTRUCTOR_D12_SAMPLE, INSTRUCTOR_SHEET_PATH, STUDENT_PROFILE_D8, d8FaceRows, teachingLengthLabel } from './model.ts';
 
 const dom = new Window({ url: 'http://localhost/preview/instructor-sheet' });
@@ -168,4 +171,20 @@ test('the preview route is registered and the page does not write storage keys',
   assert.equal(page.includes('LiveD10'), false);
   assert.equal(page.includes('localStorage'), false);
   assert.equal(page.includes('sessionStorage'), false);
+});
+
+test('the preview D12 shows sample Path to Mastery branches and saves nothing', () => {
+  const keys = [INSTRUCTOR_D12_STORAGE_KEY, INSTRUCTOR_D12_CARDS_STORAGE_KEY, INSTRUCTOR_D12_LINKS_STORAGE_KEY];
+  for (const key of keys) localStorage.removeItem(key);
+  const mounted = mount(<InstructorSheetPreviewPage />);
+  const d12 = mounted.host.querySelector('[data-testid="instructor-d12"]') as HTMLElement;
+  const visual = d12.querySelector('[data-testid="instructor-d12-visual"]') as HTMLElement;
+  click(d12.querySelector('[data-testid="d12-branches"]') as HTMLElement);
+  assert.equal(visual.getAttribute('data-branches'), 'on');
+  assert.match(d12.querySelector('[data-testid="d12-branches-note"]')?.textContent ?? '', /branches from your Path to Mastery/);
+  assert.ok(d12.querySelector('[data-testid="d12-chain"]'), 'Follow the chain is offered for the sample');
+  click(d12.querySelector('[data-testid="d12-chain"]') as HTMLElement);
+  assert.match(visual.getAttribute('data-chain') ?? '', /^chain:/);
+  for (const key of keys) assert.equal(localStorage.getItem(key), null, key);
+  unmount(mounted);
 });

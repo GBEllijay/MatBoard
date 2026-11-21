@@ -63,7 +63,16 @@ export type InstructorD12Card = {
   /** Missing means the instructor has not rated it. Rollup and the card show 3. */
   rating?: AssessmentScore;
   addedAt: number;
+  /** The instructor's own notes on this card. */
+  notes?: string;
+  /** Reference links the instructor added. */
+  videos?: InstructorD12CardVideo[];
 };
+
+export type InstructorD12CardVideo = { title: string; href: string };
+
+export const D12_CARD_NOTES_MAX = 2000;
+export const D12_CARD_VIDEOS_MAX = 12;
 
 export type InstructorD12CardsFile = {
   v: 1;
@@ -215,7 +224,36 @@ function cleanCard(value: unknown): InstructorD12Card | null {
   const addedAt = typeof row.addedAt === 'number' && Number.isFinite(row.addedAt) ? row.addedAt : 0;
   const card: InstructorD12Card = { id, faceId, name, addedAt };
   if (isAssessmentScore(row.rating)) card.rating = row.rating;
+  const notes = cleanD12Notes(typeof row.notes === 'string' ? row.notes : '');
+  if (notes) card.notes = notes;
+  const videos = cleanD12Videos(row.videos);
+  if (videos.length) card.videos = videos;
   return card;
+}
+
+export function cleanD12Notes(value: string): string {
+  return value.replace(/\r\n/g, '\n').trim().slice(0, D12_CARD_NOTES_MAX);
+}
+
+/** Only http(s) links are kept. A missing title falls back to the link. */
+export function cleanD12Video(title: string, href: string): InstructorD12CardVideo | null {
+  const link = href.trim();
+  if (!/^https?:\/\/\S+$/i.test(link) || link.length > 500) return null;
+  const label = title.replace(/\s+/g, ' ').trim().slice(0, 120) || link;
+  return { title: label, href: link };
+}
+
+function cleanD12Videos(raw: unknown): InstructorD12CardVideo[] {
+  if (!Array.isArray(raw)) return [];
+  const out: InstructorD12CardVideo[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue;
+    const value = row as Partial<InstructorD12CardVideo>;
+    const video = cleanD12Video(typeof value.title === 'string' ? value.title : '', typeof value.href === 'string' ? value.href : '');
+    if (video && !out.some((item) => item.href === video.href)) out.push(video);
+    if (out.length >= D12_CARD_VIDEOS_MAX) break;
+  }
+  return out;
 }
 
 function cleanCardList(raw: unknown): InstructorD12Card[] {
@@ -312,3 +350,65 @@ export function removeInstructorD12Card(cards: readonly InstructorD12Card[], id:
   return cards.filter((card) => card.id !== id);
 }
 
+
+export function withD12CardNotes(cards: readonly InstructorD12Card[], id: string, notes: string): InstructorD12Card[] {
+  const clean = cleanD12Notes(notes);
+  return cards.map((card) => {
+    if (card.id !== id) return card;
+    const next = { ...card };
+    if (clean) next.notes = clean;
+    else delete next.notes;
+    return next;
+  });
+}
+
+export function withD12CardVideo(
+  cards: readonly InstructorD12Card[],
+  id: string,
+  title: string,
+  href: string,
+): { cards: InstructorD12Card[] } | { error: 'link' | 'full' } {
+  const video = cleanD12Video(title, href);
+  if (!video) return { error: 'link' };
+  const card = cards.find((item) => item.id === id);
+  const list = card?.videos ?? [];
+  if (list.length >= D12_CARD_VIDEOS_MAX) return { error: 'full' };
+  if (list.some((item) => item.href === video.href)) return { cards: [...cards] };
+  return { cards: cards.map((item) => (item.id === id ? { ...item, videos: [...list, video] } : item)) };
+}
+
+export function withoutD12CardVideo(cards: readonly InstructorD12Card[], id: string, href: string): InstructorD12Card[] {
+  return cards.map((card) => {
+    if (card.id !== id || !card.videos) return card;
+    const videos = card.videos.filter((video) => video.href !== href);
+    const next = { ...card };
+    if (videos.length) next.videos = videos;
+    else delete next.videos;
+    return next;
+  });
+}
+
+/**
+ * Rename a card or move it to another D12 face. The id stays the same, so
+ * Path to Mastery connections follow the card. A moved card takes the next
+ * open seat on its new face (newest addedAt), so cards already there keep
+ * their places; the old face re-lays center-out like a removal.
+ */
+export function editInstructorD12Card(
+  cards: readonly InstructorD12Card[],
+  id: string,
+  edit: { name: string; faceId: InstructorD12FaceId | null },
+  at = Date.now(),
+): { cards: InstructorD12Card[] } | { error: 'blank' | 'duplicate' | 'face' | 'missing' } {
+  const card = cards.find((item) => item.id === id);
+  if (!card) return { error: 'missing' };
+  if (!edit.faceId || !isInstructorD12FaceId(edit.faceId)) return { error: 'face' };
+  const review = reviewD12CardName(cards, edit.faceId, edit.name, id);
+  if ('error' in review) return review;
+  const moved = edit.faceId !== card.faceId;
+  return {
+    cards: cards.map((item) =>
+      item.id === id ? { ...item, name: review.label, faceId: edit.faceId!, addedAt: moved ? at : item.addedAt } : item,
+    ),
+  };
+}

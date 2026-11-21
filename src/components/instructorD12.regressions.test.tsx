@@ -12,6 +12,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { InstructorSheet } from './InstructorSheet.tsx';
 import { INSTRUCTOR_D12_STORAGE_KEY } from '../lib/instructorD12.ts';
 import { INSTRUCTOR_D12_CARDS_STORAGE_KEY } from '../lib/instructorD12Cards.ts';
+import { INSTRUCTOR_D12_LINKS_STORAGE_KEY } from '../lib/instructorD12Mastery.ts';
 import { INSTRUCTOR_PROFILE_STORAGE_KEY } from '../lib/instructorProfile.ts';
 import { ASSESSMENT_STORAGE_KEY } from '../lib/studentAssessment.ts';
 import { STUDENT_FILE_STORAGE_KEY } from '../lib/studentDemo.ts';
@@ -66,6 +67,7 @@ if (typeof view.matchMedia !== 'function') {
 function clearSheetStorage() {
   localStorage.removeItem(INSTRUCTOR_D12_STORAGE_KEY);
   localStorage.removeItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY);
+  localStorage.removeItem(INSTRUCTOR_D12_LINKS_STORAGE_KEY);
   localStorage.removeItem(INSTRUCTOR_PROFILE_STORAGE_KEY);
   localStorage.removeItem(ASSESSMENT_STORAGE_KEY);
   localStorage.removeItem(STUDENT_FILE_STORAGE_KEY);
@@ -322,5 +324,122 @@ test('the D12 deletes a card, shows map and cards together, toggles metrics, and
   assert.equal(visual.getAttribute('data-metric'), 'card-ratings');
   assert.equal(localStorage.getItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY), cardsBeforeMetric);
   assert.equal(localStorage.getItem(INSTRUCTOR_D12_STORAGE_KEY), checkIn);
+  await mounted.unmount();
+});
+
+function typeIn(node: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  let proto: object | null = Object.getPrototypeOf(node);
+  while (proto && !Object.getOwnPropertyDescriptor(proto, 'value')) proto = Object.getPrototypeOf(proto);
+  if (proto) Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(node, value);
+  const key = Object.keys(node).find((name) => name.startsWith('__reactProps'));
+  const props = key ? (node as unknown as Record<string, { onChange?: (event: unknown) => void }>)[key] : null;
+  props?.onChange?.({ target: node, currentTarget: node });
+}
+
+test('the D12 add form uses a visible face picker, and the card sheet mirrors the D8 card with Path to Mastery', async () => {
+  clearSheetStorage();
+  const mounted = await renderSheet();
+  const d12 = mounted.host.querySelector('[data-testid="instructor-d12"]') as HTMLElement;
+  const visual = d12.querySelector('[data-testid="instructor-d12-visual"]') as HTMLElement;
+  assert.equal(visual.getAttribute('data-xray'), 'off');
+  assert.equal(visual.getAttribute('data-branches'), 'off');
+
+  // 1. The add form: twelve face chips instead of a dim select.
+  await click(d12.querySelector('[data-testid="d12-add-card"]') as HTMLElement);
+  let dialog = d12.querySelector('[data-testid="instructor-d12-card-dialog"]') as HTMLElement;
+  assert.ok(dialog.classList.contains('d8-live-sheet'), 'uses the same cream sheet as the D8 card');
+  assert.equal(dialog.querySelector('[data-testid="d12-new-card-face"]'), null);
+  const picker = dialog.querySelector('[data-testid="d12-face-picker"]') as HTMLElement;
+  assert.ok(picker);
+  assert.equal(picker.getAttribute('data-prompt'), 'true');
+  assert.match(picker.querySelector('legend')?.textContent ?? '', /D12 face/);
+  assert.equal(picker.querySelectorAll('[data-face-pick]').length, 12);
+  await click(picker.querySelector('[data-face-pick="energy"]') as HTMLElement);
+  assert.equal(picker.querySelector('[data-face-pick="energy"]')?.getAttribute('aria-pressed'), 'true');
+  await act(async () => typeIn(dialog.querySelector('[data-testid="d12-new-card-name"]') as HTMLInputElement, 'Warm-up tempo'));
+  await click(dialog.querySelector('[data-testid="d12-new-card-save"]') as HTMLElement);
+  assert.equal(d12.querySelector('[data-testid="instructor-d12-card-dialog"]'), null);
+  const afterAdd = localStorage.getItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY) ?? '';
+  assert.match(afterAdd, /Warm-up tempo/);
+  assert.match(afterAdd, /"faceId":"energy"/);
+
+  // 2. Open a starter card from its face.
+  const speaking = [...d12.querySelectorAll('.d8sf-face-scores button')].find((node) => node.textContent?.includes('Public Speaking')) as HTMLElement;
+  await click(speaking);
+  const readout = d12.querySelector('[data-testid="d12-face-readout"]') as HTMLElement;
+  assert.match(readout.querySelector('[data-testid="d12-face-definition"]')?.textContent ?? '', /Talking to a room/);
+  const intro = [...readout.querySelectorAll('[data-list-card] button')].find((node) => node.textContent?.includes('Intro / end-of-class message')) as HTMLElement;
+  await click(intro);
+  dialog = d12.querySelector('[data-testid="instructor-d12-card-dialog"]') as HTMLElement;
+  assert.match(dialog.querySelector('.d8sf-index-face')?.textContent ?? '', /D12 face\s*Public Speaking/);
+  const tag = dialog.querySelector('[data-testid="d12-glossary-tag"]') as HTMLElement;
+  assert.ok(tag, 'instructor glossary tag');
+  assert.match(tag.textContent ?? '', /Glossary/);
+  assert.match(tag.textContent ?? '', /short opening and closing talk/);
+  assert.ok(dialog.querySelector('[data-testid="d12-card-edit-open"]'));
+  assert.equal(dialog.querySelector('[data-testid="d12-card-edit-open"]')?.textContent, 'Rename or move');
+  const path = dialog.querySelector('[data-testid="d12-card-path"]') as HTMLElement;
+  assert.equal(path.querySelector('h3')?.textContent, 'Path to Mastery');
+  assert.match(path.querySelector('[data-testid="d12-card-path-empty"]')?.textContent ?? '', /No Path to Mastery connections/);
+  assert.deepEqual(
+    [...path.querySelectorAll('[data-relation]')].map((node) => node.textContent),
+    ['Connects to', 'Builds on', 'Supports'],
+  );
+  assert.equal(path.querySelector('[data-relation="connects"]')?.getAttribute('aria-checked'), 'true');
+  assert.equal(dialog.querySelector('[aria-label="Journal"]'), null, 'no instructor journal yet');
+  assert.ok(dialog.querySelector('[data-testid="d12-card-notes"]'));
+  assert.ok(dialog.querySelector('[data-testid="d12-card-videos"]'));
+  assert.ok(dialog.querySelector('[data-testid="d12-card-delete"]'));
+
+  const cardsBefore = localStorage.getItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY);
+  // 3. Builds on Lesson plan, then Connects to the Time Management face.
+  await click(path.querySelector('[data-relation="builds-on"]') as HTMLElement);
+  const search = path.querySelector('[data-testid="d12-card-path-search"]') as HTMLInputElement;
+  await act(async () => typeIn(search, 'lesson'));
+  await click(path.querySelector('[data-connect="starter.preparation.lesson-plan-video-review"]') as HTMLElement);
+  await click(path.querySelector('[data-relation="connects"]') as HTMLElement);
+  await act(async () => typeIn(path.querySelector('[data-testid="d12-card-path-search"]') as HTMLInputElement, 'time'));
+  await click(path.querySelector('[data-connect="face:time-management"]') as HTMLElement);
+  const linksRaw = localStorage.getItem(INSTRUCTOR_D12_LINKS_STORAGE_KEY) ?? '';
+  const saved = JSON.parse(linksRaw) as { linksBySeat: Record<string, { from: string; to: string; relation: string }[]> };
+  const rows = Object.values(saved.linksBySeat)[0] ?? [];
+  assert.deepEqual(rows, [
+    { from: 'starter.preparation.lesson-plan-video-review', to: 'starter.public-speaking.intro-end-of-class-message', relation: 'connects' },
+    { from: 'starter.public-speaking.intro-end-of-class-message', to: 'face:time-management', relation: 'connects' },
+  ]);
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY), cardsBefore, 'connections never rewrite the card file');
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_STORAGE_KEY), null, 'connections never write the check-in');
+  assert.match(path.querySelector('[data-testid="d12-path-builds-on"]')?.textContent ?? '', /Lesson plan \/ video review/);
+  assert.match(path.querySelector('[data-testid="d12-path-connects"]')?.textContent ?? '', /Time Management/);
+
+  // 4. Notes save on the card only.
+  const notes = dialog.querySelector('[data-testid="d12-card-notes-input"]') as HTMLTextAreaElement;
+  await act(async () => typeIn(notes, 'Two minutes, max.'));
+  await click(dialog.querySelector('[data-testid="d12-card-notes-save"]') as HTMLElement);
+  assert.match(localStorage.getItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY) ?? '', /Two minutes, max\./);
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_LINKS_STORAGE_KEY), linksRaw, 'notes never rewrite the links');
+
+  // 5. Rename or move opens the same face picker.
+  await click(dialog.querySelector('[data-testid="d12-card-edit-open"]') as HTMLElement);
+  const edit = dialog.querySelector('[data-testid="d12-card-edit"]') as HTMLElement;
+  assert.equal(edit.querySelector('[data-face-pick="public-speaking"]')?.getAttribute('aria-pressed'), 'true');
+
+  // 6. View on Path to Mastery: branches, X-ray, and the chain through this card.
+  await click(dialog.querySelector('[data-testid="d12-view-on-path"]') as HTMLElement);
+  assert.equal(d12.querySelector('[data-testid="instructor-d12-card-dialog"]'), null);
+  assert.equal(visual.getAttribute('data-branches'), 'on');
+  assert.equal(visual.getAttribute('data-xray'), 'on');
+  assert.match(visual.getAttribute('data-chain') ?? '', /^chain:/);
+  assert.equal(d12.querySelector('[data-testid="d12-chain"]')?.getAttribute('aria-pressed'), 'true');
+  assert.equal(d12.querySelector('[data-testid="d12-chain"]')?.textContent, 'Stop chain');
+  assert.match(d12.querySelector('[data-testid="d12-path-note"]')?.textContent ?? '', /Lesson plan \/ video review → Intro \/ end-of-class message → Time Management/);
+  assert.match(d12.querySelector('[data-testid="d12-branches-note"]')?.textContent ?? '', /2 branches from your Path to Mastery connections/);
+  assert.equal(d12.querySelector('[data-testid="d12-xray"]')?.hasAttribute('disabled'), true);
+  await click(d12.querySelector('[data-testid="d12-chain"]') as HTMLElement);
+  assert.equal(d12.querySelector('[data-testid="d12-chain"]')?.textContent, 'Follow the chain');
+  await click(d12.querySelector('[data-testid="d12-branches"]') as HTMLElement);
+  assert.equal(visual.getAttribute('data-xray'), 'off');
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_LINKS_STORAGE_KEY), linksRaw, 'viewing never writes');
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_STORAGE_KEY), null);
   await mounted.unmount();
 });
