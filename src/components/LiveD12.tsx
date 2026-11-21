@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { activateTopoFace, TopoStage } from '../preview/crystallineSweeps/TopoStage';
 import {
+  applyD12ShapeMetric,
   buildD12Topo,
   d12FaceGridSize,
   d12FaceSlots,
@@ -14,6 +15,14 @@ import {
 } from '../lib/instructorD12Topo';
 import { INSTRUCTOR_D12_FACES, type InstructorD12FaceId, type InstructorD12Scores } from '../lib/instructorD12';
 import {
+  D12_CONFIRM_DELETE_CARD,
+  D12_DEFAULT_FACE_VIEW,
+  D12_DEFAULT_SHAPE_METRIC,
+  D12_DELETE_CARD,
+  D12_DELETE_PROMPT,
+  D12_FACE_VIEWS,
+  D12_KEEP_CARD,
+  D12_SHAPE_METRICS,
   DUPLICATE_NAME,
   addInstructorD12Card,
   d12CardFaceScoreExact,
@@ -23,8 +32,11 @@ import {
   d12CardsOnFace,
   loadInstructorD12Cards,
   rateInstructorD12Card,
+  removeInstructorD12Card,
   saveInstructorD12Cards,
   shownD12CardRating,
+  type D12FaceView,
+  type D12ShapeMetric,
   type InstructorD12Card,
 } from '../lib/instructorD12Cards';
 import type { AssessmentScore } from '../lib/studentAssessment';
@@ -56,6 +68,8 @@ export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', re
   const cards = cardsProp != null ? cardsProp : stored;
   const [focus, setFocus] = useState(-1);
   const [open, setOpen] = useState<OpenState>(null);
+  const [metric, setMetric] = useState<D12ShapeMetric>(D12_DEFAULT_SHAPE_METRIC);
+  const [faceView, setFaceView] = useState<D12FaceView>(D12_DEFAULT_FACE_VIEW);
 
   const commit = (next: InstructorD12Card[]) => {
     if (controlled) return;
@@ -63,14 +77,14 @@ export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', re
     setStored(saved);
   };
 
-  const model = useMesh(cards, scores);
+  const model = useMesh(cards, scores, metric);
   const face = focus >= 0 ? INSTRUCTOR_D12_FACES[focus] : null;
   const faceId = face?.id ?? null;
 
   const collapseFace = () => setFocus(-1);
 
   return (
-    <div ref={rootRef} className="ip-d12-live" data-testid="instructor-d12-visual">
+    <div ref={rootRef} className="ip-d12-live" data-testid="instructor-d12-visual" data-metric={metric} data-face-view={faceView}>
       <TopoStage
         model={model}
         style="pyramid"
@@ -108,12 +122,27 @@ export function LiveD12({ scores = null, cards: cardsProp, seatKey = 'owner', re
         }}
         onDrill={() => undefined}
       />
+      <div className="d12-live-tools" role="group" aria-label="Shape metric" data-testid="d12-shape-metric">
+        {D12_SHAPE_METRICS.map((choice) => (
+          <button
+            key={choice.id}
+            type="button"
+            aria-pressed={metric === choice.id}
+            data-testid={`d12-metric-${choice.id}`}
+            onClick={() => setMetric(choice.id)}
+          >
+            {choice.label}
+          </button>
+        ))}
+      </div>
       {face && faceId ? (
         <FaceReadout
           faceId={faceId}
           label={face.label}
           cards={d12CardsOnFace(cards, faceId)}
           slots={d12FaceSlots(model, focus)}
+          view={faceView}
+          onView={setFaceView}
           readOnly={controlled}
           onCollapse={collapseFace}
           onOpen={(id) => setOpen({ kind: 'card', id })}
@@ -146,7 +175,7 @@ function d12FaceGrids(cards: readonly InstructorD12Card[]): number[] {
   return INSTRUCTOR_D12_FACES.map((face) => d12FaceGridSize(d12CardsOnFace(cards, face.id).length));
 }
 
-function useMesh(cards: readonly InstructorD12Card[], scores: InstructorD12Scores | null) {
+function useMesh(cards: readonly InstructorD12Card[], scores: InstructorD12Scores | null, metric: D12ShapeMetric) {
   const modelRef = useRef<ReturnType<typeof buildD12Topo> | null>(null);
   const gridKey = useRef('');
   const grids = d12FaceGrids(cards);
@@ -158,12 +187,14 @@ function useMesh(cards: readonly InstructorD12Card[], scores: InstructorD12Score
   }
   const model = modelRef.current;
   const meshKey = useRef('');
-  const signature = `${nextGridKey}#${cards.map((card) => `${card.faceId}:${card.id}:${card.rating ?? 'n'}:${card.name}`).join('|')}`;
+  const scoreKey = INSTRUCTOR_D12_FACES.map((face) => `${face.id}:${scores?.[face.id] ?? 'n'}`).join('|');
+  const signature = `${nextGridKey}#${metric}#${scoreKey}#${cards.map((card) => `${card.faceId}:${card.id}:${card.rating ?? 'n'}:${card.name}`).join('|')}`;
   if (meshKey.current !== signature) {
     meshKey.current = signature;
     INSTRUCTOR_D12_FACES.forEach((face, index) => {
       showOnD12Face(model, index, d12CardsInPlaceOrder(d12CardsOnFace(cards, face.id)));
     });
+    applyD12ShapeMetric(model, metric, cards, scores);
   }
   return model;
 }
@@ -212,6 +243,8 @@ function FaceReadout({
   label,
   cards,
   slots,
+  view,
+  onView,
   readOnly,
   onCollapse,
   onOpen,
@@ -221,14 +254,17 @@ function FaceReadout({
   label: string;
   cards: readonly InstructorD12Card[];
   slots: ReturnType<typeof d12FaceSlots>;
+  view: D12FaceView;
+  onView: (view: D12FaceView) => void;
   readOnly: boolean;
   onCollapse: () => void;
   onOpen: (id: string) => void;
   onAdd: () => void;
 }) {
   const filled = slots.filter((slot) => slot.label).length;
+  const byId = new Map(cards.map((card) => [card.id, card]));
   return (
-    <div className="crystal-readout d12-live-readout" data-testid="d12-face-readout">
+    <div className="crystal-readout d12-live-readout" data-testid="d12-face-readout" data-face-view={view}>
       <section aria-label={`${label} cards`}>
         <div className="d12-live-face-head">
           <h2>
@@ -244,22 +280,83 @@ function FaceReadout({
           {d12CardFaceScoreLine(cards, faceId)}
         </p>
         <p>{`Average of every card on this face. A card you have not rated stays at 3. ${filled} of ${slots.length} tiles have a card.`}</p>
-        <ul className="d8sf-card-list" data-testid="d12-face-card-list">
-          {d12CardsInPlaceOrder(cards).map((item) => (
-            <li key={item.id} data-list-card={item.id}>
-              <button type="button" className="d12-card-link" onClick={() => onOpen(item.id)}>
-                {item.name}
-              </button>
-              <span>{shownD12CardRating(item.rating)} / 5</span>
-            </li>
+        <div className="d12-live-face-views" role="group" aria-label="Face view" data-testid="d12-face-view">
+          {D12_FACE_VIEWS.map((choice) => (
+            <button
+              key={choice.id}
+              type="button"
+              aria-pressed={view === choice.id}
+              data-testid={`d12-face-view-${choice.id}`}
+              onClick={() => onView(choice.id)}
+            >
+              {choice.label}
+            </button>
           ))}
-        </ul>
+        </div>
+        {view === 'map' ? (
+          <FaceMap label={label} slots={slots} byId={byId} readOnly={readOnly} onOpen={onOpen} onAdd={onAdd} />
+        ) : (
+          <ul className="d8sf-card-list" data-testid="d12-face-card-list">
+            {d12CardsInPlaceOrder(cards).map((item) => (
+              <li key={item.id} data-list-card={item.id}>
+                <button type="button" className="d12-card-link" onClick={() => onOpen(item.id)}>
+                  {item.name}
+                </button>
+                <span>{shownD12CardRating(item.rating)} / 5</span>
+              </li>
+            ))}
+          </ul>
+        )}
         {readOnly ? null : (
           <button type="button" data-add-card={faceId} data-testid="d12-add-face-card" onClick={onAdd}>
             Add
           </button>
         )}
       </section>
+    </div>
+  );
+}
+
+function FaceMap({
+  label,
+  slots,
+  byId,
+  readOnly,
+  onOpen,
+  onAdd,
+}: {
+  label: string;
+  slots: ReturnType<typeof d12FaceSlots>;
+  byId: ReadonlyMap<string, InstructorD12Card>;
+  readOnly: boolean;
+  onOpen: (id: string) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="d8sf-pyramid d12-face-map" data-testid="face-pyramid" data-grid={slots[0]?.grid ?? 1} role="group" aria-label={`${label} slots`}>
+      {slots.map((slot) => {
+        const card = slot.moveId ? byId.get(slot.moveId) : null;
+        return (
+          <div key={slot.tileIndex} className="d8sf-slot" data-slot={slot.tileIndex} style={{ left: `${slot.x}%`, top: `${slot.y}%` }}>
+            {card ? (
+              <button type="button" className="d12-card-link d8sf-term" onClick={() => onOpen(card.id)}>
+                {card.name}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="d8sf-empty d8sf-empty--blank"
+                data-empty-slot={slot.tileIndex}
+                aria-label="Empty slot"
+                disabled={readOnly}
+                onClick={() => {
+                  if (!readOnly) onAdd();
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -283,8 +380,10 @@ function CardDialog({
   const [draftRating, setDraftRating] = useState<AssessmentScore>(3);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
+    setConfirmDelete(false);
     if (open.kind !== 'draft') return;
     setDraftName('');
     setDraftFace(open.faceId);
@@ -429,6 +528,30 @@ function CardDialog({
             {savedAt ? 'Saved' : ''}
           </p>
         </section>
+        {existing && !readOnly ? (
+          confirmDelete ? (
+            <div className="d12-card-delete" role="group" aria-label="Delete this card" data-testid="d12-card-delete-confirm-group">
+              <p>{D12_DELETE_PROMPT}</p>
+              <button
+                type="button"
+                data-testid="d12-card-delete-confirm"
+                onClick={() => {
+                  onCommit(removeInstructorD12Card(cards, existing.id));
+                  onClose();
+                }}
+              >
+                {D12_CONFIRM_DELETE_CARD}
+              </button>
+              <button type="button" data-testid="d12-card-delete-keep" onClick={() => setConfirmDelete(false)}>
+                {D12_KEEP_CARD}
+              </button>
+            </div>
+          ) : (
+            <button type="button" data-testid="d12-card-delete" onClick={() => setConfirmDelete(true)}>
+              {D12_DELETE_CARD}
+            </button>
+          )
+        ) : null}
       </article>
     </div>
   );

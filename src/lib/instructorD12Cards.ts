@@ -7,7 +7,7 @@
  * Saved under INSTRUCTOR_D12_CARDS_STORAGE_KEY, keyed by instructor seat.
  */
 import { isAssessmentScore, type AssessmentScore } from './studentAssessment.ts';
-import { INSTRUCTOR_D12_FACES, instructorD12SeatKey, type InstructorD12FaceId } from './instructorD12.ts';
+import { INSTRUCTOR_D12_FACES, instructorD12SeatKey, type InstructorD12FaceId, type InstructorD12Scores } from './instructorD12.ts';
 
 export const INSTRUCTOR_D12_CARDS_STORAGE_KEY = 'matboard.instructor.d12.cards.v1';
 
@@ -19,6 +19,49 @@ export const NEUTRAL_NOTE = 'Defaults to 3 — neutral. Rate only if you want to
 export const OPTIONAL_NOTE = 'Rate only if you want to.';
 
 export const DUPLICATE_NAME = 'Already on this face.';
+
+export const D12_SHAPE_METRICS = [
+  { id: 'card-ratings', label: 'Card ratings' },
+  { id: 'check-ins', label: 'Check-ins' },
+] as const;
+
+export type D12ShapeMetric = (typeof D12_SHAPE_METRICS)[number]['id'];
+
+/** Live D8 shapes from cards by default; check-in is a separate source. */
+export const D12_DEFAULT_SHAPE_METRIC: D12ShapeMetric = 'card-ratings';
+
+export const D12_FACE_VIEWS = [
+  { id: 'map', label: 'Map' },
+  { id: 'cards', label: 'Cards' },
+] as const;
+
+export type D12FaceView = (typeof D12_FACE_VIEWS)[number]['id'];
+
+/** Start on the card list, then toggle to the 2D face map. */
+export const D12_DEFAULT_FACE_VIEW: D12FaceView = 'cards';
+
+export const D12_DELETE_CARD = 'Delete';
+export const D12_CONFIRM_DELETE_CARD = 'Confirm delete';
+export const D12_KEEP_CARD = 'Keep card';
+export const D12_DELETE_PROMPT = 'Remove this card?';
+
+/**
+ * Relief for one face under the selected shape metric.
+ * Card ratings use the rounded face average (empty face is 3).
+ * Check-ins use the saved daily score, or null when that face is unrated.
+ */
+export function d12FaceRelief(
+  faceId: InstructorD12FaceId,
+  metric: D12ShapeMetric,
+  cards: readonly InstructorD12Card[],
+  scores: InstructorD12Scores | null | undefined,
+): AssessmentScore | null {
+  if (metric === 'check-ins') {
+    const raw = scores?.[faceId];
+    return isAssessmentScore(raw) ? raw : null;
+  }
+  return d12CardFaceScore(cards, faceId);
+}
 
 const NAME_MAX = 80;
 const CARD_MAX = 400;
@@ -274,3 +317,8 @@ export function rateInstructorD12Card(
   if (!isAssessmentScore(rating)) return [...cards];
   return cards.map((card) => (card.id === id ? { ...card, rating } : card));
 }
+
+export function removeInstructorD12Card(cards: readonly InstructorD12Card[], id: string): InstructorD12Card[] {
+  return cards.filter((card) => card.id !== id);
+}
+

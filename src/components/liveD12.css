@@ -99,3 +99,43 @@
   color: #0b5;
   font-weight: 700;
 }
+
+.ip-d12-live .d12-live-tools,
+.ip-d12-live .d12-live-face-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ip-d12-live .d12-live-tools button[aria-pressed='true'],
+.ip-d12-live .d12-live-face-views button[aria-pressed='true'] {
+  background: #004eba;
+  color: #f4f0e4;
+}
+
+.ip-d12-live .d12-face-map {
+  position: relative;
+  min-height: 220px;
+  margin: 10px 0;
+}
+
+.ip-d12-live .d12-face-map .d8sf-slot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  max-width: 42%;
+}
+
+.ip-d12-live .d12-card-delete {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ip-d12-live .d12-card-delete p {
+  margin: 0;
+}
+
+.ip-d12-live [data-testid='d12-card-delete'],
+.ip-d12-live [data-testid='d12-card-delete-confirm'] {
+  border-color: #7a1f1f;
+}

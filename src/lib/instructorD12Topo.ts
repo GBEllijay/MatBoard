@@ -11,7 +11,13 @@ import type { AxisId } from '../preview/assessmentRadar/model.ts';
 import { TOPO_LEVEL, TOPO_R, TOPO_REVISION, faceCentroid, type TopoFace, type TopoModel, type TopoMove, type TopoTile, type Vec } from '../preview/crystallineSweeps/topo.ts';
 import { INSTRUCTOR_D12_FACES, type InstructorD12Scores } from './instructorD12.ts';
 import { isAssessmentScore } from './studentAssessment.ts';
-import { d12CardsInPlaceOrder, d12CardsOnFace, type InstructorD12Card } from './instructorD12Cards.ts';
+import {
+  d12CardsInPlaceOrder,
+  d12CardsOnFace,
+  d12FaceRelief,
+  type D12ShapeMetric,
+  type InstructorD12Card,
+} from './instructorD12Cards.ts';
 
 type Shared = { p: Vec; d: Vec };
 
@@ -422,6 +428,34 @@ export function showOnD12Face(model: TopoModel, faceIndex: number, shown: readon
     const centroid = tileMid(tile.tri);
     tile.apex = offset == null ? null : add(centroid, scale(outward, offset));
   });
+}
+
+
+/**
+ * Paint every tile on a face to the selected shape metric. Card labels stay
+ * where they were. This does not read or write storage.
+ */
+export function applyD12ShapeMetric(
+  model: TopoModel,
+  metric: D12ShapeMetric,
+  cards: readonly InstructorD12Card[],
+  scores: InstructorD12Scores | null | undefined,
+): void {
+  for (let faceIndex = 0; faceIndex < model.faces.length; faceIndex += 1) {
+    const faceDef = INSTRUCTOR_D12_FACES[faceIndex];
+    if (!faceDef) continue;
+    const relief = d12FaceRelief(faceDef.id, metric, cards, scores);
+    const offset = relief == null ? null : TOPO_LEVEL[relief as ReliefScore];
+    const tiles = model.tiles.filter((tile) => tile.faceIndex === faceIndex);
+    if (!tiles.length) continue;
+    const corners = model.faceCorners[faceIndex]!.map((index) => model.vertices[index]!);
+    const { outward } = faceOutward(corners);
+    for (const tile of tiles) {
+      tile.offset = offset;
+      const centroid = tileMid(tile.tri);
+      tile.apex = offset == null ? null : add(centroid, scale(outward, offset));
+    }
+  }
 }
 
 /** Put a new card on one empty tile. The other tiles stay where they are. Unrated has no relief. */

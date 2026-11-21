@@ -5,10 +5,12 @@ import {
   loadInstructorD12Scores,
   saveInstructorD12Scores,
 } from './instructorD12.ts';
+import { TOPO_LEVEL } from '../preview/crystallineSweeps/topo.ts';
 import {
   D12_FACE_GRID_SAFE,
   D12_FACE_SLICES,
   D12_FACE_TILE_SAFE,
+  applyD12ShapeMetric,
   buildD12Topo,
   d12FaceGridSize,
   d12FaceSlots,
@@ -18,6 +20,13 @@ import {
   showOnD12Face,
 } from './instructorD12Topo.ts';
 import {
+  D12_CONFIRM_DELETE_CARD,
+  D12_DEFAULT_FACE_VIEW,
+  D12_DEFAULT_SHAPE_METRIC,
+  D12_DELETE_CARD,
+  D12_FACE_VIEWS,
+  D12_KEEP_CARD,
+  D12_SHAPE_METRICS,
   DUPLICATE_NAME,
   INSTRUCTOR_D12_CARDS_STORAGE_KEY,
   INSTRUCTOR_D12_STARTER_CARDS,
@@ -30,9 +39,11 @@ import {
   d12CardFaceScoreLine,
   d12CardsInPlaceOrder,
   d12CardsOnFace,
+  d12FaceRelief,
   instructorD12StarterCards,
   loadInstructorD12Cards,
   rateInstructorD12Card,
+  removeInstructorD12Card,
   reviewD12CardName,
   saveInstructorD12Cards,
   shownD12CardRating,
@@ -238,4 +249,116 @@ test('cards save under their own key and leave the check-in file untouched', () 
   saveInstructorD12Cards(rated, storage, 'owner');
   assert.equal(loadInstructorD12Cards(storage, 'owner').find((card) => card.id === 'starter.preparation.mat-inspection')?.rating, 5);
   assert.equal(loadInstructorD12Scores(storage, 'owner')?.preparation, 5);
+});
+
+test('deleting a card only rewrites the cards key and the face score re-averages', () => {
+  const storage = memoryStorage();
+  saveInstructorD12Scores({ energy: 5, safety: 4 }, storage, 'owner');
+  const checkIn = storage.map.get(INSTRUCTOR_D12_STORAGE_KEY)!;
+  const cards: InstructorD12Card[] = [
+    card({ id: 'a', name: 'Alpha', faceId: 'energy', addedAt: 1, rating: 5 }),
+    card({ id: 'b', name: 'Bravo', faceId: 'energy', addedAt: 2, rating: 3 }),
+    card({ id: 'c', name: 'Charlie', faceId: 'energy', addedAt: 3, rating: 2 }),
+    card({ id: 'd', name: 'Delta', faceId: 'energy', addedAt: 4, rating: 4 }),
+  ];
+  assert.equal(d12CardFaceScoreExact(cards, 'energy'), 3.5);
+  const kept = removeInstructorD12Card(cards, 'a');
+  assert.deepEqual(kept.map((item) => item.id), ['b', 'c', 'd']);
+  assert.equal(d12CardFaceScoreExact(kept, 'energy'), 3);
+  assert.equal(d12CardFaceScore(kept, 'energy'), 3);
+  saveInstructorD12Cards(kept, storage, 'owner');
+  assert.equal(storage.map.get(INSTRUCTOR_D12_STORAGE_KEY), checkIn);
+  assert.equal(loadInstructorD12Scores(storage, 'owner')?.energy, 5);
+  assert.deepEqual(loadInstructorD12Cards(storage, 'owner').map((item) => item.id), ['b', 'c', 'd']);
+  assert.equal(removeInstructorD12Card(kept, 'missing').length, 3);
+});
+
+test('after a removal, remaining cards are re-laid center-out until the grid shrinks', () => {
+  // Same rule as LiveD8 showOnDiamond: the mesh is only rebuilt when the count
+  // crosses a square-number threshold. On a stable grid the remaining cards are
+  // painted center-out again. D8 ranks by rating; this D12 ranks by addedAt.
+  const first: InstructorD12Card[] = [
+    card({ id: 'a', name: 'Alpha', faceId: 'energy', addedAt: 1, rating: 5 }),
+    card({ id: 'b', name: 'Bravo', faceId: 'energy', addedAt: 2, rating: 4 }),
+    card({ id: 'c', name: 'Charlie', faceId: 'energy', addedAt: 3, rating: 2 }),
+    card({ id: 'd', name: 'Delta', faceId: 'energy', addedAt: 4, rating: 3 }),
+  ];
+  const model = buildD12Topo(null, { cards: first });
+  const faceIndex = model.faces.findIndex((face) => face.id === 'energy');
+  assert.equal(model.tiles.filter((tile) => tile.faceIndex === faceIndex).length, 5);
+  const before = new Map(d12FaceSlots(model, faceIndex).filter((slot) => slot.moveId).map((slot) => [slot.moveId!, slot.tileIndex]));
+  const kept = removeInstructorD12Card(first, 'b');
+  showOnD12Face(model, faceIndex, d12CardsInPlaceOrder(kept));
+  assert.equal(model.tiles.filter((tile) => tile.faceIndex === faceIndex).length, 5);
+  const after = new Map(d12FaceSlots(model, faceIndex).filter((slot) => slot.moveId).map((slot) => [slot.moveId!, slot.tileIndex]));
+  assert.equal(after.has('b'), false);
+  // a stays on the innermost seat; later cards shift in to fill the hole, like D8.
+  assert.equal(after.get('a'), before.get('a'));
+  assert.equal(after.get('c'), before.get('b'));
+  assert.equal(after.get('d'), before.get('c'));
+
+  const crowded = [
+    ...first,
+    card({ id: 'e', name: 'Echo', faceId: 'energy', addedAt: 5, rating: 1 }),
+    card({ id: 'f', name: 'Foxtrot', faceId: 'energy', addedAt: 6, rating: 5 }),
+  ];
+  const grown = buildD12Topo(null, { cards: crowded });
+  assert.equal(grown.tiles.filter((tile) => tile.faceIndex === faceIndex).length, 20);
+  const shrunkCards = removeInstructorD12Card(crowded, 'f');
+  const shrunk = buildD12Topo(null, { cards: shrunkCards });
+  assert.equal(shrunk.tiles.filter((tile) => tile.faceIndex === faceIndex).length, 5);
+  assert.equal(d12FaceSlots(shrunk, faceIndex).filter((slot) => slot.moveId).length, 5);
+});
+
+test('shape metric and face-view labels default like the live D8, and the toggle never writes storage', () => {
+  assert.deepEqual(
+    D12_SHAPE_METRICS.map((item) => [item.id, item.label]),
+    [
+      ['card-ratings', 'Card ratings'],
+      ['check-ins', 'Check-ins'],
+    ],
+  );
+  assert.equal(D12_DEFAULT_SHAPE_METRIC, 'card-ratings');
+  assert.deepEqual(
+    D12_FACE_VIEWS.map((item) => [item.id, item.label]),
+    [
+      ['map', 'Map'],
+      ['cards', 'Cards'],
+    ],
+  );
+  assert.equal(D12_DEFAULT_FACE_VIEW, 'cards');
+  assert.equal(D12_DELETE_CARD, 'Delete');
+  assert.equal(D12_CONFIRM_DELETE_CARD, 'Confirm delete');
+  assert.equal(D12_KEEP_CARD, 'Keep card');
+
+  const storage = memoryStorage();
+  const cards: InstructorD12Card[] = [
+    card({ id: 'a', name: 'Alpha', faceId: 'energy', rating: 5 }),
+    card({ id: 'b', name: 'Bravo', faceId: 'energy', rating: 1 }),
+  ];
+  saveInstructorD12Cards(cards, storage, 'owner');
+  saveInstructorD12Scores({ energy: 4, safety: 2 }, storage, 'owner');
+  const cardsRaw = storage.map.get(INSTRUCTOR_D12_CARDS_STORAGE_KEY)!;
+  const scoresRaw = storage.map.get(INSTRUCTOR_D12_STORAGE_KEY)!;
+  const scores = loadInstructorD12Scores(storage, 'owner');
+
+  assert.equal(d12FaceRelief('energy', 'card-ratings', cards, scores), 3);
+  assert.equal(d12FaceRelief('energy', 'check-ins', cards, scores), 4);
+  assert.equal(d12FaceRelief('safety', 'card-ratings', cards, scores), 3);
+  assert.equal(d12FaceRelief('safety', 'check-ins', cards, scores), 2);
+  assert.equal(d12FaceRelief('preparation', 'check-ins', cards, scores), null);
+
+  const model = buildD12Topo(scores, { cards });
+  const energy = model.faces.findIndex((face) => face.id === 'energy');
+  const safety = model.faces.findIndex((face) => face.id === 'safety');
+  applyD12ShapeMetric(model, 'card-ratings', cards, scores);
+  assert.ok(model.tiles.filter((tile) => tile.faceIndex === energy).every((tile) => tile.offset === TOPO_LEVEL[3]));
+  applyD12ShapeMetric(model, 'check-ins', cards, scores);
+  assert.ok(model.tiles.filter((tile) => tile.faceIndex === energy).every((tile) => tile.offset === TOPO_LEVEL[4]));
+  assert.ok(model.tiles.filter((tile) => tile.faceIndex === safety).every((tile) => tile.offset === TOPO_LEVEL[2]));
+  const prep = model.faces.findIndex((face) => face.id === 'preparation');
+  assert.ok(model.tiles.filter((tile) => tile.faceIndex === prep).every((tile) => tile.offset == null && tile.apex == null));
+
+  assert.equal(storage.map.get(INSTRUCTOR_D12_CARDS_STORAGE_KEY), cardsRaw);
+  assert.equal(storage.map.get(INSTRUCTOR_D12_STORAGE_KEY), scoresRaw);
 });
