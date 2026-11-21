@@ -1,6 +1,6 @@
 /**
  * Live instructor character sheet: preview paint, student profile cards,
- * D12 empty state, and save/reload of teaching-shape ratings.
+ * D12 empty state, save/reload of teaching-shape ratings, card delete, and toggles.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -11,6 +11,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { InstructorSheet } from './InstructorSheet.tsx';
 import { INSTRUCTOR_D12_STORAGE_KEY } from '../lib/instructorD12.ts';
+import { INSTRUCTOR_D12_CARDS_STORAGE_KEY } from '../lib/instructorD12Cards.ts';
 import { INSTRUCTOR_PROFILE_STORAGE_KEY } from '../lib/instructorProfile.ts';
 import { ASSESSMENT_STORAGE_KEY } from '../lib/studentAssessment.ts';
 import { STUDENT_FILE_STORAGE_KEY } from '../lib/studentDemo.ts';
@@ -64,6 +65,7 @@ if (typeof view.matchMedia !== 'function') {
 
 function clearSheetStorage() {
   localStorage.removeItem(INSTRUCTOR_D12_STORAGE_KEY);
+  localStorage.removeItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY);
   localStorage.removeItem(INSTRUCTOR_PROFILE_STORAGE_KEY);
   localStorage.removeItem(ASSESSMENT_STORAGE_KEY);
   localStorage.removeItem(STUDENT_FILE_STORAGE_KEY);
@@ -139,11 +141,11 @@ test('the instructor profile shows the student cards, an empty D12, and keeps sa
   assert.equal(student.querySelector('[data-testid="instructor-d12"]'), null);
   const empty = d12.querySelector('[data-testid="instructor-d12-empty"]');
   assert.ok(empty, 'expected a clear empty state when nothing is saved');
-  assert.match(empty?.textContent ?? '', /No teaching shape ratings yet/);
-  assert.equal(d12.querySelector('[data-testid="instructor-d12-visual"]'), null);
+  assert.match(empty?.textContent ?? '', /No teaching shape check-in yet/);
+  assert.ok(d12.querySelector('[data-testid="instructor-d12-visual"]'), 'the D12 is on screen so cards can be added before a check-in');
   assert.equal(d12.querySelector('[data-testid="instructor-d12-scores"]'), null);
-  const pressed = [...d12.querySelectorAll('button[aria-pressed="true"]')];
-  assert.equal(pressed.length, 0, 'empty state must not pre-select sample scores');
+  const pressed = [...d12.querySelectorAll('.sheet-d12__form button[aria-pressed="true"]')];
+  assert.equal(pressed.length, 0, 'empty state must not pre-select sample check-in scores');
   assert.equal(JSON.stringify(INSTRUCTOR_D12_SAMPLE).includes('"preparation":5'), true);
 
   await click(d12.querySelector('[data-testid="instructor-d12-preparation-5"]') as HTMLElement);
@@ -256,4 +258,69 @@ test('Pro and Pro + Cloud do not remount the instructor identity card', () => {
   assert.doesNotMatch(pro, /InstructorSheet/);
   assert.doesNotMatch(cloud, /InstructorSheet/);
   assert.match(readFileSync('src/pages/CoachUnlimited.tsx', 'utf8'), /<InstructorSheet \/>/);
+});
+
+test('the D12 deletes a card, shows map and cards together, toggles metrics, and never mixes the two stores', async () => {
+  clearSheetStorage();
+  const mounted = await renderSheet();
+  const d12 = mounted.host.querySelector('[data-testid="instructor-d12"]') as HTMLElement;
+  const visual = d12.querySelector('[data-testid="instructor-d12-visual"]') as HTMLElement;
+  assert.ok(visual);
+  assert.equal(visual.getAttribute('data-metric'), 'card-ratings');
+  const metric = d12.querySelector('[data-testid="d12-shape-metric"]') as HTMLElement;
+  assert.ok(metric);
+  assert.equal(metric.querySelector('[data-testid="d12-metric-card-ratings"]')?.getAttribute('aria-pressed'), 'true');
+  assert.equal(metric.querySelector('[data-testid="d12-metric-check-ins"]')?.textContent, 'Check-ins');
+
+  await click(d12.querySelector('[data-testid="instructor-d12-preparation-5"]') as HTMLElement);
+  await click(d12.querySelector('[data-testid="instructor-d12-safety-4"]') as HTMLElement);
+  await click(d12.querySelector('[data-testid="instructor-d12-save"]') as HTMLElement);
+  const checkIn = localStorage.getItem(INSTRUCTOR_D12_STORAGE_KEY);
+  assert.ok(checkIn);
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY), null, 'saving a check-in does not write cards');
+
+  const speaking = [...d12.querySelectorAll('.d8sf-face-scores button')].find((node) => node.textContent?.includes('Public Speaking')) as HTMLElement;
+  assert.ok(speaking, 'expected a Public Speaking face button');
+  await click(speaking);
+  const readout = d12.querySelector('[data-testid="d12-face-readout"]') as HTMLElement;
+  assert.ok(readout);
+  assert.equal(readout.querySelector('[data-testid="d12-face-view"]'), null);
+  assert.ok(readout.querySelector('[data-testid="face-pyramid"]'), 'focused face shows the 2D map');
+  assert.ok(readout.querySelector('[data-testid="d12-face-card-list"]'), 'focused face shows the card list');
+  const pyramid = readout.querySelector('[data-testid="face-pyramid"]') as HTMLElement;
+  const list = readout.querySelector('[data-testid="d12-face-card-list"]') as HTMLElement;
+  assert.equal(Boolean(pyramid.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING), true, 'map sits above the card list, like LiveD8 FaceReadout');
+
+  const cardBtn = [...readout.querySelectorAll('[data-list-card] button')].find((node) =>
+    node.textContent?.includes('Intro / end-of-class message'),
+  ) as HTMLElement;
+  assert.ok(cardBtn);
+  await click(cardBtn);
+  const dialog = d12.querySelector('[data-testid="instructor-d12-card-dialog"]') as HTMLElement;
+  assert.ok(dialog);
+  await click(dialog.querySelector('[data-testid="d12-card-delete"]') as HTMLElement);
+  assert.match(dialog.textContent ?? '', /Remove this card/);
+  await click(dialog.querySelector('[data-testid="d12-card-delete-keep"]') as HTMLElement);
+  assert.ok(dialog.querySelector('[data-testid="d12-card-delete"]'));
+  await click(dialog.querySelector('[data-testid="d12-card-delete"]') as HTMLElement);
+  await click(dialog.querySelector('[data-testid="d12-card-delete-confirm"]') as HTMLElement);
+  assert.equal(d12.querySelector('[data-testid="instructor-d12-card-dialog"]'), null);
+  assert.doesNotMatch(readout.querySelector('[data-testid="d12-face-card-list"]')?.textContent ?? '', /Intro \/ end-of-class message/);
+  assert.match(readout.querySelector('[data-testid="face-score"]')?.textContent ?? '', /Face score 3\.0 \/ 5/);
+  const cardsFile = localStorage.getItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY);
+  assert.ok(cardsFile);
+  assert.equal(cardsFile.includes('intro-end-of-class-message'), false);
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_STORAGE_KEY), checkIn, 'deleting a card does not rewrite the check-in');
+
+  const cardsBeforeMetric = localStorage.getItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY);
+  await click(metric.querySelector('[data-testid="d12-metric-check-ins"]') as HTMLElement);
+  assert.equal(visual.getAttribute('data-metric'), 'check-ins');
+  assert.equal(metric.querySelector('[data-testid="d12-metric-check-ins"]')?.getAttribute('aria-pressed'), 'true');
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY), cardsBeforeMetric);
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_STORAGE_KEY), checkIn);
+  await click(metric.querySelector('[data-testid="d12-metric-card-ratings"]') as HTMLElement);
+  assert.equal(visual.getAttribute('data-metric'), 'card-ratings');
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY), cardsBeforeMetric);
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_STORAGE_KEY), checkIn);
+  await mounted.unmount();
 });

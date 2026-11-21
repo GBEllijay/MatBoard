@@ -4,8 +4,9 @@
  *
  * All twelve faces are named teaching factors. Class Growth and Student
  * Retention are each their own face. Neither has a sub-score.
- * Student D8 types and scores are untouched. Saved teaching-shape ratings live in
- * localStorage under INSTRUCTOR_D12_STORAGE_KEY, keyed by instructor seat.
+ * Student D8 types and scores are untouched. Saved teaching-shape check-in ratings
+ * live in localStorage under INSTRUCTOR_D12_STORAGE_KEY, keyed by instructor seat.
+ * Cards and their rollup scores live under a separate key in instructorD12Cards.ts.
  */
 import { isAssessmentScore, type AssessmentScore } from './studentAssessment.ts';
 
