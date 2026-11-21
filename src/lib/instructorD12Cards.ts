@@ -65,11 +65,13 @@ export type InstructorD12Card = {
   addedAt: number;
   /** The instructor's own notes on this card. */
   notes?: string;
+  /** Opt-in flag: whether notes on this card are included in a student-share bundle. Private by default. */
+  shareNotes?: boolean;
   /** Reference links the instructor added. */
   videos?: InstructorD12CardVideo[];
 };
 
-export type InstructorD12CardVideo = { title: string; href: string };
+export type InstructorD12CardVideo = { title: string; href: string; shareWithStudents?: boolean };
 
 export const D12_CARD_NOTES_MAX = 2000;
 export const D12_CARD_VIDEOS_MAX = 12;
@@ -226,6 +228,7 @@ function cleanCard(value: unknown): InstructorD12Card | null {
   if (isAssessmentScore(row.rating)) card.rating = row.rating;
   const notes = cleanD12Notes(typeof row.notes === 'string' ? row.notes : '');
   if (notes) card.notes = notes;
+  if (row.shareNotes === true) card.shareNotes = true;
   const videos = cleanD12Videos(row.videos);
   if (videos.length) card.videos = videos;
   return card;
@@ -236,11 +239,11 @@ export function cleanD12Notes(value: string): string {
 }
 
 /** Only http(s) links are kept. A missing title falls back to the link. */
-export function cleanD12Video(title: string, href: string): InstructorD12CardVideo | null {
+export function cleanD12Video(title: string, href: string, shareWithStudents = false): InstructorD12CardVideo | null {
   const link = href.trim();
   if (!/^https?:\/\/\S+$/i.test(link) || link.length > 500) return null;
   const label = title.replace(/\s+/g, ' ').trim().slice(0, 120) || link;
-  return { title: label, href: link };
+  return shareWithStudents ? { title: label, href: link, shareWithStudents: true } : { title: label, href: link };
 }
 
 function cleanD12Videos(raw: unknown): InstructorD12CardVideo[] {
@@ -249,7 +252,11 @@ function cleanD12Videos(raw: unknown): InstructorD12CardVideo[] {
   for (const row of raw) {
     if (!row || typeof row !== 'object') continue;
     const value = row as Partial<InstructorD12CardVideo>;
-    const video = cleanD12Video(typeof value.title === 'string' ? value.title : '', typeof value.href === 'string' ? value.href : '');
+    const video = cleanD12Video(
+      typeof value.title === 'string' ? value.title : '',
+      typeof value.href === 'string' ? value.href : '',
+      value.shareWithStudents === true,
+    );
     if (video && !out.some((item) => item.href === video.href)) out.push(video);
     if (out.length >= D12_CARD_VIDEOS_MAX) break;
   }
@@ -305,6 +312,19 @@ export function loadInstructorD12Cards(
   return file.cardsBySeat[key] ?? [];
 }
 
+const CARDS_CHANGE_EVENT = 'matboard-instructor-d12-cards';
+
+export function subscribeInstructorD12Cards(listener: () => void): () => void {
+  if (typeof window === 'undefined') return () => undefined;
+  const handler = () => listener();
+  window.addEventListener(CARDS_CHANGE_EVENT, handler);
+  window.addEventListener('storage', handler);
+  return () => {
+    window.removeEventListener(CARDS_CHANGE_EVENT, handler);
+    window.removeEventListener('storage', handler);
+  };
+}
+
 export function saveInstructorD12Cards(
   cards: readonly InstructorD12Card[],
   storage: Pick<Storage, 'getItem' | 'setItem'> = localStorage,
@@ -315,6 +335,9 @@ export function saveInstructorD12Cards(
   const clean = cleanCardList(cards);
   file.cardsBySeat[key] = clean;
   storage.setItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY, JSON.stringify(file));
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new Event(CARDS_CHANGE_EVENT));
+  }
   return clean;
 }
 
@@ -411,4 +434,34 @@ export function editInstructorD12Card(
       item.id === id ? { ...item, name: review.label, faceId: edit.faceId!, addedAt: moved ? at : item.addedAt } : item,
     ),
   };
+}
+
+export function toggleD12CardNoteShare(cards: readonly InstructorD12Card[], id: string, share: boolean): InstructorD12Card[] {
+  return cards.map((card) => {
+    if (card.id !== id) return card;
+    const next = { ...card };
+    if (share) next.shareNotes = true;
+    else delete next.shareNotes;
+    return next;
+  });
+}
+
+export function toggleD12CardVideoShare(
+  cards: readonly InstructorD12Card[],
+  id: string,
+  href: string,
+  share: boolean,
+): InstructorD12Card[] {
+  return cards.map((card) => {
+    if (card.id !== id || !card.videos) return card;
+    return {
+      ...card,
+      videos: card.videos.map((video) => {
+        if (video.href !== href) return video;
+        const next: InstructorD12CardVideo = { title: video.title, href: video.href };
+        if (share) next.shareWithStudents = true;
+        return next;
+      }),
+    };
+  });
 }

@@ -42,6 +42,16 @@ import {
   type D12Link,
 } from '../lib/instructorD12Mastery';
 import { instructorFaceDefinition } from '../lib/instructorGlossary';
+import { formatJournalDate } from '../lib/journalCopy';
+import {
+  EMPTY_INSTRUCTOR_JOURNAL,
+  instructorJournalMentionsForFace,
+  loadInstructorGoals,
+  loadInstructorJournal,
+  subscribeInstructorJournal,
+  type InstructorGoal,
+  type InstructorJournalEntry,
+} from '../lib/instructorJournal';
 import { D12CardSheet, type D12SheetOpen } from './D12CardSheet';
 import type { InstructorD12FaceId } from '../lib/instructorD12';
 import '../preview/crystallineSweeps/crystallineSweeps.css';
@@ -56,13 +66,26 @@ type Props = {
   cards?: InstructorD12Card[];
   /** Path to Mastery connections to show instead of the saved file. */
   links?: readonly D12Link[];
+  /** Journal entries to read for Your journal mentions instead of the saved file. */
+  journalEntries?: readonly InstructorJournalEntry[];
+  /** Teaching goals to read for Your journal mentions instead of the saved file. */
+  goals?: readonly InstructorGoal[];
   seatKey?: string;
   readOnly?: boolean;
   /** Preview mode: cards and links can be changed on the page, but nothing is saved anywhere. */
   sandbox?: boolean;
 };
 
-export function LiveD12({ scores = null, cards: cardsProp, links: linksProp, seatKey = 'owner', readOnly = false, sandbox = false }: Props) {
+export function LiveD12({
+  scores = null,
+  cards: cardsProp,
+  links: linksProp,
+  journalEntries: journalProp,
+  goals: goalsProp,
+  seatKey = 'owner',
+  readOnly = false,
+  sandbox = false,
+}: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const writable = !readOnly && (cardsProp == null || sandbox);
   const persist = writable && !sandbox && cardsProp == null;
@@ -72,8 +95,25 @@ export function LiveD12({ scores = null, cards: cardsProp, links: linksProp, sea
   const [storedLinks, setStoredLinks] = useState<D12Link[]>(() =>
     linksProp != null ? cleanD12Links(linksProp) : cardsProp != null || readOnly ? [] : loadInstructorD12Links(localStorage, seatKey),
   );
+  const [liveJournal, setLiveJournal] = useState<InstructorJournalEntry[]>(() =>
+    journalProp != null || sandbox || readOnly ? [] : loadInstructorJournal(localStorage, seatKey),
+  );
+  const [liveGoals, setLiveGoals] = useState<InstructorGoal[]>(() =>
+    goalsProp != null || sandbox || readOnly ? [] : loadInstructorGoals(localStorage, seatKey),
+  );
+  useEffect(() => {
+    if (journalProp != null || sandbox || readOnly) return;
+    const reload = () => {
+      setLiveJournal(loadInstructorJournal(localStorage, seatKey));
+      setLiveGoals(loadInstructorGoals(localStorage, seatKey));
+    };
+    reload();
+    return subscribeInstructorJournal(reload);
+  }, [journalProp, sandbox, readOnly, seatKey]);
   const cards = cardsProp != null && !sandbox ? cardsProp : stored;
   const links = storedLinks;
+  const journalEntries = journalProp ?? liveJournal;
+  const goals = goalsProp ?? liveGoals;
   const [focus, setFocus] = useState(-1);
   const [open, setOpen] = useState<D12SheetOpen | null>(null);
   const [metric, setMetric] = useState<D12ShapeMetric>(D12_DEFAULT_SHAPE_METRIC);
@@ -266,7 +306,10 @@ export function LiveD12({ scores = null, cards: cardsProp, links: linksProp, sea
           faceId={faceId}
           label={face.label}
           cards={d12CardsOnFace(cards, faceId)}
+          allCards={cards}
           slots={d12FaceSlots(model, focus)}
+          journalEntries={journalEntries}
+          goals={goals}
           readOnly={!writable}
           onCollapse={collapseFace}
           onOpen={(id) => setOpen({ kind: 'card', id })}
@@ -287,6 +330,8 @@ export function LiveD12({ scores = null, cards: cardsProp, links: linksProp, sea
           open={open}
           cards={cards}
           links={links}
+          journalEntries={journalEntries}
+          goals={goals}
           readOnly={!writable}
           onClose={() => setOpen(null)}
           onCommitCards={commitCards}
@@ -369,7 +414,10 @@ function FaceReadout({
   faceId,
   label,
   cards,
+  allCards,
   slots,
+  journalEntries,
+  goals,
   readOnly,
   onCollapse,
   onOpen,
@@ -378,7 +426,10 @@ function FaceReadout({
   faceId: InstructorD12FaceId;
   label: string;
   cards: readonly InstructorD12Card[];
+  allCards: readonly InstructorD12Card[];
   slots: ReturnType<typeof d12FaceSlots>;
+  journalEntries: readonly InstructorJournalEntry[];
+  goals: readonly InstructorGoal[];
   readOnly: boolean;
   onCollapse: () => void;
   onOpen: (id: string) => void;
@@ -386,6 +437,10 @@ function FaceReadout({
 }) {
   const filled = slots.filter((slot) => slot.label).length;
   const byId = new Map(cards.map((card) => [card.id, card]));
+  const faceJournal = useMemo(
+    () => instructorJournalMentionsForFace(journalEntries, goals, faceId, allCards),
+    [journalEntries, goals, faceId, allCards],
+  );
   return (
     <div className="crystal-readout d12-live-readout" data-testid="d12-face-readout">
       <section aria-label={`${label} face`}>
@@ -420,6 +475,27 @@ function FaceReadout({
             <button type="button" data-add-card={faceId} data-testid="d12-add-face-card" onClick={onAdd}>
               Add
             </button>
+          )}
+        </section>
+        <section className="d12-face-journal" data-testid="d12-face-journal" aria-label={`${label} journal`}>
+          <h3>Your journal</h3>
+          {faceJournal.entries.length === 0 && faceJournal.goals.length === 0 ? (
+            <p className="gl-note">{EMPTY_INSTRUCTOR_JOURNAL}</p>
+          ) : (
+            <ul className="d8sf-notes">
+              {faceJournal.entries.map((entry) => (
+                <li key={entry.id}>
+                  <strong>{formatJournalDate(entry.date)}</strong>
+                  {` · ${entry.line}`}
+                </li>
+              ))}
+              {faceJournal.goals.map((goal) => (
+                <li key={goal.id}>
+                  <strong>{goal.done ? 'Goal done' : 'Goal'}</strong>
+                  {` · ${goal.text}`}
+                </li>
+              ))}
+            </ul>
           )}
         </section>
       </section>

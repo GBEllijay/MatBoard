@@ -8,6 +8,19 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { CopyAccountReference } from './AccountReference';
 import { InstructorD12Panel } from './InstructorD12Panel';
+import { InstructorJournalSection } from './InstructorJournalSection';
+import { instructorD12SeatKey } from '../lib/instructorD12.ts';
+import { loadInstructorD12Cards, subscribeInstructorD12Cards, type InstructorD12Card } from '../lib/instructorD12Cards.ts';
+import {
+  loadInstructorGoals,
+  loadInstructorJournal,
+  saveInstructorGoals,
+  saveInstructorJournal,
+  subscribeInstructorJournal,
+  type InstructorGoal,
+  type InstructorJournalEntry,
+} from '../lib/instructorJournal.ts';
+import { getRoster, studentRosterCards, subscribeRoster } from '../lib/rosterStore.ts';
 import { readAccountReference } from '../lib/accountReference.ts';
 import {
   INSTRUCTOR_PROFILE_BELTS,
@@ -81,6 +94,31 @@ export function InstructorSheet() {
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(saved.name);
   const [draftBelt, setDraftBelt] = useState<InstructorProfileBeltId | ''>(saved.belt);
+  const d12SeatKey = instructorD12SeatKey(seat?.id ?? null);
+  const [journalEntries, setJournalEntries] = useState<InstructorJournalEntry[]>(() =>
+    loadInstructorJournal(localStorage, d12SeatKey),
+  );
+  const [instructorGoals, setInstructorGoals] = useState<InstructorGoal[]>(() =>
+    loadInstructorGoals(localStorage, d12SeatKey),
+  );
+  const [d12Cards, setD12Cards] = useState<InstructorD12Card[]>(() =>
+    loadInstructorD12Cards(localStorage, d12SeatKey),
+  );
+  const roster = useSyncExternalStore(subscribeRoster, getRoster, getRoster);
+  const rosterNames = studentRosterCards(roster.students).map((student) => student.name);
+  useEffect(() => {
+    const syncJournal = () => {
+      setJournalEntries(loadInstructorJournal(localStorage, d12SeatKey));
+      setInstructorGoals(loadInstructorGoals(localStorage, d12SeatKey));
+    };
+    syncJournal();
+    return subscribeInstructorJournal(syncJournal);
+  }, [d12SeatKey]);
+  useEffect(() => {
+    const syncCards = () => setD12Cards(loadInstructorD12Cards(localStorage, d12SeatKey));
+    syncCards();
+    return subscribeInstructorD12Cards(syncCards);
+  }, [d12SeatKey]);
   useEffect(() => {
     ensureGymBackfill();
     void syncGymEvents();
@@ -242,6 +280,18 @@ export function InstructorSheet() {
       <section className="ip-card" aria-label="Instructor D12" data-testid="instructor-d12-card">
         <h2>Instructor D12</h2>
         <InstructorD12Panel seatId={seat?.id ?? null} />
+      </section>
+
+      <section className="ip-card" aria-label="Instructor journal" data-testid="instructor-journal-card">
+        <h2>Instructor journal</h2>
+        <InstructorJournalSection
+          entries={journalEntries}
+          goals={instructorGoals}
+          cards={d12Cards}
+          rosterNames={rosterNames}
+          onChangeEntries={(next) => setJournalEntries(saveInstructorJournal(next, localStorage, d12SeatKey))}
+          onChangeGoals={(next) => setInstructorGoals(saveInstructorGoals(next, localStorage, d12SeatKey))}
+        />
       </section>
 
       <section className="ip-card" aria-label="My student profile" data-testid="instructor-student-profile">

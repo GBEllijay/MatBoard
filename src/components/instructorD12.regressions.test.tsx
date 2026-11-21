@@ -13,6 +13,7 @@ import { InstructorSheet } from './InstructorSheet.tsx';
 import { INSTRUCTOR_D12_STORAGE_KEY } from '../lib/instructorD12.ts';
 import { INSTRUCTOR_D12_CARDS_STORAGE_KEY } from '../lib/instructorD12Cards.ts';
 import { INSTRUCTOR_D12_LINKS_STORAGE_KEY } from '../lib/instructorD12Mastery.ts';
+import { INSTRUCTOR_GOALS_STORAGE_KEY, INSTRUCTOR_JOURNAL_STORAGE_KEY } from '../lib/instructorJournal.ts';
 import { INSTRUCTOR_PROFILE_STORAGE_KEY } from '../lib/instructorProfile.ts';
 import { ASSESSMENT_STORAGE_KEY } from '../lib/studentAssessment.ts';
 import { STUDENT_FILE_STORAGE_KEY } from '../lib/studentDemo.ts';
@@ -68,6 +69,8 @@ function clearSheetStorage() {
   localStorage.removeItem(INSTRUCTOR_D12_STORAGE_KEY);
   localStorage.removeItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY);
   localStorage.removeItem(INSTRUCTOR_D12_LINKS_STORAGE_KEY);
+  localStorage.removeItem(INSTRUCTOR_JOURNAL_STORAGE_KEY);
+  localStorage.removeItem(INSTRUCTOR_GOALS_STORAGE_KEY);
   localStorage.removeItem(INSTRUCTOR_PROFILE_STORAGE_KEY);
   localStorage.removeItem(ASSESSMENT_STORAGE_KEY);
   localStorage.removeItem(STUDENT_FILE_STORAGE_KEY);
@@ -386,7 +389,7 @@ test('the D12 add form uses a visible face picker, and the card sheet mirrors th
     ['Connects to', 'Builds on', 'Supports'],
   );
   assert.equal(path.querySelector('[data-relation="connects"]')?.getAttribute('aria-checked'), 'true');
-  assert.equal(dialog.querySelector('[aria-label="Journal"]'), null, 'no instructor journal yet');
+  assert.match(dialog.querySelector('[data-testid="d12-card-journal"]')?.textContent ?? '', /No journal entries mention this yet\./);
   assert.ok(dialog.querySelector('[data-testid="d12-card-notes"]'));
   assert.ok(dialog.querySelector('[data-testid="d12-card-videos"]'));
   assert.ok(dialog.querySelector('[data-testid="d12-card-delete"]'));
@@ -441,5 +444,82 @@ test('the D12 add form uses a visible face picker, and the card sheet mirrors th
   assert.equal(visual.getAttribute('data-xray'), 'off');
   assert.equal(localStorage.getItem(INSTRUCTOR_D12_LINKS_STORAGE_KEY), linksRaw, 'viewing never writes');
   assert.equal(localStorage.getItem(INSTRUCTOR_D12_STORAGE_KEY), null);
+  await mounted.unmount();
+});
+
+test('instructor journal, class video hub, goals checklist, and share preview wire into D12 cards without touching student stores', async () => {
+  clearSheetStorage();
+  const mounted = await renderSheet();
+  const journalCard = mounted.host.querySelector('[data-testid="instructor-journal-card"]') as HTMLElement;
+  assert.ok(journalCard, 'Instructor journal card sits beside the D12');
+
+  // 1. Add an entry mentioning Mat inspection, with private reflection, shareable class notes, techniques, whoInClass, and a video link.
+  await act(async () => {
+    typeIn(journalCard.querySelector('[data-testid="ij-class-label"]') as HTMLInputElement, '6:00 PM Fundamentals');
+    typeIn(journalCard.querySelector('[data-testid="ij-who"]') as HTMLInputElement, 'Alex M., Jordan R.');
+    typeIn(journalCard.querySelector('[data-testid="ij-reflection"]') as HTMLTextAreaElement, 'Did a quick Mat inspection before warm-ups.');
+    typeIn(journalCard.querySelector('[data-testid="ij-class-notes"]') as HTMLTextAreaElement, 'Keep elbows tucked when framing.');
+    typeIn(journalCard.querySelector('[data-testid="ij-techniques"]') as HTMLInputElement, 'Scissor sweep, Collar drag');
+    typeIn(journalCard.querySelector('[data-testid="ij-draft-video-title"]') as HTMLInputElement, 'Scissor sweep drill');
+    typeIn(journalCard.querySelector('[data-testid="ij-draft-video-href"]') as HTMLInputElement, 'https://example.com/scissor-sweep');
+  });
+  await click(journalCard.querySelector('[data-testid="ij-draft-video-add"]') as HTMLElement);
+  await click(journalCard.querySelector('[data-testid="ij-save-entry"]') as HTMLElement);
+
+  const entriesList = journalCard.querySelector('[data-testid="ij-entries"]') as HTMLElement;
+  assert.ok(entriesList);
+  assert.match(entriesList.textContent ?? '', /6:00 PM Fundamentals/);
+  assert.match(entriesList.textContent ?? '', /Alex M\., Jordan R\./);
+  assert.match(entriesList.textContent ?? '', /Scissor sweep drill/);
+
+  // Everything starts excluded by default; send button is disabled.
+  const preview = entriesList.querySelector('[data-testid="journal-share-preview"]') as HTMLElement;
+  assert.match(preview.textContent ?? '', /Nothing marked/);
+  assert.equal(entriesList.querySelector('[data-testid="ij-send-coming-soon"]')?.hasAttribute('disabled'), true);
+
+  // Opt in class notes + one video; private reflection stays excluded.
+  const shareNotesBox = entriesList.querySelector('[data-testid^="ij-entry-share-notes-"]') as HTMLInputElement;
+  await click(shareNotesBox);
+  const videoShareBoxes = [...entriesList.querySelectorAll('[data-testid^="ij-entry-videos-"] ul input[type="checkbox"]')] as HTMLInputElement[];
+  assert.equal(videoShareBoxes.length, 1);
+  await click(videoShareBoxes[0]!);
+  assert.match(preview.textContent ?? '', /Keep elbows tucked when framing/);
+  assert.match(preview.textContent ?? '', /Scissor sweep drill/);
+  assert.doesNotMatch(preview.textContent ?? '', /Did a quick Mat inspection/);
+
+  // 2. Add a teaching goal, toggle it done, and confirm it persists under the goals key.
+  await act(async () => {
+    typeIn(journalCard.querySelector('[data-testid="ij-goal-input"]') as HTMLInputElement, 'Check Mat inspection checklist');
+  });
+  await click(journalCard.querySelector('[data-testid="ij-goal-add"]') as HTMLElement);
+  const goalList = journalCard.querySelector('[data-testid="ij-goal-list"]') as HTMLElement;
+  assert.match(goalList.textContent ?? '', /Check Mat inspection checklist/);
+  const goalBox = goalList.querySelector('input[type="checkbox"]') as HTMLInputElement;
+  await click(goalBox);
+  assert.equal(goalBox.checked, true);
+
+  assert.ok(localStorage.getItem(INSTRUCTOR_JOURNAL_STORAGE_KEY));
+  assert.ok(localStorage.getItem(INSTRUCTOR_GOALS_STORAGE_KEY));
+  assert.equal(localStorage.getItem(STUDENT_FILE_STORAGE_KEY), null, 'never writes to the student journal store');
+  assert.equal(localStorage.getItem(INSTRUCTOR_D12_STORAGE_KEY), null, 'never writes to the D12 check-in store');
+
+  // 3. Focus Preparation on the D12 and open Mat inspection to verify Your journal + card share flags.
+  const d12 = mounted.host.querySelector('[data-testid="instructor-d12"]') as HTMLElement;
+  const prep = [...d12.querySelectorAll('.d8sf-face-scores button')].find((node) => node.textContent?.includes('Preparation')) as HTMLElement;
+  await click(prep);
+  const readout = d12.querySelector('[data-testid="d12-face-readout"]') as HTMLElement;
+  assert.match(readout.querySelector('[data-testid="d12-face-journal"]')?.textContent ?? '', /6:00 PM Fundamentals/);
+  const matBtn = [...readout.querySelectorAll('[data-list-card] button')].find((node) => node.textContent?.includes('Mat inspection')) as HTMLElement;
+  await click(matBtn);
+  const dialog = d12.querySelector('[data-testid="instructor-d12-card-dialog"]') as HTMLElement;
+  const cardJournal = dialog.querySelector('[data-testid="d12-card-journal"]') as HTMLElement;
+  assert.match(cardJournal.textContent ?? '', /6:00 PM Fundamentals/);
+  assert.match(cardJournal.textContent ?? '', /Check Mat inspection checklist/);
+
+  const cardNoteShare = dialog.querySelector('[data-testid="d12-card-notes-share"]') as HTMLInputElement;
+  assert.equal(cardNoteShare.checked, false);
+  await click(cardNoteShare);
+  assert.match(localStorage.getItem(INSTRUCTOR_D12_CARDS_STORAGE_KEY) ?? '', /"shareNotes":true/);
+
   await mounted.unmount();
 });

@@ -83,7 +83,7 @@
   color: #1c140e;
 }
 
-.ip-d12-live .d8sf-index input:not([type='search']) {
+.ip-d12-live .d8sf-index input:not([type='search']):not([type='checkbox']) {
   box-sizing: border-box;
   width: 100%;
   min-height: 44px;
@@ -245,4 +245,41 @@
 .ip-d12-live [data-testid='d12-card-delete'],
 .ip-d12-live [data-testid='d12-card-delete-confirm'] {
   border-color: #7a1f1f;
+}
+
+.ip-d12-live .d12-share-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: #1c140e;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ip-d12-live .d12-share-check input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: #004eba;
+}
+
+.ip-d12-live .d12-share-check--inline {
+  margin-top: 0;
+}
+
+.ip-d12-live .d12-face-journal {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(110, 168, 255, 0.35);
+}
+
+.ip-d12-live .d12-face-journal h3 {
+  margin: 0 0 6px;
+  color: #6ea8ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }

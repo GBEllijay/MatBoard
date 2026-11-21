@@ -16,6 +16,7 @@ import { INSTRUCTOR_D12_FACES, d12AxesFromScores } from '../../lib/instructorD12
 import { INSTRUCTOR_D12_STORAGE_KEY } from '../../lib/instructorD12.ts';
 import { INSTRUCTOR_D12_CARDS_STORAGE_KEY } from '../../lib/instructorD12Cards.ts';
 import { INSTRUCTOR_D12_LINKS_STORAGE_KEY } from '../../lib/instructorD12Mastery.ts';
+import { INSTRUCTOR_GOALS_STORAGE_KEY, INSTRUCTOR_JOURNAL_STORAGE_KEY } from '../../lib/instructorJournal.ts';
 import { INSTRUCTOR_D12_SAMPLE, INSTRUCTOR_SHEET_PATH, STUDENT_PROFILE_D8, d8FaceRows, teachingLengthLabel } from './model.ts';
 
 const dom = new Window({ url: 'http://localhost/preview/instructor-sheet' });
@@ -185,6 +186,27 @@ test('the preview D12 shows sample Path to Mastery branches and saves nothing', 
   assert.ok(d12.querySelector('[data-testid="d12-chain"]'), 'Follow the chain is offered for the sample');
   click(d12.querySelector('[data-testid="d12-chain"]') as HTMLElement);
   assert.match(visual.getAttribute('data-chain') ?? '', /^chain:/);
+  for (const key of keys) assert.equal(localStorage.getItem(key), null, key);
+  unmount(mounted);
+});
+
+test('the preview shows fictional instructor journal & goals, updates in memory, and writes no storage', () => {
+  const keys = [
+    INSTRUCTOR_D12_STORAGE_KEY,
+    INSTRUCTOR_D12_CARDS_STORAGE_KEY,
+    INSTRUCTOR_D12_LINKS_STORAGE_KEY,
+    INSTRUCTOR_JOURNAL_STORAGE_KEY,
+    INSTRUCTOR_GOALS_STORAGE_KEY,
+  ];
+  for (const key of keys) localStorage.removeItem(key);
+  const mounted = mount(<InstructorSheetPreviewPage />);
+  const journalCard = mounted.host.querySelector('[data-testid="instructor-journal-card"]') as HTMLElement;
+  assert.ok(journalCard);
+  assert.match(journalCard.textContent ?? '', /6:00 PM Fundamentals/);
+  assert.match(journalCard.textContent ?? '', /Scissor sweep angles/);
+  assert.match(journalCard.querySelector('[data-testid="ij-goal-list"]')?.textContent ?? '', /Mat inspection/);
+  const sendBtn = journalCard.querySelector('[data-testid="ij-send-coming-soon"]');
+  assert.ok(sendBtn?.hasAttribute('disabled'));
   for (const key of keys) assert.equal(localStorage.getItem(key), null, key);
   unmount(mounted);
 });

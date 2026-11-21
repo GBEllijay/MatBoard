@@ -10,6 +10,13 @@
  */
 import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { INSTRUCTOR_D12_FACES, type InstructorD12FaceId } from '../lib/instructorD12';
+import { formatJournalDate } from '../lib/journalCopy';
+import {
+  EMPTY_INSTRUCTOR_JOURNAL,
+  instructorJournalMentionsForCard,
+  type InstructorGoal,
+  type InstructorJournalEntry,
+} from '../lib/instructorJournal';
 import {
   D12_CARD_NOTES_MAX,
   D12_CONFIRM_DELETE_CARD,
@@ -24,6 +31,8 @@ import {
   rateInstructorD12Card,
   removeInstructorD12Card,
   shownD12CardRating,
+  toggleD12CardNoteShare,
+  toggleD12CardVideoShare,
   withD12CardNotes,
   withD12CardVideo,
   withoutD12CardVideo,
@@ -94,6 +103,8 @@ export function D12CardSheet({
   open,
   cards,
   links,
+  journalEntries = [],
+  goals = [],
   readOnly,
   onClose,
   onCommitCards,
@@ -103,6 +114,8 @@ export function D12CardSheet({
   open: D12SheetOpen;
   cards: readonly InstructorD12Card[];
   links: readonly D12Link[];
+  journalEntries?: readonly InstructorJournalEntry[];
+  goals?: readonly InstructorGoal[];
   readOnly: boolean;
   onClose: () => void;
   onCommitCards: (cards: InstructorD12Card[]) => void;
@@ -226,6 +239,7 @@ export function D12CardSheet({
           <CardPath card={existing} cards={cards} links={links} readOnly={readOnly} onCommitLinks={onCommitLinks} onView={() => onViewOnPath(existing.id)} />
         ) : null}
         {existing ? <CardNotes card={existing} cards={cards} readOnly={readOnly} onCommitCards={onCommitCards} /> : null}
+        {existing ? <CardJournal card={existing} entries={journalEntries} goals={goals} /> : null}
         {existing ? <CardVideos card={existing} cards={cards} readOnly={readOnly} onCommitCards={onCommitCards} /> : null}
         <section className="d8sf-index-block" aria-label="Rating">
           <h3>Rate it</h3>
@@ -603,14 +617,61 @@ function CardNotes({
         onBlur={save}
       />
       {readOnly ? null : (
-        <div className="gl-edit-row">
-          <button type="button" data-testid="d12-card-notes-save" disabled={!dirty} onClick={save}>
-            Save notes
-          </button>
-          <span className="d8-rate-saved" data-testid="d12-card-notes-saved" data-on={savedAt ? 'true' : 'false'} aria-live="polite">
-            {savedAt ? 'Saved' : ''}
-          </span>
-        </div>
+        <>
+          <div className="gl-edit-row">
+            <button type="button" data-testid="d12-card-notes-save" disabled={!dirty} onClick={save}>
+              Save notes
+            </button>
+            <span className="d8-rate-saved" data-testid="d12-card-notes-saved" data-on={savedAt ? 'true' : 'false'} aria-live="polite">
+              {savedAt ? 'Saved' : ''}
+            </span>
+          </div>
+          <label className="d12-share-check">
+            <input
+              type="checkbox"
+              data-testid="d12-card-notes-share"
+              checked={card.shareNotes === true}
+              onChange={(event) => onCommitCards(toggleD12CardNoteShare(cards, card.id, event.target.checked))}
+            />
+            <span>Share with students</span>
+          </label>
+        </>
+      )}
+    </section>
+  );
+}
+
+function CardJournal({
+  card,
+  entries,
+  goals,
+}: {
+  card: InstructorD12Card;
+  entries: readonly InstructorJournalEntry[];
+  goals: readonly InstructorGoal[];
+}) {
+  const matches = useMemo(() => instructorJournalMentionsForCard(entries, goals, card), [entries, goals, card]);
+  const empty = matches.entries.length === 0 && matches.goals.length === 0;
+  return (
+    <section className="d8sf-index-block" aria-label="Journal" data-testid="d12-card-journal">
+      <h3>Your journal</h3>
+      {empty ? (
+        <p className="d8sf-index-empty">{EMPTY_INSTRUCTOR_JOURNAL}</p>
+      ) : (
+        <ul className="d8sf-notes">
+          {matches.entries.map((entry) => (
+            <li key={entry.id} data-d12-journal-hit={entry.id}>
+              <strong>{formatJournalDate(entry.date)}</strong>
+              {` · ${entry.line}`}
+            </li>
+          ))}
+          {matches.goals.map((goal) => (
+            <li key={goal.id} data-d12-goal-hit={goal.id}>
+              <strong>{goal.done ? 'Goal done' : 'Goal'}</strong>
+              {` · ${goal.text}`}
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );
@@ -659,9 +720,20 @@ function CardVideos({
                 {video.title}
               </a>
               {readOnly ? null : (
-                <button type="button" className="gl-tree-remove" aria-label={`Remove ${video.title}`} onClick={() => onCommitCards(withoutD12CardVideo(cards, card.id, video.href))}>
-                  Remove
-                </button>
+                <>
+                  <label className="d12-share-check d12-share-check--inline">
+                    <input
+                      type="checkbox"
+                      data-testid="d12-card-video-share"
+                      checked={video.shareWithStudents === true}
+                      onChange={(event) => onCommitCards(toggleD12CardVideoShare(cards, card.id, video.href, event.target.checked))}
+                    />
+                    <span>Share with students</span>
+                  </label>
+                  <button type="button" className="gl-tree-remove" aria-label={`Remove ${video.title}`} onClick={() => onCommitCards(withoutD12CardVideo(cards, card.id, video.href))}>
+                    Remove
+                  </button>
+                </>
               )}
             </li>
           ))}
