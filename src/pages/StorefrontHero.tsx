@@ -9,7 +9,7 @@ const ROUND_TIMER = { src: '/storefront/round-timer.png', width: 1280, height: 7
 const ROUND_TIMER_LIVE = { src: '/storefront/round-timer-live.png', width: 1280, height: 720 };
 /** Real Tournament brackets screen (8 seeded names, quarterfinals called). C's card behind the board. */
 const BRACKETS_LIVE = { src: '/storefront/brackets-live.png', width: 1280, height: 720 };
-/** Real Student Edition journal page with a filled-in class. C's card furthest back. */
+/** Real journal page with a filled-in class. C's card furthest back. */
 const JOURNAL_LIVE = { src: '/storefront/journal-live.png', width: 960, height: 720 };
 
 /** A static app card in C's stack. Decorative: the scoreboard stays the subject. */
@@ -57,7 +57,14 @@ function Copy() {
   );
 }
 
-function Cta({ unlocked: _unlocked, studentUnlocked = false }: { unlocked: boolean; studentUnlocked?: boolean }) {
+function scrollToScoreboard(event: { preventDefault: () => void }) {
+  const target = document.getElementById('scoreboard');
+  if (!target) return;
+  event.preventDefault();
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function Cta() {
   return (
     <div className="sfh-cta">
       <Link className="sf-buy sfh-buy" to="/white">
@@ -68,14 +75,9 @@ function Cta({ unlocked: _unlocked, studentUnlocked = false }: { unlocked: boole
       </Link>
       <p className="sfh-fine">{STOREFRONT_HERO.fine}</p>
       <div className="sfh-links">
-        <Link className="sfh-more" to="/white">
+        <a className="sfh-more" href="#scoreboard" onClick={scrollToScoreboard}>
           See how it works ↓
-        </Link>
-        {studentUnlocked ? (
-          <Link className="sf-open sfh-more" to="/white">
-            Open Student Edition
-          </Link>
-        ) : null}
+        </a>
       </div>
     </div>
   );
@@ -89,7 +91,7 @@ function Shot({ shot, alt, className = '' }: { shot: typeof SCOREBOARD; alt: str
   );
 }
 
-export function StorefrontHero({ unlocked, studentUnlocked = false }: { unlocked: boolean; studentUnlocked?: boolean }) {
+export function StorefrontHero() {
   const [params] = useSearchParams();
   const variant = heroVariantOf(params.get('hero'));
 
@@ -101,7 +103,7 @@ export function StorefrontHero({ unlocked, studentUnlocked = false }: { unlocked
           <div className="sfh-text">
             <Brand />
             <Copy />
-            <Cta unlocked={unlocked} studentUnlocked={studentUnlocked} />
+            <Cta />
           </div>
           <div className="sfh-stage">
             <Shot shot={SCOREBOARD} alt="Advantage scoreboard with two competitors and a 05:00 match clock" />
@@ -126,7 +128,7 @@ export function StorefrontHero({ unlocked, studentUnlocked = false }: { unlocked
             </figure>
             <div className="sfh-floor" aria-hidden="true" />
           </div>
-          <Cta unlocked={unlocked} studentUnlocked={studentUnlocked} />
+          <Cta />
         </div>
       ) : null}
       {variant === 'c' ? (
@@ -134,7 +136,7 @@ export function StorefrontHero({ unlocked, studentUnlocked = false }: { unlocked
           <div className="sfh-text">
             <Brand />
             <Copy />
-            <Cta unlocked={unlocked} studentUnlocked={studentUnlocked} />
+            <Cta />
           </div>
           <div className="sfh-stage">
             <Card shot={JOURNAL_LIVE} className="sfh-card--journal" />
@@ -168,7 +170,7 @@ export function StorefrontHero({ unlocked, studentUnlocked = false }: { unlocked
           </div>
           <div className="sfh-after">
             <RevealCopy />
-            <Cta unlocked={unlocked} studentUnlocked={studentUnlocked} />
+            <Cta />
           </div>
         </div>
       ) : null}
@@ -177,7 +179,7 @@ export function StorefrontHero({ unlocked, studentUnlocked = false }: { unlocked
           <div className="sfh-text">
             <Brand />
             <Copy />
-            <Cta unlocked={unlocked} studentUnlocked={studentUnlocked} />
+            <Cta />
           </div>
           <div className="sfh-stage">
             <div className="sfh-block">
