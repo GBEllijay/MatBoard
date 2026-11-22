@@ -18,17 +18,18 @@ export const STOREFRONT_BUY_LABEL = `Buy Advantage White — ${STOREFRONT_PRICE_
 
 export const STOREFRONT_HERO = {
   title: 'Win by Advantage.',
-  leadBeforeBreak: "Your Gym's Scoreboard, Round Timer, and Academy Enhancement Software.",
+  leadBeforeBreak: 'Your Scoreboard, Round Timer and Mock Tournament Software.',
   leadAfterBreak: 'Cast to your TV from your phone or PC.',
   sub: 'Points, advantages and penalties big enough to read across the gym, on the TV or a second screen.',
   fine: 'One-time purchase. Yours to keep.',
   clock: '05:00',
 } as const;
 
-/** In-page nav. No Belt progression link. */
+/** Top nav. Opens the White hub (or a card on it). No Belt progression link. */
 export const STOREFRONT_NAV = [
-  { href: '#scoreboard', label: 'Scoreboard' },
-  { href: '#round-timer', label: 'Round timer' },
+  { href: '/white#scoreboard', label: 'Scoreboard' },
+  { href: '/white#round-timer', label: 'Round timer' },
+  { href: '/white#brackets', label: 'Brackets' },
 ] as const;
 
 export const STOREFRONT_POINTS = [

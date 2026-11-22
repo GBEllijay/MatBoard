@@ -16,6 +16,7 @@ test('scoreboard controller keeps every control that was not part of this redesi
     'aria-label="Weight"',
     'aria-label="Round"',
     'Start beep',
+    '<StartSoundWhenControls',
     '10-second warning',
     'Match end sound',
     'Auto-announce winner',

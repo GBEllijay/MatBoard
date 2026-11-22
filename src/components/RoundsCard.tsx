@@ -3,9 +3,9 @@ import { BeltRail } from './BeltRail';
 
 export function RoundsCard() {
   return (
-    <article className="mode-card mode-card--training">
+    <article className="mode-card mode-card--training" id="round-timer">
       <BeltRail kind="white" />
-      <Link className="mode-card__hit" to="/training" tabIndex={-1} aria-label="Open Rounds" />
+      <Link className="mode-card__hit" to="/training?from=white" tabIndex={-1} aria-label="Open Rounds" />
       <div className="white-timer" aria-hidden="true">
         <div className="white-timer__time">5:00</div>
       </div>
@@ -16,10 +16,10 @@ export function RoundsCard() {
         phone. Set round length, rest time, and how many rounds.
       </span>
       <div className="mode-card__actions">
-        <Link className="btn" to="/training">
+        <Link className="btn" to="/training?from=white">
           Rounds
         </Link>
-        <Link className="btn btn--ghost" to="/training/control">
+        <Link className="btn btn--ghost" to="/training/control?from=white">
           Controller
         </Link>
       </div>

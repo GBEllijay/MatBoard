@@ -154,7 +154,8 @@ test('homepage: a claimed Student license opens White and Student tiles, and kee
   assert.equal(instructorHit?.getAttribute('href'), TIER_BUY_PATHS.instructor);
   assert.ok(hero.includes('/white'));
   assert.equal(hero.includes('/buy'), false);
-  assert.ok(studentOpen.includes('/student'));
+  assert.ok(studentOpen.includes('/white'));
+  assert.equal(studentOpen.includes('/student'), false);
   const learn = [...page.host.querySelectorAll('a.sf-learn')].map((node) => node.getAttribute('href') ?? '');
   assert.ok(learn.some((href) => href === TIER_BUY_PATHS.instructor || href === TIER_BUY_PATHS.pro));
   assert.equal(learn.includes('/buy'), false);

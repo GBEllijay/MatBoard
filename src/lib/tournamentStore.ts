@@ -22,6 +22,9 @@ export const PRO_MAX_COMPETITORS = 64;
 export const MAX_COMPETITORS = PRO_MAX_COMPETITORS;
 export const SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16] as const;
 export const PRO_SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16, 32, 64] as const;
+/** Advantage White mock tournament: 16 by default, optionally up to 36 (64-tree with byes). */
+export const WHITE_SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16, 36] as const;
+export const WHITE_MAX_COMPETITORS = 36;
 export const BRACKET_NAME_MAX = 80;
 /** Header on the bracket. A new board starts here. Blank is a real saved value. */
 export const DEFAULT_BRACKET_HEADLINE = 'Tournament';
@@ -932,10 +935,11 @@ export function applyCheckedInBracket(
   current: TournamentState,
   names: readonly string[],
   max = PRO_MAX_COMPETITORS,
+  sizeHint?: number,
 ): TournamentState {
   const filled = names.map((name) => name.trim()).filter(Boolean);
   if (!filled.length) return current;
-  const size = clampCompetitorCount(filled.length, max);
+  const size = clampCompetitorCount(sizeHint ?? filled.length, max);
   const next = defaultTournament(size);
   next.placement = placementOf(current);
   next.title = current.title;
@@ -955,13 +959,17 @@ export function peekCheckedInFillUndo(): { placed: number } | null {
  * Replace the open draw with these seed names and remember the previous board
  * for one Undo. Does not read or write the roster or check-in flags.
  */
-export function fillCheckedInBracket(names: readonly string[], max = PRO_MAX_COMPETITORS): number {
+export function fillCheckedInBracket(
+  names: readonly string[],
+  max = PRO_MAX_COMPETITORS,
+  sizeHint?: number,
+): number {
   const filled = names.map((name) => name.trim()).filter(Boolean);
   if (!filled.length) return 0;
   const previous = structuredClone(getTournament());
   let placed = 0;
   patchActive((board) => {
-    const next = applyCheckedInBracket(board, filled, max);
+    const next = applyCheckedInBracket(board, filled, max, sizeHint);
     placed = seedSlots(next).filter((id) => slotName(next, id).trim()).length;
     return next;
   });

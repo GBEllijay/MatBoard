@@ -27,6 +27,7 @@ import {
 import { getRankings, subscribeRankings, type RankingLibrary } from '../lib/rankingStore';
 import { getRoster, subscribeRoster, type RosterState } from '../lib/rosterStore';
 import { getWhiteRoster, subscribeWhiteRoster, type WhiteRosterState } from '../lib/whiteRosterStore';
+import { getBracketRoster, subscribeBracketRoster, type BracketRosterState } from '../lib/bracketRosterStore';
 import {
   getTournament,
   getLibrary,
@@ -86,4 +87,8 @@ export function useRankings(): RankingLibrary {
 
 export function useWhiteRosterState(): WhiteRosterState {
   return useSyncExternalStore(subscribeWhiteRoster, getWhiteRoster, getWhiteRoster);
+}
+
+export function useBracketRosterState(): BracketRosterState {
+  return useSyncExternalStore(subscribeBracketRoster, getBracketRoster, getBracketRoster);
 }

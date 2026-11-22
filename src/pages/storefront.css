@@ -174,10 +174,16 @@
 .home.home--store .sf-nav-links {
   display: flex;
   justify-content: center;
+  flex-wrap: nowrap;
   gap: 28px;
   font-size: 14px;
   font-weight: 600;
   color: var(--sf-muted);
+  white-space: nowrap;
+}
+
+.home.home--store .sf-nav-links a {
+  white-space: nowrap;
 }
 
 .home.home--store .sf-nav-links a:hover {
@@ -1219,5 +1225,33 @@
   .home.home--store .sf-meta {
     margin-left: auto;
     max-width: 100%;
+  }
+}
+
+
+/* Homepage CTAs and feature cards that open /white. */
+.home.home--store .sf-nav-links a,
+.home.home--store .sf-alpha,
+.home.home--store a.sf-points,
+.home.home--store a.sf-between-copy,
+.home.home--store .sf-figure-hit {
+  text-decoration: none;
+  color: inherit;
+}
+
+.home.home--store .sf-figure-hit {
+  display: block;
+  color: inherit;
+}
+
+.home.home--store .sf-figure-hit .sf-caption {
+  display: flex;
+}
+
+@media (max-width: 600px) {
+  .home.home--store .sf-nav-links {
+    gap: 8px;
+    font-size: 12px;
+    padding-inline: 8px 4.75rem;
   }
 }

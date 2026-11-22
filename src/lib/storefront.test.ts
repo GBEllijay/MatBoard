@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { COACH_HOME_DESCRIPTION, PRO_HOME_LINES, STUDENT_HOME_DESCRIPTION } from './productNames.ts';
 import { ALPHA_REQUEST_SUBJECT, alphaRequestMailto, SITE_FEEDBACK_EMAIL } from './siteFooter.ts';
@@ -28,8 +29,12 @@ test('storefront sells White once and sends Buy Now to the existing checkout', (
   assert.equal(STOREFRONT_BUY_LABEL, 'Buy Advantage White — $9.99');
   assert.equal(STOREFRONT_HERO.title, 'Win by Advantage.');
   assert.equal(STOREFRONT_HERO.clock, '05:00');
-  assert.equal(STOREFRONT_HERO.leadBeforeBreak, "Your Gym's Scoreboard, Round Timer, and Academy Enhancement Software.");
+  assert.equal(STOREFRONT_HERO.leadBeforeBreak, 'Your Scoreboard, Round Timer and Mock Tournament Software.');
   assert.equal(STOREFRONT_HERO.leadAfterBreak, 'Cast to your TV from your phone or PC.');
+  assert.equal(
+    `${STOREFRONT_HERO.leadBeforeBreak} ${STOREFRONT_HERO.leadAfterBreak}`,
+    'Your Scoreboard, Round Timer and Mock Tournament Software. Cast to your TV from your phone or PC.',
+  );
 });
 
 test('Pass 2 sections use the approved copy and woodblocks', () => {
@@ -38,7 +43,15 @@ test('Pass 2 sections use the approved copy and woodblocks', () => {
   assert.equal(STOREFRONT_ALPHA_NOTE, 'Student, Instructor Edition and Pro are in alpha testing.');
   assert.deepEqual(
     STOREFRONT_NAV.map((item) => item.label),
-    ['Scoreboard', 'Round timer'],
+    ['Scoreboard', 'Round timer', 'Brackets'],
+  );
+  assert.deepEqual(
+    STOREFRONT_NAV.map((item) => item.href),
+    ['/white#scoreboard', '/white#round-timer', '/white#brackets'],
+  );
+  assert.equal(
+    STOREFRONT_NAV.some((item) => /mock tournament/i.test(item.label)),
+    false,
   );
   assert.equal(
     STOREFRONT_NAV.some((item) => /belt progression/i.test(item.label)),
@@ -125,4 +138,11 @@ test('alpha requests keep the existing inbox and the prefilled subject', () => {
   const href = alphaRequestMailto();
   assert.equal(href, `mailto:${SITE_FEEDBACK_EMAIL}?subject=${encodeURIComponent(ALPHA_REQUEST_SUBJECT)}`);
   assert.equal(href.startsWith('mailto:advantageappllc@gmail.com?subject='), true);
+});
+
+test('phone-width storefront nav keeps Scoreboard, Round timer, and Brackets on one line', () => {
+  const css = readFileSync(new URL('../pages/storefront.css', import.meta.url), 'utf8');
+  assert.match(css, /\.home\.home--store \.sf-nav-links \{[^}]*flex-wrap:\s*nowrap/s);
+  assert.match(css, /\.home\.home--store \.sf-nav-links a \{[^}]*white-space:\s*nowrap/s);
+  assert.match(css, /@media \(max-width: 600px\) \{\s*\.home\.home--store \.sf-nav-links \{[^}]*gap:\s*8px/s);
 });

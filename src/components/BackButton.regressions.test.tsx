@@ -137,7 +137,7 @@ test('HistoryBackMark keeps aria-label Back and the same fallback link', () => {
 test('App mounts HeaderAccount and skips the storefront and the TV display', () => {
   assert.match(app, /import \{ HeaderAccount \} from '\.\/components\/HeaderAccount'/);
   assert.match(app, /<HeaderAccount \/>/);
-  assert.match(header, /HIDDEN_PATHS = new Set\(\['\/', '\/match'\]\)/);
+  assert.match(header, /HIDDEN_PATHS = new Set\(\['\/', '\/match', '\/training', '\/white'\]\)/);
   assert.match(header, /readLoginHint/);
   assert.match(header, /LOGIN_EVENT/);
   assert.match(header, /aria-label=\{hint \? 'Account' : 'Sign in'\}/);
@@ -180,6 +180,25 @@ test('HeaderAccount is hidden on the storefront and shows Sign in on other pages
   assert.match(link?.textContent ?? '', /Sign in/);
   mounted.root.unmount();
   mounted.host.remove();
+});
+
+test('HeaderAccount is hidden on /white and still shows on other app pages', () => {
+  const white = mount(<HeaderAccount />, '/white');
+  assert.equal(white.host.querySelector('.header-account'), null);
+  white.root.unmount();
+  white.host.remove();
+
+  for (const path of ['/white/roster', '/white/bracket-roster', '/white/brackets']) {
+    const sub = mount(<HeaderAccount />, path);
+    assert.equal(sub.host.querySelector('.header-account'), null, `Sign in should be hidden on ${path}`);
+    sub.root.unmount();
+    sub.host.remove();
+  }
+
+  const products = mount(<HeaderAccount />, '/products');
+  assert.ok(products.host.querySelector('a.header-account'));
+  products.root.unmount();
+  products.host.remove();
 });
 
 test('the products page keeps mid-page Account and Sign out, and gets the pinned header too', () => {

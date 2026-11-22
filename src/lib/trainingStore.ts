@@ -1,4 +1,5 @@
-import { endCueFollowMs, playSelectedEndCue, playTrainingStart, playWarningCue } from './audio.ts';
+import { endCueFollowMs, playManualStartSound, playSelectedEndCue, playTrainingStart, playWarningCue } from './audio.ts';
+import { isFirstStart } from './startSoundPolicy.ts';
 import {
   DEFAULT_REST_MS,
   DEFAULT_ROUNDS,
@@ -197,14 +198,16 @@ export function toggleTrainingClock(): void {
   }
   const remaining = remainingTraining(state);
   const restarting = remaining <= 0;
+  const durationMs = state.phase === 'break' ? state.breakMs : state.workMs;
+  const firstStart = isFirstStart(remaining, durationMs);
   persist({
     ...state,
     running: true,
-    remainingMs: restarting ? (state.phase === 'work' ? state.workMs : state.breakMs) : remaining,
+    remainingMs: restarting ? durationMs : remaining,
     startedAt: Date.now(),
     warned: restarting ? false : state.warned,
   });
-  playTrainStartCue();
+  playTrainManualStartCue(firstStart);
 }
 
 /**
@@ -260,6 +263,12 @@ function playTrainEndCue(): void {
 function playTrainStartCue(): void {
   if (!state.startSound) return;
   playTrainingStart();
+}
+
+/** Manual begin only. Automatic work/rest transitions still use playTrainStartCue. */
+function playTrainManualStartCue(firstStart: boolean): void {
+  if (!state.startSound) return;
+  playManualStartSound(firstStart);
 }
 
 function followWithStartCue(): void {

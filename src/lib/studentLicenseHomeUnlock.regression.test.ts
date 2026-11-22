@@ -171,6 +171,7 @@ test('/products and the public homepage open White and Student from a claimed li
   assert.match(storefront, /studentHomeEntryPath\(studentUnlocked\)/);
   assert.match(storefront, /rung\.id === 'white' \? !unlocked : rung\.id === 'student' \? !studentUnlocked : true/);
   assert.match(hero, /to="\/white"/);
-  assert.match(hero, /to="\/student"/);
-  assert.match(hero, /STOREFRONT_BUY_PATH/);
+  assert.match(hero, /Click here/);
+  assert.doesNotMatch(hero, /to="\/student"/);
+  assert.doesNotMatch(hero, /STOREFRONT_BUY_PATH/);
 });

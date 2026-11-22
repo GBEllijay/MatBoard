@@ -8,8 +8,10 @@ import { isSheetLayerOpen, subscribeSheetLayer } from '../lib/sheetLayer';
  * Paths that already have a top-right Sign in / Account control, or are a TV display.
  * The round timer (/training) is the TV display like /match: its top-right corner
  * belongs to Fullscreen and the Training options Close.
+ * /white has no account control: the floating Account button was covering the
+ * Round timer Controller button, and account is not needed on this page.
  */
-const HIDDEN_PATHS = new Set(['/', '/match', '/training']);
+const HIDDEN_PATHS = new Set(['/', '/match', '/training', '/white']);
 
 /**
  * Top-right account control for app pages.
@@ -30,7 +32,7 @@ export function HeaderAccount() {
   }, []);
   // Any open sheet owns the top-right corner (its Close). Do not rely on CSS :has() alone.
   const sheetOpen = useSyncExternalStore(subscribeSheetLayer, isSheetLayerOpen, () => false);
-  if (HIDDEN_PATHS.has(pathname) || sheetOpen) return null;
+  if (HIDDEN_PATHS.has(pathname) || pathname.startsWith('/white/') || sheetOpen) return null;
   return (
     <Link
       className="header-account"

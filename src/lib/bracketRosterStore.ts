@@ -1,0 +1,336 @@
+/**
+ * Advantage White Bracket Roster. This device only.
+ * Separate from Match names (`matboard.whiteRoster.v1`) and the Coach/Pro
+ * Competitor Roster (`matboard.roster.v1`). Named "Bracket Roster" on purpose.
+ */
+
+import { WHITE_BOARD_FROM } from './productNames.ts';
+import { clipName } from './rosterStore.ts';
+import { fillCheckedInBracket, getTournament, newBracket, bracketHasContent } from './tournamentStore.ts';
+
+export const BRACKET_ROSTER_STORAGE_KEY = 'matboard.bracketRoster.v1';
+export const BRACKET_ROSTER_MAX = 36;
+export const BRACKET_ROSTER_CSV_HEADERS = ['name', 'gym', 'weight', 'division', 'age', 'rank'] as const;
+export const BRACKET_ROSTER_SAMPLE_PATH = '/samples/bracket-roster-sample.csv';
+export const WHITE_BRACKET_ROSTER_PATH = '/white/bracket-roster';
+export const WHITE_BRACKETS_PATH = '/white/brackets?from=white';
+export { WHITE_BOARD_FROM };
+
+export type BracketRosterEntry = {
+  id: string;
+  name: string;
+  gym: string;
+  weight: string;
+  division: string;
+  age: string;
+  rank: string;
+};
+
+export type BracketRosterState = {
+  version: 1;
+  entries: BracketRosterEntry[];
+};
+
+export type BracketRosterCsvResult = {
+  entries: BracketRosterEntry[];
+  skipped: number;
+  truncated: number;
+  error?: string;
+};
+
+const listeners = new Set<() => void>();
+let idSeq = 0;
+let state: BracketRosterState = readState();
+
+function createId(): string {
+  idSeq += 1;
+  return `br-${Date.now().toString(36)}-${idSeq.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function clipField(value: string, max = 80): string {
+  return value.replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+function nameKey(name: string): string {
+  return clipName(name).toLowerCase();
+}
+
+export function emptyEntry(): Omit<BracketRosterEntry, 'id'> {
+  return { name: '', gym: '', weight: '', division: '', age: '', rank: '' };
+}
+
+export function normalizeBracketRoster(raw: unknown): BracketRosterState {
+  const record =
+    raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null;
+  const rows = record && Array.isArray(record.entries) ? record.entries : [];
+  const entries: BracketRosterEntry[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+    const item = row as Record<string, unknown>;
+    const name = clipName(typeof item.name === 'string' ? item.name : '');
+    if (!name) continue;
+    const key = nameKey(name);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const id = typeof item.id === 'string' && item.id.trim() ? item.id.trim() : createId();
+    entries.push({
+      id,
+      name,
+      gym: clipField(typeof item.gym === 'string' ? item.gym : ''),
+      weight: clipField(typeof item.weight === 'string' ? item.weight : '', 24),
+      division: clipField(typeof item.division === 'string' ? item.division : '', 40),
+      age: clipField(typeof item.age === 'string' ? item.age : '', 8),
+      rank: clipField(typeof item.rank === 'string' ? item.rank : '', 24),
+    });
+    if (entries.length >= BRACKET_ROSTER_MAX) break;
+  }
+  return { version: 1, entries };
+}
+
+function readStorage(): string | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage.getItem(BRACKET_ROSTER_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function readState(): BracketRosterState {
+  try {
+    const raw = readStorage();
+    if (!raw) return { version: 1, entries: [] };
+    return normalizeBracketRoster(JSON.parse(raw));
+  } catch {
+    return { version: 1, entries: [] };
+  }
+}
+
+function emit(): void {
+  listeners.forEach((fn) => fn());
+}
+
+function write(next: BracketRosterState): void {
+  state = normalizeBracketRoster(next);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      if (state.entries.length === 0) localStorage.removeItem(BRACKET_ROSTER_STORAGE_KEY);
+      else localStorage.setItem(BRACKET_ROSTER_STORAGE_KEY, JSON.stringify(state));
+    }
+  } catch {
+    /* private mode or a full disk — the in-memory list still updates */
+  }
+  emit();
+}
+
+export function getBracketRoster(): BracketRosterState {
+  return state;
+}
+
+export function subscribeBracketRoster(fn: () => void): () => void {
+  listeners.add(fn);
+  if (typeof window === 'undefined') {
+    return () => {
+      listeners.delete(fn);
+    };
+  }
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== BRACKET_ROSTER_STORAGE_KEY && event.key !== null) return;
+    state = readState();
+    emit();
+  };
+  window.addEventListener('storage', onStorage);
+  return () => {
+    listeners.delete(fn);
+    window.removeEventListener('storage', onStorage);
+  };
+}
+
+export function addBracketRosterEntry(input: Omit<BracketRosterEntry, 'id'>): BracketRosterEntry | null {
+  const name = clipName(input.name);
+  if (!name) return null;
+  const key = nameKey(name);
+  if (state.entries.some((entry) => nameKey(entry.name) === key)) return null;
+  if (state.entries.length >= BRACKET_ROSTER_MAX) return null;
+  const saved: BracketRosterEntry = {
+    id: createId(),
+    name,
+    gym: clipField(input.gym),
+    weight: clipField(input.weight, 24),
+    division: clipField(input.division, 40),
+    age: clipField(input.age, 8),
+    rank: clipField(input.rank, 24),
+  };
+  write({ version: 1, entries: [...state.entries, saved] });
+  return saved;
+}
+
+export function updateBracketRosterEntry(id: string, input: Omit<BracketRosterEntry, 'id'>): BracketRosterEntry | null {
+  const name = clipName(input.name);
+  if (!name) return null;
+  const key = nameKey(name);
+  const current = state.entries.find((entry) => entry.id === id);
+  if (!current) return null;
+  if (state.entries.some((entry) => entry.id !== id && nameKey(entry.name) === key)) return null;
+  const saved: BracketRosterEntry = {
+    id,
+    name,
+    gym: clipField(input.gym),
+    weight: clipField(input.weight, 24),
+    division: clipField(input.division, 40),
+    age: clipField(input.age, 8),
+    rank: clipField(input.rank, 24),
+  };
+  write({
+    version: 1,
+    entries: state.entries.map((entry) => (entry.id === id ? saved : entry)),
+  });
+  return saved;
+}
+
+export function removeBracketRosterEntry(id: string): void {
+  write({ version: 1, entries: state.entries.filter((entry) => entry.id !== id) });
+}
+
+export function replaceBracketRoster(entries: BracketRosterEntry[]): BracketRosterState {
+  write({ version: 1, entries });
+  return state;
+}
+
+export function clearBracketRoster(): void {
+  write({ version: 1, entries: [] });
+}
+
+/** RFC-style CSV cell. Quotes only when needed. */
+export function csvEscape(value: string): string {
+  if (/[",\r\n]/.test(value)) return `"${value.replaceAll('"', '""')}"`;
+  return value;
+}
+
+export function formatBracketRosterCsv(entries: readonly BracketRosterEntry[]): string {
+  const lines = [
+    BRACKET_ROSTER_CSV_HEADERS.join(','),
+    ...entries.map((entry) =>
+      [entry.name, entry.gym, entry.weight, entry.division, entry.age, entry.rank].map(csvEscape).join(','),
+    ),
+  ];
+  return `\uFEFF${lines.join('\r\n')}\r\n`;
+}
+
+function splitCsvLine(line: string): string[] {
+  const cells: string[] = [];
+  let current = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (quoted) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          quoted = false;
+        }
+      } else {
+        current += ch;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      quoted = true;
+      continue;
+    }
+    if (ch === ',') {
+      cells.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  cells.push(current);
+  return cells;
+}
+
+function headerIndex(headers: string[], name: string): number {
+  return headers.findIndex((header) => header === name);
+}
+
+/**
+ * Parse a Bracket Roster CSV. Header row must be
+ * name,gym,weight,division,age,rank (case-insensitive, any order).
+ * Extra columns are ignored. Rows without a name are skipped.
+ * A list longer than 36 is truncated.
+ */
+export function parseBracketRosterCsv(raw: string): BracketRosterCsvResult {
+  const text = raw.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  if (!text) return { entries: [], skipped: 0, truncated: 0, error: 'The file is empty.' };
+  const lines = text.split('\n').map((line) => line.trimEnd()).filter((line) => line && line !== 'sep=,');
+  if (!lines.length) return { entries: [], skipped: 0, truncated: 0, error: 'The file is empty.' };
+  const headers = splitCsvLine(lines[0]).map((cell) => cell.trim().toLowerCase());
+  const required = [...BRACKET_ROSTER_CSV_HEADERS];
+  if (required.some((name) => headerIndex(headers, name) < 0)) {
+    return {
+      entries: [],
+      skipped: 0,
+      truncated: 0,
+      error: 'The first row must be name,gym,weight,division,age,rank.',
+    };
+  }
+  const entries: BracketRosterEntry[] = [];
+  const seen = new Set<string>();
+  let skipped = 0;
+  let truncated = 0;
+  for (const line of lines.slice(1)) {
+    const cells = splitCsvLine(line);
+    const name = clipName(cells[headerIndex(headers, 'name')] ?? '');
+    if (!name) {
+      skipped += 1;
+      continue;
+    }
+    const key = nameKey(name);
+    if (seen.has(key)) {
+      skipped += 1;
+      continue;
+    }
+    if (entries.length >= BRACKET_ROSTER_MAX) {
+      truncated += 1;
+      continue;
+    }
+    seen.add(key);
+    const field = (column: (typeof BRACKET_ROSTER_CSV_HEADERS)[number], max: number) =>
+      clipField(cells[headerIndex(headers, column)] ?? '', max);
+    entries.push({
+      id: createId(),
+      name,
+      gym: field('gym', 80),
+      weight: field('weight', 24),
+      division: field('division', 40),
+      age: field('age', 8),
+      rank: field('rank', 24),
+    });
+  }
+  return { entries, skipped, truncated };
+}
+
+/** Seed the on-device tournament board from this roster. Returns how many names were placed. */
+export function seedWhiteBracketFromRoster(
+  max = BRACKET_ROSTER_MAX,
+  options?: { newBoard?: boolean },
+): number {
+  const names = state.entries.map((entry) => entry.name).filter(Boolean);
+  if (names.length < 2) return 0;
+  if (options?.newBoard !== false && bracketHasContent(getTournament())) newBracket();
+  return fillCheckedInBracket(names, max, max);
+}
+
+/** Reset in-memory state in tests. */
+export function resetBracketRosterForTests(): void {
+  state = { version: 1, entries: [] };
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(BRACKET_ROSTER_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+  emit();
+}

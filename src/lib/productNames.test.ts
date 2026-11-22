@@ -364,6 +364,8 @@ test('Suite origin stays on Suite links and leaves other paths alone', () => {
   assert.equal(withHubFrom('/match?bout=sf-0', 'suite'), '/match?bout=sf-0&from=suite');
   assert.equal(withHubFrom('/tournament', 'unlimited'), '/tournament?from=unlimited');
   assert.equal(withHubFrom('/match?bout=sf-0&kids=ocean', 'unlimited'), '/match?bout=sf-0&kids=ocean&from=unlimited');
+  assert.equal(withHubFrom('/white/brackets', 'white'), '/white/brackets?from=white');
+  assert.equal(withHubFrom('/match?bout=sf-0', 'white'), '/match?bout=sf-0&from=white');
 });
 
 test('Tournament Software is the bracket for every competition-suite door; Mock Tournament is retired', () => {
@@ -417,6 +419,8 @@ test('Pro unlock includes Coach tools and Coach-only unlock still stands alone',
   assert.equal(isPlainCoachTournament('suite', false), false);
   assert.equal(isPlainCoachTournament('coach', false), true);
   assert.equal(isPlainCoachTournament(null, false), true);
+  assert.equal(isPlainCoachTournament('white', false), false);
+  assert.equal(isPlainCoachTournament('white', true), false);
 });
 
 test('Footer states ownership, alpha testing, and the feedback email only', () => {

@@ -63,12 +63,12 @@ export function StorefrontPage() {
       <header className="sf-pin">
         <div className="sf-topbar">
           <div className="sf-wrap">
-            <nav className="sf-nav" aria-label="On this page">
+            <nav className="sf-nav" aria-label="Advantage White">
               <div className="sf-nav-links">
                 {STOREFRONT_NAV.map((item) => (
-                  <a key={item.href} href={item.href}>
+                  <Link key={item.href} to={item.href}>
                     {item.label}
-                  </a>
+                  </Link>
                 ))}
               </div>
             </nav>
@@ -83,14 +83,14 @@ export function StorefrontPage() {
         <div className="sf-tex" aria-hidden="true" />
         <div className="sf-wrap">
           <div className="sf-pair">
-            <div className="sf-points">
+            <Link className="sf-points" to="/white" aria-label="Open Advantage White">
               {STOREFRONT_POINTS.map((point) => (
                 <div key={point.id} className={`sf-point sf-point--${point.id}`}>
                   <h3>{point.title}</h3>
                   <p>{point.body}</p>
                 </div>
               ))}
-            </div>
+            </Link>
             <Woodblock shot={STOREFRONT_WOODBLOCKS.scoreboard} />
           </div>
         </div>
@@ -99,11 +99,11 @@ export function StorefrontPage() {
       <div className="sf-wrap">
         <section className="sf-between" id="round-timer" aria-labelledby="store-timer">
           <Woodblock shot={STOREFRONT_WOODBLOCKS.timer} />
-          <div className="sf-between-copy">
+          <Link className="sf-between-copy" to="/white" aria-label="Open the round timer">
             <div className="sf-eyebrow">{STOREFRONT_TIMER.eyebrow}</div>
             <h2 id="store-timer">{STOREFRONT_TIMER.title}</h2>
             <p>{STOREFRONT_TIMER.body}</p>
-          </div>
+          </Link>
         </section>
 
         <section className="sf-prog" id="progression" aria-labelledby="store-progress" data-belts={belts}>
@@ -116,9 +116,9 @@ export function StorefrontPage() {
                 </Link>
               </h2>
             </div>
-            <a className="sf-alpha" href={alphaRequestMailto()}>
+            <Link className="sf-alpha" to="/white">
               Request to join alpha
-            </a>
+            </Link>
           </div>
           <div className="sf-steps">
             {STOREFRONT_BELT_LADDER.map((rung) => (
@@ -183,16 +183,18 @@ function Woodblock({
 }) {
   return (
     <figure className="sf-figure">
-      <div className="sf-print">
-        <picture>
-          <source srcSet={shot.webp} type="image/webp" />
-          <img src={shot.jpg} alt={shot.alt} width={shot.width} height={shot.height} loading="eager" />
-        </picture>
-      </div>
-      <figcaption className="sf-caption">
-        <b>{shot.caption}</b>
-        <span>{shot.detail}</span>
-      </figcaption>
+      <Link className="sf-figure-hit" to="/white">
+        <div className="sf-print">
+          <picture>
+            <source srcSet={shot.webp} type="image/webp" />
+            <img src={shot.jpg} alt={shot.alt} width={shot.width} height={shot.height} loading="eager" />
+          </picture>
+        </div>
+        <span className="sf-caption">
+          <b>{shot.caption}</b>
+          <span>{shot.detail}</span>
+        </span>
+      </Link>
     </figure>
   );
 }
