@@ -169,3 +169,15 @@ test('the homepage hero has a plain Coming soon to the App Store line, not a bad
   const around = hero.slice(hero.indexOf('sfh-appstore') - 80, hero.indexOf('sfh-appstore') + 80);
   assert.doesNotMatch(around, /<Link[^>]*>Coming soon to the App Store/);
 });
+
+test('the homepage hero has no Student Edition or other edition CTAs, and See how it works scrolls the page', () => {
+  const hero = readFileSync(new URL('../pages/StorefrontHero.tsx', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../pages/Storefront.tsx', import.meta.url), 'utf8');
+  assert.match(hero, /See how it works ↓/);
+  assert.match(hero, /href="#scoreboard"/);
+  assert.doesNotMatch(hero, /Open Student Edition|studentUnlocked|Advantage Pro|Instructor Edition/);
+  assert.doesNotMatch(page, /useStudentEditionUnlocked|Open Student Edition|Instructor Edition|Advantage Pro/);
+  const css = readFileSync(new URL('../pages/storefrontHero.css', import.meta.url), 'utf8');
+  assert.match(css, /\.home\.home--store \.sfh-links \{[^}]*justify-content:\s*center/s);
+  assert.match(css, /\.home\.home--store \.sfh-more \{[^}]*min-height:\s*44px/s);
+});

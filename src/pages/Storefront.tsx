@@ -1,8 +1,6 @@
 import { Link } from 'react-router-dom';
 import { AccountLink } from '../components/AccountLink';
 import { UpdateToLatestButton } from '../components/UpdateToLatestButton';
-import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
-import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { WHITE_BRACKETS_PATH } from '../lib/bracketRosterStore';
 import {
   SITE_ALPHA_LINE,
@@ -22,9 +20,6 @@ import { StorefrontHero } from './StorefrontHero';
 import './storefront.css';
 
 export function StorefrontPage() {
-  const unlocked = useWhiteUnlocked();
-  const studentUnlocked = useStudentEditionUnlocked();
-
   return (
     <main className="home home--store">
       <div className="sf-scroll">
@@ -45,7 +40,7 @@ export function StorefrontPage() {
         </div>
       </header>
 
-      <StorefrontHero unlocked={unlocked} studentUnlocked={studentUnlocked} />
+      <StorefrontHero />
 
       <section className="sf-band" id="scoreboard" aria-label="Scoreboard">
         <div className="sf-tex" aria-hidden="true" />

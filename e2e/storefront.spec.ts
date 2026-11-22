@@ -35,6 +35,8 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(page.getByText('Your Scoreboard, Round Timer and Mock Tournament Software. Cast to your TV from your phone or PC.')).toBeVisible();
   await expect(page.getByText('05:00', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Click here' })).toHaveAttribute('href', '/white');
+  await expect(page.getByRole('link', { name: 'See how it works ↓' })).toHaveAttribute('href', '#scoreboard');
+  await expect(page.getByRole('link', { name: 'Open Student Edition' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Round timer', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Points', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Advantages', exact: true })).toBeVisible();
