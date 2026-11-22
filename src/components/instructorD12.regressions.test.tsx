@@ -475,7 +475,7 @@ test('instructor journal, class video hub, goals checklist, and share preview wi
   // Everything starts excluded by default; send button is disabled.
   const preview = entriesList.querySelector('[data-testid="journal-share-preview"]') as HTMLElement;
   assert.match(preview.textContent ?? '', /Nothing marked/);
-  assert.equal(entriesList.querySelector('[data-testid="ij-send-coming-soon"]')?.hasAttribute('disabled'), true);
+  assert.equal(entriesList.querySelector('[data-testid="ij-send-to-class"]')?.hasAttribute('disabled'), true);
 
   // Opt in class notes + one video; private reflection stays excluded.
   const shareNotesBox = entriesList.querySelector('[data-testid^="ij-entry-share-notes-"]') as HTMLInputElement;

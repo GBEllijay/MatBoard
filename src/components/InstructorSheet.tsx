@@ -289,6 +289,7 @@ export function InstructorSheet() {
           goals={instructorGoals}
           cards={d12Cards}
           rosterNames={rosterNames}
+          roster={studentRosterCards(roster.students)}
           onChangeEntries={(next) => setJournalEntries(saveInstructorJournal(next, localStorage, d12SeatKey))}
           onChangeGoals={(next) => setInstructorGoals(saveInstructorGoals(next, localStorage, d12SeatKey))}
         />

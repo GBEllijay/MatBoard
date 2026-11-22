@@ -9,13 +9,12 @@
  * TODO: Connect buildStudentShareBundle() to the owner-gated video/card
  * distribution flow (PR 529 area) after explicit owner approval.
  */
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { INSTRUCTOR_D12_FACES } from '../lib/instructorD12';
 import { cleanD12Video, type InstructorD12Card } from '../lib/instructorD12Cards';
 import { d12FaceEndpoint } from '../lib/instructorD12Mastery';
 import { formatJournalDate } from '../lib/journalCopy';
 import {
-  INSTRUCTOR_JOURNAL_COMING_SOON,
   addInstructorGoal,
   addInstructorJournalEntry,
   addInstructorJournalVideo,
@@ -34,6 +33,11 @@ import {
   type InstructorJournalEntry,
   type InstructorJournalVideo,
 } from '../lib/instructorJournal';
+import { fetchPublishedSchedule, resolveGymSchedule } from '../lib/gymSchedulePublish';
+import { occurrencesOnDate, type GymCalendarState, type GymClassOccurrence } from '../lib/gymCalendar';
+import { techniquesFromLessonPlans } from '../lib/classRecap';
+import { InstructorClassRoster } from './InstructorClassRoster';
+import type { Student } from '../lib/rosterStore';
 import './instructorJournal.css';
 
 type Props = {
@@ -41,6 +45,7 @@ type Props = {
   goals: readonly InstructorGoal[];
   cards: readonly InstructorD12Card[];
   rosterNames?: readonly string[];
+  roster?: readonly Student[];
   sandbox?: boolean;
   onChangeEntries: (next: InstructorJournalEntry[]) => void;
   onChangeGoals: (next: InstructorGoal[]) => void;
@@ -51,6 +56,7 @@ export function InstructorJournalSection({
   goals,
   cards,
   rosterNames = [],
+  roster = [],
   sandbox = false,
   onChangeEntries,
   onChangeGoals,
@@ -58,6 +64,9 @@ export function InstructorJournalSection({
   const [date, setDate] = useState(() => todayLocalIso());
   const [classLabel, setClassLabel] = useState('');
   const [whoInClass, setWhoInClass] = useState('');
+  const [whoInClassIds, setWhoInClassIds] = useState<string[]>([]);
+  const [slotId, setSlotId] = useState('');
+  const [schedule, setSchedule] = useState<GymCalendarState | null>(() => resolveGymSchedule({ storage: typeof localStorage === 'undefined' ? null : localStorage }).schedule);
   const [reflection, setReflection] = useState('');
   const [shareReflection, setShareReflection] = useState(false);
   const [classNotes, setClassNotes] = useState('');
@@ -82,6 +91,38 @@ export function InstructorJournalSection({
     ],
     [cards],
   );
+
+  useEffect(() => {
+    let alive = true;
+    void fetchPublishedSchedule().then((result) => {
+      if (alive) setSchedule(result.schedule);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const daySlots: GymClassOccurrence[] = useMemo(
+    () => (schedule ? occurrencesOnDate(schedule, date) : []),
+    [schedule, date],
+  );
+  const selectedSlot = daySlots.find((item) => item.slotId === slotId) ?? null;
+
+  const fillLessonTechniques = () => {
+    const names = techniquesFromLessonPlans(date);
+    if (!names.length) {
+      setEntryError('No techniques are on the lesson plan for this date.');
+      return;
+    }
+    setEntryError(null);
+    const current = techniquesText
+      .split(/[\n,;]+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const seen = new Set(current.map((name) => name.toLocaleLowerCase()));
+    const added = names.filter((name) => !seen.has(name.toLocaleLowerCase()));
+    setTechniquesText([...current, ...added].join(', '));
+  };
 
   const appendRosterName = (name: string) => {
     const clean = name.trim();
@@ -114,7 +155,9 @@ export function InstructorJournalSection({
     const added = addInstructorJournalEntry(entries, {
       date,
       classLabel,
+      slotId,
       whoInClass,
+      whoInClassIds,
       reflection,
       shareReflection,
       classNotes,
@@ -129,7 +172,9 @@ export function InstructorJournalSection({
     }
     onChangeEntries(added.entries);
     setClassLabel('');
+    setSlotId('');
     setWhoInClass('');
+    setWhoInClassIds([]);
     setReflection('');
     setShareReflection(false);
     setClassNotes('');
@@ -214,6 +259,24 @@ export function InstructorJournalSection({
               </div>
             ) : null}
 
+            <InstructorClassRoster
+              date={date}
+              slot={selectedSlot}
+              slots={daySlots}
+              onPickSlot={(next) => {
+                setSlotId(next);
+                const picked = daySlots.find((item) => item.slotId === next);
+                if (picked) setClassLabel(picked.label);
+              }}
+              roster={roster}
+              cards={cards}
+              onPrefillWho={(names, ids) => {
+                setWhoInClass(names);
+                setWhoInClassIds(ids);
+              }}
+              sandbox={sandbox}
+            />
+
             <label className="ij-field">
               <span>After-class reflection (private by default)</span>
               <textarea
@@ -276,6 +339,9 @@ export function InstructorJournalSection({
                 }}
               />
             </label>
+            <button type="button" className="ij-btn-secondary" data-testid="ij-lesson-techniques" onClick={fillLessonTechniques}>
+              Add techniques from today&apos;s lesson plan
+            </button>
             <label className="ij-check">
               <input
                 type="checkbox"
@@ -393,6 +459,8 @@ export function InstructorJournalSection({
                   key={entry.id}
                   entry={entry}
                   cards={cards}
+                  roster={roster}
+                  sandbox={sandbox}
                   onDelete={() => onChangeEntries(deleteInstructorJournalEntry(entries, entry.id))}
                   onToggleField={(field, share) => onChangeEntries(toggleJournalFieldShare(entries, entry.id, field, share))}
                   onToggleTech={(name, share) => onChangeEntries(toggleJournalTechniqueShare(entries, entry.id, name, share))}
@@ -497,6 +565,8 @@ export function InstructorJournalSection({
 function JournalEntryCard({
   entry,
   cards,
+  roster,
+  sandbox = false,
   onDelete,
   onToggleField,
   onToggleTech,
@@ -506,6 +576,8 @@ function JournalEntryCard({
 }: {
   entry: InstructorJournalEntry;
   cards: readonly InstructorD12Card[];
+  roster: readonly Student[];
+  sandbox?: boolean;
   onDelete: () => void;
   onToggleField: (field: 'reflection' | 'classNotes', share: boolean) => void;
   onToggleTech: (name: string, share: boolean) => void;
@@ -688,12 +760,17 @@ function JournalEntryCard({
           <p className="ip-quiet">Nothing marked “Share with students” yet. Private notes and goals stay out.</p>
         )}
         <p className="ip-quiet">{`Private items excluded: ${bundle.excludedPrivateCount}`}</p>
-        <div className="ij-share-preview__footer">
-          <button type="button" className="ij-btn-secondary" disabled data-testid="ij-send-coming-soon">
-            Send to class (coming soon)
-          </button>
-          <span className="ip-quiet">{INSTRUCTOR_JOURNAL_COMING_SOON}</span>
-        </div>
+        <InstructorClassRoster
+          date={entry.date}
+          slot={entry.slotId ? { slotId: entry.slotId, date: entry.date, time: '', title: entry.classLabel || 'Class', location: '', subtitle: '', kind: 'class', label: entry.classLabel || 'Class' } : null}
+          slots={entry.slotId ? [{ slotId: entry.slotId, date: entry.date, time: '', title: entry.classLabel || 'Class', location: '', subtitle: '', kind: 'class', label: entry.classLabel || 'Class' }] : []}
+          onPickSlot={() => {}}
+          roster={roster}
+          cards={cards}
+          entry={entry}
+          onPrefillWho={() => {}}
+          sandbox={sandbox}
+        />
       </div>
     </li>
   );

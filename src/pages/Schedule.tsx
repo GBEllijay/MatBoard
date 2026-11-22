@@ -76,6 +76,7 @@ import {
   type Weekday,
   type WeeklyClassSlot,
 } from '../lib/scheduleStore';
+import { publishGymSchedule } from '../lib/gymSchedulePublish';
 import { quotaAddNote } from '../lib/storageQuota';
 
 const BAR_MODES = ['week', 'monthly', 'weekly-list'] as const satisfies readonly ScheduleTemplate[];
@@ -643,6 +644,8 @@ export function ScheduleEditor({
   qrNote: string;
 }) {
   const schedule = useScheduleState();
+  const [publishNote, setPublishNote] = useState('');
+  const [publishing, setPublishing] = useState(false);
   const logoRef = useRef<HTMLInputElement>(null);
   const qrRef = useRef<HTMLInputElement>(null);
   const [day, setDay] = useState<Weekday>('mon');
@@ -722,11 +725,41 @@ export function ScheduleEditor({
     <>
     <Sheet open={open} title="Edit class schedule" onClose={onClose}>
       <p className="schedule-edit__copy">
-        Fat-thumb fields for the gym TV board. Logo, QR, classes, and notices stay on this device or
-        computer — nothing is uploaded. Save a CSV backup before you clear site data or reset the
-        app.
+        Fat-thumb fields for the gym TV board. Logo and QR images stay on this device. Publish the
+        class board so students can see it on their calendars and mark the classes they plan to
+        attend. Save a CSV backup before you clear site data or reset the app.
       </p>
       {pickerNote ? <p className="schedule-edit__error">{pickerNote}</p> : null}
+
+      <fieldset data-testid="schedule-publish">
+        <legend>Student calendars</legend>
+        <p className="schedule-edit__hint">
+          Publishing shares the weekly class board with signed-in students at this academy. It is
+          not membership attendance. If the schedule database table is not applied yet, this stays
+          on this device only.
+        </p>
+        <button
+          type="button"
+          className="btn"
+          disabled={publishing}
+          onClick={() => {
+            setPublishing(true);
+            void publishGymSchedule(schedule).then((result) => {
+              setPublishing(false);
+              setPublishNote(
+                result.ok
+                  ? 'Published to student calendars.'
+                  : result.available === false
+                    ? 'Saved on this device. The published schedule table is not on this database yet, so student phones will use a local or last-pulled copy.'
+                    : result.error || 'Could not publish the schedule.',
+              );
+            });
+          }}
+        >
+          {publishing ? 'Publishing…' : 'Publish to student calendars'}
+        </button>
+        {publishNote ? <p className="schedule-edit__hint">{publishNote}</p> : null}
+      </fieldset>
 
       <ScheduleBackup
         csvNote={csvNote}

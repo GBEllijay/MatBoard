@@ -60,6 +60,7 @@ import { D8_GRID_PREVIEW_PATH, D8GridPreview } from './indexCards/D8GridPreview'
 import { BACK_BUTTON_LAYOUT_PREVIEW_PATH, BACK_BUTTON_PREVIEW_PATH, BackButtonLayoutPreviewPage, BackButtonPreviewPage } from './preview/backButton/BackButtonPreview';
 import { InstructorProfilePreviewPage } from './preview/instructorProfile/InstructorProfilePreview';
 import { InstructorSheetPreviewPage } from './preview/instructorSheet/InstructorSheetPreview';
+import { ClassCalendarPreviewPage, CLASS_CALENDAR_PREVIEW_PATH } from './preview/classCalendar/ClassCalendarPreview';
 import { ConnectCoachPreviewPage } from './preview/proHome/ConnectCoachPreview';
 import { InstructorCardsPreviewPage } from './preview/proHome/InstructorCardsPreview';
 import { ProHomePreviewPage } from './preview/proHome/ProHomePreview';
@@ -824,6 +825,7 @@ export default function App() {
       <Route path="/preview/instructor-profile" element={<InstructorProfilePreviewPage />} />
       {/* Isolated instructor character sheet. Fills the gap between the student profile and the owner identity card. Nothing is saved. */}
       <Route path="/preview/instructor-sheet" element={<InstructorSheetPreviewPage />} />
+      <Route path={CLASS_CALENDAR_PREVIEW_PATH} element={<ClassCalendarPreviewPage />} />
       {/* Isolated Pro hub preview. Live /pro is unchanged. */}
       <Route path="/preview/pro-home" element={<ProHomePreviewPage />} />
       {/* Isolated White hub. Live /white and /match stay on their current paths. */}

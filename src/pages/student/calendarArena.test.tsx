@@ -237,15 +237,16 @@ test('calendar keeps every control on the dark arena surface', () => {
   assert.ok(tournaments.textContent?.includes('Entered · Spring Open'));
   assert.equal(control(tournaments, 'a', 'Competitor page').getAttribute('href'), '/student/competitor');
 
-  const gymToggle = host.querySelector('input[type="checkbox"]') as HTMLInputElement;
-  assert.ok(gymToggle);
-  act(() => {
-    gymToggle.click();
-  });
   assert.ok(host.textContent?.includes('Monday · 6:00 AM · Morning Gi'));
   assert.ok(host.textContent?.includes('It is not saved in your progress file.'));
+  assert.ok(host.querySelector('[data-testid="gym-class-schedule"]'));
   assert.equal(localStorage.getItem(GYM_SCHEDULE_STORAGE_KEY), GYM);
   assert.equal(localStorage.getItem(STUDENT_EDITION_STORAGE_KEY)?.includes('Morning Gi'), false);
+  const classDay = [...host.querySelectorAll('button.cal-day[data-class="true"]')].find((button) => button.getAttribute('aria-current') !== 'date') ?? host.querySelector('button.cal-day[data-class="true"]');
+  if (classDay) {
+    const label = classDay.getAttribute('aria-label') ?? '';
+    assert.match(label, /academy class/);
+  }
 
   labeled(host, 'Event date');
   labeled(host, 'Event title');

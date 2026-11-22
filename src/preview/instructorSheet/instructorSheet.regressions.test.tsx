@@ -205,7 +205,7 @@ test('the preview shows fictional instructor journal & goals, updates in memory,
   assert.match(journalCard.textContent ?? '', /6:00 PM Fundamentals/);
   assert.match(journalCard.textContent ?? '', /Scissor sweep angles/);
   assert.match(journalCard.querySelector('[data-testid="ij-goal-list"]')?.textContent ?? '', /Mat inspection/);
-  const sendBtn = journalCard.querySelector('[data-testid="ij-send-coming-soon"]');
+  const sendBtn = journalCard.querySelector('[data-testid="ij-send-to-class"]');
   assert.ok(sendBtn?.hasAttribute('disabled'));
   for (const key of keys) assert.equal(localStorage.getItem(key), null, key);
   unmount(mounted);

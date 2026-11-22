@@ -21,7 +21,7 @@
  */
 
 import { readSignedJson, signJson, verifyToken, type EntitlementClaims } from '../lib/entitlementToken.ts';
-import { readCoachAssessment, readCoachBeltProgress, readCoachNote } from '../lib/progress/syncPackets.ts';
+import { readCoachAssessment, readCoachBeltProgress, readCoachNote, readClassRecap } from '../lib/progress/syncPackets.ts';
 import { photoReadyToSend, readPhotoSubmission } from '../lib/rosterPhotoApproval.ts';
 import { cardShareReadyToSend, readStudentCardShare } from '../lib/studentCardShare.ts';
 import { readTournamentRegistration } from '../lib/studentEvents.ts';
@@ -38,6 +38,7 @@ export const INBOX_PACKET_KINDS = [
   'coach-assessment-update',
   'coach-note-update',
   'coach-gym-logo-update',
+  'class-recap-update',
 ] as const;
 
 const RANK_BELTS = new Set([
@@ -359,6 +360,13 @@ export function readStoredSyncPacket(value: unknown): (SyncEnvelope & { kind: st
     const coachNote = readCoachNote(row.coachNote, errors);
     if (errors.length) return null;
     const stored = { ...envelope, kind: row.kind, coachNote };
+    attachStoredGym(stored, row.gym);
+    return stored;
+  }
+  if (row.kind === 'class-recap-update') {
+    const recap = readClassRecap(row.recap, errors);
+    if (errors.length) return null;
+    const stored = { ...envelope, kind: row.kind, recap };
     attachStoredGym(stored, row.gym);
     return stored;
   }

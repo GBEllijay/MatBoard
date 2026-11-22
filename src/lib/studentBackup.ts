@@ -408,6 +408,7 @@ export function parseStudentBackup(text: string): { ok: true; file: StudentBacku
     record.kind === 'coach-belt-progress-update' ||
     record.kind === 'coach-assessment-update' ||
     record.kind === 'coach-note-update' ||
+    record.kind === 'class-recap-update' ||
     record.kind === 'coach-gym-logo-update'
   ) {
     return { ok: false, error: BACKUP_NOT_A_BACKUP };

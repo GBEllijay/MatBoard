@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { CalendarKind } from '../../lib/progress/types';
 import {
@@ -9,11 +9,9 @@ import {
   calendarRepeatLabel,
   calendarRepeatOf,
   eventsOnDate,
-  GYM_SCHEDULE_STORAGE_KEY,
   isIsoDate,
   journalDates,
   monthGrid,
-  readGymSchedule,
   removeCalendarEvent,
 } from '../../lib/studentTools';
 import { tournamentClassLine } from '../../lib/divisionFields';
@@ -22,6 +20,9 @@ import { removeTournament } from '../../lib/studentCompetition';
 import { eventHiddenBehindTournament, linkedCalendarEvent } from '../../lib/sharedTournaments';
 import type { CalendarEvent, CalendarRepeat, StudentProgressReport, StudentTournament } from '../../lib/progress/types';
 import { formatClassTime } from '../../lib/gymCalendar';
+import { fetchPublishedSchedule, resolveGymSchedule } from '../../lib/gymSchedulePublish';
+import type { GymCalendarState } from '../../lib/gymCalendar';
+import { GymClassDayList, gymClassDaysIn, GymWeekList } from './GymClassPlan';
 import { rankMarks, rankMarksOnDate } from '../../lib/studentRank';
 import { todayIso, viewJournalEntry } from '../../lib/studentEdition';
 import { StudentMarks, useStudentFile, useStudentPath } from './chrome';
@@ -37,7 +38,7 @@ function monthName(year: number, month: number): string {
   return new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
-function dayLabel(iso: string, journal: boolean, event: boolean, tournament: boolean, rank: boolean): string {
+function dayLabel(iso: string, journal: boolean, event: boolean, tournament: boolean, rank: boolean, gymClass = false): string {
   const [year, month, day] = iso.split('-').map(Number);
   const pretty = new Date(year, month - 1, day).toLocaleDateString('en-US', {
     month: 'long',
@@ -49,7 +50,24 @@ function dayLabel(iso: string, journal: boolean, event: boolean, tournament: boo
   if (event) bits.push('calendar event');
   if (tournament) bits.push('tournament');
   if (rank) bits.push('belt');
+  if (gymClass) bits.push('academy class');
   return bits.join(', ');
+}
+
+function useLiveGymSchedule(): GymCalendarState | null {
+  const [schedule, setSchedule] = useState<GymCalendarState | null>(
+    () => resolveGymSchedule({ storage: typeof localStorage === 'undefined' ? null : localStorage }).schedule,
+  );
+  useEffect(() => {
+    let alive = true;
+    void fetchPublishedSchedule().then((result) => {
+      if (alive) setSchedule(result.schedule);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return schedule;
 }
 
 function CalendarFrame({ children }: { children: ReactNode }) {
@@ -83,10 +101,10 @@ export function CalendarPage() {
   const [kind, setKind] = useState<CalendarKind>('class');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
-  const [showGym, setShowGym] = useState(false);
-  const gym = readGymSchedule(typeof localStorage === 'undefined' ? null : localStorage.getItem(GYM_SCHEDULE_STORAGE_KEY));
+  const gymSchedule = useLiveGymSchedule();
   const marked = new Set(journalDates(report));
   const weeks = monthGrid(cursor.year, cursor.month);
+  const gymDays = gymClassDaysIn(gymSchedule, weeks.flat().map((cell) => cell.iso));
   const tournaments = report.competition?.tournaments ?? [];
   const tournamentDays = new Set(tournaments.flatMap((tournament) => [tournament.date, tournament.deadline].filter(Boolean)));
   const rankDays = new Set(rankMarks(report).map((mark) => mark.date));
@@ -140,10 +158,11 @@ export function CalendarPage() {
               type="button"
               className={`cal-day${cell.iso === today ? ' is-today' : ''}${hasJournal ? ' has-journal' : ''}${tournamentDays.has(cell.iso) ? ' has-tournament' : ''}${rankDays.has(cell.iso) ? ' has-rank' : ''}`}
               aria-current={cell.iso === today ? 'date' : undefined}
-              aria-label={dayLabel(cell.iso, hasJournal, hasEvent, tournamentDays.has(cell.iso), rankDays.has(cell.iso))}
+              aria-label={dayLabel(cell.iso, hasJournal, hasEvent, tournamentDays.has(cell.iso), rankDays.has(cell.iso), gymDays.has(cell.iso))}
               data-journal={hasJournal ? 'true' : 'false'}
               data-tournament={tournamentDays.has(cell.iso) ? 'true' : 'false'}
               data-rank={rankDays.has(cell.iso) ? 'true' : 'false'}
+              data-class={gymDays.has(cell.iso) ? 'true' : 'false'}
               onClick={() => openDay(cell.iso)}
             >
               <span>{cell.day}</span>
@@ -153,6 +172,7 @@ export function CalendarPage() {
                 {hasJournal && hasEvent ? <span className="cal-dot cal-dot--journal" /> : null}
                 {tournamentDays.has(cell.iso) ? <span className="cal-dot cal-dot--tournament" /> : null}
                 {rankDays.has(cell.iso) ? <span className="cal-dot cal-dot--rank" /> : null}
+                {gymDays.has(cell.iso) ? <span className="cal-dot cal-dot--class" /> : null}
               </span>
             </button>
           ) : (
@@ -188,23 +208,7 @@ export function CalendarPage() {
           </Link>
         </section>
       ) : null}
-      {gym ? (
-        <label className="ink cal-gym-toggle">
-          <input type="checkbox" checked={showGym} onChange={(event) => setShowGym(event.target.checked)} />
-          <span>Show gym class schedule</span>
-        </label>
-      ) : null}
-      {showGym && gym ? (
-        <section className="ink" aria-label="Gym class schedule">
-          <h2 className="ink__label">Gym class schedule</h2>
-          <p className="student-quiet">Read-only. This stays on the gym schedule. It is not saved in your progress file.</p>
-          <ul className="cal-gym">
-            {gym.hints.map((hint) => (
-              <li key={hint.id}>{hint.label}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      {gymSchedule ? <GymWeekList schedule={gymSchedule} /> : null}
       <form
         className="ink"
         onSubmit={(event) => {
@@ -307,10 +311,26 @@ export function CalendarDayPage({ date }: { date: string }) {
   const tournaments = tournamentsOnDate(report.competition?.tournaments ?? [], date);
   const ranks = rankMarksOnDate(report, date);
   const today = date === todayIso();
+  const gymSchedule = useLiveGymSchedule();
+  const [hoursPrompt, setHoursPrompt] = useState(false);
   return (
     <CalendarFrame>
-      <p className="cal-nav__label cal-day-title">{dayLabel(date, cards.length > 0, events.length > 0, tournaments.length > 0, ranks.length > 0)}</p>
-      {date <= todayIso() ? <CalendarMatTime report={report} commit={commit} date={date} /> : null}
+      <p className="cal-nav__label cal-day-title">{dayLabel(date, cards.length > 0, events.length > 0, tournaments.length > 0, ranks.length > 0, Boolean(gymSchedule && gymClassDaysIn(gymSchedule, [date]).has(date)))}</p>
+      {gymSchedule ? (
+        <GymClassDayList
+          schedule={gymSchedule}
+          date={date}
+          report={report}
+          commit={commit}
+          onLoggedHere={() => setHoursPrompt(true)}
+        />
+      ) : null}
+      {hoursPrompt ? (
+        <p className="student-quiet" data-testid="gym-hours-prompt">
+          Want to log this class on your mat hours? Just for you. Your coach doesn&apos;t see it.
+        </p>
+      ) : null}
+      {date <= todayIso() ? <CalendarMatTime report={report} commit={commit} date={date} startAdding={hoursPrompt} /> : null}
       {ranks.length ? (
         <section className="ink" aria-label="My rank">
           <h2 className="ink__label">My rank</h2>
@@ -499,12 +519,17 @@ function CalendarMatTime({
   report,
   commit,
   date,
+  startAdding = false,
 }: {
   report: StudentProgressReport;
   commit: (next: StudentProgressReport) => void;
   date: string;
+  startAdding?: boolean;
 }) {
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(startAdding);
+  useEffect(() => {
+    if (startAdding) setAdding(true);
+  }, [startAdding]);
   const sessions = report.journal.filter((entry) => entry.date === date && !entry.hiatus);
   const untimed = untimedOn(report.journal, date);
   const first = untimed[0];

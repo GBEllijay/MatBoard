@@ -286,3 +286,18 @@
   text-decoration: line-through;
   opacity: 0.72;
 }
+
+.ij-class-roster {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  border-radius: 6px;
+}
+
+.ij-class-roster .cal-gym-day__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
