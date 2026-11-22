@@ -1268,7 +1268,7 @@
   grid-column: 2;
 }
 
-.home.home--store .sf-between--brackets + .sf-footer {
+.home.home--store .sf-wrap + .sf-footer {
   margin-top: 48px;
 }
 
@@ -1284,7 +1284,7 @@
 }
 
 @media (max-width: 600px) {
-  .home.home--store .sf-between--brackets + .sf-footer {
+  .home.home--store .sf-wrap + .sf-footer {
     margin-top: 40px;
   }
 }
