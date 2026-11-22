@@ -10,6 +10,7 @@ import {
   SITE_FEEDBACK_LEAD,
   SITE_OWNER_LINE,
 } from '../lib/siteFooter';
+import { PRODUCTS_PATH } from '../lib/productNames';
 import {
   STOREFRONT_BRACKETS,
   STOREFRONT_NAV,
@@ -99,7 +100,8 @@ export function StorefrontPage() {
             <p className="sf-footer-feedback">
               <FooterFeedback />
             </p>
-            <nav className="sf-footer-links" aria-label="Legal">
+            <nav className="sf-footer-links" aria-label="Footer">
+              <Link to={PRODUCTS_PATH}>Alpha testers</Link>
               <Link to="/privacy">Privacy Policy</Link>
               <Link to="/terms">Terms of Service</Link>
             </nav>

@@ -76,6 +76,10 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(page.getByRole('region', { name: 'Start with White. Grow into Pro.' })).toHaveCount(0);
   await expect(page.locator('.sf-step')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Request to join alpha' })).toHaveCount(0);
+  await expect(page.getByText('Coming soon to the App Store', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Coming soon to the App Store' })).toHaveCount(0);
+  const testers = page.getByRole('contentinfo').getByRole('link', { name: 'Alpha testers' });
+  await expect(testers).toHaveAttribute('href', '/products');
   await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Privacy Policy' })).toBeVisible();
   await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Terms of Service' })).toBeVisible();
   await brackets.scrollIntoViewIfNeeded();
@@ -87,6 +91,10 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(nav.getByRole('link', { name: 'Scoreboard' })).toHaveAttribute('href', '/white#scoreboard');
   await expect(nav.getByRole('link', { name: 'Round timer' })).toHaveAttribute('href', '/white#round-timer');
   await expect(nav.getByRole('link', { name: 'Brackets', exact: true })).toHaveAttribute('href', '/white#brackets');
+  const alpha = page.getByRole('contentinfo').getByRole('link', { name: 'Alpha testers' });
+  await alpha.scrollIntoViewIfNeeded();
+  const box = await alpha.boundingBox();
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   await shot(page, 'storefront-mobile');
   await page.setViewportSize({ width: 1440, height: 900 });
 });
