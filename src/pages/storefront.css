@@ -174,10 +174,16 @@
 .home.home--store .sf-nav-links {
   display: flex;
   justify-content: center;
+  flex-wrap: nowrap;
   gap: 28px;
   font-size: 14px;
   font-weight: 600;
   color: var(--sf-muted);
+  white-space: nowrap;
+}
+
+.home.home--store .sf-nav-links a {
+  white-space: nowrap;
 }
 
 .home.home--store .sf-nav-links a:hover {
@@ -1244,8 +1250,8 @@
 
 @media (max-width: 600px) {
   .home.home--store .sf-nav-links {
-    gap: 10px;
-    font-size: 13px;
-    padding-inline: 56px 72px;
+    gap: 8px;
+    font-size: 12px;
+    padding-inline: 8px 4.75rem;
   }
 }
