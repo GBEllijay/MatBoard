@@ -21146,3 +21146,31 @@ a.plan-pick {
   }
 }
 
+/* Give Sign in / Account space from the top-right corner on the White paywall. */
+body:has(main.home--buy) .header-account {
+  top: calc(0.9rem + var(--safe-t));
+  right: calc(0.9rem + var(--safe-r));
+}
+
+/* Preview-only White unlock badge. Pages preview hosts only. */
+.preview-white-badge {
+  position: fixed;
+  left: 50%;
+  bottom: calc(0.75rem + var(--safe-b, 0px));
+  transform: translateX(-50%);
+  z-index: 60;
+  margin: 0;
+  max-width: calc(100% - 1.5rem);
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(240, 194, 75, 0.55);
+  background: #1A2740;
+  color: #F5F1E8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}

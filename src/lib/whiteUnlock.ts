@@ -2,6 +2,7 @@ import { impliedDoors } from './tierImplications.ts';
 import { doorOpen, notifyEntitlement, subscribeEntitlement } from './entitlement.ts';
 import { WHITE_RELOCK_KEY } from './legacyUnlock.ts';
 import { lockStudentEdition } from './studentUnlock.ts';
+import { isPreviewWhiteUnlocked } from './previewWhiteBypass.ts';
 import { WHITE_BUY_PATH } from './whitePurchase.ts';
 
 /** This browser finished a confirmed checkout or a server code redeem. Not a Google login. */
@@ -81,8 +82,8 @@ export function rememberWhitePurchase(status: { entitled: boolean; grants?: stri
 }
 
 /** Advantage White hub and roster. `whiteUnlocked` already includes Coach and Pro (tierImplications.ts). */
-export function whiteHubAllowed(whiteUnlocked: boolean): boolean {
-  return whiteUnlocked;
+export function whiteHubAllowed(whiteUnlocked: boolean, hostname?: string): boolean {
+  return whiteUnlocked || isPreviewWhiteUnlocked(hostname);
 }
 
 /**
@@ -90,17 +91,20 @@ export function whiteHubAllowed(whiteUnlocked: boolean): boolean {
  * White buyers open them from /white.
  * Coach and Pro already open the same screens from their own doors.
  */
-export function whiteLiveToolsAllowed(access: {
-  whiteUnlocked: boolean;
-  coachDoor: boolean;
-  proDoor: boolean;
-}): boolean {
-  return access.whiteUnlocked || access.coachDoor || access.proDoor;
+export function whiteLiveToolsAllowed(
+  access: {
+    whiteUnlocked: boolean;
+    coachDoor: boolean;
+    proDoor: boolean;
+  },
+  hostname?: string,
+): boolean {
+  return access.whiteUnlocked || access.coachDoor || access.proDoor || isPreviewWhiteUnlocked(hostname);
 }
 
 /** Home and other White entries. Locked visitors land on the $9.99 paywall. */
-export function whiteEntryPath(whiteUnlocked: boolean): '/white' | typeof WHITE_BUY_PATH {
-  return whiteUnlocked ? '/white' : WHITE_BUY_PATH;
+export function whiteEntryPath(whiteUnlocked: boolean, hostname?: string): '/white' | typeof WHITE_BUY_PATH {
+  return whiteUnlocked || isPreviewWhiteUnlocked(hostname) ? '/white' : WHITE_BUY_PATH;
 }
 
 /**

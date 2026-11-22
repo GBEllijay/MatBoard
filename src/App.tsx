@@ -2,6 +2,7 @@ import { CAMERA_HREF, CAMERA_PATH, cameraWindowOpen } from './lib/pdCamera';
 import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { HeaderAccount } from './components/HeaderAccount';
+import { PreviewWhiteBadge } from './components/PreviewWhiteBadge';
 import { InviteHandoffAccept } from './components/InviteHandoffAccept';
 import { OneDriveConnectResume } from './components/OneDriveConnectResume';
 import { SeatSessionChrome, useCurrentSeat } from './components/SeatSessionBar';
@@ -473,6 +474,7 @@ export default function App() {
   return (
     <IndexCardProvider>
     <HeaderAccount />
+    <PreviewWhiteBadge />
     <SeatSessionChrome />
     <InAppBrowserHint />
     <LegacyAccessNotice />
