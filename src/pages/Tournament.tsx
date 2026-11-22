@@ -57,7 +57,9 @@ import {
   SUITE_FROM,
   tournamentToolLabel,
   UNLIMITED_FROM,
+  WHITE_BOARD_FROM,
 } from '../lib/productNames';
+import { seedWhiteBracketFromRoster } from '../lib/bracketRosterStore';
 import { coachLinkedWhiteBoard, withMatchOrigin } from '../lib/scoreboardSkin';
 import {
   bracketHasCompetitors,
@@ -99,6 +101,8 @@ import {
   clampCompetitorCount,
   maxCompetitors,
   sizePresets,
+  WHITE_MAX_COMPETITORS,
+  WHITE_SIZE_PRESETS,
   undoLastOutcome,
   undoMatchOutcome,
   visibleRoundPrefixes,
@@ -125,15 +129,25 @@ export function TournamentPage() {
   const parent = useToolboxParent();
   // Instructor Edition, Pro, and seats all get the full Tournament Software (owner, 14 Nov 2026).
   const competitionSuite = useCompetitionSuite();
-  const plainCoach = isPlainCoachTournament(searchParams.get('from'), competitionSuite);
-  const sizeMax = maxCompetitors(competitionSuite);
   const from = searchParams.get('from');
+  const fromWhite = from === WHITE_BOARD_FROM;
+  const plainCoach = isPlainCoachTournament(from, competitionSuite);
+  const sizeMax = fromWhite ? WHITE_MAX_COMPETITORS : maxCompetitors(competitionSuite);
+  const presets = fromWhite ? WHITE_SIZE_PRESETS : sizePresets(competitionSuite);
   const fromSuite = from === SUITE_FROM;
   const fromUnlimited = from === UNLIMITED_FROM;
   const shownTheme = plainCoach ? DEFAULT_BRACKET_THEME : theme;
   const exitPath =
     useSubmenuBack() ??
-    (fromSuite ? '/suite' : fromUnlimited ? COACH_UNLIMITED_PATH : plainCoach || from === COACH_BOARD_FROM ? '/coach' : parent.path);
+    (fromWhite
+      ? '/white'
+      : fromSuite
+        ? '/suite'
+        : fromUnlimited
+          ? COACH_UNLIMITED_PATH
+          : plainCoach || from === COACH_BOARD_FROM
+            ? '/coach'
+            : parent.path);
   const kidsSkins = kidsBracketSkinsAllowed(from, competitionSuite) && !plainCoach;
   const kidsOn = kidsBracketChromeOn(kidsSkins, kids.enabled);
   const [namesOpen, setNamesOpen] = useState(false);
@@ -264,8 +278,8 @@ export function TournamentPage() {
       <PlayExitMark to={exitPath} onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
-          <p className="tournament__eyebrow">{plainCoach ? 'Advantage Instructor Edition' : parent.eyebrow}</p>
-          <h1>{plainCoach ? MOCK_TOURNAMENT_NAME : tournamentToolLabel(competitionSuite)}</h1>
+          <p className="tournament__eyebrow">{fromWhite ? 'Advantage White' : plainCoach ? 'Advantage Instructor Edition' : parent.eyebrow}</p>
+          <h1>{fromWhite ? 'Brackets' : plainCoach ? MOCK_TOURNAMENT_NAME : tournamentToolLabel(competitionSuite)}</h1>
         </div>
       </header>
 
@@ -449,9 +463,23 @@ export function TournamentPage() {
             >
               Edit names
             </button>
-            <button type="button" className="btn btn--ghost" onClick={() => setCheckInOpen(true)}>
-              Fill from check-in
-            </button>
+            {fromWhite ? (
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => {
+                  unlinkBracketBout();
+                  const placed = seedWhiteBracketFromRoster();
+                  setFillPlaced(placed > 0 ? placed : null);
+                }}
+              >
+                Fill from Bracket Roster
+              </button>
+            ) : (
+              <button type="button" className="btn btn--ghost" onClick={() => setCheckInOpen(true)}>
+                Fill from check-in
+              </button>
+            )}
             <button
               type="button"
               className={`btn${undoReady ? ' btn--blue' : ' btn--ghost'}`}
@@ -523,6 +551,18 @@ export function TournamentPage() {
         >
           Fill bracket
         </button>
+        {fromWhite ? (
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => {
+              const placed = seedWhiteBracketFromRoster();
+              setFillPlaced(placed > 0 ? placed : null);
+            }}
+          >
+            Fill from Bracket Roster
+          </button>
+        ) : null}
         <ol className="tournament__seeds">
           {seeds.map((id, index) => (
             <li key={id}>
@@ -574,9 +614,11 @@ export function TournamentPage() {
           vs 5th, and 1st, 2nd, and 3rd receive byes. A field of 7 gives the bye to the 1st seed.
           Eight and up, and every other custom count, fill to the next power of two with those same
           seeded byes. Tap a size to apply it. Names that fit stay. Results on this board clear.
-          {competitionSuite && !plainCoach
-            ? ' Brackets save up to 64 competitors on this device.'
-            : ' Mock Tournament stays at 16.'}
+          {fromWhite
+            ? ' White brackets go up to 36 competitors on this device.'
+            : competitionSuite && !plainCoach
+              ? ' Brackets save up to 64 competitors on this device.'
+              : ' Mock Tournament stays at 16.'}
         </p>
         <p className="tournament__sheet-copy">Placement</p>
         <div className="tournament__size-presets" role="radiogroup" aria-label="Placement rules">
@@ -604,7 +646,7 @@ export function TournamentPage() {
           first-round cards.
         </p>
         <div className="tournament__size-presets" role="group" aria-label="Size presets">
-          {sizePresets(competitionSuite).map((preset) => (
+          {presets.map((preset) => (
             <button
               key={preset}
               type="button"
@@ -616,7 +658,7 @@ export function TournamentPage() {
           ))}
         </div>
         <label className="tournament__custom-size">
-          <span>{competitionSuite ? 'Custom 2–64' : 'Custom 3–15'}</span>
+          <span>{fromWhite ? 'Custom 2–36' : competitionSuite ? 'Custom 2–64' : 'Custom 3–15'}</span>
           <input
             type="number"
             min={2}
@@ -843,6 +885,7 @@ function MatchCard({
   const from = searchParams.get('from');
   const fromSuite = from === SUITE_FROM;
   const fromUnlimited = from === UNLIMITED_FROM;
+  const fromWhite = from === WHITE_BOARD_FROM;
   const plainCoach = usePlainCoachBoard();
   const kids = useKidsScoreboard();
   const kidsOn = kidsBracketChromeOn(kidsBracketSkinsAllowed(from, useCompetitionSuite()) && !plainCoach, kids.enabled);
@@ -857,7 +900,8 @@ function MatchCard({
         withMatchOrigin(scoreboardPath(matchId), {
           fromSuite,
           fromUnlimited,
-          whiteBoard: coachLinkedWhiteBoard(fromSuite, true, plainCoach, false),
+          fromWhite,
+          whiteBoard: coachLinkedWhiteBoard(fromSuite, true, plainCoach, fromWhite) || fromWhite,
         }),
         kidsOn ? kids.skin : null,
       ),

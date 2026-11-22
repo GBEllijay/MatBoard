@@ -20,6 +20,7 @@ import {
 } from '../lib/grandmasterCelebration';
 import { unlockAudio } from '../lib/audio';
 import { EndCueControls } from '../components/EndCueControls';
+import { StartSoundWhenControls } from '../components/StartSoundWhenControls';
 import { declareMatchOutcome, scoreboardPath, visibleOutcomeBanner } from '../lib/bracketBout';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
@@ -244,6 +245,7 @@ export function MatchControllerPage() {
             />
             Start beep
           </label>
+          <StartSoundWhenControls />
           <label className="toggle">
             <input
               type="checkbox"

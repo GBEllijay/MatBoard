@@ -152,6 +152,9 @@ export const COACH_BOARD_FROM = 'coach';
 /** Query flag for tools opened from Advantage Coach Unlimited. */
 export const UNLIMITED_FROM = 'unlimited';
 
+/** Query flag for tools opened from the Advantage White hub. */
+export const WHITE_BOARD_FROM = 'white';
+
 /** Daily Lesson Plan opened from the Coach hub. */
 export const COACH_NOTES_PATH = `/notes?from=${COACH_BOARD_FROM}`;
 
@@ -357,13 +360,16 @@ export const SUITE_FROM = 'suite';
  * Suite brackets are never plain.
  */
 export function isPlainCoachTournament(from: string | null, competitionSuite: boolean): boolean {
-  if (from === SUITE_FROM) return false;
+  if (from === SUITE_FROM || from === WHITE_BOARD_FROM) return false;
   return !competitionSuite;
 }
 
-/** Keep `from=suite` or `from=unlimited` on links opened from that hub. Other callers stay unchanged. */
-export function withHubFrom(path: string, from: typeof SUITE_FROM | typeof UNLIMITED_FROM | null): string {
-  if (from !== SUITE_FROM && from !== UNLIMITED_FROM) return path;
+/** Keep `from=suite`, `from=unlimited`, or `from=white` on links opened from that hub. Other callers stay unchanged. */
+export function withHubFrom(
+  path: string,
+  from: typeof SUITE_FROM | typeof UNLIMITED_FROM | typeof WHITE_BOARD_FROM | null,
+): string {
+  if (from !== SUITE_FROM && from !== UNLIMITED_FROM && from !== WHITE_BOARD_FROM) return path;
   const hashAt = path.indexOf('#');
   const hash = hashAt >= 0 ? path.slice(hashAt) : '';
   const base = hashAt >= 0 ? path.slice(0, hashAt) : path;

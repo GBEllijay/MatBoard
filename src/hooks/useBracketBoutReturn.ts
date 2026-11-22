@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { flashDurationMs, linkedBracketMatchId, syncBoutFromQuery } from '../lib/bracketBout';
 import { dispatchMatch, getMatch, isPresentationReceiver } from '../lib/matchStore';
-import { SUITE_FROM, UNLIMITED_FROM, withHubFrom, withSuiteFrom } from '../lib/productNames';
+import { SUITE_FROM, UNLIMITED_FROM, WHITE_BOARD_FROM, withHubFrom, withSuiteFrom } from '../lib/productNames';
+import { WHITE_BRACKETS_PATH } from '../lib/bracketRosterStore';
 import { useMatchState } from './useStores';
 
 /** Load `?bout=` into match state once, without resetting an already-open bout. */
@@ -37,12 +38,14 @@ export function useBracketOutcomeReturn(): void {
       dispatchMatch({ type: 'setOutcomeFlash', value: null });
       if (linked) {
         navigate(
-          fromUnlimited && !fromSuite
-            ? withHubFrom('/tournament', UNLIMITED_FROM)
-            : withSuiteFrom('/tournament', fromSuite),
+          from === WHITE_BOARD_FROM
+            ? WHITE_BRACKETS_PATH
+            : fromUnlimited && !fromSuite
+              ? withHubFrom('/tournament', UNLIMITED_FROM)
+              : withSuiteFrom('/tournament', fromSuite),
         );
       }
     }, wait);
     return () => window.clearTimeout(timer);
-  }, [flash, fromSuite, fromUnlimited, navigate]);
+  }, [flash, from, fromSuite, fromUnlimited, navigate]);
 }

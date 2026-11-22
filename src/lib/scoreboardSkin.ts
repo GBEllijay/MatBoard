@@ -13,7 +13,7 @@
  */
 
 import { isCustomSkinId } from './customSkin.ts';
-import { SUITE_FROM, UNLIMITED_FROM, withHubFrom } from './productNames.ts';
+import { SUITE_FROM, UNLIMITED_FROM, WHITE_BOARD_FROM, withHubFrom } from './productNames.ts';
 import { POLISHED_SKINS, isPolishedSkinId, type PolishedSkinSlug } from './polishedSkins.ts';
 
 /**
@@ -206,10 +206,19 @@ export function withCoachWhiteBoard(path: string, whiteBoard: boolean): string {
 /** Suite or Coach Unlimited origin, and the basic-Coach White board, on scoreboard and controller links. */
 export function withMatchOrigin(
   path: string,
-  origin: { fromSuite: boolean; whiteBoard: boolean; fromUnlimited?: boolean },
+  origin: { fromSuite: boolean; whiteBoard: boolean; fromUnlimited?: boolean; fromWhite?: boolean },
 ): string {
-  const hub = origin.fromSuite ? SUITE_FROM : origin.fromUnlimited ? UNLIMITED_FROM : null;
-  return withCoachWhiteBoard(withHubFrom(path, hub), origin.whiteBoard && hub == null);
+  const hub = origin.fromSuite
+    ? SUITE_FROM
+    : origin.fromUnlimited
+      ? UNLIMITED_FROM
+      : origin.fromWhite
+        ? WHITE_BOARD_FROM
+        : null;
+  return withCoachWhiteBoard(
+    withHubFrom(path, hub),
+    origin.whiteBoard && hub !== SUITE_FROM && hub !== UNLIMITED_FROM,
+  );
 }
 
 /**

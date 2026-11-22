@@ -138,6 +138,7 @@ import { AccountPage } from './pages/Account';
 import { InAppBrowserHint } from './components/InAppBrowserHint';
 import { WhitePage } from './pages/White';
 import { WhiteRosterPage } from './pages/WhiteRoster';
+import { BracketRosterPage } from './pages/BracketRoster';
 
 consumeUnlockQueryNow();
 consumeCoachUnlockQueryNow();
@@ -542,6 +543,22 @@ export default function App() {
           <WhiteHubRoute>
             <WhiteRosterPage />
           </WhiteHubRoute>
+        }
+      />
+      <Route
+        path="/white/bracket-roster"
+        element={
+          <WhiteHubRoute>
+            <BracketRosterPage />
+          </WhiteHubRoute>
+        }
+      />
+      <Route
+        path="/white/brackets"
+        element={
+          <WhiteLiveRoute>
+            <TournamentPage />
+          </WhiteLiveRoute>
         }
       />
       <Route path="/lite" element={<Navigate to="/white" replace />} />

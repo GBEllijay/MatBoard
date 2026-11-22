@@ -22,11 +22,12 @@ import {
   getAudioPrefs,
   isAudioRunning,
   parseEndCue,
+  playManualStartSound,
   playSelectedEndCue,
-  playStartCue,
   playWarningCue,
   type EndCue,
 } from './audio';
+import { isFirstStart } from './startSoundPolicy';
 import { endCueClaimId, playOnceAcrossTabs } from './matchCueOnce';
 import {
   autoPointsOutcome,
@@ -605,7 +606,7 @@ export function subscribeMatch(fn: () => void): () => void {
 function maybeMatchCues(prev: MatchState, next: MatchState): void {
   if (!prev.running && next.running && next.startBeep && startedRevision !== next.revision) {
     startedRevision = next.revision;
-    playStartCue();
+    playManualStartSound(isFirstStart(next.remainingMs, next.durationMs));
   }
   if (!prev.warned && next.warned && next.warningBeep && warnedRevision !== next.revision) {
     warnedRevision = next.revision;

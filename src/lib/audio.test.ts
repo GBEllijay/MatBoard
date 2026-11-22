@@ -32,6 +32,7 @@ test('fresh device: full volume, Buzzer end cue, extra loud off', async () => {
   assert.equal(prefs.startCue, 'combate');
   assert.equal(prefs.muted, false);
   assert.equal(prefs.vibrate, true);
+  assert.equal(prefs.startSoundWhen, 'first');
 });
 
 test('saved prefs on the old 80% default move to 100% once; other volumes are kept', async () => {
@@ -89,7 +90,22 @@ test('a missing start sound becomes Combate, and a saved Beep stays Beep', async
   assert.equal(saved.volume, 0.4);
   const src = readFileSync(new URL('./audio.ts', import.meta.url), 'utf8');
   assert.match(src, /export function playTrainingStart\(\): void \{\s*if \(prefs\.startCue === 'beep'\) playStartCue\(\);\s*else playBeginCue\(\);/s);
+  assert.match(src, /export function playManualStartSound\(firstStart: boolean\): void \{\s*const kind = startSoundKind\(prefs\.startSoundWhen, firstStart\);\s*if \(kind === 'combat'\) playBeginCue\(\);\s*else playStartCue\(\);/s);
   assert.match(src, /function startRecorded\(buffer: AudioBuffer, gain: number\): void \{\s*const audio = getContext\(\);\s*if \(masterGain\(\) <= 0\) return;\s*const bus = getMaster\(\);/s);
+});
+
+test('startSoundWhen defaults to first start only and is remembered per device', async () => {
+  assert.equal((await freshAudio()).getAudioPrefs().startSoundWhen, 'first');
+  assert.equal((await freshAudio({ startCue: 'beep' })).getAudioPrefs().startSoundWhen, 'first');
+  assert.equal((await freshAudio({ startSoundWhen: 'every' })).getAudioPrefs().startSoundWhen, 'every');
+  assert.equal((await freshAudio({ startSoundWhen: 'nope' })).getAudioPrefs().startSoundWhen, 'first');
+  const audio = await freshAudio();
+  audio.patchAudioPrefs({ startSoundWhen: 'every' });
+  assert.equal(JSON.parse(store.get(KEY)!).startSoundWhen, 'every');
+  audio.patchAudioPrefs({ startCue: 'beep', volume: 0.4 });
+  assert.equal(audio.getAudioPrefs().startSoundWhen, 'every');
+  const again = (await import(`./audio.ts?when=${n}`)) as typeof import('./audio.ts');
+  assert.equal(again.getAudioPrefs().startSoundWhen, 'every');
 });
 
 test('three end cue buttons: Buzzer, Bell, Parou', async () => {

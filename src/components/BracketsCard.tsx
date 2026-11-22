@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { BeltRail } from './BeltRail';
+import { WHITE_BRACKETS_PATH } from '../lib/bracketRosterStore';
 
 /**
- * Placeholder Brackets card for the White hub.
+ * Brackets card for the White hub. The image is still a placeholder.
  * TODO: Replace BracketsPlaceholder with the real mock-tournament TV photo next week.
  * The SVG is decorative and swappable: drop the final image in as an <img>
  * (for example public/storefront/brackets-tv.jpg) and remove this component.
@@ -11,7 +12,7 @@ export function BracketsCard() {
   return (
     <article className="mode-card mode-card--brackets" id="brackets">
       <BeltRail kind="white" />
-      <Link className="mode-card__hit" to="/white" tabIndex={-1} aria-label="Open Brackets" />
+      <Link className="mode-card__hit" to={WHITE_BRACKETS_PATH} tabIndex={-1} aria-label="Open Brackets" />
       <BracketsPlaceholder />
       <strong>Brackets</strong>
       <span className="mode-card__sub">Mock tournament</span>
@@ -20,7 +21,7 @@ export function BracketsCard() {
         Supports up to 16 competitors, and optionally up to 36.
       </span>
       <div className="mode-card__actions">
-        <Link className="btn" to="/white">
+        <Link className="btn" to={WHITE_BRACKETS_PATH}>
           Brackets
         </Link>
       </div>

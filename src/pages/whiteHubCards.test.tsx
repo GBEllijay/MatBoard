@@ -1,6 +1,6 @@
 /**
- * White hub cards: existing tools stay wired, new Brackets and Bracket Roster
- * cards are placeholders that stay on /white, and Account is not on this page.
+ * White hub cards: existing tools stay wired. Brackets and Bracket Roster
+ * open their tools. The Brackets image is still a placeholder. Account is not on this page.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -71,7 +71,7 @@ test('the White hub keeps working Scoreboard, Controller, Rounds, and Match name
   m.done();
 });
 
-test('Brackets and Bracket Roster are placeholders that stay on /white, and never say student roster', () => {
+test('Brackets and Bracket Roster open their tools, keep the placeholder image, and never say student roster', () => {
   const m = mount();
   const brackets = m.host.querySelector('#brackets');
   const roster = m.host.querySelector('#bracket-roster');
@@ -81,7 +81,7 @@ test('Brackets and Bracket Roster are placeholders that stay on /white, and neve
   assert.match(brackets.textContent ?? '', /up to 16/);
   assert.match(brackets.textContent ?? '', /up to 36/);
   assert.match(brackets.textContent ?? '', /Placeholder image/);
-  assert.equal(hrefs(brackets as HTMLElement, 'a').every((href) => href === '/white'), true);
+  assert.deepEqual(hrefs(brackets as HTMLElement, 'a'), ['/white/brackets?from=white', '/white/brackets?from=white']);
   assert.equal(roster.querySelector('strong')?.textContent, 'Bracket Roster');
   assert.match(roster.textContent ?? '', /Gym/);
   assert.match(roster.textContent ?? '', /Weight/);
@@ -90,7 +90,7 @@ test('Brackets and Bracket Roster are placeholders that stay on /white, and neve
   assert.match(roster.textContent ?? '', /Rank/);
   assert.match(roster.textContent ?? '', /Northside Academy/);
   assert.doesNotMatch(roster.textContent ?? '', /student roster/i);
-  assert.equal(hrefs(roster as HTMLElement, 'a').every((href) => href === '/white'), true);
+  assert.deepEqual(hrefs(roster as HTMLElement, 'a'), ['/white/bracket-roster', '/white/bracket-roster']);
   m.done();
 });
 

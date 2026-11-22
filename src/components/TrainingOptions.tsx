@@ -1,6 +1,7 @@
 import { useAudioPrefs, useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import { patchAudioPrefs, type StartCue } from '../lib/audio';
 import { EndCueControls } from './EndCueControls';
+import { StartSoundWhenControls } from './StartSoundWhenControls';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
 import { setTrainingSkin, visibleTrainingSkin } from '../lib/trainingSkin';
 import { TimerBackdropOptions } from './TimerBackdropOptions';
@@ -97,6 +98,7 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
             ))}
           </div>
         </div>
+        <StartSoundWhenControls />
         <label className="toggle">
           <input
             type="checkbox"

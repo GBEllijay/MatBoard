@@ -1,18 +1,19 @@
 import { Link } from 'react-router-dom';
 import { BeltRail } from './BeltRail';
+import { WHITE_BRACKET_ROSTER_PATH } from '../lib/bracketRosterStore';
 
 /**
  * Placeholder Bracket Roster card for the White hub.
  * Named "Bracket Roster" on purpose — never "student roster".
  * Gym name sits under the competitor name, matching the scoreboard CompetitorPad
  * (Name, then Gym underneath) on the match controller.
- * Fields and the card link to /white until the roster tool is wired.
+ * Opens the on-device Bracket Roster tool.
  */
 export function BracketRosterCard() {
   return (
     <article className="mode-card mode-card--bracket-roster" id="bracket-roster">
       <BeltRail kind="white" />
-      <Link className="mode-card__hit" to="/white" tabIndex={-1} aria-label="Open Bracket Roster" />
+      <Link className="mode-card__hit" to={WHITE_BRACKET_ROSTER_PATH} tabIndex={-1} aria-label="Open Bracket Roster" />
       <strong>Bracket Roster</strong>
       <span className="mode-card__sub">Mock tournament list</span>
       <span>
@@ -51,7 +52,7 @@ export function BracketRosterCard() {
         </div>
       </div>
       <div className="mode-card__actions">
-        <Link className="btn" to="/white">
+        <Link className="btn" to={WHITE_BRACKET_ROSTER_PATH}>
           Bracket Roster
         </Link>
       </div>

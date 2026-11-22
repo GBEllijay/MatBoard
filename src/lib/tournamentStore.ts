@@ -22,6 +22,9 @@ export const PRO_MAX_COMPETITORS = 64;
 export const MAX_COMPETITORS = PRO_MAX_COMPETITORS;
 export const SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16] as const;
 export const PRO_SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16, 32, 64] as const;
+/** Advantage White mock tournament: 16 by default, optionally up to 36 (64-tree with byes). */
+export const WHITE_SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16, 36] as const;
+export const WHITE_MAX_COMPETITORS = 36;
 export const BRACKET_NAME_MAX = 80;
 /** Header on the bracket. A new board starts here. Blank is a real saved value. */
 export const DEFAULT_BRACKET_HEADLINE = 'Tournament';
