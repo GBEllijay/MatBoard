@@ -1255,3 +1255,36 @@
     padding-inline: 8px 4.75rem;
   }
 }
+
+
+/* Mock tournament card under the Round timer section. No belt ladder after it.
+   A tighter footer gap replaces the old 96px/64px margin that sat after the ladder. */
+.home.home--store .sf-between--brackets {
+  grid-template-columns: 7fr 5fr;
+  margin-bottom: 0;
+}
+
+.home.home--store .sf-between--brackets .sf-between-copy {
+  grid-column: 2;
+}
+
+.home.home--store .sf-wrap + .sf-footer {
+  margin-top: 48px;
+}
+
+@media (max-width: 900px) {
+  .home.home--store .sf-between--brackets {
+    grid-template-columns: 1fr;
+    margin-bottom: 0;
+  }
+
+  .home.home--store .sf-between--brackets .sf-between-copy {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .home.home--store .sf-wrap + .sf-footer {
+    margin-top: 40px;
+  }
+}

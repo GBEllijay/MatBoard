@@ -1,14 +1,19 @@
 /**
  * Advantage White Bracket Roster. This device only.
- * Separate from Match names (`matboard.whiteRoster.v1`) and the Coach/Pro
- * Competitor Roster (`matboard.roster.v1`). Named "Bracket Roster" on purpose.
+ * Separate from the Coach/Pro Competitor Roster (`matboard.roster.v1`).
+ * Named "Bracket Roster" on purpose. The White scoreboard name picker reads
+ * this list. If this roster is empty, saved Match names (`matboard.whiteRoster.v1`)
+ * are copied in once; that old key is left in place.
  */
 
 import { WHITE_BOARD_FROM } from './productNames.ts';
 import { clipName } from './rosterStore.ts';
 import { fillCheckedInBracket, getTournament, newBracket, bracketHasContent } from './tournamentStore.ts';
+import { getWhiteRoster } from './whiteRosterStore.ts';
 
 export const BRACKET_ROSTER_STORAGE_KEY = 'matboard.bracketRoster.v1';
+/** Set after a one-time copy of Match names into an empty Bracket Roster. */
+export const WHITE_MATCH_NAMES_IMPORT_KEY = 'matboard.bracketRoster.importedWhiteRoster.v1';
 export const BRACKET_ROSTER_MAX = 36;
 export const BRACKET_ROSTER_CSV_HEADERS = ['name', 'gym', 'weight', 'division', 'age', 'rank'] as const;
 export const BRACKET_ROSTER_SAMPLE_PATH = '/samples/bracket-roster-sample.csv';
@@ -324,11 +329,111 @@ export function seedWhiteBracketFromRoster(
   return fillCheckedInBracket(names, max, max);
 }
 
+export function findBracketRosterName(entries: readonly BracketRosterEntry[], name: string): BracketRosterEntry | undefined {
+  const key = nameKey(name);
+  if (!key) return undefined;
+  return entries.find((entry) => nameKey(entry.name) === key);
+}
+
+export function searchBracketRoster(entries: readonly BracketRosterEntry[], query: string): BracketRosterEntry[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [...entries];
+  return entries.filter((entry) => {
+    const name = entry.name.toLowerCase();
+    const rank = entry.rank.toLowerCase();
+    const gym = entry.gym.toLowerCase();
+    return name.includes(q) || rank.includes(q) || gym.includes(q);
+  });
+}
+
+/** Name, belt/rank, gym, and division for a White scoreboard fill. */
+export function bracketRosterPrefill(entry: BracketRosterEntry): {
+  name: string;
+  belt: string;
+  gym: string;
+  division: string;
+} {
+  return { name: entry.name, belt: entry.rank, gym: entry.gym, division: entry.division };
+}
+
+/**
+ * Save a name to the Bracket Roster. The same name updates its rank instead of
+ * duplicating, and leaves gym, weight, division, and age alone.
+ */
+export function upsertBracketRosterName(name: string, rank: string): BracketRosterEntry | null {
+  const clipped = clipName(name);
+  if (!clipped) return null;
+  const nextRank = clipField(rank, 24);
+  const existing = findBracketRosterName(state.entries, clipped);
+  if (existing) {
+    return updateBracketRosterEntry(existing.id, {
+      name: existing.name,
+      gym: existing.gym,
+      weight: existing.weight,
+      division: existing.division,
+      age: existing.age,
+      rank: nextRank || existing.rank,
+    });
+  }
+  return addBracketRosterEntry({
+    name: clipped,
+    gym: '',
+    weight: '',
+    division: '',
+    age: '',
+    rank: nextRank,
+  });
+}
+
+function importFlagSet(): boolean {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    return localStorage.getItem(WHITE_MATCH_NAMES_IMPORT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function setImportFlag(): void {
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(WHITE_MATCH_NAMES_IMPORT_KEY, '1');
+  } catch {
+    /* private mode or a full disk */
+  }
+}
+
+/**
+ * If the Bracket Roster is empty, copy saved Match names in once.
+ * Leaves `matboard.whiteRoster.v1` in place. Does not run again after the flag is set,
+ * even if the Bracket Roster is later cleared.
+ */
+export function importWhiteMatchNamesOnce(): number {
+  if (state.entries.length > 0) return 0;
+  if (importFlagSet()) return 0;
+  const names = getWhiteRoster().names;
+  if (!names.length) return 0;
+  const entries: BracketRosterEntry[] = names.slice(0, BRACKET_ROSTER_MAX).map((row) => ({
+    id: createId(),
+    name: row.name,
+    gym: '',
+    weight: '',
+    division: '',
+    age: '',
+    rank: clipField(row.belt, 24),
+  }));
+  write({ version: 1, entries });
+  setImportFlag();
+  return entries.length;
+}
+
 /** Reset in-memory state in tests. */
 export function resetBracketRosterForTests(): void {
   state = { version: 1, entries: [] };
   try {
-    if (typeof localStorage !== 'undefined') localStorage.removeItem(BRACKET_ROSTER_STORAGE_KEY);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(BRACKET_ROSTER_STORAGE_KEY);
+      localStorage.removeItem(WHITE_MATCH_NAMES_IMPORT_KEY);
+    }
   } catch {
     /* ignore */
   }

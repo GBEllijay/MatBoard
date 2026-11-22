@@ -7,7 +7,6 @@ import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
 import { BracketsCard } from '../components/BracketsCard';
 import { BracketRosterCard } from '../components/BracketRosterCard';
-import { WhiteRosterCard } from '../components/WhiteRosterCard';
 import { EditionLadder } from '../components/EditionLadder';
 import { WhiteUpgradePrompt } from '../components/WhiteUpgradePrompt';
 import { SiteFooter } from '../components/SiteFooter';
@@ -32,7 +31,6 @@ export function WhitePage() {
           <RoundsCard />
           <BracketsCard />
           <BracketRosterCard />
-          <WhiteRosterCard />
           <WhiteUpgradePrompt />
           <EditionLadder page="white" />
         </nav>
@@ -49,7 +47,8 @@ export function WhitePage() {
               screen or computer.
             </p>
             <p className="home__hint">
-              Match names stay on this device. Pick a saved name and belt from the scoreboard.
+              You can type a competitor name on the scoreboard, or pick one from your Bracket
+              Roster.
             </p>
           </InstructionsButton>
           <FaqLink />

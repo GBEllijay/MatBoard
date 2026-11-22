@@ -141,24 +141,14 @@ test('/products: a claimed Student license opens White and Student, and keeps hi
   page.done();
 });
 
-test('homepage: a claimed Student license opens White and Student tiles, and keeps higher-tier buy / learn-more links', async () => {
+test('homepage: a claimed Student license still opens White from Click here, with no belt ladder', async () => {
   await claim();
   const page = await mount('/', <StorefrontPage />);
-  const whiteHit = page.host.querySelector('.sf-step--white .sf-step__hit, .sf-step--white a.sf-step__hit') as HTMLAnchorElement | null;
-  const studentHit = page.host.querySelector('.sf-step--student .sf-step__hit, a.sf-step--student') as HTMLAnchorElement | null;
-  const instructorHit = page.host.querySelector('.sf-step--coach .sf-step__hit, a.sf-step--coach') as HTMLAnchorElement | null;
   const hero = hrefs(page.host, '.sfh-buy, .sf-buy');
-  const studentOpen = hrefs(page.host, 'a.sf-open, .sfh-more');
-  assert.equal(whiteHit?.getAttribute('href') ?? (page.host.querySelector('.sf-step--white') as HTMLAnchorElement | null)?.getAttribute('href'), '/white');
-  assert.equal(studentHit?.getAttribute('href'), '/student');
-  assert.equal(instructorHit?.getAttribute('href'), TIER_BUY_PATHS.instructor);
+  assert.equal(page.host.querySelector('.sf-step, #progression'), null);
   assert.ok(hero.includes('/white'));
   assert.equal(hero.includes('/buy'), false);
-  assert.ok(studentOpen.includes('/white'));
-  assert.equal(studentOpen.includes('/student'), false);
-  const learn = [...page.host.querySelectorAll('a.sf-learn')].map((node) => node.getAttribute('href') ?? '');
-  assert.ok(learn.some((href) => href === TIER_BUY_PATHS.instructor || href === TIER_BUY_PATHS.pro));
-  assert.equal(learn.includes('/buy'), false);
-  assert.equal(learn.includes(TIER_BUY_PATHS.student), false);
+  const brackets = hrefs(page.host, '#brackets a, a[href*="/white/brackets"]');
+  assert.ok(brackets.some((href) => href.includes('/white/brackets')));
   page.done();
 });

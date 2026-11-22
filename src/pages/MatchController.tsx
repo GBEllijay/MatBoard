@@ -561,7 +561,7 @@ function CompetitorPad({
   focusCalls?: boolean;
   banner: { kind: 'win' | 'dq'; text: string } | null;
   reason: string | null;
-  /** White Live Bout uses the on-phone match-name list. Suite and linked bouts keep the Competitor Roster. */
+  /** White Live Bout uses the Bracket Roster. Suite and linked bouts keep the Competitor Roster. */
   names: 'white' | 'competitor';
   onWin: () => void;
   onDq: () => void;
