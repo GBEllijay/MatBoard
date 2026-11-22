@@ -314,11 +314,14 @@ export function parseBracketRosterCsv(raw: string): BracketRosterCsvResult {
 }
 
 /** Seed the on-device tournament board from this roster. Returns how many names were placed. */
-export function seedWhiteBracketFromRoster(max = BRACKET_ROSTER_MAX): number {
+export function seedWhiteBracketFromRoster(
+  max = BRACKET_ROSTER_MAX,
+  options?: { newBoard?: boolean },
+): number {
   const names = state.entries.map((entry) => entry.name).filter(Boolean);
   if (names.length < 2) return 0;
-  if (bracketHasContent(getTournament())) newBracket();
-  return fillCheckedInBracket(names, max);
+  if (options?.newBoard !== false && bracketHasContent(getTournament())) newBracket();
+  return fillCheckedInBracket(names, max, max);
 }
 
 /** Reset in-memory state in tests. */

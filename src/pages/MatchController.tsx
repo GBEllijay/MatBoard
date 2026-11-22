@@ -5,6 +5,7 @@ import { ScoreboardSkinPicker } from '../components/ScoreboardSkinPicker';
 import { ScoreboardSkinSwitcher } from '../components/ScoreboardSkinSwitcher';
 import { Sheet } from '../components/Sheet';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
+import { LinkedBoutBanner } from '../components/LinkedBoutBanner';
 import { PlayExitMark } from '../components/PlayExitMark';
 import { RankChip } from '../components/RankChip';
 import { RosterNameField } from '../components/RosterNameField';
@@ -21,7 +22,7 @@ import {
 import { unlockAudio } from '../lib/audio';
 import { EndCueControls } from '../components/EndCueControls';
 import { StartSoundWhenControls } from '../components/StartSoundWhenControls';
-import { declareMatchOutcome, scoreboardPath, visibleOutcomeBanner } from '../lib/bracketBout';
+import { declareMatchOutcome, isLeftoverLinkedBout, scoreboardPath, visibleOutcomeBanner } from '../lib/bracketBout';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
 import { formatMmSs } from '../lib/format';
@@ -53,6 +54,7 @@ export function MatchControllerPage() {
   const remaining = remainingNow(match);
   const focusParam = searchParams.get('focus');
   const linkedId = board.linkedId;
+  const leftoverLinked = isLeftoverLinkedBout(linkedId, searchParams.get('bout'));
   const plainWhite = board.plainWhite;
   const skin = board.skinFor(match.skin);
   const flashing = Boolean(match.outcomeFlash);
@@ -98,6 +100,7 @@ export function MatchControllerPage() {
       const mode = await openOrCastDisplay({
         fromSuite: suite.fromSuite,
         fromUnlimited: suite.fromUnlimited,
+        fromWhite: suite.fromWhite,
         whiteBoard: board.whiteBoard,
         kidsSkin: board.kidsSkin,
       });
@@ -114,6 +117,7 @@ export function MatchControllerPage() {
   return (
     <main className={`controller ${scoreboardSkinClass(skin)}${board.kidsSkin ? ` ${kidsBoardClass(board.kidsSkin)}` : ''}${suite.fromSuite ? ' origin-suite' : ''}`}>
       <PlayExitMark to={suite.homePath} />
+      {leftoverLinked ? <LinkedBoutBanner backTo={suite.withFrom('/tournament')} /> : null}
       <Chrome
         right={
           <>
@@ -129,6 +133,7 @@ export function MatchControllerPage() {
                 openDisplayWindow({
                   fromSuite: suite.fromSuite,
                   fromUnlimited: suite.fromUnlimited,
+                  fromWhite: suite.fromWhite,
                   whiteBoard: board.whiteBoard,
                   kidsSkin: board.kidsSkin,
                 })

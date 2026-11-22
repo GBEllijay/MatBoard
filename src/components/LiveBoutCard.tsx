@@ -8,7 +8,7 @@ export function LiveBoutCard() {
       <BeltRail kind="white" />
       <Link
         className="mode-card__hit"
-        to="/match"
+        to="/match?from=white"
         tabIndex={-1}
         aria-label="Open Scoreboard"
         onClick={() => unlinkBracketBout()}
@@ -21,10 +21,10 @@ export function LiveBoutCard() {
         from your phone and cast.
       </span>
       <div className="mode-card__actions">
-        <Link className="btn" to="/match" onClick={() => unlinkBracketBout()}>
+        <Link className="btn" to="/match?from=white" onClick={() => unlinkBracketBout()}>
           Scoreboard
         </Link>
-        <Link className="btn btn--ghost" to="/match/control" onClick={() => unlinkBracketBout()}>
+        <Link className="btn btn--ghost" to="/match/control?from=white" onClick={() => unlinkBracketBout()}>
           Controller
         </Link>
       </div>

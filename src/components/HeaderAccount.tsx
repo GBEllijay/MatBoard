@@ -32,7 +32,7 @@ export function HeaderAccount() {
   }, []);
   // Any open sheet owns the top-right corner (its Close). Do not rely on CSS :has() alone.
   const sheetOpen = useSyncExternalStore(subscribeSheetLayer, isSheetLayerOpen, () => false);
-  if (HIDDEN_PATHS.has(pathname) || sheetOpen) return null;
+  if (HIDDEN_PATHS.has(pathname) || pathname.startsWith('/white/') || sheetOpen) return null;
   return (
     <Link
       className="header-account"

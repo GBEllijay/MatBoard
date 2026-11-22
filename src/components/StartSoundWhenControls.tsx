@@ -31,8 +31,9 @@ export function StartSoundWhenControls() {
         ))}
       </div>
       <p className="cue-preview-hint">
-        First start only plays Combate when the clock is at full time. Later begins after a pause or
-        rest play a short beep.
+        This setting applies to the Begin buttons you tap. First start only plays Combate when the
+        clock is at full time, and a short beep when you tap Begin after a pause. Automatic work and
+        rest cues on the round timer still follow that timer&apos;s own start-sound picker.
       </p>
     </div>
   );

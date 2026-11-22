@@ -62,8 +62,8 @@ test('the White hub keeps working Scoreboard, Controller, Rounds, and Match name
   assert.ok(scoreboard);
   assert.ok(rounds);
   assert.ok(names);
-  assert.deepEqual(hrefs(scoreboard as HTMLElement, 'a.btn'), ['/match', '/match/control']);
-  assert.deepEqual(hrefs(rounds as HTMLElement, 'a.btn'), ['/training', '/training/control']);
+  assert.deepEqual(hrefs(scoreboard as HTMLElement, 'a.btn'), ['/match?from=white', '/match/control?from=white']);
+  assert.deepEqual(hrefs(rounds as HTMLElement, 'a.btn'), ['/training?from=white', '/training/control?from=white']);
   assert.deepEqual(hrefs(names as HTMLElement, 'a.btn, a.mode-card__hit'), ['/white/roster', '/white/roster']);
   assert.match(names?.textContent ?? '', /match-names\.csv/);
   assert.match(names?.textContent ?? '', /Upload/);
@@ -97,6 +97,21 @@ test('Brackets and Bracket Roster open their tools, keep the placeholder image, 
 test('the White page source has no Account control and the header hides /white', () => {
   const page = readFileSync('src/pages/White.tsx', 'utf8');
   const header = readFileSync('src/components/HeaderAccount.tsx', 'utf8');
+  const footer = readFileSync('src/components/SiteFooter.tsx', 'utf8');
   assert.doesNotMatch(page, /HeaderAccount|AccountLink/);
+  assert.match(page, /<SiteFooter hideAccount/);
+  assert.match(footer, /hideAccount \? null : <Link to="\/account">Account<\/Link>/);
   assert.match(header, /'\/white'/);
+  assert.match(header, /pathname\.startsWith\('\/white\/'\)/);
+});
+
+test('the White header uses the owner tagline and no longer shows the old blurb', () => {
+  const m = mount();
+  assert.match(
+    m.host.textContent ?? '',
+    /Your Scoreboard, Round Timer and Mock Tournament Software\. Cast to your TV from your phone or PC\./,
+  );
+  assert.doesNotMatch(m.host.textContent ?? '', /Customizable Live Matches and Rounds/);
+  assert.equal(m.host.querySelector('.site-footer a[href="/account"]'), null);
+  m.done();
 });

@@ -188,6 +188,13 @@ test('HeaderAccount is hidden on /white and still shows on other app pages', () 
   white.root.unmount();
   white.host.remove();
 
+  for (const path of ['/white/roster', '/white/bracket-roster', '/white/brackets']) {
+    const sub = mount(<HeaderAccount />, path);
+    assert.equal(sub.host.querySelector('.header-account'), null, `Sign in should be hidden on ${path}`);
+    sub.root.unmount();
+    sub.host.remove();
+  }
+
   const products = mount(<HeaderAccount />, '/products');
   assert.ok(products.host.querySelector('a.header-account'));
   products.root.unmount();

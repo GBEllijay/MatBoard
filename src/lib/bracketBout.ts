@@ -44,6 +44,15 @@ export function linkedBracketMatchId(value: string | null | undefined): BracketM
   return isBracketMatchId(value) ? value : null;
 }
 
+/** True when a stored bracket bout is still on the board, but this URL is a plain /match. */
+export function isLeftoverLinkedBout(
+  linkedId: string | null | undefined,
+  boutParam: string | null | undefined,
+): boolean {
+  return Boolean(linkedId && !boutParam);
+}
+
+
 export function boutCompetitorName(matchId: BracketMatchId, side: MatchSide): string {
   return displayBoutName(getTournament(), matchId, side);
 }

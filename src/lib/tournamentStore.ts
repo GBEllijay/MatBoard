@@ -935,10 +935,11 @@ export function applyCheckedInBracket(
   current: TournamentState,
   names: readonly string[],
   max = PRO_MAX_COMPETITORS,
+  sizeHint?: number,
 ): TournamentState {
   const filled = names.map((name) => name.trim()).filter(Boolean);
   if (!filled.length) return current;
-  const size = clampCompetitorCount(filled.length, max);
+  const size = clampCompetitorCount(sizeHint ?? filled.length, max);
   const next = defaultTournament(size);
   next.placement = placementOf(current);
   next.title = current.title;
@@ -958,13 +959,17 @@ export function peekCheckedInFillUndo(): { placed: number } | null {
  * Replace the open draw with these seed names and remember the previous board
  * for one Undo. Does not read or write the roster or check-in flags.
  */
-export function fillCheckedInBracket(names: readonly string[], max = PRO_MAX_COMPETITORS): number {
+export function fillCheckedInBracket(
+  names: readonly string[],
+  max = PRO_MAX_COMPETITORS,
+  sizeHint?: number,
+): number {
   const filled = names.map((name) => name.trim()).filter(Boolean);
   if (!filled.length) return 0;
   const previous = structuredClone(getTournament());
   let placed = 0;
   patchActive((board) => {
-    const next = applyCheckedInBracket(board, filled, max);
+    const next = applyCheckedInBracket(board, filled, max, sizeHint);
     placed = seedSlots(next).filter((id) => slotName(next, id).trim()).length;
     return next;
   });

@@ -498,6 +498,32 @@ export function playStartCue(): void {
   playCue(startCueVoices(), [18, 30, 18]);
 }
 
+/**
+ * One short resume beep. The old start cue used four oscillators (two overlapping
+ * notes), which logged as a doubled beep. This is a single note, two voices for
+ * phone speakers, started together.
+ */
+export function resumeCueVoices(): Voice[] {
+  return [
+    { freq: 1568, duration: 0.12, type: 'triangle', gain: 0.32, attack: 0.004, release: 0.04, filterFreq: 6000 },
+    { freq: 3136, duration: 0.12, type: 'square', gain: 0.22, attack: 0.004, release: 0.04, filterFreq: 6000 },
+  ];
+}
+
+export function playResumeCue(): void {
+  playCue(resumeCueVoices(), [18]);
+}
+
+let lastManualStartAt = 0;
+const MANUAL_START_GAP_MS = 80;
+
+function manualStartTooSoon(): boolean {
+  const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  if (now - lastManualStartAt < MANUAL_START_GAP_MS) return true;
+  lastManualStartAt = now;
+  return false;
+}
+
 /** Round timer start. Combate uses the same mute, volume, and extra-loud bus as Parou. */
 export function playTrainingStart(): void {
   if (prefs.startCue === 'beep') playStartCue();
@@ -510,9 +536,10 @@ export function playTrainingStart(): void {
  * resumes. Mute, volume, and extra-loud apply through the shared cue bus.
  */
 export function playManualStartSound(firstStart: boolean): void {
+  if (manualStartTooSoon()) return;
   const kind = startSoundKind(prefs.startSoundWhen, firstStart);
   if (kind === 'combat') playBeginCue();
-  else playStartCue();
+  else playResumeCue();
 }
 
 /**

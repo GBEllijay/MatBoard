@@ -12,6 +12,9 @@ test('scoreboard and round timer share the same Combate-when toggle', () => {
   assert.match(shared, /patchAudioPrefs\(\{ startSoundWhen: option\.id \}\)/);
   assert.match(shared, /First start only/);
   assert.match(shared, /Every start/);
+  assert.match(shared, /Begin buttons you tap/);
+  assert.match(shared, /Automatic work and\s+rest cues on the round timer still follow that timer/);
+  assert.doesNotMatch(shared, /Later begins after a pause or\s+rest play a short beep/);
   assert.doesNotMatch(shared, /import .*(entitle|edition|unlock|tier)|useEdition|whiteBoard|isPro/i);
   assert.match(board, /<StartSoundWhenControls \/>/);
   assert.match(timer, /<StartSoundWhenControls \/>/);

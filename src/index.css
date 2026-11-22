@@ -21174,3 +21174,91 @@ body:has(main.home--buy) .header-account {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
   pointer-events: none;
 }
+
+
+/* White brackets phone tap targets: 44px hit area without changing Coach/Pro cards. */
+@media (max-width: 440px) {
+  .tournament--white .t-mark,
+  .tournament--white .t-score,
+  .tournament--white .t-undo {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+.home--white .site-footer__legal a,
+.bracket-roster .names-sheet__tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.bracket-roster .names-sheet__tool {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.bracket-roster .bracket-roster__who-line,
+.bracket-roster .white-roster__row > .white-roster__who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.bracket-roster .white-roster__who strong,
+.bracket-roster .bracket-roster__who-line strong {
+  overflow-wrap: break-word;
+  word-break: normal;
+  max-width: 100%;
+}
+
+.bracket-roster .bracket-roster__gym {
+  display: block;
+}
+
+.bracket-roster__full {
+  margin: 0.35rem 0 0;
+  font-weight: 700;
+}
+
+.linked-bout-banner {
+  margin: 0.4rem 0.7rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(20, 22, 28, 0.82);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.4;
+  z-index: 6;
+}
+
+.linked-bout-banner button,
+.linked-bout-banner a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0 0.15rem;
+  padding: 0 0.55rem;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.linked-bout-banner button {
+  background: #fff;
+  color: #14161c;
+}
+
+.linked-bout-banner a {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}

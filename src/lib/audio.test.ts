@@ -90,7 +90,7 @@ test('a missing start sound becomes Combate, and a saved Beep stays Beep', async
   assert.equal(saved.volume, 0.4);
   const src = readFileSync(new URL('./audio.ts', import.meta.url), 'utf8');
   assert.match(src, /export function playTrainingStart\(\): void \{\s*if \(prefs\.startCue === 'beep'\) playStartCue\(\);\s*else playBeginCue\(\);/s);
-  assert.match(src, /export function playManualStartSound\(firstStart: boolean\): void \{\s*const kind = startSoundKind\(prefs\.startSoundWhen, firstStart\);\s*if \(kind === 'combat'\) playBeginCue\(\);\s*else playStartCue\(\);/s);
+  assert.match(src, /export function playManualStartSound\(firstStart: boolean\): void \{\s*if \(manualStartTooSoon\(\)\) return;\s*const kind = startSoundKind\(prefs\.startSoundWhen, firstStart\);\s*if \(kind === 'combat'\) playBeginCue\(\);\s*else playResumeCue\(\);/s);
   assert.match(src, /function startRecorded\(buffer: AudioBuffer, gain: number\): void \{\s*const audio = getContext\(\);\s*if \(masterGain\(\) <= 0\) return;\s*const bus = getMaster\(\);/s);
 });
 
@@ -154,6 +154,15 @@ test('start and 10s cues now reach the phone band; old sines were all under 1.6 
   const startPitches = audio.startCueVoices().map((v) => (v.kind === 'noise' ? 0 : v.freq));
   assert.ok(startPitches.includes(784) && startPitches.includes(1175));
   assert.equal(new Set(audio.warningCueVoices().map((v) => v.delay ?? 0)).size, 3);
+});
+
+test('the resume beep is one short note, not the four-oscillator start phrase', async () => {
+  const audio = await freshAudio();
+  const voices = audio.resumeCueVoices();
+  assert.equal(voices.length, 2);
+  assert.ok(voices.every((v) => !('delay' in v) || !v.delay));
+  const src = readFileSync(new URL('./audio.ts', import.meta.url), 'utf8');
+  assert.match(src, /else playResumeCue\(\);/);
 });
 
 test('next start cue waits for the whole end cue', async () => {

@@ -59,7 +59,7 @@ import {
   UNLIMITED_FROM,
   WHITE_BOARD_FROM,
 } from '../lib/productNames';
-import { seedWhiteBracketFromRoster } from '../lib/bracketRosterStore';
+import { getBracketRoster, seedWhiteBracketFromRoster } from '../lib/bracketRosterStore';
 import { coachLinkedWhiteBoard, withMatchOrigin } from '../lib/scoreboardSkin';
 import {
   bracketHasCompetitors,
@@ -213,9 +213,18 @@ export function TournamentPage() {
     });
   };
 
+  const fillFromWhiteRoster = (size: number, options?: { newBoard?: boolean }) => {
+    const placed = seedWhiteBracketFromRoster(size, options);
+    setFillPlaced(placed > 0 ? placed : null);
+  };
+
   const applySize = (size: number) => {
     unlinkBracketBout();
+    setFillPlaced(null);
     setCompetitorCount(size, sizeMax);
+    if (fromWhite && getBracketRoster().entries.length >= 2) {
+      fillFromWhiteRoster(size, { newBoard: false });
+    }
     setSizeOpen(false);
   };
 
@@ -272,7 +281,7 @@ export function TournamentPage() {
 
   return (
     <main
-      className={`tournament tournament--${shownTheme}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`tournament tournament--${shownTheme}${fromWhite ? ' tournament--white' : ''}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
     >
       <BeltRail kind="tournament" />
       <PlayExitMark to={exitPath} onExit={exitBoard} />
@@ -347,16 +356,17 @@ export function TournamentPage() {
                   {champLabel}
                   {kidsWin && kidsScore ? <strong className="kids-champ-score">{kidsScore}</strong> : null}
                 </p>
-              ) : null}
-              <RosterNameField
-                value={champion}
-                onChange={(value) => setSlotName('champion', value)}
-                onPrefill={(prefill) => setSlotName('champion', prefill.name)}
-                placeholder="Winner"
-                ariaLabel="Champion"
-                names={plainCoach ? 'student' : 'competitor'}
-                compact
-              />
+              ) : (
+                <RosterNameField
+                  value={champion}
+                  onChange={(value) => setSlotName('champion', value)}
+                  onPrefill={(prefill) => setSlotName('champion', prefill.name)}
+                  placeholder="Winner"
+                  ariaLabel="Champion"
+                  names={plainCoach ? 'student' : 'competitor'}
+                  compact
+                />
+              )}
             </div>
           </div>
 
@@ -390,7 +400,7 @@ export function TournamentPage() {
         <div className="tournament__tools" role="region" aria-label="Bracket controls">
           {fillPlaced != null ? (
             <p className="tournament__fill-note" role="status">
-              <span>Placed {fillPlaced} from check-in.</span>
+              <span>Placed {fillPlaced} from {fromWhite ? 'the Bracket Roster' : 'check-in'}.</span>
               <button
                 type="button"
                 className="btn btn--white"
@@ -469,8 +479,7 @@ export function TournamentPage() {
                 className="btn btn--ghost"
                 onClick={() => {
                   unlinkBracketBout();
-                  const placed = seedWhiteBracketFromRoster();
-                  setFillPlaced(placed > 0 ? placed : null);
+                  fillFromWhiteRoster(tournament.size);
                 }}
               >
                 Fill from Bracket Roster
@@ -556,8 +565,7 @@ export function TournamentPage() {
             type="button"
             className="btn btn--ghost"
             onClick={() => {
-              const placed = seedWhiteBracketFromRoster();
-              setFillPlaced(placed > 0 ? placed : null);
+              fillFromWhiteRoster(tournament.size);
             }}
           >
             Fill from Bracket Roster

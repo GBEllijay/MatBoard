@@ -45,7 +45,7 @@ export function useMatchBoard() {
 
   const originPath = (path: string) =>
     withKidsSkin(
-      withMatchOrigin(path, { fromSuite: suite.fromSuite, fromUnlimited: suite.fromUnlimited, whiteBoard }),
+      withMatchOrigin(path, { fromSuite: suite.fromSuite, fromUnlimited: suite.fromUnlimited, fromWhite: suite.fromWhite, whiteBoard }),
       kidsSkin,
     );
 

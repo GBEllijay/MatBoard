@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type MouseEvent, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { LinkedBoutBanner } from '../components/LinkedBoutBanner';
 import { FullscreenChip } from '../components/FullscreenChip';
 import { OutcomeCalls, OutcomePickSheet, useOutcomeSheet } from '../components/OutcomeCalls';
 import { OutcomeSplash } from '../components/OutcomeSplash';
@@ -21,7 +22,7 @@ import { useVisibleViewportHeight } from '../hooks/useVisibleViewportHeight';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useMatchState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
-import { controllerPath, declareMatchOutcome } from '../lib/bracketBout';
+import { controllerPath, declareMatchOutcome, isLeftoverLinkedBout } from '../lib/bracketBout';
 import { roundDisplay } from '../lib/roundDisplay';
 import { competitorFocus, type DisplayFocus } from '../lib/matchFocus';
 import { dispatchMatch, expireMatchClock, remainingNow, type Side } from '../lib/matchStore';
@@ -42,9 +43,11 @@ export function MatchDisplayPage() {
   const remaining = remainingNow(match);
   const fs = usePlayFullscreen();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const board = useMatchBoard();
   const suite = board.suite;
   const linkedId = board.linkedId;
+  const leftoverLinked = isLeftoverLinkedBout(linkedId, searchParams.get('bout'));
   const refNeeded = needsRefDecision({ ...match, remainingMs: remaining });
   const endedWithoutWinner = remaining <= 0 && !match.running && !match.outcome;
   const splash = match.outcomeFlash && match.outcome ? match.outcome : null;
@@ -171,6 +174,7 @@ export function MatchDisplayPage() {
           <div className="display__skin-scrim" data-custom-skin-scrim="" aria-hidden="true" />
         </>
       ) : null}
+      {leftoverLinked ? <LinkedBoutBanner backTo={suite.withFrom('/tournament')} /> : null}
       <div className="display__chrome">
         <div className="display__chrome-start">
           {linkedId ? null : (

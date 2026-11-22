@@ -292,6 +292,11 @@ export function BracketRosterPage() {
         <button type="submit" className="btn" disabled={roster.entries.length >= BRACKET_ROSTER_MAX}>
           Add to Bracket Roster
         </button>
+        {roster.entries.length >= BRACKET_ROSTER_MAX ? (
+          <p className="bracket-roster__full" role="status">
+            Roster full (36)
+          </p>
+        ) : null}
         {addError ? <p className="roster-edit__error">{addError}</p> : null}
       </form>
 

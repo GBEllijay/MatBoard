@@ -119,13 +119,32 @@ test('import replace and seed fill a 16-person White bracket from the roster', (
   resetTournament();
   const parsed = parseBracketRosterCsv(readFileSync('public/samples/bracket-roster-sample.csv', 'utf8'));
   replaceBracketRoster(parsed.entries.slice(0, 16));
-  const placed = seedWhiteBracketFromRoster();
+  const placed = seedWhiteBracketFromRoster(16);
   assert.equal(placed, 16);
   const board = getTournament();
   assert.equal(board.size, 16);
   const names = seedSlots(board).map((id) => slotName(board, id));
   assert.equal(names[0], 'Atlas');
   assert.equal(names[15], 'Ivy');
+  resetBracketRosterForTests();
+  resetTournament();
+});
+
+test('Fill respects the selected White bracket size instead of always using 36', () => {
+  resetBracketRosterForTests();
+  resetTournament();
+  const parsed = parseBracketRosterCsv(readFileSync('public/samples/bracket-roster-sample.csv', 'utf8'));
+  replaceBracketRoster(parsed.entries);
+  const placed = seedWhiteBracketFromRoster(16);
+  assert.equal(placed, 16);
+  const board = getTournament();
+  assert.equal(board.size, 16);
+  const eight = seedWhiteBracketFromRoster(8, { newBoard: false });
+  assert.equal(eight, 8);
+  assert.equal(getTournament().size, 8);
+  const sixteen = seedWhiteBracketFromRoster(16, { newBoard: false });
+  assert.equal(sixteen, 16);
+  assert.equal(getTournament().size, 16);
   resetBracketRosterForTests();
   resetTournament();
 });

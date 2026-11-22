@@ -12,6 +12,7 @@ import { EditionLadder } from '../components/EditionLadder';
 import { WhiteUpgradePrompt } from '../components/WhiteUpgradePrompt';
 import { SiteFooter } from '../components/SiteFooter';
 import { PRODUCTS_PATH } from '../lib/productNames';
+import { isPreviewWhiteUnlocked } from '../lib/previewWhiteBypass';
 import { lockWhite } from '../lib/whiteUnlock';
 
 export function WhitePage() {
@@ -25,7 +26,7 @@ export function WhitePage() {
           <BeltHeader
             kind="white"
             title="Advantage - White"
-            blurb="BJJ Scoreboard and Round Timer. Customizable Live Matches and Rounds"
+            blurb="Your Scoreboard, Round Timer and Mock Tournament Software. Cast to your TV from your phone or PC."
           />
           <LiveBoutCard />
           <RoundsCard />
@@ -52,30 +53,41 @@ export function WhitePage() {
             </p>
           </InstructionsButton>
           <FaqLink />
-          <p className="home__soon">
-            <Link className="home__text-btn" to="/buy">
-              Buy Advantage White — $9.99
-            </Link>
-          </p>
-          <p className="home__soon">
-            Advantage White is on for this browser.{' '}
-            <Link className="home__text-btn" to={PRODUCTS_PATH}>
-              All products
-            </Link>
-            {' · '}
-            <button
-              type="button"
-              className="home__text-btn"
-              onClick={() => {
-                lockWhite();
-                navigate(PRODUCTS_PATH);
-              }}
-            >
-              Lock White
-            </button>
-          </p>
+          {isPreviewWhiteUnlocked() ? (
+            <p className="home__soon">
+              Advantage White is on for this preview.{' '}
+              <Link className="home__text-btn" to={PRODUCTS_PATH}>
+                All products
+              </Link>
+            </p>
+          ) : (
+            <>
+              <p className="home__soon">
+                <Link className="home__text-btn" to="/buy">
+                  Buy Advantage White — $9.99
+                </Link>
+              </p>
+              <p className="home__soon">
+                Advantage White is on for this browser.{' '}
+                <Link className="home__text-btn" to={PRODUCTS_PATH}>
+                  All products
+                </Link>
+                {' · '}
+                <button
+                  type="button"
+                  className="home__text-btn"
+                  onClick={() => {
+                    lockWhite();
+                    navigate(PRODUCTS_PATH);
+                  }}
+                >
+                  Lock White
+                </button>
+              </p>
+            </>
+          )}
         </div>
-        <SiteFooter />
+        <SiteFooter hideAccount />
       </div>
     </main>
   );

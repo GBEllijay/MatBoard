@@ -7,7 +7,7 @@ import {
   SITE_OWNER_LINE,
 } from '../lib/siteFooter';
 
-export function SiteFooter() {
+export function SiteFooter({ hideAccount = false }: { hideAccount?: boolean } = {}) {
   return (
     <footer className="site-footer">
       <p>{SITE_OWNER_LINE}</p>
@@ -17,7 +17,7 @@ export function SiteFooter() {
         <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>
       </p>
       <nav className="site-footer__legal" aria-label="Help and legal">
-        <Link to="/account">Account</Link>
+        {hideAccount ? null : <Link to="/account">Account</Link>}
         <Link to="/faq">FAQ</Link>
         <Link to="/privacy">Privacy Policy</Link>
         <Link to="/terms">Terms of Service</Link>
