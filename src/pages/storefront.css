@@ -1255,3 +1255,25 @@
     padding-inline: 8px 4.75rem;
   }
 }
+
+
+/* Mock tournament card under the Round timer section. No belt ladder after it. */
+.home.home--store .sf-between--brackets {
+  grid-template-columns: 7fr 5fr;
+  margin-bottom: 110px;
+}
+
+.home.home--store .sf-between--brackets .sf-between-copy {
+  grid-column: 2;
+}
+
+@media (max-width: 900px) {
+  .home.home--store .sf-between--brackets {
+    grid-template-columns: 1fr;
+    margin-bottom: 72px;
+  }
+
+  .home.home--store .sf-between--brackets .sf-between-copy {
+    grid-column: 1;
+  }
+}

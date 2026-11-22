@@ -1,61 +1,28 @@
-import { Link, useSearchParams } from 'react-router-dom';
-import { useEntitlementSettled } from '../hooks/useEntitlementSettled';
-import { useProPlusCloudUnlocked } from '../hooks/useProPlusCloud';
-import { useSeatDoor } from '../hooks/useSeatDoor';
-import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
-import { ownerEditionTarget } from '../lib/ownerHome';
+import { Link } from 'react-router-dom';
 import { AccountLink } from '../components/AccountLink';
 import { UpdateToLatestButton } from '../components/UpdateToLatestButton';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
-import { studentHomeEntryPath } from '../lib/studentEdition';
-import { whiteEntryPath } from '../lib/whiteUnlock';
+import { WHITE_BRACKETS_PATH } from '../lib/bracketRosterStore';
 import {
   SITE_ALPHA_LINE,
   SITE_FEEDBACK_EMAIL,
   SITE_FEEDBACK_LEAD,
   SITE_OWNER_LINE,
-  alphaRequestMailto,
 } from '../lib/siteFooter';
 import {
+  STOREFRONT_BRACKETS,
   STOREFRONT_NAV,
   STOREFRONT_POINTS,
-  STOREFRONT_PROGRESS_EYEBROW,
-  STOREFRONT_PROGRESS_HEADING,
   STOREFRONT_TIMER,
   STOREFRONT_WOODBLOCKS,
 } from '../lib/storefront';
-import {
-  STOREFRONT_BELT_LADDER,
-  STOREFRONT_LADDER_NOTE,
-  beltsVariantOf,
-  type BeltRung,
-  type BeltsVariant,
-} from '../lib/storefrontBelts';
-import { PRODUCTS_PATH, proConsoleEntryOpen } from '../lib/productNames';
 import { StorefrontHero } from './StorefrontHero';
 import './storefront.css';
 
 export function StorefrontPage() {
   const unlocked = useWhiteUnlocked();
   const studentUnlocked = useStudentEditionUnlocked();
-  const [params] = useSearchParams();
-  const belts = beltsVariantOf(params.get('belts'));
-  const door = useSeatDoor();
-  const settled = useEntitlementSettled();
-  const cloudOpen = useProPlusCloudUnlocked();
-  const access = entitlementSnapshot();
-  const proConsoleOpen = proConsoleEntryOpen(door, access.claims, entitlementNowMs(), access.amnesty);
-  const editionTo = {
-    pro: ownerEditionTarget({ entry: 'pro', settled, seated: door.seated, proConsoleOpen, cloudOpen }),
-    'pro-cloud': ownerEditionTarget({
-      entry: 'pro-cloud',
-      settled,
-      seated: door.seated,
-      proConsoleOpen,
-      cloudOpen,
-    }),
-  };
 
   return (
     <main className="home home--store">
@@ -106,42 +73,12 @@ export function StorefrontPage() {
           </Link>
         </section>
 
-        <section className="sf-prog" id="progression" aria-labelledby="store-progress" data-belts={belts}>
-          <div className="sf-prog-head">
-            <div>
-              <div className="sf-eyebrow">{STOREFRONT_PROGRESS_EYEBROW}</div>
-              <h2 id="store-progress">
-                <Link className="sf-progress-link" to={PRODUCTS_PATH}>
-                  {STOREFRONT_PROGRESS_HEADING}
-                </Link>
-              </h2>
-            </div>
-            <Link className="sf-alpha" to="/white">
-              Request to join alpha
-            </Link>
-          </div>
-          <div className="sf-steps">
-            {STOREFRONT_BELT_LADDER.map((rung) => (
-              <ProgressStep
-                key={rung.id}
-                step={rung}
-                belts={belts}
-                to={
-                  rung.id === 'pro'
-                    ? editionTo.pro
-                    : rung.id === 'pro-cloud'
-                      ? editionTo['pro-cloud']
-                      : rung.id === 'white'
-                        ? whiteEntryPath(unlocked)
-                        : rung.id === 'student'
-                          ? studentHomeEntryPath(studentUnlocked)
-                          : undefined
-                }
-                showLearn={rung.id === 'white' ? !unlocked : rung.id === 'student' ? !studentUnlocked : true}
-              />
-            ))}
-          </div>
-          <p className="sf-note">{STOREFRONT_LADDER_NOTE}</p>
+        <section className="sf-between sf-between--brackets" id="brackets" aria-labelledby="store-brackets">
+          <Link className="sf-between-copy" to={WHITE_BRACKETS_PATH} aria-label="Open Mock tournament">
+            <div className="sf-eyebrow">{STOREFRONT_BRACKETS.eyebrow}</div>
+            <h2 id="store-brackets">{STOREFRONT_BRACKETS.title}</h2>
+            <p>{STOREFRONT_BRACKETS.body}</p>
+          </Link>
         </section>
       </div>
 
@@ -199,67 +136,6 @@ function Woodblock({
   );
 }
 
-function ProgressStep({ step, belts, to, showLearn = true }: { step: BeltRung; belts: BeltsVariant; to?: string; showLearn?: boolean }) {
-  const dest = to ?? step.to;
-  const body = (
-    <>
-      <div className="sf-rank">
-        <b>{step.rank}</b>
-        {step.rankLabel}
-      </div>
-      <div className="sf-beltcol">
-        <div className="sf-belt-box">
-          <Belt color={step.belt} bar={step.bar} journal={step.id === 'student' && belts === 'a'} />
-        </div>
-      </div>
-      <div className="sf-info">
-        <div>
-          <h3>{step.title}</h3>
-          <p>{step.blurb}</p>
-          {step.detail ? <p className="sf-step-detail">{step.detail}</p> : null}
-          {showLearn && step.learnLabel && (step.learnTo ?? step.to) ? (
-            <Link className="sf-learn" to={step.learnTo ?? step.to ?? ''}>
-              {step.learnLabel}
-            </Link>
-          ) : null}
-        </div>
-        <div className="sf-meta">
-          {step.cardPrice ? (
-            <div className={step.status === 'Available now' ? 'sf-price-now' : 'sf-price-soon'}>{step.cardPrice}</div>
-          ) : null}
-          <span className={step.status === 'Available now' ? 'sf-status sf-status--now' : 'sf-status sf-status--soon'}>
-            {step.status}
-          </span>
-        </div>
-      </div>
-    </>
-  );
-
-  const className = `sf-step${step.id === 'white' ? ' sf-step--live' : ''} sf-step--${step.id}`;
-  if (showLearn && step.learnLabel && (step.learnTo ?? step.to)) {
-    // The Learn more control is the button. The rest of the tile opens `to` when it has one.
-    return (
-      <article className={className}>
-        {dest ? <Link className="sf-step__hit" to={dest} tabIndex={-1} aria-hidden="true" /> : null}
-        {body}
-      </article>
-    );
-  }
-  if (dest === null) {
-    // No product yet: the tile is the alpha request, same as the section button.
-    return (
-      <a className={className} href={alphaRequestMailto()}>
-        {body}
-      </a>
-    );
-  }
-  return (
-    <Link className={className} to={dest}>
-      {body}
-    </Link>
-  );
-}
-
 /** Keeps the address with the last word so it does not sit on a line by itself. */
 function FooterFeedback() {
   const lead = SITE_FEEDBACK_LEAD;
@@ -279,31 +155,3 @@ function FooterFeedback() {
   );
 }
 
-/**
- * One belt set: same box, weave, stitch line and rank bar.
- * Pro is a plain black belt with a red bar. Pro Plus Cloud keeps the white | red | white bar.
- */
-function Belt({
-  color,
-  bar = 'rank',
-  journal = false,
-}: {
-  color: BeltRung['belt'];
-  bar?: BeltRung['bar'];
-  journal?: boolean;
-}) {
-  const kind = bar === 'striped' ? 'striped' : bar === 'red' ? 'red-bar' : color;
-  return (
-    <div className={`sf-belt sf-belt--${kind}${journal ? ' sf-belt--journal' : ''}`} data-belt={color} data-belt-bar={bar}>
-      {journal ? (
-        <span className="sf-embroidery" aria-hidden="true">
-          <svg className="sf-embroidery-mark" viewBox="0 0 24 24" width="20" height="20">
-            <path d="M4 5.5C6.6 4.4 9.4 4.4 12 6c2.6-1.6 5.4-1.6 8-.5v13c-2.6-1.1-5.4-1.1-8 .5-2.6-1.6-5.4-1.6-8-.5z" />
-            <path d="M12 6v13" />
-          </svg>
-          JOURNAL
-        </span>
-      ) : null}
-    </div>
-  );
-}

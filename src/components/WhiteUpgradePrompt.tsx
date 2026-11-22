@@ -16,7 +16,7 @@ import {
 import { useCurrentSeat } from './SeatSessionBar';
 
 /**
- * White hub prompt under Match names. Student buy page, no dollar amount.
+ * White hub prompt under Bracket Roster. Student buy page, no dollar amount.
  * Hidden once Student or any higher tier is open, and for a live seat.
  */
 export function WhiteUpgradePrompt() {

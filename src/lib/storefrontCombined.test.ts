@@ -17,14 +17,17 @@ test('combined homepage: hero e and belts b are the defaults with no query param
   assert.equal(beltsVariantOf(null), 'b');
 });
 
-test('combined homepage order: hero on top, existing middle sections, belt ladder at the bottom', () => {
+test('combined homepage order: hero, scoreboard art, round timer art, mock tournament card, footer', () => {
   const hero = tsx.indexOf('<StorefrontHero');
   const board = tsx.indexOf('id="scoreboard"');
   const timer = tsx.indexOf('id="round-timer"');
-  const ladder = tsx.indexOf('id="progression"');
+  const brackets = tsx.indexOf('id="brackets"');
   const footer = tsx.indexOf('<footer');
-  for (const at of [hero, board, timer, ladder, footer]) assert.ok(at > 0);
-  assert.ok(hero < board && board < timer && timer < ladder && ladder < footer);
+  for (const at of [hero, board, timer, brackets, footer]) assert.ok(at > 0);
+  assert.ok(hero < board && board < timer && timer < brackets && brackets < footer);
+  assert.equal(tsx.includes('id="progression"'), false);
+  assert.doesNotMatch(tsx, /STOREFRONT_BELT_LADDER/);
+  assert.doesNotMatch(tsx, /Start with White\. Grow into Pro\./);
 });
 
 test('hero e stacks the real round timer asset under the board', () => {
@@ -64,7 +67,7 @@ test('every ladder card links somewhere that exists (no 404s)', () => {
   assert.equal(byId.white.to, STOREFRONT_BUY_PATH);
   // Media Edition opens its own public page (not for sale; the page's CTA is the alpha-code email).
   assert.equal(byId.academy.to, '/media');
-  assert.match(tsx, /step\.to === null[\s\S]*href=\{alphaRequestMailto\(\)\}/);
+  // The public homepage no longer renders the belt ladder; destinations still have routes.
   for (const r of STOREFRONT_BELT_LADDER) {
     if (r.to === null) continue;
     assert.ok(

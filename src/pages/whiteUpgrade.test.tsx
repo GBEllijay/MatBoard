@@ -74,15 +74,16 @@ function prompt(host: HTMLElement) {
   return host.querySelector('[data-testid="white-upgrade"]');
 }
 
-test('White only: the prompt sits under Match names with the exact lines and no price', () => {
+test('White only: the prompt sits under Bracket Roster with the exact lines and no price', () => {
   reset();
   grant(['white']);
   const m = mount();
   const button = prompt(m.host);
-  const names = m.host.querySelector('.mode-card--names');
+  const roster = m.host.querySelector('#bracket-roster');
   assert.ok(button instanceof view.HTMLAnchorElement);
-  assert.ok(names);
-  assert.equal(names.compareDocumentPosition(button) & view.Node.DOCUMENT_POSITION_FOLLOWING, view.Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.ok(roster);
+  assert.equal(m.host.querySelector('.mode-card--names'), null);
+  assert.equal(roster.compareDocumentPosition(button) & view.Node.DOCUMENT_POSITION_FOLLOWING, view.Node.DOCUMENT_POSITION_FOLLOWING);
   assert.equal(button.getAttribute('aria-label'), WHITE_UPGRADE_LABEL);
   assert.equal(button.getAttribute('href'), '/editions/student');
   assert.equal(button.querySelector('.white-upgrade__line')?.textContent, WHITE_UPGRADE_LINE);

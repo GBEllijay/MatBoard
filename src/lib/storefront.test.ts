@@ -16,6 +16,7 @@ import {
   STOREFRONT_PROGRESS_EYEBROW,
   STOREFRONT_PROGRESS_HEADING,
   STOREFRONT_STEPS,
+  STOREFRONT_BRACKETS,
   STOREFRONT_TIMER,
   STOREFRONT_WOODBLOCKS,
 } from './storefront.ts';
@@ -63,6 +64,11 @@ test('Pass 2 sections use the approved copy and woodblocks', () => {
   );
   assert.equal(STOREFRONT_TIMER.title, 'Round timer');
   assert.match(STOREFRONT_TIMER.body, /Music in another app keeps playing/);
+  assert.equal(STOREFRONT_BRACKETS.eyebrow, 'Brackets');
+  assert.equal(STOREFRONT_BRACKETS.title, 'Mock tournament');
+  assert.match(STOREFRONT_BRACKETS.body, /Build a bracket from your roster/);
+  assert.match(STOREFRONT_BRACKETS.body, /mock tournaments/);
+  assert.doesNotMatch(STOREFRONT_BRACKETS.body, /official|sanctioned|IBJJF|franchise/i);
   assert.equal(STOREFRONT_WOODBLOCKS.scoreboard.webp, '/homepage/woodblock-scoreboard.webp');
   assert.equal(STOREFRONT_WOODBLOCKS.scoreboard.jpg, '/homepage/woodblock-scoreboard.jpg');
   assert.equal(STOREFRONT_WOODBLOCKS.scoreboard.width, 1280);

@@ -38,8 +38,9 @@ test('belt ladder is white, blue, purple, brown, black, black in rank order', ()
       'Advantage Pro + Cloud',
     ],
   );
-  assert.match(tsx, /STOREFRONT_BELT_LADDER\.map/);
+  assert.doesNotMatch(tsx, /STOREFRONT_BELT_LADDER/);
   assert.doesNotMatch(tsx, /STOREFRONT_STEPS\.map/);
+  assert.doesNotMatch(tsx, /id="progression"/);
 });
 
 test('?belts=a embroiders JOURNAL on the blue belt, ?belts=b is the plain blue belt', () => {
@@ -56,11 +57,8 @@ test('?belts=a embroiders JOURNAL on the blue belt, ?belts=b is the plain blue b
   assert.equal(student?.blurb, 'Personal BJJ Training Journal and More.');
   assert.doesNotMatch(student?.blurb ?? '', /^A personal BJJ training journal\.$/);
   assert.equal(student?.cardPrice, '$19.99 one-time');
-  assert.match(tsx, /beltsVariantOf\(params\.get\('belts'\)\)/);
-  assert.match(tsx, /journal=\{step\.id === 'student' && belts === 'a'\}/);
-  assert.match(tsx, />\s*JOURNAL\s*</);
-  assert.match(tsx, /className="sf-embroidery-mark"/);
-  // Leather journal art is gone from the homepage tile.
+  // The belt ladder (and its ?belts= journal embroidery) no longer renders on the public homepage.
+  assert.doesNotMatch(tsx, /beltsVariantOf/);
   assert.doesNotMatch(tsx, /StudentBinder|sf-leather/);
   assert.doesNotMatch(css, /sf-leather/);
   // ?belts= never sends / to the app home.
@@ -69,7 +67,7 @@ test('?belts=a embroiders JOURNAL on the blue belt, ?belts=b is the plain blue b
 });
 
 test('all five belts share one box, weave, stitch and rank bar', () => {
-  assert.match(tsx, /<div className="sf-belt-box">\s*<Belt color=\{step\.belt\}/);
+  assert.doesNotMatch(tsx, /sf-belt-box/);
   assert.match(css, /--sf-belt-purple: #6b2d91;/);
   assert.match(css, /--sf-belt-brown: #6b3a1f;/);
   assert.match(css, /\.sf-belt--purple \{\s*--sf-fill: var\(--sf-belt-purple\);\s*\}/);
@@ -146,11 +144,9 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   assert.match(proStep.blurb, /Includes Instructor Edition\.$/);
   assert.equal(pro.cardPrice, '$99.99 one-time');
   assert.equal(pro.to, '/editions/pro');
-  // Pro is the plain red bar. Pro Plus Cloud keeps white | red | white. White keeps the live card.
-  assert.match(tsx, /bar === 'striped' \? 'striped' : bar === 'red' \? 'red-bar' : color/);
+  // Pro is the plain red bar. Pro Plus Cloud keeps white | red | white.
   assert.match(css, /\.sf-belt--red-bar/);
   assert.match(css, /\.sf-belt--striped/);
-  assert.match(tsx, /step\.id === 'white' \? ' sf-step--live' : ''/);
   const cloud = STOREFRONT_BELT_LADDER.find((r) => r.id === 'pro-cloud');
   assert.ok(cloud);
   assert.equal(cloud.bar, 'striped');
@@ -175,18 +171,15 @@ test('Media Edition (purple) has no product: display price only, no checkout, th
   assert.equal(STOREFRONT_LADDER_NOTE, 'Student, Media, Instructor, Pro and Advantage Pro + Cloud are in alpha testing.');
   const media = STOREFRONT_BELT_LADDER.find((r) => r.id === 'academy');
   assert.equal(media?.learnLabel, 'Learn more about Media Edition');
-  assert.match(tsx, /className="sf-learn"/);
+  assert.doesNotMatch(tsx, /className="sf-learn"/);
   assert.doesNotMatch(STOREFRONT_LADDER_NOTE, /Academy Enhancement/);
   // Display only: no Academy product exists in Stripe.
   assert.equal(academy.cardPrice, '$29.99 one-time');
   assert.equal(academy.status, 'This product is in alpha');
   assert.equal(academy.to, '/media');
-  // The mail-link branch stays for any future rung without a page.
-  assert.match(tsx, /if \(dest === null\)[\s\S]*?href=\{alphaRequestMailto\(\)\}/);
-  // The section keeps its heading and the alpha button.
+  // The heading copy is unchanged; the public homepage no longer shows the ladder or alpha button.
   assert.equal(STOREFRONT_PROGRESS_HEADING, 'Start with White. Grow into Pro.');
-  assert.match(tsx, /Request to join alpha/);
-  assert.match(tsx, /<section className="sf-prog" id="progression"/);
-  // The second line is plain text, not a link.
-  assert.match(tsx, /\{step\.detail \? <p className="sf-step-detail">\{step\.detail\}<\/p> : null\}/);
+  assert.doesNotMatch(tsx, /Request to join alpha/);
+  assert.doesNotMatch(tsx, /id="progression"/);
+  assert.doesNotMatch(tsx, /sf-step-detail/);
 });

@@ -54,20 +54,16 @@ function hrefs(host: HTMLElement, selector: string): string[] {
   return [...host.querySelectorAll(selector)].map((node) => (node as HTMLAnchorElement).getAttribute('href') ?? '');
 }
 
-test('the White hub keeps working Scoreboard, Controller, Rounds, and Match names links', () => {
+test('the White hub keeps working Scoreboard, Controller, Rounds, and Bracket Roster links', () => {
   const m = mount();
   const scoreboard = m.host.querySelector('#scoreboard');
   const rounds = m.host.querySelector('#round-timer');
-  const names = m.host.querySelector('.mode-card--names');
   assert.ok(scoreboard);
   assert.ok(rounds);
-  assert.ok(names);
+  assert.equal(m.host.querySelector('.mode-card--names'), null);
+  assert.doesNotMatch(m.host.textContent ?? '', /Match names/);
   assert.deepEqual(hrefs(scoreboard as HTMLElement, 'a.btn'), ['/match?from=white', '/match/control?from=white']);
   assert.deepEqual(hrefs(rounds as HTMLElement, 'a.btn'), ['/training?from=white', '/training/control?from=white']);
-  assert.deepEqual(hrefs(names as HTMLElement, 'a.btn, a.mode-card__hit'), ['/white/roster', '/white/roster']);
-  assert.match(names?.textContent ?? '', /match-names\.csv/);
-  assert.match(names?.textContent ?? '', /Upload/);
-  assert.match(names?.textContent ?? '', /Download/);
   m.done();
 });
 

@@ -45,13 +45,14 @@ test('the prompt is on for White only and off at Student and above, and for a se
   assert.equal(whiteUpgradePromptVisible({ ...whiteOnly, seated: true }), false);
 });
 
-test('the White hub places the prompt under Match names and links to the Student buy page', () => {
+test('the White hub places the prompt under Bracket Roster and links to the Student buy page', () => {
   const page = read('../pages/White.tsx');
   const prompt = read('../components/WhiteUpgradePrompt.tsx');
   const css = read('../index.css');
-  const namesAt = page.indexOf('<WhiteRosterCard />');
+  const rosterAt = page.indexOf('<BracketRosterCard />');
   const upgradeAt = page.indexOf('<WhiteUpgradePrompt />');
-  assert.ok(namesAt > 0 && upgradeAt > namesAt);
+  assert.ok(rosterAt > 0 && upgradeAt > rosterAt);
+  assert.equal(page.includes('<WhiteRosterCard'), false);
   assert.match(prompt, /aria-label=\{WHITE_UPGRADE_LABEL\}/);
   assert.match(prompt, /to=\{WHITE_UPGRADE_PATH\}/);
   assert.match(prompt, /belt-tip--blue/);

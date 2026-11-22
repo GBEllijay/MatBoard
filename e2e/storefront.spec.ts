@@ -68,26 +68,18 @@ test('public homepage sells Advantage White and links coming soon to the edition
   }
   await expect(page.locator('img[src*="hero-still"], img[src*="hero-poster"]')).toHaveCount(0);
 
-  const progress = page.getByRole('region', { name: 'Start with White. Grow into Pro.' });
-  await expect(progress.getByText('Progression', { exact: true })).toBeVisible();
-  await expect(progress.getByRole('heading', { name: 'Advantage White', exact: true })).toBeVisible();
-  const student = progress.locator('a.sf-step--student');
-  const coach = progress.locator('a.sf-step--coach');
-  const pro = progress.locator('a.sf-step--pro');
-  await expect(student).toContainText('Advantage – Student Edition');
-  await expect(student).toContainText('personal BJJ training journal');
-  await expect(student).toContainText('This product is in alpha');
-  await expect(coach).toContainText('Advantage Instructor Edition');
-  await expect(coach).toContainText('This product is in alpha');
-  await expect(pro).toContainText('Advantage Pro');
-  await expect(pro).toContainText('$99.99 one-time');
-  await expect(pro).toContainText('This product is in alpha');
-  await expect(progress).toContainText('are in alpha testing');
-
-  const mail = page.getByRole('link', { name: 'Request to join alpha' });
-  await expect(mail).toHaveAttribute('href', '/white');
-  await progress.scrollIntoViewIfNeeded();
-  await progress.screenshot({ path: '/opt/cursor/artifacts/coming-soon.png' });
+  const brackets = page.locator('#brackets');
+  await expect(brackets.getByText('Brackets', { exact: true })).toBeVisible();
+  await expect(brackets.getByRole('heading', { name: 'Mock tournament', exact: true })).toBeVisible();
+  await expect(brackets).toContainText('Build a bracket from your roster');
+  await expect(page.getByRole('link', { name: 'Open Mock tournament' })).toHaveAttribute('href', '/white/brackets?from=white');
+  await expect(page.getByRole('region', { name: 'Start with White. Grow into Pro.' })).toHaveCount(0);
+  await expect(page.locator('.sf-step')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Request to join alpha' })).toHaveCount(0);
+  await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Privacy Policy' })).toBeVisible();
+  await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Terms of Service' })).toBeVisible();
+  await brackets.scrollIntoViewIfNeeded();
+  await brackets.screenshot({ path: '/opt/cursor/artifacts/mock-tournament-card.png' });
   await shot(page, 'storefront-desktop');
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -97,42 +89,21 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(nav.getByRole('link', { name: 'Brackets', exact: true })).toHaveAttribute('href', '/white#brackets');
   await shot(page, 'storefront-mobile');
   await page.setViewportSize({ width: 1440, height: 900 });
-  await coach.click();
-  await expect(page).toHaveURL(/\/products$/);
-  await expect(page.getByRole('button', { name: 'Advantage Instructor Edition, This product is in alpha' })).toBeVisible();
 });
 
-test('White card opens checkout; Student, Coach, Pro, and the heading open the picker', async ({ page }) => {
+test('Click here opens White, and the Mock tournament card opens White brackets', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
 
   const buy = page.getByRole('link', { name: 'Click here' });
-  const heading = page.getByRole('link', { name: 'Start with White. Grow into Pro.', exact: true });
-  const white = page.locator('a.sf-step--white');
-  const student = page.locator('a.sf-step--student');
-  const coach = page.locator('a.sf-step--coach');
-  const pro = page.locator('a.sf-step--pro');
+  const brackets = page.getByRole('link', { name: 'Open Mock tournament' });
   await expect(buy).toHaveAttribute('href', '/white');
-  await expect(white).toHaveAttribute('href', '/buy');
-  await expect(heading).toHaveAttribute('href', '/products');
-  await expect(student).toHaveAttribute('href', '/products');
-  await expect(coach).toHaveAttribute('href', '/products');
-  await expect(pro).toHaveAttribute('href', '/products');
-  for (const link of [heading, student, coach, pro]) {
-    const href = await link.getAttribute('href');
-    expect(href).not.toBe('/buy');
-    expect(href).not.toBe('/student');
-    expect(href).not.toBe('/coming-soon');
-    expect(href ?? '').not.toMatch(/^#/);
-  }
+  await expect(brackets).toHaveAttribute('href', '/white/brackets?from=white');
+  await expect(page.locator('a.sf-step--white, a.sf-step--student, a.sf-step--coach, a.sf-step--pro')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Start with White. Grow into Pro.', exact: true })).toHaveCount(0);
 
-  await white.click();
-  await expect(page).toHaveURL(/\/buy$/);
-  await page.goto('/');
-  await heading.click();
-  await expect(page).toHaveURL(/\/products$/);
-  await expect(page.getByRole('heading', { name: 'Advantage', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Advantage White' })).toHaveAttribute('href', '/buy');
+  await brackets.click();
+  await expect(page).toHaveURL(/\/white\/brackets/);
 });
 
 test('legacy student and owner-code home links still open the edition picker', async ({ page }) => {
@@ -185,7 +156,7 @@ test('Coach Unlimited landscape keeps the corner back off the center Home logo',
   await shot(page, 'coach-unlimited-landscape');
 });
 
-test('landscape headline stays off the scoreboard and prices stay on their cards', async ({ page }) => {
+test('landscape headline stays off the scoreboard and woodblock art', async ({ page }) => {
   for (const size of HOME_LANDSCAPES) {
     await page.setViewportSize(size);
     await page.goto('/');
@@ -200,22 +171,10 @@ test('landscape headline stays off the scoreboard and prices stay on their cards
       const copy = box(document.querySelector('.sf-copy'));
       const board = box(document.querySelector('.sf-sb'));
       const image = box(document.querySelector('.sf-print img'));
-      const prices = [...document.querySelectorAll('.sf-price-now, .sf-price-soon')].map((el) => {
-        const price = box(el);
-        const card = box(el.closest('.sf-step'));
-        const inside =
-          price != null &&
-          card != null &&
-          price.left >= card.left - 1 &&
-          price.right <= card.right + 1 &&
-          price.top >= card.top - 1 &&
-          price.bottom <= card.bottom + 1;
-        return { text: el.textContent?.trim() ?? '', inside };
-      });
       return {
         copyOnBoard: copy != null && board != null && intersects(copy, board),
         copyOnImage: copy != null && image != null && intersects(copy, image),
-        prices,
+        ladderCount: document.querySelectorAll('.sf-step, #progression').length,
         scrollWidth: document.documentElement.scrollWidth,
         innerWidth: window.innerWidth,
       };
@@ -223,12 +182,7 @@ test('landscape headline stays off the scoreboard and prices stay on their cards
     expect(overlap.copyOnBoard, `${size.width}x${size.height} headline covers the scoreboard`).toBe(false);
     expect(overlap.copyOnImage, `${size.width}x${size.height} headline covers the woodblock`).toBe(false);
     expect(overlap.scrollWidth, `${size.width}x${size.height}`).toBeLessThanOrEqual(size.width + 1);
-    expect(overlap.prices, `${size.width}x${size.height}`).toEqual([
-      { text: '$9.99 one-time', inside: true },
-      { text: '$19.99 one-time', inside: true },
-      { text: '$29.99 one-time', inside: true },
-      { text: '$99.99 + $5.99/mo', inside: true },
-    ]);
+    expect(overlap.ladderCount, `${size.width}x${size.height} homepage still has the belt ladder`).toBe(0);
   }
 });
 

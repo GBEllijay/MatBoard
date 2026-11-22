@@ -77,6 +77,12 @@ export const STOREFRONT_TIMER = {
   body: 'Set the rounds and keep the clock on the display. Music in another app keeps playing while you train.',
 } as const;
 
+export const STOREFRONT_BRACKETS = {
+  eyebrow: 'Brackets',
+  title: 'Mock tournament',
+  body: 'Build a bracket from your roster, run each bout on the scoreboard, and cast it to the gym TV. Made for gym practice and mock tournaments.',
+} as const;
+
 export const STOREFRONT_PROGRESS_EYEBROW = 'Progression';
 
 /** Owner: this heading opens the pre-Pass-2 product picker, not checkout. */
