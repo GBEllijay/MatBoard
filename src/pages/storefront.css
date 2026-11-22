@@ -942,9 +942,17 @@
 
 .home.home--store .sf-footer-links {
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
   justify-content: flex-end;
   margin-top: 6px;
+  align-items: center;
+}
+
+.home.home--store .sf-footer-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 @media (max-width: 600px) {

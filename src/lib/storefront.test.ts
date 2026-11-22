@@ -152,3 +152,20 @@ test('phone-width storefront nav keeps Scoreboard, Round timer, and Brackets on 
   assert.match(css, /\.home\.home--store \.sf-nav-links a \{[^}]*white-space:\s*nowrap/s);
   assert.match(css, /@media \(max-width: 600px\) \{\s*\.home\.home--store \.sf-nav-links \{[^}]*gap:\s*8px/s);
 });
+
+test('the homepage footer has an Alpha testers link to /products and a 44px tap target', () => {
+  const page = readFileSync(new URL('../pages/Storefront.tsx', import.meta.url), 'utf8');
+  assert.match(page, /to=\{PRODUCTS_PATH\}>Alpha testers</);
+  assert.match(page, /to="\/privacy">Privacy Policy</);
+  assert.match(page, /to="\/terms">Terms of Service</);
+  const css = readFileSync(new URL('../pages/storefront.css', import.meta.url), 'utf8');
+  assert.match(css, /\.home\.home--store \.sf-footer-links a \{[^}]*min-height:\s*44px/s);
+});
+
+test('the homepage hero has a plain Coming soon to the App Store line, not a badge or link', () => {
+  const hero = readFileSync(new URL('../pages/StorefrontHero.tsx', import.meta.url), 'utf8');
+  assert.match(hero, /<p className="sfh-appstore">Coming soon to the App Store<\/p>/);
+  assert.doesNotMatch(hero, /apps\.apple\.com|App Store badge|Download on the App Store/i);
+  const around = hero.slice(hero.indexOf('sfh-appstore') - 80, hero.indexOf('sfh-appstore') + 80);
+  assert.doesNotMatch(around, /<Link[^>]*>Coming soon to the App Store/);
+});

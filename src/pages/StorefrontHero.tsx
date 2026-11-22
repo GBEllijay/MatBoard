@@ -23,10 +23,13 @@ function Card({ shot, className }: { shot: typeof SCOREBOARD; className: string 
 
 function Brand() {
   return (
-    <Link className="sfh-brand" to="/" aria-label="Advantage home">
-      <img src="/advantage-icon.png" alt="" width={120} height={120} draggable={false} />
-      <span>Advantage</span>
-    </Link>
+    <>
+      <Link className="sfh-brand" to="/" aria-label="Advantage home">
+        <img src="/advantage-icon.png" alt="" width={120} height={120} draggable={false} />
+        <span>Advantage</span>
+      </Link>
+      <p className="sfh-appstore">Coming soon to the App Store</p>
+    </>
   );
 }
 
