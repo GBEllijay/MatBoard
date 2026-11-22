@@ -84,6 +84,7 @@ import { GamePlanPage } from './pages/GamePlan';
 import { HomePage } from './pages/Home';
 import { ProPlusCloudPage } from './pages/ProPlusCloud';
 import { StorefrontPage } from './pages/Storefront';
+import { HomeLicenseRedirect } from './pages/HomeLicenseRedirect';
 import { FaqPage } from './pages/Faq';
 import { CompactLineageCard, ExpandedLineageLine } from './preview/ownerLineage/OwnerLineageViews';
 import { ACADEMY_IDENTITY_PATH, AcademyIdentityPreview } from './preview/academyIdentity/AcademyIdentityPreview';
@@ -453,7 +454,11 @@ function PublicHomeRoute() {
     const search = params.toString();
     return <Navigate to={search ? `${PRODUCTS_PATH}?${search}` : PRODUCTS_PATH} replace />;
   }
-  return <StorefrontPage />;
+  return (
+    <HomeLicenseRedirect>
+      <StorefrontPage />
+    </HomeLicenseRedirect>
+  );
 }
 
 function EditionsRedirect() {
