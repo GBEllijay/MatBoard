@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { STOREFRONT_BUY_LABEL, STOREFRONT_BUY_PATH, STOREFRONT_HERO } from '../lib/storefront';
+import { STOREFRONT_HERO } from '../lib/storefront';
 import { heroVariantOf } from '../lib/storefrontHero';
 import './storefrontHero.css';
 
@@ -54,31 +54,22 @@ function Copy() {
   );
 }
 
-function Cta({ unlocked, studentUnlocked = false }: { unlocked: boolean; studentUnlocked?: boolean }) {
+function Cta({ unlocked: _unlocked, studentUnlocked = false }: { unlocked: boolean; studentUnlocked?: boolean }) {
   return (
     <div className="sfh-cta">
-      {unlocked ? (
-        <Link className="sf-buy sfh-buy" to="/white">
-          <span>Open White</span>
-          <svg className="sfh-chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-            <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
-      ) : (
-        <Link className="sf-buy sfh-buy" to={STOREFRONT_BUY_PATH}>
-          <span>{STOREFRONT_BUY_LABEL}</span>
-          <svg className="sfh-chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-            <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
-      )}
+      <Link className="sf-buy sfh-buy" to="/white">
+        <span>Click here</span>
+        <svg className="sfh-chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </Link>
       <p className="sfh-fine">{STOREFRONT_HERO.fine}</p>
       <div className="sfh-links">
-        <a className="sfh-more" href="#scoreboard">
+        <Link className="sfh-more" to="/white">
           See how it works ↓
-        </a>
+        </Link>
         {studentUnlocked ? (
-          <Link className="sf-open sfh-more" to="/student">
+          <Link className="sf-open sfh-more" to="/white">
             Open Student Edition
           </Link>
         ) : null}

@@ -25,10 +25,11 @@ export const STOREFRONT_HERO = {
   clock: '05:00',
 } as const;
 
-/** In-page nav. No Belt progression link. */
+/** Top nav. Opens the White hub (or a card on it). No Belt progression link. */
 export const STOREFRONT_NAV = [
-  { href: '#scoreboard', label: 'Scoreboard' },
-  { href: '#round-timer', label: 'Round timer' },
+  { href: '/white#scoreboard', label: 'Scoreboard' },
+  { href: '/white#round-timer', label: 'Round timer' },
+  { href: '/white#brackets', label: 'Brackets' },
 ] as const;
 
 export const STOREFRONT_POINTS = [

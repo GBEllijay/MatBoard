@@ -38,7 +38,15 @@ test('Pass 2 sections use the approved copy and woodblocks', () => {
   assert.equal(STOREFRONT_ALPHA_NOTE, 'Student, Instructor Edition and Pro are in alpha testing.');
   assert.deepEqual(
     STOREFRONT_NAV.map((item) => item.label),
-    ['Scoreboard', 'Round timer'],
+    ['Scoreboard', 'Round timer', 'Brackets'],
+  );
+  assert.deepEqual(
+    STOREFRONT_NAV.map((item) => item.href),
+    ['/white#scoreboard', '/white#round-timer', '/white#brackets'],
+  );
+  assert.equal(
+    STOREFRONT_NAV.some((item) => /mock tournament/i.test(item.label)),
+    false,
   );
   assert.equal(
     STOREFRONT_NAV.some((item) => /belt progression/i.test(item.label)),

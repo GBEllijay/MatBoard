@@ -13885,47 +13885,270 @@ html.lesson-cover-open body {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
-/* Match names only. Yellow legal-pad paper replaces the white belt rail. */
+/* Match names only. Spreadsheet / CSV chrome replaces the legal-pad paper. */
 .home--white .mode-card--names {
-  --pad-ink: #2c2618;
-  padding-left: 2.15rem;
-  color: var(--pad-ink);
-  border-color: rgba(138, 108, 42, 0.42);
-  background:
-    linear-gradient(
-      to right,
-      transparent 1.38rem,
-      #d24b45 1.38rem,
-      #d24b45 calc(1.38rem + 2px),
-      transparent calc(1.38rem + 2px)
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent 27px,
-      rgba(70, 140, 220, 0.5) 27px,
-      rgba(70, 140, 220, 0.5) 28px
-    ),
-    linear-gradient(180deg, #f8efc8 0%, #f4e6ad 58%, #f0df9c 100%);
+  --sheet-ink: #1f2a1c;
+  --sheet-line: #d4dcd0;
+  --sheet-head: #217346;
+  color: var(--sheet-ink);
+  border-color: #1d5c38;
+  background: #eef3eb;
   box-shadow:
-    0 16px 36px rgba(40, 28, 8, 0.28),
-    inset 0 1px 0 rgba(255, 252, 240, 0.7);
+    0 16px 36px rgba(12, 28, 16, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .home--white .mode-card--names > strong {
-  color: var(--pad-ink);
+  color: var(--sheet-ink);
 }
 
 .home--white .mode-card--names > .mode-card__sub {
-  color: #3d5278;
+  color: #2d6a45;
 }
 
-.home--white .mode-card--names > span:not(.mode-card__sub) {
-  color: #4a4030;
+.home--white .mode-card--names > span:not(.mode-card__sub):not(.names-sheet__tool):not(.names-sheet__tab) {
+  color: #3b4a3a;
 }
 
 .home--white .mode-card--names > .belt-rail {
   display: none;
+}
+
+.home--white .names-sheet {
+  position: relative;
+  z-index: 0;
+  margin: -0.15rem -0.15rem 0.35rem;
+  border: 1px solid #1d5c38;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+}
+
+.home--white .names-sheet__chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.45rem 0;
+  background: linear-gradient(180deg, #2e8a56 0%, #217346 100%);
+}
+
+.home--white .names-sheet__tabs {
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.home--white .names-sheet__tab {
+  display: inline-block;
+  padding: 0.28rem 0.7rem 0.22rem;
+  border-radius: 6px 6px 0 0;
+  background: #fff;
+  color: #217346;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.home--white .names-sheet__tools {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.home--white .names-sheet__tool {
+  display: inline-block;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #f4fff7;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.home--white .names-sheet__grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.78rem;
+  background: #fff;
+}
+
+.home--white .names-sheet__grid th,
+.home--white .names-sheet__grid td {
+  border: 1px solid var(--sheet-line);
+  padding: 0.28rem 0.4rem;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home--white .names-sheet__grid thead th {
+  background: #e8eee6;
+  color: #4a5a48;
+  font-weight: 700;
+  text-align: center;
+  font-size: 0.66rem;
+}
+
+.home--white .names-sheet__corner,
+.home--white .names-sheet__grid tbody th {
+  width: 1.6rem;
+  background: #e8eee6;
+  color: #4a5a48;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.home--white .names-sheet__head-row td {
+  background: #f3f8f1;
+  font-weight: 700;
+}
+
+.home--white .mode-card--names .mode-card__actions,
+.home--white .mode-card--brackets .mode-card__actions,
+.home--white .mode-card--bracket-roster .mode-card__actions {
+  grid-template-columns: 1fr;
+}
+
+.home--white .mode-card[id] {
+  scroll-margin-top: calc(0.75rem + var(--safe-t, 0px));
+}
+
+.home--white .mode-card--brackets {
+  background: linear-gradient(180deg, #1b2433 0%, #10141c 100%);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.home--white .mode-card--brackets > span:not(.mode-card__sub) {
+  color: #d7e1f6;
+}
+
+.home--white .brackets-placeholder {
+  position: relative;
+  z-index: 0;
+  margin: 0 0 0.2rem;
+}
+
+.home--white .brackets-placeholder__art {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.home--white .brackets-placeholder__bezel {
+  fill: #0b0d12;
+  stroke: #6d7585;
+  stroke-width: 2;
+}
+
+.home--white .brackets-placeholder__screen {
+  fill: #152033;
+}
+
+.home--white .brackets-placeholder__stand,
+.home--white .brackets-placeholder__base {
+  fill: #2a3140;
+}
+
+.home--white .brackets-placeholder__title {
+  fill: #f4f7fb;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+}
+
+.home--white .brackets-placeholder__lines {
+  stroke: #8eb4ff;
+  stroke-width: 2;
+}
+
+.home--white .brackets-placeholder__name {
+  fill: #dce7ff;
+  font-size: 10px;
+  font-family: inherit;
+}
+
+.home--white .brackets-placeholder__name--right {
+  text-anchor: end;
+}
+
+.home--white .brackets-placeholder__note {
+  margin: 0.3rem 0 0;
+  color: #9aa6b8;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.home--white .mode-card--bracket-roster {
+  background: linear-gradient(180deg, #243044 0%, #18202c 100%);
+  border-color: rgba(216, 224, 255, 0.22);
+}
+
+.home--white .mode-card--bracket-roster > span:not(.mode-card__sub) {
+  color: #d7e1f6;
+}
+
+.home--white .bracket-roster-preview {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.15rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(8, 12, 22, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.home--white .bracket-roster-preview__who {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.home--white .bracket-roster-preview__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.home--white .bracket-roster-preview__field {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.home--white .bracket-roster-preview__field span {
+  color: #9aa6b8;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home--white .bracket-roster-preview__field b {
+  display: block;
+  padding: 0.38rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #152033;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .home--white .names-sheet__tool {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .home--white .mode-card__actions .btn {
+    min-height: 44px;
+  }
 }
 
 /* Under Match names, in the same grid. Not a floating layer over the board. */

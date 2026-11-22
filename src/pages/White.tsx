@@ -5,6 +5,8 @@ import { FaqLink } from '../components/FaqLink';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
+import { BracketsCard } from '../components/BracketsCard';
+import { BracketRosterCard } from '../components/BracketRosterCard';
 import { WhiteRosterCard } from '../components/WhiteRosterCard';
 import { EditionLadder } from '../components/EditionLadder';
 import { WhiteUpgradePrompt } from '../components/WhiteUpgradePrompt';
@@ -27,6 +29,8 @@ export function WhitePage() {
           />
           <LiveBoutCard />
           <RoundsCard />
+          <BracketsCard />
+          <BracketRosterCard />
           <WhiteRosterCard />
           <WhiteUpgradePrompt />
           <EditionLadder page="white" />

@@ -3,7 +3,7 @@ import { BeltRail } from './BeltRail';
 
 export function RoundsCard() {
   return (
-    <article className="mode-card mode-card--training">
+    <article className="mode-card mode-card--training" id="round-timer">
       <BeltRail kind="white" />
       <Link className="mode-card__hit" to="/training" tabIndex={-1} aria-label="Open Rounds" />
       <div className="white-timer" aria-hidden="true">

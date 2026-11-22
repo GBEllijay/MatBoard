@@ -1221,3 +1221,31 @@
     max-width: 100%;
   }
 }
+
+
+/* Homepage CTAs and feature cards that open /white. */
+.home.home--store .sf-nav-links a,
+.home.home--store .sf-alpha,
+.home.home--store a.sf-points,
+.home.home--store a.sf-between-copy,
+.home.home--store .sf-figure-hit {
+  text-decoration: none;
+  color: inherit;
+}
+
+.home.home--store .sf-figure-hit {
+  display: block;
+  color: inherit;
+}
+
+.home.home--store .sf-figure-hit .sf-caption {
+  display: flex;
+}
+
+@media (max-width: 600px) {
+  .home.home--store .sf-nav-links {
+    gap: 10px;
+    font-size: 13px;
+    padding-inline: 56px 72px;
+  }
+}

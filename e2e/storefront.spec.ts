@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ALPHA_REQUEST_SUBJECT, SITE_FEEDBACK_EMAIL } from '../src/lib/siteFooter.ts';
 
 const LANDSCAPES = [
   { width: 844, height: 390 },
@@ -35,14 +34,16 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(page.getByRole('heading', { name: 'Win by Advantage.', exact: true })).toBeVisible();
   await expect(page.getByText("Your Gym's Scoreboard, Round Timer, and Academy Enhancement Software. Cast to your TV from your phone or PC.")).toBeVisible();
   await expect(page.getByText('05:00', { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Buy Advantage White — $9.99' })).toHaveAttribute('href', '/buy');
+  await expect(page.getByRole('link', { name: 'Click here' })).toHaveAttribute('href', '/white');
   await expect(page.getByRole('heading', { name: 'Round timer', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Points', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Advantages', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Penalties', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Belt progression/i })).toHaveCount(0);
-  await expect(page.getByRole('navigation', { name: 'On this page' }).getByRole('link', { name: 'Scoreboard' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'On this page' }).getByRole('link', { name: 'Round timer' })).toBeVisible();
+  const nav = page.getByRole('navigation', { name: 'Advantage White' });
+  await expect(nav.getByRole('link', { name: 'Scoreboard' })).toHaveAttribute('href', '/white#scoreboard');
+  await expect(nav.getByRole('link', { name: 'Round timer' })).toHaveAttribute('href', '/white#round-timer');
+  await expect(nav.getByRole('link', { name: 'Brackets', exact: true })).toHaveAttribute('href', '/white#brackets');
 
   const shots = page.locator('.sf-print img');
   await expect(shots).toHaveCount(2);
@@ -84,17 +85,16 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(progress).toContainText('are in alpha testing');
 
   const mail = page.getByRole('link', { name: 'Request to join alpha' });
-  await expect(mail).toHaveAttribute(
-    'href',
-    `mailto:${SITE_FEEDBACK_EMAIL}?subject=${encodeURIComponent(ALPHA_REQUEST_SUBJECT)}`,
-  );
+  await expect(mail).toHaveAttribute('href', '/white');
   await progress.scrollIntoViewIfNeeded();
   await progress.screenshot({ path: '/opt/cursor/artifacts/coming-soon.png' });
   await shot(page, 'storefront-desktop');
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole('navigation', { name: 'On this page' }).getByRole('link', { name: 'Scoreboard' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'On this page' }).getByRole('link', { name: 'Round timer' })).toBeVisible();
+  const nav = page.getByRole('navigation', { name: 'Advantage White' });
+  await expect(nav.getByRole('link', { name: 'Scoreboard' })).toHaveAttribute('href', '/white#scoreboard');
+  await expect(nav.getByRole('link', { name: 'Round timer' })).toHaveAttribute('href', '/white#round-timer');
+  await expect(nav.getByRole('link', { name: 'Brackets', exact: true })).toHaveAttribute('href', '/white#brackets');
   await shot(page, 'storefront-mobile');
   await page.setViewportSize({ width: 1440, height: 900 });
   await coach.click();
@@ -106,13 +106,13 @@ test('White card opens checkout; Student, Coach, Pro, and the heading open the p
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
 
-  const buy = page.getByRole('link', { name: 'Buy Advantage White — $9.99' });
+  const buy = page.getByRole('link', { name: 'Click here' });
   const heading = page.getByRole('link', { name: 'Start with White. Grow into Pro.', exact: true });
   const white = page.locator('a.sf-step--white');
   const student = page.locator('a.sf-step--student');
   const coach = page.locator('a.sf-step--coach');
   const pro = page.locator('a.sf-step--pro');
-  await expect(buy).toHaveAttribute('href', '/buy');
+  await expect(buy).toHaveAttribute('href', '/white');
   await expect(white).toHaveAttribute('href', '/buy');
   await expect(heading).toHaveAttribute('href', '/products');
   await expect(student).toHaveAttribute('href', '/products');
@@ -361,9 +361,10 @@ test('homepage header scrolls out of view and stays off the scoreboard', async (
     const logo = page.locator('.sf-portrait-brand img');
     await expect(logo).toBeVisible();
     await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/');
-    const nav = page.getByRole('navigation', { name: 'On this page' });
-    await expect(nav.getByRole('link', { name: 'Scoreboard', exact: true })).toHaveAttribute('href', '#scoreboard');
-    await expect(nav.getByRole('link', { name: 'Round timer', exact: true })).toHaveAttribute('href', '#round-timer');
+    const nav = page.getByRole('navigation', { name: 'Advantage White' });
+    await expect(nav.getByRole('link', { name: 'Scoreboard', exact: true })).toHaveAttribute('href', '/white#scoreboard');
+    await expect(nav.getByRole('link', { name: 'Round timer', exact: true })).toHaveAttribute('href', '/white#round-timer');
+    await expect(nav.getByRole('link', { name: 'Brackets', exact: true })).toHaveAttribute('href', '/white#brackets');
     const read = () =>
       page.evaluate(() => {
         const rect = (el: Element | null) => {
@@ -468,14 +469,13 @@ test('homepage header scrolls out of view and stays off the scoreboard', async (
   await page.getByRole('link', { name: 'Home', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator('.sf-portrait-brand img')).toBeVisible();
-  await page.getByRole('navigation', { name: 'On this page' }).getByRole('link', { name: 'Scoreboard', exact: true }).click();
-  await expect(page.locator('#scoreboard')).toBeInViewport();
-  await page.evaluate(() => {
-    const scroller = document.querySelector('.sf-scroll');
-    if (scroller instanceof HTMLElement) scroller.scrollTop = 0;
-  });
-  await page.getByRole('navigation', { name: 'On this page' }).getByRole('link', { name: 'Round timer', exact: true }).click();
-  await expect(page.locator('#round-timer')).toBeInViewport();
+  await page.getByRole('navigation', { name: 'Advantage White' }).getByRole('link', { name: 'Scoreboard', exact: true }).click();
+  await expect(page).toHaveURL(/\/white#scoreboard$/);
+  await expect(page.locator('#scoreboard')).toBeVisible();
+  await page.goto('/');
+  await page.getByRole('navigation', { name: 'Advantage White' }).getByRole('link', { name: 'Round timer', exact: true }).click();
+  await expect(page).toHaveURL(/\/white#round-timer$/);
+  await expect(page.locator('#round-timer')).toBeVisible();
 });
 
 test('a focused field is not pulled back after the person scrolls', async ({ page }) => {
