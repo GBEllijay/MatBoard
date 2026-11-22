@@ -1257,10 +1257,11 @@
 }
 
 
-/* Mock tournament card under the Round timer section. No belt ladder after it. */
+/* Mock tournament card under the Round timer section. No belt ladder after it.
+   Footer already supplies the bottom gap (margin-top 96px / 64px). */
 .home.home--store .sf-between--brackets {
   grid-template-columns: 7fr 5fr;
-  margin-bottom: 110px;
+  margin-bottom: 0;
 }
 
 .home.home--store .sf-between--brackets .sf-between-copy {
@@ -1270,7 +1271,7 @@
 @media (max-width: 900px) {
   .home.home--store .sf-between--brackets {
     grid-template-columns: 1fr;
-    margin-bottom: 72px;
+    margin-bottom: 0;
   }
 
   .home.home--store .sf-between--brackets .sf-between-copy {

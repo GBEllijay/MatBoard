@@ -47,8 +47,8 @@ export function WhitePage() {
               screen or computer.
             </p>
             <p className="home__hint">
-              You can type a competitor name on the scoreboard, or pick one already saved on this
-              device.
+              You can type a competitor name on the scoreboard, or pick one from your Bracket
+              Roster.
             </p>
           </InstructionsButton>
           <FaqLink />

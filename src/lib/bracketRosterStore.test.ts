@@ -4,18 +4,45 @@ import { readFileSync } from 'node:fs';
 import {
   BRACKET_ROSTER_CSV_HEADERS,
   BRACKET_ROSTER_MAX,
+  WHITE_MATCH_NAMES_IMPORT_KEY,
   addBracketRosterEntry,
+  bracketRosterPrefill,
   clearBracketRoster,
+  findBracketRosterName,
   formatBracketRosterCsv,
+  getBracketRoster,
+  importWhiteMatchNamesOnce,
   parseBracketRosterCsv,
+  removeBracketRosterEntry,
   replaceBracketRoster,
   resetBracketRosterForTests,
+  searchBracketRoster,
   seedWhiteBracketFromRoster,
   updateBracketRosterEntry,
-  removeBracketRosterEntry,
-  getBracketRoster,
+  upsertBracketRosterName,
 } from './bracketRosterStore.ts';
+import {
+  WHITE_ROSTER_STORAGE_KEY,
+  addWhiteMatchName,
+  getWhiteRoster,
+  resetWhiteRoster,
+} from './whiteRosterStore.ts';
 import { getTournament, resetTournament } from './tournamentStore.ts';
+
+function memoryStorage() {
+  const store = new Map<string, string>();
+  return {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+  };
+}
+
+Object.defineProperty(globalThis, 'localStorage', { value: memoryStorage(), configurable: true });
 import { seedSlots, slotName } from './tournamentStore.ts';
 
 test('CSV export writes the required header and quoted cells', () => {
@@ -147,4 +174,90 @@ test('Fill respects the selected White bracket size instead of always using 36',
   assert.equal(getTournament().size, 16);
   resetBracketRosterForTests();
   resetTournament();
+});
+
+test('import copies Match names into an empty Bracket Roster once and leaves the old key', () => {
+  resetBracketRosterForTests();
+  resetWhiteRoster();
+  addWhiteMatchName('Sam Rivera', 'Blue');
+  addWhiteMatchName('Pat Nguyen', 'Purple');
+  const before = localStorage.getItem(WHITE_ROSTER_STORAGE_KEY);
+  assert.ok(before);
+  assert.equal(importWhiteMatchNamesOnce(), 2);
+  const roster = getBracketRoster();
+  assert.equal(roster.entries.length, 2);
+  assert.equal(findBracketRosterName(roster.entries, 'sam rivera')?.rank, 'Blue');
+  assert.equal(findBracketRosterName(roster.entries, 'Pat Nguyen')?.rank, 'Purple');
+  assert.equal(localStorage.getItem(WHITE_ROSTER_STORAGE_KEY), before);
+  assert.equal(getWhiteRoster().names.length, 2);
+  assert.equal(localStorage.getItem(WHITE_MATCH_NAMES_IMPORT_KEY), '1');
+  assert.equal(importWhiteMatchNamesOnce(), 0);
+  assert.equal(getBracketRoster().entries.length, 2);
+  clearBracketRoster();
+  assert.equal(getBracketRoster().entries.length, 0);
+  assert.equal(importWhiteMatchNamesOnce(), 0);
+  assert.equal(getBracketRoster().entries.length, 0);
+  resetBracketRosterForTests();
+  resetWhiteRoster();
+});
+
+test('import does not overwrite an existing Bracket Roster', () => {
+  resetBracketRosterForTests();
+  resetWhiteRoster();
+  addBracketRosterEntry({
+    name: 'Atlas',
+    gym: 'Northside Academy',
+    weight: '155',
+    division: 'Adult',
+    age: '28',
+    rank: 'Purple',
+  });
+  addWhiteMatchName('Sam', 'Blue');
+  assert.equal(importWhiteMatchNamesOnce(), 0);
+  assert.equal(getBracketRoster().entries.length, 1);
+  assert.equal(getBracketRoster().entries[0]?.name, 'Atlas');
+  assert.ok(localStorage.getItem(WHITE_ROSTER_STORAGE_KEY));
+  resetBracketRosterForTests();
+  resetWhiteRoster();
+});
+
+test('upsert adds a name or updates the rank, and search matches name, rank, and gym', () => {
+  resetBracketRosterForTests();
+  const added = upsertBracketRosterName('  Atlas  ', 'Purple');
+  assert.ok(added);
+  assert.equal(added?.name, 'Atlas');
+  assert.equal(added?.rank, 'Purple');
+  const again = upsertBracketRosterName('ATLAS', 'Brown');
+  assert.equal(again?.id, added?.id);
+  assert.equal(again?.rank, 'Brown');
+  assert.equal(getBracketRoster().entries.length, 1);
+  upsertBracketRosterName('Mina', 'Blue');
+  updateBracketRosterEntry(getBracketRoster().entries.find((row) => row.name === 'Mina')!.id, {
+    name: 'Mina',
+    gym: 'Pinecrest',
+    weight: '135',
+    division: 'Adult',
+    age: '24',
+    rank: 'Blue',
+  });
+  const found = searchBracketRoster(getBracketRoster().entries, 'pine');
+  assert.equal(found.length, 1);
+  assert.equal(found[0]?.name, 'Mina');
+  const byRank = searchBracketRoster(getBracketRoster().entries, 'brown');
+  assert.equal(byRank[0]?.name, 'Atlas');
+  const prefill = bracketRosterPrefill(getBracketRoster().entries.find((row) => row.name === 'Mina')!);
+  assert.deepEqual(prefill, { name: 'Mina', belt: 'Blue', gym: 'Pinecrest', division: 'Adult' });
+  resetBracketRosterForTests();
+});
+
+test('the White scoreboard picker reads the Bracket Roster, not Match names', () => {
+  const src = readFileSync(new URL('../components/WhiteNamePicker.tsx', import.meta.url), 'utf8');
+  assert.match(src, /useBracketRosterState/);
+  assert.match(src, /importWhiteMatchNamesOnce/);
+  assert.match(src, /upsertBracketRosterName/);
+  assert.match(src, /WHITE_BRACKET_ROSTER_PATH/);
+  assert.match(src, /entry\.rank/);
+  assert.doesNotMatch(src, /addWhiteMatchName|useWhiteRosterState|searchWhiteMatchNames|\/white\/roster/);
+  const field = readFileSync(new URL('../components/RosterNameField.tsx', import.meta.url), 'utf8');
+  assert.match(field, /whiteNames \? \(\s*<WhiteNamePicker/);
 });

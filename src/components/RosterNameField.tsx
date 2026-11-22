@@ -30,7 +30,7 @@ type Props = {
   ariaLabel?: string;
   compact?: boolean;
   /**
-   * `white` is the Advantage White match-name list on this phone.
+   * `white` is the Advantage White Bracket Roster on this phone.
    * Pro scoreboards and suite brackets leave this as `competitor`.
    * Basic Coach Mock Tournament uses `student` and the Coach Student Roster.
    */
