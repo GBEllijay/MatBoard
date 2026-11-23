@@ -43,8 +43,3 @@ test('Unknown stored theme falls back to Bright', () => {
   assert.equal(getBracketTheme(), 'bright');
 });
 
-test('Bracket theme persists Podium & Mat Strip', () => {
-  setBracketTheme('podium');
-  assert.equal(getBracketTheme(), 'podium');
-  assert.equal(localStorage.getItem(BRACKET_THEME_KEY), 'podium');
-});

@@ -914,7 +914,7 @@ test('Skin stays shut while a sheet is open and still opens again after it close
   }
 });
 
-test('TV Clean toggle, Podium & Mat Strip, Current match jump, and phone/TV CSS contracts hold', async () => {
+test('TV Clean toggle, Current match jump, and phone/TV CSS contracts hold', async () => {
   localStorage.clear();
   resetTournament();
   setBracketTheme('bright');
@@ -951,16 +951,6 @@ test('TV Clean toggle, Podium & Mat Strip, Current match jump, and phone/TV CSS 
     assert.equal(main.classList.contains('tournament--clean'), true);
     assert.equal(localStorage.getItem(BRACKET_CLEAN_KEY), '1');
 
-    const podiumBtn = [...mounted.host.querySelectorAll('button')].find(
-      (b) => /Podium & Mat Strip/i.test(b.textContent ?? ''),
-    );
-    assert.ok(podiumBtn, 'Podium & Mat Strip theme chip renders');
-    podiumBtn.click();
-    await settle();
-    assert.equal(main.classList.contains('tournament--podium'), true);
-    const podiumText = mounted.host.querySelector('.bracket__champ .podium-tiers')?.textContent ?? '';
-    assert.match(podiumText, /2nd/);
-    assert.match(podiumText, /3rd/);
 
     const jumpBtn = [...mounted.host.querySelectorAll('button')].find(
       (b) => /Current match/i.test(b.textContent ?? ''),
@@ -976,6 +966,5 @@ test('TV Clean toggle, Podium & Mat Strip, Current match jump, and phone/TV CSS 
   const css = readFileSync('src/pages/tournamentBoard.css', 'utf8');
   assert.match(css, /\.tournament__bar[\s\S]*padding:[^;]*calc\(4\.5rem/);
   assert.match(css, /\.tournament\.tournament--clean\s+\.t-slot__marks/);
-  assert.match(css, /\.tournament--podium\s+\.t-match--final/);
   assert.match(css, /@media\s*\(max-width:\s*720px\)[\s\S]*\.tournament__actions[\s\S]*overflow-x:\s*auto/);
 });

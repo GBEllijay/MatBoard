@@ -1116,12 +1116,6 @@ export function bracketHasContent(current: TournamentState): boolean {
   return Object.keys(current.results).length > 0;
 }
 
-export type BracketPodium = {
-  first: string;
-  second: string;
-  third: string[];
-};
-
 /**
  * Pick the next unplayed, non-bye match in round order.
  * Prefers `preferredMatchId` if valid and unplayed, then matches where both
@@ -1153,27 +1147,3 @@ export function nextPlayableMatchId(
   return 'final-0';
 }
 
-/** Derive 1st (Gold), 2nd (Silver), and 3rd (Bronze) from completed bracket bouts. */
-export function bracketPodium(current: TournamentState): BracketPodium {
-  const finalResult = current.results['final-0'];
-  const firstFromFinal = finalResult ? slotName(current, slotId('final-0', finalResult.winnerSide)).trim() : '';
-  const first = slotName(current, 'champion').trim() || firstFromFinal;
-  const second = finalResult ? slotName(current, slotId('final-0', otherSide(finalResult.winnerSide))).trim() : '';
-
-  const third: string[] = [];
-  if (isThreePersonBracket(current)) {
-    const sf1 = current.results['sf-1'];
-    if (sf1) {
-      const name = slotName(current, slotId('sf-1', otherSide(sf1.winnerSide))).trim();
-      if (name) third.push(name);
-    }
-  } else if (clampCompetitorCount(current.size) >= 4) {
-    for (const sfId of ['sf-0', 'sf-1'] as const) {
-      const res = current.results[sfId];
-      if (!res || matchHasBye(current, sfId)) continue;
-      const name = slotName(current, slotId(sfId, otherSide(res.winnerSide))).trim();
-      if (name && !third.includes(name)) third.push(name);
-    }
-  }
-  return { first, second, third };
-}

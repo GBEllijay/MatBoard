@@ -33,7 +33,7 @@ import {
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
 import { scoreboardCompetitionFields } from '../lib/matchRound';
-import { BRACKET_THEMES, DEFAULT_BRACKET_THEME, setBracketTheme } from '../lib/bracketTheme';
+import { DEFAULT_BRACKET_THEME, setBracketTheme } from '../lib/bracketTheme';
 import { setBracketClean } from '../lib/bracketCleanMode';
 import './tournamentBoard.css';
 import {
@@ -81,7 +81,6 @@ import {
   fillCheckedInBracket,
   fillSeedNames,
   undoCheckedInFill,
-  bracketPodium,
   newBracket,
   nextPlayableMatchId,
   parseNameList,
@@ -209,7 +208,6 @@ export function TournamentPage() {
     liveMatchId && !tournament.results[liveMatchId] ? liveMatchId : null,
   );
   const jumpTargetId = (liveMatchId && !tournament.results[liveMatchId] ? liveMatchId : null) ?? nextMatchId;
-  const podium = bracketPodium(tournament);
 
   useVisibleViewportHeight();
   useLockViewportZoom();
@@ -388,7 +386,7 @@ export function TournamentPage() {
             <MatchCard matchId="final-0" liveMatchId={liveMatchId} nextMatchId={nextMatchId} />
             <div className={`bracket__champ${champLabel ? ' is-filled' : ''}${kidsWin ? ' is-kids-win' : ''}`}>
               <BeltRail kind="tournament" />
-              <span>{shownTheme === 'podium' && !kidsWin ? '1st · Champion' : kidsWin ? 'Winner' : 'Champion'}</span>
+              <span>{kidsWin ? 'Winner' : 'Champion'}</span>
               {champLabel ? (
                 <p
                   className="bracket__champ-flash"
@@ -409,20 +407,6 @@ export function TournamentPage() {
                   compact
                 />
               )}
-              {shownTheme === 'podium' && !kidsOn ? (
-                <div className="podium-tiers" aria-label="Podium standings">
-                  <div className="podium-tier podium-tier--silver">
-                    <span className="podium-tier__rank">2nd · Silver</span>
-                    <strong className="podium-tier__name">{podium.second || 'TBD'}</strong>
-                  </div>
-                  <div className="podium-tier podium-tier--bronze">
-                    <span className="podium-tier__rank">3rd · Bronze</span>
-                    <strong className="podium-tier__name">
-                      {podium.third.length ? podium.third.join(' / ') : 'TBD'}
-                    </strong>
-                  </div>
-                </div>
-              ) : null}
             </div>
           </div>
 
@@ -488,18 +472,24 @@ export function TournamentPage() {
             {kidsSkins ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinButtonSuppressed} /> : null}
             {plainCoach ? null : (
               <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
-                {BRACKET_THEMES.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={theme === option.id}
-                    className={`chip${theme === option.id ? ' chip--on' : ''}`}
-                    onClick={() => setBracketTheme(option.id)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === 'bright'}
+                  className={`chip${theme === 'bright' ? ' chip--on' : ''}`}
+                  onClick={() => setBracketTheme('bright')}
+                >
+                  Bright
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === 'dark'}
+                  className={`chip${theme === 'dark' ? ' chip--on' : ''}`}
+                  onClick={() => setBracketTheme('dark')}
+                >
+                  Dark
+                </button>
               </div>
             )}
             <button
