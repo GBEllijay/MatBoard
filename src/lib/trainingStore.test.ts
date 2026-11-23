@@ -113,7 +113,7 @@ test('warning ticks still mark warned, and cues follow the switches', () => {
   assert.match(store, /if \(warningSound\) playWarningCue\(\)/);
   assert.match(store, /persist\(\{ \.\.\.state, warned: true \}\)/);
   const tick = store.slice(store.indexOf('export function tickTraining'));
-  assert.match(tick, /if \(left > 0\) return;\s*if \(state\.phase === 'work'\) nextAfterWork\(\);/);
+  assert.match(tick, /if \(left > 0\) return;\s*if \(!claimTransition\(`expire:\$\{state\.phase\}:\$\{state\.currentRound\}:\$\{state\.startedAt \?\? 0\}`\)\) return;\s*if \(state\.phase === 'work'\) nextAfterWork\(\);/);
   assert.doesNotMatch(tick, /requestAnimationFrame\(|setTimeout\(/);
   const audio = readFileSync(new URL('./audio.ts', import.meta.url), 'utf8');
   const parou = audio.slice(audio.indexOf('function playParouCue'), audio.indexOf('export function playSelectedEndCue'));

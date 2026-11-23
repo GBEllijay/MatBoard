@@ -13,7 +13,7 @@ import { formatMmSs } from '../lib/format';
 import { fullscreenSupported, requestPageFullscreen } from '../lib/fullscreen';
 import { ROUNDS_FULLSCREEN_STATE, readRoundsDeviceEnv, roundsChipAction, roundsDisplayPath } from '../lib/roundsFullscreen';
 import { trainingUsesAdvantageSkin, visibleTrainingSkin, whiteTimerControllerClass } from '../lib/trainingSkin';
-import { remainingTraining, resetTrainingPeriod, resetTrainingSession, toggleTrainingClock } from '../lib/trainingStore';
+import { remainingTraining, resetTrainingPeriod, resetTrainingSession, toggleTrainingClock, trainingClockActionLabel } from '../lib/trainingStore';
 
 function openRoundsWindow(fromSuite: boolean): void {
   window.open(roundsDisplayPath(fromSuite), 'matboard-rounds', 'popup,noopener,noreferrer,width=1280,height=720');
@@ -85,6 +85,7 @@ export function TrainingControllerPage() {
         >
           {training.phase === 'work' ? 'Work' : 'Break'} · {roundLabel}
         </HoldButton>
+        <p className="clock-field-label">Round time</p>
         <HoldButton
           className="clock-btn clock-btn--control"
           dataHold="timer"
@@ -96,7 +97,7 @@ export function TrainingControllerPage() {
         </HoldButton>
         <div className="training-control__actions">
           <button type="button" className="btn" onClick={toggleClock}>
-            {training.running ? 'Pause' : 'Start'}
+            {trainingClockActionLabel(training)}
           </button>
         </div>
       </section>

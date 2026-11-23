@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { WHITE_BOARD_FROM } from '../lib/productNames';
 import { ACCOUNT_PATH, LOGIN_EVENT, readLoginHint } from '../lib/emailLogin';
 import { accountButtonBlocked } from '../lib/optionsReopenGuard';
 import { isSheetLayerOpen, subscribeSheetLayer } from '../lib/sheetLayer';
@@ -20,6 +21,10 @@ const HIDDEN_PATHS = new Set(['/', '/match', '/training', '/white']);
  */
 export function HeaderAccount() {
   const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+  const fromWhite = searchParams.get('from') === WHITE_BOARD_FROM;
+  const whiteController =
+    fromWhite && (pathname === '/match/control' || pathname === '/training/control');
   const [hint, setHint] = useState(() => readLoginHint());
   useEffect(() => {
     const update = () => setHint(readLoginHint());
@@ -32,7 +37,7 @@ export function HeaderAccount() {
   }, []);
   // Any open sheet owns the top-right corner (its Close). Do not rely on CSS :has() alone.
   const sheetOpen = useSyncExternalStore(subscribeSheetLayer, isSheetLayerOpen, () => false);
-  if (HIDDEN_PATHS.has(pathname) || pathname.startsWith('/white/') || sheetOpen) return null;
+  if (HIDDEN_PATHS.has(pathname) || pathname.startsWith('/white/') || whiteController || sheetOpen) return null;
   return (
     <Link
       className="header-account"
