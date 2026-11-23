@@ -1,5 +1,5 @@
 /**
- * Rendered White hub: the upgrade prompt is present for White only.
+ * Rendered White hub: the upgrade prompt is no longer on /white.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -9,7 +9,6 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { clearEntitlementToken, setEntitlementConfigForTests } from '../lib/entitlement.ts';
 import { clearOwnerTestGrant, applyOwnerTestGrant } from '../lib/ownerTestGrant.ts';
-import { WHITE_UPGRADE_LABEL, WHITE_UPGRADE_LINE, WHITE_UPGRADE_SUB } from '../lib/whiteUpgradePrompt.ts';
 import { WhitePage } from './White.tsx';
 
 const dom = new Window({ url: 'http://localhost/white' });
@@ -74,27 +73,16 @@ function prompt(host: HTMLElement) {
   return host.querySelector('[data-testid="white-upgrade"]');
 }
 
-test('White only: the prompt sits under Bracket Roster with the exact lines and no price', () => {
+test('the White hub no longer shows the upgrade prompt, even when White is unlocked', () => {
   reset();
   grant(['white']);
   const m = mount();
-  const button = prompt(m.host);
-  const roster = m.host.querySelector('#bracket-roster');
-  assert.ok(button instanceof view.HTMLAnchorElement);
-  assert.ok(roster);
-  assert.equal(m.host.querySelector('.mode-card--names'), null);
-  assert.equal(roster.compareDocumentPosition(button) & view.Node.DOCUMENT_POSITION_FOLLOWING, view.Node.DOCUMENT_POSITION_FOLLOWING);
-  assert.equal(button.getAttribute('aria-label'), WHITE_UPGRADE_LABEL);
-  assert.equal(button.getAttribute('href'), '/editions/student');
-  assert.equal(button.querySelector('.white-upgrade__line')?.textContent, WHITE_UPGRADE_LINE);
-  assert.equal(button.querySelector('.white-upgrade__sub')?.textContent, WHITE_UPGRADE_SUB);
-  assert.equal(button.querySelector('.belt-tip--blue') instanceof view.HTMLElement, true);
-  assert.doesNotMatch(button.textContent ?? '', /\$/);
-  assert.equal(WHITE_UPGRADE_LINE, 'Start with White, grow into Pro.');
-  assert.equal(
-    WHITE_UPGRADE_SUB,
-    'Your investment grows with you. Your purchase price counts towards each upgrade.',
-  );
+  assert.equal(prompt(m.host), null);
+  assert.ok(m.host.querySelector('#bracket-roster'));
+  assert.doesNotMatch(m.host.textContent ?? '', /grow into Pro/);
+  assert.equal(m.host.querySelector('.site-footer a[href="/faq"]')?.textContent, 'FAQ');
+  assert.equal([...m.host.querySelectorAll('a')].filter((node) => node.textContent?.trim() === 'FAQ').length, 1);
+  assert.ok(m.host.querySelector('button, a, summary') && [...m.host.querySelectorAll('button, a, summary')].some((node) => /Instructions/.test(node.textContent ?? '')));
   m.done();
 });
 
