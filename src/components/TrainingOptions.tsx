@@ -9,6 +9,7 @@ import { TimerSkinPicker } from './TimerSkinPicker';
 import { WheelPicker } from './WheelPicker';
 import { durationOptions, REST_RANGE, ROUND_COUNT_OPTIONS, ROUND_LENGTH_RANGE } from '../lib/timeWheel';
 import {
+  resetTrainingPeriod,
   resetTrainingSession,
   setBreakMs,
   setEndSound,
@@ -36,6 +37,9 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
       <fieldset>
         <legend>Round length</legend>
         <WheelPicker label="Round length" value={training.workMs} options={WORK_OPTIONS} onChange={setWorkMs} />
+        <button type="button" className="btn btn--ghost training-reset-clock" onClick={() => resetTrainingPeriod()}>
+          Reset clock
+        </button>
       </fieldset>
 
       <fieldset>

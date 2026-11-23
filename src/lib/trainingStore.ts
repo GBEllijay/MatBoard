@@ -292,9 +292,13 @@ export function resetTrainingSession(): void {
 }
 
 /**
- * Hold on the clock. Restores the configured length of the period on screen:
+ * Hold on the clock, and the one-tap "Reset clock" button.
+ * Restores the configured length of the period on screen:
  * full work time during work, full rest time during rest. Not zero.
  * The round number and the length, rest, and rounds settings stay.
+ * Always pauses, matching this hold-to-reset and the Live Bout "Reset clock"
+ * button: a running clock stops at the full period; a paused clock stays
+ * paused at full. persist() already broadcasts the snapshot to the TV.
  */
 export function resetTrainingPeriod(): void {
   const remainingMs = state.phase === 'break' ? state.breakMs : state.workMs;

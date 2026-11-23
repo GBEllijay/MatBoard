@@ -25,6 +25,7 @@ test('round timer keeps every control that was not replaced by a wheel', () => {
     'Advantage',
     '<TimerSkinPicker appearance="stack" />',
     '<TimerBackdropOptions />',
+    'Reset clock',
     'Reset session',
     'aria-label="Training start sound"',
     'Beep',
@@ -44,6 +45,10 @@ test('round timer keeps every control that was not replaced by a wheel', () => {
   assert.match(picker, /className="wheel-step"/);
   assert.match(controller, /trainingClockActionLabel/);
   assert.match(controller, /Round time/);
+  assert.ok(options.indexOf('<legend>Round length</legend>') < options.indexOf('Reset clock'));
+  assert.ok(options.indexOf('Reset clock') < options.indexOf('<legend>Break</legend>'));
+  assert.match(options, /onClick=\{\(\) => resetTrainingPeriod\(\)\}/);
+  assert.doesNotMatch(options, /HoldButton|confirm\(|window\.confirm/);
 });
 
 test('Combate is the training start, not an end-cue button, and uses the shared cue bus', () => {
