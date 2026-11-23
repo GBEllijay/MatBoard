@@ -117,7 +117,7 @@ test('Regression: round timer display keeps every existing control', () => {
 
 test('Regression: timer options keep length, break, rounds, sound, skin, reset, and add Background & logo', () => {
   const options = read('../components/TrainingOptions.tsx');
-  for (const needle of ['Round length', 'Break', 'Rounds', 'Sound', 'Timer skin', 'Reset session', '<TimerBackdropOptions />']) {
+  for (const needle of ['Round length', 'Break', 'Rounds', 'Sound', 'Timer skin', 'Reset clock', 'Reset session', '<TimerBackdropOptions />']) {
     assert.ok(options.includes(needle), `TrainingOptions still has ${needle}`);
   }
   const controller = read('../pages/TrainingController.tsx');

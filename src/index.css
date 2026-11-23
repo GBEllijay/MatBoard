@@ -6006,6 +6006,12 @@ fieldset {
   margin: 0 0.9rem 1rem;
 }
 
+.training-reset-clock {
+  width: 100%;
+  min-height: 56px;
+  margin-top: 0.7rem;
+}
+
 .controller fieldset,
 .training-control__options fieldset,
 .controller__meta {

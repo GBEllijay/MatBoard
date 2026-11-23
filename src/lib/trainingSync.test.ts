@@ -29,6 +29,7 @@ const {
   getTraining,
   normalizeStoredTraining,
   remainingTraining,
+  resetTrainingPeriod,
   resetTrainingSession,
   setBreakMs,
   setEndSound,
@@ -156,4 +157,28 @@ test('the training store and main bootstrap follow the scoreboard sync path', ()
   assert.doesNotMatch(store, /running: false, startedAt: null \}/);
   assert.match(main, /import \{ initTrainingSync \} from '\.\/lib\/trainingStore'/);
   assert.match(main, /initTrainingSync\(\)/);
+});
+
+test('Reset clock persists the full period so the TV follows the same snapshot', () => {
+  silenceSounds();
+  resetTrainingSession();
+  setWorkMs(5 * 60_000);
+  setBreakMs(30_000);
+  const before = Date.now();
+  toggleTrainingClock();
+  const started = getTraining();
+  assert.equal(started.running, true);
+  const revision = started.revision;
+  resetTrainingPeriod();
+  const reset = getTraining();
+  assert.equal(reset.running, false);
+  assert.equal(reset.startedAt, null);
+  assert.equal(reset.remainingMs, 5 * 60_000);
+  assert.equal(reset.currentRound, 1);
+  assert.ok(reset.revision > revision);
+  const stored = readStored();
+  assert.equal(stored.running, false);
+  assert.equal(stored.remainingMs, 5 * 60_000);
+  assert.equal(stored.revision, reset.revision);
+  assert.ok(before <= (started.startedAt ?? 0));
 });

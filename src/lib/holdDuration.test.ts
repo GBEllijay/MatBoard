@@ -124,6 +124,70 @@ test('timer hold restores the configured period, not zero, and keeps the round',
   assert.equal(rest.rounds, 8);
 });
 
+test('Reset clock restores the current phase, keeps the round, and leaves session reset alone', () => {
+  configure();
+  const real = Date.now;
+  try {
+    const t0 = 1_700_000_300_000;
+    Date.now = () => t0;
+    store.toggleTrainingClock();
+    Date.now = () => t0 + 7 * 60_000;
+    store.tickTraining();
+    Date.now = () => t0 + 7 * 60_000 + 15_000;
+    store.tickTraining();
+    Date.now = () => t0 + 7 * 60_000 + 15_000 + 20_000;
+    const midRun = store.getTraining();
+    assert.equal(midRun.currentRound, 2);
+    assert.equal(midRun.phase, 'work');
+    assert.equal(midRun.running, true);
+    assert.ok(store.remainingTraining(midRun, t0 + 7 * 60_000 + 15_000 + 20_000) < 7 * 60_000);
+
+    store.resetTrainingPeriod();
+    const resetWork = store.getTraining();
+    assert.equal(resetWork.currentRound, 2);
+    assert.equal(resetWork.phase, 'work');
+    assert.equal(resetWork.remainingMs, 7 * 60_000);
+    assert.equal(resetWork.running, false);
+    assert.equal(resetWork.startedAt, null);
+    assert.equal(resetWork.warned, false);
+    assert.equal(resetWork.workMs, 7 * 60_000);
+    assert.equal(resetWork.breakMs, 15_000);
+    assert.equal(resetWork.rounds, 8);
+    assert.equal(resetWork.endless, false);
+
+    Date.now = () => t0 + 7 * 60_000 + 15_000 + 30_000;
+    store.toggleTrainingClock();
+    Date.now = () => t0 + 7 * 60_000 + 15_000 + 30_000 + 7 * 60_000;
+    store.tickTraining();
+    Date.now = () => t0 + 7 * 60_000 + 15_000 + 30_000 + 7 * 60_000 + 3_000;
+    const midBreak = store.getTraining();
+    assert.equal(midBreak.phase, 'break');
+    assert.equal(midBreak.currentRound, 2);
+    assert.equal(midBreak.running, true);
+
+    store.resetTrainingPeriod();
+    const resetBreak = store.getTraining();
+    assert.equal(resetBreak.phase, 'break');
+    assert.equal(resetBreak.currentRound, 2);
+    assert.equal(resetBreak.remainingMs, 15_000);
+    assert.equal(resetBreak.running, false);
+    assert.equal(resetBreak.startedAt, null);
+    assert.equal(resetBreak.rounds, 8);
+
+    store.resetTrainingSession();
+    const session = store.getTraining();
+    assert.equal(session.currentRound, 1);
+    assert.equal(session.phase, 'work');
+    assert.equal(session.remainingMs, 7 * 60_000);
+    assert.equal(session.running, false);
+    assert.equal(session.workMs, 7 * 60_000);
+    assert.equal(session.breakMs, 15_000);
+    assert.equal(session.rounds, 8);
+  } finally {
+    Date.now = real;
+  }
+});
+
 test('round hold resets the session and keeps length, rest, and rounds', () => {
   configure();
   const real = Date.now;
@@ -197,7 +261,11 @@ test('round and timer holds are on the display, the polished timer, and the cont
   assert.match(controller, /<TrainingOptions \/>/);
 
   assert.match(options, /onClick=\{\(\) => \{\s*resetTrainingSession\(\);\s*onReset\?\.\(\);\s*\}\}/);
-  assert.doesNotMatch(options, /HoldButton|useTimedHold|resetTrainingPeriod/);
+  assert.match(options, /Reset clock/);
+  assert.ok(options.indexOf('<legend>Round length</legend>') < options.indexOf('Reset clock'));
+  assert.ok(options.indexOf('Reset clock') < options.indexOf('<legend>Break</legend>'));
+  assert.match(options, /className="btn btn--ghost training-reset-clock" onClick=\{\(\) => resetTrainingPeriod\(\)\}/);
+  assert.doesNotMatch(options, /HoldButton|useTimedHold/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[^}]*\.hold-ring/s);
   assert.match(css, /stroke: var\(--gold-2\)/);
   assert.match(css, /transform-box:\s*view-box/);
