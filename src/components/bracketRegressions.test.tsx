@@ -12,6 +12,7 @@ import { TournamentPage } from '../pages/Tournament.tsx';
 import { openBracketBout } from '../lib/bracketBout.ts';
 import { BRACKET_CLEAN_KEY, setBracketClean } from '../lib/bracketCleanMode.ts';
 import { setBracketTheme } from '../lib/bracketTheme.ts';
+import { setWhiteUnlocked, lockWhite } from '../lib/whiteUnlock.ts';
 import { KIDS_SKINS, kidsBracketScoring, kidsSkinButtonSuppressed, setKidsEnabled, setKidsSkin } from '../lib/kidsScoreboard.ts';
 import { PRO_UNLOCK_STORAGE_KEY } from '../lib/proUnlock.ts';
 import { addStudent, getRoster, resetRoster } from '../lib/rosterStore.ts';
@@ -967,4 +968,73 @@ test('TV Clean toggle, Current match jump, and phone/TV CSS contracts hold', asy
   assert.match(css, /\.tournament__bar[\s\S]*padding:[^;]*calc\(4\.5rem/);
   assert.match(css, /\.tournament\.tournament--clean\s+\.t-slot__marks/);
   assert.match(css, /@media\s*\(max-width:\s*720px\)[\s\S]*\.tournament__actions[\s\S]*overflow-x:\s*auto/);
+});
+
+test('Podium & Mat Strip registers as a White-gated theme with mat edges, gold finals, and a podium', async () => {
+  localStorage.clear();
+  resetTournament();
+  setWhiteUnlocked(true);
+  setBracketTheme('bright');
+  setBracketClean(false);
+  setCompetitorCount(8);
+  fillSeedNames(['Alex Rivera', 'Blair Costa', 'Casey Nguyen', 'Drew Patel', 'Eli Nakamura', 'Finn Alvarez', 'Gabe Moreau', 'Hugo Bennett']);
+  setMatchOutcome('qf-0', 'a', { call: 'win', method: 'points' });
+  setMatchOutcome('qf-1', 'b', { call: 'win', method: 'points' });
+  setMatchOutcome('qf-2', 'a', { call: 'win', method: 'points' });
+  setMatchOutcome('qf-3', 'b', { call: 'win', method: 'points' });
+  setMatchOutcome('sf-0', 'a', { call: 'win', method: 'points' });
+  setMatchOutcome('sf-1', 'a', { call: 'win', method: 'points' });
+  setMatchOutcome('final-0', 'a', { call: 'win', method: 'points' });
+
+  const mounted = mount(<TournamentPage />, '/white/brackets?from=white');
+  try {
+    await settle();
+    const podiumChip = [...mounted.host.querySelectorAll('.tournament__theme button')].find(
+      (button) => button.textContent?.trim() === 'Podium & Mat Strip',
+    );
+    assert.ok(podiumChip, 'Podium & Mat Strip chip is listed for White');
+    podiumChip.click();
+    await settle();
+    const main = mounted.host.querySelector('main.tournament');
+    assert.ok(main);
+    assert.equal(main.classList.contains('tournament--podium'), true);
+    assert.equal(mounted.host.querySelectorAll('.mat-edge').length, 4);
+    assert.ok(mounted.host.querySelector('.podium-banner'));
+    assert.match(mounted.host.querySelector('.podium-banner__step--1st')?.textContent ?? '', /1st/);
+    assert.match(mounted.host.querySelector('.podium-banner__step--2nd')?.textContent ?? '', /2nd/);
+    assert.match(mounted.host.querySelector('.podium-banner__step--3rd')?.textContent ?? '', /3rd/);
+    const finals = mounted.host.querySelector('.t-match--final');
+    assert.ok(finals);
+    assert.match(finals.textContent ?? '', /Finals/i);
+  } finally {
+    unmount(mounted);
+    resetTournament();
+    setBracketTheme('bright');
+    setBracketClean(false);
+    lockWhite();
+  }
+
+  localStorage.clear();
+  resetTournament();
+  lockWhite();
+  setBracketTheme('podium');
+  const closed = mount(<TournamentPage />, '/white/brackets?from=white');
+  try {
+    await settle();
+    const labels = [...closed.host.querySelectorAll('.tournament__theme button')].map((button) => button.textContent?.trim());
+    assert.equal(labels.includes('Podium & Mat Strip'), false);
+    assert.equal(closed.host.querySelector('main.tournament')?.classList.contains('tournament--bright'), true);
+    assert.equal(closed.host.querySelector('main.tournament')?.classList.contains('tournament--podium'), false);
+  } finally {
+    unmount(closed);
+    resetTournament();
+    setBracketTheme('bright');
+  }
+
+  const css = readFileSync('src/pages/tournamentPodium.css', 'utf8');
+  assert.match(css, /\.tournament--podium \.t-match--final/);
+  assert.match(css, /border:\s*2px solid var\(--podium-gold\)/);
+  assert.doesNotMatch(css, /\.t-match--final[^{]*\{[^}]*var\(--logo-yellow\)/);
+  const boardCss = readFileSync('src/pages/tournamentBoard.css', 'utf8');
+  assert.match(boardCss, /tournament--podium \.bracket/);
 });

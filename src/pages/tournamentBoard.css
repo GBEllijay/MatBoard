@@ -36,7 +36,8 @@ body:has(main.tournament) .preview-white-badge {
    TV Clean mode, and Jump-to-match focus ring. */
 
 main.tournament.tournament--bright .tournament__bar,
-main.tournament.tournament--dark .tournament__bar {
+main.tournament.tournament--dark .tournament__bar,
+main.tournament.tournament--podium .tournament__bar {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -83,7 +84,8 @@ main.tournament > .tournament__board {
 
 /* Intrinsic heights let autoFitScale enlarge 2/4/8-person trees to fill 1080p TVs. */
 main.tournament.tournament--bright .bracket,
-main.tournament.tournament--dark .bracket {
+main.tournament.tournament--dark .bracket,
+main.tournament.tournament--podium .bracket {
   width: max-content;
   min-width: max-content;
   height: auto;
@@ -94,6 +96,7 @@ main.tournament.tournament--dark .bracket {
 }
 
 main.tournament.tournament--bright .bracket--tree-2,
+main.tournament.tournament--podium .bracket--tree-2,
 main.tournament.tournament--dark .bracket--tree-2--tree-2 {
   min-height: 0;
   height: auto;
@@ -104,6 +107,7 @@ main.tournament.tournament--dark .bracket--tree-2--tree-2 {
 }
 
 main.tournament.tournament--bright .bracket--tree-4,
+main.tournament.tournament--podium .bracket--tree-4,
 main.tournament.tournament--dark .bracket--tree-4--tree-4 {
   min-height: 22rem;
   height: auto;
@@ -112,8 +116,10 @@ main.tournament.tournament--dark .bracket--tree-4--tree-4 {
 }
 
 main.tournament.tournament--bright .bracket--tree-8,
+main.tournament.tournament--podium .bracket--tree-8,
 main.tournament.tournament--dark .bracket--tree-8--tree-8,
 main.tournament.tournament--bright .bracket--three,
+main.tournament.tournament--podium .bracket--three,
 main.tournament.tournament--dark .bracket--three--three {
   min-height: 32rem;
   height: auto;
@@ -122,18 +128,21 @@ main.tournament.tournament--dark .bracket--three--three {
 }
 
 main.tournament.tournament--bright .bracket--tree-16,
+main.tournament.tournament--podium .bracket--tree-16,
 main.tournament.tournament--dark .bracket--tree-16--tree-16 {
   min-height: 50rem;
   height: auto;
 }
 
 main.tournament.tournament--bright .bracket--tree-32,
+main.tournament.tournament--podium .bracket--tree-32,
 main.tournament.tournament--dark .bracket--tree-32--tree-32 {
   min-height: 72rem;
   height: auto;
 }
 
 main.tournament.tournament--bright .bracket--tree-64,
+main.tournament.tournament--podium .bracket--tree-64,
 main.tournament.tournament--dark .bracket--tree-64--tree-64 {
   min-height: 128rem;
   height: auto;
