@@ -12,6 +12,13 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { WhitePage } from './White.tsx';
+import { roundsCardPreview } from '../lib/roundsCardPreview.ts';
+import {
+  DEFAULT_REST_MS,
+  DEFAULT_ROUNDS,
+  DEFAULT_WORK_MS,
+} from '../lib/timeWheel.ts';
+import { setBreakMs, setRounds, setWorkMs } from '../lib/trainingStore.ts';
 
 const dom = new Window({ url: 'http://localhost/white' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -67,6 +74,64 @@ test('the White hub keeps working Scoreboard, Controller, Rounds, and Bracket Ro
   assert.deepEqual(hrefs(scoreboard as HTMLElement, 'a.btn'), ['/match?from=white', '/match/control?from=white']);
   assert.deepEqual(hrefs(rounds as HTMLElement, 'a.btn'), ['/training?from=white', '/training/control?from=white']);
   m.done();
+});
+
+test('the Rounds card TV preview shows work time, current round, rest, and total rounds', () => {
+  setWorkMs(DEFAULT_WORK_MS);
+  setBreakMs(DEFAULT_REST_MS);
+  setRounds(DEFAULT_ROUNDS, false);
+  const expected = roundsCardPreview({
+    workMs: DEFAULT_WORK_MS,
+    breakMs: DEFAULT_REST_MS,
+    rounds: DEFAULT_ROUNDS,
+    currentRound: 1,
+    endless: false,
+  });
+  assert.equal(expected.work, '5:00');
+  assert.equal(expected.header, 'WORK · ROUND 1 / 5');
+  assert.equal(expected.restLine, 'REST 0:30 · 5 ROUNDS');
+  const m = mount();
+  const rounds = m.host.querySelector('#round-timer') as HTMLElement;
+  const tv = rounds.querySelector('[data-rounds-tv="true"]');
+  assert.ok(tv);
+  assert.match(tv?.textContent ?? '', /WORK · ROUND 1 \/ 5/);
+  assert.match(tv?.textContent ?? '', /ROUND TIME/);
+  assert.match(tv?.textContent ?? '', /5:00/);
+  assert.match(tv?.textContent ?? '', /REST 0:30 · 5 ROUNDS/);
+  assert.match(rounds.textContent ?? '', /Customizable with logo and skins/);
+  assert.deepEqual(hrefs(rounds, 'a.btn'), ['/training?from=white', '/training/control?from=white']);
+  assert.equal(rounds.querySelector('[data-rounds-skins="true"]')?.getAttribute('href'), '/training/control?from=white');
+  m.done();
+});
+
+test('the Rounds card preview follows saved work, rest, and rounds settings', () => {
+  setWorkMs(4 * 60_000);
+  setBreakMs(45_000);
+  setRounds(8, false);
+  try {
+    const m = mount();
+    const tv = m.host.querySelector('#round-timer [data-rounds-tv="true"]');
+    assert.match(tv?.textContent ?? '', /WORK · ROUND 1 \/ 8/);
+    assert.match(tv?.textContent ?? '', /4:00/);
+    assert.match(tv?.textContent ?? '', /REST 0:45 · 8 ROUNDS/);
+    m.done();
+  } finally {
+    setWorkMs(DEFAULT_WORK_MS);
+    setBreakMs(DEFAULT_REST_MS);
+    setRounds(DEFAULT_ROUNDS, false);
+  }
+});
+
+test('roundsCardPreview uses ENDLESS when counted rounds are off', () => {
+  assert.deepEqual(
+    roundsCardPreview({ workMs: 180_000, breakMs: 60_000, rounds: 5, currentRound: 2, endless: true }),
+    {
+      work: '3:00',
+      header: 'WORK · ROUND 2',
+      restLine: 'REST 1:00 · ENDLESS',
+      roundTimeLabel: 'ROUND TIME',
+    },
+  );
 });
 
 test('Brackets and Bracket Roster open their tools, keep the placeholder image, and never say student roster', () => {

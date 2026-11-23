@@ -14588,10 +14588,7 @@ html.lesson-cover-open body {
   color: #e7eef8;
 }
 
-.home--white .mode-card--training > strong,
-.home--white .mode-card--training > .mode-card__sub {
-  max-width: calc(100% - 4.1rem);
-}
+/* Rounds titles sit in .rounds-card__titles beside the TV and Skins previews. */
 
 .home--white .white-board {
   display: grid;
@@ -14682,35 +14679,242 @@ html.lesson-cover-open body {
   line-height: 1;
 }
 
-.home--white .white-timer {
-  position: absolute;
-  top: 0.55rem;
-  right: 0.58rem;
-  z-index: 2;
-  width: 3.65rem;
-  height: 3.65rem;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-  color: #f7f4ee;
-  background:
-    radial-gradient(circle at 50% 50%, #16181e 0 66%, transparent 67%),
-    repeating-conic-gradient(
-      from -90deg,
-      rgba(255, 255, 255, 0.7) 0deg 1.15deg,
-      transparent 1.15deg 30deg
-    );
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+/* White hub Rounds card: TV preview + fanned Skins (Woodblock paper, Calçadão, Brasil). */
+.home--white .rounds-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem 0.85rem;
+  min-width: 0;
 }
 
-.home--white .white-timer__time {
-  font-size: 0.82rem;
+.home--white .rounds-card__titles {
+  min-width: 0;
+  flex: 1 1 7.5rem;
+}
+
+.home--white .rounds-card__titles > strong {
+  display: block;
+}
+
+.home--white .rounds-card__titles > .mode-card__sub {
+  display: block;
+  margin-top: 0.12rem;
+}
+
+.home--white .rounds-card__previews {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.home--white .rounds-tv {
+  box-sizing: border-box;
+  width: 8.05rem;
+  min-height: 5.7rem;
+  padding: 0.3rem 0.34rem 0.26rem;
+  border-radius: 0.42rem;
+  border: 2px solid #f4f1ea;
+  background: #050608;
+  color: #fff;
+  box-shadow: 0 0 0 1px #111, 0 6px 14px rgba(0, 0, 0, 0.45);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  align-items: start;
+  user-select: none;
+}
+
+.home--white .rounds-tv__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.home--white .rounds-tv__logo {
+  width: 0.78rem;
+  height: 0.78rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+  background: #0a1a3a;
+}
+
+.home--white .rounds-tv__header {
+  color: #f0c24b;
+  font-size: 0.48rem;
   font-weight: 800;
-  letter-spacing: 0;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.home--white .rounds-tv__label {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.36rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.1rem;
   line-height: 1;
-  white-space: nowrap;
+}
+
+.home--white .rounds-tv__time {
+  color: #fff;
+  font-size: 1.48rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+  align-self: center;
+  padding: 0.06rem 0 0.04rem;
+}
+
+.home--white .rounds-tv__rest {
+  color: rgba(244, 247, 251, 0.86);
+  font-size: 0.44rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.home--white .rounds-skins {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.18rem;
+  width: 5.35rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.home--white .rounds-skins__fan {
+  position: relative;
+  width: 5.25rem;
+  height: 3.55rem;
+}
+
+.home--white .rounds-skins__face {
+  position: absolute;
+  width: 3.15rem;
+  height: 2.15rem;
+  border-radius: 0.28rem;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  background: #111;
+}
+
+.home--white .rounds-skins__face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Woodblock (cream paper), Calçadão (wavy), Brasil (flag timer). */
+.home--white .rounds-skins__face--paper {
+  left: 0;
+  top: 0.28rem;
+  transform: rotate(-18deg);
+}
+
+.home--white .rounds-skins__face--calcadao {
+  right: 0;
+  top: 0.2rem;
+  transform: rotate(14deg);
+}
+
+.home--white .rounds-skins__face--brasil {
+  left: 1.2rem;
+  top: 0.82rem;
+  z-index: 2;
+  transform: rotate(-3deg);
+  width: 3.35rem;
+  height: 2.28rem;
+}
+
+.home--white .rounds-skins__label {
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.home--white .rounds-card__tagline {
+  display: block;
+  margin-top: -0.05rem;
+  color: rgba(231, 238, 248, 0.58);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+@media (max-width: 430px) {
+  .home--white .rounds-tv {
+    width: 6.45rem;
+    min-height: 4.85rem;
+    padding: 0.22rem 0.26rem 0.18rem;
+  }
+
+  .home--white .rounds-tv__header {
+    font-size: 0.38rem;
+  }
+
+  .home--white .rounds-tv__label {
+    font-size: 0.32rem;
+  }
+
+  .home--white .rounds-tv__time {
+    font-size: 1.15rem;
+  }
+
+  .home--white .rounds-tv__rest {
+    font-size: 0.34rem;
+  }
+
+  .home--white .rounds-skins {
+    width: 4.45rem;
+  }
+
+  .home--white .rounds-skins__fan {
+    width: 4.4rem;
+    height: 3.05rem;
+  }
+
+  .home--white .rounds-skins__face {
+    width: 2.65rem;
+    height: 1.8rem;
+  }
+
+  .home--white .rounds-skins__face--brasil {
+    left: 0.88rem;
+    top: 0.62rem;
+    width: 2.8rem;
+    height: 1.9rem;
+  }
+
+  .home--white .rounds-skins__label {
+    font-size: 0.66rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .home--white .rounds-card__head {
+    flex-wrap: wrap;
+  }
+
+  .home--white .rounds-card__previews {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 .home--white .mode-card__actions .btn:not(.btn--ghost) {
@@ -14739,18 +14943,13 @@ html.lesson-cover-open body {
     font-size: 0.85rem;
   }
 
-  .home--white .white-timer {
-    width: 2.7rem;
-    height: 2.7rem;
+  .home--white .rounds-tv {
+    width: 6.2rem;
+    min-height: 4.6rem;
   }
 
-  .home--white .white-timer__time {
-    font-size: 0.64rem;
-  }
-
-  .home--white .mode-card--training > strong,
-  .home--white .mode-card--training > .mode-card__sub {
-    max-width: calc(100% - 3rem);
+  .home--white .rounds-tv__time {
+    font-size: 1.1rem;
   }
 }
 

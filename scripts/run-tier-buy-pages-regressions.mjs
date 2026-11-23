@@ -20,7 +20,7 @@ for (const entry of entries) {
     external: ['node:test', 'node:assert', 'node:assert/strict'],
     jsx: 'automatic',
     // Styles are not under test here; the CSS is checked in src/lib/tierBuyPages.test.ts.
-    loader: { '.css': 'empty' },
+    loader: { '.css': 'empty', '.jpg': 'empty', '.jpeg': 'empty', '.png': 'empty', '.webp': 'empty' },
     logLevel: 'silent',
     plugins: [paidChunksStub],
   });
