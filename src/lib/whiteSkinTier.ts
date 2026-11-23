@@ -1,4 +1,5 @@
 import type { Door } from './entitlementToken.ts';
+import { isPreviewWhiteUnlocked } from './previewWhiteBypass.ts';
 
 /**
  * Advantage White with no tier above it.
@@ -12,4 +13,17 @@ import type { Door } from './entitlementToken.ts';
  */
 export function whiteBaseSkinTier(open: Readonly<Record<Door, boolean>>): boolean {
   return open.white && !open.student && !open.media && !open.coach && !open.pro;
+}
+
+/**
+ * Same White-only skin catalog as whiteBaseSkinTier, plus the preview-host
+ * White bypass used by /white and brackets. Production is unchanged: the
+ * bypass is off everywhere except *.matboard.pages.dev hash/branch previews.
+ * A higher door still wins, so Instructor/Pro keep their own skin lists.
+ */
+export function whiteBaseSkinsOpen(open: Readonly<Record<Door, boolean>>, hostname?: string): boolean {
+  return whiteBaseSkinTier({
+    ...open,
+    white: open.white || isPreviewWhiteUnlocked(hostname),
+  });
 }
