@@ -231,9 +231,26 @@ export function WheelPicker({
   };
 
   const drag = useRef<{ id: number; y: number; top: number; moved: boolean } | null>(null);
+  const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value));
+  const prevOption = selectedIndex > 0 ? options[selectedIndex - 1] : undefined;
+  const nextOption = selectedIndex < options.length - 1 ? options[selectedIndex + 1] : undefined;
+  const stepTo = (option: WheelOption | undefined) => {
+    if (disabled || !option) return;
+    onChange(option.value);
+  };
 
   return (
     <>
+      <div className="wheel-value-row">
+        <button
+          type="button"
+          className="wheel-step"
+          aria-label={`Decrease ${label}`}
+          disabled={disabled || !prevOption}
+          onClick={() => stepTo(prevOption)}
+        >
+          −
+        </button>
       <button
         type="button"
         className="wheel-value"
@@ -247,6 +264,16 @@ export function WheelPicker({
       >
         <span className="wheel-value__readout">{selected?.label}</span>
       </button>
+        <button
+          type="button"
+          className="wheel-step"
+          aria-label={`Increase ${label}`}
+          disabled={disabled || !nextOption}
+          onClick={() => stepTo(nextOption)}
+        >
+          +
+        </button>
+      </div>
       <Sheet
         open={open}
         title={label}

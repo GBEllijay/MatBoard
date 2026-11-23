@@ -201,6 +201,20 @@ test('HeaderAccount is hidden on /white and still shows on other app pages', () 
   products.host.remove();
 });
 
+test('HeaderAccount is hidden on White scoreboard and timer controllers so it cannot cover Display or Cast', () => {
+  for (const path of ['/match/control?from=white', '/training/control?from=white']) {
+    const mounted = mount(<HeaderAccount />, path);
+    assert.equal(mounted.host.querySelector('.header-account'), null, `Sign in should be hidden on ${path}`);
+    mounted.root.unmount();
+    mounted.host.remove();
+  }
+
+  const suite = mount(<HeaderAccount />, '/match/control?from=suite');
+  assert.ok(suite.host.querySelector('a.header-account'), 'Sign in stays on the Pro suite controller');
+  suite.root.unmount();
+  suite.host.remove();
+});
+
 test('the products page keeps mid-page Account and Sign out, and gets the pinned header too', () => {
   assert.match(homePage, /<HistoryBackMark fallback=\{PRODUCTS_PATH\} \/>/);
   assert.match(homePage, /<AccountLink \/>/);

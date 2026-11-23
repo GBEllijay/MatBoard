@@ -156,6 +156,7 @@ export function MatchControllerPage() {
       ) : null}
 
       <section className="controller__clock">
+        <p className="clock-field-label">Round time</p>
         <button
           type="button"
           className="clock-btn clock-btn--control"
@@ -168,23 +169,37 @@ export function MatchControllerPage() {
         </button>
         <div className="clock-seconds" role="group" aria-label="Adjust remaining time">
           <SecondStep
+            deltaMs={-60_000}
+            label="Subtract one minute"
+            disabled={remaining <= 0}
+          >
+            −1m
+          </SecondStep>
+          <SecondStep
             deltaMs={-1_000}
             label="Subtract one second"
             disabled={remaining <= 0}
           >
-            −
+            −1s
           </SecondStep>
           <SecondStep
             deltaMs={1_000}
             label="Add one second"
             disabled={remaining >= remainingCapMs(match.durationMs)}
           >
-            +
+            +1s
+          </SecondStep>
+          <SecondStep
+            deltaMs={60_000}
+            label="Add one minute"
+            disabled={remaining >= remainingCapMs(match.durationMs)}
+          >
+            +1m
           </SecondStep>
         </div>
         <div className="controller__clock-actions">
           <button type="button" className="btn" onClick={() => dispatchMatch({ type: 'toggleClock' })}>
-            {match.running ? 'Pause' : remaining <= 0 ? 'Restart' : 'Start'}
+            {match.running ? 'Pause' : remaining <= 0 ? 'Restart' : remaining < match.durationMs ? 'Resume' : 'Start'}
           </button>
           <button type="button" className="btn btn--ghost" onClick={() => dispatchMatch({ type: 'resetClock' })}>
             Reset clock

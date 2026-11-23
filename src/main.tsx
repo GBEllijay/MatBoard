@@ -7,6 +7,7 @@ import { installStudentMockGuard } from './lib/studentDemo';
 import { installStudentProfileScope } from './lib/studentProfiles';
 import { initSignedInSync } from './lib/signedInSync';
 import { initMatchSync } from './lib/matchStore';
+import { initTrainingSync } from './lib/trainingStore';
 import { settleOneDriveRedirect } from './lib/oneDriveAuth';
 import { initRankingSync } from './lib/rankingStore';
 import { initRosterSync } from './lib/rosterStore';
@@ -25,6 +26,7 @@ void import('./lib/profileBackupBoot')
   .then((mod) => mod.startProfileBackup())
   .catch(() => undefined);
 initMatchSync();
+initTrainingSync();
 initTournamentSync();
 initRosterSync();
 initRankingSync();
