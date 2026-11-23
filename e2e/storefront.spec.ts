@@ -48,7 +48,7 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(nav.getByRole('link', { name: 'Brackets', exact: true })).toHaveAttribute('href', '/white#brackets');
 
   const shots = page.locator('.sf-print img');
-  await expect(shots).toHaveCount(2);
+  await expect(shots).toHaveCount(3);
   await expect(shots.nth(0)).toHaveAttribute(
     'alt',
     'Woodblock-style illustration of kids rolling at the gym while the Advantage scoreboard runs on the wall TV',
@@ -57,10 +57,15 @@ test('public homepage sells Advantage White and links coming soon to the edition
     'alt',
     'Woodblock-style illustration of kids rolling at the gym while the Advantage round timer runs on the wall TV',
   );
+  await expect(shots.nth(2)).toHaveAttribute(
+    'alt',
+    'Woodblock-style illustration of a gym tournament on the mats while the Advantage bracket runs on the wall TV',
+  );
   const sources = page.locator('.sf-print source');
   await expect(sources.nth(0)).toHaveAttribute('type', 'image/webp');
   await expect(sources.nth(0)).toHaveAttribute('srcset', '/homepage/woodblock-scoreboard.webp');
   await expect(sources.nth(1)).toHaveAttribute('srcset', '/homepage/woodblock-timer.webp');
+  await expect(sources.nth(2)).toHaveAttribute('srcset', '/homepage/woodblock-brackets.webp');
   for (const image of await shots.all()) {
     await expect(image).toBeVisible();
     const loaded = await image.evaluate((img) => img instanceof HTMLImageElement && img.naturalWidth > 40);

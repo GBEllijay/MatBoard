@@ -82,6 +82,10 @@
 }
 
 /* Plain status line under the wordmark. Not a link; no Apple badge. */
+.home.home--store .sfh-apps {
+  margin: 16px 0 0;
+}
+
 .home.home--store .sfh-appstore {
   margin: 10px 0 0;
   font-size: 13px;

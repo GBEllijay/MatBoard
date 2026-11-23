@@ -77,8 +77,14 @@ test('Pass 2 sections use the approved copy and woodblocks', () => {
   assert.equal(STOREFRONT_WOODBLOCKS.timer.webp, '/homepage/woodblock-timer.webp');
   assert.equal(STOREFRONT_WOODBLOCKS.timer.jpg, '/homepage/woodblock-timer.jpg');
   assert.match(STOREFRONT_WOODBLOCKS.timer.alt, /Advantage round timer runs on the wall TV/);
+  assert.equal(STOREFRONT_WOODBLOCKS.brackets.webp, '/homepage/woodblock-brackets.webp');
+  assert.equal(STOREFRONT_WOODBLOCKS.brackets.jpg, '/homepage/woodblock-brackets.jpg');
+  assert.equal(STOREFRONT_WOODBLOCKS.brackets.width, 1280);
+  assert.equal(STOREFRONT_WOODBLOCKS.brackets.height, 720);
+  assert.match(STOREFRONT_WOODBLOCKS.brackets.alt, /Advantage bracket runs on the wall TV/);
   assert.doesNotMatch(STOREFRONT_WOODBLOCKS.scoreboard.jpg, /hero-still|hero-poster/);
   assert.doesNotMatch(STOREFRONT_WOODBLOCKS.timer.jpg, /hero-still|hero-poster/);
+  assert.doesNotMatch(STOREFRONT_WOODBLOCKS.brackets.jpg, /hero-still|hero-poster/);
 });
 
 test('the three owner CTAs open the pre-Pass-2 picker and nothing else', () => {
