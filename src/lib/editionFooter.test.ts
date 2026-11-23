@@ -20,8 +20,7 @@ test('edition homes put the ladder before Instructions, FAQ, and the legal foote
     before(file, '<InstructionsButton', '<FaqLink');
     before(file, '<FaqLink', '<SiteFooter');
   }
-  before('../pages/White.tsx', '<InstructionsButton', '<FaqLink');
-  before('../pages/White.tsx', '<FaqLink', '<SiteFooter');
+  before('../pages/White.tsx', '<InstructionsButton', '<SiteFooter');
   before('../pages/MediaEditionHub.tsx', '<EditionLadder', 'home__hints');
   before('../pages/MediaEditionHub.tsx', 'home__hints', '<SiteFooter');
 });
@@ -36,7 +35,9 @@ test('the White page has no edition ladder and an Alpha testers footer link to /
   assert.match(page, /All products/);
   assert.match(page, /Lock White/);
   assert.match(page, /<InstructionsButton/);
-  assert.match(page, /<FaqLink/);
+  assert.doesNotMatch(page, /FaqLink/);
+  assert.doesNotMatch(page, /WhiteUpgradePrompt|grow into Pro/);
+  assert.match(footer, /to="\/faq">FAQ</);
   for (const file of [
     '../pages/Pro.tsx',
     '../pages/ProPlusCloud.tsx',

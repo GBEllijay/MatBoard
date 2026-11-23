@@ -45,22 +45,14 @@ test('the prompt is on for White only and off at Student and above, and for a se
   assert.equal(whiteUpgradePromptVisible({ ...whiteOnly, seated: true }), false);
 });
 
-test('the White hub places the prompt under Bracket Roster and links to the Student buy page', () => {
+test('the White hub no longer shows the upgrade prompt', () => {
   const page = read('../pages/White.tsx');
   const prompt = read('../components/WhiteUpgradePrompt.tsx');
-  const css = read('../index.css');
-  const rosterAt = page.indexOf('<BracketRosterCard />');
-  const upgradeAt = page.indexOf('<WhiteUpgradePrompt />');
-  assert.ok(rosterAt > 0 && upgradeAt > rosterAt);
+  assert.doesNotMatch(page, /WhiteUpgradePrompt|grow into Pro/);
   assert.equal(page.includes('<WhiteRosterCard'), false);
+  assert.ok(page.indexOf('<BracketRosterCard />') > 0);
   assert.match(prompt, /aria-label=\{WHITE_UPGRADE_LABEL\}/);
   assert.match(prompt, /to=\{WHITE_UPGRADE_PATH\}/);
   assert.match(prompt, /belt-tip--blue/);
   assert.doesNotMatch(prompt, /\$|formatUsd|PRICE/);
-  assert.match(css, /\.home--white \.home__modes > \.white-upgrade \{[^}]*grid-column: 1 \/ -1;/);
-  assert.match(css, /\.home--white \.home__modes > \.white-upgrade \{[^}]*position: relative;/);
-  assert.doesNotMatch(
-    css.slice(css.indexOf('.home--white .home__modes > .white-upgrade'), css.indexOf('.home--white .white-upgrade__mark')),
-    /position:\s*(absolute|fixed|sticky)/,
-  );
 });
