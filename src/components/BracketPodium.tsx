@@ -34,7 +34,7 @@ function Step({
     >
       <span className="podium-banner__place">{label}</span>
       {filled ? (
-        <p className="podium-banner__names">
+        <p className={`podium-banner__names${names.length > 1 ? ' podium-banner__names--pair' : ''}`}>
           {names.map((name) => (
             <span key={name}>{name}</span>
           ))}

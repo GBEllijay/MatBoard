@@ -1,23 +1,29 @@
-/* Podium & Mat Strip — White brackets skin. Competition-mat frame, gi-color
-   name pills (white / blue), dark Finals card with gold trim, podium banner. */
+/* Podium & Mat Strip — White brackets skin.
+   Championship palette: deep emerald/black with bright yellow accents,
+   and a green/yellow mat-edge frame. Name pills keep gi white/blue so
+   left and right stay distinct. */
 
 .tournament--podium {
-  --podium-gold: #e0b43a;
-  --podium-gold-deep: #c4921c;
-  --podium-ink: #100e0b;
-  --podium-card: #16130f;
+  --champ-yellow: #ffe34a;
+  --champ-yellow-deep: #f0c400;
+  --champ-emerald: #0b3d2e;
+  --champ-emerald-deep: #07241c;
+  --champ-card: #071a14;
+  --champ-ink: #04110c;
+  --mat-edge-green: #0f8a45;
+  --mat-edge-yellow: #ffe34a;
   --mat-gi-white: #f3f1ea;
   --mat-gi-blue: #1a47b8;
-  --mat-gi-black: #121212;
-  background-color: #0c1612;
+  background-color: #06150f;
   background-image:
     repeating-linear-gradient(
       90deg,
-      rgba(255, 255, 255, 0.025) 0 2px,
+      rgba(255, 227, 74, 0.03) 0 2px,
       transparent 2px 18px
     ),
-    radial-gradient(90% 70% at 50% 0%, rgba(224, 180, 58, 0.1), transparent 54%),
-    linear-gradient(180deg, #15241c 0%, #0c1612 42%, #080e0b 100%);
+    radial-gradient(80% 60% at 50% 42%, rgba(15, 138, 69, 0.28), transparent 62%),
+    radial-gradient(90% 70% at 50% 0%, rgba(255, 227, 74, 0.1), transparent 54%),
+    linear-gradient(180deg, #0c241a 0%, #06150f 48%, #040e0b 100%);
 }
 
 .tournament--podium > .belt-rail {
@@ -56,11 +62,10 @@
   height: 16px;
   background-image: repeating-linear-gradient(
     90deg,
-    var(--mat-gi-white) 0 3rem,
-    var(--mat-gi-blue) 3rem 6rem,
-    var(--mat-gi-black) 6rem 9rem
+    var(--mat-edge-green) 0 3rem,
+    var(--mat-edge-yellow) 3rem 6rem
   );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.4);
 }
 
 .mat-edge--top {
@@ -86,11 +91,10 @@
   width: 14px;
   background-image: repeating-linear-gradient(
     180deg,
-    var(--mat-gi-white) 0 3rem,
-    var(--mat-gi-blue) 3rem 6rem,
-    var(--mat-gi-black) 6rem 9rem
+    var(--mat-edge-green) 0 3rem,
+    var(--mat-edge-yellow) 3rem 6rem
   );
-  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.18), inset -1px 0 0 rgba(0, 0, 0, 0.45);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.22), inset -1px 0 0 rgba(0, 0, 0, 0.4);
 }
 
 .mat-edge--left {
@@ -204,7 +208,7 @@
 .tournament--podium .bracket__side--right .t-match__bouts::after {
   width: 1.25rem;
   height: 2px;
-  background: var(--podium-gold);
+  background: var(--champ-yellow);
 }
 
 .tournament--podium .bracket__side--left .t-match__bouts::after {
@@ -225,15 +229,15 @@
 }
 
 .tournament--podium .t-match--live .t-match__bouts {
-  outline-color: var(--podium-gold);
+  outline-color: var(--champ-yellow);
 }
 
 .tournament--podium .t-match--next .t-match__bouts {
-  outline-color: var(--podium-gold);
-  box-shadow: 0 0 0 4px rgba(224, 180, 58, 0.28);
+  outline-color: var(--champ-yellow);
+  box-shadow: 0 0 0 4px rgba(255, 227, 74, 0.28);
 }
 
-/* Dark card, gold edge, gold FINALS lettering — not a flat yellow fill. */
+/* Deep emerald card, bright yellow edge, yellow FINALS — not a flat yellow fill. */
 .tournament--podium .bracket__finals > .t-match::before {
   display: none;
 }
@@ -245,13 +249,14 @@
   padding: 1.05rem 1.1rem 0.95rem;
   border-radius: 18px;
   background:
-    linear-gradient(180deg, rgba(224, 180, 58, 0.12), transparent 42%),
-    var(--podium-card);
+    radial-gradient(120% 80% at 50% 0%, rgba(255, 227, 74, 0.2), transparent 58%),
+    linear-gradient(180deg, #0e3a2b 0%, var(--champ-card) 55%);
   color: var(--mat-gi-white);
-  border: 2px solid var(--podium-gold);
+  border: 2px solid var(--champ-yellow);
   box-shadow:
-    inset 0 0 0 1px rgba(224, 180, 58, 0.28),
-    0 16px 32px rgba(0, 0, 0, 0.4);
+    inset 0 0 0 1px rgba(255, 227, 74, 0.35),
+    0 0 28px rgba(255, 227, 74, 0.16),
+    0 16px 32px rgba(0, 0, 0, 0.45);
 }
 
 .tournament--podium .t-match__finals-label {
@@ -262,7 +267,7 @@
 }
 
 .tournament--podium .t-match__finals-label span {
-  color: rgba(243, 241, 234, 0.72);
+  color: rgba(243, 241, 234, 0.78);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.16em;
@@ -270,13 +275,13 @@
 }
 
 .tournament--podium .t-match__finals-label strong {
-  color: var(--podium-gold);
+  color: var(--champ-yellow);
   font-size: clamp(1.55rem, 3.4vw, 2.3rem);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: 0.95;
-  text-shadow: 0 0 16px rgba(224, 180, 58, 0.35);
+  text-shadow: 0 0 18px rgba(255, 227, 74, 0.45);
 }
 
 .tournament--podium .t-match--final .t-match__bouts {
@@ -287,7 +292,7 @@
   background: rgba(243, 241, 234, 0.96);
   color: #14161c;
   box-shadow: none;
-  border-color: rgba(224, 180, 58, 0.35);
+  border-color: rgba(15, 138, 69, 0.35);
 }
 
 .tournament--podium .t-match--final .t-slot input {
@@ -296,15 +301,49 @@
   text-align: center;
 }
 
+.tournament--podium .t-match--final .t-slot--won {
+  background: var(--champ-yellow);
+  color: var(--champ-ink);
+  border-color: var(--champ-yellow);
+  box-shadow: 0 0 0 2px rgba(255, 227, 74, 0.45), 0 8px 22px rgba(255, 227, 74, 0.28);
+  opacity: 1;
+}
+
+.tournament--podium .t-match--final .t-slot--won .t-slot__seed,
+.tournament--podium .t-match--final .t-slot--won input {
+  color: var(--champ-ink);
+  -webkit-text-fill-color: var(--champ-ink);
+  font-weight: 800;
+}
+
+.tournament--podium .t-match--final .t-slot--lost {
+  background: rgba(7, 26, 20, 0.78);
+  color: rgba(243, 241, 234, 0.7);
+  border-color: rgba(255, 255, 255, 0.1);
+  opacity: 0.58;
+  box-shadow: none;
+}
+
+.tournament--podium .t-match--final .t-slot--lost .t-slot__seed,
+.tournament--podium .t-match--final .t-slot--lost input {
+  color: rgba(243, 241, 234, 0.78);
+  -webkit-text-fill-color: rgba(243, 241, 234, 0.78);
+}
+
 .tournament--podium .t-match--final .t-mark {
   background: rgba(20, 22, 28, 0.08);
   color: #14161c;
 }
 
+.tournament--podium .t-match--final .t-slot--won .t-mark {
+  background: rgba(4, 17, 12, 0.12);
+  color: var(--champ-ink);
+}
+
 .tournament--podium .t-match--final .t-mark--win.is-on,
 .tournament--podium .t-match--final .t-score {
-  background: var(--mat-gi-blue);
-  color: #fff;
+  background: var(--champ-emerald);
+  color: var(--champ-yellow);
   border-color: transparent;
 }
 
@@ -365,36 +404,43 @@
   display: grid;
   justify-items: center;
   align-content: end;
-  gap: 0.28rem;
+  gap: 0.22rem;
   min-width: 0;
-  padding: 0.55rem 0.45rem 0.65rem;
+  box-sizing: border-box;
+  padding: 0.45rem 0.4rem 0.55rem;
   border-radius: 12px 12px 6px 6px;
-  background: #1c1914;
+  background: var(--champ-emerald-deep);
   color: var(--mat-gi-white);
-  box-shadow: inset 0 3px 0 var(--podium-gold-deep), 0 10px 18px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
 }
 
 .podium-banner__step--1st {
-  flex: 1.25 1 6.5rem;
-  min-height: 6.4rem;
-  padding-top: 0.75rem;
+  flex: 1.3 1 6.5rem;
+  height: 6.75rem;
+  min-height: 6.75rem;
+  max-height: 6.75rem;
+  padding-top: 0.7rem;
   background:
-    linear-gradient(180deg, rgba(224, 180, 58, 0.22), transparent 46%),
-    #1f1a12;
-  box-shadow: inset 0 4px 0 var(--podium-gold), 0 12px 22px rgba(0, 0, 0, 0.32);
+    linear-gradient(180deg, rgba(255, 227, 74, 0.28), transparent 48%),
+    #0c3327;
+  box-shadow: inset 0 4px 0 var(--champ-yellow), 0 12px 22px rgba(0, 0, 0, 0.32);
   z-index: 1;
 }
 
 .podium-banner__step--2nd {
   flex: 1 1 5rem;
-  min-height: 5.1rem;
-  box-shadow: inset 0 3px 0 #c5c8ce, 0 10px 18px rgba(0, 0, 0, 0.28);
+  height: 5.15rem;
+  min-height: 5.15rem;
+  max-height: 5.15rem;
+  box-shadow: inset 0 3px 0 #c9d4ce, 0 10px 18px rgba(0, 0, 0, 0.28);
 }
 
 .podium-banner__step--3rd {
-  flex: 1 1 5rem;
-  min-height: 4.3rem;
-  box-shadow: inset 0 3px 0 #b08948, 0 10px 18px rgba(0, 0, 0, 0.28);
+  flex: 1.15 1 5.6rem;
+  height: 4.15rem;
+  min-height: 4.15rem;
+  max-height: 4.15rem;
+  box-shadow: inset 0 3px 0 #9fb89a, 0 10px 18px rgba(0, 0, 0, 0.28);
 }
 
 .podium-banner--champ-only .podium-banner__step--1st {
@@ -403,7 +449,7 @@
 }
 
 .podium-banner__place {
-  color: var(--podium-gold);
+  color: var(--champ-yellow);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -411,11 +457,11 @@
 }
 
 .podium-banner__step--2nd .podium-banner__place {
-  color: #d7dbe2;
+  color: #c9d4ce;
 }
 
 .podium-banner__step--3rd .podium-banner__place {
-  color: #d4a574;
+  color: #9fb89a;
 }
 
 .podium-banner__names {
@@ -433,7 +479,22 @@
 
 .podium-banner__step--1st .podium-banner__names {
   font-size: clamp(1.1rem, 2.3vw, 1.65rem);
-  color: var(--podium-gold);
+  color: var(--champ-yellow);
+}
+
+.podium-banner__names--pair {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: clamp(0.72rem, 1.35vw, 0.95rem);
+}
+
+.podium-banner__names--pair > span {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .podium-banner__names--empty {
@@ -461,6 +522,10 @@
 
 .tournament.tournament--clean.tournament--podium .podium-banner__step--1st .podium-banner__names {
   font-size: clamp(1.25rem, 2.6vw, 1.9rem);
+}
+
+.tournament.tournament--clean.tournament--podium .podium-banner__names--pair {
+  font-size: clamp(0.78rem, 1.5vw, 1.05rem);
 }
 
 .tournament.tournament--clean.tournament--podium .t-match__finals-label strong {
@@ -493,16 +558,25 @@
   }
 
   .podium-banner__step {
-    padding: 0.4rem 0.28rem 0.45rem;
+    padding: 0.32rem 0.24rem 0.38rem;
   }
 
   .podium-banner__step--1st {
-    min-height: 5.2rem;
+    height: 5.4rem;
+    min-height: 5.4rem;
+    max-height: 5.4rem;
   }
 
-  .podium-banner__step--2nd,
+  .podium-banner__step--2nd {
+    height: 4.15rem;
+    min-height: 4.15rem;
+    max-height: 4.15rem;
+  }
+
   .podium-banner__step--3rd {
-    min-height: 3.8rem;
+    height: 3.35rem;
+    min-height: 3.35rem;
+    max-height: 3.35rem;
   }
 }
 
@@ -516,6 +590,20 @@
   }
 
   .podium-banner__step--1st {
-    min-height: 4.4rem;
+    height: 4.5rem;
+    min-height: 4.5rem;
+    max-height: 4.5rem;
+  }
+
+  .podium-banner__step--2nd {
+    height: 3.5rem;
+    min-height: 3.5rem;
+    max-height: 3.5rem;
+  }
+
+  .podium-banner__step--3rd {
+    height: 2.9rem;
+    min-height: 2.9rem;
+    max-height: 2.9rem;
   }
 }

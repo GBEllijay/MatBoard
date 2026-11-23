@@ -1003,9 +1003,12 @@ test('Podium & Mat Strip registers as a White-gated theme with mat edges, gold f
     assert.match(mounted.host.querySelector('.podium-banner__step--1st')?.textContent ?? '', /1st/);
     assert.match(mounted.host.querySelector('.podium-banner__step--2nd')?.textContent ?? '', /2nd/);
     assert.match(mounted.host.querySelector('.podium-banner__step--3rd')?.textContent ?? '', /3rd/);
+    assert.ok(mounted.host.querySelector('.podium-banner__step--3rd .podium-banner__names--pair'));
     const finals = mounted.host.querySelector('.t-match--final');
     assert.ok(finals);
     assert.match(finals.textContent ?? '', /Finals/i);
+    assert.ok(finals.querySelector('.t-slot--won'));
+    assert.ok(finals.querySelector('.t-slot--lost'));
   } finally {
     unmount(mounted);
     resetTournament();
@@ -1033,8 +1036,18 @@ test('Podium & Mat Strip registers as a White-gated theme with mat edges, gold f
 
   const css = readFileSync('src/pages/tournamentPodium.css', 'utf8');
   assert.match(css, /\.tournament--podium \.t-match--final/);
-  assert.match(css, /border:\s*2px solid var\(--podium-gold\)/);
+  assert.match(css, /border:\s*2px solid var\(--champ-yellow\)/);
+  assert.match(css, /--mat-edge-green:\s*#0f8a45/);
+  assert.match(css, /--mat-edge-yellow:\s*#ffe34a/);
+  assert.match(css, /--champ-yellow:\s*#ffe34a/);
+  assert.match(css, /--champ-card:\s*#071a14/);
+  assert.match(css, /\.podium-banner__step--1st[^{]*\{[^}]*height:\s*6\.75rem/);
+  assert.match(css, /\.podium-banner__step--2nd[^{]*\{[^}]*height:\s*5\.15rem/);
+  assert.match(css, /\.podium-banner__step--3rd[^{]*\{[^}]*height:\s*4\.15rem/);
+  assert.match(css, /\.podium-banner__names--pair/);
+  assert.match(css, /\.t-match--final \.t-slot--won/);
   assert.doesNotMatch(css, /\.t-match--final[^{]*\{[^}]*var\(--logo-yellow\)/);
+  assert.doesNotMatch(css, /#b08948|#d4a574|#c4921c|#1f1a12|#16130f/);
   const boardCss = readFileSync('src/pages/tournamentBoard.css', 'utf8');
   assert.match(boardCss, /tournament--podium \.bracket/);
 });
