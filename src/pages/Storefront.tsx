@@ -70,6 +70,7 @@ export function StorefrontPage() {
         </section>
 
         <section className="sf-between sf-between--brackets" id="brackets" aria-labelledby="store-brackets">
+          <Woodblock shot={STOREFRONT_WOODBLOCKS.brackets} to={WHITE_BRACKETS_PATH} />
           <Link className="sf-between-copy" to={WHITE_BRACKETS_PATH} aria-label="Open Mock tournament">
             <div className="sf-eyebrow">{STOREFRONT_BRACKETS.eyebrow}</div>
             <h2 id="store-brackets">{STOREFRONT_BRACKETS.title}</h2>
@@ -112,12 +113,14 @@ export function StorefrontPage() {
 
 function Woodblock({
   shot,
+  to = '/white',
 }: {
   shot: (typeof STOREFRONT_WOODBLOCKS)[keyof typeof STOREFRONT_WOODBLOCKS];
+  to?: string;
 }) {
   return (
     <figure className="sf-figure">
-      <Link className="sf-figure-hit" to="/white">
+      <Link className="sf-figure-hit" to={to}>
         <div className="sf-print">
           <picture>
             <source srcSet={shot.webp} type="image/webp" />

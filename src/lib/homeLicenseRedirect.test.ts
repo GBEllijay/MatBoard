@@ -54,7 +54,7 @@ test('a device with nothing saved stays on the public homepage', () => {
   assert.equal(hasSavedAdvantageAccess(), false);
 });
 
-test('a saved White license counts as Advantage access and should redirect', () => {
+test('a saved White license counts as Advantage access', () => {
   reset();
   setWhiteUnlocked(true);
   assert.equal(hasSavedAdvantageAccess(), true);
@@ -69,7 +69,7 @@ test('preview-bypass-only White is not saved access and must not redirect', () =
   assert.doesNotMatch(src, /from ['\"].*previewWhiteBypass/);
 });
 
-test('a Student Edition unlock, student code, or instructor seat redirects', () => {
+test('a Student Edition unlock, student code, or instructor seat counts as Advantage access', () => {
   reset();
   setStudentEditionUnlocked(true);
   assert.equal(hasSavedAdvantageAccess(), true);

@@ -69,6 +69,15 @@ export const STOREFRONT_WOODBLOCKS = {
     caption: 'Round timer between rounds',
     detail: 'Work, rest, next round.',
   },
+  brackets: {
+    webp: '/homepage/woodblock-brackets.webp',
+    jpg: '/homepage/woodblock-brackets.jpg',
+    width: 1280,
+    height: 720,
+    alt: 'Woodblock-style illustration of a gym tournament on the mats while the Advantage bracket runs on the wall TV',
+    caption: 'Mock tournament on the gym TV',
+    detail: 'From the roster to the champion.',
+  },
 } as const;
 
 export const STOREFRONT_TIMER = {

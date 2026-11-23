@@ -28,6 +28,7 @@ test('combined homepage order: hero, scoreboard art, round timer art, mock tourn
   assert.equal(tsx.includes('id="progression"'), false);
   assert.doesNotMatch(tsx, /STOREFRONT_BELT_LADDER/);
   assert.doesNotMatch(tsx, /Start with White\. Grow into Pro\./);
+  assert.match(tsx, /STOREFRONT_WOODBLOCKS\.brackets/);
 });
 
 test('hero e stacks the real round timer asset under the board', () => {

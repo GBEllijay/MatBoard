@@ -1,4 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
+import { useHasSavedAdvantageAccess } from '../hooks/useHasSavedAdvantageAccess';
+import { PRODUCTS_PATH } from '../lib/productNames';
 import { STOREFRONT_HERO } from '../lib/storefront';
 import { heroVariantOf } from '../lib/storefrontHero';
 import './storefrontHero.css';
@@ -29,6 +31,28 @@ function Brand() {
         <span>Advantage</span>
       </Link>
       <p className="sfh-appstore">Coming soon to the App Store</p>
+    </>
+  );
+}
+
+/** Shown only when this browser already has a saved unlock, seat, or student code. */
+function OpenMyApps() {
+  const saved = useHasSavedAdvantageAccess();
+  if (!saved) return null;
+  return (
+    <div className="sfh-apps">
+      <Link className="sf-buy sfh-buy" to={PRODUCTS_PATH}>
+        Open my apps
+      </Link>
+    </div>
+  );
+}
+
+function HeroTop() {
+  return (
+    <>
+      <Brand />
+      <OpenMyApps />
     </>
   );
 }
@@ -101,7 +125,7 @@ export function StorefrontHero() {
       {variant === 'a' ? (
         <div className="sfh-inner">
           <div className="sfh-text">
-            <Brand />
+            <HeroTop />
             <Copy />
             <Cta />
           </div>
@@ -112,7 +136,7 @@ export function StorefrontHero() {
       ) : null}
       {variant === 'b' ? (
         <div className="sfh-inner">
-          <Brand />
+          <HeroTop />
           <div className="sfh-stage">
             <figure className="sfh-frame sfh-frame--caption">
               <img
@@ -134,7 +158,7 @@ export function StorefrontHero() {
       {variant === 'c' ? (
         <div className="sfh-inner">
           <div className="sfh-text">
-            <Brand />
+            <HeroTop />
             <Copy />
             <Cta />
           </div>
@@ -152,7 +176,7 @@ export function StorefrontHero() {
       ) : null}
       {variant === 'd' ? (
         <div className="sfh-inner">
-          <Brand />
+          <HeroTop />
           <div className="sfh-stage">
             <div className="sfh-halo" aria-hidden="true" />
             <div className="sfh-board">
@@ -177,7 +201,7 @@ export function StorefrontHero() {
       {variant === 'e' ? (
         <div className="sfh-inner">
           <div className="sfh-text">
-            <Brand />
+            <HeroTop />
             <Copy />
             <Cta />
           </div>

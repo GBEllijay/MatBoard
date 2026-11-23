@@ -84,7 +84,6 @@ import { GamePlanPage } from './pages/GamePlan';
 import { HomePage } from './pages/Home';
 import { ProPlusCloudPage } from './pages/ProPlusCloud';
 import { StorefrontPage } from './pages/Storefront';
-import { HomeLicenseRedirect } from './pages/HomeLicenseRedirect';
 import { FaqPage } from './pages/Faq';
 import { CompactLineageCard, ExpandedLineageLine } from './preview/ownerLineage/OwnerLineageViews';
 import { ACADEMY_IDENTITY_PATH, AcademyIdentityPreview } from './preview/academyIdentity/AcademyIdentityPreview';
@@ -447,18 +446,14 @@ function InviteDoor({ children }: { children: ReactNode }) {
   return children;
 }
 
-/** Owner-code and `?student=1` links keep the edition picker. A bare `/` is the storefront. */
+/** Owner-code and `?student=1` links keep the edition picker. A bare `/` is always the public storefront. */
 function PublicHomeRoute() {
   const [params] = useSearchParams();
   if (preservesAppHomeQuery(params)) {
     const search = params.toString();
     return <Navigate to={search ? `${PRODUCTS_PATH}?${search}` : PRODUCTS_PATH} replace />;
   }
-  return (
-    <HomeLicenseRedirect>
-      <StorefrontPage />
-    </HomeLicenseRedirect>
-  );
+  return <StorefrontPage />;
 }
 
 function EditionsRedirect() {

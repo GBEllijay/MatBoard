@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import test from 'node:test';
 import { Window } from 'happy-dom';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { createMemoryRouter, Navigate, RouterProvider, useSearchParams } from 'react-router-dom';
 import {
   clearEntitlementToken,
   setEntitlementConfigForTests,
@@ -11,9 +13,10 @@ import {
 } from '../lib/entitlement.ts';
 import { PRODUCTS_PATH } from '../lib/productNames.ts';
 import { clearOwnerTestGrant } from '../lib/ownerTestGrant.ts';
+import { preservesAppHomeQuery } from '../lib/submenuNav.ts';
 import { setWhiteUnlocked } from '../lib/whiteUnlock.ts';
-import { HomeLicenseRedirect } from './HomeLicenseRedirect.tsx';
 import { HomePage } from './Home.tsx';
+import { StorefrontPage } from './Storefront.tsx';
 
 const dom = new Window({ url: 'http://localhost/' });
 const view = dom as unknown as Window & typeof globalThis;
@@ -74,44 +77,76 @@ async function mountRouter(initialEntries: string[], routes: { path: string; ele
   };
 }
 
-const licenseRoutes = [
-  {
-    path: '/',
-    element: (
-      <HomeLicenseRedirect>
-        <div data-home="storefront">storefront</div>
-      </HomeLicenseRedirect>
-    ),
-  },
+/** Same rules as PublicHomeRoute in App.tsx. A source test below keeps them in lockstep. */
+function PublicHomeRoute() {
+  const [params] = useSearchParams();
+  if (preservesAppHomeQuery(params)) {
+    const search = params.toString();
+    return <Navigate to={search ? `${PRODUCTS_PATH}?${search}` : PRODUCTS_PATH} replace />;
+  }
+  return <StorefrontPage />;
+}
+
+const homeRoutes = [
+  { path: '/', element: <PublicHomeRoute /> },
   { path: PRODUCTS_PATH, element: <div data-home="products">products</div> },
 ];
 
-test('no license: `/` stays on the public homepage', async () => {
+function openMyApps(host: HTMLElement) {
+  return [...host.querySelectorAll('a')].find((node) => node.textContent?.trim() === 'Open my apps') ?? null;
+}
+
+test('no license: `/` stays on the public homepage and has no Open my apps button', async () => {
   reset();
-  const { host, router, done } = await mountRouter(['/'], licenseRoutes);
+  const { host, router, done } = await mountRouter(['/'], homeRoutes);
   assert.equal(router.state.location.pathname, '/');
-  assert.equal(host.querySelector('[data-home="storefront"]')?.textContent, 'storefront');
+  assert.ok(host.querySelector('main.home--store'));
+  assert.match(host.textContent ?? '', /Win by Advantage/);
+  assert.equal(openMyApps(host), null);
+  done();
+});
+
+test('licensed: `/` stays on the public homepage and shows Open my apps to /products', async () => {
+  reset();
+  setWhiteUnlocked(true);
+  const { host, router, done } = await mountRouter(['/'], homeRoutes);
+  assert.equal(router.state.location.pathname, '/');
+  assert.equal(router.state.historyAction, 'POP');
+  assert.ok(host.querySelector('main.home--store'));
+  assert.match(host.textContent ?? '', /Win by Advantage/);
+  const button = openMyApps(host);
+  assert.ok(button, 'Open my apps should appear for a saved unlock');
+  assert.equal(button.getAttribute('href'), PRODUCTS_PATH);
   assert.equal(host.querySelector('[data-home="products"]'), null);
   done();
 });
 
-test('licensed: `/` replace-redirects to /products', async () => {
+test('preview-bypass-only White stays on the public homepage with no Open my apps button', async () => {
   reset();
-  setWhiteUnlocked(true);
-  const { host, router, done } = await mountRouter(['/'], licenseRoutes);
-  assert.equal(router.state.location.pathname, PRODUCTS_PATH);
-  assert.equal(router.state.historyAction, 'REPLACE');
-  assert.equal(host.querySelector('[data-home="products"]')?.textContent, 'products');
-  assert.equal(host.querySelector('[data-home="storefront"]'), null);
+  const { host, router, done } = await mountRouter(['/'], homeRoutes);
+  assert.equal(router.state.location.pathname, '/');
+  assert.equal(openMyApps(host), null);
   done();
 });
 
-test('preview-bypass-only White stays on the public homepage', async () => {
+test('owner-code query keys still replace-forward to /products', async () => {
   reset();
-  const { host, router, done } = await mountRouter(['/'], licenseRoutes);
-  assert.equal(router.state.location.pathname, '/');
-  assert.equal(host.querySelector('[data-home="storefront"]')?.textContent, 'storefront');
+  const { host, router, done } = await mountRouter(['/?unlock=1'], homeRoutes);
+  assert.equal(router.state.location.pathname, PRODUCTS_PATH);
+  assert.equal(router.state.historyAction, 'REPLACE');
+  assert.match(router.state.location.search, /unlock=1/);
+  assert.equal(host.querySelector('[data-home="products"]')?.textContent, 'products');
   done();
+});
+
+test('App.tsx PublicHomeRoute no longer auto-redirects saved access, and still forwards query keys', () => {
+  const src = readFileSync(resolve('src/App.tsx'), 'utf8');
+  assert.match(src, /if \(preservesAppHomeQuery\(params\)\)/);
+  assert.match(src, /return <StorefrontPage \/>;/);
+  assert.doesNotMatch(src, /HomeLicenseRedirect/);
+  const hero = readFileSync(resolve('src/pages/StorefrontHero.tsx'), 'utf8');
+  assert.match(hero, /Open my apps/);
+  assert.match(hero, /useHasSavedAdvantageAccess/);
 });
 
 test('/products home and back stay on /products and never link to `/`', async () => {
