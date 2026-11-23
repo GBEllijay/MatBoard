@@ -158,6 +158,24 @@ test('Mock-Tournament eyedrop colors are the stylesheet tokens', () => {
   assert.match(tv, /--flap-ring-w:\s*min\(94%,\s*100cqh\)/);
 });
 
+test('Mock-Tournament display digits are centered in the score tiles', () => {
+  const css = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  const start = css.indexOf('Mock-Tournament (and Quick Result, which shares this class): raise and');
+  assert.ok(start >= 0, 'Mock-Tournament tile layout block exists');
+  const block = css.slice(start, start + 4800);
+  assert.match(block, /\.scoreboard-skin--mock-tournament\.display:not\(\.display--polished\) \.score/);
+  assert.match(block, /justify-content:\s*center/);
+  assert.match(block, /position:\s*absolute/);
+  assert.match(block, /font-size:\s*clamp\(3\.4rem,\s*8\.8vw,\s*8\.4rem\)/);
+  assert.match(block, /\.bout-call/);
+  assert.match(block, /body:has\(\.preview-white-badge\) main\.display/);
+  assert.match(block, /padding-bottom:\s*calc\(2\.7rem \+ var\(--safe-b, 0px\)\)/);
+  assert.match(block, /#root:has\(main\.display\)/);
+  assert.match(block, /#root:has\(main\.display\) \.buy__status/);
+  assert.match(block, /flex-direction:\s*column/);
+  assert.match(block, /body:has\(\.sheet\) \.preview-white-badge/);
+});
+
 test('Old School phone landscape fills the panel with the portrait Adv/Pen headers', () => {
   const css = fs.readFileSync(new URL('../index.css', import.meta.url), 'utf8');
   const query =
