@@ -11,15 +11,20 @@ import { EditionLadder } from '../components/EditionLadder';
 import { WhiteUpgradePrompt } from '../components/WhiteUpgradePrompt';
 import { SiteFooter } from '../components/SiteFooter';
 import { PRODUCTS_PATH } from '../lib/productNames';
+import { isNativeWhiteApp } from '../lib/appTarget';
 import { isPreviewWhiteUnlocked } from '../lib/previewWhiteBypass';
+import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { lockWhite } from '../lib/whiteUnlock';
+import { WHITE_IAP_PRICE_LABEL } from '../lib/nativeWhiteIap';
 
 export function WhitePage() {
   const navigate = useNavigate();
+  const native = isNativeWhiteApp();
+  const unlocked = useWhiteUnlocked();
   return (
     <main className="home home--white">
       <div className="home__inner">
-        <HomeMark to={PRODUCTS_PATH} />
+        <HomeMark to={native ? '/white' : PRODUCTS_PATH} />
 
         <nav className="home__modes" aria-label="Advantage White">
           <BeltHeader
@@ -31,13 +36,13 @@ export function WhitePage() {
           <RoundsCard />
           <BracketsCard />
           <BracketRosterCard />
-          <WhiteUpgradePrompt />
-          <EditionLadder page="white" />
+          {native ? null : <WhiteUpgradePrompt />}
+          {native ? null : <EditionLadder page="white" />}
         </nav>
 
         <div className="home__hints">
           <InstructionsButton controlsId="white-instructions">
-            <p className="home__hint">Install Advantage as an app from your browser menu.</p>
+            {native ? null : <p className="home__hint">Install Advantage as an app from your browser menu.</p>}
             <p className="home__hint">
               Gym TV: open this site on a computer plugged into the TV, then fullscreen Display or
               Rounds. Press F for fullscreen.
@@ -52,7 +57,15 @@ export function WhitePage() {
             </p>
           </InstructionsButton>
           <FaqLink />
-          {isPreviewWhiteUnlocked() ? (
+          {native ? (
+            unlocked ? null : (
+              <p className="home__soon">
+                <Link className="home__text-btn" to="/buy">
+                  Unlock scoreboard, brackets, and skins — {WHITE_IAP_PRICE_LABEL}
+                </Link>
+              </p>
+            )
+          ) : isPreviewWhiteUnlocked() ? (
             <p className="home__soon">
               Advantage White is on for this preview.{' '}
               <Link className="home__text-btn" to={PRODUCTS_PATH}>

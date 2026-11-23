@@ -50,6 +50,8 @@ export default defineConfig({
     react(),
     paidChunkPlugin(),
     VitePWA({
+      // Service workers fight Capacitor's local web view. Keep PWA on for the website only.
+      disable: process.env.VITE_APP_TARGET === 'white',
       registerType: 'autoUpdate',
       injectRegister: false,
       includeAssets: ['favicon.png', 'favicon.svg', 'advantage-icon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'home-mat-tatami.png', 'sounds/parou-stop-gaming-mic.mp3', 'sounds/parou-stop.mp3', 'sounds/parou.mp3', 'sounds/combate.mp3'],

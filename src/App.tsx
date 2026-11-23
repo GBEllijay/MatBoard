@@ -45,7 +45,9 @@ import { consumeUnlockQueryNow } from './lib/proUnlock';
 import { captureHalfOffQuery, consumeHalfOffQueryNow } from './lib/halfOff';
 import { preservesAppHomeQuery } from './lib/submenuNav';
 import { WHITE_BUY_PATH } from './lib/whitePurchase';
+import { hideWebCheckout, isNativeWhiteApp, nativeTimerAllowed } from './lib/appTarget';
 import { whiteHubAllowed, whiteLiveToolsAllowed } from './lib/whiteUnlock';
+import { NativeWhiteUnlockPage } from './pages/NativeWhiteUnlock';
 import { StudentEditionPage } from './pages/StudentEdition';
 import { StudentJoinPage } from './pages/student/StudentLicenseClaim';
 import { IndexCardProvider } from './indexCards/IndexCardHost';
@@ -325,8 +327,16 @@ function BuyStudentRoute({ children }: { children: ReactNode }) {
   return children;
 }
 
-/** Advantage White hub and roster. A confirmed purchase or a server code opens them. */
+/** Advantage White hub. Native White opens this without a web purchase so the free timer is reachable. */
 function WhiteHubRoute({ children }: { children: ReactNode }) {
+  const unlocked = useWhiteUnlocked();
+  if (isNativeWhiteApp()) return children;
+  if (!whiteHubAllowed(unlocked)) return <GuardRedirect to={WHITE_BUY_PATH} />;
+  return children;
+}
+
+/** Roster and Bracket Roster. Stay behind a White purchase in the native app too. */
+function WhitePaidRoute({ children }: { children: ReactNode }) {
   const unlocked = useWhiteUnlocked();
   if (!whiteHubAllowed(unlocked)) return <GuardRedirect to={WHITE_BUY_PATH} />;
   return children;
@@ -335,16 +345,24 @@ function WhiteHubRoute({ children }: { children: ReactNode }) {
 /**
  * Scoreboard and round timer. White buyers use them from /white.
  * Coach and Pro keep the same screens through their existing doors.
+ * In the native White app the round timer is free; scoreboard and brackets stay gated.
  */
-function WhiteLiveRoute({ children }: { children: ReactNode }) {
+function WhiteLiveRoute({ children, timer = false }: { children: ReactNode; timer?: boolean }) {
   const whiteUnlocked = useWhiteUnlocked();
   const pro = useProUnlocked();
   const coach = useCoachUnlocked();
   const seated = useCurrentSeat() !== null;
   const coachDoor = coachDoorOpen(pro, coach, seated);
+  if (timer && nativeTimerAllowed()) return children;
   if (!whiteLiveToolsAllowed({ whiteUnlocked, coachDoor, proDoor: proDoorOpen(pro) })) {
     return <GuardRedirect to={WHITE_BUY_PATH} />;
   }
+  return children;
+}
+
+/** In the native White app, send website storefront / web-checkout routes back to White. */
+function NativeWhiteAway({ children, to = '/white' }: { children: ReactNode; to?: string }) {
+  if (hideWebCheckout()) return <Navigate to={to} replace />;
   return children;
 }
 
@@ -449,6 +467,7 @@ function InviteDoor({ children }: { children: ReactNode }) {
 
 /** Owner-code and `?student=1` links keep the edition picker. A bare `/` is the storefront. */
 function PublicHomeRoute() {
+  if (isNativeWhiteApp()) return <Navigate to="/white" replace />;
   const [params] = useSearchParams();
   if (preservesAppHomeQuery(params)) {
     const search = params.toString();
@@ -478,16 +497,16 @@ export default function App() {
 
   return (
     <IndexCardProvider>
-    <HeaderAccount />
-    <PreviewWhiteBadge />
-    <SeatSessionChrome />
-    <InAppBrowserHint />
-    <LegacyAccessNotice />
-    <PaymentGraceBanner />
+    {isNativeWhiteApp() ? null : <HeaderAccount />}
+    {isNativeWhiteApp() ? null : <PreviewWhiteBadge />}
+    {isNativeWhiteApp() ? null : <SeatSessionChrome />}
+    {isNativeWhiteApp() ? null : <InAppBrowserHint />}
+    {isNativeWhiteApp() ? null : <LegacyAccessNotice />}
+    {isNativeWhiteApp() ? null : <PaymentGraceBanner />}
     <InviteDoor>
     <Routes>
       <Route path="/" element={<PublicHomeRoute />} />
-      <Route path="/products" element={<HomePage />} />
+      <Route path="/products" element={<NativeWhiteAway><HomePage /></NativeWhiteAway>} />
       <Route path="/pro-plus-cloud" element={<ProPlusCloudRoute />} />
       <Route path="/editions" element={<EditionsRedirect />} />
       <Route
@@ -498,66 +517,74 @@ export default function App() {
           </WhiteHubRoute>
         }
       />
-      <Route path="/buy" element={<BuyWhitePage />} />
+      <Route path="/buy" element={isNativeWhiteApp() ? <NativeWhiteUnlockPage /> : <BuyWhitePage />} />
       <Route path={MEDIA_EDITION_PATH} element={<MediaEditionRoute />} />
       <Route path={MEDIA_EDITION_OLD_PATH} element={<Navigate to={MEDIA_EDITION_PATH} replace />} />
-      <Route path="/restore" element={<RestoreAccessPage />} />
+      <Route path="/restore" element={<NativeWhiteAway to="/buy"><RestoreAccessPage /></NativeWhiteAway>} />
       <Route path="/account" element={<AccountPage />} />
       <Route path="/join/student" element={<StudentJoinPage />} />
       {/* Public tier buy pages (display + alpha line). The gated /buy/student, /buy/coach and /buy/pro checkouts are unchanged. */}
-      <Route path="/editions/student" element={<BuyStudentEditionPage />} />
-      <Route path="/editions/instructor" element={<BuyInstructorEditionPage />} />
-      <Route path="/editions/pro" element={<BuyProEditionPage />} />
-      <Route path="/editions/media" element={<MediaEditionPage />} />
-      <Route path="/editions/pro-cloud" element={<ProPlusCloudInfoPage />} />
+      <Route path="/editions/student" element={<NativeWhiteAway to="/buy"><BuyStudentEditionPage /></NativeWhiteAway>} />
+      <Route path="/editions/instructor" element={<NativeWhiteAway to="/buy"><BuyInstructorEditionPage /></NativeWhiteAway>} />
+      <Route path="/editions/pro" element={<NativeWhiteAway to="/buy"><BuyProEditionPage /></NativeWhiteAway>} />
+      <Route path="/editions/media" element={<NativeWhiteAway><MediaEditionPage /></NativeWhiteAway>} />
+      <Route path="/editions/pro-cloud" element={<NativeWhiteAway><ProPlusCloudInfoPage /></NativeWhiteAway>} />
       <Route path="/editions/white" element={<Navigate to="/buy" replace />} />
       <Route path="/pro/paused" element={<ProLockedPage />} />
       <Route
         path="/buy/student"
         element={
-          <BuyStudentRoute>
-            <BuyStudentPage />
-          </BuyStudentRoute>
+          <NativeWhiteAway to="/buy">
+            <BuyStudentRoute>
+              <BuyStudentPage />
+            </BuyStudentRoute>
+          </NativeWhiteAway>
         }
       />
       <Route
         path="/buy/coach"
         element={
-          <CoachRoute>
-            <BuyCoachPage />
-          </CoachRoute>
+          <NativeWhiteAway to="/buy">
+            <CoachRoute>
+              <BuyCoachPage />
+            </CoachRoute>
+          </NativeWhiteAway>
         }
       />
       <Route
         path="/buy/media"
         element={
-          <BuyMediaRoute>
-            <BuyMediaPage />
-          </BuyMediaRoute>
+          <NativeWhiteAway to="/buy">
+            <BuyMediaRoute>
+              <BuyMediaPage />
+            </BuyMediaRoute>
+          </NativeWhiteAway>
         }
       />
       <Route
         path="/buy/pro"
         element={
-          <BuyProRoute>
-            <BuyProPage />
-          </BuyProRoute>
+          <NativeWhiteAway to="/buy">
+            <BuyProRoute>
+              <BuyProPage />
+            </BuyProRoute>
+          </NativeWhiteAway>
         }
       />
       <Route
         path="/white/roster"
         element={
-          <WhiteHubRoute>
+          <WhitePaidRoute>
             <WhiteRosterPage />
-          </WhiteHubRoute>
+          </WhitePaidRoute>
         }
       />
       <Route
         path="/white/bracket-roster"
         element={
-          <WhiteHubRoute>
+          <WhitePaidRoute>
             <BracketRosterPage />
-          </WhiteHubRoute>
+          </WhitePaidRoute>
         }
       />
       <Route
@@ -588,7 +615,7 @@ export default function App() {
       <Route
         path="/training"
         element={
-          <WhiteLiveRoute>
+          <WhiteLiveRoute timer>
             <TrainingPage />
           </WhiteLiveRoute>
         }
@@ -596,7 +623,7 @@ export default function App() {
       <Route
         path="/training/control"
         element={
-          <WhiteLiveRoute>
+          <WhiteLiveRoute timer>
             <TrainingControllerPage />
           </WhiteLiveRoute>
         }

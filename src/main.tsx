@@ -14,6 +14,7 @@ import { initRosterSync } from './lib/rosterStore';
 import { initScheduleSync } from './lib/scheduleStore';
 import { initTournamentSync } from './lib/tournamentStore';
 import { setPlaybackAudioSession, watchInstalledPersistence } from './lib/offlineShell';
+import { isNativeWhiteApp } from './lib/appTarget';
 import './index.css';
 
 installStudentMockGuard();
@@ -31,7 +32,9 @@ initTournamentSync();
 initRosterSync();
 initRankingSync();
 void initScheduleSync();
-registerSW({ immediate: true });
+if (!isNativeWhiteApp()) {
+  registerSW({ immediate: true });
+}
 setPlaybackAudioSession();
 watchInstalledPersistence();
 

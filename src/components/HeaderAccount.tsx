@@ -4,6 +4,7 @@ import { WHITE_BOARD_FROM } from '../lib/productNames';
 import { ACCOUNT_PATH, LOGIN_EVENT, readLoginHint } from '../lib/emailLogin';
 import { accountButtonBlocked } from '../lib/optionsReopenGuard';
 import { isSheetLayerOpen, subscribeSheetLayer } from '../lib/sheetLayer';
+import { isNativeWhiteApp } from '../lib/appTarget';
 
 /**
  * Paths that already have a top-right Sign in / Account control, or are a TV display.
@@ -37,7 +38,7 @@ export function HeaderAccount() {
   }, []);
   // Any open sheet owns the top-right corner (its Close). Do not rely on CSS :has() alone.
   const sheetOpen = useSyncExternalStore(subscribeSheetLayer, isSheetLayerOpen, () => false);
-  if (HIDDEN_PATHS.has(pathname) || pathname.startsWith('/white/') || whiteController || sheetOpen) return null;
+  if (isNativeWhiteApp() || HIDDEN_PATHS.has(pathname) || pathname.startsWith('/white/') || whiteController || sheetOpen) return null;
   return (
     <Link
       className="header-account"
