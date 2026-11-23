@@ -35,7 +35,7 @@ import { resolveGrandmasterId } from '../lib/grandmasters';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
 import { customSkinRecordId, isCustomSkinId } from '../lib/customSkin';
 import { polishedSkinById } from '../lib/polishedSkins';
-import { SCOREBOARD_SKIN, scoreboardSkinClass } from '../lib/scoreboardSkin';
+import { SCOREBOARD_SKIN, scoreboardSkinClass, scoreboardUsesFlapCards } from '../lib/scoreboardSkin';
 
 export function MatchDisplayPage() {
   const match = useMatchState();
@@ -95,7 +95,8 @@ export function MatchDisplayPage() {
   const clockStatus = match.running ? 'Running' : remaining <= 0 ? 'Ended' : 'Paused';
   const clockStatusAction = match.running ? 'Pause match clock' : remaining <= 0 ? 'Restart match clock' : 'Start match clock';
   const skin = board.skinFor(match.skin);
-  const flap = skin === SCOREBOARD_SKIN.OLD_SCHOOL;
+  const flap = scoreboardUsesFlapCards(skin);
+  const flapVariant: 'old-school' | 'split-flap' = skin === SCOREBOARD_SKIN.SPLIT_FLAP_PRO ? 'split-flap' : 'old-school';
   const boardCalls = skin === SCOREBOARD_SKIN.QUICK_RESULT;
   /** A custom skin is the Mock-Tournament board with the uploaded picture behind it. */
   const customRecordId = isCustomSkinId(skin) ? customSkinRecordId(skin) : null;
@@ -308,6 +309,7 @@ export function MatchDisplayPage() {
             fallbackName="Competitor 1"
             linked={Boolean(linkedId)}
             flap={flap}
+            flapVariant={flapVariant}
             onOpenController={openController}
             calls={
               boardCalls
@@ -321,8 +323,8 @@ export function MatchDisplayPage() {
             }
           />
 
-          <section className={`display__mid${flap ? ' display__mid--stack' : ''}`}>
-            {flap ? clockControl : null}
+          <section className={`display__mid${skin === SCOREBOARD_SKIN.OLD_SCHOOL ? ' display__mid--stack' : ''}`}>
+            {skin === SCOREBOARD_SKIN.OLD_SCHOOL ? clockControl : null}
             <div className="display__meta">
               {roundLine ? (
                 <ControllerFocusLink focus="round" label="Edit round on Controller" onOpen={openController}>
@@ -331,7 +333,7 @@ export function MatchDisplayPage() {
               ) : null}
               <ClassLine division={match.division} weight={match.weight} onOpen={openController} />
             </div>
-            {flap ? null : clockControl}
+            {skin === SCOREBOARD_SKIN.OLD_SCHOOL ? null : clockControl}
             {statusControl}
           </section>
 
@@ -346,6 +348,7 @@ export function MatchDisplayPage() {
             fallbackName="Competitor 2"
             linked={Boolean(linkedId)}
             flap={flap}
+            flapVariant={flapVariant}
             onOpenController={openController}
             calls={
               boardCalls
@@ -405,6 +408,7 @@ function CompetitorBand({
   fallbackName,
   linked,
   flap,
+  flapVariant = 'old-school',
   onOpenController,
   calls,
 }: {
@@ -418,6 +422,7 @@ function CompetitorBand({
   fallbackName: string;
   linked: boolean;
   flap: boolean;
+  flapVariant?: 'old-school' | 'split-flap';
   onOpenController: (focus?: DisplayFocus) => void;
   calls?: {
     disabled: boolean;
@@ -462,9 +467,9 @@ function CompetitorBand({
         ) : null}
       </div>
       <div className="bout__scores">
-        <ScoreBox side={side} kind="points" value={points} flap={flap} />
-        <ScoreBox side={side} kind="advantages" value={advantages} flap={flap} />
-        <ScoreBox side={side} kind="disadvantages" value={disadvantages} flap={flap} />
+        <ScoreBox side={side} kind="points" value={points} flap={flap} flapVariant={flapVariant} />
+        <ScoreBox side={side} kind="advantages" value={advantages} flap={flap} flapVariant={flapVariant} />
+        <ScoreBox side={side} kind="disadvantages" value={disadvantages} flap={flap} flapVariant={flapVariant} />
       </div>
     </section>
   );
