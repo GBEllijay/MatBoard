@@ -882,9 +882,9 @@
   right: auto;
   width: fit-content;
   max-width: 92vw;
-  padding: 0.55rem 1.35rem;
+  padding: 0.7rem 1.9rem;
   border-radius: 999px;
-  font-size: clamp(0.95rem, 2vw, 1.75rem);
+  font-size: clamp(1.4rem, 3.6vw, 4.25rem);
   letter-spacing: 0.16em;
   line-height: 1.15;
   z-index: 2;
@@ -1480,6 +1480,79 @@
 
 .training.training--wt-tatami.training--break .wt-timer-progress__fill {
   background: #22c55e;
+}
+
+/* Phone layout for the six new White timer skins only.
+   Hide the help paragraph, enlarge split-flap / LED / flip-card clocks
+   to about 85–90% of a 390-wide screen, and leave TV clock sizes alone.
+   Broadcast, Daylight, and Tatami clocks already fill that range on the phone. */
+@media (max-width: 480px) {
+  .training.training--wt-broadcast .training__hint,
+  .training.training--wt-split-flap .training__hint,
+  .training.training--wt-daylight .training__hint,
+  .training.training--wt-led .training__hint,
+  .training.training--wt-true-flip .training__hint,
+  .training.training--wt-tatami .training__hint {
+    display: none;
+  }
+
+  .training.training--wt-broadcast,
+  .training.training--wt-split-flap,
+  .training.training--wt-daylight,
+  .training.training--wt-led,
+  .training.training--wt-true-flip,
+  .training.training--wt-tatami {
+    gap: 0.7rem;
+    padding: 3.25rem 0.5rem 2.25rem;
+  }
+
+  .wt-sf-clock {
+    gap: 0.28rem;
+  }
+
+  .wt-sf-clock__colon {
+    font-size: 4rem;
+  }
+
+  .wt-sf-tile {
+    width: 4.35rem;
+    height: 6.35rem;
+  }
+
+  .wt-sf-tile__face {
+    font-size: 4.65rem;
+  }
+
+  .wt-led-clock {
+    gap: 0.28rem;
+  }
+
+  .wt-led-digit {
+    width: 4.15rem;
+  }
+
+  .wt-led-colon {
+    gap: 1rem;
+    padding-inline: 0.2rem;
+  }
+
+  .wt-led-dot {
+    width: 0.7rem;
+    height: 0.7rem;
+  }
+
+  .wt-tf-clock {
+    gap: 0.28rem;
+  }
+
+  .wt-tf-clock__colon {
+    font-size: 3.9rem;
+  }
+
+  .wt-tf-slot {
+    width: 4.25rem;
+    height: 6.2rem;
+  }
 }
 
 /* --- Controller Work/Break tints for the new White timer skins --- */

@@ -135,5 +135,14 @@ test('New White round timer skins persist, map Work/Break CSS, and expose mode h
   }
   assert.match(css, /@keyframes wt-led-pulse/);
   assert.match(css, /\.training\.training--wt-led\.training--final-10/);
+  assert.match(css, /font-size:\s*clamp\(1\.4rem,\s*3\.6vw,\s*4\.25rem\)/);
+  assert.match(css, /padding:\s*0\.7rem\s+1\.9rem/);
+  const phone = css.slice(css.indexOf('@media (max-width: 480px)'));
+  assert.ok(phone.length > 0 && phone.includes('display: none'), 'phone layout hides the timer help text');
+  assert.match(phone, /\.training\.training--wt-tatami \.training__hint/);
+  assert.match(phone, /\.wt-sf-tile \{\s*width:\s*4\.35rem;/);
+  assert.match(phone, /\.wt-led-digit \{\s*width:\s*4\.15rem;/);
+  assert.match(phone, /\.wt-tf-slot \{\s*width:\s*4\.25rem;/);
+  assert.doesNotMatch(phone, /training--wt-mock|training--wt-old|training--classic/);
   setTrainingSkin('classic');
 });
