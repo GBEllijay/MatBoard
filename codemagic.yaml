@@ -1,0 +1,68 @@
+# Advantage White iOS — Codemagic cloud Mac / Xcode build.
+# Manual trigger only. Do not add a `triggering` block (no push, tag, or PR builds).
+#
+# Owner setup (nothing in this file is a secret):
+#   1. Register bundle ID com.advantagebjjtimer.white in Apple Developer.
+#   2. Create the app record in App Store Connect with that exact bundle ID.
+#   3. In Codemagic, add an App Store Connect API key integration named
+#      ADVANTAGE_APP_STORE_CONNECT (placeholder name — use the same name here).
+#   4. Connect iOS code signing (App Store distribution) for
+#      com.advantagebjjtimer.white. Create an environment group named
+#      ADVANTAGE_IOS_SIGNING (it may be empty) or the workflow will fail
+#      looking it up.
+# Never commit certificates, API keys, or .p12 / .mobileprovision files.
+#
+# Capacitor 8 ships an Xcode project with Swift Package Manager, not a
+# CocoaPods workspace. Build uses App.xcodeproj.
+# instance_type is mac_mini_m2, Codemagic's current Mac mini.
+
+workflows:
+  ios-white:
+    name: Advantage White iOS
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: ADVANTAGE_APP_STORE_CONNECT
+    environment:
+      groups:
+        - ADVANTAGE_IOS_SIGNING
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.advantagebjjtimer.white
+      vars:
+        BUNDLE_ID: com.advantagebjjtimer.white
+        XCODE_PROJECT: App.xcodeproj
+        XCODE_SCHEME: App
+        # Set this in Codemagic after the App Store Connect app record exists.
+        # APP_STORE_APPLE_ID: "0000000000"
+      node: 22
+      xcode: latest
+    scripts:
+      - name: Install npm dependencies
+        script: npm ci
+      - name: Build White web assets
+        script: npm run build:white-ios
+      - name: Add the iOS platform if this checkout has no ios/ project
+        script: |
+          if [ ! -d ios/App ]; then
+            npx cap add ios
+          fi
+      - name: Sync Capacitor iOS
+        script: npx cap sync ios
+      - name: Set up code signing profiles
+        script: xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          cd ios/App
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - ios/App/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Upload the build only. Do not submit for review or TestFlight yet.
+        submit_to_testflight: false
+        submit_to_app_store: false

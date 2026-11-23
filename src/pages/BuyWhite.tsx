@@ -28,12 +28,15 @@ import {
   formatUsdFromCents,
 } from '../lib/whitePurchase';
 import { rememberWhitePurchase, restoreHref } from '../lib/whiteUnlock';
+import { isNativeWhiteApp } from '../lib/appTarget';
+import { NativeWhiteUnlockPage } from './NativeWhiteUnlock';
 
 /** The /buy restore panel. The email and the person check live on /restore. */
 export const BUY_RESTORE_COPY =
   'Already purchased? Enter the email from checkout. If it matches the purchase, we will email a one-time code.';
 
 export function BuyWhitePage() {
+  if (isNativeWhiteApp()) return <NativeWhiteUnlockPage />;
   const [params, setParams] = useSearchParams();
   const checkout = params.get('checkout');
   const sessionId = params.get('session_id');

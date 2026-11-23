@@ -6,6 +6,7 @@ import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { purchasePromptsHidden } from '../lib/instructorSeats';
+import { isNativeWhiteApp } from '../lib/appTarget';
 import {
   WHITE_UPGRADE_LABEL,
   WHITE_UPGRADE_LINE,
@@ -29,7 +30,7 @@ export function WhiteUpgradePrompt() {
     cloud: useProPlusCloudUnlocked(),
     seated: purchasePromptsHidden(useCurrentSeat()),
   });
-  if (!visible) return null;
+  if (isNativeWhiteApp() || !visible) return null;
   return (
     <Link className="white-upgrade" to={WHITE_UPGRADE_PATH} aria-label={WHITE_UPGRADE_LABEL} data-testid="white-upgrade">
       <span className="belt-tip belt-tip--blue white-upgrade__mark" aria-hidden="true">

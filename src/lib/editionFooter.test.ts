@@ -29,7 +29,9 @@ test('the White page has no edition ladder and an Alpha testers footer link to /
   const page = source('../pages/White.tsx');
   const footer = source('../components/SiteFooter.tsx');
   assert.equal(page.includes('EditionLadder'), false);
-  assert.match(page, /<SiteFooter hideAccount alphaTesters/);
+  assert.match(page, /const native = isNativeWhiteApp\(\);/);
+  assert.match(page, /<SiteFooter hideAccount alphaTesters=\{!native\} \/>/);
+  assert.doesNotMatch(page, /<SiteFooter hideAccount alphaTesters \/>/);
   assert.match(footer, /alphaTesters \? <Link to=\{PRODUCTS_PATH\}>Alpha testers</);
   assert.match(page, /Buy Advantage White — \$9\.99/);
   assert.match(page, /All products/);
