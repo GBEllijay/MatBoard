@@ -7,7 +7,6 @@ import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
 import { BracketsCard } from '../components/BracketsCard';
 import { BracketRosterCard } from '../components/BracketRosterCard';
-import { EditionLadder } from '../components/EditionLadder';
 import { WhiteUpgradePrompt } from '../components/WhiteUpgradePrompt';
 import { SiteFooter } from '../components/SiteFooter';
 import { PRODUCTS_PATH } from '../lib/productNames';
@@ -32,7 +31,6 @@ export function WhitePage() {
           <BracketsCard />
           <BracketRosterCard />
           <WhiteUpgradePrompt />
-          <EditionLadder page="white" />
         </nav>
 
         <div className="home__hints">
@@ -86,7 +84,7 @@ export function WhitePage() {
             </>
           )}
         </div>
-        <SiteFooter hideAccount />
+        <SiteFooter hideAccount alphaTesters />
       </div>
     </main>
   );

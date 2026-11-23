@@ -20,10 +20,33 @@ test('edition homes put the ladder before Instructions, FAQ, and the legal foote
     before(file, '<InstructionsButton', '<FaqLink');
     before(file, '<FaqLink', '<SiteFooter');
   }
-  before('../pages/White.tsx', '<EditionLadder', '<InstructionsButton');
+  before('../pages/White.tsx', '<InstructionsButton', '<FaqLink');
   before('../pages/White.tsx', '<FaqLink', '<SiteFooter');
   before('../pages/MediaEditionHub.tsx', '<EditionLadder', 'home__hints');
   before('../pages/MediaEditionHub.tsx', 'home__hints', '<SiteFooter');
+});
+
+test('the White page has no edition ladder and an Alpha testers footer link to /products', () => {
+  const page = source('../pages/White.tsx');
+  const footer = source('../components/SiteFooter.tsx');
+  assert.equal(page.includes('EditionLadder'), false);
+  assert.match(page, /<SiteFooter hideAccount alphaTesters/);
+  assert.match(footer, /alphaTesters \? <Link to=\{PRODUCTS_PATH\}>Alpha testers</);
+  assert.match(page, /Buy Advantage White — \$9\.99/);
+  assert.match(page, /All products/);
+  assert.match(page, /Lock White/);
+  assert.match(page, /<InstructionsButton/);
+  assert.match(page, /<FaqLink/);
+  for (const file of [
+    '../pages/Pro.tsx',
+    '../pages/ProPlusCloud.tsx',
+    '../pages/Coach.tsx',
+    '../pages/MediaEditionHub.tsx',
+    '../pages/student/StudentMenus.tsx',
+  ]) {
+    assert.match(source(file), /<EditionLadder/, `${file} should keep its edition ladder`);
+    assert.doesNotMatch(source(file), /alphaTesters/, `${file} should not get the White-only Alpha testers prop`);
+  }
 });
 
 test('pages that already have no ladder do not grow one', () => {
