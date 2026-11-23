@@ -185,9 +185,9 @@ test('a Pages preview host lists the three White skins with no purchase flag, an
   assert.equal(whiteBaseSkinsOpen(closed, 'advantagebjjtimer.com'), false);
   assert.equal(whiteBaseSkinsOpen(purchased, 'advantagebjjtimer.com'), true);
   assert.equal(whiteBaseSkinsOpen(purchased, '67dd0da6.matboard.pages.dev'), true);
-  assert.deepEqual(scoreboardPickerSkins(true, false, whiteBaseSkinsOpen(closed, 'abc123.matboard.pages.dev')).map((skin) => skin.label), [...BASE_LABELS]);
-  assert.deepEqual(timerPickerSkins(false, whiteBaseSkinsOpen(closed, 'abc123.matboard.pages.dev')).map((skin) => skin.label), [...BASE_LABELS]);
-  assert.deepEqual(scoreboardPickerSkins(true, false, whiteBaseSkinsOpen(purchased, 'advantagebjjtimer.com')).map((skin) => skin.label), [...BASE_LABELS]);
+  assert.deepEqual(scoreboardPickerSkins(true, false, whiteBaseSkinsOpen(closed, 'abc123.matboard.pages.dev')).map((skin) => skin.label), [...BASE_SCOREBOARD_LABELS]);
+  assert.deepEqual(timerPickerSkins(false, whiteBaseSkinsOpen(closed, 'abc123.matboard.pages.dev')).map((skin) => skin.label), [...BASE_TIMER_LABELS]);
+  assert.deepEqual(scoreboardPickerSkins(true, false, whiteBaseSkinsOpen(purchased, 'advantagebjjtimer.com')).map((skin) => skin.label), [...BASE_SCOREBOARD_LABELS]);
   // Locked production stays without a picker catalog.
   assert.equal(whiteBaseSkinsOpen(closed, 'advantagebjjtimer.com'), false);
 });
