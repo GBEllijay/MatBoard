@@ -17,83 +17,102 @@ const WIDE_LABELS: Record<ScoreKind, string> = {
 
 const FLAP_PLACES: Record<ScoreKind, number> = OLD_SCHOOL_FLAP_PLACES;
 
-/** Highlight on the near wire, from the left shoulder down toward the hole. */
+/** Satin edge glint on forged dark gunmetal hinge rings. */
 function wireGlint(cx: number, cy: number, rx: number, ry: number): string {
   return `M ${cx - rx * 0.55} ${cy - ry * 0.78} A ${rx} ${ry} 0 0 0 ${cx - rx * 0.9} ${cy + ry * 0.22}`;
 }
 
 /**
- * Two binder rings. The back third is not drawn in front: the rod covers the
- * wire behind it, and the card hides the far side. The near loop stays in
- * front and crosses the grommet. viewBox y = 13.8 meets the card top.
+ * Matte gunmetal scoreboard-flip hinge bar with forged dark-steel dual rings
+ * and riveted grommets (Old School), or clean recessed split-flap cap (Split-Flap Pro).
+ * viewBox y = 13.8 meets the card top.
  */
-function FlipRings() {
+export function FlipRings({ variant = 'old-school' }: { variant?: 'old-school' | 'split-flap' }) {
   const uid = useId().replace(/:/g, '');
-  const metal = `${uid}-metal`;
+  if (variant === 'split-flap') {
+    return (
+      <svg className="flap__rings flap__rings--split-flap" viewBox="0 0 100 32" aria-hidden="true" shapeRendering="geometricPrecision">
+        <rect x="2" y="10.2" width="96" height="3.6" rx="1.2" fill="#1e2530" />
+        <rect x="2" y="10.2" width="96" height="0.8" fill="#3a4556" />
+        <circle cx="10" cy="12" r="1.15" fill="#4b5769" />
+        <circle cx="90" cy="12" r="1.15" fill="#4b5769" />
+      </svg>
+    );
+  }
+
+  const gunmetal = `${uid}-gunmetal`;
+  const rail = `${uid}-rail`;
   const rim = `${uid}-rim`;
   const front = `${uid}-front`;
-  const rings = [28, 72] as const;
-  const rx = 9;
+  const rings = [27, 73] as const;
+  const rx = 8.4;
   const ry = 8.6;
-  const cy = 11.6;
+  const cy = 11.4;
   const cardLine = 13.8;
-  const railY = 6.9;
-  const railH = 3.2;
-  const holeY = 19.6;
-  const holeR = 3.9;
+  const railY = 5.4;
+  const railH = 4.6;
+  const holeY = 20.2;
+  const holeR = 3.8;
 
   return (
     <svg className="flap__rings" viewBox="0 0 100 32" aria-hidden="true" shapeRendering="geometricPrecision">
       <defs>
-        <linearGradient id={metal} x1="0" y1="0" x2="0.2" y2="1">
-          <stop offset="0%" stopColor="#eef3f7" />
-          <stop offset="38%" stopColor="#ffffff" />
-          <stop offset="70%" stopColor="#9aa6af" />
-          <stop offset="100%" stopColor="#f4f7fa" />
+        <linearGradient id={gunmetal} x1="0" y1="0" x2="0.25" y2="1">
+          <stop offset="0%" stopColor="#697381" />
+          <stop offset="40%" stopColor="#3c434d" />
+          <stop offset="78%" stopColor="#1b1f25" />
+          <stop offset="100%" stopColor="#48505c" />
+        </linearGradient>
+        <linearGradient id={rail} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#464d58" />
+          <stop offset="45%" stopColor="#262b32" />
+          <stop offset="100%" stopColor="#121519" />
         </linearGradient>
         <linearGradient id={rim} x1="0.15" y1="0" x2="0.85" y2="1">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="45%" stopColor="#c5d0d8" />
-          <stop offset="100%" stopColor="#5c666e" />
+          <stop offset="0%" stopColor="#5a6370" />
+          <stop offset="50%" stopColor="#2c323b" />
+          <stop offset="100%" stopColor="#121519" />
         </linearGradient>
-        {/* Above the card the whole loop may show. On the card, only the near
-            side and the opening of the hole — the far arc stays behind the card. */}
         <clipPath id={front} clipPathUnits="userSpaceOnUse">
           <rect x="-8" y="0" width="116" height={cardLine + 0.15} />
           {rings.map((cx) => (
             <rect
               key={`near-${cx}`}
-              x={cx - rx - 2}
+              x={cx - rx - 2.4}
               y={cardLine}
-              width={rx + 2.4}
+              width={rx + 2.8}
               height={holeY + holeR - cardLine}
             />
           ))}
           {rings.map((cx) => (
-            <circle key={`eye-${cx}`} cx={cx} cy={holeY} r={holeR - 0.2} />
+            <circle key={`eye-${cx}`} cx={cx} cy={holeY} r={holeR - 0.1} />
           ))}
         </clipPath>
       </defs>
+      {/* Riveted gunmetal grommets punched into the top of the card */}
       {rings.map((cx) => (
         <g key={`grommet-${cx}`}>
-          <circle cx={cx} cy={holeY} r={holeR + 1.15} fill={`url(#${rim})`} />
-          <circle cx={cx} cy={holeY} r={holeR - 0.05} fill="#050505" />
+          <circle cx={cx} cy={holeY} r={holeR + 1.5} fill={`url(#${rim})`} stroke="#0a0c0f" strokeWidth="0.45" />
+          <circle cx={cx} cy={holeY} r={holeR} fill="#060709" />
         </g>
       ))}
-      <g fill="none" stroke={`url(#${metal})`} strokeWidth="1.7" strokeLinecap="butt" clipPath={`url(#${front})`}>
+      {/* Forged dark-gunmetal hinge loops */}
+      <g fill="none" stroke={`url(#${gunmetal})`} strokeWidth="2.8" strokeLinecap="butt" clipPath={`url(#${front})`}>
         {rings.map((cx) => (
           <ellipse key={`wire-${cx}`} cx={cx} cy={cy} rx={rx} ry={ry} />
         ))}
       </g>
-      <g fill="none" stroke="#ffffff" strokeWidth="0.4" strokeLinecap="butt" clipPath={`url(#${front})`}>
+      <g fill="none" stroke="rgba(205, 218, 232, 0.34)" strokeWidth="0.55" strokeLinecap="butt" clipPath={`url(#${front})`}>
         {rings.map((cx) => (
           <path key={`glint-${cx}`} d={wireGlint(cx, cy, rx, ry)} />
         ))}
       </g>
-      {/* Opaque rod. It hides the band of wire that runs behind the bar. */}
-      <rect x="-8" y={railY} width="116" height={railH} fill="#d5dee6" />
-      <rect x="-8" y={railY} width="116" height="0.85" fill="#f7fbfe" />
-      <rect x="-8" y={railY + railH - 0.55} width="116" height="0.55" fill="#66717a" />
+      {/* Heavy matte gunmetal hinge bar with machined rivets */}
+      <rect x="-6" y={railY} width="112" height={railH} rx="1.1" fill={`url(#${rail})`} />
+      <rect x="-6" y={railY} width="112" height="0.8" fill="rgba(180, 194, 210, 0.25)" />
+      <rect x="-6" y={railY + railH - 0.7} width="112" height="0.7" fill="#07090b" />
+      <circle cx="8" cy={railY + railH / 2} r="1.2" fill="#4f5866" stroke="#0c0e12" strokeWidth="0.4" />
+      <circle cx="92" cy={railY + railH / 2} r="1.2" fill="#4f5866" stroke="#0c0e12" strokeWidth="0.4" />
     </svg>
   );
 }
@@ -103,11 +122,12 @@ type Props = {
   kind: ScoreKind;
   value: number;
   compact?: boolean;
-  /** Old School flip cards. The button name still includes the score. */
+  /** Old School and Split-Flap Pro flip cards. The button name still includes the score. */
   flap?: boolean;
+  flapVariant?: 'old-school' | 'split-flap';
 };
 
-export function ScoreBox({ side, kind, value, compact, flap = false }: Props) {
+export function ScoreBox({ side, kind, value, compact, flap = false, flapVariant = 'old-school' }: Props) {
   const handlers = useHoldPress(
     () => dispatchMatch({ type: 'bump', side, kind, delta: 1 }),
     () => dispatchMatch({ type: 'bump', side, kind, delta: -1 }),
@@ -127,7 +147,7 @@ export function ScoreBox({ side, kind, value, compact, flap = false }: Props) {
         <span className="flap" aria-hidden="true">
           {digits.map((digit, index) => (
             <span key={index} className="flap__slot">
-              <FlipRings />
+              <FlipRings variant={flapVariant} />
               <span key={`${index}-${digit}`} className="flap__card">
                 <span className="flap__face">{digit}</span>
                 <span className="flap__seam" />

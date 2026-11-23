@@ -9,6 +9,12 @@ import {
   setTrainingSkin,
   trainingUsesAdvantageSkin,
   visibleTrainingSkin,
+  trainingUsesLedClock,
+  trainingUsesTrueFlipCards,
+  trainingUsesSplitFlap,
+  trainingHasProgressBar,
+  whiteTimerSurfaceClass,
+  whiteTimerControllerClass,
 } from './trainingSkin.ts';
 
 function memoryStorage() {
@@ -91,5 +97,43 @@ test('a custom timer skin stays stored and paints only for Media and above', () 
   assert.equal(visibleTrainingSkin(id, true, false), id);
   assert.equal(visibleTrainingSkin(id, false, false), 'classic');
   assert.equal(visibleTrainingSkin(id, false, true), 'MOCK_TOURNAMENT');
+  setTrainingSkin('classic');
+});
+
+test('New White round timer skins persist, map Work/Break CSS, and expose mode helpers', () => {
+  for (const id of [
+    'CLEAN_MAT_BROADCAST',
+    'SPLIT_FLAP_PRO',
+    'HIGH_CONTRAST_DAYLIGHT',
+    'LED_GYM_WALL',
+    'TRUE_FLIP_INTERVAL',
+    'WORK_REST_TATAMI',
+  ] as const) {
+    setTrainingSkin(id);
+    assert.equal(getTrainingSkin(), id);
+    assert.equal(visibleTrainingSkin(id, false, true), id);
+    assert.ok(whiteTimerSurfaceClass(id).startsWith('training--wt-'));
+    assert.ok(whiteTimerControllerClass(id).startsWith('controller--wt-'));
+  }
+  assert.equal(trainingUsesLedClock('LED_GYM_WALL'), true);
+  assert.equal(trainingUsesLedClock('WORK_REST_TATAMI'), false);
+  assert.equal(trainingUsesTrueFlipCards('TRUE_FLIP_INTERVAL'), true);
+  assert.equal(trainingUsesSplitFlap('SPLIT_FLAP_PRO'), true);
+  assert.equal(trainingHasProgressBar('LED_GYM_WALL'), true);
+  assert.equal(trainingHasProgressBar('WORK_REST_TATAMI'), true);
+  assert.equal(trainingHasProgressBar('OLD_SCHOOL'), false);
+  const css = fs.readFileSync(new URL('../skins/whiteSkins.css', import.meta.url), 'utf8');
+  for (const cls of [
+    'training--wt-broadcast.training--break',
+    'training--wt-split-flap.training--break',
+    'training--wt-daylight.training--break',
+    'training--wt-led.training--break',
+    'training--wt-true-flip.training--break',
+    'training--wt-tatami.training--break',
+  ]) {
+    assert.match(css, new RegExp(cls.replace(/\./g, '\\.')));
+  }
+  assert.match(css, /@keyframes wt-led-pulse/);
+  assert.match(css, /\.training\.training--wt-led\.training--final-10/);
   setTrainingSkin('classic');
 });

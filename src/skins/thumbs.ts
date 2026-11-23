@@ -2,6 +2,12 @@ import { POLISHED_SKINS, type PolishedTimerSlug } from '../lib/polishedSkins';
 import mockTournament from './thumbs/mock-tournament.jpg';
 import oldSchool from './thumbs/old-school.jpg';
 import quickResult from './thumbs/quick-result.jpg';
+import cleanMatBroadcast from './thumbs/clean-mat-broadcast.jpg';
+import splitFlapPro from './thumbs/split-flap-pro.jpg';
+import highContrastDaylight from './thumbs/high-contrast-daylight.jpg';
+import ledGymWall from './thumbs/led-gym-wall.jpg';
+import trueFlipInterval from './thumbs/true-flip-interval.jpg';
+import workRestTatami from './thumbs/work-rest-tatami.jpg';
 import classic from './thumbs/classic.jpg';
 import advantage from './thumbs/advantage.jpg';
 import arcadeSb from './polished/thumbs/kids-arcade-scoreboard.jpg';
@@ -34,6 +40,12 @@ export const EXISTING_SKIN_THUMBS = {
   MOCK_TOURNAMENT: mockTournament,
   OLD_SCHOOL: oldSchool,
   QUICK_RESULT: quickResult,
+  CLEAN_MAT_BROADCAST: cleanMatBroadcast,
+  SPLIT_FLAP_PRO: splitFlapPro,
+  HIGH_CONTRAST_DAYLIGHT: highContrastDaylight,
+  LED_GYM_WALL: ledGymWall,
+  TRUE_FLIP_INTERVAL: trueFlipInterval,
+  WORK_REST_TATAMI: workRestTatami,
   classic,
   themed: advantage,
 } as const;
