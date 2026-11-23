@@ -204,7 +204,14 @@ test('signed passes on this browser: White and Student locked, Media and Pro unl
 test('existing skins are unchanged by the polished gate', () => {
   assert.deepEqual(
     SELECTABLE_SCOREBOARD_SKINS.map((s) => s.id),
-    [SCOREBOARD_SKIN.MOCK_TOURNAMENT, SCOREBOARD_SKIN.OLD_SCHOOL, SCOREBOARD_SKIN.QUICK_RESULT],
+    [
+      SCOREBOARD_SKIN.MOCK_TOURNAMENT,
+      SCOREBOARD_SKIN.OLD_SCHOOL,
+      SCOREBOARD_SKIN.QUICK_RESULT,
+      SCOREBOARD_SKIN.CLEAN_MAT_BROADCAST,
+      SCOREBOARD_SKIN.SPLIT_FLAP_PRO,
+      SCOREBOARD_SKIN.HIGH_CONTRAST_DAYLIGHT,
+    ],
   );
   for (const open of [false, true]) {
     for (const skin of [SCOREBOARD_SKIN.MOCK_TOURNAMENT, SCOREBOARD_SKIN.OLD_SCHOOL, SCOREBOARD_SKIN.QUICK_RESULT]) {

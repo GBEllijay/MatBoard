@@ -62,16 +62,33 @@ test('a tall list peeks the next row, and a short list does not scroll', () => {
   assert.equal(fitted, 280);
 });
 
-test('White sees three Advantage skins and My skins stays hidden while empty', () => {
+test('White sees the White Advantage skins and My skins stays hidden while empty', () => {
   const board = scoreboardPickerSkins(true, false, true);
   const timer = timerPickerSkins(false, true);
   assert.deepEqual(
     board.map((skin) => skin.label),
-    ['Mock-Tournament', 'Old School', 'Quick Result'],
+    [
+      'Mock-Tournament',
+      'Old School',
+      'Quick Result',
+      'Clean Mat Broadcast',
+      'Split-Flap Pro',
+      'High-Contrast Daylight',
+    ],
   );
   assert.deepEqual(
     timer.map((skin) => skin.label),
-    ['Mock-Tournament', 'Old School', 'Quick Result'],
+    [
+      'Mock-Tournament',
+      'Old School',
+      'Quick Result',
+      'Clean Mat Broadcast',
+      'Split-Flap Pro',
+      'High-Contrast Daylight',
+      'LED Gym Wall Clock',
+      'True Flip-Card Interval',
+      'Work/Rest Color-Shift Tatami',
+    ],
   );
   for (const skin of [...board, ...timer]) {
     assert.equal(POLISHED_SKINS.some((polished) => polished.label === skin.label), false);
