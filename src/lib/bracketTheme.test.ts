@@ -42,3 +42,4 @@ test('Unknown stored theme falls back to Bright', () => {
   localStorage.setItem(BRACKET_THEME_KEY, 'beige-tatami');
   assert.equal(getBracketTheme(), 'bright');
 });
+

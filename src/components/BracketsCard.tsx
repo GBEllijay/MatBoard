@@ -17,7 +17,7 @@ export function BracketsCard() {
       <strong>Brackets</strong>
       <span className="mode-card__sub">Mock tournament</span>
       <span>
-        Run a mock tournament on a gym TV. Seed the bracket and advance winners from your phone.
+        Run a mock tournament on a gym TV or device. Seed the bracket and advance winners right on the screen.
         Supports up to 16 competitors, and optionally up to 36.
       </span>
       <div className="mode-card__actions">

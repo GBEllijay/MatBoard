@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Window } from 'happy-dom';
@@ -9,6 +10,7 @@ import { RosterNameField } from './RosterNameField.tsx';
 import { MatchDisplayPage } from '../pages/MatchDisplay.tsx';
 import { TournamentPage } from '../pages/Tournament.tsx';
 import { openBracketBout } from '../lib/bracketBout.ts';
+import { BRACKET_CLEAN_KEY, setBracketClean } from '../lib/bracketCleanMode.ts';
 import { setBracketTheme } from '../lib/bracketTheme.ts';
 import { KIDS_SKINS, kidsBracketScoring, kidsSkinButtonSuppressed, setKidsEnabled, setKidsSkin } from '../lib/kidsScoreboard.ts';
 import { PRO_UNLOCK_STORAGE_KEY } from '../lib/proUnlock.ts';
@@ -910,4 +912,59 @@ test('Skin stays shut while a sheet is open and still opens again after it close
   } finally {
     unmount(mounted);
   }
+});
+
+test('TV Clean toggle, Current match jump, and phone/TV CSS contracts hold', async () => {
+  localStorage.clear();
+  resetTournament();
+  setBracketTheme('bright');
+  setBracketClean(false);
+  setCompetitorCount(8);
+  fillSeedNames(['Alex', 'Blair', 'Casey', 'Drew', 'Eli', 'Finn', 'Gabe', 'Hugo']);
+  setMatchOutcome('qf-0', 'a', { call: 'win', method: 'points' });
+  setMatchOutcome('qf-1', 'b', { call: 'win', method: 'points' });
+  setMatchOutcome('qf-2', 'a', { call: 'win', method: 'points' });
+  setMatchOutcome('qf-3', 'b', { call: 'win', method: 'points' });
+  setMatchOutcome('sf-0', 'a', { call: 'win', method: 'points' });
+  setMatchOutcome('sf-1', 'a', { call: 'win', method: 'points' });
+  setMatchOutcome('final-0', 'a', { call: 'win', method: 'points' });
+
+  const mounted = mount(<TournamentPage />, '/white/brackets?from=white');
+  try {
+    await settle();
+    const main = mounted.host.querySelector('main.tournament');
+    assert.ok(main);
+    // Headline sits in .tournament__bar above .tournament__board so Back never covers seed #1
+    assert.ok(mounted.host.querySelector('.tournament__bar .bracket-headline'));
+    assert.equal(mounted.host.querySelector('.tournament__board .bracket-headline'), null);
+    // .tournament__tools is a direct child of main.tournament outside the zoomed board
+    assert.ok(mounted.host.querySelector('main.tournament > .tournament__tools'));
+    assert.equal(mounted.host.querySelector('.tournament__board .tournament__tools'), null);
+
+    const cleanBtn = [...mounted.host.querySelectorAll('button')].find(
+      (b) => b.getAttribute('role') === 'switch' && /TV Clean/i.test(b.textContent ?? ''),
+    );
+    assert.ok(cleanBtn, 'TV Clean switch renders');
+    assert.equal(cleanBtn.getAttribute('aria-checked'), 'false');
+    cleanBtn.click();
+    await settle();
+    assert.equal(main.classList.contains('tournament--clean'), true);
+    assert.equal(localStorage.getItem(BRACKET_CLEAN_KEY), '1');
+
+
+    const jumpBtn = [...mounted.host.querySelectorAll('button')].find(
+      (b) => /Current match/i.test(b.textContent ?? ''),
+    );
+    assert.ok(jumpBtn, 'Current match jump button renders');
+  } finally {
+    unmount(mounted);
+    resetTournament();
+    setBracketClean(false);
+    setBracketTheme('bright');
+  }
+
+  const css = readFileSync('src/pages/tournamentBoard.css', 'utf8');
+  assert.match(css, /\.tournament__bar[\s\S]*padding:[^;]*calc\(4\.5rem/);
+  assert.match(css, /\.tournament\.tournament--clean\s+\.t-slot__marks/);
+  assert.match(css, /@media\s*\(max-width:\s*720px\)[\s\S]*\.tournament__actions[\s\S]*overflow-x:\s*auto/);
 });

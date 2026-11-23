@@ -32,6 +32,7 @@ import {
   maxCompetitors,
   sizePresets,
   parseNameList,
+  nextPlayableMatchId,
   nextSlot,
   normalizeBoard,
   normalizeLibrary,
@@ -587,4 +588,20 @@ describe('clearing dependent later rounds', () => {
     assert.equal(board.entries['sf-0-a'], 'Blair');
     assert.equal(board.entries['sf-0-b'], 'Casey');
   });
+});
+
+describe('nextPlayableMatchId', () => {
+  const win = { call: 'win' as const, method: 'points' as const };
+  it('picks the preferred live match when unplayed, then walks to the next playable bout', () => {
+    let board = applySeedNames(defaultTournament(8), ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
+    assert.equal(nextPlayableMatchId(board, 'qf-2'), 'qf-2');
+    assert.equal(nextPlayableMatchId(board, null), 'qf-0');
+    board = applyMatchOutcome(board, 'qf-0', 'a', win, { toggle: false });
+    assert.equal(nextPlayableMatchId(board, 'qf-0'), 'qf-1');
+    board = applyMatchOutcome(board, 'qf-1', 'b', win, { toggle: false });
+    board = applyMatchOutcome(board, 'qf-2', 'a', win, { toggle: false });
+    board = applyMatchOutcome(board, 'qf-3', 'b', win, { toggle: false });
+    assert.equal(nextPlayableMatchId(board, null), 'sf-0');
+  });
+
 });

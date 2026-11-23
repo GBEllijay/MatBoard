@@ -5,6 +5,7 @@ import {
   subscribeBracketTheme,
   type BracketTheme,
 } from '../lib/bracketTheme';
+import { getBracketClean, subscribeBracketClean } from '../lib/bracketCleanMode';
 import {
   getKidsScoreboard,
   subscribeKidsScoreboard,
@@ -59,6 +60,10 @@ export function useTournamentLibrary(): TournamentLibrary {
 
 export function useBracketTheme(): BracketTheme {
   return useSyncExternalStore(subscribeBracketTheme, getBracketTheme, getBracketTheme);
+}
+
+export function useBracketClean(): boolean {
+  return useSyncExternalStore(subscribeBracketClean, getBracketClean, getBracketClean);
 }
 
 export function useKidsScoreboard(): KidsScoreboardPrefs {
