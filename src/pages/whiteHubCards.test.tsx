@@ -1,6 +1,8 @@
 /**
  * White hub cards: existing tools stay wired. Brackets and Bracket Roster
- * open their tools. The Brackets image is still a placeholder. Account is not on this page.
+ * open their tools. The Brackets image is still a placeholder. The Bracket
+ * Roster hub card is a Direction B preview (button, then athlete list), not
+ * the roster form. Account is not on this page.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -79,12 +81,31 @@ test('Brackets and Bracket Roster open their tools, keep the placeholder image, 
   assert.match(brackets.textContent ?? '', /Placeholder image/);
   assert.deepEqual(hrefs(brackets as HTMLElement, 'a'), ['/white/brackets?from=white', '/white/brackets?from=white']);
   assert.equal(roster.querySelector('strong')?.textContent, 'Bracket Roster');
-  assert.match(roster.textContent ?? '', /Gym/);
-  assert.match(roster.textContent ?? '', /Weight/);
-  assert.match(roster.textContent ?? '', /Division/);
-  assert.match(roster.textContent ?? '', /Age/);
-  assert.match(roster.textContent ?? '', /Rank/);
+  assert.match(roster.textContent ?? '', /Mock tournament list/);
+  assert.match(
+    roster.textContent ?? '',
+    /Build the list you seed into a bracket\. Add a name, then the gym under it, the same way Competitor 1 is entered on the scoreboard\./,
+  );
+  assert.doesNotMatch(roster.textContent ?? '', /Weight, division, age, and rank sit with each person/);
+  assert.equal(roster.querySelector('.mode-card__actions .btn')?.textContent?.trim(), 'Roster');
+  assert.equal(roster.querySelector('.bracket-roster-preview__field'), null);
+  assert.match(roster.textContent ?? '', /Atlas/);
   assert.match(roster.textContent ?? '', /Northside Academy/);
+  assert.match(roster.textContent ?? '', /Nori/);
+  assert.match(roster.textContent ?? '', /Harbor Gym/);
+  assert.match(roster.textContent ?? '', /Mina/);
+  assert.match(roster.textContent ?? '', /Riverside/);
+  assert.match(roster.textContent ?? '', /Kai/);
+  assert.match(roster.textContent ?? '', /Eastside Club/);
+  assert.match(roster.textContent ?? '', /155 · Adult/);
+  assert.match(roster.textContent ?? '', /Purple/);
+  assert.match(roster.textContent ?? '', /145 · Adult/);
+  assert.match(roster.textContent ?? '', /Blue/);
+  assert.match(roster.textContent ?? '', /125 · Adult/);
+  assert.match(roster.textContent ?? '', /Black/);
+  assert.match(roster.textContent ?? '', /170 · Master/);
+  assert.match(roster.textContent ?? '', /Brown/);
+  assert.ok(roster.querySelector('.bracket-roster-preview__belts'));
   assert.doesNotMatch(roster.textContent ?? '', /student roster/i);
   assert.doesNotMatch(brackets.textContent ?? '', /from your phone/i);
   assert.match(brackets.textContent ?? '', /right on the screen/i);
