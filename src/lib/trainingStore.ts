@@ -390,7 +390,7 @@ function playTrainStartCue(): void {
 /** Manual begin only. Automatic work/rest transitions still use playTrainStartCue. */
 function playTrainManualStartCue(firstStart: boolean): void {
   if (!state.startSound) return;
-  playManualStartSound(firstStart);
+  playManualStartSound(firstStart, { rest: state.phase === 'break' });
 }
 
 function followWithStartCue(): void {

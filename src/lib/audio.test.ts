@@ -90,7 +90,8 @@ test('a missing start sound becomes Combate, and a saved Beep stays Beep', async
   assert.equal(saved.volume, 0.4);
   const src = readFileSync(new URL('./audio.ts', import.meta.url), 'utf8');
   assert.match(src, /export function playTrainingStart\(\): void \{\s*if \(prefs\.startCue === 'beep'\) playStartCue\(\);\s*else playBeginCue\(\);/s);
-  assert.match(src, /export function playManualStartSound\(firstStart: boolean\): void \{\s*if \(manualStartTooSoon\(\)\) return;\s*const kind = startSoundKind\(prefs\.startSoundWhen, firstStart\);\s*if \(kind === 'combat'\) playBeginCue\(\);\s*else playResumeCue\(\);/s);
+  assert.match(src, /export function playManualStartSound\(firstStart: boolean, options\?: \{ rest\?: boolean \}\): void \{\s*if \(manualStartTooSoon\(\)\) return;\s*const kind = startSoundKind\(\{/s);
+  assert.match(src, /if \(kind === 'none'\) return;\s*if \(kind === 'combate'\) playBeginCue\(\);\s*else if \(kind === 'beep'\) playStartCue\(\);\s*else playResumeCue\(\);/s);
   assert.match(src, /function startRecorded\(buffer: AudioBuffer, gain: number\): void \{\s*const audio = getContext\(\);\s*if \(masterGain\(\) <= 0\) return;\s*const bus = getMaster\(\);/s);
 });
 
@@ -116,6 +117,25 @@ test('three end cue buttons: Buzzer, Bell, Parou', async () => {
       ['buzzer', 'Buzzer'],
       ['bell', 'Bell'],
       ['parou', 'PAROU! ("STOP!")'],
+    ],
+  );
+});
+
+test('start cue buttons: Beep and COMBATE! ("FIGHT!"), plus None on the match row', async () => {
+  const audio = await freshAudio();
+  assert.deepEqual(
+    audio.START_CUE_OPTIONS.map((o) => [o.id, o.label]),
+    [
+      ['beep', 'Beep'],
+      ['combate', 'COMBATE! ("FIGHT!")'],
+    ],
+  );
+  assert.deepEqual(
+    audio.MATCH_START_CUE_OPTIONS.map((o) => [o.id, o.label]),
+    [
+      ['none', 'None'],
+      ['beep', 'Beep'],
+      ['combate', 'COMBATE! ("FIGHT!")'],
     ],
   );
 });
@@ -197,14 +217,19 @@ test('one shared end cue + Extra loud control on the Timer and the Scoreboard', 
   const timer = readFileSync(new URL('../components/TrainingOptions.tsx', import.meta.url), 'utf8');
   assert.match(timer, /<EndCueControls label="Training end cue" value=\{audio\.endCue\} \/>/);
   assert.doesNotMatch(timer, /begin |Buzzer sound|BUZZER_SOUND_OPTIONS|Preview cues/);
-  for (const needle of ['aria-label="Training start sound"', 'Beep', 'Combate', 'Mute', 'Volume', 'Vibrate', '10-second warning']) {
+  assert.match(timer, /START_CUE_OPTIONS\.map/);
+  assert.match(timer, /<RoundStartOnlyToggle \/>/);
+  for (const needle of ['aria-label="Training start sound"', 'Mute', 'Volume', 'Vibrate', '10-second warning']) {
     assert.ok(timer.includes(needle), needle);
   }
 
   const board = readFileSync(new URL('../pages/MatchController.tsx', import.meta.url), 'utf8');
   assert.match(board, /<EndCueControls label="Match end cue" value=\{match\.endCue\} \/>/);
+  assert.match(board, /<StartCueControls startBeep=\{match\.startBeep\} \/>/);
+  assert.match(board, /<RoundStartOnlyToggle \/>/);
   assert.doesNotMatch(board, /Preview match cues|playBeginCue/);
-  for (const needle of ['Match end sound', '10-second warning', 'Start beep']) {
+  for (const needle of ['Match end sound', '10-second warning']) {
     assert.ok(board.includes(needle), needle);
   }
+  assert.doesNotMatch(board, /Start beep|When to play Combate|First start only/);
 });

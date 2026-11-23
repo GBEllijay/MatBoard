@@ -20,7 +20,7 @@ export type AudioPrefs = {
   startCue: StartCue;
   /** Drive the limiter harder for loud rooms (denser, slightly grittier). */
   extraLoud: boolean;
-  /** When a manual begin plays Combate: only the first start, or every start. */
+  /** "first" is Round Start Only on (default). "every" plays the chosen cue on each begin. */
   startSoundWhen: StartSoundWhen;
 };
 
@@ -29,6 +29,18 @@ export const END_CUE_OPTIONS: { id: EndCue; label: string }[] = [
   { id: 'buzzer', label: 'Buzzer' },
   { id: 'bell', label: 'Bell' },
   { id: 'parou', label: 'PAROU! ("STOP!")' },
+];
+
+/** Beep and Combate buttons, shared by the match and round-timer start rows. */
+export const START_CUE_OPTIONS: { id: StartCue; label: string }[] = [
+  { id: 'beep', label: 'Beep' },
+  { id: 'combate', label: 'COMBATE! ("FIGHT!")' },
+];
+
+/** Match start cue row. None is the old Start beep checkbox off. */
+export const MATCH_START_CUE_OPTIONS: { id: 'none' | StartCue; label: string }[] = [
+  { id: 'none', label: 'None' },
+  ...START_CUE_OPTIONS,
 ];
 
 /**
@@ -531,14 +543,23 @@ export function playTrainingStart(): void {
 }
 
 /**
- * Manual begin on the scoreboard or the round timer. Combate on the first
- * start (or on every start when that mode is on). A short beep on later
- * resumes. Mute, volume, and extra-loud apply through the shared cue bus.
+ * Manual begin on the scoreboard or the round timer. The chosen start cue
+ * plays at full time, or on every start when Round Start Only is off. A
+ * short low beep plays on later resumes when Round Start Only is on.
+ * Rest/break periods never play Combate. Mute, volume, and extra-loud
+ * apply through the shared cue bus.
  */
-export function playManualStartSound(firstStart: boolean): void {
+export function playManualStartSound(firstStart: boolean, options?: { rest?: boolean }): void {
   if (manualStartTooSoon()) return;
-  const kind = startSoundKind(prefs.startSoundWhen, firstStart);
-  if (kind === 'combat') playBeginCue();
+  const kind = startSoundKind({
+    startCue: prefs.startCue,
+    when: prefs.startSoundWhen,
+    firstStart,
+    rest: options?.rest === true,
+  });
+  if (kind === 'none') return;
+  if (kind === 'combate') playBeginCue();
+  else if (kind === 'beep') playStartCue();
   else playResumeCue();
 }
 
