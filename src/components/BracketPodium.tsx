@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react';
 import type { PodiumPlaces } from '../lib/bracketPodium';
 
+export function BracketMatEdgeBottom() {
+  return <div className="mat-edge mat-edge--bottom" aria-hidden="true" />;
+}
+
 export function BracketMatEdges() {
   return (
     <>
       <div className="mat-edge mat-edge--top" aria-hidden="true" />
-      <div className="mat-edge mat-edge--bottom" aria-hidden="true" />
       <div className="mat-edge mat-edge--left" aria-hidden="true" />
       <div className="mat-edge mat-edge--right" aria-hidden="true" />
     </>

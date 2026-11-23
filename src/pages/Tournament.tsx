@@ -41,7 +41,7 @@ import {
 } from '../lib/bracketTheme';
 import { podiumPlaces } from '../lib/bracketPodium';
 import { useWhiteBaseSkins } from '../hooks/usePolishedSkins';
-import { BracketMatEdges, BracketPodiumBanner } from '../components/BracketPodium';
+import { BracketMatEdgeBottom, BracketMatEdges, BracketPodiumBanner } from '../components/BracketPodium';
 import { setBracketClean } from '../lib/bracketCleanMode';
 import './tournamentBoard.css';
 import './tournamentPodium.css';
@@ -472,6 +472,7 @@ export function TournamentPage() {
         ) : null}
       </div>
 
+      {shownTheme === 'podium' ? <BracketMatEdgeBottom /> : null}
       <div className="tournament__tools" role="region" aria-label="Bracket controls">
           {fillPlaced != null ? (
             <p className="tournament__fill-note" role="status">
