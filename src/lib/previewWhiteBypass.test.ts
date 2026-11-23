@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { WHITE_BUY_PATH } from './whitePurchase.ts';
 import { whiteEntryPath, whiteHubAllowed, whiteLiveToolsAllowed } from './whiteUnlock.ts';
+import { whiteBaseSkinTier, whiteBaseSkinsOpen } from './whiteSkinTier.ts';
 import {
   PREVIEW_WHITE_BADGE_TEXT,
   isPreviewWhiteBypassHost,
@@ -74,4 +75,31 @@ test('the bypass is host-based only and never reads the address bar', () => {
   const badge = readFileSync(new URL('../components/PreviewWhiteBadge.tsx', import.meta.url), 'utf8');
   assert.match(badge, /PREVIEW_WHITE_BADGE_TEXT/);
   assert.match(badge, /isPreviewWhiteUnlocked\(\)/);
+});
+
+const closedDoors = { white: false, student: false, media: false, coach: false, pro: false };
+const whiteDoors = { ...closedDoors, white: true };
+const proDoors = { white: true, student: true, media: true, coach: true, pro: true };
+
+test('preview-host White unlock opens the White skin catalog, same as /white and brackets', () => {
+  for (const host of PREVIEW_HOSTS) {
+    assert.equal(whiteBaseSkinTier(closedDoors), false, 'doors alone stay closed');
+    assert.equal(whiteBaseSkinsOpen(closedDoors, host), true, host);
+    assert.equal(whiteBaseSkinsOpen(whiteDoors, host), true, host);
+    // A higher door still wins on a preview host.
+    assert.equal(whiteBaseSkinsOpen(proDoors, host), false, host);
+  }
+  const hook = readFileSync(new URL('../hooks/usePolishedSkins.ts', import.meta.url), 'utf8');
+  assert.match(hook, /whiteBaseSkinsOpen\(/);
+  assert.doesNotMatch(hook, /whiteBaseSkinTier\(/);
+});
+
+test('production still requires a real White purchase for skins, and that purchase still works', () => {
+  for (const host of CLOSED_HOSTS) {
+    assert.equal(whiteBaseSkinsOpen(closedDoors, host), false, host);
+    assert.equal(whiteBaseSkinsOpen(whiteDoors, host), true, host);
+  }
+  assert.equal(whiteBaseSkinsOpen(whiteDoors, 'advantagebjjtimer.com'), true);
+  assert.equal(whiteBaseSkinsOpen(closedDoors, 'advantagebjjtimer.com'), false);
+  assert.equal(whiteBaseSkinsOpen(proDoors, 'advantagebjjtimer.com'), false);
 });

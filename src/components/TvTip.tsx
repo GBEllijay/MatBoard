@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { dismissTvTip, tvTipDismissed } from '../lib/tvTip';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { dismissTvTip, tvTipDismissed, tvTipHiddenOnWhiteBoard } from '../lib/tvTip';
 
 type Props = {
   onFullscreen?: () => void;
@@ -7,9 +8,12 @@ type Props = {
 
 /** One-time desktop/TV hint. CSS hides it on phones; dismiss persists in localStorage. */
 export function TvTip({ onFullscreen }: Props) {
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
   const [open, setOpen] = useState(() => !tvTipDismissed());
+  const hiddenOnWhite = tvTipHiddenOnWhiteBoard(pathname, searchParams.get('from'));
 
-  if (!open) return null;
+  if (!open || hiddenOnWhite) return null;
 
   const close = () => {
     dismissTvTip();

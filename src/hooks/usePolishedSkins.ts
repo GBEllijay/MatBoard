@@ -6,7 +6,7 @@ import { polishedSkinsUnlocked, type PolishedTimerSlug } from '../lib/polishedSk
 import { isProUnlocked } from '../lib/proUnlock';
 import { isStudentEditionUnlocked } from '../lib/studentUnlock';
 import { isWhiteUnlocked } from '../lib/whiteUnlock';
-import { whiteBaseSkinTier } from '../lib/whiteSkinTier';
+import { whiteBaseSkinsOpen } from '../lib/whiteSkinTier';
 import { loadedPolishedSkin, loadPolishedSkin, type PolishedSkinModule } from '../skins/polished/load';
 import { useSeatDoor } from './useSeatDoor';
 
@@ -19,7 +19,7 @@ export function usePolishedSkinsUnlocked(): boolean {
 }
 
 function readWhiteBaseSkinTier(): boolean {
-  return whiteBaseSkinTier({
+  return whiteBaseSkinsOpen({
     white: isWhiteUnlocked(),
     student: isStudentEditionUnlocked(),
     media: isMediaUnlocked(),
