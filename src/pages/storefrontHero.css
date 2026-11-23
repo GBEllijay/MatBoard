@@ -506,7 +506,8 @@
   }
 
   .home.home--store .sfh--a .sfh-brand,
-  .home.home--store .sfh--a .sfh-appstore { order: 1; }
+  .home.home--store .sfh--a .sfh-appstore,
+  .home.home--store .sfh--a .sfh-apps { order: 1; }
   .home.home--store .sfh--a .sfh-title { order: 2; }
   .home.home--store .sfh--a .sfh-lead { order: 3; }
   .home.home--store .sfh--a .sfh-stage { order: 4; margin: 22px 0 0; }
@@ -552,7 +553,8 @@
   }
 
   .home.home--store .sfh--c .sfh-brand,
-  .home.home--store .sfh--c .sfh-appstore { order: 1; }
+  .home.home--store .sfh--c .sfh-appstore,
+  .home.home--store .sfh--c .sfh-apps { order: 1; }
   .home.home--store .sfh--c .sfh-title { order: 2; }
   .home.home--store .sfh--c .sfh-lead { order: 3; }
   .home.home--store .sfh--c .sfh-stage { order: 4; margin-top: 22px; padding-bottom: 18%; }
@@ -1104,7 +1106,8 @@
   }
 
   .home.home--store .sfh--e .sfh-brand,
-  .home.home--store .sfh--e .sfh-appstore { order: 1; }
+  .home.home--store .sfh--e .sfh-appstore,
+  .home.home--store .sfh--e .sfh-apps { order: 1; }
   .home.home--store .sfh--e .sfh-title { order: 2; }
   .home.home--store .sfh--e .sfh-lead { order: 3; }
   .home.home--store .sfh--e .sfh-stage { order: 4; margin-top: 10px; width: 100%; gap: 6px; }
@@ -1122,6 +1125,12 @@
     display: flex;
     padding: 18px 20px 0;
     border-radius: 20px 20px 0 0;
+  }
+
+  .home.home--store .sfh--e .sfh-apps {
+    margin: 0;
+    padding: 14px 20px 0;
+    background: rgba(0, 0, 0, 0.64);
   }
 
   .home.home--store .sfh--e .sfh-appstore {
