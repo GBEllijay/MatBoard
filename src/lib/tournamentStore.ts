@@ -1115,3 +1115,65 @@ export function bracketHasContent(current: TournamentState): boolean {
   if (Object.values(current.entries).some((name) => name.trim())) return true;
   return Object.keys(current.results).length > 0;
 }
+
+export type BracketPodium = {
+  first: string;
+  second: string;
+  third: string[];
+};
+
+/**
+ * Pick the next unplayed, non-bye match in round order.
+ * Prefers `preferredMatchId` if valid and unplayed, then matches where both
+ * competitors are already populated, then any unplayed non-bye match, and
+ * finally `final-0` when the bracket is finished.
+ */
+export function nextPlayableMatchId(
+  current: TournamentState,
+  preferredMatchId?: BracketMatchId | null,
+): BracketMatchId | null {
+  const ids = matchIdsForSize(current.size);
+  if (!ids.length) return null;
+  if (
+    preferredMatchId &&
+    ids.includes(preferredMatchId) &&
+    !current.results[preferredMatchId] &&
+    !matchHasBye(current, preferredMatchId)
+  ) {
+    return preferredMatchId;
+  }
+  const unplayed = ids.filter((id) => !current.results[id] && !matchHasBye(current, id));
+  const ready = unplayed.find(
+    (id) =>
+      slotName(current, slotId(id, 'a')).trim().length > 0 &&
+      slotName(current, slotId(id, 'b')).trim().length > 0,
+  );
+  if (ready) return ready;
+  if (unplayed.length) return unplayed[0];
+  return 'final-0';
+}
+
+/** Derive 1st (Gold), 2nd (Silver), and 3rd (Bronze) from completed bracket bouts. */
+export function bracketPodium(current: TournamentState): BracketPodium {
+  const finalResult = current.results['final-0'];
+  const firstFromFinal = finalResult ? slotName(current, slotId('final-0', finalResult.winnerSide)).trim() : '';
+  const first = slotName(current, 'champion').trim() || firstFromFinal;
+  const second = finalResult ? slotName(current, slotId('final-0', otherSide(finalResult.winnerSide))).trim() : '';
+
+  const third: string[] = [];
+  if (isThreePersonBracket(current)) {
+    const sf1 = current.results['sf-1'];
+    if (sf1) {
+      const name = slotName(current, slotId('sf-1', otherSide(sf1.winnerSide))).trim();
+      if (name) third.push(name);
+    }
+  } else if (clampCompetitorCount(current.size) >= 4) {
+    for (const sfId of ['sf-0', 'sf-1'] as const) {
+      const res = current.results[sfId];
+      if (!res || matchHasBye(current, sfId)) continue;
+      const name = slotName(current, slotId(sfId, otherSide(res.winnerSide))).trim();
+      if (name && !third.includes(name)) third.push(name);
+    }
+  }
+  return { first, second, third };
+}

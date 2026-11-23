@@ -1,6 +1,12 @@
 /** Mock Tournament look. Bright is the locked Coach-demo default. */
 
-export type BracketTheme = 'bright' | 'dark';
+export type BracketTheme = 'bright' | 'dark' | 'podium';
+
+export const BRACKET_THEMES: readonly { id: BracketTheme; label: string }[] = [
+  { id: 'bright', label: 'Bright' },
+  { id: 'dark', label: 'Dark' },
+  { id: 'podium', label: 'Podium & Mat Strip' },
+];
 
 export const BRACKET_THEME_KEY = 'matboard.bracketTheme.v1';
 export const DEFAULT_BRACKET_THEME: BracketTheme = 'bright';
@@ -8,7 +14,7 @@ export const DEFAULT_BRACKET_THEME: BracketTheme = 'bright';
 const listeners = new Set<() => void>();
 
 function isTheme(value: string | null): value is BracketTheme {
-  return value === 'bright' || value === 'dark';
+  return value === 'bright' || value === 'dark' || value === 'podium';
 }
 
 function readTheme(): BracketTheme {

@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   clampScale,
+  AUTO_FIT_MARGIN,
+  AUTO_FIT_MAX_SCALE,
+  autoFitScale,
   fitScale,
   focalScroll,
   minScaleForView,
@@ -73,5 +76,27 @@ describe('tournament viewport', () => {
   it('locks native page zoom so pinch cannot reflow the layout viewport', () => {
     assert.match(TOURNAMENT_VIEWPORT, /maximum-scale=1/);
     assert.match(TOURNAMENT_VIEWPORT, /user-scalable=no/);
+  });
+});
+
+describe('autoFitScale', () => {
+  it('upscales an 8-person bracket on a 1080p TV with comfortable margin and caps at AUTO_FIT_MAX_SCALE', () => {
+    const scale = autoFitScale(1880, 900, 1280, 560);
+    assert.ok(scale > 1);
+    assert.ok(scale <= AUTO_FIT_MAX_SCALE);
+    assert.equal(Number(scale.toFixed(3)), Number((Math.min(1880 / 1280, 900 / 560) * AUTO_FIT_MARGIN).toFixed(3)));
+
+    const tiny = autoFitScale(1880, 900, 420, 180);
+    assert.equal(tiny, AUTO_FIT_MAX_SCALE);
+  });
+
+  it('shrinks wide brackets to fit inside a 390px phone and 1280x720 TV without clipping', () => {
+    const phone = autoFitScale(374, 620, 1340, 560);
+    assert.ok(phone < 0.35);
+    assert.ok(phone * 1340 <= 374);
+
+    const tv720 = autoFitScale(1248, 570, 1340, 560);
+    assert.ok(tv720 * 1340 <= 1248);
+    assert.ok(tv720 * 560 <= 570);
   });
 });

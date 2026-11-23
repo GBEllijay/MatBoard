@@ -86,6 +86,8 @@ test('Brackets and Bracket Roster open their tools, keep the placeholder image, 
   assert.match(roster.textContent ?? '', /Rank/);
   assert.match(roster.textContent ?? '', /Northside Academy/);
   assert.doesNotMatch(roster.textContent ?? '', /student roster/i);
+  assert.doesNotMatch(brackets.textContent ?? '', /from your phone/i);
+  assert.match(brackets.textContent ?? '', /right on the screen/i);
   assert.deepEqual(hrefs(roster as HTMLElement, 'a'), ['/white/bracket-roster', '/white/bracket-roster']);
   m.done();
 });

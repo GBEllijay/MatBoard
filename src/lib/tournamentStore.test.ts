@@ -32,6 +32,8 @@ import {
   maxCompetitors,
   sizePresets,
   parseNameList,
+  bracketPodium,
+  nextPlayableMatchId,
   nextSlot,
   normalizeBoard,
   normalizeLibrary,
@@ -586,5 +588,46 @@ describe('clearing dependent later rounds', () => {
     assert.equal(board.entries['sf-1-a'], 'Alex');
     assert.equal(board.entries['sf-0-a'], 'Blair');
     assert.equal(board.entries['sf-0-b'], 'Casey');
+  });
+});
+
+describe('nextPlayableMatchId and bracketPodium', () => {
+  const win = { call: 'win' as const, method: 'points' as const };
+  it('picks the preferred live match when unplayed, then walks to the next playable bout', () => {
+    let board = applySeedNames(defaultTournament(8), ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
+    assert.equal(nextPlayableMatchId(board, 'qf-2'), 'qf-2');
+    assert.equal(nextPlayableMatchId(board, null), 'qf-0');
+    board = applyMatchOutcome(board, 'qf-0', 'a', win, { toggle: false });
+    assert.equal(nextPlayableMatchId(board, 'qf-0'), 'qf-1');
+    board = applyMatchOutcome(board, 'qf-1', 'b', win, { toggle: false });
+    board = applyMatchOutcome(board, 'qf-2', 'a', win, { toggle: false });
+    board = applyMatchOutcome(board, 'qf-3', 'b', win, { toggle: false });
+    assert.equal(nextPlayableMatchId(board, null), 'sf-0');
+  });
+
+  it('derives gold, silver, and bronze from played 8-person and 3-person brackets', () => {
+    let eight = applySeedNames(defaultTournament(8), ['Alex', 'Harper', 'Drew', 'Quinn', 'Blair', 'Jordan', 'Morgan', 'Taylor']);
+    eight = applyMatchOutcome(eight, 'qf-0', 'a', win, { toggle: false });
+    eight = applyMatchOutcome(eight, 'qf-1', 'a', win, { toggle: false });
+    eight = applyMatchOutcome(eight, 'qf-2', 'a', win, { toggle: false });
+    eight = applyMatchOutcome(eight, 'qf-3', 'a', win, { toggle: false });
+    eight = applyMatchOutcome(eight, 'sf-0', 'a', win, { toggle: false });
+    eight = applyMatchOutcome(eight, 'sf-1', 'a', win, { toggle: false });
+    eight = applyMatchOutcome(eight, 'final-0', 'a', win, { toggle: false });
+    const podium8 = bracketPodium(eight);
+    assert.equal(podium8.first, 'Alex');
+    assert.equal(podium8.second, 'Harper');
+    assert.deepEqual(podium8.third, ['Quinn', 'Drew']);
+
+    let three = applySlotName(defaultTournament(3), 'sf-1-a', 'Alex');
+    three = applySlotName(three, 'sf-0-a', 'Blair');
+    three = applySlotName(three, 'sf-0-b', 'Casey');
+    three = applyMatchOutcome(three, 'sf-0', 'a', win, { toggle: false });
+    three = applyMatchOutcome(three, 'sf-1', 'a', win, { toggle: false });
+    three = applyMatchOutcome(three, 'final-0', 'b', win, { toggle: false });
+    const podium3 = bracketPodium(three);
+    assert.equal(podium3.first, 'Alex');
+    assert.equal(podium3.second, 'Blair');
+    assert.deepEqual(podium3.third, ['Casey']);
   });
 });

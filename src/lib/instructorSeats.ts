@@ -890,7 +890,7 @@ function clearDurableSeatSession(): void {
 }
 
 /** Gym TV casts and every Student Edition page stay clear of the seat bar and the signed-out toast. */
-const SEAT_CHROME_HIDDEN = new Set(['/match', '/training', '/slideshow', '/screensaver']);
+const SEAT_CHROME_HIDDEN = new Set(['/match', '/training', '/slideshow', '/screensaver', '/white/brackets', '/tournament']);
 
 export function seatChromeHidden(pathname: string): boolean {
   if (pathname === '/student' || pathname.startsWith('/student/')) return true;
