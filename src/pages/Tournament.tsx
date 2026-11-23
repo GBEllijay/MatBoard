@@ -33,9 +33,18 @@ import {
 import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } from '../lib/coachCopy';
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
 import { scoreboardCompetitionFields } from '../lib/matchRound';
-import { DEFAULT_BRACKET_THEME, setBracketTheme } from '../lib/bracketTheme';
+import {
+  BRACKET_THEME_LABELS,
+  bracketThemeOptions,
+  setBracketTheme,
+  visibleBracketTheme,
+} from '../lib/bracketTheme';
+import { podiumPlaces } from '../lib/bracketPodium';
+import { useWhiteBaseSkins } from '../hooks/usePolishedSkins';
+import { BracketMatEdgeBottom, BracketMatEdges, BracketPodiumBanner } from '../components/BracketPodium';
 import { setBracketClean } from '../lib/bracketCleanMode';
 import './tournamentBoard.css';
+import './tournamentPodium.css';
 import {
   KIDS_BRACKETS_SKINS_LABEL,
   kidsBracketChromeOn,
@@ -124,6 +133,7 @@ export function TournamentPage() {
   const rankings = useRankings();
   const match = useMatchState();
   const theme = useBracketTheme();
+  const whiteBaseSkins = useWhiteBaseSkins();
   const cleanOn = useBracketClean();
   const kids = useKidsScoreboard();
   const fs = usePlayFullscreen({ auto: false });
@@ -143,7 +153,7 @@ export function TournamentPage() {
   const presets = fromWhite ? WHITE_SIZE_PRESETS : sizePresets(competitionSuite);
   const fromSuite = from === SUITE_FROM;
   const fromUnlimited = from === UNLIMITED_FROM;
-  const shownTheme = plainCoach ? DEFAULT_BRACKET_THEME : theme;
+  const shownTheme = visibleBracketTheme(theme, { plainCoach, whiteBaseSkins });
   const exitPath =
     useSubmenuBack() ??
     (fromWhite
@@ -183,6 +193,7 @@ export function TournamentPage() {
   const skinButtonSuppressed = kidsSkinButtonSuppressed({ fullscreen: fs.active, sheetOpen });
   const showMascot = kidsShowMascot(kidsOn, kids.mascot, kidsChampion, skinChromeHidden);
   const champLabel = kidsWin ? kidsChampion : champion;
+  const places = shownTheme === 'podium' ? podiumPlaces(tournament) : { first: champLabel, second: '', third: [] };
   const kidsLive =
     kidsOn && liveMatchId && !kidsWin && !tournament.results[liveMatchId]
       ? kidsLiveLine({
@@ -322,6 +333,7 @@ export function TournamentPage() {
     <main
       className={`tournament tournament--${shownTheme}${fromWhite ? ' tournament--white' : ''}${cleanOn ? ' tournament--clean' : ''}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
     >
+      {shownTheme === 'podium' ? <BracketMatEdges /> : null}
       <BeltRail kind="tournament" />
       <PlayExitMark to={exitPath} onExit={exitBoard} />
       <header className="tournament__bar">
@@ -384,7 +396,25 @@ export function TournamentPage() {
 
           <div className="bracket__finals">
             <MatchCard matchId="final-0" liveMatchId={liveMatchId} nextMatchId={nextMatchId} />
-            <div className={`bracket__champ${champLabel ? ' is-filled' : ''}${kidsWin ? ' is-kids-win' : ''}`}>
+            <div className={`bracket__champ${champLabel ? ' is-filled' : ''}${kidsWin ? ' is-kids-win' : ''}${shownTheme === 'podium' ? ' bracket__champ--podium' : ''}`}>
+              {shownTheme === 'podium' ? (
+                <BracketPodiumBanner
+                  places={{ first: champLabel, second: places.second, third: places.third }}
+                  kidsScore={kidsWin ? kidsScore : null}
+                  emptyField={champLabel ? undefined : (
+                <RosterNameField
+                  value={champion}
+                  onChange={(value) => setSlotName('champion', value)}
+                  onPrefill={(prefill) => setSlotName('champion', prefill.name)}
+                  placeholder="Winner"
+                  ariaLabel="Champion"
+                  names={plainCoach ? 'student' : 'competitor'}
+                  compact
+                />
+                  )}
+                />
+              ) : (
+                <>
               <BeltRail kind="tournament" />
               <span>{kidsWin ? 'Winner' : 'Champion'}</span>
               {champLabel ? (
@@ -406,6 +436,8 @@ export function TournamentPage() {
                   names={plainCoach ? 'student' : 'competitor'}
                   compact
                 />
+              )}
+                </>
               )}
             </div>
           </div>
@@ -440,6 +472,7 @@ export function TournamentPage() {
         ) : null}
       </div>
 
+      {shownTheme === 'podium' ? <BracketMatEdgeBottom /> : null}
       <div className="tournament__tools" role="region" aria-label="Bracket controls">
           {fillPlaced != null ? (
             <p className="tournament__fill-note" role="status">
@@ -472,24 +505,18 @@ export function TournamentPage() {
             {kidsSkins ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinButtonSuppressed} /> : null}
             {plainCoach ? null : (
               <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={theme === 'bright'}
-                  className={`chip${theme === 'bright' ? ' chip--on' : ''}`}
-                  onClick={() => setBracketTheme('bright')}
-                >
-                  Bright
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={theme === 'dark'}
-                  className={`chip${theme === 'dark' ? ' chip--on' : ''}`}
-                  onClick={() => setBracketTheme('dark')}
-                >
-                  Dark
-                </button>
+                {bracketThemeOptions(whiteBaseSkins).map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="radio"
+                    aria-checked={theme === id}
+                    className={`chip${theme === id ? ' chip--on' : ''}`}
+                    onClick={() => setBracketTheme(id)}
+                  >
+                    {BRACKET_THEME_LABELS[id]}
+                  </button>
+                ))}
               </div>
             )}
             <button
