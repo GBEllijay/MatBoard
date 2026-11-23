@@ -76,7 +76,7 @@ test('the White hub keeps working Scoreboard, Controller, Rounds, and Bracket Ro
   m.done();
 });
 
-test('the Rounds card TV preview shows work time, current round, rest, and total rounds', () => {
+test('the Rounds card uses the timer icon and a rest and rounds caption', () => {
   setWorkMs(DEFAULT_WORK_MS);
   setBreakMs(DEFAULT_REST_MS);
   setRounds(DEFAULT_ROUNDS, false);
@@ -93,10 +93,14 @@ test('the Rounds card TV preview shows work time, current round, rest, and total
   const m = mount();
   const rounds = m.host.querySelector('#round-timer') as HTMLElement;
   const tv = rounds.querySelector('[data-rounds-tv="true"]');
+  const icon = rounds.querySelector('[data-rounds-tv-icon="true"]') as HTMLImageElement | null;
   assert.ok(tv);
-  assert.match(tv?.textContent ?? '', /WORK · ROUND 1 \/ 5/);
-  assert.match(tv?.textContent ?? '', /ROUND TIME/);
-  assert.match(tv?.textContent ?? '', /5:00/);
+  assert.ok(icon);
+  assert.equal(icon?.getAttribute('src'), '/storefront/rounds-timer-icon.png');
+  assert.match(icon?.getAttribute('alt') ?? '', /round timer/i);
+  assert.match(icon?.getAttribute('alt') ?? '', /5:00/);
+  assert.equal(icon?.getAttribute('width'), '184');
+  assert.equal(icon?.getAttribute('height'), '104');
   assert.match(tv?.textContent ?? '', /REST 0:30 · 5 ROUNDS/);
   assert.match(rounds.textContent ?? '', /Customizable with logo and skins/);
   assert.deepEqual(hrefs(rounds, 'a.btn'), ['/training?from=white', '/training/control?from=white']);
@@ -104,15 +108,15 @@ test('the Rounds card TV preview shows work time, current round, rest, and total
   m.done();
 });
 
-test('the Rounds card preview follows saved work, rest, and rounds settings', () => {
+test('the Rounds card rest caption follows saved rest and rounds settings', () => {
   setWorkMs(4 * 60_000);
   setBreakMs(45_000);
   setRounds(8, false);
   try {
     const m = mount();
     const tv = m.host.querySelector('#round-timer [data-rounds-tv="true"]');
-    assert.match(tv?.textContent ?? '', /WORK · ROUND 1 \/ 8/);
-    assert.match(tv?.textContent ?? '', /4:00/);
+    const icon = m.host.querySelector('#round-timer [data-rounds-tv-icon="true"]');
+    assert.ok(icon);
     assert.match(tv?.textContent ?? '', /REST 0:45 · 8 ROUNDS/);
     m.done();
   } finally {

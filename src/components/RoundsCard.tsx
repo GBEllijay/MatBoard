@@ -62,19 +62,23 @@ export function RoundsCard() {
   );
 }
 
+const TIMER_ICON_SRC = '/storefront/rounds-timer-icon.png';
+
 function RoundsTvPreview({ preview }: { preview: ReturnType<typeof roundsCardPreview> }) {
   return (
     <div
       className="rounds-tv"
       data-rounds-tv="true"
-      aria-label={`Preview: work ${preview.work}, ${preview.header}, ${preview.restLine}`}
+      aria-label={`Round timer preview. ${preview.restLine}`}
     >
-      <div className="rounds-tv__top">
-        <img className="rounds-tv__logo" src="/advantage-icon.png" alt="" width={48} height={48} />
-        <span className="rounds-tv__header">{preview.header}</span>
-      </div>
-      <span className="rounds-tv__label">{preview.roundTimeLabel}</span>
-      <span className="rounds-tv__time">{preview.work}</span>
+      <img
+        className="rounds-tv__icon"
+        src={TIMER_ICON_SRC}
+        alt="Round timer on a gym TV, showing work, round 1 of 5, and a 5:00 round time"
+        width={184}
+        height={104}
+        data-rounds-tv-icon="true"
+      />
       <span className="rounds-tv__rest">{preview.restLine}</span>
     </div>
   );
