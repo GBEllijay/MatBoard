@@ -4,19 +4,24 @@
  * remembered on this device; a polished pick that is locked here paints Classic.
  *
  * Advantage White, and no tier above it, does not use Classic, Advantage, or the
- * polished families. Its picker lists the same three base skins as the scoreboard
- * (Mock-Tournament, Old School, Quick Result). A saved skin that is not one of
- * those three paints Mock-Tournament and stays stored.
+ * polished families. Its picker lists the White base and timer skins. A saved skin
+ * that is not one of those paints Mock-Tournament and stays stored.
  */
 
 import { isCustomSkinId } from './customSkin.ts';
 import { POLISHED_TIMER_SKINS, isPolishedTimerSlug, type PolishedTimerSlug } from './polishedSkins.ts';
 
-/** Same three base skins as the scoreboard picker, in that order. White tier only. */
+/** White-tier round timer skins. */
 export const WHITE_TIMER_SKINS = [
   { id: 'MOCK_TOURNAMENT', label: 'Mock-Tournament' },
   { id: 'OLD_SCHOOL', label: 'Old School' },
   { id: 'QUICK_RESULT', label: 'Quick Result' },
+  { id: 'CLEAN_MAT_BROADCAST', label: 'Clean Mat Broadcast' },
+  { id: 'SPLIT_FLAP_PRO', label: 'Split-Flap Pro' },
+  { id: 'HIGH_CONTRAST_DAYLIGHT', label: 'High-Contrast Daylight' },
+  { id: 'LED_GYM_WALL', label: 'LED Gym Wall Clock' },
+  { id: 'TRUE_FLIP_INTERVAL', label: 'True Flip-Card Interval' },
+  { id: 'WORK_REST_TATAMI', label: 'Work/Rest Color-Shift Tatami' },
 ] as const;
 
 export type WhiteTimerSkinId = (typeof WHITE_TIMER_SKINS)[number]['id'];
@@ -86,7 +91,7 @@ export function isPolishedTrainingSkin(skin: TrainingSkin): skin is PolishedTime
 
 /**
  * Skin the timer paints on this browser.
- * White (no higher tier) paints one of its three base skins. Anything else, including
+ * White (no higher tier) paints one of its White timer skins. Anything else, including
  * Classic, Advantage, and a polished family, falls back to Mock-Tournament. The stored
  * value is left alone.
  * Every other tier paints Classic for a locked polished pick, and also for a White-only
@@ -105,6 +110,12 @@ export function whiteTimerSurfaceClass(skin: TrainingSkin): string {
   if (skin === 'MOCK_TOURNAMENT') return 'training--wt-mock';
   if (skin === 'OLD_SCHOOL') return 'training--wt-old';
   if (skin === 'QUICK_RESULT') return 'training--wt-quick';
+  if (skin === 'CLEAN_MAT_BROADCAST') return 'training--wt-broadcast';
+  if (skin === 'SPLIT_FLAP_PRO') return 'training--wt-split-flap';
+  if (skin === 'HIGH_CONTRAST_DAYLIGHT') return 'training--wt-daylight';
+  if (skin === 'LED_GYM_WALL') return 'training--wt-led';
+  if (skin === 'TRUE_FLIP_INTERVAL') return 'training--wt-true-flip';
+  if (skin === 'WORK_REST_TATAMI') return 'training--wt-tatami';
   return '';
 }
 
@@ -113,7 +124,40 @@ export function whiteTimerControllerClass(skin: TrainingSkin): string {
   if (skin === 'MOCK_TOURNAMENT') return 'controller--wt-mock';
   if (skin === 'OLD_SCHOOL') return 'controller--wt-old';
   if (skin === 'QUICK_RESULT') return 'controller--wt-quick';
+  if (skin === 'CLEAN_MAT_BROADCAST') return 'controller--wt-broadcast';
+  if (skin === 'SPLIT_FLAP_PRO') return 'controller--wt-split-flap';
+  if (skin === 'HIGH_CONTRAST_DAYLIGHT') return 'controller--wt-daylight';
+  if (skin === 'LED_GYM_WALL') return 'controller--wt-led';
+  if (skin === 'TRUE_FLIP_INTERVAL') return 'controller--wt-true-flip';
+  if (skin === 'WORK_REST_TATAMI') return 'controller--wt-tatami';
   return '';
+}
+
+/** True when the timer renders matte split-flap digit modules (Split-Flap Pro). */
+export function trainingUsesSplitFlap(skin: TrainingSkin): boolean {
+  return skin === 'SPLIT_FLAP_PRO';
+}
+
+/** True when the timer renders hinged flip-card digits (True Flip-Card Interval). */
+export function trainingUsesTrueFlipCards(skin: TrainingSkin): boolean {
+  return skin === 'TRUE_FLIP_INTERVAL';
+}
+
+/** True when the timer renders segmented 7-segment LED digits. */
+export function trainingUsesLedClock(skin: TrainingSkin): boolean {
+  return skin === 'LED_GYM_WALL';
+}
+
+/** True for White timer skins that display a phase progress bar. */
+export function trainingHasProgressBar(skin: TrainingSkin): boolean {
+  return (
+    skin === 'CLEAN_MAT_BROADCAST' ||
+    skin === 'SPLIT_FLAP_PRO' ||
+    skin === 'HIGH_CONTRAST_DAYLIGHT' ||
+    skin === 'LED_GYM_WALL' ||
+    skin === 'TRUE_FLIP_INTERVAL' ||
+    skin === 'WORK_REST_TATAMI'
+  );
 }
 
 if (typeof window !== 'undefined') {
@@ -126,8 +170,7 @@ if (typeof window !== 'undefined') {
 
 /**
  * Everything the Timer Skin popup lists.
- * White (no higher tier): Mock-Tournament, Old School, Quick Result. The new families
- * are absent, not locked.
+ * White (no higher tier): the White timer skins. The polished families are absent, not locked.
  * Everyone else: Classic, Advantage, then the polished skins (Calçadão after Brasil)
  * only when this browser has Media Edition or above.
  */

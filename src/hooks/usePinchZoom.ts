@@ -1,12 +1,24 @@
-import { useLayoutEffect, type RefObject } from 'react';
+import { useLayoutEffect, useRef, type RefObject } from 'react';
 import {
   DEFAULT_VIEWPORT,
   TOURNAMENT_VIEWPORT,
+  autoFitScale,
   clampScale,
   focalScroll,
   minScaleForView,
   pinchScale,
 } from '../lib/pinchZoom';
+
+export type PinchZoomApi = {
+  fitToBoard: () => void;
+  focusElement: (el: HTMLElement | null, options?: { minScale?: number }) => void;
+};
+
+export type PinchZoomOptions = {
+  fitKey?: string | number;
+  apiRef?: RefObject<PinchZoomApi | null>;
+  onZoomStateChange?: (zoomedFromFit: boolean) => void;
+};
 
 function touchDistance(a: Touch, b: Touch): number {
   const dx = a.clientX - b.clientX;
@@ -16,6 +28,22 @@ function touchDistance(a: Touch, b: Touch): number {
 
 function viewportMeta(): HTMLMetaElement | null {
   return document.querySelector('meta[name="viewport"]');
+}
+
+function innerViewBox(scroller: HTMLElement): { w: number; h: number } {
+  let padX = 0;
+  let padY = 0;
+  try {
+    const cs = getComputedStyle(scroller);
+    padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+  } catch {
+    /* ignore */
+  }
+  return {
+    w: Math.max(0, scroller.clientWidth - padX),
+    h: Math.max(0, scroller.clientHeight - padY),
+  };
 }
 
 /**
@@ -35,14 +63,21 @@ export function useLockViewportZoom(): void {
 }
 
 /**
- * Pinch-zoom the bracket as a fixed diagram. The tree's column tracks stay put;
- * only `transform: scale` changes, and the spacer matches that visual size so
- * pan is native overflow scroll.
+ * Auto-fit and pinch-zoom the bracket as a fixed diagram. On load, resize, and
+ * `fitKey` changes (e.g. tree size or Clean mode toggle), scales the diagram via
+ * `autoFitScale` so 2–36 competitor trees fill TV and phone boards cleanly.
+ * Two-finger pinch or Ctrl/Cmd+wheel zoom remains available anytime after.
  */
 export function usePinchZoom(
   scrollerRef: RefObject<HTMLElement | null>,
   contentRef: RefObject<HTMLElement | null>,
+  options?: PinchZoomOptions,
 ): void {
+  const fitKey = options?.fitKey ?? '';
+  const onZoomStateChangeRef = useRef(options?.onZoomStateChange);
+  onZoomStateChangeRef.current = options?.onZoomStateChange;
+  const apiRef = options?.apiRef;
+
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
     const content = contentRef.current;
@@ -50,10 +85,21 @@ export function usePinchZoom(
     if (!scroller || !content || !spacer) return;
 
     let scale = 1;
+    let fit = 1;
     let minScale = 1;
+    let userZoomed = false;
     let pinching = false;
     let startScale = 1;
     let startDistance = 0;
+    let lastZoomedFlag = false;
+
+    const notifyZoomFlag = () => {
+      const nextFlag = userZoomed && Math.abs(scale - fit) > 0.04;
+      if (nextFlag !== lastZoomedFlag) {
+        lastZoomedFlag = nextFlag;
+        onZoomStateChangeRef.current?.(nextFlag);
+      }
+    };
 
     const paint = () => {
       const w = content.offsetWidth;
@@ -63,13 +109,18 @@ export function usePinchZoom(
       spacer.style.height = `${Math.ceil(h * scale)}px`;
       content.style.transformOrigin = '0 0';
       content.style.transform = scale === 1 ? '' : `scale(${scale})`;
+      notifyZoomFlag();
     };
 
-    const updateMin = () => {
+    const updateBounds = () => {
       const w = content.offsetWidth;
       const h = content.offsetHeight;
-      if (w < 1 || h < 1) return;
-      minScale = minScaleForView(scroller.clientWidth, scroller.clientHeight, w, h);
+      if (w < 1 || h < 1) return false;
+      const view = innerViewBox(scroller);
+      if (view.w < 1 || view.h < 1) return false;
+      fit = autoFitScale(view.w, view.h, w, h);
+      minScale = Math.min(fit, minScaleForView(view.w, view.h, w, h));
+      return true;
     };
 
     const applyScale = (next: number) => {
@@ -79,9 +130,54 @@ export function usePinchZoom(
 
     const measure = () => {
       if (pinching) return;
-      updateMin();
-      applyScale(scale);
+      if (!updateBounds()) return;
+      if (!userZoomed) {
+        scale = clampScale(fit, minScale);
+        paint();
+        scroller.scrollLeft = 0;
+        scroller.scrollTop = 0;
+      } else {
+        applyScale(scale);
+      }
     };
+
+    const fitToBoard = () => {
+      userZoomed = false;
+      if (!updateBounds()) return;
+      scale = clampScale(fit, minScale);
+      paint();
+      if (typeof scroller.scrollTo === 'function') {
+        scroller.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+      } else {
+        scroller.scrollLeft = 0;
+        scroller.scrollTop = 0;
+      }
+    };
+
+    const focusElement = (el: HTMLElement | null, focusOpts?: { minScale?: number }) => {
+      if (!el) return;
+      const targetMin = focusOpts?.minScale ?? 0.95;
+      if (scale < targetMin) {
+        userZoomed = true;
+        applyScale(Math.max(scale, targetMin));
+      }
+      const sRect = scroller.getBoundingClientRect();
+      const eRect = el.getBoundingClientRect();
+      const targetLeft = scroller.scrollLeft + (eRect.left - sRect.left) + eRect.width / 2 - scroller.clientWidth / 2;
+      const targetTop = scroller.scrollTop + (eRect.top - sRect.top) + eRect.height / 2 - scroller.clientHeight / 2;
+      const left = Math.max(0, targetLeft);
+      const top = Math.max(0, targetTop);
+      if (typeof scroller.scrollTo === 'function') {
+        scroller.scrollTo({ left, top, behavior: 'smooth' });
+      } else {
+        scroller.scrollLeft = left;
+        scroller.scrollTop = top;
+      }
+    };
+
+    if (apiRef) {
+      apiRef.current = { fitToBoard, focusElement };
+    }
 
     const onTouchStart = (event: TouchEvent) => {
       if (event.touches.length !== 2) {
@@ -89,6 +185,7 @@ export function usePinchZoom(
         return;
       }
       pinching = true;
+      userZoomed = true;
       startDistance = touchDistance(event.touches[0], event.touches[1]);
       startScale = scale;
     };
@@ -120,6 +217,7 @@ export function usePinchZoom(
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
+      userZoomed = true;
       const rect = scroller.getBoundingClientRect();
       const prevScale = scale;
       const prevLeft = scroller.scrollLeft;
@@ -148,6 +246,7 @@ export function usePinchZoom(
     scroller.addEventListener('gesturechange', onGesture, { passive: false });
 
     return () => {
+      if (apiRef) apiRef.current = null;
       ro.disconnect();
       window.removeEventListener('resize', measure);
       window.removeEventListener('orientationchange', measure);
@@ -163,5 +262,5 @@ export function usePinchZoom(
       spacer.style.width = '';
       spacer.style.height = '';
     };
-  }, [scrollerRef, contentRef]);
+  }, [scrollerRef, contentRef, fitKey, apiRef]);
 }

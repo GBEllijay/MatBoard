@@ -8,9 +8,19 @@
  */
 export type AppTarget = 'web' | 'white';
 
+let appTargetForTests: AppTarget | undefined;
+
+/** Test-only override for the default (no-argument) build target. */
+export function setAppTargetForTests(target: AppTarget | undefined): void {
+  appTargetForTests = target;
+}
+
 export function readAppTarget(
   raw: string | undefined = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_APP_TARGET : undefined,
 ): AppTarget {
+  if (arguments.length === 0 && appTargetForTests !== undefined) {
+    return appTargetForTests;
+  }
   return raw === 'white' ? 'white' : 'web';
 }
 

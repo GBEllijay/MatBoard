@@ -13,6 +13,7 @@ import {
   OLD_SCHOOL_FLAP_PLACES,
   coachLinkedWhiteBoard,
   flapDigits,
+  scoreboardUsesFlapCards,
   isCoachWhiteBoardSearch,
   isPlainWhiteScoreboard,
   parseScoreboardSkin,
@@ -32,8 +33,10 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
   assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.MOCK_TOURNAMENT), 'scoreboard-skin--mock-tournament');
   assert.deepEqual(Object.keys(SCOREBOARD_SKIN).sort(), [
     'BRASIL',
+    'CLEAN_MAT_BROADCAST',
     'CREATURE_ANIME',
     'HEAVY_METAL',
+    'HIGH_CONTRAST_DAYLIGHT',
     'IDOL_HUNTERS',
     'KEYNOTE',
     'KIDS',
@@ -46,6 +49,7 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
     'QUICK_RESULT',
     'REGGAE',
     'SHINOBI_ANIME',
+    'SPLIT_FLAP_PRO',
     'VISIONARY',
     'WOODBLOCK',
   ]);
@@ -53,7 +57,14 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
   assert.equal(QUICK_RESULT_SKIN_NAME, 'Quick Result');
   assert.deepEqual(
     SELECTABLE_SCOREBOARD_SKINS.map((skin) => skin.label),
-    ['Mock-Tournament', 'Old School', 'Quick Result'],
+    [
+      'Mock-Tournament',
+      'Old School',
+      'Quick Result',
+      'Clean Mat Broadcast',
+      'Split-Flap Pro',
+      'High-Contrast Daylight',
+    ],
   );
   assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.OLD_SCHOOL), 'scoreboard-skin--old-school');
   assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.QUICK_RESULT), 'scoreboard-skin--mock-tournament');
@@ -204,4 +215,19 @@ test('a custom scoreboard skin keeps the Mock-Tournament board and the saved id'
   assert.equal(visibleScoreboardSkin(id, false, false, false, false, true), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.equal(visibleScoreboardSkin(id, false, false, false, false, false), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.equal(parseScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL), SCOREBOARD_SKIN.OLD_SCHOOL);
+});
+
+test('New White scoreboard skins register classes, flap behavior, and CSS tokens', () => {
+  assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.CLEAN_MAT_BROADCAST), 'scoreboard-skin--clean-mat-broadcast');
+  assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.SPLIT_FLAP_PRO), 'scoreboard-skin--split-flap-pro');
+  assert.equal(scoreboardSkinClass(SCOREBOARD_SKIN.HIGH_CONTRAST_DAYLIGHT), 'scoreboard-skin--high-contrast-daylight');
+  assert.equal(scoreboardUsesFlapCards(SCOREBOARD_SKIN.OLD_SCHOOL), true);
+  assert.equal(scoreboardUsesFlapCards(SCOREBOARD_SKIN.SPLIT_FLAP_PRO), true);
+  assert.equal(scoreboardUsesFlapCards(SCOREBOARD_SKIN.CLEAN_MAT_BROADCAST), false);
+  const css = fs.readFileSync(new URL('../skins/whiteSkins.css', import.meta.url), 'utf8');
+  assert.match(css, /\.scoreboard-skin--clean-mat-broadcast/);
+  assert.match(css, /\.scoreboard-skin--split-flap-pro/);
+  assert.match(css, /\.scoreboard-skin--high-contrast-daylight/);
+  assert.match(css, /\.scoreboard-skin--old-school\.display \.flap__rings/);
+  assert.match(css, /\.flap__rings--split-flap/);
 });

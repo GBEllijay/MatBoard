@@ -1,14 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
 import { HomeMark } from '../components/HomeMark';
-import { FaqLink } from '../components/FaqLink';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { LiveBoutCard } from '../components/LiveBoutCard';
 import { RoundsCard } from '../components/RoundsCard';
 import { BracketsCard } from '../components/BracketsCard';
 import { BracketRosterCard } from '../components/BracketRosterCard';
-import { EditionLadder } from '../components/EditionLadder';
-import { WhiteUpgradePrompt } from '../components/WhiteUpgradePrompt';
 import { SiteFooter } from '../components/SiteFooter';
 import { PRODUCTS_PATH } from '../lib/productNames';
 import { isNativeWhiteApp } from '../lib/appTarget';
@@ -36,8 +33,6 @@ export function WhitePage() {
           <RoundsCard />
           <BracketsCard />
           <BracketRosterCard />
-          {native ? null : <WhiteUpgradePrompt />}
-          {native ? null : <EditionLadder page="white" />}
         </nav>
 
         <div className="home__hints">
@@ -56,7 +51,6 @@ export function WhitePage() {
               Roster.
             </p>
           </InstructionsButton>
-          <FaqLink />
           {native ? (
             unlocked ? null : (
               <p className="home__soon">
@@ -99,7 +93,7 @@ export function WhitePage() {
             </>
           )}
         </div>
-        <SiteFooter hideAccount />
+        <SiteFooter hideAccount alphaTesters={!native} />
       </div>
     </main>
   );

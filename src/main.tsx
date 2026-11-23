@@ -16,6 +16,7 @@ import { initTournamentSync } from './lib/tournamentStore';
 import { setPlaybackAudioSession, watchInstalledPersistence } from './lib/offlineShell';
 import { isNativeWhiteApp } from './lib/appTarget';
 import './index.css';
+import './skins/whiteSkins.css';
 
 installStudentMockGuard();
 // After the demo guard, so ?student=1 still overlays the default profile

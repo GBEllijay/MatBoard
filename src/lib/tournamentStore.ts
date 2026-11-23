@@ -1115,3 +1115,35 @@ export function bracketHasContent(current: TournamentState): boolean {
   if (Object.values(current.entries).some((name) => name.trim())) return true;
   return Object.keys(current.results).length > 0;
 }
+
+/**
+ * Pick the next unplayed, non-bye match in round order.
+ * Prefers `preferredMatchId` if valid and unplayed, then matches where both
+ * competitors are already populated, then any unplayed non-bye match, and
+ * finally `final-0` when the bracket is finished.
+ */
+export function nextPlayableMatchId(
+  current: TournamentState,
+  preferredMatchId?: BracketMatchId | null,
+): BracketMatchId | null {
+  const ids = matchIdsForSize(current.size);
+  if (!ids.length) return null;
+  if (
+    preferredMatchId &&
+    ids.includes(preferredMatchId) &&
+    !current.results[preferredMatchId] &&
+    !matchHasBye(current, preferredMatchId)
+  ) {
+    return preferredMatchId;
+  }
+  const unplayed = ids.filter((id) => !current.results[id] && !matchHasBye(current, id));
+  const ready = unplayed.find(
+    (id) =>
+      slotName(current, slotId(id, 'a')).trim().length > 0 &&
+      slotName(current, slotId(id, 'b')).trim().length > 0,
+  );
+  if (ready) return ready;
+  if (unplayed.length) return unplayed[0];
+  return 'final-0';
+}
+

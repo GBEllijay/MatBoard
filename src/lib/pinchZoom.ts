@@ -1,11 +1,31 @@
-/** Pinch-to-fit the Mock Tournament board. Scale 1 is readable; minScale fits the tree. */
+/** Pinch-to-fit the Mock Tournament board. Scale 1 is readable; autoFitScale fills the viewport. */
 
-export const MIN_SCALE_FLOOR = 0.2;
+export const MIN_SCALE_FLOOR = 0.12;
 export const MAX_SCALE = 3;
+export const AUTO_FIT_MARGIN = 0.90;
+export const AUTO_FIT_MAX_SCALE = 2.2;
 
 export function fitScale(viewW: number, viewH: number, contentW: number, contentH: number): number {
   if (contentW <= 0 || contentH <= 0 || viewW <= 0 || viewH <= 0) return 1;
   return Math.min(viewW / contentW, viewH / contentH);
+}
+
+/**
+ * Fit-to-board scale for TV and phone auto-fit. Allows scale > 1 (up to maxScale)
+ * so 2/4/8-person brackets fill large TVs, while leaving a clean margin around the tree.
+ */
+export function autoFitScale(
+  viewW: number,
+  viewH: number,
+  contentW: number,
+  contentH: number,
+  margin = AUTO_FIT_MARGIN,
+  maxScale = AUTO_FIT_MAX_SCALE,
+): number {
+  if (contentW <= 0 || contentH <= 0 || viewW <= 0 || viewH <= 0) return 1;
+  const safeMargin = Math.min(1, Math.max(0.5, margin));
+  const raw = fitScale(viewW * safeMargin, viewH * safeMargin, contentW, contentH);
+  return Math.min(maxScale, Math.max(MIN_SCALE_FLOOR, raw));
 }
 
 /** Smallest zoom that still shows the whole board. Never above 1 (that would force zoom-in). */

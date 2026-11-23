@@ -1,0 +1,334 @@
+/* Keep main.tournament inside the visible viewport even when a top banner renders,
+   and keep the Pages preview badge in the top-right corner instead of over the dock. */
+#root:has(> main.tournament) {
+  height: var(--visible-vh, 100dvh);
+  max-height: var(--visible-vh, 100dvh);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#root:has(> main.tournament) > main.tournament {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+}
+
+body:has(main.tournament) .preview-white-badge {
+  top: calc(0.5rem + var(--safe-t));
+  right: calc(0.75rem + var(--safe-r));
+  bottom: auto;
+  left: auto;
+  transform: none;
+  font-size: 0.7rem;
+  padding: 0.22rem 0.55rem;
+}
+
+@media (max-width: 720px) {
+  body:has(main.tournament) .preview-white-badge {
+    display: none;
+  }
+}
+
+/* Brackets layout fixes: header safe zone for Back, auto-fit centering, single-row mobile dock,
+   TV Clean mode, and Jump-to-match focus ring. */
+
+main.tournament.tournament--bright .tournament__bar,
+main.tournament.tournament--dark .tournament__bar,
+main.tournament.tournament--podium .tournament__bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  position: relative;
+  height: auto;
+  overflow: visible;
+  min-height: calc(4.5rem + var(--safe-t));
+  padding: calc(0.35rem + var(--safe-t)) calc(4.5rem + var(--safe-r)) 0.35rem calc(4.5rem + var(--safe-l));
+}
+
+
+
+
+
+.tournament__bar .bracket-headline {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+main.tournament > .tournament__board {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  padding: 0.45rem calc(0.75rem + var(--safe-r)) 0.5rem calc(0.75rem + var(--safe-l));
+}
+
+.bracket-viewport {
+  position: relative;
+  flex: 0 0 auto;
+  margin: auto;
+}
+
+/* Intrinsic heights let autoFitScale enlarge 2/4/8-person trees to fill 1080p TVs. */
+main.tournament.tournament--bright .bracket,
+main.tournament.tournament--dark .bracket,
+main.tournament.tournament--podium .bracket {
+  width: max-content;
+  min-width: max-content;
+  height: auto;
+  min-height: 30rem;
+  grid-template-columns: max-content 20rem max-content;
+  justify-content: start;
+  gap: 0.45rem;
+}
+
+main.tournament.tournament--bright .bracket--tree-2,
+main.tournament.tournament--podium .bracket--tree-2,
+main.tournament.tournament--dark .bracket--tree-2--tree-2 {
+  min-height: 0;
+  height: auto;
+  width: max-content;
+  min-width: max-content;
+  grid-template-columns: 20rem;
+  justify-content: center;
+}
+
+main.tournament.tournament--bright .bracket--tree-4,
+main.tournament.tournament--podium .bracket--tree-4,
+main.tournament.tournament--dark .bracket--tree-4--tree-4 {
+  min-height: 22rem;
+  height: auto;
+  width: max-content;
+  min-width: max-content;
+}
+
+main.tournament.tournament--bright .bracket--tree-8,
+main.tournament.tournament--podium .bracket--tree-8,
+main.tournament.tournament--dark .bracket--tree-8--tree-8,
+main.tournament.tournament--bright .bracket--three,
+main.tournament.tournament--podium .bracket--three,
+main.tournament.tournament--dark .bracket--three--three {
+  min-height: 32rem;
+  height: auto;
+  width: max-content;
+  min-width: max-content;
+}
+
+main.tournament.tournament--bright .bracket--tree-16,
+main.tournament.tournament--podium .bracket--tree-16,
+main.tournament.tournament--dark .bracket--tree-16--tree-16 {
+  min-height: 50rem;
+  height: auto;
+}
+
+main.tournament.tournament--bright .bracket--tree-32,
+main.tournament.tournament--podium .bracket--tree-32,
+main.tournament.tournament--dark .bracket--tree-32--tree-32 {
+  min-height: 72rem;
+  height: auto;
+}
+
+main.tournament.tournament--bright .bracket--tree-64,
+main.tournament.tournament--podium .bracket--tree-64,
+main.tournament.tournament--dark .bracket--tree-64--tree-64 {
+  min-height: 128rem;
+  height: auto;
+}
+
+/* Dock stays pinned below the board so Fullscreen / TV Clean / Jump are never below the fold. */
+main.tournament > .tournament__tools {
+  flex: 0 0 auto;
+  position: relative;
+  left: auto;
+  z-index: 15;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.45rem calc(0.85rem + var(--safe-r)) calc(0.5rem + var(--safe-b)) calc(0.85rem + var(--safe-l));
+  border-radius: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(7, 13, 24, 0.94);
+  box-shadow: 0 -10px 26px rgba(0, 0, 0, 0.32);
+}
+
+main.tournament > .tournament__tools .tournament__center {
+  margin: 0 0 0.35rem;
+}
+
+main.tournament > .tournament__tools .tournament__actions {
+  justify-content: center;
+  gap: 0.38rem;
+}
+
+@media (min-width: 1120px) {
+  main.tournament > .tournament__tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem 0.85rem;
+    padding: 0.4rem calc(1rem + var(--safe-r)) calc(0.45rem + var(--safe-b)) calc(1rem + var(--safe-l));
+  }
+
+  main.tournament > .tournament__tools .tournament__fill-note {
+    flex: 1 0 100%;
+    margin: 0 0 0.2rem;
+  }
+
+  main.tournament > .tournament__tools .tournament__center {
+    flex: 0 1 auto;
+    margin: 0;
+  }
+
+  main.tournament > .tournament__tools .tournament__actions {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 720px) {
+  main.tournament > .tournament__tools {
+    position: sticky;
+    bottom: 0;
+    padding: 0.35rem calc(0.55rem + var(--safe-r)) calc(0.42rem + var(--safe-b)) calc(0.55rem + var(--safe-l));
+  }
+
+  main.tournament > .tournament__tools .tournament__center {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    margin: 0 0 0.28rem;
+    font-size: 0.78rem;
+  }
+
+  main.tournament > .tournament__tools .tournament__roundline {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  main.tournament > .tournament__tools .tournament__title {
+    flex: 1 1 6rem;
+    min-width: 5.5rem;
+  }
+
+  main.tournament > .tournament__tools .tournament__title input {
+    min-height: 30px;
+    font-size: 14px;
+  }
+
+  main.tournament > .tournament__tools .tournament__actions {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0.35rem;
+    padding-bottom: 0.08rem;
+  }
+
+  main.tournament > .tournament__tools .tournament__actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  main.tournament > .tournament__tools .tournament__actions > *,
+  main.tournament > .tournament__tools .tournament__theme,
+  main.tournament > .tournament__tools .tournament__theme .chip {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  main.tournament > .tournament__tools .tournament__theme {
+    flex-wrap: nowrap;
+  }
+}
+
+/* Jump / auto-focus next unplayed match highlight */
+.t-match--next .t-match__bouts {
+  outline: 2px solid rgba(142, 195, 239, 0.88);
+  outline-offset: 2px;
+  border-radius: 13px;
+  box-shadow: 0 0 0 4px rgba(0, 78, 186, 0.24);
+}
+
+/* TV Clean mode: hide WIN/DQ/SCORE/UNDO micro-buttons and enlarge competitor names */
+.tournament.tournament--clean .t-slot__marks,
+.tournament.tournament--clean .t-match__play {
+  display: none;
+}
+
+.tournament.tournament--clean .t-slot {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 2.85rem;
+  padding: 0.24rem 0.9rem;
+}
+
+.tournament.tournament--clean .t-slot__who {
+  min-width: 0;
+  gap: 0.45rem;
+}
+
+.tournament.tournament--clean .t-slot__seed {
+  font-size: 1.15rem;
+}
+
+.tournament.tournament--clean .t-slot input {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+
+.tournament.tournament--clean .bracket__side--left {
+  grid-template-columns: 18rem 14.5rem 14.5rem;
+}
+
+.tournament.tournament--clean .bracket__side--right {
+  grid-template-columns: 14.5rem 14.5rem 18rem;
+}
+
+.tournament.tournament--clean .bracket--tree-32 .bracket__side--left {
+  grid-template-columns: 18rem 14.5rem 14.5rem 14.5rem;
+}
+
+.tournament.tournament--clean .bracket--tree-32 .bracket__side--right {
+  grid-template-columns: 14.5rem 14.5rem 14.5rem 18rem;
+}
+
+.tournament.tournament--clean .bracket--tree-64 .bracket__side--left {
+  grid-template-columns: 18rem 14.5rem 14.5rem 14.5rem 14.5rem;
+}
+
+.tournament.tournament--clean .bracket--tree-64 .bracket__side--right {
+  grid-template-columns: 14.5rem 14.5rem 14.5rem 14.5rem 18rem;
+}
+
+.tournament.tournament--clean .bracket--tree-8 .bracket__side--left {
+  grid-template-columns: 18rem 14.5rem;
+}
+
+.tournament.tournament--clean .bracket--tree-8 .bracket__side--right {
+  grid-template-columns: 14.5rem 18rem;
+}
+
+.tournament.tournament--clean .bracket--tree-4 .bracket__side--left,
+.tournament.tournament--clean .bracket--tree-4 .bracket__side--right {
+  grid-template-columns: 18rem;
+}
+

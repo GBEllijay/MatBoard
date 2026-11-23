@@ -32,6 +32,12 @@ export const SCOREBOARD_SKIN = {
   OLD_SCHOOL: 'OLD_SCHOOL',
   /** Tournament board with Win and DQ under each gym name. Pro skin picker only. */
   QUICK_RESULT: 'QUICK_RESULT',
+  /** Broadcast-TV navy & logo blue scoreboard with centered oversized clock. */
+  CLEAN_MAT_BROADCAST: 'CLEAN_MAT_BROADCAST',
+  /** Rebuilt Old School: matte split-flap tiles, wide name plates, chalk-white comp 2. */
+  SPLIT_FLAP_PRO: 'SPLIT_FLAP_PRO',
+  /** High-contrast cream/ink daylight board for sunlit gyms. */
+  HIGH_CONTRAST_DAYLIGHT: 'HIGH_CONTRAST_DAYLIGHT',
   /** Polished skins (polishedSkins.ts). Media Edition and above only. */
   KIDS_ARCADE: 'KIDS_ARCADE',
   KIDS_STICKER: 'KIDS_STICKER',
@@ -63,11 +69,18 @@ export const OLD_SCHOOL_SKIN_NAME = 'Old School';
 /** Switcher label. Keep this exact. */
 export const QUICK_RESULT_SKIN_NAME = 'Quick Result';
 
+export const CLEAN_MAT_BROADCAST_SKIN_NAME = 'Clean Mat Broadcast';
+export const SPLIT_FLAP_PRO_SKIN_NAME = 'Split-Flap Pro';
+export const HIGH_CONTRAST_DAYLIGHT_SKIN_NAME = 'High-Contrast Daylight';
+
 /** Skins the controller can select. Reserved ids stay out of the switcher. White never shows this list. */
 export const SELECTABLE_SCOREBOARD_SKINS = [
   { id: SCOREBOARD_SKIN.MOCK_TOURNAMENT, label: 'Mock-Tournament' },
   { id: SCOREBOARD_SKIN.OLD_SCHOOL, label: OLD_SCHOOL_SKIN_NAME },
   { id: SCOREBOARD_SKIN.QUICK_RESULT, label: QUICK_RESULT_SKIN_NAME },
+  { id: SCOREBOARD_SKIN.CLEAN_MAT_BROADCAST, label: CLEAN_MAT_BROADCAST_SKIN_NAME },
+  { id: SCOREBOARD_SKIN.SPLIT_FLAP_PRO, label: SPLIT_FLAP_PRO_SKIN_NAME },
+  { id: SCOREBOARD_SKIN.HIGH_CONTRAST_DAYLIGHT, label: HIGH_CONTRAST_DAYLIGHT_SKIN_NAME },
 ] as const;
 
 /** Mock-Tournament colors. CSS tokens mirror these. Penalty is Pantone 200 so gym TVs keep a primary red. */
@@ -90,6 +103,9 @@ const SKIN_CLASS: Record<ScoreboardSkinId, string> = {
   [SCOREBOARD_SKIN.OLD_SCHOOL]: 'scoreboard-skin--old-school',
   /* Same painted board as Mock-Tournament. Win and DQ are the only addition. */
   [SCOREBOARD_SKIN.QUICK_RESULT]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.CLEAN_MAT_BROADCAST]: 'scoreboard-skin--clean-mat-broadcast',
+  [SCOREBOARD_SKIN.SPLIT_FLAP_PRO]: 'scoreboard-skin--split-flap-pro',
+  [SCOREBOARD_SKIN.HIGH_CONTRAST_DAYLIGHT]: 'scoreboard-skin--high-contrast-daylight',
   /* Polished skins paint their own board on the display. The controller keeps the default look. */
   [SCOREBOARD_SKIN.KIDS_ARCADE]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.KIDS_STICKER]: 'scoreboard-skin--mock-tournament',
@@ -280,4 +296,9 @@ export function flapDigits(value: number, count: number): string[] {
   const width = count === 1 ? 1 : 2;
   const safe = Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
   return String(safe).padStart(width, '0').slice(-width).split('');
+}
+
+/** True for skins that render mechanical flip-card digits (Old School and Split-Flap Pro). */
+export function scoreboardUsesFlapCards(skin: StoredScoreboardSkin): boolean {
+  return skin === SCOREBOARD_SKIN.OLD_SCHOOL || skin === SCOREBOARD_SKIN.SPLIT_FLAP_PRO;
 }

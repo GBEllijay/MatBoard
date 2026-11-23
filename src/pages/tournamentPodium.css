@@ -1,0 +1,609 @@
+/* Podium & Mat Strip — White brackets skin.
+   Championship palette: deep emerald/black with bright yellow accents,
+   and a green/yellow mat-edge frame. Name pills keep gi white/blue so
+   left and right stay distinct. */
+
+.tournament--podium {
+  --champ-yellow: #ffe34a;
+  --champ-yellow-deep: #f0c400;
+  --champ-emerald: #0b3d2e;
+  --champ-emerald-deep: #07241c;
+  --champ-card: #071a14;
+  --champ-ink: #04110c;
+  --mat-edge-green: #0f8a45;
+  --mat-edge-yellow: #ffe34a;
+  --mat-gi-white: #f3f1ea;
+  --mat-gi-blue: #1a47b8;
+  background-color: #06150f;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 227, 74, 0.03) 0 2px,
+      transparent 2px 18px
+    ),
+    radial-gradient(80% 60% at 50% 42%, rgba(15, 138, 69, 0.28), transparent 62%),
+    radial-gradient(90% 70% at 50% 0%, rgba(255, 227, 74, 0.1), transparent 54%),
+    linear-gradient(180deg, #0c241a 0%, #06150f 48%, #040e0b 100%);
+}
+
+.tournament--podium > .belt-rail {
+  display: none;
+}
+
+.tournament--podium > .play-exit {
+  z-index: 22;
+  opacity: 0.96;
+  width: 52px;
+  height: auto;
+  min-height: 52px;
+  top: calc(0.28rem + var(--safe-t) + 16px);
+  left: calc(0.28rem + var(--safe-l));
+  background: none;
+}
+
+.tournament--podium > .play-exit img,
+.tournament--podium > .play-exit .back-btn img {
+  width: 46px;
+  height: 46px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
+}
+
+.mat-edge {
+  pointer-events: none;
+  position: absolute;
+  z-index: 16;
+  background-repeat: repeat;
+}
+
+.mat-edge--top,
+.mat-edge--bottom {
+  left: 0;
+  right: 0;
+  height: 16px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--mat-edge-green) 0 3rem,
+    var(--mat-edge-yellow) 3rem 6rem
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.mat-edge--top {
+  top: 0;
+}
+
+.mat-edge--bottom {
+  position: relative;
+  flex: 0 0 16px;
+  bottom: auto;
+  z-index: 16;
+}
+
+.tournament--podium > .tournament__tools {
+  z-index: 17;
+  border-top-color: transparent;
+}
+
+.mat-edge--left,
+.mat-edge--right {
+  top: 16px;
+  bottom: 16px;
+  width: 14px;
+  background-image: repeating-linear-gradient(
+    180deg,
+    var(--mat-edge-green) 0 3rem,
+    var(--mat-edge-yellow) 3rem 6rem
+  );
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.22), inset -1px 0 0 rgba(0, 0, 0, 0.4);
+}
+
+.mat-edge--left {
+  left: 0;
+}
+
+.mat-edge--right {
+  right: 0;
+}
+
+.tournament--podium .tournament__brand h1,
+.tournament--podium .tournament__eyebrow {
+  color: var(--mat-gi-white);
+}
+
+.tournament--podium .tournament__hint,
+.tournament--podium .tournament__roundline {
+  color: rgba(243, 241, 234, 0.88);
+}
+
+.tournament--podium .bracket__side--left .t-slot {
+  background: var(--mat-gi-white);
+  color: #14161c;
+  border-color: rgba(18, 18, 18, 0.12);
+}
+
+.tournament--podium .bracket__side--right .t-slot {
+  background: var(--mat-gi-blue);
+  color: #fff;
+  border-color: rgba(0, 20, 60, 0.35);
+}
+
+.tournament--podium .bracket__side--left .t-slot__seed,
+.tournament--podium .t-match--final .t-slot__seed {
+  color: #14161c;
+}
+
+.tournament--podium .bracket__side--left .t-slot input,
+.tournament--podium .t-match--final .t-slot input {
+  color: #14161c;
+  -webkit-text-fill-color: #14161c;
+  caret-color: #14161c;
+  color-scheme: light;
+  opacity: 1;
+}
+
+.tournament--podium .bracket__side--right .t-slot input {
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  color-scheme: dark;
+  opacity: 1;
+}
+
+.tournament--podium .bracket__side--left .t-slot input::placeholder,
+.tournament--podium .t-match--final .t-slot input::placeholder {
+  color: #2a3140;
+  -webkit-text-fill-color: #2a3140;
+  opacity: 1;
+}
+
+.tournament--podium .bracket__side--right .t-slot input::placeholder {
+  color: rgba(255, 255, 255, 0.82);
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.82);
+  opacity: 1;
+}
+
+.tournament--podium .bracket__side--left .t-mark {
+  background: #eef1f6;
+  color: #1d2430;
+  border-color: transparent;
+}
+
+.tournament--podium .bracket__side--right .t-mark {
+  background: rgba(0, 18, 56, 0.28);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.tournament--podium .t-mark--win.is-on {
+  background: #fff;
+  color: var(--mat-gi-blue);
+}
+
+.tournament--podium .bracket__side--left .t-mark--win.is-on {
+  background: var(--mat-gi-blue);
+  color: #fff;
+}
+
+.tournament--podium .t-mark--dq.is-on {
+  background: var(--neg);
+  color: #fff;
+}
+
+.tournament--podium .t-slot--lost {
+  opacity: 0.62;
+}
+
+.tournament--podium .t-slot--bye {
+  justify-items: center;
+  background: rgba(243, 241, 234, 0.42);
+  color: #3b4252;
+}
+
+.tournament--podium .bracket__side--right .t-slot--bye {
+  background: rgba(26, 71, 184, 0.62);
+  color: #fff;
+}
+
+.tournament--podium .bracket__side--left .t-match__bouts::after,
+.tournament--podium .bracket__side--right .t-match__bouts::after {
+  width: 1.25rem;
+  height: 2px;
+  background: var(--champ-yellow);
+}
+
+.tournament--podium .bracket__side--left .t-match__bouts::after {
+  right: -1.25rem;
+}
+
+.tournament--podium .bracket__side--right .t-match__bouts::after {
+  left: -1.25rem;
+}
+
+.tournament--podium .bracket__side--left .t-match {
+  padding-right: 1.25rem;
+  padding-left: 0.35rem;
+}
+
+.tournament--podium .bracket__side--right .t-match {
+  padding-left: 1.25rem;
+}
+
+.tournament--podium .t-match--live .t-match__bouts {
+  outline-color: var(--champ-yellow);
+}
+
+.tournament--podium .t-match--next .t-match__bouts {
+  outline-color: var(--champ-yellow);
+  box-shadow: 0 0 0 4px rgba(255, 227, 74, 0.28);
+}
+
+/* Deep emerald card, bright yellow edge, yellow FINALS — not a flat yellow fill. */
+.tournament--podium .bracket__finals > .t-match::before {
+  display: none;
+}
+
+.tournament--podium .t-match--final {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 1.05rem 1.1rem 0.95rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(255, 227, 74, 0.2), transparent 58%),
+    linear-gradient(180deg, #0e3a2b 0%, var(--champ-card) 55%);
+  color: var(--mat-gi-white);
+  border: 2px solid var(--champ-yellow);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 227, 74, 0.35),
+    0 0 28px rgba(255, 227, 74, 0.16),
+    0 16px 32px rgba(0, 0, 0, 0.45);
+}
+
+.tournament--podium .t-match__finals-label {
+  display: grid;
+  justify-items: center;
+  gap: 0.12rem;
+  margin: 0;
+}
+
+.tournament--podium .t-match__finals-label span {
+  color: rgba(243, 241, 234, 0.78);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.tournament--podium .t-match__finals-label strong {
+  color: var(--champ-yellow);
+  font-size: clamp(1.55rem, 3.4vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 0.95;
+  text-shadow: 0 0 18px rgba(255, 227, 74, 0.45);
+}
+
+.tournament--podium .t-match--final .t-match__bouts {
+  width: 100%;
+}
+
+.tournament--podium .t-match--final .t-slot {
+  background: rgba(243, 241, 234, 0.96);
+  color: #14161c;
+  box-shadow: none;
+  border-color: rgba(15, 138, 69, 0.35);
+}
+
+.tournament--podium .t-match--final .t-slot input {
+  color: #14161c;
+  -webkit-text-fill-color: #14161c;
+  text-align: center;
+}
+
+.tournament--podium .t-match--final .t-slot--won {
+  background: var(--champ-yellow);
+  color: var(--champ-ink);
+  border-color: var(--champ-yellow);
+  box-shadow: 0 0 0 2px rgba(255, 227, 74, 0.45), 0 8px 22px rgba(255, 227, 74, 0.28);
+  opacity: 1;
+}
+
+.tournament--podium .t-match--final .t-slot--won .t-slot__seed,
+.tournament--podium .t-match--final .t-slot--won input {
+  color: var(--champ-ink);
+  -webkit-text-fill-color: var(--champ-ink);
+  font-weight: 800;
+}
+
+.tournament--podium .t-match--final .t-slot--lost {
+  background: rgba(7, 26, 20, 0.78);
+  color: rgba(243, 241, 234, 0.7);
+  border-color: rgba(255, 255, 255, 0.1);
+  opacity: 0.58;
+  box-shadow: none;
+}
+
+.tournament--podium .t-match--final .t-slot--lost .t-slot__seed,
+.tournament--podium .t-match--final .t-slot--lost input {
+  color: rgba(243, 241, 234, 0.78);
+  -webkit-text-fill-color: rgba(243, 241, 234, 0.78);
+}
+
+.tournament--podium .t-match--final .t-mark {
+  background: rgba(20, 22, 28, 0.08);
+  color: #14161c;
+}
+
+.tournament--podium .t-match--final .t-slot--won .t-mark {
+  background: rgba(4, 17, 12, 0.12);
+  color: var(--champ-ink);
+}
+
+.tournament--podium .t-match--final .t-mark--win.is-on,
+.tournament--podium .t-match--final .t-score {
+  background: var(--champ-emerald);
+  color: var(--champ-yellow);
+  border-color: transparent;
+}
+
+.tournament--podium .t-match--final .t-score {
+  min-height: 40px;
+  min-width: 7.5rem;
+  padding: 0.35rem 1.1rem;
+  font-size: 0.92rem;
+}
+
+.tournament--podium .t-match--final .t-match__play {
+  width: 100%;
+  justify-items: center;
+}
+
+.tournament--podium .t-score {
+  min-height: 26px;
+  font-size: 0.62rem;
+  padding: 0.12rem 0.55rem;
+  background: transparent;
+  color: rgba(243, 241, 234, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.tournament--podium .t-undo {
+  min-height: 26px;
+  font-size: 0.62rem;
+  padding: 0.12rem 0.55rem;
+}
+
+.tournament--podium .bracket__champ .belt-rail,
+.tournament--podium .bracket__champ > span:first-of-type {
+  display: none;
+}
+
+.tournament--podium .bracket__champ {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.tournament--podium .bracket__champ.is-filled {
+  animation: none;
+}
+
+.podium-banner {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.podium-banner__step {
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  gap: 0.22rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.45rem 0.4rem 0.55rem;
+  border-radius: 12px 12px 6px 6px;
+  background: var(--champ-emerald-deep);
+  color: var(--mat-gi-white);
+  overflow: hidden;
+}
+
+.podium-banner__step--1st {
+  flex: 1.3 1 6.5rem;
+  height: 6.75rem;
+  min-height: 6.75rem;
+  max-height: 6.75rem;
+  padding-top: 0.7rem;
+  background:
+    linear-gradient(180deg, rgba(255, 227, 74, 0.28), transparent 48%),
+    #0c3327;
+  box-shadow: inset 0 4px 0 var(--champ-yellow), 0 12px 22px rgba(0, 0, 0, 0.32);
+  z-index: 1;
+}
+
+.podium-banner__step--2nd {
+  flex: 1 1 5rem;
+  height: 5.15rem;
+  min-height: 5.15rem;
+  max-height: 5.15rem;
+  box-shadow: inset 0 3px 0 #c9d4ce, 0 10px 18px rgba(0, 0, 0, 0.28);
+}
+
+.podium-banner__step--3rd {
+  flex: 1.15 1 5.6rem;
+  height: 4.15rem;
+  min-height: 4.15rem;
+  max-height: 4.15rem;
+  box-shadow: inset 0 3px 0 #9fb89a, 0 10px 18px rgba(0, 0, 0, 0.28);
+}
+
+.podium-banner--champ-only .podium-banner__step--1st {
+  flex: 1 1 100%;
+  max-width: 16rem;
+}
+
+.podium-banner__place {
+  color: var(--champ-yellow);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.podium-banner__step--2nd .podium-banner__place {
+  color: #c9d4ce;
+}
+
+.podium-banner__step--3rd .podium-banner__place {
+  color: #9fb89a;
+}
+
+.podium-banner__names {
+  margin: 0;
+  display: grid;
+  gap: 0.12rem;
+  width: 100%;
+  text-align: center;
+  font-size: clamp(0.92rem, 1.9vw, 1.35rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.podium-banner__step--1st .podium-banner__names {
+  font-size: clamp(1.1rem, 2.3vw, 1.65rem);
+  color: var(--champ-yellow);
+}
+
+.podium-banner__names--pair {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: clamp(0.72rem, 1.35vw, 0.95rem);
+}
+
+.podium-banner__names--pair > span {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.podium-banner__names--empty {
+  min-height: 1.2em;
+}
+
+.tournament--podium .podium-banner__step .roster-field,
+.tournament--podium .podium-banner__step input {
+  width: 100%;
+  background: transparent;
+  color: var(--mat-gi-white);
+  -webkit-text-fill-color: var(--mat-gi-white);
+  border: 0;
+  text-align: center;
+}
+
+.tournament--podium .podium-banner__step input::placeholder {
+  color: rgba(243, 241, 234, 0.55);
+  -webkit-text-fill-color: rgba(243, 241, 234, 0.55);
+}
+
+.tournament.tournament--clean.tournament--podium .podium-banner__names {
+  font-size: clamp(1.05rem, 2.2vw, 1.55rem);
+}
+
+.tournament.tournament--clean.tournament--podium .podium-banner__step--1st .podium-banner__names {
+  font-size: clamp(1.25rem, 2.6vw, 1.9rem);
+}
+
+.tournament.tournament--clean.tournament--podium .podium-banner__names--pair {
+  font-size: clamp(0.78rem, 1.5vw, 1.05rem);
+}
+
+.tournament.tournament--clean.tournament--podium .t-match__finals-label strong {
+  font-size: clamp(1.7rem, 3.6vw, 2.45rem);
+}
+
+@media (max-width: 720px) {
+  .mat-edge--top,
+  .mat-edge--bottom {
+    height: 10px;
+  }
+
+  .mat-edge--bottom {
+    flex-basis: 10px;
+  }
+
+  .mat-edge--left,
+  .mat-edge--right {
+    top: 10px;
+    bottom: 10px;
+    width: 8px;
+  }
+
+  .tournament--podium > .play-exit {
+    top: calc(0.28rem + var(--safe-t) + 10px);
+  }
+
+  .podium-banner {
+    gap: 0.22rem;
+  }
+
+  .podium-banner__step {
+    padding: 0.32rem 0.24rem 0.38rem;
+  }
+
+  .podium-banner__step--1st {
+    height: 5.4rem;
+    min-height: 5.4rem;
+    max-height: 5.4rem;
+  }
+
+  .podium-banner__step--2nd {
+    height: 4.15rem;
+    min-height: 4.15rem;
+    max-height: 4.15rem;
+  }
+
+  .podium-banner__step--3rd {
+    height: 3.35rem;
+    min-height: 3.35rem;
+    max-height: 3.35rem;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .tournament--podium .t-match--final {
+    padding: 0.45rem 0.55rem 0.4rem;
+  }
+
+  .tournament--podium .t-match__finals-label strong {
+    font-size: clamp(1.05rem, 3.2vh, 1.7rem);
+  }
+
+  .podium-banner__step--1st {
+    height: 4.5rem;
+    min-height: 4.5rem;
+    max-height: 4.5rem;
+  }
+
+  .podium-banner__step--2nd {
+    height: 3.5rem;
+    min-height: 3.5rem;
+    max-height: 3.5rem;
+  }
+
+  .podium-banner__step--3rd {
+    height: 2.9rem;
+    min-height: 2.9rem;
+    max-height: 2.9rem;
+  }
+}

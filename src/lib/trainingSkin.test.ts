@@ -9,6 +9,12 @@ import {
   setTrainingSkin,
   trainingUsesAdvantageSkin,
   visibleTrainingSkin,
+  trainingUsesLedClock,
+  trainingUsesTrueFlipCards,
+  trainingUsesSplitFlap,
+  trainingHasProgressBar,
+  whiteTimerSurfaceClass,
+  whiteTimerControllerClass,
 } from './trainingSkin.ts';
 
 function memoryStorage() {
@@ -91,5 +97,54 @@ test('a custom timer skin stays stored and paints only for Media and above', () 
   assert.equal(visibleTrainingSkin(id, true, false), id);
   assert.equal(visibleTrainingSkin(id, false, false), 'classic');
   assert.equal(visibleTrainingSkin(id, false, true), 'MOCK_TOURNAMENT');
+  setTrainingSkin('classic');
+});
+
+test('New White round timer skins persist, map Work/Break CSS, and expose mode helpers', () => {
+  for (const id of [
+    'CLEAN_MAT_BROADCAST',
+    'SPLIT_FLAP_PRO',
+    'HIGH_CONTRAST_DAYLIGHT',
+    'LED_GYM_WALL',
+    'TRUE_FLIP_INTERVAL',
+    'WORK_REST_TATAMI',
+  ] as const) {
+    setTrainingSkin(id);
+    assert.equal(getTrainingSkin(), id);
+    assert.equal(visibleTrainingSkin(id, false, true), id);
+    assert.ok(whiteTimerSurfaceClass(id).startsWith('training--wt-'));
+    assert.ok(whiteTimerControllerClass(id).startsWith('controller--wt-'));
+  }
+  assert.equal(trainingUsesLedClock('LED_GYM_WALL'), true);
+  assert.equal(trainingUsesLedClock('WORK_REST_TATAMI'), false);
+  assert.equal(trainingUsesTrueFlipCards('TRUE_FLIP_INTERVAL'), true);
+  assert.equal(trainingUsesSplitFlap('SPLIT_FLAP_PRO'), true);
+  assert.equal(trainingHasProgressBar('LED_GYM_WALL'), true);
+  assert.equal(trainingHasProgressBar('WORK_REST_TATAMI'), true);
+  assert.equal(trainingHasProgressBar('OLD_SCHOOL'), false);
+  const css = fs.readFileSync(new URL('../skins/whiteSkins.css', import.meta.url), 'utf8');
+  for (const cls of [
+    'training--wt-broadcast.training--break',
+    'training--wt-split-flap.training--break',
+    'training--wt-daylight.training--break',
+    'training--wt-led.training--break',
+    'training--wt-true-flip.training--break',
+    'training--wt-tatami.training--break',
+  ]) {
+    assert.match(css, new RegExp(cls.replace(/\./g, '\\.')));
+  }
+  assert.match(css, /@keyframes wt-led-pulse/);
+  assert.match(css, /\.training\.training--wt-led\.training--final-10/);
+  assert.match(css, /font-size:\s*clamp\(1\.4rem,\s*3\.2vw,\s*3rem\)/);
+  assert.match(css, /\.training\.training--wt-broadcast \.training__clock \{\s*font-size:\s*clamp\(5\.8rem,\s*23vw,\s*21rem\)/);
+  assert.match(css, /\.training\.training--wt-daylight \.training__clock \{[^}]*font-size:\s*clamp\(6rem,\s*24vw,\s*21rem\)/);
+  assert.match(css, /padding:\s*0\.7rem\s+1\.75rem/);
+  const phone = css.slice(css.indexOf('@media (max-width: 480px)'));
+  assert.ok(phone.length > 0 && phone.includes('display: none'), 'phone layout hides the timer help text');
+  assert.match(phone, /\.training\.training--wt-tatami \.training__hint/);
+  assert.match(phone, /\.wt-sf-tile \{\s*width:\s*4\.35rem;/);
+  assert.match(phone, /\.wt-led-digit \{\s*width:\s*4\.15rem;/);
+  assert.match(phone, /\.wt-tf-slot \{\s*width:\s*4\.25rem;/);
+  assert.doesNotMatch(phone, /training--wt-mock|training--wt-old|training--classic/);
   setTrainingSkin('classic');
 });

@@ -1,0 +1,1603 @@
+/* ============================================================================
+   Advantage White — Upgraded Old School + New Scoreboard & Round Timer Skins
+   Brand tokens: navy #0e1726, Logo Blue #004eba, warm white #f5f1e8.
+   Yellow stays reserved for logo/CTA.
+   ============================================================================ */
+
+/* ----------------------------------------------------------------------------
+   1. EXISTING OLD SCHOOL REWORK (.scoreboard-skin--old-school)
+   - Smaller, better-proportioned flip cards
+   - Long names never cut off at 1080 or 390 (wrap cleanly, no ellipsis)
+   - Clock much bigger & centered instead of shoved left
+   - Matte gunmetal hinge bar + forged steel rings (replaces glossy wire)
+   ---------------------------------------------------------------------------- */
+
+.scoreboard-skin--old-school.display {
+  --os-frame: #090b0e;
+  background-color: var(--os-frame);
+  background-image: linear-gradient(180deg, #13161b 0%, #090b0f 48%, #050608 100%);
+  box-shadow: inset 0 0 0 10px #050608, inset 0 0 0 12px #222730;
+}
+
+.scoreboard-skin--old-school.display .bout__who h1,
+.scoreboard-skin--old-school.display .bout__who h1 a,
+.scoreboard-skin--old-school.display .bout__who p,
+.scoreboard-skin--old-school.display .bout__who p a {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.scoreboard-skin--old-school.display .bout__scores {
+  align-self: center;
+  border: 1px solid #232832;
+  background:
+    radial-gradient(circle at 14px 14px, #4b5360 0 2.5px, #191d23 3px, transparent 4.5px),
+    radial-gradient(circle at calc(100% - 14px) 14px, #4b5360 0 2.5px, #191d23 3px, transparent 4.5px),
+    radial-gradient(circle at 14px calc(100% - 14px), #4b5360 0 2.5px, #191d23 3px, transparent 4.5px),
+    radial-gradient(circle at calc(100% - 14px) calc(100% - 14px), #4b5360 0 2.5px, #191d23 3px, transparent 4.5px),
+    linear-gradient(180deg, #16191f 0%, #0c0e12 72%, #08090c 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 18px rgba(0, 0, 0, 0.45);
+}
+
+.scoreboard-skin--old-school .flap__card {
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 4px 0 #1b1e24,
+    0 7px 0 #0d0f13,
+    0 10px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* Matte cardstock tones instead of glossy plastic gradient */
+.scoreboard-skin--old-school .bout--blue .flap__card {
+  background: linear-gradient(180deg, #2478ea 0%, #1d6fe0 48%, #1659b8 51%, #1860c8 100%);
+}
+
+.scoreboard-skin--old-school .bout--white .flap__card {
+  background: linear-gradient(180deg, #f34b3b 0%, #ef3d2c 48%, #ca2f20 51%, #d83425 100%);
+}
+
+.scoreboard-skin--old-school .flap__seam {
+  top: 49%;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.34);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Center and enlarge the Old School clock across all viewports */
+@media (min-width: 821px), (orientation: landscape) {
+  .scoreboard-skin--old-school.display .display__mid--stack {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    justify-self: stretch;
+    width: 100%;
+    max-width: 100%;
+    gap: 1rem;
+    padding: 0.25rem 1.15rem;
+    text-align: center;
+  }
+
+  .scoreboard-skin--old-school.display .display__mid--stack .display__meta {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    align-items: flex-start;
+    text-align: left;
+    padding-left: 0;
+  }
+
+  .scoreboard-skin--old-school.display .display__mid--stack .clock-btn {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    text-align: center;
+    padding: 0.05rem 0.75rem;
+    font-size: clamp(3.1rem, 9.5vw, 6.8rem);
+    line-height: 0.94;
+    letter-spacing: 0.04em;
+  }
+
+  .scoreboard-skin--old-school.display .display__mid--stack .display__clock-hint {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    text-align: right;
+  }
+}
+
+@media (max-width: 820px) and (orientation: portrait) and (min-height: 521px) {
+  .scoreboard-skin--old-school.display > .bout {
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0.35rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .scoreboard-skin--old-school.display > .bout--blue {
+    padding-top: calc(2.75rem + var(--safe-t));
+  }
+
+  .scoreboard-skin--old-school.display .bout__who h1 {
+    font-size: clamp(1.22rem, 4.7vw, 1.85rem);
+    line-height: 1.06;
+  }
+
+  .scoreboard-skin--old-school.display .bout__who p {
+    font-size: clamp(0.84rem, 3vw, 1.05rem);
+    margin-top: 0.16rem;
+  }
+
+  .scoreboard-skin--old-school.display .bout__scores {
+    min-height: 4.4rem;
+    padding: 0.25rem 0.45rem 0.4rem;
+    gap: 0.4rem;
+  }
+
+  .scoreboard-skin--old-school.display .score--points {
+    min-height: 3.85rem;
+  }
+
+  .scoreboard-skin--old-school.display .score--advantages {
+    min-height: 3.05rem;
+  }
+
+  .scoreboard-skin--old-school.display .score--disadvantages {
+    min-height: 2.65rem;
+  }
+
+  .scoreboard-skin--old-school.display .flap {
+    padding-top: clamp(1.1rem, 16%, 1.65rem);
+  }
+
+  .scoreboard-skin--old-school.display .display__mid--stack {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    justify-self: stretch;
+    width: 100%;
+    padding: 0.22rem 0.65rem;
+    gap: 0.12rem;
+    text-align: center;
+  }
+
+  .scoreboard-skin--old-school.display .display__mid--stack .clock-btn {
+    font-size: clamp(2.6rem, 11vw, 3.8rem);
+    text-align: center;
+  }
+
+  .scoreboard-skin--old-school.display .display__mid--stack .display__meta,
+  .scoreboard-skin--old-school.display .display__mid--stack .display__clock-hint,
+  .scoreboard-skin--old-school.display .display__mid--stack .display__clock-hint--paused {
+    align-items: center;
+    text-align: center;
+    justify-self: center;
+  }
+
+  .scoreboard-skin--old-school.display .display__mid--stack .display__clock-hint--paused {
+    min-height: 36px;
+    padding: 0.2rem 0.7rem;
+    font-size: 1.05rem;
+  }
+}
+
+@media (min-width: 900px) and (min-height: 560px) {
+  .scoreboard-skin--old-school.display > .bout {
+    grid-template-columns: minmax(14.5rem, 25.5rem) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem 1.1rem;
+    padding: 0.45rem 0.9rem;
+  }
+
+  .scoreboard-skin--old-school.display .bout__who h1 {
+    font-size: clamp(1.45rem, 2.35vw, 2.6rem);
+    line-height: 1.04;
+  }
+
+  .scoreboard-skin--old-school.display .bout__scores {
+    grid-template-columns: minmax(0, 1.85fr) minmax(0, 0.88fr) minmax(0, 0.78fr);
+    align-items: end;
+    height: 90%;
+    padding: 0.3rem 0.65rem 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .scoreboard-skin--old-school.display .score--points {
+    height: 92%;
+  }
+
+  .scoreboard-skin--old-school.display .score--advantages {
+    height: 78%;
+  }
+
+  .scoreboard-skin--old-school.display .score--disadvantages {
+    height: 68%;
+  }
+
+  .scoreboard-skin--old-school.display .flap {
+    padding-top: clamp(1.35rem, 9%, 2.4rem);
+  }
+
+  .scoreboard-skin--old-school.display .flap__rings {
+    --flap-ring-w: min(88%, 11.5rem, 86cqh);
+  }
+
+  .scoreboard-skin--old-school.display .flap__face {
+    font-size: 66cqh;
+  }
+}
+
+@media (min-width: 1100px) and (min-height: 700px) {
+  .scoreboard-skin--old-school.display .display__mid--stack .clock-btn {
+    font-size: clamp(4rem, 9vw, 7.2rem);
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   2. NEW SCOREBOARD SKIN: CLEAN MAT BROADCAST
+   Navy #0e1726 frame, #004eba Blue & #f5f1e8 Warm White headers,
+   oversized centered tabular clock pill, broadcast-TV legibility at 20 ft.
+   ---------------------------------------------------------------------------- */
+
+.scoreboard-skin--clean-mat-broadcast.display {
+  --pad-points: #15803d;
+  --pad-adv: #d97706;
+  --pad-pen: #c8102e;
+  --board-field: #091221;
+  --board-blue: #004eba;
+  --board-white: #f5f1e8;
+  --board-digit: #ffffff;
+  --board-ink: #0e1726;
+  --board-gym-on-blue: #cfe2ff;
+  --board-gym-on-white: #004eba;
+  background:
+    radial-gradient(1100px 540px at 50% 50%, rgba(0, 78, 186, 0.22), transparent 72%),
+    linear-gradient(180deg, #0b1526 0%, #091221 50%, #070e1b 100%);
+  gap: clamp(0.45rem, 1.2vh, 0.8rem);
+  padding: clamp(0.5rem, 1.4vh, 0.9rem) clamp(0.65rem, 1.6vw, 1.15rem);
+}
+
+.scoreboard-skin--clean-mat-broadcast.display > .bout {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+}
+
+.scoreboard-skin--clean-mat-broadcast.display .bout--blue {
+  background: linear-gradient(135deg, #0056cc 0%, #004eba 58%, #003c91 100%);
+}
+
+.scoreboard-skin--clean-mat-broadcast.display .bout--white {
+  background: linear-gradient(135deg, #fbf8f1 0%, #f5f1e8 65%, #ebe4d6 100%);
+  border-color: rgba(14, 23, 38, 0.22);
+}
+
+.scoreboard-skin--clean-mat-broadcast.display .bout__who h1,
+.scoreboard-skin--clean-mat-broadcast.display .bout__who h1 a,
+.scoreboard-skin--clean-mat-broadcast.display .bout__who p,
+.scoreboard-skin--clean-mat-broadcast.display .bout__who p a {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+}
+
+.scoreboard-skin--clean-mat-broadcast.display .score {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.18), 0 8px 18px rgba(0, 0, 0, 0.24);
+}
+
+.scoreboard-skin--clean-mat-broadcast.display .score__label,
+.scoreboard-skin--clean-mat-broadcast.display .score__label--wide {
+  letter-spacing: 0.14em;
+  font-weight: 900;
+}
+
+.scoreboard-skin--clean-mat-broadcast.display .score__value {
+  font-weight: 900;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+.scoreboard-skin--clean-mat-broadcast.display .display__mid {
+  background: rgba(5, 10, 20, 0.72);
+  border: 1px solid rgba(0, 78, 186, 0.45);
+  border-radius: 16px;
+  padding: 0.35rem 1rem;
+}
+
+.scoreboard-skin--clean-mat-broadcast.display .clock-btn {
+  background: #050a14;
+  border: 2px solid #004eba;
+  border-radius: 14px;
+  padding: 0.14rem 1.15rem;
+  color: #ffffff;
+  font-weight: 900;
+  box-shadow: 0 0 28px rgba(0, 78, 186, 0.32);
+}
+
+.scoreboard-skin--clean-mat-broadcast.display .display__meta {
+  font-style: normal;
+  letter-spacing: 0.1em;
+  color: #dbeafe;
+}
+
+@media (min-width: 1100px) and (min-height: 700px) {
+  .scoreboard-skin--clean-mat-broadcast.display .clock-btn {
+    font-size: clamp(4.2rem, 9.6vw, 7.6rem);
+  }
+
+  .scoreboard-skin--clean-mat-broadcast.display .score__value {
+    font-size: clamp(3.4rem, 7.6vw, 7.2rem);
+  }
+
+  .scoreboard-skin--clean-mat-broadcast.display .bout__who h1 {
+    font-size: clamp(2rem, 3.6vw, 3.8rem);
+    line-height: 1.03;
+  }
+}
+
+@media (max-width: 820px) and (orientation: portrait) and (min-height: 521px) {
+  .scoreboard-skin--clean-mat-broadcast.display > .bout--blue {
+    padding-top: calc(2.75rem + var(--safe-t));
+  }
+
+  .scoreboard-skin--clean-mat-broadcast.display .bout__who h1 {
+    font-size: clamp(1.22rem, 4.8vw, 1.9rem);
+    line-height: 1.06;
+  }
+
+  .scoreboard-skin--clean-mat-broadcast.display .display__mid {
+    padding: 0.22rem 0.65rem;
+    gap: 0.16rem;
+  }
+
+  .scoreboard-skin--clean-mat-broadcast.display .clock-btn {
+    font-size: clamp(2.4rem, 10.5vw, 3.3rem);
+  }
+
+  .scoreboard-skin--clean-mat-broadcast.display .display__clock-hint--paused {
+    justify-self: center;
+    min-height: 36px;
+    padding: 0.2rem 0.7rem;
+    font-size: 1.05rem;
+  }
+}
+
+
+/* ----------------------------------------------------------------------------
+   3. NEW SCOREBOARD SKIN: SPLIT-FLAP PRO
+   Matte split-flap tiles that animate on change, wide name plates,
+   chalk-white Competitor 2 (not red boxing corners), centered bezel clock.
+   ---------------------------------------------------------------------------- */
+
+.scoreboard-skin--split-flap-pro.display {
+  --sf-blue: #004eba;
+  --sf-blue-deep: #003a8c;
+  --sf-chalk: #f5f1e8;
+  --sf-chalk-deep: #e3dcd0;
+  --sf-ink: #102048;
+  --board-field: #0f141d;
+  --board-blue: #0f213d;
+  --board-white: #f5f1e8;
+  --board-ink: #102048;
+  --board-digit: #ffffff;
+  --board-gym-on-blue: #bfdbfe;
+  --board-gym-on-white: #004eba;
+  --pad-points: transparent;
+  --pad-adv: transparent;
+  --pad-pen: transparent;
+  background: linear-gradient(180deg, #161c27 0%, #0d1119 52%, #090c12 100%);
+  box-shadow: inset 0 0 0 8px #080b10, inset 0 0 0 10px #273041;
+}
+
+.scoreboard-skin--split-flap-pro.display > .bout {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.scoreboard-skin--split-flap-pro.display .bout--blue {
+  background: linear-gradient(90deg, #004eba 0, #004eba 10px, #0f1d35 10px, #0d182b 100%);
+  color: #ffffff;
+}
+
+.scoreboard-skin--split-flap-pro.display .bout--white {
+  background: linear-gradient(90deg, #102048 0, #102048 10px, #f5f1e8 10px, #ece6da 100%);
+  color: #102048;
+  border-color: rgba(16, 32, 72, 0.25);
+}
+
+.scoreboard-skin--split-flap-pro.display .bout__who h1,
+.scoreboard-skin--split-flap-pro.display .bout__who h1 a,
+.scoreboard-skin--split-flap-pro.display .bout__who p,
+.scoreboard-skin--split-flap-pro.display .bout__who p a {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+}
+
+.scoreboard-skin--split-flap-pro.display .bout__scores {
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 0.9fr) minmax(0, 0.8fr);
+  align-items: end;
+  gap: 0.7rem;
+  height: 92%;
+  align-self: center;
+  padding: 0.45rem 0.65rem 0.55rem;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #1a212e 0%, #10151e 100%);
+  border: 1px solid #2b3547;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.scoreboard-skin--split-flap-pro.display .score,
+.scoreboard-skin--split-flap-pro.display .score--points,
+.scoreboard-skin--split-flap-pro.display .score--advantages,
+.scoreboard-skin--split-flap-pro.display .score--disadvantages {
+  height: auto;
+  aspect-ratio: auto;
+  justify-content: flex-end;
+  align-items: stretch;
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  align-self: end;
+}
+
+.scoreboard-skin--split-flap-pro.display .score--points {
+  height: 96%;
+}
+
+.scoreboard-skin--split-flap-pro.display .score--advantages {
+  height: 82%;
+}
+
+.scoreboard-skin--split-flap-pro.display .score--disadvantages {
+  height: 72%;
+}
+
+.scoreboard-skin--split-flap-pro.display .score__label,
+.scoreboard-skin--split-flap-pro.display .score__label--wide {
+  color: #cbd5e1;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+
+.scoreboard-skin--split-flap-pro .flap {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.42rem;
+  min-height: 0;
+  width: 100%;
+  padding-top: 0.45rem;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 0.85;
+}
+
+.scoreboard-skin--split-flap-pro .flap__slot {
+  container-type: size;
+  position: relative;
+  display: grid;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+  height: 100%;
+}
+
+.scoreboard-skin--split-flap-pro .flap__rings--split-flap {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: -0.35rem;
+  width: 82%;
+  height: auto;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.scoreboard-skin--split-flap-pro .flap__card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  transform-origin: center center;
+  animation: split-flap-drop 0.28s cubic-bezier(0.22, 0.82, 0.25, 1) both;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 5px 0 #090c11,
+    0 8px 14px rgba(0, 0, 0, 0.45);
+}
+
+/* Machined split-flap side axle pins */
+.scoreboard-skin--split-flap-pro .flap__card::before,
+.scoreboard-skin--split-flap-pro .flap__card::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 14%;
+  min-height: 8px;
+  transform: translateY(-50%);
+  background: #232b38;
+  border: 1px solid #090c11;
+  z-index: 3;
+}
+
+.scoreboard-skin--split-flap-pro .flap__card::before {
+  left: -3px;
+  border-radius: 2px 0 0 2px;
+}
+
+.scoreboard-skin--split-flap-pro .flap__card::after {
+  right: -3px;
+  border-radius: 0 2px 2px 0;
+}
+
+.scoreboard-skin--split-flap-pro .bout--blue .flap__card {
+  background: linear-gradient(180deg, #0b5ed1 0%, var(--sf-blue) 48.5%, var(--sf-blue-deep) 51.5%, #0044a3 100%);
+  color: #ffffff;
+}
+
+.scoreboard-skin--split-flap-pro .bout--white .flap__card {
+  background: linear-gradient(180deg, #fbf8f2 0%, var(--sf-chalk) 48.5%, var(--sf-chalk-deep) 51.5%, #ebe4d7 100%);
+  color: var(--sf-ink);
+  border-color: rgba(16, 32, 72, 0.35);
+}
+
+.scoreboard-skin--split-flap-pro .flap__seam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  height: 3px;
+  background: rgba(6, 9, 14, 0.72);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14);
+  pointer-events: none;
+}
+
+.scoreboard-skin--split-flap-pro .flap__face {
+  position: relative;
+  z-index: 1;
+  font-size: 68cqh;
+  line-height: 0.82;
+  letter-spacing: -0.04em;
+}
+
+.scoreboard-skin--split-flap-pro .bout--blue .flap__face {
+  color: #ffffff;
+}
+
+.scoreboard-skin--split-flap-pro .bout--white .flap__face {
+  color: var(--sf-ink);
+}
+
+.scoreboard-skin--split-flap-pro.display .display__mid {
+  background: transparent;
+  padding: 0.25rem 0.9rem;
+}
+
+.scoreboard-skin--split-flap-pro.display .clock-btn {
+  background: #080b10;
+  border: 2px solid #2e394d;
+  border-radius: 12px;
+  padding: 0.16rem 1.1rem;
+  color: #f5f1e8;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.7), 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.scoreboard-skin--split-flap-pro.display .display__meta {
+  font-style: normal;
+  color: #cbd5e1;
+}
+
+@media (min-width: 900px) and (min-height: 560px) {
+  .scoreboard-skin--split-flap-pro.display > .bout {
+    grid-template-columns: minmax(15rem, 26rem) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem 1.1rem;
+    padding: 0.45rem 0.9rem 0.45rem 1.2rem;
+  }
+
+  .scoreboard-skin--split-flap-pro.display .bout__who h1 {
+    font-size: clamp(1.5rem, 2.4vw, 2.7rem);
+    line-height: 1.04;
+  }
+
+  .scoreboard-skin--split-flap-pro.display .score--advantages .flap__slot,
+  .scoreboard-skin--split-flap-pro.display .score--disadvantages .flap__slot {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+  }
+}
+
+@media (min-width: 1100px) and (min-height: 700px) {
+  .scoreboard-skin--split-flap-pro.display .clock-btn {
+    font-size: clamp(3.8rem, 9vw, 7.2rem);
+  }
+}
+
+@media (max-width: 820px) and (orientation: portrait) and (min-height: 521px) {
+  .scoreboard-skin--split-flap-pro.display > .bout {
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0.35rem;
+    padding: 0.55rem 0.75rem 0.55rem 1rem;
+  }
+
+  .scoreboard-skin--split-flap-pro.display > .bout--blue {
+    padding-top: calc(2.75rem + var(--safe-t));
+  }
+
+  .scoreboard-skin--split-flap-pro.display .bout__who h1 {
+    font-size: clamp(1.22rem, 4.7vw, 1.85rem);
+    line-height: 1.06;
+  }
+
+  .scoreboard-skin--split-flap-pro.display .bout__scores {
+    min-height: 4.45rem;
+    padding: 0.3rem 0.5rem 0.4rem;
+  }
+
+  .scoreboard-skin--split-flap-pro.display .score--points {
+    min-height: 3.85rem;
+  }
+
+  .scoreboard-skin--split-flap-pro.display .score--advantages {
+    min-height: 3.05rem;
+  }
+
+  .scoreboard-skin--split-flap-pro.display .score--disadvantages {
+    min-height: 2.65rem;
+  }
+
+  .scoreboard-skin--split-flap-pro.display .display__mid {
+    padding: 0.22rem 0.65rem;
+    gap: 0.16rem;
+  }
+
+  .scoreboard-skin--split-flap-pro.display .clock-btn {
+    font-size: clamp(2.35rem, 10vw, 3.2rem);
+  }
+
+  .scoreboard-skin--split-flap-pro.display .display__clock-hint--paused {
+    justify-self: center;
+    min-height: 36px;
+    padding: 0.2rem 0.7rem;
+    font-size: 1.05rem;
+  }
+}
+
+@keyframes split-flap-drop {
+  0% {
+    transform: perspective(700px) rotateX(-68deg);
+    filter: brightness(0.78);
+  }
+  55% {
+    transform: perspective(700px) rotateX(8deg);
+  }
+  100% {
+    transform: perspective(700px) rotateX(0deg);
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scoreboard-skin--split-flap-pro .flap__card {
+    animation: none;
+  }
+}
+
+
+/* ----------------------------------------------------------------------------
+   4. NEW SCOREBOARD SKIN: HIGH-CONTRAST DAYLIGHT
+   Cream #f5f1e8 canvas, #0e1726 ink, crisp #004eba Blue, built for bright gyms.
+   ---------------------------------------------------------------------------- */
+
+.scoreboard-skin--high-contrast-daylight.display {
+  --pad-points: #15803d;
+  --pad-adv: #d97706;
+  --pad-pen: #c8102e;
+  --board-field: #f5f1e8;
+  --board-blue: #004eba;
+  --board-white: #ffffff;
+  --board-digit: #ffffff;
+  --board-ink: #0e1726;
+  --board-gym-on-blue: #dbeafe;
+  --board-gym-on-white: #004eba;
+  background: #f5f1e8;
+  color: #0e1726;
+  gap: clamp(0.45rem, 1.2vh, 0.8rem);
+  padding: clamp(0.5rem, 1.4vh, 0.9rem) clamp(0.65rem, 1.6vw, 1.15rem);
+}
+
+.scoreboard-skin--high-contrast-daylight.display .display__chrome .chip {
+  background: #ffffff;
+  color: #0e1726;
+  border: 2px solid #0e1726;
+  opacity: 0.95;
+}
+
+.scoreboard-skin--high-contrast-daylight.display .display__chrome .chip--gold {
+  background: #0e1726;
+  color: #f5f1e8;
+  border-color: #0e1726;
+}
+
+.scoreboard-skin--high-contrast-daylight.display > .bout {
+  border-radius: 16px;
+}
+
+.scoreboard-skin--high-contrast-daylight.display .bout--blue {
+  background: #004eba;
+  border: 3px solid #0e1726;
+}
+
+.scoreboard-skin--high-contrast-daylight.display .bout--white {
+  background: #ffffff;
+  border: 3px solid #0e1726;
+  border-left-width: 12px;
+}
+
+.scoreboard-skin--high-contrast-daylight.display .bout__who h1,
+.scoreboard-skin--high-contrast-daylight.display .bout__who h1 a,
+.scoreboard-skin--high-contrast-daylight.display .bout__who p,
+.scoreboard-skin--high-contrast-daylight.display .bout__who p a {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+}
+
+.scoreboard-skin--high-contrast-daylight.display .score {
+  border-radius: 14px;
+  border: 2.5px solid #0e1726;
+  box-shadow: 0 4px 0 rgba(14, 23, 38, 0.16);
+}
+
+.scoreboard-skin--high-contrast-daylight.display .score__value {
+  font-weight: 900;
+}
+
+.scoreboard-skin--high-contrast-daylight.display .display__mid {
+  background: #f5f1e8;
+  color: #0e1726;
+  padding: 0.25rem 0.9rem;
+}
+
+.scoreboard-skin--high-contrast-daylight.display .display__meta,
+.scoreboard-skin--high-contrast-daylight.display .display__clock-hint {
+  color: #0e1726;
+  font-style: normal;
+}
+
+.scoreboard-skin--high-contrast-daylight.display .display__clock-hint--paused {
+  background: #c8102e;
+  color: #ffffff;
+  border: 2px solid #0e1726;
+}
+
+.scoreboard-skin--high-contrast-daylight.display .clock-btn {
+  background: #ffffff;
+  color: #0e1726;
+  border: 3px solid #0e1726;
+  border-radius: 14px;
+  padding: 0.14rem 1.2rem;
+  font-weight: 900;
+  box-shadow: 0 4px 0 rgba(14, 23, 38, 0.2);
+}
+
+@media (min-width: 1100px) and (min-height: 700px) {
+  .scoreboard-skin--high-contrast-daylight.display .clock-btn {
+    font-size: clamp(4.2rem, 9.6vw, 7.6rem);
+  }
+
+  .scoreboard-skin--high-contrast-daylight.display .score__value {
+    font-size: clamp(3.4rem, 7.6vw, 7.2rem);
+  }
+
+  .scoreboard-skin--high-contrast-daylight.display .bout__who h1 {
+    font-size: clamp(2rem, 3.6vw, 3.8rem);
+    line-height: 1.03;
+  }
+}
+
+@media (max-width: 820px) and (orientation: portrait) and (min-height: 521px) {
+  .scoreboard-skin--high-contrast-daylight.display > .bout--blue {
+    padding-top: calc(2.75rem + var(--safe-t));
+  }
+
+  .scoreboard-skin--high-contrast-daylight.display .bout__who h1 {
+    font-size: clamp(1.22rem, 4.8vw, 1.9rem);
+    line-height: 1.06;
+  }
+
+  .scoreboard-skin--high-contrast-daylight.display .display__mid {
+    padding: 0.22rem 0.65rem;
+    gap: 0.16rem;
+  }
+
+  .scoreboard-skin--high-contrast-daylight.display .clock-btn {
+    font-size: clamp(2.4rem, 10.5vw, 3.3rem);
+  }
+
+  .scoreboard-skin--high-contrast-daylight.display .display__clock-hint--paused {
+    justify-self: center;
+    min-height: 36px;
+    padding: 0.2rem 0.7rem;
+    font-size: 1.05rem;
+  }
+}
+
+
+/* ----------------------------------------------------------------------------
+   5. NEW ROUND TIMER SKINS (Display + Progress Bar + Distinct Work/Break)
+   Shared structure:
+   - Phase badge sits directly above the clock (no stranded top text)
+   - Clock scales up generously for 1920x1080 TVs while fitting 390x844 phones
+   - Bottom progress bar shows remaining share (--p)
+   ---------------------------------------------------------------------------- */
+
+.training.training--wt-broadcast,
+.training.training--wt-split-flap,
+.training.training--wt-daylight,
+.training.training--wt-led,
+.training.training--wt-true-flip,
+.training.training--wt-tatami {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.85rem, 2.2vh, 1.8rem);
+  padding: 4.5rem 1.25rem 3.5rem;
+}
+
+.training.training--wt-broadcast .training__phase,
+.training.training--wt-split-flap .training__phase,
+.training.training--wt-daylight .training__phase,
+.training.training--wt-led .training__phase,
+.training.training--wt-true-flip .training__phase,
+.training.training--wt-tatami .training__phase {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  width: fit-content;
+  max-width: 92vw;
+  padding: 0.7rem 1.75rem;
+  border-radius: 999px;
+  font-size: clamp(1.4rem, 3.2vw, 3rem);
+  letter-spacing: 0.16em;
+  line-height: 1.15;
+  z-index: 2;
+}
+
+.training.training--wt-broadcast .clock-field-label--display,
+.training.training--wt-split-flap .clock-field-label--display,
+.training.training--wt-daylight .clock-field-label--display,
+.training.training--wt-led .clock-field-label--display,
+.training.training--wt-true-flip .clock-field-label--display,
+.training.training--wt-tatami .clock-field-label--display {
+  display: none;
+}
+
+.training.training--wt-broadcast .training__hint,
+.training.training--wt-split-flap .training__hint,
+.training.training--wt-daylight .training__hint,
+.training.training--wt-led .training__hint,
+.training.training--wt-true-flip .training__hint,
+.training.training--wt-tatami .training__hint {
+  position: relative;
+  z-index: 2;
+  max-width: 44rem;
+  margin-top: 0.4rem;
+}
+
+.wt-timer-progress {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(10px, 1.6vh, 16px);
+  background: rgba(255, 255, 255, 0.14);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.wt-timer-progress__fill {
+  height: 100%;
+  width: calc(var(--p, 1) * 100%);
+  background: #004eba;
+  transition: width 0.25s linear;
+}
+
+/* --- 5a. Clean Mat Broadcast Timer --- */
+.training.training--wt-broadcast {
+  background:
+    radial-gradient(1100px 620px at 50% 50%, rgba(0, 78, 186, 0.34), transparent 72%),
+    linear-gradient(180deg, #0b1526 0%, #091221 100%);
+  box-shadow: inset 0 8px 0 #004eba;
+}
+
+.training.training--wt-broadcast.training--break {
+  background:
+    radial-gradient(1100px 620px at 50% 50%, rgba(217, 119, 6, 0.34), transparent 72%),
+    linear-gradient(180deg, #321a05 0%, #1d0e02 100%);
+  box-shadow: inset 0 8px 0 #f59e0b;
+}
+
+.training.training--wt-broadcast .training__phase {
+  background: #004eba;
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.24);
+}
+
+.training.training--wt-broadcast.training--break .training__phase {
+  background: #f59e0b;
+  color: #0e1726;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.training.training--wt-broadcast .training__clock {
+  font-size: clamp(5.8rem, 23vw, 21rem);
+  font-weight: 900;
+  padding: 0.4rem 1.8rem;
+  border-radius: 28px;
+  background: rgba(5, 10, 20, 0.72);
+  border: 2px solid rgba(0, 78, 186, 0.65);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.45);
+}
+
+.training.training--wt-broadcast.training--break .training__clock {
+  border-color: rgba(245, 158, 11, 0.75);
+  background: rgba(30, 14, 2, 0.72);
+  color: #fffbeb;
+}
+
+.training.training--wt-broadcast .wt-timer-progress__fill {
+  background: #004eba;
+}
+
+.training.training--wt-broadcast.training--break .wt-timer-progress__fill {
+  background: #f59e0b;
+}
+
+/* --- 5b. Split-Flap Pro Timer --- */
+.training.training--wt-split-flap {
+  background: linear-gradient(180deg, #161c27 0%, #0b0f17 100%);
+  box-shadow: inset 0 0 0 8px #080b10, inset 0 0 0 10px #273041;
+}
+
+.training.training--wt-split-flap.training--break {
+  background: linear-gradient(180deg, #271a0a 0%, #150d04 100%);
+  box-shadow: inset 0 0 0 8px #120b03, inset 0 0 0 10px #5c3a14;
+}
+
+.training.training--wt-split-flap .training__phase {
+  background: #004eba;
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+}
+
+.training.training--wt-split-flap.training--break .training__phase {
+  background: #b45309;
+  color: #fffbeb;
+  border-color: rgba(254, 243, 199, 0.35);
+}
+
+.training.training--wt-split-flap .training__clock {
+  font-size: 1rem;
+  padding: clamp(0.65rem, 1.8vw, 1.5rem);
+  border-radius: 24px;
+  background: #090d14;
+  border: 2px solid #2b3547;
+  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.55);
+}
+
+.training.training--wt-split-flap.training--break .training__clock {
+  background: #160e05;
+  border-color: #6b4317;
+}
+
+.wt-sf-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(0.35rem, 1.1vw, 0.95rem);
+}
+
+.wt-sf-clock__colon {
+  font-size: clamp(3.5rem, 12vw, 11rem);
+  font-weight: 900;
+  color: #f5f1e8;
+  line-height: 1;
+  padding-inline: clamp(0.1rem, 0.4vw, 0.35rem);
+}
+
+.wt-sf-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(3.8rem, 15.5vw, 14.5rem);
+  height: clamp(5.6rem, 22vw, 20.5rem);
+  border-radius: clamp(8px, 1.2vw, 18px);
+  background: linear-gradient(180deg, #0b5ed1 0%, #004eba 48.5%, #003a8c 51.5%, #0044a3 100%);
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 6px 0 #07090e;
+  animation: split-flap-drop 0.28s cubic-bezier(0.22, 0.82, 0.25, 1) both;
+}
+
+.training--break .wt-sf-tile {
+  background: linear-gradient(180deg, #d97706 0%, #b45309 48.5%, #92400e 51.5%, #a14a0c 100%);
+  color: #fffbeb;
+}
+
+.wt-sf-tile__face {
+  font-size: clamp(4.1rem, 16vw, 15.5rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 0.85;
+  color: #ffffff;
+}
+
+.wt-sf-tile__seam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 3px;
+  background: rgba(6, 9, 14, 0.72);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.training.training--wt-split-flap .wt-timer-progress__fill {
+  background: #004eba;
+}
+
+.training.training--wt-split-flap.training--break .wt-timer-progress__fill {
+  background: #f59e0b;
+}
+
+/* --- 5c. High-Contrast Daylight Timer --- */
+.training.training--wt-daylight {
+  background: #f5f1e8;
+  color: #0e1726;
+}
+
+.training.training--wt-daylight.training--break {
+  background: #fed7aa;
+  color: #7c2d12;
+}
+
+.training.training--wt-daylight .training__phase {
+  background: #004eba;
+  color: #ffffff;
+  border: 2.5px solid #0e1726;
+}
+
+.training.training--wt-daylight.training--break .training__phase {
+  background: #c2410c;
+  color: #ffffff;
+  border-color: #7c2d12;
+}
+
+.training.training--wt-daylight .training__clock {
+  color: #0e1726;
+  font-size: clamp(6rem, 24vw, 21rem);
+  font-weight: 900;
+  background: #ffffff;
+  border: 4px solid #0e1726;
+  border-radius: 28px;
+  padding: 0.45rem 1.85rem;
+  box-shadow: 0 10px 0 rgba(14, 23, 38, 0.15);
+}
+
+.training.training--wt-daylight.training--break .training__clock {
+  color: #7c2d12;
+  background: #fff7ed;
+  border-color: #7c2d12;
+}
+
+.training.training--wt-daylight .training__hint {
+  color: #1e293b;
+}
+
+.training.training--wt-daylight .play-fs {
+  background: #ffffff;
+  color: #0e1726;
+  border: 2px solid #0e1726;
+}
+
+.training.training--wt-daylight .wt-timer-progress {
+  background: rgba(14, 23, 38, 0.14);
+}
+
+.training.training--wt-daylight .wt-timer-progress__fill {
+  background: #004eba;
+}
+
+.training.training--wt-daylight.training--break .wt-timer-progress__fill {
+  background: #c2410c;
+}
+
+/* --- 5d. LED Gym Wall Clock Timer (segmented red/amber LED + progress bar + final-10s pulse) --- */
+.training.training--wt-led {
+  background: radial-gradient(960px 560px at 50% 50%, #12151c 0%, #05070a 75%);
+  color: #ff3b30;
+}
+
+.training.training--wt-led.training--break {
+  background: radial-gradient(960px 560px at 50% 50%, #1f1406 0%, #090603 75%);
+  color: #fbbf24;
+}
+
+.training.training--wt-led .training__phase {
+  background: rgba(255, 59, 48, 0.16);
+  color: #ff5b52;
+  border: 2px solid rgba(255, 59, 48, 0.6);
+}
+
+.training.training--wt-led.training--break .training__phase {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.65);
+}
+
+.training.training--wt-led .training__clock {
+  padding: clamp(0.9rem, 2.4vw, 2.2rem) clamp(1.1rem, 3vw, 2.8rem);
+  border-radius: 22px;
+  background: #050608;
+  border: 4px solid #262c38;
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.9),
+    0 0 45px rgba(255, 59, 48, 0.18),
+    0 20px 50px rgba(0, 0, 0, 0.7);
+  color: #ff3b30;
+}
+
+.training.training--wt-led.training--break .training__clock {
+  border-color: #4a3414;
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.9),
+    0 0 45px rgba(245, 158, 11, 0.2),
+    0 20px 50px rgba(0, 0, 0, 0.7);
+  color: #fbbf24;
+}
+
+.wt-led-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(0.35rem, 1vw, 0.9rem);
+}
+
+.wt-led-digit {
+  width: clamp(3.6rem, 14vw, 13.5rem);
+  height: auto;
+  display: block;
+}
+
+.wt-led-seg--off {
+  fill: currentColor;
+  opacity: 0.08;
+}
+
+.wt-led-seg--on {
+  fill: currentColor;
+  filter: drop-shadow(0 0 10px currentColor);
+}
+
+.wt-led-colon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(0.85rem, 2.8vw, 2.4rem);
+  padding-inline: clamp(0.15rem, 0.6vw, 0.55rem);
+}
+
+.wt-led-dot {
+  width: clamp(0.55rem, 1.6vw, 1.45rem);
+  height: clamp(0.55rem, 1.6vw, 1.45rem);
+  border-radius: 3px;
+  background: currentColor;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.training.training--wt-led .wt-timer-progress {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.training.training--wt-led .wt-timer-progress__fill {
+  background: linear-gradient(90deg, #ef4444, #ff3b30);
+  box-shadow: 0 0 16px rgba(255, 59, 48, 0.65);
+}
+
+.training.training--wt-led.training--break .wt-timer-progress__fill {
+  background: linear-gradient(90deg, #d97706, #fbbf24);
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.65);
+}
+
+/* Final 10 seconds warning pulse on LED Gym Wall Clock */
+.training.training--wt-led.training--final-10 .training__clock {
+  border-color: #ff3b30;
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.9),
+    0 0 65px rgba(255, 59, 48, 0.55),
+    0 20px 50px rgba(0, 0, 0, 0.7);
+  animation: wt-led-pulse 1s ease-in-out infinite;
+}
+
+.training.training--wt-led.training--final-10 .training__phase {
+  animation: wt-led-badge-pulse 1s ease-in-out infinite;
+}
+
+@keyframes wt-led-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 40px rgba(0, 0, 0, 0.9),
+      0 0 30px rgba(255, 59, 48, 0.25),
+      0 20px 50px rgba(0, 0, 0, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 40px rgba(0, 0, 0, 0.85),
+      0 0 75px currentColor,
+      0 20px 50px rgba(0, 0, 0, 0.7);
+    transform: scale(1.018);
+  }
+}
+
+@keyframes wt-led-badge-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training.training--wt-led.training--final-10 .training__clock,
+  .training.training--wt-led.training--final-10 .training__phase {
+    animation: none;
+  }
+}
+
+/* --- 5e. True Flip-Card Interval Timer (animated hinged matte flip cards + distinct Work/Break) --- */
+.training.training--wt-true-flip {
+  background: linear-gradient(180deg, #11151d 0%, #07090d 100%);
+  box-shadow: inset 0 0 0 10px #06070a, inset 0 0 0 12px #262c36;
+}
+
+.training.training--wt-true-flip.training--break {
+  background: linear-gradient(180deg, #0b2217 0%, #05110b 100%);
+  box-shadow: inset 0 0 0 10px #040d08, inset 0 0 0 12px #1b4d34;
+}
+
+.training.training--wt-true-flip .training__phase {
+  background: #1d6fe0;
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+}
+
+.training.training--wt-true-flip.training--break .training__phase {
+  background: #15803d;
+  color: #f0fdf4;
+  border-color: rgba(187, 247, 208, 0.35);
+}
+
+.training.training--wt-true-flip .training__clock {
+  padding: clamp(1.3rem, 3vw, 2.5rem) clamp(0.75rem, 2vw, 1.6rem) clamp(0.75rem, 1.8vw, 1.35rem);
+  border-radius: 20px;
+  background: #101318;
+  border: 1px solid #262c36;
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.6);
+}
+
+.training.training--wt-true-flip.training--break .training__clock {
+  background: #0a1b12;
+  border-color: #1f4d35;
+}
+
+.wt-tf-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(0.35rem, 1.1vw, 0.95rem);
+}
+
+.wt-tf-clock__colon {
+  font-size: clamp(3.4rem, 12vw, 11rem);
+  font-weight: 900;
+  color: #f5f1e8;
+  line-height: 1;
+  padding-inline: clamp(0.08rem, 0.35vw, 0.3rem);
+}
+
+.wt-tf-slot {
+  container-type: size;
+  position: relative;
+  display: grid;
+  width: clamp(3.75rem, 15.2vw, 14rem);
+  height: clamp(5.5rem, 21.5vw, 19.5rem);
+  overflow: visible;
+}
+
+.wt-tf-slot .flap__rings {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 0;
+  --flap-ring-w: min(92%, 100cqh);
+  width: var(--flap-ring-w);
+  height: auto;
+  aspect-ratio: 100 / 32;
+  margin-left: calc(var(--flap-ring-w) * -0.5);
+  margin-top: calc(var(--flap-ring-w) * 32 / 100 * -0.43125);
+  pointer-events: none;
+}
+
+.wt-tf-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: clamp(6px, 0.9vw, 12px);
+  background: linear-gradient(180deg, #2478ea 0%, #1d6fe0 48%, #1659b8 51%, #1860c8 100%);
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 5px 0 #14181f, 0 9px 14px rgba(0, 0, 0, 0.5);
+  transform-origin: top center;
+  animation: flap-turn 0.32s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+}
+
+.training--break .wt-tf-card {
+  background: linear-gradient(180deg, #229c50 0%, #15803d 48%, #116631 51%, #147438 100%);
+}
+
+.wt-tf-card__face {
+  font-size: 68cqh;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 0.84;
+  color: #ffffff;
+}
+
+.wt-tf-card__seam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 49%;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.34);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.training.training--wt-true-flip .wt-timer-progress__fill {
+  background: #1d6fe0;
+}
+
+.training.training--wt-true-flip.training--break .wt-timer-progress__fill {
+  background: #22c55e;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wt-sf-tile,
+  .wt-tf-card {
+    animation: none;
+  }
+}
+
+/* --- 5f. Work/Rest Color-Shift Tatami Timer (Advantage mat look + 2x clock + distinct Break mat) --- */
+.training.training--wt-tatami {
+  background-color: #12243a;
+  background-image: var(--mat-image);
+  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
+  background-position: center;
+  background-repeat: repeat;
+}
+
+.training.training--wt-tatami.training--break {
+  background-color: #0e4f34;
+  background-image: var(--mat-image);
+}
+
+.training.training--wt-tatami.training--break::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, #16a34a 0%, #059669 100%);
+  mix-blend-mode: color;
+}
+
+.training.training--wt-tatami .training__phase,
+.training.training--wt-tatami .training__clock-block,
+.training.training--wt-tatami .training__hint,
+.training.training--wt-tatami .wt-timer-progress {
+  position: relative;
+  z-index: 2;
+}
+
+.training.training--wt-tatami .training__hint,
+.training.training--wt-tatami .wt-timer-progress {
+  position: absolute;
+}
+
+.training.training--wt-tatami .training__phase {
+  background: #004eba;
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+}
+
+.training.training--wt-tatami.training--break .training__phase {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* Roughly 2x the old 12rem clock cap on TV while fitting 390px phones cleanly */
+.training.training--wt-tatami .training__clock {
+  font-size: clamp(6.4rem, 26vw, 22rem);
+  font-weight: 900;
+  color: #ffffff;
+  background: rgba(8, 16, 28, 0.84);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 32px;
+  padding: 0.45rem 1.8rem 0.55rem;
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.45);
+}
+
+.training.training--wt-tatami.training--break .training__clock {
+  background: rgba(6, 32, 22, 0.86);
+  border-color: rgba(134, 239, 172, 0.4);
+  color: #ecfdf5;
+}
+
+.training.training--wt-tatami .wt-timer-progress__fill {
+  background: #004eba;
+}
+
+.training.training--wt-tatami.training--break .wt-timer-progress__fill {
+  background: #22c55e;
+}
+
+/* Phone layout for the six new White timer skins only.
+   Hide the help paragraph, enlarge split-flap / LED / flip-card clocks
+   to about 85–90% of a 390-wide screen, and leave TV clock sizes alone.
+   Broadcast, Daylight, and Tatami clocks already fill that range on the phone. */
+@media (max-width: 480px) {
+  .training.training--wt-broadcast .training__hint,
+  .training.training--wt-split-flap .training__hint,
+  .training.training--wt-daylight .training__hint,
+  .training.training--wt-led .training__hint,
+  .training.training--wt-true-flip .training__hint,
+  .training.training--wt-tatami .training__hint {
+    display: none;
+  }
+
+  .training.training--wt-broadcast,
+  .training.training--wt-split-flap,
+  .training.training--wt-daylight,
+  .training.training--wt-led,
+  .training.training--wt-true-flip,
+  .training.training--wt-tatami {
+    gap: 0.7rem;
+    padding: 3.25rem 0.5rem 2.25rem;
+  }
+
+  .wt-sf-clock {
+    gap: 0.28rem;
+  }
+
+  .wt-sf-clock__colon {
+    font-size: 4rem;
+  }
+
+  .wt-sf-tile {
+    width: 4.35rem;
+    height: 6.35rem;
+  }
+
+  .wt-sf-tile__face {
+    font-size: 4.65rem;
+  }
+
+  .wt-led-clock {
+    gap: 0.28rem;
+  }
+
+  .wt-led-digit {
+    width: 4.15rem;
+  }
+
+  .wt-led-colon {
+    gap: 1rem;
+    padding-inline: 0.2rem;
+  }
+
+  .wt-led-dot {
+    width: 0.7rem;
+    height: 0.7rem;
+  }
+
+  .wt-tf-clock {
+    gap: 0.28rem;
+  }
+
+  .wt-tf-clock__colon {
+    font-size: 3.9rem;
+  }
+
+  .wt-tf-slot {
+    width: 4.25rem;
+    height: 6.2rem;
+  }
+}
+
+/* --- Controller Work/Break tints for the new White timer skins --- */
+.controller.controller--wt-broadcast {
+  background: #091221;
+}
+.controller.controller--wt-broadcast.controller--break {
+  background: #2c1704;
+}
+
+.controller.controller--wt-split-flap {
+  background: #0f141d;
+}
+.controller.controller--wt-split-flap.controller--break {
+  background: #241706;
+}
+
+.controller.controller--wt-daylight {
+  background: #0e1726;
+}
+.controller.controller--wt-daylight.controller--break {
+  background: #431407;
+}
+
+.controller.controller--wt-led {
+  background: #080a0e;
+}
+.controller.controller--wt-led.controller--break {
+  background: #1a1104;
+}
+
+.controller.controller--wt-true-flip {
+  background: #0c1016;
+}
+.controller.controller--wt-true-flip.controller--break {
+  background: #071e12;
+}
+
+.controller.controller--wt-tatami {
+  background-color: #12243a;
+  background-image: var(--mat-image);
+}
+.controller.controller--wt-tatami.controller--break {
+  background-color: #0b3b28;
+  background-image:
+    linear-gradient(180deg, rgba(16, 130, 78, 0.45), rgba(7, 46, 30, 0.72)),
+    var(--mat-image);
+}
