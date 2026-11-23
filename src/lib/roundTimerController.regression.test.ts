@@ -38,8 +38,12 @@ test('round timer keeps every control that was not replaced by a wheel', () => {
   assert.doesNotMatch(options, /aria-label="3 minutes"|aria-label="5 minutes"|aria-label="10 minutes"|TIME_PRESETS/);
   assert.ok(options.indexOf('aria-label="Training end cue"') < options.indexOf('appearance="stack"'));
   const picker = readFileSync(new URL('../components/WheelPicker.tsx', import.meta.url), 'utf8');
+  const controller = readFileSync(new URL('../pages/TrainingController.tsx', import.meta.url), 'utf8');
   assert.match(picker, /event\.key === 'ArrowDown' \? 1 : -1/);
   assert.match(picker, /precise\.current = true/);
+  assert.match(picker, /className="wheel-step"/);
+  assert.match(controller, /trainingClockActionLabel/);
+  assert.match(controller, /Round time/);
 });
 
 test('Combate is the training start, not an end-cue button, and uses the shared cue bus', () => {

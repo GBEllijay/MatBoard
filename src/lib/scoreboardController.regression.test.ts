@@ -32,11 +32,16 @@ test('scoreboard controller keeps every control that was not part of this redesi
   assert.match(board, /label="Match length"/);
   assert.match(board, /label="Subtract one second"/);
   assert.match(board, /label="Add one second"/);
+  assert.match(board, /label="Subtract one minute"/);
+  assert.match(board, /label="Add one minute"/);
+  assert.match(board, /Round time/);
+  assert.match(board, /remaining < match\.durationMs \? 'Resume' : 'Start'/);
   assert.match(board, /aria-label=\{label\}/);
   assert.match(board, /setInterval\(fire, 80\)/);
   assert.doesNotMatch(board, /CLOCK_NUDGES_SEC|Subtract 5 seconds|Add 5 seconds|Match length presets|inputMode="decimal"|Preview match cues/);
   assert.match(board, /appearance="stack"/);
   assert.match(board, /formatMmSs\(remaining\)/);
+  assert.match(display, /display__clock-hint--paused/);
 });
 
 test('weight shows on the display only when it is filled, beside division', () => {

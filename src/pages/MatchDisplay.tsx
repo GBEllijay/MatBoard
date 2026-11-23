@@ -153,7 +153,7 @@ export function MatchDisplayPage() {
       Referee decision
     </button>
   ) : (
-    <button type="button" className="display__clock-hint" onClick={toggleClock} aria-label={clockStatusAction}>
+    <button type="button" className={`display__clock-hint${clockStatus === 'Paused' ? ' display__clock-hint--paused' : ''}`} onClick={toggleClock} aria-label={clockStatusAction}>
       {clockStatus}
     </button>
   );

@@ -29,9 +29,15 @@ export type TrainingState = {
   warningSound: boolean;
   /** Round/session end cue. Parallel to Match `endBuzzer`. */
   endSound: boolean;
+  /** Bumped on every local persist so a stale tab cannot overwrite a newer clock. */
+  revision: number;
 };
 
 const STORAGE_KEY = 'matboard.training.v1';
+const CHANNEL_NAME = 'matboard-training-v1';
+const PRESENCE_KEY = 'matboard.training.presence.v1';
+const TRANSITION_KEY = 'matboard.training.transition.v1';
+const PRESENCE_TTL_MS = 2_000;
 /** Wheel bounds. Saved values snap onto these in clampWorkMs / clampBreakMs. */
 export const MIN_WORK_MS = ROUND_LENGTH_RANGE.minMs;
 export const MAX_WORK_MS = ROUND_LENGTH_RANGE.maxMs;
@@ -64,6 +70,7 @@ export function defaultTraining(): TrainingState {
     startSound: true,
     warningSound: true,
     endSound: true,
+    revision: 0,
   };
 }
 
@@ -80,9 +87,10 @@ export function normalizeStoredTraining(parsed: Partial<TrainingState> | null | 
     startSound: parsed.startSound !== false,
     warningSound: parsed.warningSound !== false,
     endSound: parsed.endSound !== false,
-    running: false,
-    startedAt: null,
+    running: parsed.running === true && typeof parsed.startedAt === 'number',
+    startedAt: parsed.running === true && typeof parsed.startedAt === 'number' ? parsed.startedAt : null,
     warned: Boolean(parsed.warned),
+    revision: typeof parsed.revision === 'number' && Number.isFinite(parsed.revision) ? parsed.revision : 0,
   };
 }
 
@@ -99,16 +107,124 @@ function load(): TrainingState {
 
 let state: TrainingState = load();
 
+let channel: BroadcastChannel | null = null;
+let applyingRemote = false;
+let syncReady = false;
+const tabId = `t${Math.random().toString(36).slice(2, 10)}`;
+
 function persist(next: TrainingState): void {
-  state = next;
-  const stored = { ...next, running: false, startedAt: null };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+  const stamped = applyingRemote ? next : { ...next, revision: (next.revision ?? 0) + 1 };
+  state = stamped;
+  if (!applyingRemote) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stamped));
+      channel?.postMessage({ type: 'state', state: stamped });
+    } catch {
+      /* quota / private mode */
+    }
+  }
   listeners.forEach((fn) => fn());
+}
+
+function readPresence(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(PRESENCE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, number>;
+    if (!parsed || typeof parsed !== 'object') return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+function writePresence(map: Record<string, number>): void {
+  try {
+    localStorage.setItem(PRESENCE_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function touchTrainingPresence(at = Date.now()): void {
+  const map = readPresence();
+  map[tabId] = at;
+  for (const [id, seen] of Object.entries(map)) {
+    if (at - seen > PRESENCE_TTL_MS) delete map[id];
+  }
+  writePresence(map);
+}
+
+export function otherTrainingTabsLive(at = Date.now()): boolean {
+  const map = readPresence();
+  return Object.entries(map).some(([id, seen]) => id !== tabId && at - seen < PRESENCE_TTL_MS);
+}
+
+function clearTrainingPresence(): void {
+  const map = readPresence();
+  delete map[tabId];
+  writePresence(map);
+}
+
+function claimTransition(id: string): boolean {
+  try {
+    if (localStorage.getItem(TRANSITION_KEY) === id) return false;
+    localStorage.setItem(TRANSITION_KEY, id);
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+/** Apply a clock snapshot from another tab. Ignores an older revision. Does not replay cues. */
+export function applyRemoteTraining(incoming: TrainingState): void {
+  if (!incoming || typeof incoming !== 'object') return;
+  const next = normalizeStoredTraining(incoming);
+  if (incoming.running === true && typeof incoming.startedAt === 'number') {
+    next.running = true;
+    next.startedAt = incoming.startedAt;
+  }
+  if (typeof incoming.revision === 'number' && incoming.revision < state.revision) return;
+  applyingRemote = true;
+  persist(next);
+  applyingRemote = false;
+}
+
+export function initTrainingSync(): void {
+  if (syncReady || typeof window === 'undefined') return;
+  syncReady = true;
+  if (typeof BroadcastChannel !== 'undefined' && !channel) {
+    channel = new BroadcastChannel(CHANNEL_NAME);
+    channel.onmessage = (ev) => {
+      const data = ev.data as { type?: string; state?: TrainingState } | null;
+      if (data?.type === 'state' && data.state) applyRemoteTraining(data.state);
+    };
+  }
+  window.addEventListener('storage', (ev) => {
+    if (ev.key !== STORAGE_KEY || !ev.newValue) return;
+    try {
+      applyRemoteTraining(JSON.parse(ev.newValue) as TrainingState);
+    } catch {
+      /* ignore */
+    }
+  });
 }
 
 export function remainingTraining(s: TrainingState, now = Date.now()): number {
   if (!s.running || s.startedAt == null) return s.remainingMs;
   return Math.max(0, s.remainingMs - (now - s.startedAt));
+}
+
+export function trainingClockActionLabel(
+  s: TrainingState,
+  now = Date.now(),
+): 'Pause' | 'Restart' | 'Resume' | 'Start' {
+  if (s.running) return 'Pause';
+  const remaining = remainingTraining(s, now);
+  if (remaining <= 0) return 'Restart';
+  const duration = s.phase === 'break' ? s.breakMs : s.workMs;
+  if (remaining < duration) return 'Resume';
+  return 'Start';
 }
 
 export function getTraining(): TrainingState {
@@ -239,6 +355,7 @@ let lastLiveTickAt: number | null = null;
  */
 export function attachTrainingScreen(): () => void {
   attachedScreens += 1;
+  touchTrainingPresence();
   if (attachedScreens === 1) {
     const gap = lastLiveTickAt == null ? Number.POSITIVE_INFINITY : Date.now() - lastLiveTickAt;
     ignoreExpiredCatchUp = state.running && remainingTraining(state) <= 0 && gap > CATCH_UP_GAP_MS;
@@ -249,8 +366,9 @@ export function attachTrainingScreen(): () => void {
     released = true;
     attachedScreens -= 1;
     if (attachedScreens > 0) return;
+    clearTrainingPresence();
     queueMicrotask(() => {
-      if (attachedScreens === 0) pauseTrainingClock();
+      if (attachedScreens === 0 && !otherTrainingTabsLive()) pauseTrainingClock();
     });
   };
 }
@@ -332,6 +450,7 @@ function nextAfterBreak(): void {
 }
 
 export function tickTraining(): void {
+  if (attachedScreens > 0) touchTrainingPresence();
   if (!state.running) return;
   // First tick after a screen mounts onto a clock that already hit zero while
   // nobody was ticking. Freeze. Do not end the round or play a cue.
@@ -346,12 +465,15 @@ export function tickTraining(): void {
   const left = remainingTraining(state);
   if (state.phase === 'work' && !state.warned && left <= 10_000 && left > 0) {
     const warningSound = state.warningSound;
-    persist({ ...state, warned: true });
-    if (warningSound) playWarningCue();
+    if (claimTransition(`warn:${state.startedAt ?? 0}`)) {
+      persist({ ...state, warned: true });
+      if (warningSound) playWarningCue();
+    }
   }
   // The end cue starts in this same tick, as soon as remaining hits 0.
   // It does not wait for the 0:00 paint or a requestAnimationFrame.
   if (left > 0) return;
+  if (!claimTransition(`expire:${state.phase}:${state.currentRound}:${state.startedAt ?? 0}`)) return;
   if (state.phase === 'work') nextAfterWork();
   else nextAfterBreak();
 }

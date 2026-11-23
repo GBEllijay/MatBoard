@@ -170,6 +170,8 @@ export function TrainingPage() {
           >
             {training.phase === 'work' ? 'Work' : 'Break'} · {roundLabel}
           </HoldButton>
+          <div className="training__clock-block">
+          <p className="clock-field-label clock-field-label--display">Round time</p>
           <HoldButton
             className="training__clock"
             dataHold="timer"
@@ -179,6 +181,7 @@ export function TrainingPage() {
           >
             {formatMmSs(remaining)}
           </HoldButton>
+          </div>
           <p className="training__hint">Tap the clock to start or pause. Hold the clock for 3 seconds to reset this period. Tap the round line for fullscreen. Hold the round line for 3 seconds to reset the session. Tap anywhere else for options.</p>
         </>
       )}
