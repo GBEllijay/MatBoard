@@ -238,45 +238,6 @@
   }
 }
 
-/* Old School Round Timer: distinct Work vs Break with classic matte hardware feel */
-.training.training--wt-old {
-  background-color: #0e1724;
-  background-image: var(--mat-image);
-  background-size: var(--mat-tile) calc(var(--mat-tile) * 4 / 3);
-  background-position: center;
-  background-repeat: repeat;
-}
-
-.training.training--wt-old.training--break {
-  background-color: #2b130a;
-  background-image:
-    linear-gradient(180deg, rgba(160, 46, 18, 0.45), rgba(43, 19, 10, 0.72)),
-    var(--mat-image);
-  background-blend-mode: multiply, normal;
-}
-
-.training.training--wt-old .training__clock {
-  background: rgba(10, 13, 18, 0.88);
-  border: 2px solid #2e3542;
-  border-radius: 22px;
-  padding: 0.5rem 1.2rem 0.6rem;
-  font-size: clamp(5.8rem, 24vw, 15rem);
-}
-
-.training.training--wt-old.training--break .training__clock {
-  border-color: #c2410c;
-  color: #fff7ed;
-}
-
-.training.training--wt-old .training__phase {
-  color: #f5f1e8;
-}
-
-.training.training--wt-old.training--break .training__phase {
-  color: #fb923c;
-}
-
-
 /* ----------------------------------------------------------------------------
    2. NEW SCOREBOARD SKIN: CLEAN MAT BROADCAST
    Navy #0e1726 frame, #004eba Blue & #f5f1e8 Warm White headers,
