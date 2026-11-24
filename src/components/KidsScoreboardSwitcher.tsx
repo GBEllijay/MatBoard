@@ -1,9 +1,11 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import {
   BRACKET_THEME_LABELS,
+  isBracketSkinTheme,
   setBracketTheme,
   type BracketTheme,
 } from '../lib/bracketTheme';
+import { BRACKET_SKIN_THUMBS } from '../skins/bracket/thumbs';
 import {
   KIDS_BRACKETS_SKINS_LABEL,
   KIDS_SKINS,
@@ -147,7 +149,11 @@ export function KidsScoreboardSwitcher({
                       className={`kids-skin__thumb${selected ? ' is-on' : ''}`}
                       onClick={() => chooseTheme(id)}
                     >
-                      <span className={`kids-skin__swatch kids-skin__swatch--${id}`} aria-hidden="true" />
+                      {isBracketSkinTheme(id) ? (
+                        <img src={BRACKET_SKIN_THUMBS[id]} alt="" />
+                      ) : (
+                        <span className={`kids-skin__swatch kids-skin__swatch--${id}`} aria-hidden="true" />
+                      )}
                       <span>{BRACKET_THEME_LABELS[id]}</span>
                     </button>
                   );

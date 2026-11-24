@@ -1,0 +1,20 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-visionary {--line:rgba(255,241,214,.8);--under:#060416;--hot:#FFC0D0;--lw:.35;--uw:1}
+main.tournament.tournament--skin.bskin-visionary {--h2p:23px;--hp:20px;--base:#060416;--bgi:linear-gradient(180deg,rgba(6,4,22,.35),rgba(6,4,22,.2) 40%,rgba(6,4,22,.7)),url(../../polished/assets/vis-lattice.jpg);--fh:Cinzel;--fhw:800;--hbg:linear-gradient(180deg,rgba(14,9,40,.95),rgba(6,4,22,.95));--hfg:#FFF1D6;--hbd:.28vh solid rgba(255,241,214,.9);--hsh:0 0 3vh rgba(176,124,255,.5);--hls:.08em;--htt:uppercase;--fl:Inter;--lab:#E0CCFF;--fn:Cinzel;--fnw:700;--fs:3.9vh;--pbg:linear-gradient(180deg,rgba(14,9,40,.92),rgba(6,4,22,.94));--pbd:.28vh solid rgba(255,241,214,.9);--psh:0 0 2.6vh rgba(176,124,255,.45);--pr:1vh;--sr:.6vh;--s1b:linear-gradient(180deg,#1e5a43,#0c3324);--s1f:#FFF1D6;--s1sh:inset 0 0 0 .2vh #9BFFD8;--s2b:linear-gradient(180deg,#3b1f7a,#21104a);--s2f:#FFF1D6;--s2sh:inset 0 0 0 .2vh #B07CFF;--lostb:rgba(255,255,255,.04);--lostf:rgba(224,204,255,.45);--emb:rgba(255,255,255,.04);--embd:.2vh solid rgba(255,241,214,.35);--emf:#E0CCFF;--acc:#9BFFD8;--okf:#06261a;--live:#FF3D6E;--fbg:radial-gradient(70% 80% at 50% 40%,rgba(40,20,90,.96),rgba(6,4,22,.97));--ffg:#FFF1D6;--fbd:.3vh solid rgba(255,241,214,.95);--fsh:0 0 4vh rgba(255,95,168,.55),0 0 0 .8vh rgba(138,92,255,.35);--fr:1.2vh;--eye:#FFC0D0;--fts:0 0 2vh rgba(255,192,208,.7);--fsb:rgba(255,255,255,.05);--fsf:#E0CCFF;--fsbd:.2vh solid rgba(255,241,214,.35);--cbg:linear-gradient(180deg,#5A0820,#2e0412);--cfg:#FFF1D6;--cbd:.3vh solid #FFC0D0;--csh:0 0 3vh rgba(255,61,110,.5);--ceye:#FFC0D0;--foot:rgba(6,4,22,.94);--footsh:inset 0 .25vh 0 rgba(255,241,214,.6)}
+main.tournament.tournament--skin.bskin-visionary .bskin-deco .mandala {left:50%;top:50%;width:92vh;height:92vh;margin:-50vh 0 0 -46vh;background:url(../../polished/assets/vis-mandala.jpg) center/178% auto;border-radius:50%;z-index:-2;-webkit-mask:radial-gradient(circle,#000 55%,transparent 71%);opacity:.9}
+main.tournament.tournament--skin.bskin-visionary .t-match--final .t-match__finals-label > strong {font-size:calc(6.6*var(--bu));letter-spacing:.08em}
+main.tournament.tournament--skin.bskin-visionary .t-match--final .t-match__finals-label > span {letter-spacing:.26em}
+main.tournament.tournament--skin.bskin-visionary .bracket__champ > span:not(.belt-rail) {letter-spacing:.26em}
+main.tournament.tournament--skin.bskin-visionary .bracket__round > h2 {letter-spacing:.32em}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-visionary .bskin-deco .mandala {width:120vw;height:120vw;margin:-60vw 0 0 -60vw;top:73%}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-visionary .t-match--final .t-match__finals-label > strong {font-size:24px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-visionary .t-slot {font-size:14px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-visionary .bracket-headline__pill {font-size:20px}
+}

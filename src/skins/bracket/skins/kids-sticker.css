@@ -1,0 +1,43 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-kids-sticker {--line:#1b1b2f;--under:#fff;--hot:#FF5C6C;--lw:.55;--uw:1.4}
+main.tournament.tournament--skin.bskin-kids-sticker {--h2p:28px;--hp:24px;--ink:#1b1b2f;--base:#8FD3FF;--bgi:radial-gradient(circle,rgba(255,255,255,.55) 22%,transparent 24%) 0 0/2.2vh 2.2vh,linear-gradient(180deg,#a6dcff,#8FD3FF);--fh:'Luckiest Guy';--hbg:#fff;--hfg:#1b1b2f;--hbd:.6vh solid #1b1b2f;--hsh:.9vh .9vh 0 #1b1b2f;--hls:.03em;--fl:'Lilita One';--lab:#1b1b2f;--labbg:#fff;--labpad:.6vh 1.8vh;--labbd:0 0 0 .4vh #1b1b2f;--fn:'Lilita One';--fs:4.3vh;--ls:.01em;--pbg:#fff;--pbd:.6vh solid #1b1b2f;--psh:1vh 1vh 0 #1b1b2f;--pr:2.6vh;--sr:1.6vh;--sbd:.4vh solid #1b1b2f;--s1b:#4F8BFF;--s1f:#fff;--s2b:#fff;--s2f:#1b1b2f;--s2sh:inset 0 0 0 0 #000;--lostb:#eef3f8;--lostf:#8a93a6;--lostbd:.4vh solid #c7cfdc;--emb:#f4f7fb;--emf:#8a93a6;--embd:.4vh dashed #8a93a6;--acc:#6EE26A;--okf:#1b1b2f;--live:#FF5C6C;--livebd:#1b1b2f;--fbg:#fff;--ffg:#1b1b2f;--fbd:.6vh solid #1b1b2f;--fsh:1vh 1vh 0 #1b1b2f;--fr:2.6vh;--eye:#FF5C6C;--fsb:#f4f7fb;--fsf:#8a93a6;--fsbd:.4vh dashed #8a93a6;--cbg:#6EE26A;--cfg:#1b1b2f;--cbd:.6vh solid #1b1b2f;--csh:1vh 1vh 0 #1b1b2f;--ceye:#1b1b2f;--foot:#1b1b2f;--footsh:0 -.6vh 0 #fff;--stf:#fff}
+main.tournament.tournament--skin.bskin-kids-sticker {background:var(--bgi)}
+main.tournament.tournament--skin.bskin-kids-sticker .bskin-deco .bg {display:none}
+main.tournament.tournament--skin.bskin-kids-sticker .bskin-deco .doodles {inset:0;width:100%;height:100%;z-index:-1}
+main.tournament.tournament--skin.bskin-kids-sticker .t-slot.t-slot--won > .t-slot__who::after {border:calc(.3*var(--bu)) solid #1b1b2f}
+main.tournament.tournament--skin.bskin-kids-sticker .bracket__side--left .t-match:not(.t-match--final) > .t-match__bouts {transform:rotate(-.6deg)}
+main.tournament.tournament--skin.bskin-kids-sticker .bracket__side--right .t-match:not(.t-match--final) > .t-match__bouts {transform:rotate(.6deg)}
+main.tournament.tournament--skin.bskin-kids-sticker .t-match--final::before {content:'';position:absolute;z-index:-1;inset:calc(-5*var(--bu)) calc(-4.267*var(--bu));background:#FF6FB5;clip-path:polygon(50% 0,57% 14%,70% 3%,71% 19%,88% 12%,82% 28%,100% 30%,88% 42%,100% 56%,84% 60%,92% 77%,74% 74%,72% 93%,58% 82%,50% 100%,42% 82%,28% 93%,26% 74%,8% 77%,16% 60%,0 56%,12% 42%,0 30%,18% 28%,12% 12%,29% 19%,30% 3%,43% 14%)}
+main.tournament.tournament--skin.bskin-kids-sticker .t-match--final .t-match__finals-label > strong {font-size:calc(8*var(--bu));letter-spacing:.03em;color:#FF5C6C;-webkit-text-stroke:calc(.5*var(--bu)) #1b1b2f;paint-order:stroke fill}
+main.tournament.tournament--skin.bskin-kids-sticker .t-match--final .t-match__finals-label > span {font-family:'Lilita One';letter-spacing:.08em;color:#1b1b2f}
+main.tournament.tournament--skin.bskin-kids-sticker .bracket__champ input,
+main.tournament.tournament--skin.bskin-kids-sticker .bracket__champ .bracket__champ-flash {color:#1b1b2f;opacity:.55}
+main.tournament.tournament--skin.bskin-kids-sticker .t-match.t-match--live:not(.t-match--final) > .t-match__bouts {outline:none;box-shadow:calc(1*var(--bu)) calc(1*var(--bu)) 0 #1b1b2f,0 0 0 calc(1*var(--bu)) #FFD23F}
+main.tournament.tournament--skin.bskin-kids-sticker .tournament__roundline {font-family:'Lilita One';font-weight:400;letter-spacing:.02em}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-kids-sticker .t-match:not(.t-match--final) > .t-match__bouts {border-width:3px;box-shadow:4px 4px 0 #1b1b2f}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-kids-sticker .t-slot {border-width:2px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-kids-sticker .t-match--final {border-width:3px;box-shadow:4px 4px 0 #1b1b2f}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-kids-sticker .bracket__champ {border-width:3px;box-shadow:4px 4px 0 #1b1b2f}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-kids-sticker .t-match--final::before {inset:-16px -10px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-kids-sticker .t-match--final .t-match__finals-label > strong {font-size:30px;-webkit-text-stroke:3px #1b1b2f}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-kids-sticker .bracket-headline__pill {border-width:3px;box-shadow:4px 4px 0 #1b1b2f}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-kids-sticker .bracket__round > h2 > span {padding:3px 9px;box-shadow:0 0 0 2px #1b1b2f}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-kids-sticker .t-match.t-match--live:not(.t-match--final) > .t-match__bouts {box-shadow:4px 4px 0 #1b1b2f,0 0 0 5px #FFD23F}
+}

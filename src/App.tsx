@@ -50,6 +50,7 @@ import { StudentEditionPage } from './pages/StudentEdition';
 import { StudentJoinPage } from './pages/student/StudentLicenseClaim';
 import { IndexCardProvider } from './indexCards/IndexCardHost';
 import { Journal2036Page } from './preview/journal2036/Journal2036Page';
+import { BRACKET_SKINS_PREVIEW_PATH, BracketSkinSamplePage, BracketSkinsGalleryPage } from './preview/bracketSkins/BracketSkinsPreview';
 import { AssessmentRadarPreviewPage } from './preview/assessmentRadar/AssessmentRadarPreview';
 import { AssessmentSpherePreview } from './preview/assessmentSphere/AssessmentSpherePreview';
 import { TERM_CARD_PATH, TermCardPreviewPage } from './preview/termCard/TermCardPreview';
@@ -812,6 +813,9 @@ export default function App() {
         }
       />
       <Route path="/preview/journal-2036" element={<Journal2036Page />} />
+      {/* Bracket skins review. Pages previews and local dev only. Fictional names stay in memory. */}
+      <Route path={BRACKET_SKINS_PREVIEW_PATH} element={<BracketSkinsGalleryPage />} />
+      <Route path={`${BRACKET_SKINS_PREVIEW_PATH}/:slug`} element={<BracketSkinSamplePage />} />
       {/* Owner previews. Direct links only. They do not write a student record. */}
       <Route path="/preview/assessment-radar" element={<AssessmentRadarPreviewPage />} />
       <Route path="/preview/assessment-sphere" element={<AssessmentSpherePreview />} />

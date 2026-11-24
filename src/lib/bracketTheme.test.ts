@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  BRACKET_SKIN_THEMES,
   BRACKET_THEME_KEY,
   BRACKET_THEME_LABELS,
   BRACKET_THEMES,
@@ -8,6 +9,7 @@ import {
   WHITE_BRACKET_THEME,
   bracketThemeOptions,
   getBracketTheme,
+  isBracketSkinTheme,
   isBracketTheme,
   podiumThemeOpen,
   setBracketTheme,
@@ -76,4 +78,30 @@ test('visibleBracketTheme falls back when Podium is not allowed or Coach demo is
   assert.equal(visibleBracketTheme('dark', { whiteBaseSkins: false }), 'dark');
   assert.equal(visibleBracketTheme('podium', { plainCoach: true, whiteBaseSkins: true }), 'bright');
   assert.equal(visibleBracketTheme('dark', { plainCoach: true, whiteBaseSkins: true }), 'bright');
+});
+
+test('Polished bracket skins are listed after the base themes only when polished skins are open', () => {
+  assert.equal(BRACKET_SKIN_THEMES.length, 16);
+  assert.deepEqual(bracketThemeOptions(true, false), ['bright', 'dark', 'podium']);
+  assert.deepEqual(bracketThemeOptions(false, true), ['bright', 'dark', ...BRACKET_SKIN_THEMES]);
+  assert.deepEqual(bracketThemeOptions(true, true), ['bright', 'dark', 'podium', ...BRACKET_SKIN_THEMES]);
+  for (const slug of BRACKET_SKIN_THEMES) {
+    assert.equal(isBracketTheme(slug), true, slug);
+    assert.equal(isBracketSkinTheme(slug), true, slug);
+    assert.ok(BRACKET_THEME_LABELS[slug], slug);
+  }
+  assert.equal(isBracketSkinTheme('podium'), false);
+  assert.equal(BRACKET_THEME_LABELS['arcade-fighter'], 'Arcade Fighter');
+  assert.equal(BRACKET_THEME_LABELS.calcadao, 'Calçadão');
+});
+
+test('A stored bracket skin persists and paints only when polished skins are open', () => {
+  setBracketTheme('mech-battle');
+  assert.equal(getBracketTheme(), 'mech-battle');
+  assert.equal(localStorage.getItem(BRACKET_THEME_KEY), 'mech-battle');
+  assert.equal(visibleBracketTheme('mech-battle', { polishedSkins: true }), 'mech-battle');
+  assert.equal(visibleBracketTheme('mech-battle', { polishedSkins: false }), 'bright');
+  assert.equal(visibleBracketTheme('mech-battle', {}), 'bright');
+  assert.equal(visibleBracketTheme('mech-battle', { plainCoach: true, polishedSkins: true }), 'bright');
+  setBracketTheme('bright');
 });

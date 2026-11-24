@@ -1,0 +1,89 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-creature-anime {--line:#ffffff;--under:#10204a;--hot:#7cf06a;--lw:.55;--uw:1.5}
+main.tournament.tournament--skin.bskin-creature-anime {--ink:#10204a;--pts:#7cf06a;--adv:#5fd8ff;font-family:'Baloo 2',sans-serif}
+main.tournament.tournament--skin.bskin-creature-anime {background:#10204a}
+main.tournament.tournament--skin.bskin-creature-anime .bskin-deco .bg {background:linear-gradient(180deg,rgba(16,32,74,.1),rgba(16,32,74,0) 30%,rgba(16,32,74,.22)),url(../../polished/assets/creature-anime/meadow@2560.webp) center/cover}
+main.tournament.tournament--skin.bskin-creature-anime .bracket-headline__pill {font-family:'Lilita One',sans-serif;font-weight:400;font-size:8vh;padding:0;color:#fff;letter-spacing:.02em;-webkit-text-stroke:.7vh var(--ink);paint-order:stroke fill;text-shadow:0 .7vh 0 var(--ink)}
+main.tournament.tournament--skin.bskin-creature-anime .bracket__round > h2 {font-family:'Lilita One',sans-serif;font-weight:400;font-size:calc(2.5*var(--bu));letter-spacing:.06em;color:#fff;-webkit-text-stroke:calc(.45*var(--bu)) var(--ink);paint-order:stroke fill;text-shadow:0 calc(.35*var(--bu)) 0 var(--ink)}
+main.tournament.tournament--skin.bskin-creature-anime .t-match:not(.t-match--final) > .t-match__bouts {background:rgba(16,32,74,.86);border:calc(.5*var(--bu)) solid var(--ink);box-shadow:inset 0 0 0 calc(.4*var(--bu)) rgba(255,255,255,.95),0 calc(.8*var(--bu)) 0 var(--ink);border-radius:calc(3*var(--bu));padding:calc(1.3*var(--bu))}
+main.tournament.tournament--skin.bskin-creature-anime .t-slot {font-weight:800;font-size:calc(4.3*var(--bu));border:calc(.4*var(--bu)) solid var(--ink);border-radius:calc(2*var(--bu));padding-top:calc(.5*var(--bu))}
+main.tournament.tournament--skin.bskin-creature-anime .t-match:not(.t-match--final) > .t-match__bouts .t-slot:nth-child(odd of .t-slot) {background:linear-gradient(180deg,#1a48cc 0%,#1846c4 55%,#1238a6 100%);color:#fff;text-shadow:0 calc(.4*var(--bu)) 0 var(--ink)}
+main.tournament.tournament--skin.bskin-creature-anime .t-match:not(.t-match--final) > .t-match__bouts .t-slot:nth-child(even of .t-slot) {background:linear-gradient(180deg,#fff 0%,#f2f5ff 60%,#dce4f7 100%);color:var(--ink)}
+main.tournament.tournament--skin.bskin-creature-anime .t-match:not(.t-match--final) > .t-match__bouts .t-slot:has(input:placeholder-shown) {background:#0e1b42!important;color:#fff!important;border-color:rgba(255,255,255,.35);text-shadow:none}
+main.tournament.tournament--skin.bskin-creature-anime .t-slot.t-slot--won > .t-slot__who::after {background:var(--pts);color:var(--ink);border:calc(.3*var(--bu)) solid var(--ink);text-shadow:none;font-family:Inter,sans-serif}
+main.tournament.tournament--skin.bskin-creature-anime .t-live-pill {background:#a8102c;color:#fff;box-shadow:inset 0 0 0 calc(.3*var(--bu)) var(--ink),0 calc(.4*var(--bu)) 0 var(--ink);font-family:Inter,sans-serif}
+main.tournament.tournament--skin.bskin-creature-anime .t-match--final {background:linear-gradient(180deg,#1a2c63,#10204a 60%,#0b1738);border:calc(.6*var(--bu)) solid #fff;box-shadow:0 0 0 calc(.6*var(--bu)) var(--ink),0 calc(1*var(--bu)) 0 calc(.6*var(--bu)) var(--ink)}
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ {background:linear-gradient(180deg,#1a2c63,#10204a 60%,#0b1738);border:calc(.6*var(--bu)) solid #fff;box-shadow:0 0 0 calc(.6*var(--bu)) var(--ink),0 calc(1*var(--bu)) 0 calc(.6*var(--bu)) var(--ink)}
+main.tournament.tournament--skin.bskin-creature-anime .t-match--final {padding-top:calc(5.6*var(--bu));margin-top:calc(4*var(--bu))}
+main.tournament.tournament--skin.bskin-creature-anime .t-match--final > .t-match__finals-label::before {position:absolute;left:50%;top:calc(-6.6*var(--bu));width:calc(11*var(--bu));height:calc(11*var(--bu));transform:translateX(-50%);background:url(../../polished/assets/creature-anime/crest.webp) center/contain no-repeat;filter:drop-shadow(0 calc(.5*var(--bu)) 0 rgba(16,32,74,.55))}
+main.tournament.tournament--skin.bskin-creature-anime .t-match--final .t-match__finals-label > span {color:var(--pts);font-size:calc(2.1*var(--bu));letter-spacing:.1em}
+main.tournament.tournament--skin.bskin-creature-anime .t-match--final .t-match__finals-label > strong {font-family:'Lilita One',sans-serif;font-weight:400;font-size:calc(7.6*var(--bu));letter-spacing:.03em;-webkit-text-stroke:calc(.5*var(--bu)) var(--ink);paint-order:stroke fill;text-shadow:0 calc(.55*var(--bu)) 0 #050c24}
+main.tournament.tournament--skin.bskin-creature-anime .t-match--final .t-slot {background:#0e1b42;color:#fff;border:calc(.35*var(--bu)) solid rgba(255,255,255,.4)}
+main.tournament.tournament--skin.bskin-creature-anime .t-match--final .t-slot:has(input:placeholder-shown) input {opacity:.6}
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ {background:#a8102c}
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ > span:not(.belt-rail) {color:#fff;font-family:'Lilita One',sans-serif;font-weight:400;font-size:calc(2.6*var(--bu));letter-spacing:.1em;-webkit-text-stroke:calc(.35*var(--bu)) var(--ink);paint-order:stroke fill}
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ input,
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ .bracket__champ-flash {font-size:calc(4.4*var(--bu))}
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::before,
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::after {display:block;position:absolute;bottom:calc(-3.2*var(--bu));width:calc(19*var(--bu));height:calc(22*var(--bu));background:center bottom/contain no-repeat;filter:drop-shadow(0 calc(.6*var(--bu)) 0 rgba(16,32,74,.35))}
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::before {left:calc(-18.1*var(--bu))}
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::after {right:calc(-18.1*var(--bu))}
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::before {background-image:url(../../polished/assets/creature-anime/turtlebear.webp)}
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::after {background-image:url(../../polished/assets/creature-anime/foxbadger.webp)}
+main.tournament.tournament--skin.bskin-creature-anime .tournament__tools {background:rgba(16,32,74,.94);box-shadow:0 -.5vh 0 #fff,0 -1vh 0 var(--ink)}
+main.tournament.tournament--skin.bskin-creature-anime .tournament__roundline {font-size:2.9vh;letter-spacing:.02em}
+main.tournament.tournament--skin.bskin-creature-anime .tournament__actions :is(.btn,.chip,.kids-skin__btn) {background:rgba(255,255,255,.12);color:#fff;font-family:Inter,sans-serif}
+main.tournament.tournament--skin.bskin-creature-anime .tournament__actions .chip--on {background:#fff;color:#0e1726}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .bracket-headline__pill {font-size:34px;-webkit-text-stroke:5px var(--ink);text-shadow:0 4px 0 var(--ink)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .bracket__round > h2 {font-size:13px;-webkit-text-stroke:3px var(--ink);text-shadow:0 2px 0 var(--ink)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .t-match:not(.t-match--final) > .t-match__bouts {border-width:3px;padding:6px;border-radius:15px;box-shadow:inset 0 0 0 2px #fff,0 4px 0 var(--ink)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .t-slot {font-size:17px;border-width:2px;border-radius:10px;padding-top:2px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .t-match--final {border-width:3px;box-shadow:0 0 0 3px var(--ink),0 5px 0 3px var(--ink)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .bracket__champ {border-width:3px;box-shadow:0 0 0 3px var(--ink),0 5px 0 3px var(--ink)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .t-match--final {margin-top:26px;padding-top:24px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .t-match--final > .t-match__finals-label::before {top:-34px;width:54px;height:54px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .t-match--final .t-match__finals-label > strong {font-size:30px;-webkit-text-stroke:3px var(--ink);text-shadow:0 3px 0 #050c24}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .t-match--final .t-match__finals-label > span {font-size:9px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .bracket__champ {flex:1}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .bracket__champ input,
+  main.tournament.tournament--skin.bskin-creature-anime .bracket__champ .bracket__champ-flash {font-size:24px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .bracket__champ > span:not(.belt-rail) {font-size:13px;-webkit-text-stroke:2px var(--ink)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::before,
+  main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::after {top:-66px;bottom:auto;height:70px;width:62px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::before {left:-4px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::after {right:-4px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-creature-anime .tournament__roundline {font-size:15px}
+}

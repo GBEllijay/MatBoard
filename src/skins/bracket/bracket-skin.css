@@ -1,0 +1,4 @@
+/* Layout + the shared mockup rules. Each skin adds its own file under ./skins. */
+@import './layout.css';
+@import './common.generated.css';
+@import './layout-after.css';

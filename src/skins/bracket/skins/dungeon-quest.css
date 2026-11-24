@@ -1,0 +1,24 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-dungeon-quest {--line:#e7c474;--under:#0f0b07;--hot:#f6d27a;--lw:.45;--uw:1.3}
+main.tournament.tournament--skin.bskin-dungeon-quest {--h2p:26px;--hp:19px;--base:#1a120c;--bgi:linear-gradient(180deg,rgba(20,12,8,.5),rgba(20,12,8,.3) 30%,rgba(20,12,8,.7)),url(../../polished/assets/dungeon-quest/bg@2560.webp);--fh:'Cinzel Decorative';--fhw:700;--hbg:url(../../polished/assets/dungeon-quest/ironwood@2560.webp) center/cover;--hfg:#f6edd4;--hbd:.4vh solid #e7c474;--hsh:0 0 0 .4vh #0f0b07,0 1.4vh 3vh rgba(0,0,0,.6);--hls:.03em;--fl:Cinzel;--lab:#e7c474;--labsh:0 .3vh .6vh #000;--fn:Cinzel;--fnw:900;--fs:3.8vh;--pbg:url(../../polished/assets/dungeon-quest/ironwood@2560.webp) center/cover;--pbd:.35vh solid #5c3b22;--psh:0 0 0 .3vh #0f0b07,0 1.4vh 3vh rgba(0,0,0,.65),inset 0 0 0 .25vh rgba(231,196,116,.4);--pr:.8vh;--sr:.4vh;--s1b:url(../../polished/assets/dungeon-quest/parchment@2560.webp) center/cover;--s1f:#1c1108;--s1sh:inset 1vh 0 0 #1d3f8c,inset 0 0 0 .2vh #5c3b22;--s2b:url(../../polished/assets/dungeon-quest/parchment@2560.webp) center/cover;--s2f:#1c1108;--s2sh:inset 1vh 0 0 #f6edd4,inset 1.2vh 0 0 #5c3b22,inset 0 0 0 .2vh #5c3b22;--lostb:rgba(15,11,7,.7);--lostf:rgba(241,226,188,.45);--emb:rgba(15,11,7,.55);--embd:.2vh dashed rgba(231,196,116,.5);--emf:#e7c474;--acc:#1e5b2c;--okf:#f6edd4;--live:#8c1a1a;--livebd:#e7c474;--fbg:url(../../polished/assets/dungeon-quest/parchment@2560.webp) center/cover;--ffg:#1c1108;--fbd:.5vh solid #5c3b22;--fsh:0 0 0 .4vh #e7c474,0 0 0 .8vh #0f0b07,0 2vh 4vh rgba(0,0,0,.6);--fr:1vh;--eye:#8c1a1a;--fsb:rgba(92,59,34,.14);--fsf:rgba(28,17,8,.78);--fsbd:.2vh dashed rgba(92,59,34,.6);--cbg:linear-gradient(180deg,#a32020,#6e1212);--cfg:#f6edd4;--cbd:.4vh solid #e7c474;--csh:0 0 0 .4vh #0f0b07,0 2vh 4vh rgba(0,0,0,.6);--ceye:#e7c474;--foot:rgba(15,11,7,.94);--footsh:inset 0 .35vh 0 #e7c474;--crest:url(../../polished/assets/dungeon-quest/crest.webp);--crw:14vh}
+main.tournament.tournament--skin.bskin-dungeon-quest .t-match--final .t-match__finals-label > strong {font-family:Grenze;font-weight:800;font-size:calc(7.8*var(--bu));letter-spacing:.04em}
+main.tournament.tournament--skin.bskin-dungeon-quest .t-match--final .t-match__finals-label > span {font-family:Cinzel;font-weight:900;letter-spacing:.14em}
+main.tournament.tournament--skin.bskin-dungeon-quest .bracket__champ > span:not(.belt-rail) {font-family:Cinzel;font-weight:900;letter-spacing:.14em}
+main.tournament.tournament--skin.bskin-dungeon-quest .bracket__champ input,
+main.tournament.tournament--skin.bskin-dungeon-quest .bracket__champ .bracket__champ-flash {font-family:Cinzel}
+main.tournament.tournament--skin.bskin-dungeon-quest .t-match--final > .t-match__finals-label::before {top:calc(-8.6*var(--bu));height:calc(13*var(--bu))}
+main.tournament.tournament--skin.bskin-dungeon-quest .t-match:not(.t-match--final) > .t-match__bouts::before {content:'';position:absolute;inset:calc(.5*var(--bu));pointer-events:none;background:radial-gradient(circle,#c9a35a 0 calc(.45*var(--bu)),#5c3b22 calc(.5*var(--bu)),transparent calc(.65*var(--bu))) left top/100% 100% no-repeat,radial-gradient(circle,#c9a35a 0 calc(.45*var(--bu)),#5c3b22 calc(.5*var(--bu)),transparent calc(.65*var(--bu)));background:radial-gradient(circle at calc(.6*var(--bu)) calc(.6*var(--bu)),#c9a35a calc(.35*var(--bu)),transparent calc(.45*var(--bu))),radial-gradient(circle at calc(100% - calc(.6*var(--bu))) calc(.6*var(--bu)),#c9a35a calc(.35*var(--bu)),transparent calc(.45*var(--bu))),radial-gradient(circle at calc(.6*var(--bu)) calc(100% - calc(.6*var(--bu))),#c9a35a calc(.35*var(--bu)),transparent calc(.45*var(--bu))),radial-gradient(circle at calc(100% - calc(.6*var(--bu))) calc(100% - calc(.6*var(--bu))),#c9a35a calc(.35*var(--bu)),transparent calc(.45*var(--bu)))}
+main.tournament.tournament--skin.bskin-dungeon-quest .t-slot {z-index:1}
+main.tournament.tournament--skin.bskin-dungeon-quest .t-slot.t-slot--won > .t-slot__who::after {box-shadow:0 0 0 calc(.2*var(--bu)) #e7c474}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-dungeon-quest .t-match--final .t-match__finals-label > strong {font-size:28px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-dungeon-quest .t-slot {font-size:13px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-dungeon-quest .bracket-headline__pill {font-size:19px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-dungeon-quest .t-match--final > .t-match__finals-label::before {top:-42px;height:60px;width:70px}
+}

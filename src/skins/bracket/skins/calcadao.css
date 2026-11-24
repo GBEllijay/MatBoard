@@ -1,0 +1,58 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-calcadao {--line:#F4F1EA;--under:#0E0E0E;--hot:#FFDF00;--lw:1.1;--uw:2.3}
+main.tournament.tournament--skin.bskin-calcadao {--cream:#F4F1EA;--g:#009C3B;--y:#FFDF00;--bl:#2B5BD9}
+main.tournament.tournament--skin.bskin-calcadao {background:#111}
+main.tournament.tournament--skin.bskin-calcadao .bskin-deco .bg {inset:-2vh;background:#F4F1EA url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='80'><path d='M0 20 Q40 -10 80 20 T160 20 L160 60 Q120 90 80 60 T0 60 Z' fill='%23141414'/></svg>") 0 0/22vh 11vh}
+main.tournament.tournament--skin.bskin-calcadao .bracket-headline__pill {background:#0E0E0E;color:#fff;box-shadow:0 0 0 .6vh var(--cream),0 1.4vh 3vh rgba(0,0,0,.4);letter-spacing:.01em}
+main.tournament.tournament--skin.bskin-calcadao .bracket__round > h2 > span {background:#0E0E0E;color:#fff;padding:calc(.8*var(--bu)) calc(2*var(--bu));border-radius:99px;box-shadow:0 0 0 calc(.4*var(--bu)) var(--cream)}
+main.tournament.tournament--skin.bskin-calcadao .t-match:not(.t-match--final) > .t-match__bouts {background:#0E0E0E;box-shadow:0 0 0 calc(.7*var(--bu)) var(--cream),0 calc(2*var(--bu)) calc(4*var(--bu)) rgba(0,0,0,.45)}
+main.tournament.tournament--skin.bskin-calcadao .t-slot {background:#1E1E1E;color:#fff;box-shadow:inset calc(.7*var(--bu)) 0 0 var(--g)}
+main.tournament.tournament--skin.bskin-calcadao .t-match:not(.t-match--final) > .t-match__bouts .t-slot:nth-child(even of .t-slot) {box-shadow:inset calc(.7*var(--bu)) 0 0 var(--y)}
+main.tournament.tournament--skin.bskin-calcadao .bracket__side--right .t-slot {box-shadow:inset calc(.7*var(--bu)) 0 0 var(--bl)}
+main.tournament.tournament--skin.bskin-calcadao .bracket__side--right .t-match:not(.t-match--final) > .t-match__bouts .t-slot:nth-child(even of .t-slot) {box-shadow:inset calc(.7*var(--bu)) 0 0 var(--y)}
+main.tournament.tournament--skin.bskin-calcadao .t-match:not(.t-match--final) > .t-match__bouts .t-slot:has(input:placeholder-shown) {box-shadow:inset 0 0 0 calc(.25*var(--bu)) #3a3a3a!important;background:#151515}
+main.tournament.tournament--skin.bskin-calcadao .t-slot .t-slot__seed {color:#9A9A9A;opacity:1}
+main.tournament.tournament--skin.bskin-calcadao .t-slot.t-slot--won > .t-slot__who::after {background:var(--cream);color:#0E0E0E}
+main.tournament.tournament--skin.bskin-calcadao .t-live-pill {background:#fff;color:#0E0E0E;box-shadow:0 0 0 calc(.35*var(--bu)) #0E0E0E}
+main.tournament.tournament--skin.bskin-calcadao .t-match--final {background:#0E0E0E;box-shadow:0 0 0 calc(.8*var(--bu)) var(--cream),0 calc(2.4*var(--bu)) calc(5*var(--bu)) rgba(0,0,0,.5)}
+main.tournament.tournament--skin.bskin-calcadao .bracket__champ {background:#0E0E0E;box-shadow:0 0 0 calc(.8*var(--bu)) var(--cream),0 calc(2.4*var(--bu)) calc(5*var(--bu)) rgba(0,0,0,.5)}
+main.tournament.tournament--skin.bskin-calcadao .t-match--final .t-match__finals-label > span {color:#9A9A9A;letter-spacing:.24em}
+main.tournament.tournament--skin.bskin-calcadao .bracket__champ > span:not(.belt-rail) {color:#9A9A9A;letter-spacing:.24em}
+main.tournament.tournament--skin.bskin-calcadao .t-match--final .t-match__finals-label > strong {margin-bottom:calc(.6*var(--bu))}
+main.tournament.tournament--skin.bskin-calcadao .t-match--final > .t-match__finals-label::after {width:60%;height:calc(1.1*var(--bu));margin:0 auto calc(1.8*var(--bu));border-radius:99px;background:linear-gradient(90deg,var(--g) 0 33.3%,var(--y) 33.3% 66.6%,var(--bl) 66.6%)}
+main.tournament.tournament--skin.bskin-calcadao .t-match--final .t-slot {background:#242424;box-shadow:none}
+main.tournament.tournament--skin.bskin-calcadao .bracket__finals {gap:calc(5*var(--bu))}
+main.tournament.tournament--skin.bskin-calcadao .t-match.t-match--live:not(.t-match--final) > .t-match__bouts {box-shadow:0 0 0 calc(.7*var(--bu)) #fff,0 0 0 calc(1.3*var(--bu)) #0E0E0E,0 calc(2*var(--bu)) calc(4*var(--bu)) rgba(0,0,0,.45)}
+main.tournament.tournament--skin.bskin-calcadao .tournament__tools {background:#0E0E0E;box-shadow:0 -.6vh 0 var(--cream)}
+main.tournament.tournament--skin.bskin-calcadao .tournament__actions :is(.btn,.chip,.kids-skin__btn) {background:#242424;color:#fff}
+main.tournament.tournament--skin.bskin-calcadao .tournament__actions .chip--on {background:#fff;color:#0e1726}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-calcadao .t-match:not(.t-match--final) > .t-match__bouts {box-shadow:0 0 0 4px var(--cream),0 8px 18px rgba(0,0,0,.45)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-calcadao .t-slot {box-shadow:inset 4px 0 0 var(--g)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-calcadao .bracket__side--right .t-slot {box-shadow:inset 4px 0 0 var(--g)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-calcadao .bracket__side--right .t-slot {box-shadow:inset 4px 0 0 var(--bl)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-calcadao .t-match:not(.t-match--final) > .t-match__bouts .t-slot:nth-child(even of .t-slot) {box-shadow:inset 4px 0 0 var(--y)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-calcadao .bracket__side--right .t-match:not(.t-match--final) > .t-match__bouts .t-slot:nth-child(even of .t-slot) {box-shadow:inset 4px 0 0 var(--y)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-calcadao .bracket__round > h2 > span {padding:4px 10px;box-shadow:0 0 0 2px var(--cream)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-calcadao .t-match--final > .t-match__finals-label::after {height:6px;margin-bottom:9px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-calcadao .t-match--final {box-shadow:0 0 0 4px var(--cream),0 10px 20px rgba(0,0,0,.5)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-calcadao .bracket__champ {box-shadow:0 0 0 4px var(--cream),0 10px 20px rgba(0,0,0,.5)}
+}

@@ -1,0 +1,103 @@
+/* After the shared mockup rules: the portrait phone reflow from the approved phone mockups. */
+
+main.tournament.tournament--skin .bracket__finals {
+  position: relative;
+}
+
+/* The mockup's champion sits in a row; in the live column it keeps its own height. */
+main.tournament.tournament--skin .bracket__champ {
+  flex: none;
+}
+
+/* Creature Anime: the champion is 64% of the column with a character on each side (TV mock). */
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ {
+  width: 64%;
+  align-self: center;
+}
+
+
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin {
+    --bu: 8.44px;
+  }
+
+  main.tournament.tournament--skin .bskin-links {
+    display: none;
+  }
+
+  /* Quarterfinals side by side, then the semifinals, then Finals beside Champion. Same matches, same order. */
+  main.tournament.tournament--skin .bracket.bracket--tree-8:not(.bracket--three) {
+    width: calc(100vw - 24px - var(--safe-l, 0px) - var(--safe-r, 0px));
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas: 'ql qr' 'sl sr' 'c c';
+    gap: 12px;
+    column-gap: 12px;
+    row-gap: 18px;
+  }
+
+  main.tournament.tournament--skin .bracket.bracket--tree-8:not(.bracket--three) .bracket__side {
+    display: contents;
+  }
+
+  main.tournament.tournament--skin .bracket--tree-8 .bracket__side--left .bracket__round--2 { grid-area: ql; }
+  main.tournament.tournament--skin .bracket--tree-8 .bracket__side--right .bracket__round--2 { grid-area: qr; }
+  main.tournament.tournament--skin .bracket--tree-8 .bracket__side--left .bracket__round--1 { grid-area: sl; }
+  main.tournament.tournament--skin .bracket--tree-8 .bracket__side--right .bracket__round--1 { grid-area: sr; }
+
+  main.tournament.tournament--skin .bracket.bracket--tree-8:not(.bracket--three) .bracket__finals {
+    grid-area: c;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: stretch;
+    gap: 12px;
+  }
+
+  main.tournament.tournament--skin .bracket--tree-8 .bracket__matches {
+    gap: 14px;
+    justify-content: flex-start;
+  }
+
+  main.tournament.tournament--skin .bracket--tree-8 .t-match--final {
+    flex: 1.35;
+    min-width: 0;
+  }
+
+  main.tournament.tournament--skin .bracket--tree-8 .bracket__champ {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    align-self: stretch;
+  }
+
+
+  main.tournament.tournament--skin .t-match--final .t-match__bouts {
+    gap: 5px;
+  }
+
+  /* Finals row paints over the semifinals so the crest and Creature Anime's characters are not covered. */
+  main.tournament.tournament--skin .bracket.bracket--tree-8:not(.bracket--three) .bracket__finals {
+    z-index: 3;
+  }
+
+  main.tournament.tournament--skin.bskin-creature-anime .bracket--tree-8 .bracket__champ {
+    margin-top: 26px;
+  }
+}
+
+/* Other tree sizes keep the live column flow on a phone; the phone reflow above is the 8-person mock. */
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin .bracket:is(:not(.bracket--tree-8), .bracket--three) .bracket__finals {
+    grid-area: auto;
+    flex-direction: column;
+  }
+
+  main.tournament.tournament--skin .bracket:is(:not(.bracket--tree-8), .bracket--three) :is(.bracket__round, .t-match--final, .bracket__champ) {
+    grid-area: auto;
+    flex: none;
+  }
+}

@@ -1,0 +1,47 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-psychedelic {--line:#ffffff;--under:#0E0024;--hot:#B6FF00;--lw:.5;--uw:1.4}
+main.tournament.tournament--skin.bskin-psychedelic {--base:#2A0A50;--bgi:url(../../polished/assets/psy-liquid.jpg);--fh:Shrikhand;--hbg:#1C0045;--hfg:#fff;--hbd:.5vh solid #fff;--hsh:0 0 0 .6vh #FF2BD6,0 1.4vh 3vh rgba(0,0,0,.5);--fl:Syne;--lab:#fff;--labbg:#0E0024;--labpad:.6vh 1.8vh;--labbd:0 0 0 .3vh #B6FF00;--fn:Shrikhand;--fnw:400;--fs:3.9vh;--pbg:linear-gradient(135deg,#1C0045,#0E0024);--pbd:.5vh solid #fff;--psh:0 0 0 .5vh #6A00FF,0 1.6vh 3vh rgba(0,0,0,.5);--pr:3vh;--sr:1.8vh;--s1b:linear-gradient(135deg,#6A00FF,#3a0099);--s1f:#fff;--s2b:linear-gradient(135deg,#FF2BD6,#C8002E);--s2f:#fff;--lostb:rgba(255,255,255,.08);--lostf:rgba(255,255,255,.5);--acc:#B6FF00;--okf:#1C0045;--live:#FF1F4F;--fbg:linear-gradient(135deg,#1C0045,#0E0024);--ffg:#fff;--fbd:.55vh solid #fff;--fsh:0 0 0 .6vh #FF8A00,0 2vh 4vh rgba(0,0,0,.55);--fr:3vh;--eye:#B6FF00;--fe:Syne;--fts:.5vh .5vh 0 #FF2BD6;--fsb:rgba(255,255,255,.08);--fsf:#e4d6ff;--fsbd:.25vh solid rgba(255,255,255,.3);--cbg:#B6FF00;--cfg:#1C0045;--cbd:.5vh solid #fff;--csh:0 0 0 .6vh #6A00FF;--ceye:#1C0045;--foot:rgba(14,0,36,.92);--footsh:inset 0 .4vh 0 #FF2BD6}
+main.tournament.tournament--skin.bskin-psychedelic .t-slot {font-style:normal;letter-spacing:.01em}
+main.tournament.tournament--skin.bskin-psychedelic .t-match--final .t-match__finals-label > strong {font-size:calc(7*var(--bu));text-transform:none;letter-spacing:.01em}
+main.tournament.tournament--skin.bskin-psychedelic .t-match--final .t-match__finals-label > span {font-size:calc(1.4*var(--bu));font-weight:800;letter-spacing:.03em}
+main.tournament.tournament--skin.bskin-psychedelic .t-match--final::after {content:'';position:absolute;left:12%;right:12%;bottom:calc(-2.6*var(--bu));height:calc(3*var(--bu));background:radial-gradient(circle at 10% 0,#fff 0 calc(1.3*var(--bu)),transparent calc(1.4*var(--bu))),radial-gradient(circle at 35% 0,#fff 0 calc(.9*var(--bu)),transparent calc(1*var(--bu))),radial-gradient(circle at 62% 0,#fff 0 calc(1.5*var(--bu)),transparent calc(1.6*var(--bu))),radial-gradient(circle at 88% 0,#fff 0 calc(1*var(--bu)),transparent calc(1.1*var(--bu)))}
+main.tournament.tournament--skin.bskin-psychedelic .t-match--final > .t-match__finals-label::after {height:calc(1.1*var(--bu));margin:0 auto calc(1.6*var(--bu));width:70%;border-radius:99px;background:linear-gradient(90deg,#FF1F4F,#FF8A00,#FFE600,#B6FF00,#00E5FF,#6A00FF,#FF2BD6)}
+main.tournament.tournament--skin.bskin-psychedelic .bracket__champ input,
+main.tournament.tournament--skin.bskin-psychedelic .bracket__champ .bracket__champ-flash {opacity:.6}
+main.tournament.tournament--skin.bskin-psychedelic .bracket__round > h2 > span {font-weight:800}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-psychedelic .t-match:not(.t-match--final) > .t-match__bouts {border-width:3px;box-shadow:0 0 0 3px #6A00FF}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-psychedelic .t-match--final {border-width:3px;box-shadow:0 0 0 3px #FF8A00}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-psychedelic .bracket__champ {border-width:3px;box-shadow:0 0 0 3px #6A00FF}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-psychedelic .t-match--final .t-match__finals-label > strong {font-size:26px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-psychedelic .t-match--final::after {display:none}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-psychedelic .bracket-headline__pill {border-width:3px;box-shadow:0 0 0 3px #FF2BD6}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-psychedelic .bracket__round > h2 > span {padding:3px 8px;box-shadow:0 0 0 2px #B6FF00}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-psychedelic .t-match--final > .t-match__finals-label::after {height:6px;margin-bottom:8px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-psychedelic .t-slot {font-size:15px}
+}
+
+/* Polish: the round pills nearly touched. Tighter tracking and a narrower pill leave clear space between them. */
+main.tournament.tournament--skin.bskin-psychedelic .bracket__round > h2 {letter-spacing:.1em}
+main.tournament.tournament--skin.bskin-psychedelic .t-match--final .t-match__finals-label > span {letter-spacing:.06em}
+main.tournament.tournament--skin.bskin-psychedelic .bracket__round > h2 > span {padding-inline:calc(1.4*var(--bu))}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-psychedelic .bracket__round > h2 {letter-spacing:.06em}
+  main.tournament.tournament--skin.bskin-psychedelic .bracket__round > h2 > span {padding:3px 6px}
+}

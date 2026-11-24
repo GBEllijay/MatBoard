@@ -1,0 +1,65 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-brasil {--line:rgba(255,255,255,.55);--under:rgba(0,16,56,.6);--hot:#FFDF00;--lw:.42;--uw:1.1}
+main.tournament.tournament--skin.bskin-brasil {--g:#009C3B;--y:#FFDF00;--b:#002776}
+main.tournament.tournament--skin.bskin-brasil {background:radial-gradient(110% 90% at 50% 50%,#073A9A 0%,#002776 55%,#001A52 100%)}
+main.tournament.tournament--skin.bskin-brasil .bskin-deco .bg .bskin-deco .arc {position:absolute;left:-20vw;right:-20vw;top:36vh;height:120vh;border-radius:50%;border-top:4vh solid rgba(255,255,255,.07)}
+main.tournament.tournament--skin.bskin-brasil .bracket-headline__pill {background:#fff;color:var(--b);box-shadow:0 1.2vh 3vh rgba(0,0,0,.35);display:flex;align-items:center;gap:2.2vh}
+main.tournament.tournament--skin.bskin-brasil .bracket-headline__pill::before {content:"";width:1.9vh;height:1.9vh;background:var(--g);transform:rotate(45deg);border-radius:.2vh}
+main.tournament.tournament--skin.bskin-brasil .bracket-headline__pill::after {content:"";width:1.9vh;height:1.9vh;background:var(--g);transform:rotate(45deg);border-radius:.2vh}
+main.tournament.tournament--skin.bskin-brasil .bracket__round > h2 {color:#fff;gap:calc(1.2*var(--bu))}
+main.tournament.tournament--skin.bskin-brasil .bracket__round > h2::before {content:"";width:calc(1.1*var(--bu));height:calc(1.1*var(--bu));background:var(--y);transform:rotate(45deg)}
+main.tournament.tournament--skin.bskin-brasil .t-match:not(.t-match--final) > .t-match__bouts {background:rgba(0,16,56,.72);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),0 calc(1.4*var(--bu)) calc(3*var(--bu)) rgba(0,0,0,.35)}
+main.tournament.tournament--skin.bskin-brasil .t-match:not(.t-match--final) > .t-match__bouts .t-slot:nth-child(odd of .t-slot) {background:radial-gradient(120% 140% at 0% 0%,#00A843 0%,#009C3B 45%,#007F30 100%);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),inset 0 calc(-1.2*var(--bu)) calc(2.4*var(--bu)) rgba(0,40,10,.2)}
+main.tournament.tournament--skin.bskin-brasil .t-match:not(.t-match--final) > .t-match__bouts .t-slot:nth-child(even of .t-slot) {background:radial-gradient(120% 140% at 0% 0%,#F7CF1A 0%,#F2C500 45%,#D9AE00 100%);color:var(--b);box-shadow:inset 0 0 0 1px rgba(0,39,118,.18),inset 0 calc(-1.2*var(--bu)) calc(2.4*var(--bu)) rgba(120,80,0,.18)}
+main.tournament.tournament--skin.bskin-brasil .t-match:not(.t-match--final) > .t-match__bouts .t-slot:has(input:placeholder-shown) {background:rgba(255,255,255,.08)!important;color:#fff!important;box-shadow:inset 0 0 0 calc(.25*var(--bu)) rgba(255,255,255,.28)!important}
+main.tournament.tournament--skin.bskin-brasil .t-slot.t-slot--won > .t-slot__who::after {background:#fff;color:var(--g)}
+main.tournament.tournament--skin.bskin-brasil .t-match:not(.t-match--final) > .t-match__bouts .t-slot:nth-child(even of .t-slot).t-slot--won > .t-slot__who::after {background:var(--b);color:var(--y)}
+main.tournament.tournament--skin.bskin-brasil .t-live-pill {background:#D62839;color:#fff;box-shadow:0 0 0 calc(.35*var(--bu)) #fff}
+main.tournament.tournament--skin.bskin-brasil .t-match.t-match--live:not(.t-match--final) > .t-match__bouts {box-shadow:0 0 0 calc(.4*var(--bu)) var(--y),0 calc(1.4*var(--bu)) calc(3*var(--bu)) rgba(0,0,0,.35)}
+main.tournament.tournament--skin.bskin-brasil .t-match--final {background:#fff;color:var(--b);box-shadow:inset 0 calc(-.9*var(--bu)) 0 var(--g),0 calc(1.6*var(--bu)) calc(3.4*var(--bu)) rgba(0,0,0,.4)}
+main.tournament.tournament--skin.bskin-brasil .t-match--final .t-match__finals-label > span {color:var(--g)}
+main.tournament.tournament--skin.bskin-brasil .t-match--final::before {content:'';position:absolute;z-index:-1;left:calc(-3.911*var(--bu));right:calc(-3.911*var(--bu));top:calc(-5.5*var(--bu));bottom:calc(-5.5*var(--bu));background:linear-gradient(180deg,#FFE733,#FFDF00 50%,#F0CC00);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);filter:drop-shadow(0 calc(1*var(--bu)) calc(2*var(--bu)) rgba(0,0,0,.25))}
+main.tournament.tournament--skin.bskin-brasil .t-match--final {isolation:auto}
+main.tournament.tournament--skin.bskin-brasil .t-match--final .t-slot {background:#EEF2FB;color:var(--b);box-shadow:inset 0 0 0 calc(.25*var(--bu)) rgba(0,39,118,.14)}
+main.tournament.tournament--skin.bskin-brasil .t-match--final .t-slot:has(input:placeholder-shown) input {opacity:.5}
+main.tournament.tournament--skin.bskin-brasil .bracket__champ {overflow:hidden;background:radial-gradient(80% 90% at 50% 40%,#0A3A9E,#002776 60%,#001A52);box-shadow:0 0 0 calc(.55*var(--bu)) #fff,0 calc(1.6*var(--bu)) calc(3.4*var(--bu)) rgba(0,0,0,.4)}
+main.tournament.tournament--skin.bskin-brasil .bracket__champ::after {content:"";position:absolute;left:-40%;right:-40%;top:-32%;height:120%;border-radius:50%;border-bottom:calc(.9*var(--bu)) solid #fff;opacity:.95;pointer-events:none}
+main.tournament.tournament--skin.bskin-brasil .bracket__champ > span:not(.belt-rail) {color:var(--y)}
+main.tournament.tournament--skin.bskin-brasil .bracket__champ {padding-bottom:calc(3.6*var(--bu))}
+main.tournament.tournament--skin.bskin-brasil .bracket__champ input,
+main.tournament.tournament--skin.bskin-brasil .bracket__champ .bracket__champ-flash {position:relative;z-index:1;margin-top:calc(1.2*var(--bu))}
+main.tournament.tournament--skin.bskin-brasil .tournament__tools {background:rgba(0,16,56,.86);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+main.tournament.tournament--skin.bskin-brasil .tournament__actions :is(.btn,.chip,.kids-skin__btn) {background:rgba(255,255,255,.1);color:#fff}
+main.tournament.tournament--skin.bskin-brasil .tournament__actions .chip--on {background:#fff;color:#0e1726}
+main.tournament.tournament--skin.bskin-brasil .tournament__roundline::before {content:"";display:inline-block;width:1.3vh;height:1.3vh;background:var(--y);transform:rotate(45deg);margin-right:1.6vh;vertical-align:.25vh}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-brasil .bracket-headline__pill {gap:12px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-brasil .bracket-headline__pill::before {width:9px;height:9px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-brasil .bracket-headline__pill::after {width:9px;height:9px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-brasil .t-live-pill {box-shadow:0 0 0 2px #fff}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-brasil .t-match--final {box-shadow:inset 0 -5px 0 var(--g),0 8px 18px rgba(0,0,0,.4)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-brasil .t-match--final::before {left:-10px;right:-10px;top:-16px;bottom:-16px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-brasil .bracket__champ {box-shadow:0 0 0 3px #fff,0 8px 18px rgba(0,0,0,.4)}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-brasil .bracket__champ::after {border-bottom-width:5px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-brasil .bracket__champ input,
+  main.tournament.tournament--skin.bskin-brasil .bracket__champ .bracket__champ-flash {margin-top:8px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-brasil .tournament__roundline::before {width:7px;height:7px;margin-right:8px;vertical-align:1px}
+}

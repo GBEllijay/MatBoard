@@ -1,0 +1,411 @@
+/*
+ * Bracket skins: shared layout on top of the live Advantage (bright) tree.
+ * --bu is one mockup vh (1080p TV), so the 8-person tree keeps the mockup's geometry and the
+ * auto-fit zoom fills the screen. The tree, its order, and its buttons are the live ones.
+ */
+
+main.tournament.tournament--skin {
+  --bu: 10.8px;
+  position: relative;
+  isolation: isolate;
+  color: #fff;
+  background-image: none;
+}
+
+main.tournament.tournament--skin::before,
+main.tournament.tournament--skin::after {
+  display: none;
+}
+
+main.tournament.tournament--skin > .bskin-deco {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+main.tournament.tournament--skin > .bskin-deco > * {
+  pointer-events: none;
+}
+
+main.tournament.tournament--skin .tournament__board {
+  background: transparent;
+}
+
+/* Headline pill: the input keeps its job, the pill takes the skin. */
+main.tournament.tournament--skin .bracket-headline__pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 0;
+  max-width: min(80vw, 46rem);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+main.tournament.tournament--skin .bracket-headline__pill input {
+  width: auto;
+  min-width: 4ch;
+  field-sizing: content;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: center;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+  -webkit-text-stroke: inherit;
+  paint-order: inherit;
+  text-shadow: inherit;
+}
+
+/* ---------- the tree ---------- */
+
+main.tournament.tournament--skin .bracket {
+  position: relative;
+}
+
+main.tournament.tournament--skin .bskin-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  z-index: 0;
+  pointer-events: none;
+}
+
+main.tournament.tournament--skin .bskin-links path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+main.tournament.tournament--skin .bracket__side,
+main.tournament.tournament--skin .bracket__finals {
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+}
+
+main.tournament.tournament--skin .bracket__round,
+main.tournament.tournament--skin .bracket__matches,
+main.tournament.tournament--skin .t-match {
+  overflow: visible;
+}
+
+/* The approved 8-person geometry: QF 1.18fr, SF .98fr, Finals 1.12fr, gaps 2.4vw (1820 x 765 at 1080p). */
+main.tournament.tournament--skin .bracket.bracket--tree-8:not(.bracket--three) {
+  width: calc(168.5 * var(--bu));
+  min-width: calc(168.5 * var(--bu));
+  height: calc(70.8 * var(--bu));
+  min-height: calc(70.8 * var(--bu));
+  grid-template-columns: calc(64.4 * var(--bu)) calc(31.18 * var(--bu)) calc(64.4 * var(--bu));
+  column-gap: calc(4.267 * var(--bu));
+  row-gap: 0;
+  gap: 0 calc(4.267 * var(--bu));
+}
+
+main.tournament.tournament--skin .bracket.bracket--tree-8:not(.bracket--three) .bracket__side--left {
+  grid-template-columns: calc(32.85 * var(--bu)) calc(27.28 * var(--bu));
+  gap: 0 calc(4.267 * var(--bu));
+}
+
+main.tournament.tournament--skin .bracket.bracket--tree-8:not(.bracket--three) .bracket__side--right {
+  grid-template-columns: calc(27.28 * var(--bu)) calc(32.85 * var(--bu));
+  gap: 0 calc(4.267 * var(--bu));
+}
+
+main.tournament.tournament--skin .bracket__round > h2 {
+  position: static;
+  width: auto;
+  overflow: visible;
+  clip: auto;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+main.tournament.tournament--skin .bracket__round > h2 > span {
+  display: inline-block;
+}
+
+main.tournament.tournament--skin .bracket__matches {
+  gap: 0;
+}
+
+main.tournament.tournament--skin .bracket__finals {
+  padding-top: 0;
+  gap: calc(3.6 * var(--bu));
+}
+
+main.tournament.tournament--skin :where(.bracket__finals > .t-match)::before {
+  content: none;
+}
+
+main.tournament.tournament--skin .t-match,
+main.tournament.tournament--skin .bracket__side--left .t-match,
+main.tournament.tournament--skin .bracket__side--right .t-match {
+  position: relative;
+  padding: 0;
+  gap: calc(0.6 * var(--bu));
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+main.tournament.tournament--skin .bracket__side--left .t-match__bouts::after,
+main.tournament.tournament--skin .bracket__side--right .t-match__bouts::after {
+  content: none;
+}
+
+main.tournament.tournament--skin .t-match--live .t-match__bouts,
+main.tournament.tournament--skin .t-match--next .t-match__bouts {
+  outline: 0;
+}
+
+main.tournament.tournament--skin .t-match--next:not(.t-match--final) > .t-match__bouts {
+  outline: calc(0.3 * var(--bu)) dashed var(--hot, rgba(255, 255, 255, 0.55));
+  outline-offset: calc(0.5 * var(--bu));
+}
+
+main.tournament.tournament--skin .t-slot {
+  min-height: 0;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  gap: calc(1 * var(--bu));
+  min-width: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  opacity: 1;
+  animation: none;
+}
+
+main.tournament.tournament--skin .t-slot__who {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: calc(1 * var(--bu));
+  min-width: 0;
+}
+
+main.tournament.tournament--skin .t-slot__name {
+  flex: 1;
+  min-width: 0;
+}
+
+main.tournament.tournament--skin .t-slot__seed {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+}
+
+main.tournament.tournament--skin .t-slot input,
+main.tournament.tournament--skin .bracket__champ input {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-shadow: inherit;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+  -webkit-text-stroke: inherit;
+  paint-order: inherit;
+  text-overflow: ellipsis;
+}
+
+main.tournament.tournament--skin .t-slot input::placeholder,
+main.tournament.tournament--skin .bracket__champ input::placeholder {
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+  opacity: 1;
+}
+
+main.tournament.tournament--skin .t-slot__gym {
+  color: inherit;
+  opacity: 0.75;
+}
+
+/* Winner check, drawn from the result (the mockups' check circle). */
+main.tournament.tournament--skin .t-slot--won > .t-slot__who::after {
+  content: '\2713';
+  flex: none;
+}
+
+main.tournament.tournament--skin .t-live-pill {
+  position: absolute;
+  margin: 0;
+  line-height: 1;
+  -webkit-text-fill-color: currentColor;
+}
+
+main.tournament.tournament--skin .t-live-pill::before {
+  content: none;
+}
+
+/* Finals card. */
+main.tournament.tournament--skin .t-match--final {
+  display: block;
+  color: inherit;
+}
+
+main.tournament.tournament--skin .t-match--final .t-match__finals-label {
+  display: block;
+  margin: 0;
+}
+
+main.tournament.tournament--skin .t-match--final .t-match__finals-label > span,
+main.tournament.tournament--skin .t-match--final .t-match__finals-label > strong {
+  display: block;
+}
+
+main.tournament.tournament--skin .t-match--final .t-match__finals-label > strong {
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+}
+
+main.tournament.tournament--skin .t-match--final > .t-match__finals-label::before {
+  content: none;
+}
+
+main.tournament.tournament--skin.bskin--crest .t-match--final > .t-match__finals-label::before,
+main.tournament.tournament--skin.bskin-creature-anime .t-match--final > .t-match__finals-label::before {
+  content: '';
+  display: block;
+}
+
+main.tournament.tournament--skin .t-match--final > .t-match__finals-label::after {
+  content: none;
+}
+
+main.tournament.tournament--skin.bskin-calcadao .t-match--final > .t-match__finals-label::after,
+main.tournament.tournament--skin.bskin-psychedelic .t-match--final > .t-match__finals-label::after,
+main.tournament.tournament--skin.bskin-reggae .t-match--final > .t-match__finals-label::after {
+  content: '';
+  display: block;
+}
+
+main.tournament.tournament--skin.bskin-woodblock .t-match--final::after {
+  content: '';
+}
+
+main.tournament.tournament--skin .t-match--final .t-match__bouts {
+  display: flex;
+  flex-direction: column;
+  gap: calc(1 * var(--bu));
+  outline: 0;
+}
+
+main.tournament.tournament--skin.bskin-arcade-fighter .t-match--final .t-match__bouts::before {
+  content: 'VS';
+  order: 1;
+  display: block;
+  text-align: center;
+  line-height: 1;
+}
+
+main.tournament.tournament--skin.bskin-arcade-fighter .t-match--final .t-match__bouts > .t-slot:last-child {
+  order: 2;
+}
+
+main.tournament.tournament--skin .t-match--final .t-slot input,
+main.tournament.tournament--skin .bracket__champ input,
+main.tournament.tournament--skin .bracket__champ-flash {
+  text-align: center;
+}
+
+/* Champion card. */
+main.tournament.tournament--skin .bracket__champ {
+  display: block;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  animation: none;
+}
+
+main.tournament.tournament--skin .bracket__champ > .belt-rail {
+  display: none;
+}
+
+main.tournament.tournament--skin .bracket__champ > span:not(.belt-rail) {
+  display: block;
+  color: inherit;
+}
+
+main.tournament.tournament--skin .bracket__champ .roster-field,
+main.tournament.tournament--skin .bracket__champ .roster-field__row {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+main.tournament.tournament--skin .bracket__champ-flash {
+  color: inherit;
+  text-shadow: inherit;
+}
+
+/* Characters stand under the semifinals (creature: beside the champion). */
+main.tournament.tournament--skin .bracket__round--1 {
+  position: relative;
+}
+
+main.tournament.tournament--skin.bskin--mascots .bracket__side--left .bracket__round--1::after,
+main.tournament.tournament--skin.bskin--mascots .bracket__side--right .bracket__round--1::after {
+  content: '';
+  pointer-events: none;
+}
+
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::before,
+main.tournament.tournament--skin.bskin-creature-anime .bracket__champ::after {
+  content: '';
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Score and Undo stay usable when TV Clean is off. */
+main.tournament.tournament--skin .t-match__play {
+  margin-top: calc(0.4 * var(--bu));
+}
+
+main.tournament.tournament--skin .t-slot__marks {
+  flex: none;
+}
+
+/* Toolbar under the bracket keeps its live layout; the skin only paints it. */
+main.tournament.tournament--skin .tournament__tools {
+  border-top: 0;
+}
+
+main.tournament.tournament--skin .tournament__actions :is(.btn, .chip, .kids-skin__btn) {
+  border-color: transparent;
+}
+
+/* The mockup's champion name may run into the card padding; the input would clip it. */
+main.tournament.tournament--skin .bracket__champ > .roster-field {
+  margin-inline: calc(-1.6 * var(--bu));
+}

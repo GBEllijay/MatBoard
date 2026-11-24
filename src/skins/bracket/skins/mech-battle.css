@@ -1,0 +1,29 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-mech-battle {--line:#8fb2ff;--under:#0a0e14;--hot:#ffb01f;--lw:.45;--uw:1.2}
+main.tournament.tournament--skin.bskin-mech-battle {--h2p:25px;--hp:22px;--base:#0a0e14;--bgi:linear-gradient(180deg,rgba(10,14,20,.45),rgba(10,14,20,.2) 35%,rgba(10,14,20,.75)),url(../../polished/assets/mech-battle/city@2560.webp);--fh:'Russo One';--hbg:linear-gradient(180deg,#111826,#0a0e14);--hfg:#f2f4f7;--hbd:.3vh solid #38e1ff;--hsh:0 0 2vh rgba(56,225,255,.45);--hls:.04em;--htt:uppercase;--fl:'Chakra Petch';--lab:#38e1ff;--fn:'Saira SemiCondensed';--fnw:800;--fs:4.2vh;--tt:uppercase;--ls:.02em;--pbg:linear-gradient(180deg,rgba(17,24,38,.95),rgba(10,14,20,.96));--pbd:.25vh solid #2a3a55;--psh:0 1.4vh 3vh rgba(0,0,0,.6);--pr:.4vh;--sr:.3vh;--s1b:linear-gradient(90deg,#2f6bff,#1846c4);--s1f:#fff;--s1sh:inset .7vh 0 0 #8fb2ff;--s2b:linear-gradient(90deg,#f2f4f7,#d5dce6);--s2f:#0b1738;--s2sh:inset .7vh 0 0 #fff;--lostb:rgba(143,178,255,.06);--lostf:#5d6b85;--emb:rgba(143,178,255,.05);--embd:.2vh dashed #38e1ff;--emf:#8fb2ff;--acc:#ffb01f;--okf:#0a0e14;--live:#d62839;--livebd:#0a0e14;--fbg:linear-gradient(180deg,#111826,#0a0e14);--ffg:#f2f4f7;--fbd:.35vh solid #38e1ff;--fsh:0 0 3vh rgba(56,225,255,.5);--fr:.4vh;--eye:#ffb01f;--fe:'Chakra Petch';--fts:0 0 2vh rgba(56,225,255,.6);--fsb:rgba(143,178,255,.06);--fsf:#8fb2ff;--fsbd:.2vh dashed rgba(56,225,255,.5);--cbg:linear-gradient(180deg,#1a2233,#0a0e14);--cfg:#ffc21a;--cbd:.35vh solid #ffb01f;--csh:0 0 3vh rgba(255,176,31,.45);--ceye:#ffb01f;--foot:rgba(10,14,20,.94);--footsh:inset 0 .3vh 0 #38e1ff;--crest:url(../../polished/assets/mech-battle/crest.webp);--ml:url(../../polished/assets/mech-battle/mech-blue.webp);--mr:url(../../polished/assets/mech-battle/mech-white.webp);--mh:27vh;--mw:24vh}
+main.tournament.tournament--skin.bskin-mech-battle .t-match:not(.t-match--final) > .t-match__bouts {padding-top:calc(2.2*var(--bu))}
+main.tournament.tournament--skin.bskin-mech-battle .t-match:not(.t-match--final) > .t-match__bouts::before {content:'';position:absolute;left:0;right:0;top:0;height:calc(1.1*var(--bu));background:repeating-linear-gradient(-45deg,#ffb01f 0 calc(1.2*var(--bu)),#0a0e14 calc(1.2*var(--bu)) calc(2.4*var(--bu)))}
+main.tournament.tournament--skin.bskin-mech-battle .t-match--final::after {content:'';position:absolute;inset:calc(-1*var(--bu));pointer-events:none;background:linear-gradient(#ffb01f,#ffb01f) left top/calc(2.6*var(--bu)) calc(.35*var(--bu)),linear-gradient(#ffb01f,#ffb01f) left top/calc(.35*var(--bu)) calc(2.6*var(--bu)),linear-gradient(#ffb01f,#ffb01f) right bottom/calc(2.6*var(--bu)) calc(.35*var(--bu)),linear-gradient(#ffb01f,#ffb01f) right bottom/calc(.35*var(--bu)) calc(2.6*var(--bu));background-repeat:no-repeat}
+main.tournament.tournament--skin.bskin-mech-battle .t-match:not(.t-match--final) > .t-match__bouts::after {content:'';position:absolute;inset:calc(-1*var(--bu));pointer-events:none;background:linear-gradient(#ffb01f,#ffb01f) left top/calc(2.6*var(--bu)) calc(.35*var(--bu)),linear-gradient(#ffb01f,#ffb01f) left top/calc(.35*var(--bu)) calc(2.6*var(--bu)),linear-gradient(#ffb01f,#ffb01f) right bottom/calc(2.6*var(--bu)) calc(.35*var(--bu)),linear-gradient(#ffb01f,#ffb01f) right bottom/calc(.35*var(--bu)) calc(2.6*var(--bu));background-repeat:no-repeat}
+main.tournament.tournament--skin.bskin-mech-battle .t-match--final .t-match__finals-label > strong {font-size:calc(6*var(--bu));letter-spacing:.06em}
+main.tournament.tournament--skin.bskin-mech-battle .t-match--final .t-match__finals-label > span {font-weight:700;letter-spacing:.24em}
+main.tournament.tournament--skin.bskin-mech-battle .bracket__champ > span:not(.belt-rail) {font-weight:700;letter-spacing:.24em}
+main.tournament.tournament--skin.bskin-mech-battle .bracket__champ input,
+main.tournament.tournament--skin.bskin-mech-battle .bracket__champ .bracket__champ-flash {color:#ffc21a;opacity:.7}
+main.tournament.tournament--skin.bskin-mech-battle .bracket__round > h2 {letter-spacing:.3em;font-weight:700}
+main.tournament.tournament--skin.bskin-mech-battle .bracket__champ::after {content:'';position:absolute;left:12%;right:12%;bottom:calc(1*var(--bu));height:calc(.9*var(--bu));background:repeating-linear-gradient(90deg,#ffb01f 0 calc(1.4*var(--bu)),transparent calc(1.4*var(--bu)) calc(1.9*var(--bu)));opacity:.8}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-mech-battle .t-match:not(.t-match--final) > .t-match__bouts {padding-top:11px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-mech-battle .t-match:not(.t-match--final) > .t-match__bouts::before {height:5px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-mech-battle .t-match--final .t-match__finals-label > strong {font-size:26px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-mech-battle .bracket-headline__pill {font-size:22px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-mech-battle .bracket__champ::after {bottom:5px;height:4px}
+}
