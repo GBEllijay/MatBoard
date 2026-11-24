@@ -149,7 +149,7 @@ export function MatchControllerPage() {
         }
       />
 
-      {!board.kidsSkin && !plainWhite && !board.polishedOpen && !board.whiteBaseSkins ? (
+      {!board.kidsSkin && !plainWhite && !board.skinsOpen ? (
         <section className="kids-switch-panel" aria-label="Scoreboard skin">
           <p className="cue-preview-label">Scoreboard skin</p>
           <ScoreboardSkinSwitcher skin={match.skin} />
@@ -277,7 +277,7 @@ export function MatchControllerPage() {
             Match end sound
           </label>
           <EndCueControls label="Match end cue" value={match.endCue} />
-          {board.polishedOpen || board.whiteBaseSkins ? <ScoreboardSkinPicker appearance="stack" /> : null}
+          {board.skinsOpen ? <ScoreboardSkinPicker appearance="stack" /> : null}
         </fieldset>
         <label className="toggle">
           <input

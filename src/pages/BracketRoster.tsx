@@ -48,7 +48,7 @@ export function BracketRosterPage() {
     if (!saved) {
       setAddError(
         roster.entries.length >= BRACKET_ROSTER_MAX
-          ? `The Bracket Roster holds up to ${BRACKET_ROSTER_MAX} competitors.`
+          ? 'The Bracket Roster is full.'
           : 'Enter a name. That name may already be on the list.',
       );
       return;
@@ -135,9 +135,8 @@ export function BracketRosterPage() {
         <h1>Bracket Roster</h1>
       </header>
       <p className="white-roster__lead">
-        Up to {BRACKET_ROSTER_MAX} names for a mock tournament, saved on this device; the gym shows
-        under each name. Import or download a CSV with the columns name, gym, weight, division, age,
-        rank.
+        Names for a mock tournament, saved on this device; the gym shows under each name. Import or
+        download a CSV with the columns name, gym, weight, division, age, rank.
       </p>
 
       <div className="names-sheet bracket-roster__sheet">
@@ -294,7 +293,7 @@ export function BracketRosterPage() {
         </button>
         {roster.entries.length >= BRACKET_ROSTER_MAX ? (
           <p className="bracket-roster__full" role="status">
-            Roster full (36)
+            The Bracket Roster is full.
           </p>
         ) : null}
         {addError ? <p className="roster-edit__error">{addError}</p> : null}

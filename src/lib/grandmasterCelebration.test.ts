@@ -33,6 +33,8 @@ function win(side: 'blue' | 'white'): MatchOutcome {
 test('Grandmaster cheer on the match board is Pro suite only', () => {
   assert.equal(grandmasterOnScoreboard(true), true);
   assert.equal(grandmasterOnScoreboard(false), false);
+  assert.equal(grandmasterOnScoreboard(false, true), true);
+  assert.equal(grandmasterOnScoreboard(true, true), true);
 });
 
 test('Grandmaster cheer stays off until the controller turns it on', () => {

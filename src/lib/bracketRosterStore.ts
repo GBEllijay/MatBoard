@@ -8,13 +8,13 @@
 
 import { WHITE_BOARD_FROM } from './productNames.ts';
 import { clipName } from './rosterStore.ts';
-import { fillCheckedInBracket, getTournament, newBracket, bracketHasContent } from './tournamentStore.ts';
+import { fillCheckedInBracket, getTournament, newBracket, bracketHasContent, WHITE_MAX_COMPETITORS } from './tournamentStore.ts';
 import { getWhiteRoster } from './whiteRosterStore.ts';
 
 export const BRACKET_ROSTER_STORAGE_KEY = 'matboard.bracketRoster.v1';
 /** Set after a one-time copy of Match names into an empty Bracket Roster. */
 export const WHITE_MATCH_NAMES_IMPORT_KEY = 'matboard.bracketRoster.importedWhiteRoster.v1';
-export const BRACKET_ROSTER_MAX = 36;
+export const BRACKET_ROSTER_MAX = 1000;
 export const BRACKET_ROSTER_CSV_HEADERS = ['name', 'gym', 'weight', 'division', 'age', 'rank'] as const;
 export const BRACKET_ROSTER_SAMPLE_PATH = '/samples/bracket-roster-sample.csv';
 export const WHITE_BRACKET_ROSTER_PATH = '/white/bracket-roster';
@@ -265,7 +265,7 @@ function headerIndex(headers: string[], name: string): number {
  * Parse a Bracket Roster CSV. Header row must be
  * name,gym,weight,division,age,rank (case-insensitive, any order).
  * Extra columns are ignored. Rows without a name are skipped.
- * A list longer than 36 is truncated.
+ * A list longer than BRACKET_ROSTER_MAX (a safety ceiling) is truncated.
  */
 export function parseBracketRosterCsv(raw: string): BracketRosterCsvResult {
   const text = raw.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
@@ -320,13 +320,15 @@ export function parseBracketRosterCsv(raw: string): BracketRosterCsvResult {
 
 /** Seed the on-device tournament board from this roster. Returns how many names were placed. */
 export function seedWhiteBracketFromRoster(
-  max = BRACKET_ROSTER_MAX,
+  max = WHITE_MAX_COMPETITORS,
   options?: { newBoard?: boolean },
 ): number {
   const names = state.entries.map((entry) => entry.name).filter(Boolean);
   if (names.length < 2) return 0;
   if (options?.newBoard !== false && bracketHasContent(getTournament())) newBracket();
-  return fillCheckedInBracket(names, max, max);
+  // The roster can hold many names. A White bracket still tops out at WHITE_MAX_COMPETITORS.
+  const cap = Math.min(WHITE_MAX_COMPETITORS, Math.max(2, Math.round(max) || WHITE_MAX_COMPETITORS));
+  return fillCheckedInBracket(names, cap, cap);
 }
 
 export function findBracketRosterName(entries: readonly BracketRosterEntry[], name: string): BracketRosterEntry | undefined {

@@ -143,8 +143,8 @@ export function pickerBaseScoreboardSkins(plainWhite: boolean) {
 
 /**
  * Everything the Scoreboard Skin popup lists.
- * White (no higher tier): Mock-Tournament, Old School, and Quick Result. The polished
- * families are absent, not locked, on a plain Live Bout and on a suite board.
+ * Advantage BJJ Scoreboard (White route or White-only tier): the full selectable
+ * set plus the polished families.
  * Everyone else: the skins this board already offered, then the polished ones only
  * when this browser has Media Edition or above. Without it they are absent, not locked.
  */
@@ -152,9 +152,13 @@ export function scoreboardPickerSkins(
   plainWhite: boolean,
   polishedOpen: boolean,
   whiteBaseSkins = false,
+  whiteRoute = false,
 ): readonly { id: ScoreboardSkinId; label: string; slug?: PolishedSkinSlug }[] {
-  if (whiteBaseSkins) {
-    return SELECTABLE_SCOREBOARD_SKINS.map((skin) => ({ id: skin.id, label: skin.label }));
+  if (whiteBaseSkins || whiteRoute) {
+    return [
+      ...SELECTABLE_SCOREBOARD_SKINS.map((skin) => ({ id: skin.id, label: skin.label })),
+      ...POLISHED_SCOREBOARD_SKINS,
+    ];
   }
   return [
     ...pickerBaseScoreboardSkins(plainWhite).map((skin) => ({ id: skin.id, label: skin.label })),
@@ -254,12 +258,10 @@ export function isPlainWhiteScoreboard(
 
 /**
  * Skin the White, Coach, or suite board should paint.
- * Advantage White (no higher tier) paints Mock-Tournament, Old School, or Quick Result
- * even on a plain Live Bout. A polished pick falls back to Mock-Tournament there.
- * Every other plain Live Bout stays on Mock-Tournament, including a stored Old School
- * or Quick Result pick.
- * A polished pick paints on any board when this browser has Media Edition or above
- * (`polishedOpen`). When it is locked here, the board falls back to the default.
+ * Advantage BJJ Scoreboard (White route or White-only tier) paints any selectable
+ * or polished pick, including on a plain Live Bout. A custom picture follows the
+ * same rule. Every other plain Live Bout stays on Mock-Tournament unless Media
+ * Edition or above has unlocked the polished families (`polishedOpen`).
  */
 export function visibleScoreboardSkin(
   skin: StoredScoreboardSkin,
@@ -268,10 +270,12 @@ export function visibleScoreboardSkin(
   coachWhiteBoard = false,
   polishedOpen = false,
   whiteBaseSkins = false,
+  whiteRoute = false,
 ): StoredScoreboardSkin {
-  if (isCustomSkinId(skin)) return polishedOpen ? skin : DEFAULT_SCOREBOARD_SKIN;
-  if (isPolishedSkinId(skin)) return polishedOpen ? skin : DEFAULT_SCOREBOARD_SKIN;
-  if (whiteBaseSkins && isSelectableScoreboardSkin(skin)) return skin;
+  const whiteBoard = whiteBaseSkins || whiteRoute;
+  if (isCustomSkinId(skin)) return polishedOpen || whiteBoard ? skin : DEFAULT_SCOREBOARD_SKIN;
+  if (isPolishedSkinId(skin)) return polishedOpen || whiteBoard ? skin : DEFAULT_SCOREBOARD_SKIN;
+  if (whiteBoard && isSelectableScoreboardSkin(skin)) return skin;
   return isPlainWhiteScoreboard(fromSuite, linkedBout, coachWhiteBoard) ? DEFAULT_SCOREBOARD_SKIN : skin;
 }
 

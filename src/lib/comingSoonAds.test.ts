@@ -85,7 +85,9 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
   assert.match(text, /gym name or nickname/);
   assert.match(text, /last promotion/);
   assert.match(text, /No photo on Instructor Edition/);
-  assert.match(text, /up to 64 competitors/);
+  assert.match(text, /64-competitor boards/);
+  assert.match(text, /Competition class template/);
+  assert.match(text, /check-in from the Student Roster/);
   assert.doesNotMatch(text, /does not include Competition/);
   assert.doesNotMatch(text, /competitor roster/i);
   assert.doesNotMatch(text, /Daily Techniques/);

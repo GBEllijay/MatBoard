@@ -65,7 +65,7 @@ export function useLockViewportZoom(): void {
 /**
  * Auto-fit and pinch-zoom the bracket as a fixed diagram. On load, resize, and
  * `fitKey` changes (e.g. tree size or Clean mode toggle), scales the diagram via
- * `autoFitScale` so 2–36 competitor trees fill TV and phone boards cleanly.
+ * `autoFitScale` so 2–64 competitor trees fill TV and phone boards cleanly.
  * Two-finger pinch or Ctrl/Cmd+wheel zoom remains available anytime after.
  */
 export function usePinchZoom(

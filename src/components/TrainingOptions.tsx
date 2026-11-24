@@ -3,6 +3,9 @@ import { patchAudioPrefs, START_CUE_OPTIONS } from '../lib/audio';
 import { EndCueControls } from './EndCueControls';
 import { RoundStartOnlyToggle } from './RoundStartOnlyToggle';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
+import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { whiteProductFeaturesOpen } from '../lib/whiteSkinTier';
+import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { setTrainingSkin, visibleTrainingSkin } from '../lib/trainingSkin';
 import { TimerBackdropOptions } from './TimerBackdropOptions';
 import { TimerSkinPicker } from './TimerSkinPicker';
@@ -29,8 +32,9 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
   /** A locked polished pick shows as Classic, which is what the timer paints. White shows Mock-Tournament. */
   const polishedOpen = usePolishedSkinsUnlocked();
   const whiteBase = useWhiteBaseSkins();
-  const skin = visibleTrainingSkin(useTrainingSkin(), polishedOpen, whiteBase);
-  const picker = polishedOpen || whiteBase;
+  const whiteProductOpen = whiteProductFeaturesOpen(useSuiteOrigin().fromWhite, whiteBase, useWhiteUnlocked());
+  const skin = visibleTrainingSkin(useTrainingSkin(), polishedOpen, whiteBase, whiteProductOpen);
+  const picker = polishedOpen || whiteProductOpen;
 
   return (
     <>

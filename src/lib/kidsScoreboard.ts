@@ -6,7 +6,7 @@
  * The grandmaster cheer is a corner win celebration, never a live-match graphic.
  */
 
-import { SUITE_FROM, UNLIMITED_FROM } from './productNames.ts';
+import { SUITE_FROM, UNLIMITED_FROM, WHITE_BOARD_FROM } from './productNames.ts';
 import { displayBoutName, slotName, type BoutPoints, type TournamentState } from './tournamentStore.ts';
 
 export const KIDS_SCOREBOARDS_NAME = "Kids' Scoreboards";
@@ -152,12 +152,16 @@ export function kidsShowMascot(
 }
 
 /**
- * Skin picker and wallpaper: Pro suite, Coach Unlimited, and any board opened by a
- * browser with the competition suite (Instructor Edition, Pro, or a seat; see
- * competitionSuiteOpen). Only the retired plain practice board stays off.
+ * Skin picker and wallpaper: White boards, Pro suite, Coach Unlimited, and any
+ * board opened by a browser with the competition suite (Instructor Edition, Pro,
+ * or a seat; see competitionSuiteOpen). Only the retired plain practice board stays off.
  */
-export function kidsBracketSkinsAllowed(from: string | null, competitionSuite = false): boolean {
-  return from === SUITE_FROM || from === UNLIMITED_FROM || competitionSuite;
+export function kidsBracketSkinsAllowed(
+  from: string | null,
+  competitionSuite = false,
+  whiteProductOpen = false,
+): boolean {
+  return from === SUITE_FROM || from === UNLIMITED_FROM || (from === WHITE_BOARD_FROM && whiteProductOpen) || competitionSuite;
 }
 
 /** Wallpaper follows the device toggle once this hub allows kids skins. */

@@ -7,6 +7,8 @@ import { useTrainingClock } from '../hooks/useTrainingClock';
 import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
+import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { whiteProductFeaturesOpen } from '../lib/whiteSkinTier';
 import { useTrainingSkin, useTrainingState } from '../hooks/useStores';
 import { unlockAudio } from '../lib/audio';
 import { formatMmSs } from '../lib/format';
@@ -22,7 +24,10 @@ function openRoundsWindow(fromSuite: boolean): void {
 /** Fat-thumb remote for the rounds timer. The gym TV stays on /training. */
 export function TrainingControllerPage() {
   const training = useTrainingState();
-  const skin = visibleTrainingSkin(useTrainingSkin(), usePolishedSkinsUnlocked(), useWhiteBaseSkins());
+  const polishedOpen = usePolishedSkinsUnlocked();
+  const whiteBase = useWhiteBaseSkins();
+  const whiteProductOpen = whiteProductFeaturesOpen(useSuiteOrigin().fromWhite, whiteBase, useWhiteUnlocked());
+  const skin = visibleTrainingSkin(useTrainingSkin(), polishedOpen, whiteBase, whiteProductOpen);
   const whiteSurface = whiteTimerControllerClass(skin);
   const suite = useSuiteOrigin();
   const navigate = useNavigate();

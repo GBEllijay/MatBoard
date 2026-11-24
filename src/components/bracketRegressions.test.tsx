@@ -1094,11 +1094,44 @@ test('the White bar drops Seeded and keeps Advantage and Dark inside Skins', asy
     await settle();
     const themes = [...mounted.host.querySelectorAll('.kids-skin__themes button')].map((button) => button.textContent?.trim());
     assert.deepEqual(themes, ['Advantage', 'Dark', 'Podium & Mat Strip']);
-    assert.equal(mounted.host.querySelectorAll('.kids-skin__grid .kids-skin__thumb').length, 0);
+    assert.equal(mounted.host.querySelectorAll('.kids-skin__grid .kids-skin__thumb').length, 6);
   } finally {
     unmount(mounted);
     resetTournament();
     setBracketTheme('bright');
+    lockWhite();
+  }
+});
+
+test('White size chips include 32 and 64, and the custom range goes to 64', async () => {
+  localStorage.clear();
+  resetTournament();
+  setCompetitorCount(16);
+  setWhiteUnlocked(true);
+  const mounted = mount(<TournamentPage />, '/white/brackets?from=white');
+  try {
+    await settle();
+    const sizeChip = [...mounted.host.querySelectorAll('button')].find((button) => button.textContent?.trim() === '16');
+    assert.ok(sizeChip);
+    await act(async () => {
+      sizeChip.click();
+    });
+    await settle();
+    const sheet = document.querySelector('.sheet');
+    assert.ok(sheet);
+    assert.match(sheet.textContent ?? '', /Brackets hold up to 64 competitors/);
+    assert.match(sheet.textContent ?? '', /Custom 2–64/);
+    assert.doesNotMatch(sheet.textContent ?? '', /Placement|Lineup|Seeded is the default/);
+    const chips = [...sheet.querySelectorAll('.tournament__size-presets [class*="chip"]')].map((button) => button.textContent?.trim());
+    // Size chips match Pro presets, including 32 and 64, not 36. Seeded and Lineup stay hidden.
+    assert.ok(chips.includes('32'));
+    assert.ok(chips.includes('64'));
+    assert.equal(chips.includes('36'), false);
+    assert.equal(chips.includes('Seeded'), false);
+    assert.equal(chips.includes('Lineup'), false);
+  } finally {
+    unmount(mounted);
+    resetTournament();
     lockWhite();
   }
 });

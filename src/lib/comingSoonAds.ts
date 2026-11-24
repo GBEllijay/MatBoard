@@ -116,7 +116,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: 'Tournament Software',
-        body: 'Brackets up to 64 competitors, with bracket skins and the Competition class template. Brackets save on this device.',
+        body: 'The Competition class template and check-in from the Student Roster, on the same 64-competitor boards as Advantage BJJ Scoreboard. Brackets save on this device.',
       },
     ],
     dismiss: 'Got it',

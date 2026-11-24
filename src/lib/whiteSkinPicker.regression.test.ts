@@ -72,14 +72,16 @@ const TIERS = [
   ['Pro', ['pro'], true],
 ] as const;
 
-test('White scoreboard and round timer list the White base skins without higher-tier skins', () => {
+test('White scoreboard and round timer list the White base skins plus the polished families', () => {
   const doors = doorsFor(['white']);
   assert.equal(whiteBaseSkinTier(doors), true);
   assert.equal(polishedSkinsUnlocked(polishedSkinAccessFromDoors(impliedDoors(['white']))), false);
   const board = scoreboardPickerSkins(true, false, true);
   const timer = timerPickerSkins(false, true);
-  assert.deepEqual(board.map((skin) => skin.label), [...BASE_SCOREBOARD_LABELS]);
-  assert.deepEqual(timer.map((skin) => skin.label), [...BASE_TIMER_LABELS]);
+  const boardLabels = [...BASE_SCOREBOARD_LABELS, ...POLISHED_SKINS.map((skin) => skin.label)];
+  const timerLabels = [...BASE_TIMER_LABELS, ...POLISHED_TIMER_SKINS.map((skin) => skin.label)];
+  assert.deepEqual(board.map((skin) => skin.label), boardLabels);
+  assert.deepEqual(timer.map((skin) => skin.label), timerLabels);
   assert.deepEqual(
     board.map((skin) => skin.id),
     [
@@ -89,16 +91,15 @@ test('White scoreboard and round timer list the White base skins without higher-
       SCOREBOARD_SKIN.CLEAN_MAT_BROADCAST,
       SCOREBOARD_SKIN.SPLIT_FLAP_PRO,
       SCOREBOARD_SKIN.HIGH_CONTRAST_DAYLIGHT,
+      ...POLISHED_SKINS.map((skin) => skin.id),
     ],
   );
-  assert.equal(board.length, 6);
-  assert.equal(timer.length, 9);
-  for (const label of [...board.map((skin) => skin.label), ...timer.map((skin) => skin.label)]) {
-    assert.equal(HIDDEN.includes(label), false, label);
-  }
-  assert.equal(timer.some((skin) => skin.polished), false);
-  // A suite board on White has the same six scoreboard skins. The polished families stay out.
-  assert.deepEqual(scoreboardPickerSkins(false, false, true).map((skin) => skin.label), [...BASE_SCOREBOARD_LABELS]);
+  assert.equal(board.length, BASE_SCOREBOARD_LABELS.length + POLISHED_SKINS.length);
+  assert.equal(timer.length, BASE_TIMER_LABELS.length + POLISHED_TIMER_SKINS.length);
+  assert.equal(timer.some((skin) => skin.polished), true);
+  assert.equal(timer.some((skin) => skin.id === 'classic' || skin.id === 'themed'), false);
+  assert.deepEqual(scoreboardPickerSkins(false, false, true).map((skin) => skin.label), boardLabels);
+  assert.deepEqual(scoreboardPickerSkins(true, false, false, true).map((skin) => skin.label), boardLabels);
 });
 
 test('White paints Old School and Quick Result, and a hidden skin falls back to Mock-Tournament', () => {
@@ -112,7 +113,7 @@ test('White paints Old School and Quick Result, and a hidden skin falls back to 
   );
   assert.equal(
     visibleScoreboardSkin(SCOREBOARD_SKIN.KEYNOTE, false, false, false, false, true),
-    SCOREBOARD_SKIN.MOCK_TOURNAMENT,
+    SCOREBOARD_SKIN.KEYNOTE,
   );
   assert.equal(visibleTrainingSkin('OLD_SCHOOL', false, true), 'OLD_SCHOOL');
   assert.equal(visibleTrainingSkin('QUICK_RESULT', false, true), 'QUICK_RESULT');
@@ -122,7 +123,7 @@ test('White paints Old School and Quick Result, and a hidden skin falls back to 
   setTrainingSkin('visionary');
   assert.equal(getTrainingSkin(), 'visionary');
   assert.equal(local.getItem(TRAINING_SKIN_KEY), 'visionary');
-  assert.equal(visibleTrainingSkin(getTrainingSkin(), false, true), 'MOCK_TOURNAMENT');
+  assert.equal(visibleTrainingSkin(getTrainingSkin(), false, true), 'visionary');
   assert.equal(getTrainingSkin(), 'visionary', 'the saved pick is kept');
 });
 
@@ -185,9 +186,11 @@ test('a Pages preview host lists the three White skins with no purchase flag, an
   assert.equal(whiteBaseSkinsOpen(closed, 'advantagebjjtimer.com'), false);
   assert.equal(whiteBaseSkinsOpen(purchased, 'advantagebjjtimer.com'), true);
   assert.equal(whiteBaseSkinsOpen(purchased, '67dd0da6.matboard.pages.dev'), true);
-  assert.deepEqual(scoreboardPickerSkins(true, false, whiteBaseSkinsOpen(closed, 'abc123.matboard.pages.dev')).map((skin) => skin.label), [...BASE_SCOREBOARD_LABELS]);
-  assert.deepEqual(timerPickerSkins(false, whiteBaseSkinsOpen(closed, 'abc123.matboard.pages.dev')).map((skin) => skin.label), [...BASE_TIMER_LABELS]);
-  assert.deepEqual(scoreboardPickerSkins(true, false, whiteBaseSkinsOpen(purchased, 'advantagebjjtimer.com')).map((skin) => skin.label), [...BASE_SCOREBOARD_LABELS]);
+  const boardLabels = [...BASE_SCOREBOARD_LABELS, ...POLISHED_SKINS.map((skin) => skin.label)];
+  const timerLabels = [...BASE_TIMER_LABELS, ...POLISHED_TIMER_SKINS.map((skin) => skin.label)];
+  assert.deepEqual(scoreboardPickerSkins(true, false, whiteBaseSkinsOpen(closed, 'abc123.matboard.pages.dev')).map((skin) => skin.label), boardLabels);
+  assert.deepEqual(timerPickerSkins(false, whiteBaseSkinsOpen(closed, 'abc123.matboard.pages.dev')).map((skin) => skin.label), timerLabels);
+  assert.deepEqual(scoreboardPickerSkins(true, false, whiteBaseSkinsOpen(purchased, 'advantagebjjtimer.com')).map((skin) => skin.label), boardLabels);
   // Locked production stays without a picker catalog.
   assert.equal(whiteBaseSkinsOpen(closed, 'advantagebjjtimer.com'), false);
 });

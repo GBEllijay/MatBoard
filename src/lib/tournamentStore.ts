@@ -22,9 +22,9 @@ export const PRO_MAX_COMPETITORS = 64;
 export const MAX_COMPETITORS = PRO_MAX_COMPETITORS;
 export const SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16] as const;
 export const PRO_SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16, 32, 64] as const;
-/** Advantage White mock tournament: 16 by default, optionally up to 36 (64-tree with byes). */
-export const WHITE_SIZE_PRESETS = [2, 3, 4, 5, 7, 8, 16, 36] as const;
-export const WHITE_MAX_COMPETITORS = 36;
+/** Advantage White mock tournament uses the engine maximum (64) and the same size chips as Pro. */
+export const WHITE_SIZE_PRESETS = PRO_SIZE_PRESETS;
+export const WHITE_MAX_COMPETITORS = PRO_MAX_COMPETITORS;
 export const BRACKET_NAME_MAX = 80;
 /** Header on the bracket. A new board starts here. Blank is a real saved value. */
 export const DEFAULT_BRACKET_HEADLINE = 'Tournament';
@@ -139,7 +139,7 @@ export const PHASE2_BOUT_LINK = {
 
 /**
  * Cloud sync of named brackets is intentionally out of this version, for every tier.
- * Instructor Edition, Pro, and seats save up to 64 on this device (localStorage).
+ * Instructor Edition, Pro, seats, and Advantage BJJ Scoreboard save up to the engine maximum (64) on this device (localStorage).
  * There is no bracket upload path to the academy or Advantage Cloud yet.
  */
 export const OWNER_BRACKET_CLOUD = {

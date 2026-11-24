@@ -88,7 +88,7 @@ test('Rounds controller uses the Classic board when that skin is picked', () => 
   assert.match(css, /\.controller\.controller--classic\.controller--break\s*\{[^}]*background:\s*#120e08/);
 });
 
-test('a custom timer skin stays stored and paints only for Media and above', () => {
+test('a custom timer skin stays stored and paints for Media and above and for paid White', () => {
   const id = customSkinValue('skinabc12345');
   assert.ok(id);
   setTrainingSkin(id);
@@ -96,7 +96,7 @@ test('a custom timer skin stays stored and paints only for Media and above', () 
   assert.equal(localStorage.getItem(TRAINING_SKIN_KEY), id);
   assert.equal(visibleTrainingSkin(id, true, false), id);
   assert.equal(visibleTrainingSkin(id, false, false), 'classic');
-  assert.equal(visibleTrainingSkin(id, false, true), 'MOCK_TOURNAMENT');
+  assert.equal(visibleTrainingSkin(id, false, true), id);
   setTrainingSkin('classic');
 });
 

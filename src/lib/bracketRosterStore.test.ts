@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   BRACKET_ROSTER_CSV_HEADERS,
   BRACKET_ROSTER_MAX,
+  BRACKET_ROSTER_STORAGE_KEY,
   WHITE_MATCH_NAMES_IMPORT_KEY,
   addBracketRosterEntry,
   bracketRosterPrefill,
@@ -106,13 +107,14 @@ test('CSV parse accepts a shuffled header and rejects a missing column', () => {
   assert.match(bad.error ?? '', /name,gym,weight,division,age,rank/);
 });
 
-test('CSV parse truncates past 36 and skips duplicate names', () => {
+test('CSV parse truncates past the roster safety ceiling and skips duplicate names', () => {
   const rows = ['name,gym,weight,division,age,rank'];
-  for (let i = 1; i <= 40; i += 1) rows.push(`Person ${i},Gym,150,Adult,20,White`);
+  for (let i = 1; i <= 1005; i += 1) rows.push(`Person ${i},Gym,150,Adult,20,White`);
   rows.push('Person 1,Other,150,Adult,20,White');
   const result = parseBracketRosterCsv(rows.join('\n'));
+  assert.equal(BRACKET_ROSTER_MAX, 1000);
   assert.equal(result.entries.length, BRACKET_ROSTER_MAX);
-  assert.equal(result.truncated, 4);
+  assert.equal(result.truncated, 5);
   assert.equal(result.skipped, 1);
 });
 
@@ -174,7 +176,7 @@ test('import replace and seed fill a 16-person White bracket from the roster', (
   resetTournament();
 });
 
-test('Fill respects the selected White bracket size instead of always using 36', () => {
+test('Fill respects the selected White bracket size instead of always using the roster cap', () => {
   resetBracketRosterForTests();
   resetTournament();
   replaceBracketRoster(samplePeople(36));
@@ -190,6 +192,46 @@ test('Fill respects the selected White bracket size instead of always using 36',
   assert.equal(getTournament().size, 16);
   resetBracketRosterForTests();
   resetTournament();
+});
+
+test('a large roster still fills a White bracket with at most 64 names', () => {
+  resetBracketRosterForTests();
+  resetTournament();
+  replaceBracketRoster(samplePeople(80));
+  assert.equal(getBracketRoster().entries.length, 80);
+  const placed = seedWhiteBracketFromRoster();
+  assert.equal(placed, 64);
+  assert.equal(getTournament().size, 64);
+  const forced = seedWhiteBracketFromRoster(200, { newBoard: false });
+  assert.equal(forced, 64);
+  assert.equal(getTournament().size, 64);
+  const sixtyFour = seedWhiteBracketFromRoster(64, { newBoard: false });
+  assert.equal(sixtyFour, 64);
+  assert.equal(getTournament().size, 64);
+  resetBracketRosterForTests();
+  resetTournament();
+});
+
+test('the roster safety ceiling is 1000, and that list fits in localStorage', () => {
+  resetBracketRosterForTests();
+  replaceBracketRoster(samplePeople(1000));
+  assert.equal(getBracketRoster().entries.length, 1000);
+  const overflow = addBracketRosterEntry({
+    name: 'Person 1001',
+    gym: 'Example Academy',
+    weight: '155',
+    division: 'Adult',
+    age: '28',
+    rank: 'Purple',
+  });
+  assert.equal(overflow, null);
+  assert.equal(getBracketRoster().entries.length, 1000);
+  const raw = localStorage.getItem(BRACKET_ROSTER_STORAGE_KEY);
+  assert.ok(raw);
+  assert.equal(JSON.parse(raw).entries.length, 1000);
+  // Typical browsers cap localStorage near 5 MB. A full 1000-name roster is well under that.
+  assert.ok(raw.length < 1_000_000, `roster JSON was ${raw.length} characters`);
+  resetBracketRosterForTests();
 });
 
 test('import copies Match names into an empty Bracket Roster once and leaves the old key', () => {
