@@ -21,7 +21,7 @@ export function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service — Advantage"
-      updated="October 27, 2026"
+      updated="November 23, 2026"
       related={{ to: '/privacy', label: 'Privacy Policy' }}
     >
       <section>
@@ -85,8 +85,10 @@ export function TermsPage() {
           up that storage, and the account you connect is your own.
         </p>
         <p>
-          Payments are processed by Stripe. Advantage App, LLC does not receive or store your full
-          card number. Prices may change in the future, but a change does not affect a purchase
+          Purchases made on our website are processed by Stripe. Purchases made in the Apple App
+          Store or Google Play are processed by Apple or Google, and refunds for those purchases are
+          handled under Apple’s or Google’s refund rules. Advantage App, LLC does not receive or
+          store your full card number. Prices may change in the future, but a change does not affect a purchase
           you’ve already completed.
         </p>
         <p>
