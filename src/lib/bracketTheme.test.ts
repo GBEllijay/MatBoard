@@ -36,9 +36,11 @@ test('Bright is the default Mock Tournament theme', () => {
   assert.equal(getBracketTheme(), 'bright');
 });
 
-test('Podium & Mat Strip is a registered bracket theme alongside Bright and Dark', () => {
+test('Podium & Mat Strip is a registered bracket theme alongside Advantage and Dark', () => {
   assert.deepEqual([...BRACKET_THEMES], ['bright', 'dark', 'podium']);
   assert.equal(WHITE_BRACKET_THEME, 'podium');
+  assert.equal(BRACKET_THEME_LABELS.bright, 'Advantage');
+  assert.equal(BRACKET_THEME_LABELS.dark, 'Dark');
   assert.equal(BRACKET_THEME_LABELS.podium, 'Podium & Mat Strip');
   assert.equal(isBracketTheme('podium'), true);
   assert.equal(isBracketTheme('beige-tatami'), false);

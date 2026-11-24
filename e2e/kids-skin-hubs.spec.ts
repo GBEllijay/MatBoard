@@ -38,10 +38,10 @@ async function seed(page: Page) {
 }
 
 function skinButton(page: Page) {
-  return page.getByRole('button', { name: /^Skin/ });
+  return page.getByRole('button', { name: /^Skins/ });
 }
 
-test('Skin picker shows on Coach Unlimited and Pro, and stays hidden on plain Coach', async ({ page }) => {
+test('Skins picker shows on Coach Unlimited and Pro, and stays hidden on plain Coach', async ({ page }) => {
   test.setTimeout(60_000);
   await seed(page);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -61,7 +61,7 @@ test('Skin picker shows on Coach Unlimited and Pro, and stays hidden on plain Co
   await picker.getByRole('radio', { name: 'Ocean' }).click();
   await expect(picker).toBeHidden();
   await expect(page.locator('main')).toHaveClass(/tournament--kids-ocean/);
-  await expect(skinButton(page)).toHaveAttribute('aria-label', 'Skin, Ocean');
+  await expect(skinButton(page)).toHaveAttribute('aria-label', 'Skins, Ocean');
 
   await page.getByRole('button', { name: 'Open Semifinals on scoreboard' }).first().click();
   await expect(page).toHaveURL(/from=unlimited/);

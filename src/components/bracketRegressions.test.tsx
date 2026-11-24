@@ -311,7 +311,7 @@ test('Skin opens the thumbnail picker when a linked bout has no result', async (
     />,
   );
   try {
-    const button = [...document.querySelectorAll('button')].find((el) => el.textContent?.trim() === 'Skin');
+    const button = [...document.querySelectorAll('button')].find((el) => el.textContent?.trim() === 'Skins');
     assert.ok(button);
     assert.equal(button.disabled, false);
     assert.equal(button.getAttribute('aria-expanded'), 'false');
@@ -323,7 +323,7 @@ test('Skin opens the thumbnail picker when a linked bout has no result', async (
     assert.ok(picker, 'Skin picker opens');
     assert.equal(picker.getAttribute('role'), 'dialog');
     assert.equal(button.getAttribute('aria-expanded'), 'true');
-    assert.equal(picker.querySelectorAll('.kids-skin__thumb').length, 6);
+    assert.equal(picker.querySelectorAll('.kids-skin__grid .kids-skin__thumb').length, 6);
   } finally {
     unmount(mounted);
   }
@@ -396,7 +396,7 @@ test('Skin stays enabled after Score and Back to bracket', { timeout: 8000 }, as
   );
   try {
     const skin = () =>
-      [...document.querySelectorAll('button')].find((el) => (el.getAttribute('aria-label') || '').startsWith('Skin'));
+      [...document.querySelectorAll('button')].find((el) => (el.getAttribute('aria-label') || '').startsWith('Skins'));
     assert.equal(skin()?.disabled, false, 'Skin starts enabled');
     const score = document.querySelector('button.t-score');
     assert.ok(score instanceof HTMLElement, 'semifinal Score button');
@@ -473,7 +473,7 @@ test('Coach Unlimited Score keeps the Skin picker on Back to bracket', async () 
     });
     await new Promise((resolve) => setTimeout(resolve, 30));
     const skin = [...document.querySelectorAll('button')].find((el) =>
-      (el.getAttribute('aria-label') || '').startsWith('Skin'),
+      (el.getAttribute('aria-label') || '').startsWith('Skins'),
     );
     assert.ok(skin, 'Skin is back on the Coach Unlimited bracket');
     assert.equal(skin.disabled, false);
@@ -596,7 +596,7 @@ test('the kids Skin picker opens on Pro, Coach Unlimited, and Instructor Edition
     try {
       assert.equal(board.host.querySelector('main')?.classList.contains('tournament--kids-dinos'), true);
       const skin = [...board.host.querySelectorAll('button')].find((button) =>
-        (button.getAttribute('aria-label') || '').startsWith('Skin'),
+        (button.getAttribute('aria-label') || '').startsWith('Skins'),
       );
       assert.ok(skin, `Skin on ${entry}`);
       assert.equal(skin.disabled, false);
@@ -604,8 +604,8 @@ test('the kids Skin picker opens on Pro, Coach Unlimited, and Instructor Edition
         skin.click();
       });
       await settle();
-      assert.equal(document.querySelectorAll('.kids-skin__thumb').length, 6);
-      const ocean = [...document.querySelectorAll('.kids-skin__thumb')].find(
+      assert.equal(document.querySelectorAll('.kids-skin__grid .kids-skin__thumb').length, 6);
+      const ocean = [...document.querySelectorAll('.kids-skin__grid .kids-skin__thumb')].find(
         (button) => button.textContent?.includes('Ocean'),
       );
       assert.ok(ocean instanceof HTMLElement);
@@ -678,11 +678,11 @@ test('bracket controls sit under the board and each one still clicks', async () 
     assert.ok(center instanceof HTMLElement);
     assert.ok(center.querySelector('[aria-label="Division or class name"]') instanceof HTMLInputElement);
     assert.ok(center.querySelector('.tournament__roundline'));
-    const skinButton = [...tools.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Skin');
+    const skinButton = [...tools.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Skins');
     assert.ok(skinButton);
     assert.ok(
       center.compareDocumentPosition(skinButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-      'seed line sits above Skin',
+      'seed line sits above Skins',
     );
     assert.equal(tools.getAttribute('aria-label'), 'Bracket controls');
     assert.ok(
@@ -692,9 +692,12 @@ test('bracket controls sit under the board and each one still clicks', async () 
 
     const control = (label: string) =>
       [...tools.querySelectorAll('button')].find((button) => button.textContent?.trim() === label);
-    for (const label of ['Skin', 'Bright', 'Dark', '16', 'Edit names', 'Fill from check-in', 'Undo last result', 'Reset']) {
+    for (const label of ['Skins', '16', 'Edit names', 'Fill from check-in', 'Undo last result', 'Reset']) {
       assert.ok(control(label), `${label} is under the bracket`);
     }
+    assert.equal(control('Bright'), undefined, 'Bright left the bar');
+    assert.equal(control('Dark'), undefined, 'Dark left the bar');
+    assert.equal(control('Advantage'), undefined, 'Advantage is in Skins, not on the bar');
     const save = tools.querySelector('.tournament__save-btn');
     assert.ok(save instanceof HTMLButtonElement, 'Save is under the bracket');
     assert.equal(save.disabled, false);
@@ -716,9 +719,15 @@ test('bracket controls sit under the board and each one still clicks', async () 
       assert.equal(document.querySelector('.sheet'), null);
     };
 
-    await click(control('Dark')!);
+    const themeBtn = (label: string) =>
+      [...document.querySelectorAll('.kids-skin__themes button')].find((button) => button.textContent?.trim() === label);
+    await click(control('Skins')!);
+    assert.ok(themeBtn('Advantage'), 'Advantage is in the Skins menu');
+    assert.ok(themeBtn('Dark'), 'Dark is in the Skins menu');
+    await click(themeBtn('Dark')!);
     assert.equal(main?.classList.contains('tournament--dark'), true);
-    await click(control('Bright')!);
+    await click(control('Skins')!);
+    await click(themeBtn('Advantage')!);
     assert.equal(main?.classList.contains('tournament--bright'), true);
 
     await click(control('16')!);
@@ -747,9 +756,9 @@ test('bracket controls sit under the board and each one still clicks', async () 
     await closeSheet();
     assert.equal(slotName(getTournament(), 'r16-0-a'), 'Ada Cruz');
 
-    await click(control('Skin')!);
-    assert.ok(document.querySelector('.kids-skin__picker'), 'Skin picker opens from under the bracket');
-    assert.equal(document.querySelectorAll('.kids-skin__thumb').length, 6);
+    await click(control('Skins')!);
+    assert.ok(document.querySelector('.kids-skin__picker'), 'Skins picker opens from under the bracket');
+    assert.equal(document.querySelectorAll('.kids-skin__grid .kids-skin__thumb').length, 6);
 
     await click(fullscreen);
     assert.equal(fullscreenCalls, 1);
@@ -887,7 +896,7 @@ test('the bracket title is editable on every skin and never shows the skin name'
     assert.equal(coach.host.querySelector('.tournament__tools .tournament__roundline') instanceof HTMLElement, true);
     assert.equal(coach.host.querySelector('.tournament__bar .tournament__roundline'), null);
     // Instructor Edition gets the full suite, so the from=coach board keeps the Skin button too.
-    assert.equal([...coach.host.querySelectorAll('button')].some((button) => button.textContent?.trim() === 'Skin'), true);
+    assert.equal([...coach.host.querySelectorAll('button')].some((button) => button.textContent?.trim() === 'Skins'), true);
   } finally {
     unmount(coach);
     resetTournament();
@@ -904,7 +913,7 @@ test('Skin stays shut while a sheet is open and still opens again after it close
     />,
   );
   try {
-    const button = [...document.querySelectorAll('button')].find((el) => el.textContent?.trim() === 'Skin');
+    const button = [...document.querySelectorAll('button')].find((el) => el.textContent?.trim() === 'Skins');
     assert.ok(button);
     assert.equal(button.disabled, true);
     button.click();
@@ -989,10 +998,14 @@ test('Podium & Mat Strip registers as a White-gated theme with mat edges, gold f
   const mounted = mount(<TournamentPage />, '/white/brackets?from=white');
   try {
     await settle();
-    const podiumChip = [...mounted.host.querySelectorAll('.tournament__theme button')].find(
+    const skins = [...mounted.host.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Skins');
+    assert.ok(skins, 'Skins button is on the White bar');
+    skins.click();
+    await settle();
+    const podiumChip = [...mounted.host.querySelectorAll('.kids-skin__themes button')].find(
       (button) => button.textContent?.trim() === 'Podium & Mat Strip',
     );
-    assert.ok(podiumChip, 'Podium & Mat Strip chip is listed for White');
+    assert.ok(podiumChip, 'Podium & Mat Strip is listed in Skins for White');
     podiumChip.click();
     await settle();
     const main = mounted.host.querySelector('main.tournament');
@@ -1024,8 +1037,15 @@ test('Podium & Mat Strip registers as a White-gated theme with mat edges, gold f
   const closed = mount(<TournamentPage />, '/white/brackets?from=white');
   try {
     await settle();
-    const labels = [...closed.host.querySelectorAll('.tournament__theme button')].map((button) => button.textContent?.trim());
+    const skins = [...closed.host.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Skins');
+    assert.ok(skins, 'Skins stays on the bar when Podium is gated off');
+    skins.click();
+    await settle();
+    const labels = [...closed.host.querySelectorAll('.kids-skin__themes button')].map((button) => button.textContent?.trim());
     assert.equal(labels.includes('Podium & Mat Strip'), false);
+    assert.equal(labels.includes('Advantage'), true);
+    assert.equal(labels.includes('Dark'), true);
+    assert.equal(labels.includes('Bright'), false);
     assert.equal(closed.host.querySelector('main.tournament')?.classList.contains('tournament--bright'), true);
     assert.equal(closed.host.querySelector('main.tournament')?.classList.contains('tournament--podium'), false);
   } finally {
@@ -1050,4 +1070,35 @@ test('Podium & Mat Strip registers as a White-gated theme with mat edges, gold f
   assert.doesNotMatch(css, /#b08948|#d4a574|#c4921c|#1f1a12|#16130f/);
   const boardCss = readFileSync('src/pages/tournamentBoard.css', 'utf8');
   assert.match(boardCss, /tournament--podium \.bracket/);
+});
+
+test('the White bar drops Seeded and keeps Advantage and Dark inside Skins', async () => {
+  localStorage.clear();
+  resetTournament();
+  setCompetitorCount(16);
+  setWhiteUnlocked(true);
+  setBracketTheme('bright');
+  setKidsEnabled(false);
+  const mounted = mount(<TournamentPage />, '/white/brackets?from=white');
+  try {
+    await settle();
+    const line = mounted.host.querySelector('.tournament__roundline')?.textContent?.trim();
+    assert.equal(line, 'Round of 16 · 16 competitors');
+    assert.equal(line?.includes('Seeded'), false);
+    assert.equal(mounted.host.querySelector('.tournament__theme'), null);
+    const skins = [...mounted.host.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'Skins');
+    assert.ok(skins);
+    await act(async () => {
+      skins.click();
+    });
+    await settle();
+    const themes = [...mounted.host.querySelectorAll('.kids-skin__themes button')].map((button) => button.textContent?.trim());
+    assert.deepEqual(themes, ['Advantage', 'Dark', 'Podium & Mat Strip']);
+    assert.equal(mounted.host.querySelectorAll('.kids-skin__grid .kids-skin__thumb').length, 0);
+  } finally {
+    unmount(mounted);
+    resetTournament();
+    setBracketTheme('bright');
+    lockWhite();
+  }
 });

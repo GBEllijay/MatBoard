@@ -81,7 +81,7 @@ test('kids and adult brackets keep the corner back and drop the center Home mark
     const placed = await page.evaluate(() => {
       const round = document.querySelector('.tournament__tools .tournament__roundline');
       const skin = [...document.querySelectorAll('.tournament__tools button')].find(
-        (button) => button.textContent?.trim() === 'Skin',
+        (button) => button.textContent?.trim() === 'Skins',
       );
       const bracket = document.querySelector('.bracket');
       if (!round || !bracket) return null;
@@ -94,7 +94,7 @@ test('kids and adult brackets keep the corner back and drop the center Home mark
       };
     });
     expect(placed?.belowBracket, 'seed line is under the bracket').toBe(true);
-    expect(placed?.aboveSkin, 'seed line is above Skin').toBe(true);
+    expect(placed?.aboveSkin, 'seed line is above Skins').toBe(true);
     await page.screenshot({
       path: entry.shot.replace(/\.png$/, '-controls.png'),
     });
@@ -103,7 +103,7 @@ test('kids and adult brackets keep the corner back and drop the center Home mark
       await title.scrollIntoViewIfNeeded();
       await title.fill('Spring Open');
       await expect(title).toHaveValue('Spring Open');
-      await page.getByRole('button', { name: /^Skin/ }).click();
+      await page.getByRole('button', { name: /^Skins/ }).click();
       await page.getByRole('radio', { name: 'Dinos' }).click();
       await expect(page.locator('main')).toHaveClass(/tournament--kids-dinos/);
       await expect(title).toHaveValue('Spring Open');
