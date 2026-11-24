@@ -9,19 +9,22 @@ import { SiteFooter } from '../components/SiteFooter';
 import { PRODUCTS_PATH } from '../lib/productNames';
 import { isPreviewWhiteUnlocked } from '../lib/previewWhiteBypass';
 import { lockWhite } from '../lib/whiteUnlock';
+import { useWhitePublicPricing } from '../hooks/useWhitePublicPricing';
+import { whiteBuyCtaLabel } from '../lib/whitePurchase';
 
-export const WHITE_HUB_TOOLS_LINE = 'BJJ Scoreboard, Round Timer, Brackets & Bracket Roster';
+export const WHITE_HUB_TOOLS_LINE = 'BJJ Scoreboard, Round Timer & Mock Tournament Software';
 export const WHITE_HUB_CAST_LINE =
   'Your Scoreboard, Round Timer and Mock Tournament Software. Cast to your TV from your phone or PC.';
 
 export function WhitePage() {
   const navigate = useNavigate();
+  const whitePricing = useWhitePublicPricing();
   return (
     <main className="home home--white">
       <div className="home__inner">
         <HomeMark to={PRODUCTS_PATH} />
 
-        <nav className="home__modes" aria-label="Advantage White">
+        <nav className="home__modes" aria-label="Advantage BJJ Scoreboard">
           <h2 className="home__tools-line">{WHITE_HUB_TOOLS_LINE}</h2>
           <LiveBoutCard />
           <RoundsCard />
@@ -48,7 +51,7 @@ export function WhitePage() {
           </InstructionsButton>
           {isPreviewWhiteUnlocked() ? (
             <p className="home__soon">
-              Advantage White is on for this preview.{' '}
+              Advantage BJJ Scoreboard is on for this preview.{' '}
               <Link className="home__text-btn" to={PRODUCTS_PATH}>
                 All products
               </Link>
@@ -57,11 +60,11 @@ export function WhitePage() {
             <>
               <p className="home__soon">
                 <Link className="home__text-btn" to="/buy">
-                  Buy Advantage White — $9.99
+                  {whiteBuyCtaLabel(whitePricing.activePriceCents)}
                 </Link>
               </p>
               <p className="home__soon">
-                Advantage White is on for this browser.{' '}
+                Advantage BJJ Scoreboard is on for this browser.{' '}
                 <Link className="home__text-btn" to={PRODUCTS_PATH}>
                   All products
                 </Link>
@@ -74,7 +77,7 @@ export function WhitePage() {
                     navigate(PRODUCTS_PATH);
                   }}
                 >
-                  Lock White
+                  Lock Advantage BJJ Scoreboard
                 </button>
               </p>
             </>

@@ -12,6 +12,7 @@ import {
 } from './paywallDecisions.ts';
 import { LEGACY_AMNESTY_ENDS_AT } from '../lib/legacyUnlock.ts';
 import { SEAT_SUNSET_ENDS_AT } from '../lib/seatSunset.ts';
+import { whitePublicPricing } from '../lib/whiteLaunchPricing.ts';
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -30,6 +31,8 @@ export type ConfigEnv = EmailEnv & {
   LEGACY_AMNESTY_ENDS_AT?: string;
   MIN_APP_VERSION?: string;
   SEAT_SUNSET_ENDS_AT?: string;
+  /** YYYY-MM-DD. Unset keeps White at the standard $19.99 price. */
+  WHITE_LAUNCH_DATE?: string;
 };
 
 function amnestyEnd(env: ConfigEnv): string {
@@ -73,6 +76,7 @@ export function handlePublicConfig(request: Request, env: ConfigEnv, db: D1Datab
     turnstileSiteKey: env.TURNSTILE_SITE_KEY?.trim() || null,
     // Setup check for the unlock-code box. Counts only: no hashes, ids, or codes.
     codes: { pepperSet: Boolean(env.CODE_HASH_PEPPER?.trim()), ...codeCatalogStatus(env.CODE_CATALOG) },
+    whitePricing: whitePublicPricing(env.WHITE_LAUNCH_DATE),
   };
   if (!signing) {
     body.message = 'Entitlement signing is not set up yet. Set ENTITLEMENT_SIGNING_KEY. Owner test unlock still works.';

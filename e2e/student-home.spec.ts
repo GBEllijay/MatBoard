@@ -22,7 +22,7 @@ test('home picker keeps White, Instructor (coach), and Pro, with locked Student 
 
   const titles = page.locator('.home__modes .mode-card strong');
   await expect(titles).toHaveText([
-    'Advantage White',
+    'Advantage BJJ Scoreboard',
     'Advantage – Student Edition',
     'Advantage Media Edition',
     'Advantage Instructor Edition',
@@ -31,10 +31,10 @@ test('home picker keeps White, Instructor (coach), and Pro, with locked Student 
   ]);
 
   const white = page.locator('.mode-card--white');
-  await expect(white.getByRole('link', { name: 'Advantage White', exact: true })).toHaveAttribute('href', '/buy');
-  await expect(white.getByRole('link', { name: 'Buy — $9.99' })).toHaveAttribute('href', '/buy');
+  await expect(white.getByRole('link', { name: 'Advantage BJJ Scoreboard', exact: true })).toHaveAttribute('href', '/buy');
+  await expect(white.getByRole('link', { name: 'Buy — $19.99' })).toHaveAttribute('href', '/buy');
   await expect(white.getByRole('link', { name: 'advantageappllc@gmail.com' })).toBeVisible();
-  await expect(white).toContainText('White is in alpha testing.');
+  await expect(white).toContainText('Advantage BJJ Scoreboard is in alpha testing.');
   await expect(white).not.toContainText(/free/i);
   await expect(page.locator('.mode-card--coach')).toContainText('Coach is in alpha testing.');
   await expect(page.locator('.mode-card--pro:not(.mode-card--cloud)')).toContainText('Pro is in alpha testing.');
@@ -266,7 +266,7 @@ test('a direct /student visit stays closed, and sign out still leaves the seat',
   await page.reload();
   await expect(page.getByRole('button', { name: 'Sign out of seat' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open Instructor Edition', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/buy');
+  await expect(page.getByRole('link', { name: /Advantage BJJ Scoreboard/ })).toHaveAttribute('href', '/buy');
 });
 
 test('Student Edition owner unlock opens the hub from the locked card', async ({ page }) => {
@@ -290,7 +290,7 @@ test('Student Edition owner unlock opens the hub from the locked card', async ({
   const openStudent = page.getByRole('link', { name: 'Open Student Edition', exact: true });
   await expect(openStudent).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
+  await expect(page.getByRole('link', { name: /Advantage BJJ Scoreboard/ })).toHaveAttribute('href', '/white');
   await openStudent.click();
   await expect(page).toHaveURL(/\/student$/);
   await expect(page.getByRole('link', { name: 'Training & Journal', exact: true })).toBeVisible();
@@ -335,7 +335,7 @@ test('the Pro owner code opens the Student Edition card', async ({ page }) => {
   const openStudent = page.getByRole('link', { name: 'Open Student Edition', exact: true });
   await expect(openStudent).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/buy');
+  await expect(page.getByRole('link', { name: /Advantage BJJ Scoreboard/ })).toHaveAttribute('href', '/buy');
   await openStudent.click();
   await expect(page).toHaveURL(/\/student$/);
   await expect(page.getByRole('link', { name: 'Training & Journal', exact: true })).toBeVisible();
@@ -368,7 +368,7 @@ test('the full owner unlock code opens the Student Edition hub', async ({ page }
   await page.goto('/products');
   await expect(page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
+  await expect(page.getByRole('link', { name: /Advantage BJJ Scoreboard/ })).toHaveAttribute('href', '/white');
   await page.goto('/student');
   await expect(page.getByRole('link', { name: 'Training & Journal', exact: true })).toHaveCount(0);
 });

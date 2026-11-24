@@ -1462,7 +1462,7 @@ test('Terms contain the Practical Benchmarks section', () => {
       BENCHMARK_DISCLAIMER_MEDIUM,
       'Advantage does not set requirements. Your federation and your instructor decide all actual promotion requirements.',
     );
-    assert.match(document.body.textContent ?? '', /Last updated: October 27, 2026/);
+    assert.match(document.body.textContent ?? '', /Last updated: November 23, 2026/);
   } finally {
     unmount(page);
   }

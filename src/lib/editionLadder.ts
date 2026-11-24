@@ -41,7 +41,7 @@ export type LadderPlanRung = {
 };
 
 export const LADDER_NAME: Record<LadderId, string> = {
-  white: 'Advantage White',
+  white: 'Advantage BJJ Scoreboard',
   student: STUDENT_EDITION_NAME,
   media: MEDIA_EDITION_NAME,
   instructor: INSTRUCTOR_HOME_TITLE,

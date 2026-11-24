@@ -11,6 +11,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { useWhitePublicPricing } from '../hooks/useWhitePublicPricing';
 import { settleDemoCarryover } from '../lib/demoCarryover';
 import { confirmCheckoutSession, withCheckoutNonce } from '../lib/codeRedeemClient';
 import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
@@ -22,12 +23,15 @@ import {
   WHITE_CHECKOUT_API,
   WHITE_FEATURES,
   WHITE_INCLUDED,
+  WHITE_BUY_SUBTITLE,
   WHITE_PRICE_DETAIL,
-  WHITE_PRICE_LABEL,
   WHITE_STRIPE_NOTE,
   formatUsdFromCents,
 } from '../lib/whitePurchase';
 import { rememberWhitePurchase, restoreHref } from '../lib/whiteUnlock';
+
+/** Owner 2026-11-23: hide Student, Media, Instructor, Pro and Pro + Cloud on /buy until they are for sale. */
+const SHOW_OTHER_PRODUCTS = false;
 
 /** The /buy restore panel. The email and the person check live on /restore. */
 export const BUY_RESTORE_COPY =
@@ -52,6 +56,8 @@ export function BuyWhitePage() {
   const [studentError, setStudentError] = useState<string | null>(null);
   const halfOff = useHalfOffArrival();
   const unlocked = useWhiteUnlocked();
+  const whitePricing = useWhitePublicPricing();
+  const checkoutPriceLabel = formatUsdFromCents(whitePricing.activePriceCents);
   const studentOpen = studentEditionEntitled({
     pro: useProUnlocked(),
     coach: useCoachUnlocked(),
@@ -61,7 +67,7 @@ export function BuyWhitePage() {
 
   useEffect(() => {
     const previous = document.title;
-    document.title = 'Buy Advantage';
+    document.title = 'Buy Advantage BJJ Scoreboard';
     return () => {
       document.title = previous;
     };
@@ -194,10 +200,12 @@ export function BuyWhitePage() {
               <span className="belt-tip__bar" />
             </span>
             <p className="buy__kicker">Available now</p>
-            <h2>Advantage White</h2>
+            <h2>Advantage BJJ Scoreboard</h2>
+            <p className="buy__subtitle">{WHITE_BUY_SUBTITLE}</p>
             <p className="buy__price">
-              {WHITE_PRICE_LABEL} <span>{WHITE_PRICE_DETAIL}</span>
+              {formatUsdFromCents(whitePricing.listPriceCents)} <span>{WHITE_PRICE_DETAIL}</span>
             </p>
+            {whitePricing.launchCopy ? <p className="buy__launch-price">{whitePricing.launchCopy}</p> : null}
             <p>{WHITE_STRIPE_NOTE}</p>
             <p className="buy__storage">{WHITE_STORAGE_LINE}</p>
           </header>
@@ -209,7 +217,7 @@ export function BuyWhitePage() {
                 {confirming
                   ? 'Confirming that payment with Stripe.'
                   : record?.entitled
-                    ? 'Advantage White is unlocked on this device.'
+                    ? 'Advantage BJJ Scoreboard is unlocked on this device.'
                     : "That payment isn't confirmed. Nothing was unlocked."}
               </p>
             ) : null}
@@ -226,12 +234,12 @@ export function BuyWhitePage() {
             ) : null}
             {freeUnlock ? (
               <p className="buy__status buy__status--ok" role="status">
-                Advantage White is unlocked at $0. No card was charged.
+                Advantage BJJ Scoreboard is unlocked at $0. No card was charged.
               </p>
             ) : null}
             {unlocked && !freeUnlock && checkout !== 'success' ? (
               <p className="buy__status buy__status--ok" role="status">
-                Advantage White is unlocked on this device.
+                Advantage BJJ Scoreboard is unlocked on this device.
               </p>
             ) : null}
             {error ? (
@@ -241,6 +249,7 @@ export function BuyWhitePage() {
             ) : null}
             <AlphaCodeEntry
               tier="white"
+              showRequestButton={false}
               showEmail
               email={accessEmail}
               onEmailChange={setAccessEmail}
@@ -252,11 +261,11 @@ export function BuyWhitePage() {
               onPromoCheckout={startCheckout}
             />
             <p className="buy__hint">
-              Optional. An unlock code opens Advantage White on this device. A promo code applies at Stripe checkout.
+              Optional. An unlock code opens Advantage BJJ Scoreboard on this device. A promo code applies at Stripe checkout.
             </p>
             {unlocked ? (
               <Link className="btn btn--white" to="/white">
-                Open White
+                Open Advantage BJJ Scoreboard
               </Link>
             ) : null}
             {!unlocked || promoInput.trim() ? (
@@ -265,7 +274,7 @@ export function BuyWhitePage() {
                   ? 'Opening checkout…'
                   : unlocked
                     ? 'Apply code'
-                    : `Continue to checkout — ${WHITE_PRICE_LABEL}`}
+                    : `Continue to checkout — ${checkoutPriceLabel}`}
               </button>
             ) : null}
             <p>
@@ -305,6 +314,9 @@ export function BuyWhitePage() {
             </section>
           )}
 
+          {/* Owner 2026-11-23: White is the only product for sale, so the other products stay hidden. */}
+          {SHOW_OTHER_PRODUCTS ? (
+            <>
           {/* Higher tiers in ladder order: Student, Media, Instructor Edition, Pro. */}
           <HigherTierList
             from="white"
@@ -333,6 +345,8 @@ export function BuyWhitePage() {
             }}
           />
           <ProCloudBuyCard />
+            </>
+          ) : null}
         </article>
         <SiteFooter />
       </div>

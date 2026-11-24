@@ -41,7 +41,7 @@ test('combined ladder strings and prices are final', () => {
   assert.deepEqual(rows.map((r) => r[0]), ['white', 'blue', 'purple', 'brown', 'black', 'black']);
   const byId = Object.fromEntries(STOREFRONT_BELT_LADDER.map((r) => [r.id, r]));
   assert.equal(byId.white.blurb, 'BJJ scoreboard and round timer.');
-  assert.equal(byId.white.cardPrice, '$9.99 one-time');
+  assert.equal(byId.white.cardPrice, '$19.99 one-time');
   assert.equal(byId.white.status, 'Available now');
   assert.equal(byId.student.blurb, 'Personal BJJ Training Journal and More.');
   assert.equal(byId.student.cardPrice, '$19.99 one-time');

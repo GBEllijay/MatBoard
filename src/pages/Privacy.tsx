@@ -5,7 +5,7 @@ export function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy — Advantage"
-      updated="October 27, 2026"
+      updated="November 23, 2026"
       related={{ to: '/terms', label: 'Terms of Service' }}
     >
       <section>
@@ -84,9 +84,13 @@ export function PrivacyPage() {
       <section>
         <h3>4. Payments and Alpha Requests</h3>
         <p>
-          Stripe collects your payment details when you buy. We receive limited purchase information
-          from Stripe, such as your email address, what you bought, and the amount, so we can unlock
-          your purchase and provide support. If you email us for an alpha code, we keep your email
+          When you buy on our website, Stripe collects your payment details. We receive limited
+          purchase information from Stripe, such as your email address, what you bought, and the
+          amount, so we can unlock your purchase and provide support. When you buy in the Apple App
+          Store or Google Play, Apple or Google collects your payment details and handles refunds
+          under its own refund rules. We do not receive your card details or your Apple or Google
+          account email from those stores, only confirmation of what was purchased so we can unlock
+          it. If you email us for an alpha code, we keep your email
           address and message to reply and manage your access. That address is{' '}
           <a href={`mailto:${SITE_FEEDBACK_EMAIL}`}>{SITE_FEEDBACK_EMAIL}</a>.
         </p>

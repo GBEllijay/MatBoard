@@ -9,7 +9,7 @@ export const MEDIA_INFO_PATH = '/editions/media';
  * products page. Each link opens that tier's public description page.
  */
 export const LEARN_MORE = {
-  white: { label: 'Learn more about Advantage White', to: TIER_BUY_PATHS.white },
+  white: { label: 'Learn more about Advantage BJJ Scoreboard', to: TIER_BUY_PATHS.white },
   student: { label: 'Learn more about Student Edition', to: TIER_BUY_PATHS.student },
   media: { label: 'Learn more about Media Edition', to: MEDIA_INFO_PATH },
   instructor: { label: 'Learn more about Instructor Edition', to: TIER_BUY_PATHS.instructor },

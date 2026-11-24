@@ -54,9 +54,9 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.png', 'favicon.svg', 'advantage-icon.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'home-mat-tatami.png', 'sounds/parou-stop-gaming-mic.mp3', 'sounds/parou-stop.mp3', 'sounds/parou.mp3', 'sounds/combate.mp3'],
       manifest: {
-        name: 'Advantage',
+        name: 'Advantage BJJ Scoreboard',
         short_name: 'Advantage',
-        description: "Gym match scoreboard, round timer, and Gym Owner and Instructor's Console.",
+        description: 'BJJ scoreboard, round timer, and mock tournament software.',
         theme_color: '#0b0d10',
         background_color: '#0b0d10',
         // Home-screen app opens fullscreen: no Android status bar or battery

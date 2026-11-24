@@ -8,6 +8,8 @@ import {
   PRO_LIST_PRICE_CENTS,
   PRO_MONTHLY_PRICE_CENTS,
 } from '../lib/productPrices.ts';
+import { WHITE_LAUNCH_PRICE_CENTS, WHITE_LIST_PRICE_CENTS } from '../lib/whitePurchase.ts';
+import { whiteActivePriceCents, whiteCheckoutPriceEnvKey } from '../lib/whiteLaunchPricing.ts';
 import { normalizeEmail } from './entitlements.ts';
 import {
   API_PRODUCT_COACH,
@@ -27,6 +29,14 @@ export type StripeRuntimeEnv = {
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_PRICE_WHITE?: string;
+  /** One-time $15.99 launch price. Used only while WHITE_LAUNCH_DATE is in its two-month window. */
+  STRIPE_PRICE_WHITE_LAUNCH?: string;
+  /**
+   * YYYY-MM-DD start of the White launch price. Unset keeps Checkout on STRIPE_PRICE_WHITE
+   * ($19.99). When set, Checkout uses STRIPE_PRICE_WHITE_LAUNCH from 00:00 America/New_York
+   * on that date until 00:00 America/New_York two calendar months later.
+   */
+  WHITE_LAUNCH_DATE?: string;
   STRIPE_PRICE_STUDENT?: string;
   /** Legacy $29.99 Coach price. No longer sold by Checkout; old purchases still grant coach. */
   STRIPE_PRICE_COACH?: string;
@@ -119,7 +129,12 @@ const PRICE_ENV_KEYS: Record<CheckoutProduct, (keyof StripeRuntimeEnv)[]> = {
  * Env names read for this product. Coach (Instructor Edition) reads only
  * STRIPE_PRICE_INSTRUCTOR so /buy/coach can never show $49.99 and charge $29.99.
  */
-export function priceEnvKeys(_env: StripeRuntimeEnv, product: CheckoutProduct): (keyof StripeRuntimeEnv)[] {
+export function priceEnvKeys(
+  env: StripeRuntimeEnv,
+  product: CheckoutProduct,
+  nowMs = Date.now(),
+): (keyof StripeRuntimeEnv)[] {
+  if (product === 'white') return [whiteCheckoutPriceEnvKey(env.WHITE_LAUNCH_DATE, nowMs)];
   return PRICE_ENV_KEYS[product];
 }
 
@@ -131,7 +146,20 @@ export const EXPECTED_ONE_TIME_CENTS: Partial<Record<CheckoutProduct, number>> =
   coach: INSTRUCTOR_LIST_PRICE_CENTS,
   media: MEDIA_LIST_PRICE_CENTS,
   pro: PRO_LIST_PRICE_CENTS,
+  white: WHITE_LIST_PRICE_CENTS,
 };
+
+export const WHITE_LAUNCH_EXPECTED_CENTS = WHITE_LAUNCH_PRICE_CENTS;
+
+/** Amount the buy page shows for this product right now. White follows the launch window. */
+export function expectedOneTimeCents(
+  product: CheckoutProduct,
+  env: StripeRuntimeEnv,
+  nowMs = Date.now(),
+): number | undefined {
+  if (product === 'white') return whiteActivePriceCents(env.WHITE_LAUNCH_DATE, nowMs);
+  return EXPECTED_ONE_TIME_CENTS[product];
+}
 
 export const CLOUD_ADDON_PRODUCTS = ['media', 'coach', 'pro'] as const;
 export type CloudAddonProduct = (typeof CLOUD_ADDON_PRODUCTS)[number];
@@ -215,7 +243,7 @@ export const EXPECTED_CLOUD_MONTHLY_CENTS: Record<CloudAddonProduct, number> = {
 };
 
 const CONFIG_HINT: Record<CheckoutProduct, string> = {
-  white: 'STRIPE_SECRET_KEY and STRIPE_PRICE_WHITE',
+  white: 'STRIPE_SECRET_KEY and STRIPE_PRICE_WHITE (and STRIPE_PRICE_WHITE_LAUNCH during the launch window)',
   student: 'STRIPE_SECRET_KEY and STRIPE_PRICE_STUDENT',
   coach: 'STRIPE_SECRET_KEY and STRIPE_PRICE_INSTRUCTOR',
   pro: 'STRIPE_SECRET_KEY and STRIPE_PRICE_PRO',
@@ -329,9 +357,10 @@ export function checkoutReturnUrls(
 export function readStripeConfig(
   env: StripeRuntimeEnv,
   product: CheckoutProduct = 'white',
+  nowMs = Date.now(),
 ): { secret: string; priceIds: string[]; mode: 'payment' | 'subscription'; productId: string } | { error: string } {
   const secret = env.STRIPE_SECRET_KEY?.trim() ?? '';
-  const keys = priceEnvKeys(env, product);
+  const keys = priceEnvKeys(env, product, nowMs);
   const priceIds = keys.map((key) => (env[key] ?? '').trim());
   if (!secret || priceIds.some((price) => !price)) {
     return { error: `Stripe is not configured. Set ${CONFIG_HINT[product]}.` };

@@ -35,7 +35,7 @@ export const MEDIA_EDITION_PRICE_DETAIL = 'USD — one-time, when it launches';
 export const MEDIA_EDITION_LEAD = 'Scoreboard, round timer, and media console.';
 
 /** Same wording style as the other tiers' "Includes everything in …" line. */
-export const MEDIA_EDITION_INCLUDES = 'Includes everything in Advantage White.';
+export const MEDIA_EDITION_INCLUDES = 'Includes everything in Advantage BJJ Scoreboard.';
 
 export const MEDIA_EDITION_INCLUDED = [...WHITE_INCLUDED, MEDIA_CONSOLE_NAME] as const;
 

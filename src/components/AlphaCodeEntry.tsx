@@ -59,6 +59,7 @@ export function AlphaCodeEntry({
   codeName = 'code',
   codeLabel = 'Alpha code',
   onPromoCheckout,
+  showRequestButton = true,
 }: {
   tier: AlphaCodeTier;
   showEmail?: boolean;
@@ -70,6 +71,8 @@ export function AlphaCodeEntry({
   codeName?: string;
   codeLabel?: string;
   onPromoCheckout?: (typed: string) => Promise<void>;
+  /** Owner 2026-11-23: false on the Advantage BJJ Scoreboard (White) buy page. The code field stays. */
+  showRequestButton?: boolean;
 }) {
   const navigate = useNavigate();
   const [localCode, setLocalCode] = useState('');
@@ -101,9 +104,11 @@ export function AlphaCodeEntry({
 
   return (
     <div className="alpha-code" data-alpha-tier={tier}>
-      <a className="btn btn--white" href={alphaRequestMailto()}>
-        {MEDIA_EDITION_CTA_LABEL}
-      </a>
+      {showRequestButton ? (
+        <a className="btn btn--white" href={alphaRequestMailto()}>
+          {MEDIA_EDITION_CTA_LABEL}
+        </a>
+      ) : null}
       <form className="alpha-code__form" id={`alpha-code-form-${tier}`} onSubmit={(event) => void onSubmit(event)}>
         <label className="buy__code" htmlFor={fieldId}>
           {codeLabel}

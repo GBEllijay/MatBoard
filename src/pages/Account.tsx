@@ -43,7 +43,7 @@ const ROLE_LABEL: Record<AccountRole, string> = {
 };
 
 const EDITION_LABELS: Record<string, string> = {
-  white: 'Advantage White',
+  white: 'Advantage BJJ Scoreboard',
   student: 'Student Edition',
   coach: 'Instructor Edition',
   media: 'Media Edition',
@@ -59,7 +59,7 @@ const EDITION_PATHS: Record<string, string> = {
 };
 
 const PRODUCT_LABELS: Record<string, string> = {
-  'advantage-white': 'Advantage White',
+  'advantage-white': 'Advantage BJJ Scoreboard',
   'advantage-student': 'Student Edition',
   'advantage-coach': 'Instructor Edition',
   'advantage-media': 'Media Edition',

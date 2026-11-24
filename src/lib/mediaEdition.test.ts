@@ -111,7 +111,7 @@ test('Media buy page keeps the alpha email and can check out with optional Cloud
 });
 
 test('features are White plus the real Media Console', () => {
-  assert.equal(MEDIA_EDITION_INCLUDES, 'Includes everything in Advantage White.');
+  assert.equal(MEDIA_EDITION_INCLUDES, 'Includes everything in Advantage BJJ Scoreboard.');
   assert.deepEqual([...MEDIA_EDITION_INCLUDED], [...WHITE_INCLUDED, MEDIA_CONSOLE_NAME]);
   assert.deepEqual(
     MEDIA_EDITION_FEATURES.map((f) => f.title),

@@ -58,7 +58,7 @@ export function WhiteRosterPage() {
     <main className="white-roster">
       <SubmenuMarks to="/white" />
       <header className="white-roster__head">
-        <p className="white-roster__eyebrow">Advantage White</p>
+        <p className="white-roster__eyebrow">Advantage BJJ Scoreboard</p>
         <h1>Match names</h1>
       </header>
       <p className="white-roster__lead">

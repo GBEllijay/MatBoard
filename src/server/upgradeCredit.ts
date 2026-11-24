@@ -27,7 +27,7 @@ export const UPGRADE_COUPON_TTL_SECONDS = 25 * 60 * 60;
 export const UPGRADE_QUOTE_LIMIT = 20;
 
 const TIER_LABEL: Record<CheckoutProduct, string> = {
-  white: 'Advantage White',
+  white: 'Advantage BJJ Scoreboard',
   student: 'Student Edition',
   media: 'Media Edition',
   coach: 'Instructor Edition',

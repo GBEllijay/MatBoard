@@ -2,8 +2,45 @@ import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import test from 'node:test';
 import { memoryEntitlementStore } from './entitlements.ts';
-import { handleCheckout, handleEntitlement, handleWebhook } from './handlers.ts';
+import { handleCheckout as handleCheckoutRaw, handleEntitlement, handleWebhook } from './handlers.ts';
 import type { StripeRuntimeEnv } from './stripeCheckout.ts';
+import { WHITE_LAUNCH_PRICE_CENTS, WHITE_LIST_PRICE_CENTS } from '../lib/whitePurchase.ts';
+
+/** White checkout now confirms the Stripe unit_amount. Intercept only White price ids. */
+function withWhiteListedPrice(fetchImpl: typeof fetch, env: StripeRuntimeEnv = {}): typeof fetch {
+  return async (input, init) => {
+    const url = String(input);
+    const match = /\/v1\/prices\/([^/?]+)/.exec(url);
+    if (match && (!init?.method || init.method === 'GET')) {
+      const id = decodeURIComponent(match[1]);
+      if (id === 'price_white_launch') {
+        return new Response(
+          JSON.stringify({ id, unit_amount: WHITE_LAUNCH_PRICE_CENTS, currency: 'usd', product: 'prod_white' }),
+          { status: 200 },
+        );
+      }
+      if (id === 'price_white') {
+        return new Response(
+          JSON.stringify({ id, unit_amount: WHITE_LIST_PRICE_CENTS, currency: 'usd', product: 'prod_white' }),
+          { status: 200 },
+        );
+      }
+    }
+    return fetchImpl(input, init);
+  };
+}
+
+
+function handleCheckout(
+  request: Request,
+  env: StripeRuntimeEnv,
+  fetchImpl?: typeof fetch,
+  store?: Parameters<typeof handleCheckoutRaw>[3],
+  extras?: Parameters<typeof handleCheckoutRaw>[4],
+) {
+  const fetchWithPrice = fetchImpl ? withWhiteListedPrice(fetchImpl, env) : fetchImpl;
+  return handleCheckoutRaw(request, env, fetchWithPrice, store, extras);
+}
 
 const env: StripeRuntimeEnv = {
   STRIPE_SECRET_KEY: 'sk_test_123',
@@ -824,4 +861,96 @@ test('Instructor Cloud checkout still refuses a $2.99 monthly price', async () =
   );
   assert.equal(response.status, 503);
   assert.equal(sessions, 0);
+});
+
+test('White checkout uses the $19.99 price when WHITE_LAUNCH_DATE is unset', async () => {
+  const fetchImpl: typeof fetch = async (_input, init) => {
+    const fields = new URLSearchParams(String(init?.body ?? ''));
+    assert.equal(fields.get('line_items[0][price]'), 'price_white');
+    assert.equal(fields.get('allow_promotion_codes'), 'true');
+    return new Response(
+      JSON.stringify({ id: 'cs_test_white', url: 'https://checkout.stripe.com/c/pay/cs_test_white' }),
+      { status: 200 },
+    );
+  };
+  const response = await handleCheckout(jsonRequest('http://localhost/api/checkout', {}), env, fetchImpl);
+  assert.equal(response.status, 200);
+});
+
+test('White checkout uses the $15.99 launch price inside the Eastern window, then $19.99 at the end instant', async () => {
+  const launchEnv: StripeRuntimeEnv = {
+    ...env,
+    STRIPE_PRICE_WHITE_LAUNCH: 'price_white_launch',
+    WHITE_LAUNCH_DATE: '2026-11-24',
+  };
+  const start = new Date('2026-11-24T05:00:00.000Z');
+  const end = new Date('2027-01-24T05:00:00.000Z');
+
+  const launchFetch: typeof fetch = async (_input, init) => {
+    const fields = new URLSearchParams(String(init?.body ?? ''));
+    assert.equal(fields.get('line_items[0][price]'), 'price_white_launch');
+    assert.equal(fields.get('allow_promotion_codes'), 'true');
+    assert.equal(fields.get('discounts[0][coupon]'), null);
+    return new Response(
+      JSON.stringify({ id: 'cs_launch', url: 'https://checkout.stripe.com/c/pay/cs_launch' }),
+      { status: 200 },
+    );
+  };
+  const during = await handleCheckout(
+    jsonRequest('http://localhost/api/checkout', {}),
+    launchEnv,
+    launchFetch,
+    null,
+    { now: () => start },
+  );
+  assert.equal(during.status, 200);
+
+  const standardFetch: typeof fetch = async (_input, init) => {
+    const fields = new URLSearchParams(String(init?.body ?? ''));
+    assert.equal(fields.get('line_items[0][price]'), 'price_white');
+    return new Response(
+      JSON.stringify({ id: 'cs_standard', url: 'https://checkout.stripe.com/c/pay/cs_standard' }),
+      { status: 200 },
+    );
+  };
+  const after = await handleCheckout(
+    jsonRequest('http://localhost/api/checkout', {}),
+    launchEnv,
+    standardFetch,
+    null,
+    { now: () => end },
+  );
+  assert.equal(after.status, 200);
+});
+
+test('White checkout refuses a Stripe amount that does not match the active list price', async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    if (String(input).includes('/v1/prices/price_white_stale')) {
+      return new Response(JSON.stringify({ id: 'price_white_stale', unit_amount: 999, currency: 'usd', product: 'prod_white' }), {
+        status: 200,
+      });
+    }
+    return new Response('should not create a session', { status: 500 });
+  };
+  const response = await handleCheckout(
+    jsonRequest('http://localhost/api/checkout', {}),
+    { STRIPE_SECRET_KEY: 'sk_test_123', STRIPE_PRICE_WHITE: 'price_white_stale' },
+    fetchImpl,
+  );
+  assert.equal(response.status, 503);
+  const body = (await response.json()) as { error: string };
+  assert.match(body.error, /Advantage BJJ Scoreboard checkout is not configured/);
+});
+
+test('White checkout returns 503 when the launch window is active but the launch price id is missing', async () => {
+  const response = await handleCheckout(
+    jsonRequest('http://localhost/api/checkout', {}),
+    { STRIPE_SECRET_KEY: 'sk_test_123', STRIPE_PRICE_WHITE: 'price_white', WHITE_LAUNCH_DATE: '2026-11-24' },
+    async () => new Response('should not be called', { status: 500 }),
+    null,
+    { now: () => new Date('2026-11-24T05:00:00.000Z') },
+  );
+  assert.equal(response.status, 503);
+  const body = (await response.json()) as { error: string };
+  assert.match(body.error, /STRIPE_PRICE_WHITE_LAUNCH/);
 });

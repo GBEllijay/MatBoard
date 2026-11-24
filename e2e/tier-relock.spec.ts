@@ -64,10 +64,10 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await page.screenshot({ path: `${ARTIFACTS}/student-unlocked-lock.png`, fullPage: true });
 
   await page.goto('/white');
-  const lockWhite = page.getByRole('button', { name: 'Lock White' });
+  const lockWhite = page.getByRole('button', { name: 'Lock Advantage BJJ Scoreboard' });
   await expect(lockWhite).toHaveClass(/home__text-btn/);
-  await expect(page.getByText('Advantage White is on for this browser.')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Buy Advantage White — $9.99' })).toBeVisible();
+  await expect(page.getByText('Advantage BJJ Scoreboard is on for this browser.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Buy Advantage BJJ Scoreboard — $19.99' })).toBeVisible();
   await lockWhite.scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${ARTIFACTS}/white-unlocked-lock.png`, fullPage: true });
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -75,8 +75,8 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page.getByRole('dialog')).toHaveCount(0);
   // The White route guard sends a locked visitor to the paywall, same as a fresh visit to /white.
   await expect(page).toHaveURL(/\/buy$/);
-  await expect(page.getByRole('button', { name: 'Continue to checkout — $9.99' })).toBeVisible();
-  await expect(page.getByText('Advantage White is unlocked on this device.')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Continue to checkout — $19.99' })).toBeVisible();
+  await expect(page.getByText('Advantage BJJ Scoreboard is unlocked on this device.')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Restore', exact: true })).toBeVisible();
   await expect(
     page.getByText(
@@ -86,8 +86,8 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await page.screenshot({ path: `${ARTIFACTS}/white-locked-buy.png`, fullPage: true });
 
   await page.goto('/products');
-  await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/buy');
-  await expect(page.getByRole('link', { name: 'Buy — $9.99' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Advantage BJJ Scoreboard/ })).toHaveAttribute('href', '/buy');
+  await expect(page.getByRole('link', { name: 'Buy — $19.99' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Student Edition', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/white-locked-products.png`, fullPage: true });
@@ -96,17 +96,17 @@ test('re-lock White and Student Edition, then the codes open them again', async 
     localStorage.setItem('advantage.whiteUnlocked', '1');
   });
   await page.goto('/buy');
-  await expect(page.getByRole('link', { name: 'Open White' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Advantage BJJ Scoreboard' })).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/white-relocked-open.png`, fullPage: true });
   await page.goto('/products');
-  await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
+  await expect(page.getByRole('link', { name: /Advantage BJJ Scoreboard/ })).toHaveAttribute('href', '/white');
 
   await page.goto('/student');
   await page.getByRole('button', { name: 'Lock Student Edition' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page).toHaveURL(/\/products$/);
   await expect(page.getByRole('button', { name: 'Advantage Student Edition, This product is in alpha' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
+  await expect(page.getByRole('link', { name: /Advantage BJJ Scoreboard/ })).toHaveAttribute('href', '/white');
   await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/student-locked-products.png`, fullPage: true });
 
@@ -159,14 +159,14 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await page.goto('/products');
   await expect(page.getByRole('button', { name: 'Advantage Pro, This product is in alpha' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
+  await expect(page.getByRole('link', { name: /Advantage BJJ Scoreboard/ })).toHaveAttribute('href', '/white');
 
   await page.goto('/coach');
   await expect(page.getByRole('button', { name: 'Lock Instructor Edition' })).toHaveClass(/home__text-btn/);
   await page.getByRole('button', { name: 'Lock Instructor Edition' }).click();
   await page.goto('/products');
   await expect(page.getByRole('button', { name: 'Advantage Instructor Edition, This product is in alpha' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/white');
+  await expect(page.getByRole('link', { name: /Advantage BJJ Scoreboard/ })).toHaveAttribute('href', '/white');
 
   const after = await page.evaluate(() => localStorage.getItem('matboard.studentEdition.v1'));
   expect(after).toBe(before);

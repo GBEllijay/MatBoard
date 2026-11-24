@@ -32,7 +32,7 @@ const studentMenus = read('../pages/student/StudentMenus.tsx');
 const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 test('every tier has a Learn more label and a description page', () => {
-  assert.equal(LEARN_MORE.white.label, 'Learn more about Advantage White');
+  assert.equal(LEARN_MORE.white.label, 'Learn more about Advantage BJJ Scoreboard');
   assert.equal(LEARN_MORE.white.to, '/buy');
   assert.equal(LEARN_MORE.student.label, 'Learn more about Student Edition');
   assert.equal(LEARN_MORE.student.to, '/editions/student');
@@ -50,7 +50,7 @@ test('ladder order, names, belts and prices match the owner brief', () => {
   assert.deepEqual(
     TIER_LADDER.map((t) => [t.id, t.belt, t.price]),
     [
-      ['white', 'white', '$9.99'],
+      ['white', 'white', '$19.99'],
       ['student', 'blue', '$19.99'],
       ['media', 'purple', '$29.99'],
       ['instructor', 'brown', '$49.99'],

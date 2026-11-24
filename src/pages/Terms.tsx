@@ -21,7 +21,7 @@ export function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service — Advantage"
-      updated="October 27, 2026"
+      updated="November 23, 2026"
       related={{ to: '/privacy', label: 'Privacy Policy' }}
     >
       <section>
@@ -53,7 +53,7 @@ export function TermsPage() {
         <p>
           Advantage provides tools that may include, without limitation, scoreboard and round-timer
           features, coaching and planning tools, competitor and event utilities, and media-related
-          features for gym use. Features may vary by product tier (for example, White, Instructor Edition, or
+          features for gym use. Features may vary by product tier (for example, Advantage BJJ Scoreboard, Instructor Edition, or
           Pro) and may change over time.
         </p>
       </section>
@@ -62,13 +62,13 @@ export function TermsPage() {
         <h3>3. Purchases and Pricing</h3>
         <p>Advantage is sold in tiers. All prices are in U.S. dollars:</p>
         <ul>
-          <li>Advantage White costs $9.99 as a one-time purchase.</li>
+          <li>Advantage BJJ Scoreboard costs $19.99 as a one-time purchase. A limited launch price of $15.99 may apply for two months, as shown on the buy page.</li>
           <li>
             Advantage Student Edition costs $19.99 as a one-time purchase, once it’s offered for
             sale.
           </li>
           <li>
-            Advantage Instructor Edition costs $49.99 as a one-time purchase and is offered for sale now.
+            Advantage Instructor Edition costs $49.99 as a one-time purchase, once it’s offered for sale.
           </li>
           <li>
             Advantage Pro costs $99.99 as a one-time purchase, plus a subscription of $5.99 per
@@ -78,15 +78,17 @@ export function TermsPage() {
           </li>
         </ul>
         <p>
-          Advantage Instructor Edition includes everything in Advantage White. Advantage Pro includes everything
-          in Advantage Instructor Edition and Advantage White. Advantage Student Edition is a separate add-on. It
+          Advantage Instructor Edition includes everything in Advantage BJJ Scoreboard. Advantage Pro includes everything
+          in Advantage Instructor Edition and Advantage BJJ Scoreboard. Advantage Student Edition is a separate add-on. It
           does not include Advantage Instructor Edition. It works best when connected to a valid Google Drive,
           OneDrive, or Google Photos account. Advantage App, LLC does not provide, manage, or back
           up that storage, and the account you connect is your own.
         </p>
         <p>
-          Payments are processed by Stripe. Advantage App, LLC does not receive or store your full
-          card number. Prices may change in the future, but a change does not affect a purchase
+          Purchases made on our website are processed by Stripe. Purchases made in the Apple App
+          Store or Google Play are processed by Apple or Google, and refunds for those purchases are
+          handled under Apple’s or Google’s refund rules. Advantage App, LLC does not receive or
+          store your full card number. Prices may change in the future, but a change does not affect a purchase
           you’ve already completed.
         </p>
         <p>
@@ -99,7 +101,7 @@ export function TermsPage() {
       <section>
         <h3>4. Alpha Access</h3>
         <p>
-          Advantage Instructor Edition is offered for sale now at $49.99 as a one-time purchase.
+          Advantage Instructor Edition costs $49.99 as a one-time purchase, once it’s offered for sale.
           Advantage Pro is currently in alpha testing and is not offered for sale. We may provide free alpha access codes on request. To request one, email{' '}
           <SupportEmail />. Alpha features are provided “as is.” They may change, be incomplete,
           contain errors, or lose data, and we may end alpha access at any time. Alpha access does

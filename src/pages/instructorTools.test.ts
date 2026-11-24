@@ -43,7 +43,7 @@ test('Instructor tools keep the live routes and drop the left belt', () => {
 
 test('sign-out and the Pro menu labels stay in place', () => {
   assert.match(seats, /export function signOutInstructorSeat/);
-  assert.match(pro, /<span>Advantage White<\/span>/);
+  assert.match(pro, /<span>Advantage BJJ Scoreboard<\/span>/);
   assert.match(pro, /<span>Advantage Student Edition<\/span>/);
   assert.match(pro, /title: 'Advantage Media Edition'/);
   assert.doesNotMatch(pro, /[Jj]ournal/);

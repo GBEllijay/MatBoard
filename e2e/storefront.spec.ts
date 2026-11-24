@@ -42,7 +42,7 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(page.getByRole('heading', { name: 'Advantages', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Penalties', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /Belt progression/i })).toHaveCount(0);
-  const nav = page.getByRole('navigation', { name: 'Advantage White' });
+  const nav = page.getByRole('navigation', { name: 'Advantage BJJ Scoreboard' });
   await expect(nav.getByRole('link', { name: 'Scoreboard' })).toHaveAttribute('href', '/white#scoreboard');
   await expect(nav.getByRole('link', { name: 'Round timer' })).toHaveAttribute('href', '/white#round-timer');
   await expect(nav.getByRole('link', { name: 'Brackets', exact: true })).toHaveAttribute('href', '/white#brackets');
@@ -94,7 +94,7 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await shot(page, 'storefront-desktop');
 
   await page.setViewportSize({ width: 390, height: 844 });
-  const nav = page.getByRole('navigation', { name: 'Advantage White' });
+  const nav = page.getByRole('navigation', { name: 'Advantage BJJ Scoreboard' });
   await expect(nav.getByRole('link', { name: 'Scoreboard' })).toHaveAttribute('href', '/white#scoreboard');
   await expect(nav.getByRole('link', { name: 'Round timer' })).toHaveAttribute('href', '/white#round-timer');
   await expect(nav.getByRole('link', { name: 'Brackets', exact: true })).toHaveAttribute('href', '/white#brackets');
@@ -138,7 +138,7 @@ test('buy page shows an unlock or promo code field without printing launch codes
   await expect(field).toBeVisible();
   const box = await field.boundingBox();
   expect(box && box.y).toBeLessThan(900);
-  await expect(page.getByRole('button', { name: 'Continue to checkout — $9.99' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue to checkout — $19.99' })).toBeVisible();
   const body = await page.locator('body').innerText();
   expect(body).not.toMatch(/WHITE499|WHITE099/i);
   await shot(page, 'buy-code-field');
@@ -330,7 +330,7 @@ test('homepage header scrolls out of view and stays off the scoreboard', async (
     const logo = page.locator('.sf-portrait-brand img');
     await expect(logo).toBeVisible();
     await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('href', '/');
-    const nav = page.getByRole('navigation', { name: 'Advantage White' });
+    const nav = page.getByRole('navigation', { name: 'Advantage BJJ Scoreboard' });
     await expect(nav.getByRole('link', { name: 'Scoreboard', exact: true })).toHaveAttribute('href', '/white#scoreboard');
     await expect(nav.getByRole('link', { name: 'Round timer', exact: true })).toHaveAttribute('href', '/white#round-timer');
     await expect(nav.getByRole('link', { name: 'Brackets', exact: true })).toHaveAttribute('href', '/white#brackets');
@@ -438,11 +438,11 @@ test('homepage header scrolls out of view and stays off the scoreboard', async (
   await page.getByRole('link', { name: 'Home', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator('.sf-portrait-brand img')).toBeVisible();
-  await page.getByRole('navigation', { name: 'Advantage White' }).getByRole('link', { name: 'Scoreboard', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Advantage BJJ Scoreboard' }).getByRole('link', { name: 'Scoreboard', exact: true }).click();
   await expect(page).toHaveURL(/\/white#scoreboard$/);
   await expect(page.locator('#scoreboard')).toBeVisible();
   await page.goto('/');
-  await page.getByRole('navigation', { name: 'Advantage White' }).getByRole('link', { name: 'Round timer', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Advantage BJJ Scoreboard' }).getByRole('link', { name: 'Round timer', exact: true }).click();
   await expect(page).toHaveURL(/\/white#round-timer$/);
   await expect(page.locator('#round-timer')).toBeVisible();
 });

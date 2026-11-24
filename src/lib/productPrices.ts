@@ -82,7 +82,7 @@ export function alphaAccessNote(product: string): string {
   return `${product} is in alpha testing. Email ${SITE_FEEDBACK_EMAIL} to request an alpha code.`;
 }
 
-export const WHITE_ALPHA_ACCESS_NOTE = alphaAccessNote('White');
+export const WHITE_ALPHA_ACCESS_NOTE = alphaAccessNote('Advantage BJJ Scoreboard');
 
 export const STUDENT_ALPHA_ACCESS_NOTE = alphaAccessNote('Student Edition');
 

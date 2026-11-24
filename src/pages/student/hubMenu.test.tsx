@@ -687,14 +687,14 @@ test('Lock White uses the hub text button and leaves roster and journal in place
   localStorage.setItem('matboard.studentEdition.v1', '{"keep":"journal-belt-benchmark"}');
   localStorage.setItem(DRIVE_BINDING_KEY, '{"folderId":"keep-folder"}');
   const page = mount(<WhitePage />, '/white');
-  const lock = [...page.host.querySelectorAll('button')].find((node) => node.textContent?.trim() === 'Lock White');
+  const lock = [...page.host.querySelectorAll('button')].find((node) => node.textContent?.trim() === 'Lock Advantage BJJ Scoreboard');
   assert.ok(lock);
   assert.equal(lock.className, 'home__text-btn');
   const line = lock.closest('p');
-  assert.match(line?.textContent ?? '', /Advantage White is on for this browser/);
+  assert.match(line?.textContent ?? '', /Advantage BJJ Scoreboard is on for this browser/);
   assert.match(line?.textContent ?? '', /All products/);
   assert.equal(line?.querySelector('a')?.getAttribute('href'), '/products');
-  assert.match(page.host.textContent ?? '', /Buy Advantage White — \$9\.99/);
+  assert.match(page.host.textContent ?? '', /Buy Advantage BJJ Scoreboard — \$19\.99/);
   act(() => {
     lock.click();
   });

@@ -26,7 +26,7 @@ export function StorefrontPage() {
       <header className="sf-pin">
         <div className="sf-topbar">
           <div className="sf-wrap">
-            <nav className="sf-nav" aria-label="Advantage White">
+            <nav className="sf-nav" aria-label="Advantage BJJ Scoreboard">
               <div className="sf-nav-links">
                 {STOREFRONT_NAV.map((item) => (
                   <Link key={item.href} to={item.href}>
@@ -46,7 +46,7 @@ export function StorefrontPage() {
         <div className="sf-tex" aria-hidden="true" />
         <div className="sf-wrap">
           <div className="sf-pair">
-            <Link className="sf-points" to="/white" aria-label="Open Advantage White">
+            <Link className="sf-points" to="/white" aria-label="Open Advantage BJJ Scoreboard">
               {STOREFRONT_POINTS.map((point) => (
                 <div key={point.id} className={`sf-point sf-point--${point.id}`}>
                   <h3>{point.title}</h3>

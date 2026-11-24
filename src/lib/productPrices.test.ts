@@ -46,7 +46,7 @@ test('Student Edition is $19.99 one-time and checkout uses that display price', 
 test('alpha access uses the existing support address', () => {
   assert.equal(
     WHITE_ALPHA_ACCESS_NOTE,
-    'White is in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
+    'Advantage BJJ Scoreboard is in alpha testing. Email advantageappllc@gmail.com to request an alpha code.',
   );
   assert.equal(
     COACH_ALPHA_ACCESS_NOTE,
