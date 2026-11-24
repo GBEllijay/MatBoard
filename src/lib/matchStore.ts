@@ -36,6 +36,7 @@ import {
   type MatchOutcome,
   type Side,
 } from './outcomes';
+import { defaultCompetitorName, resolvedCompetitorName } from './competitorName';
 import {
   isBracketMatchId,
   rememberEmptyBoutNames,
@@ -43,6 +44,8 @@ import {
   scoreboardSideToBracket,
   setMatchOutcome,
 } from './tournamentStore';
+
+export { defaultCompetitorName, resolvedCompetitorName } from './competitorName';
 
 export type { MatchOutcome, Side };
 export type ScoreKind = 'points' | 'advantages' | 'disadvantages';
@@ -173,6 +176,14 @@ function defaultCompetitor(name: string): Competitor {
   return { name, gym: '', rank: '', points: 0, advantages: 0, disadvantages: 0 };
 }
 
+function applyCompetitorName(side: Side, competitor: Competitor, value: string): Competitor {
+  const name = resolvedCompetitorName(side, value);
+  if (!value.trim()) {
+    return { ...competitor, name, rank: '', gym: '' };
+  }
+  return { ...competitor, name };
+}
+
 /** Saved match length snaps to the 15-second wheel. A full clock follows the snapped length. */
 export function normalizeMatchClock(
   durationMs: unknown,
@@ -230,16 +241,24 @@ function loadState(): MatchState {
     const next: MatchState = {
       ...base,
       ...parsed,
-      blue: {
-        ...base.blue,
-        ...parsed.blue,
-        rank: typeof parsed.blue?.rank === 'string' ? parsed.blue.rank : '',
-      },
-      white: {
-        ...base.white,
-        ...parsed.white,
-        rank: typeof parsed.white?.rank === 'string' ? parsed.white.rank : '',
-      },
+      blue: applyCompetitorName(
+        'blue',
+        {
+          ...base.blue,
+          ...parsed.blue,
+          rank: typeof parsed.blue?.rank === 'string' ? parsed.blue.rank : '',
+        },
+        typeof parsed.blue?.name === 'string' ? parsed.blue.name : defaultCompetitorName('blue'),
+      ),
+      white: applyCompetitorName(
+        'white',
+        {
+          ...base.white,
+          ...parsed.white,
+          rank: typeof parsed.white?.rank === 'string' ? parsed.white.rank : '',
+        },
+        typeof parsed.white?.name === 'string' ? parsed.white.name : defaultCompetitorName('white'),
+      ),
       startBeep: parsed.startBeep === true,
       warningBeep: parsed.warningBeep === true,
       warned: Boolean(parsed.warned),
@@ -480,11 +499,10 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
       return bumpRevision({ ...current, [action.field]: value });
     }
     case 'setCompetitor': {
-      const competitor = { ...current[action.side], [action.field]: action.value };
-      if (action.field === 'name' && !action.value.trim()) {
-        competitor.rank = '';
-        competitor.gym = '';
-      }
+      const competitor =
+        action.field === 'name'
+          ? applyCompetitorName(action.side, current[action.side], action.value)
+          : { ...current[action.side], [action.field]: action.value };
       return bumpRevision({
         ...current,
         [action.side]: competitor,

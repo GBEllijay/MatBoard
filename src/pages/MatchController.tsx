@@ -32,6 +32,7 @@ import { durationOptions, MATCH_LENGTH_RANGE } from '../lib/timeWheel';
 import { WheelPicker } from '../components/WheelPicker';
 import { competitorFocus, displayFocusId, parseDisplayFocus } from '../lib/matchFocus';
 import {
+  defaultCompetitorName,
   dispatchMatch,
   expireMatchClock,
   remainingCapMs,
@@ -589,6 +590,7 @@ function CompetitorPad({
             value={name}
             ariaLabel={`${title} name`}
             names={names}
+            defaultName={defaultCompetitorName(side)}
             onChange={(value) => dispatchMatch({ type: 'setCompetitor', side, field: 'name', value })}
             onPrefill={(prefill) => {
               dispatchMatch({ type: 'setCompetitor', side, field: 'name', value: prefill.name });

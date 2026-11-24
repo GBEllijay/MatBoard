@@ -23,6 +23,8 @@ type Props = {
   belt: string;
   onBelt: (value: string) => void;
   onPick: (prefill: { name: string; belt: string; gym: string; division: string }) => void;
+  defaultName?: string;
+  onClear?: () => void;
 };
 
 /**
@@ -37,6 +39,8 @@ export function WhiteNamePicker({
   belt,
   onBelt,
   onPick,
+  defaultName,
+  onClear,
 }: Props) {
   importWhiteMatchNamesOnce();
   const roster = useBracketRosterState();
@@ -115,6 +119,11 @@ export function WhiteNamePicker({
         >
           {saveOnPhone ? 'Save and use this name' : 'Use this name'}
         </button>
+        {defaultName && onClear ? (
+          <button type="button" className="btn btn--ghost roster-pick__clear" onClick={onClear}>
+            Clear name
+          </button>
+        ) : null}
         {saveOnPhone && canUseTyped && rosterFull ? (
           <p className="roster-edit__error">The Bracket Roster is full.</p>
         ) : saveOnPhone && canUseTyped && !canSave ? (

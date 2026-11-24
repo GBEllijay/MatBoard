@@ -35,6 +35,11 @@ type Props = {
    * Basic Coach Mock Tournament uses `student` and the Coach Student Roster.
    */
   names?: NameList;
+  /**
+   * Scoreboard fallback used when the picker name is cleared.
+   * Omit this on bracket slots so an empty close does not write "Competitor 1".
+   */
+  defaultName?: string;
 };
 
 export function RosterNameField({
@@ -46,6 +51,7 @@ export function RosterNameField({
   ariaLabel,
   compact = false,
   names = 'competitor',
+  defaultName,
 }: Props) {
   const proUnlocked = useProUnlocked();
   const coachUnlocked = useCoachUnlocked();
@@ -72,9 +78,24 @@ export function RosterNameField({
     setPickOpen(true);
   };
 
+  const applyDefaultName = () => {
+    if (!defaultName) return;
+    onPrefill({ name: defaultName, belt: '', gym: '', division: '' });
+  };
+
   const closePicker = () => {
     skipFocusRef.current = true;
-    if (!whiteNames && !pickedRef.current) onChange(query);
+    if (!pickedRef.current) {
+      const typed = query.trim();
+      if (!typed && defaultName) {
+        // An emptied picker must stick as the scoreboard default, not restore
+        // the previous name. White previously skipped onChange on close, so
+        // deleting the name and hitting Close put the old name back.
+        applyDefaultName();
+      } else if (!whiteNames) {
+        onChange(query);
+      }
+    }
     // The sheet blurs its field as it closes. Swallow that blur so a cleared
     // query cannot wipe the name this close just stored.
     pickedRef.current = true;
@@ -83,6 +104,13 @@ export function RosterNameField({
     setQuery('');
     setAddToRoster(false);
     setBelt('');
+  };
+
+  const clearToDefault = () => {
+    if (!defaultName) return;
+    pickedRef.current = true;
+    applyDefaultName();
+    closePicker();
   };
 
   const pick = (prefill: RosterPrefill) => {
@@ -147,6 +175,8 @@ export function RosterNameField({
             belt={belt}
             onBelt={setBelt}
             onPick={pick}
+            defaultName={defaultName}
+            onClear={clearToDefault}
           />
         ) : (
           <RosterPicker
@@ -158,6 +188,8 @@ export function RosterNameField({
             belt={belt}
             onBelt={setBelt}
             onPick={pick}
+            defaultName={defaultName}
+            onClear={clearToDefault}
             onCommitTyped={commitTyped}
             onKeepTyped={(name) => {
               if (pickedRef.current || pickingRef.current) return;
@@ -187,6 +219,8 @@ function RosterPicker({
   onKeepTyped,
   onPicking,
   holdCommit,
+  defaultName,
+  onClear,
 }: {
   studentList: boolean;
   query: string;
@@ -200,6 +234,8 @@ function RosterPicker({
   onKeepTyped: (name: string) => void;
   onPicking: (active: boolean) => void;
   holdCommit: () => boolean;
+  defaultName?: string;
+  onClear?: () => void;
 }) {
   const roster = useRosterState();
   const listed = studentList ? studentRosterCards(roster.students) : competitorCards(roster.students);
@@ -336,6 +372,11 @@ function RosterPicker({
         >
           {addToRoster ? 'Use name and add to roster' : 'Use this name'}
         </button>
+        {defaultName && onClear ? (
+          <button type="button" className="btn btn--ghost roster-pick__clear" onClick={onClear}>
+            Clear name
+          </button>
+        ) : null}
         {addToRoster && canUseTyped && !canAdd ? (
           <p className="roster-edit__error">
             {studentList
