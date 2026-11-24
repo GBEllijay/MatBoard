@@ -397,7 +397,7 @@ test('a typed promo code keeps its discount and skips the credit', async () => {
 test('MEIA half off stays unless the credit saves more', async () => {
   const store = memoryEntitlementStore();
   await buy(store, null, 'white', 'meia@gym.test', 999);
-  // White $9.99 credit on Pro is less than half of $99.99: half off wins.
+  // A $9.99 White payment on Pro is less than half of $99.99: half off wins.
   const halfWins = await checkout(store, null, { product: 'pro', email: 'meia@gym.test', halfOff: true }, fakeStripe({ meia: true }));
   assert.equal(halfWins.status, 200);
   assert.equal(halfWins.calls.coupons.length, 0);

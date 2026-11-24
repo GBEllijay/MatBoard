@@ -62,7 +62,7 @@ export function TermsPage() {
         <h3>3. Purchases and Pricing</h3>
         <p>Advantage is sold in tiers. All prices are in U.S. dollars:</p>
         <ul>
-          <li>Advantage White costs $9.99 as a one-time purchase.</li>
+          <li>Advantage White costs $19.99 as a one-time purchase. A limited launch price of $15.99 may apply for two months, as shown on the buy page.</li>
           <li>
             Advantage Student Edition costs $19.99 as a one-time purchase, once it’s offered for
             sale.

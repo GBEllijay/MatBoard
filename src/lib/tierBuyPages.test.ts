@@ -50,7 +50,7 @@ test('ladder order, names, belts and prices match the owner brief', () => {
   assert.deepEqual(
     TIER_LADDER.map((t) => [t.id, t.belt, t.price]),
     [
-      ['white', 'white', '$9.99'],
+      ['white', 'white', '$19.99'],
       ['student', 'blue', '$19.99'],
       ['media', 'purple', '$29.99'],
       ['instructor', 'brown', '$49.99'],

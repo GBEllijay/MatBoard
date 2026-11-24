@@ -23,11 +23,11 @@ import {
 import { WHITE_BUY_PATH, WHITE_PRICE_LABEL } from './whitePurchase.ts';
 
 test('storefront sells White once and sends Buy Now to the existing checkout', () => {
-  assert.equal(STOREFRONT_PRICE_LABEL, '$9.99');
+  assert.equal(STOREFRONT_PRICE_LABEL, '$19.99');
   assert.equal(STOREFRONT_PRICE_LABEL, WHITE_PRICE_LABEL);
   assert.equal(STOREFRONT_BUY_PATH, '/buy');
   assert.equal(STOREFRONT_BUY_PATH, WHITE_BUY_PATH);
-  assert.equal(STOREFRONT_BUY_LABEL, 'Buy Advantage White — $9.99');
+  assert.equal(STOREFRONT_BUY_LABEL, 'Buy Advantage White — $19.99');
   assert.equal(STOREFRONT_HERO.title, 'Win by Advantage.');
   assert.equal(STOREFRONT_HERO.clock, '05:00');
   assert.equal(STOREFRONT_HERO.leadBeforeBreak, 'Your Scoreboard, Round Timer and Mock Tournament Software.');

@@ -138,7 +138,7 @@ test('buy page shows an unlock or promo code field without printing launch codes
   await expect(field).toBeVisible();
   const box = await field.boundingBox();
   expect(box && box.y).toBeLessThan(900);
-  await expect(page.getByRole('button', { name: 'Continue to checkout — $9.99' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue to checkout — $19.99' })).toBeVisible();
   const body = await page.locator('body').innerText();
   expect(body).not.toMatch(/WHITE499|WHITE099/i);
   await shot(page, 'buy-code-field');

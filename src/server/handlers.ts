@@ -30,7 +30,7 @@ import {
 } from './upgradeCredit.ts';
 import {
   EXPECTED_CLOUD_MONTHLY_CENTS,
-  EXPECTED_ONE_TIME_CENTS,
+  expectedOneTimeCents,
   checkoutFormFields,
   checkoutReturnUrls,
   createAcademyPromotionCode,
@@ -162,7 +162,8 @@ export async function handleCheckout(
   if (cloudFlag && !isCloudAddonProduct(product)) {
     return json(400, { error: 'Advantage Cloud is an add-on for Media, Instructor, and Pro only. No charge was made.' });
   }
-  const config = cloudFlag && isCloudAddonProduct(product) ? readCloudAddonCart(env, product) : readStripeConfig(env, product);
+  const checkoutNowMs = (extras.now ?? (() => new Date()))().getTime();
+  const config = cloudFlag && isCloudAddonProduct(product) ? readCloudAddonCart(env, product) : readStripeConfig(env, product, checkoutNowMs);
   if ('error' in config) return json(503, { error: config.error });
   const urls = checkoutReturnUrls(request.url, env, product);
   if ('error' in urls) return json(503, { error: urls.error });
@@ -188,12 +189,19 @@ export async function handleCheckout(
       });
       if (plan.kind === 'owned') return json(409, { error: plan.message, owned: true });
     }
-    const expectedCents = EXPECTED_ONE_TIME_CENTS[product];
+    const expectedCents = expectedOneTimeCents(product, env, checkoutNowMs);
     if (expectedCents !== undefined) {
       // The page shows this amount, so never open a session at any other one-time amount.
       const price = plan.kind === 'credit' ? plan.price : await fetchOneTimePrice(config.secret, config.priceIds[0], fetchImpl);
       if (price.unitAmount !== expectedCents || price.currency.toLowerCase() !== 'usd') {
-        const name = product === 'coach' ? 'Instructor Edition' : product === 'media' ? 'Media Edition' : 'Advantage Pro';
+        const name =
+          product === 'coach'
+            ? 'Instructor Edition'
+            : product === 'media'
+              ? 'Media Edition'
+              : product === 'white'
+                ? 'Advantage White'
+                : 'Advantage Pro';
         return json(503, { error: `${name} checkout is not configured. No charge was made.` });
       }
     }

@@ -71,7 +71,7 @@ This repo is a static Vite app.
 
 ## Advantage White purchase (Stripe test mode)
 
-Advantage White is a **one-time $9.99 USD** purchase. Checkout is a Stripe Checkout Session (`mode=payment`). Card fields stay on Stripe. This repo never contains a live secret key.
+Advantage White is a **one-time $19.99 USD** purchase. An optional two-month launch price of **$15.99 USD** applies when `WHITE_LAUNCH_DATE` is set. Checkout is a Stripe Checkout Session (`mode=payment`). Card fields stay on Stripe. This repo never contains a live secret key.
 
 | Piece | Where |
 | --- | --- |
@@ -91,13 +91,13 @@ The stored purchase record is the buyer email, the session id, the amount, the c
 
 Use the Stripe test-mode toggle. Then:
 
-1. **Product catalog → Add product.** Name: `Advantage White`. Price: one time, **USD 9.99**. Copy the Price id (`price_...`) into `STRIPE_PRICE_WHITE`.
+1. **Product catalog → Advantage White.** Create two one-time USD prices on the existing product: **USD 19.99** (`STRIPE_PRICE_WHITE`) and **USD 15.99** (`STRIPE_PRICE_WHITE_LAUNCH`). Leave the legacy $9.99 price in place (do not archive it) so old purchases still resolve. Do not change the product default price from this app.
 2. **Coupons** (placeholders — the app does not create them):
 
-   | Coupon id | Amount off | Duration | Promotion code | Customer pays |
+   | Coupon id | Amount off | Duration | Promotion code | Customer pays at $19.99 / at $15.99 launch |
    | --- | --- | --- | --- | --- |
-   | `advantage_white_499` | $5.00 USD | Once | `WHITE499` | $4.99 |
-   | `advantage_white_099` | $9.00 USD | Once | `WHITE099` | $0.99 |
+   | `advantage_white_499` | $5.00 USD | Once | `WHITE499` | $14.99 / $10.99 |
+   | `advantage_white_099` | $9.00 USD | Once | `WHITE099` | $10.99 / $6.99 |
    Restrict each coupon to the Advantage White product if you want it to stay off later prices. Promotion codes are customer-facing; coupon ids are the Dashboard ids. The public buy page does not list them. A code typed on `/buy` is checked on the server first. If it is not one of the hashed unlock codes, it is sent to Stripe as a promotion code. Paid codes can also be typed in Stripe Checkout’s own promo box.
 3. **Developers → Webhooks → Add endpoint.** URL: `https://<your-host>/api/stripe/webhook` (local: forward to `http://localhost:5173/api/stripe/webhook`). Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `charge.refunded`, `charge.dispute.created`, and `charge.dispute.closed`. Copy the signing secret into `STRIPE_WEBHOOK_SECRET`. `checkout.session.completed` is the White event and the Pro unlock. The subscription events re-read the subscription from Stripe. The first failed payment in a billing cycle starts a 7-day grace. Pro locks on day 8. A full refund or a lost dispute revokes a one-time purchase. Do not turn on Stripe Tax from this app. See `docs/paywall-phase-3.md`.
 4. **Developers → API keys.** Secret key → `STRIPE_SECRET_KEY` (`sk_test_...`).
@@ -111,7 +111,9 @@ Use the Stripe test-mode toggle. Then:
    | --- | --- | --- |
    | `STRIPE_SECRET_KEY` | **Secret** (encrypt) | All paid Checkout |
    | `STRIPE_WEBHOOK_SECRET` | **Secret** (encrypt) | Webhook signature for White and Pro |
-   | `STRIPE_PRICE_WHITE` | Server variable (not public) | White one-time price |
+   | `STRIPE_PRICE_WHITE` | Server variable (not public) | White one-time $19.99 price. Checkout uses this except during the launch window |
+   | `STRIPE_PRICE_WHITE_LAUNCH` | Server variable (not public) | White one-time $15.99 launch price. Required while the launch window is open, otherwise Checkout returns 503 |
+   | `WHITE_LAUNCH_DATE` | Optional server variable | YYYY-MM-DD. Unset keeps White at $19.99. When set, the launch price runs from 00:00 America/New_York on that date until 00:00 America/New_York two calendar months later |
    | `STRIPE_PRICE_STUDENT` | Server variable (not public) | Student Edition one-time price. Checkout keeps `allow_promotion_codes` so an academy half-off code can be entered |
    | `STRIPE_PRICE_EXTRA_PROFILE` | Server variable (not public) | Extra Student profile, one-time $5.99. The first profile is free. Profile switcher checkout |
    | `STRIPE_COUPON_ACADEMY_HALF_OFF` | Server variable (not public) | Coupon id for academy Student Edition half-off. Pro mints one code (100 uses) per academy. Instructor Edition mints one (25 uses) per license. The coupon's percent is stored with the code |
@@ -135,7 +137,7 @@ Copy `.env.example` to `.env` for local dev. `.env` is gitignored.
 ### Test-mode click path
 
 1. Code unlock: set `CODE_HASH_PEPPER` and `CODE_CATALOG` in `.env` (hashes only), restart `npm run dev`, and type the code on `/buy`. The address bar is not a code. `GET /api/entitlement` is gone (410). Restore is `/restore` and does not say whether an email bought anything.
-2. Paid path: fill `.env` with test keys and restart `npm run dev`. Open `/buy` (home **Advantage White**, or White → **Buy Advantage White — $9.99**). The page has an enter-a-code field and does not print promo names. Student Edition, Coach, and Pro on that page are Coming soon and do not start Checkout. Student Edition sits between White and Coach. Its checkout button appears only when Student Edition is already entitled (a server code or a confirmed purchase). The demo does not open that button.
+2. Paid path: fill `.env` with test keys and restart `npm run dev`. Open `/buy` (home **Advantage White**, or White → **Buy Advantage White — $19.99**). The page has an enter-a-code field and does not print promo names. Student Edition, Coach, and Pro on that page are Coming soon and do not start Checkout. Student Edition sits between White and Coach. Its checkout button appears only when Student Edition is already entitled (a server code or a confirmed purchase). The demo does not open that button.
 3. **Continue to checkout.** Pay with `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP. On Stripe’s page, optional promo codes are `WHITE499` and `WHITE099`.
 4. Stripe returns to `/buy?checkout=success&session_id=cs_test_...`. Cancel returns to `/buy?checkout=cancel` and does not charge.
 5. Deliver the webhook (`stripe listen --forward-to localhost:5173/api/stripe/webhook`, or the Dashboard endpoint). The buy page confirms the session with Stripe. A made-up `session_id` does not unlock.
@@ -169,10 +171,12 @@ A paid Pro Checkout session (`checkout.session.completed`, `mode=subscription`, 
 4. **Instructor Edition → one-time price, USD 49.99.** Copy the Price id to `STRIPE_PRICE_INSTRUCTOR`. (`STRIPE_PRICE_COACH`, the legacy $29.99 price, is no longer sold.)
 5. **White promotion codes** (the public buy page does not show the code text). White Checkout still sends `allow_promotion_codes=true` unless a code was attached by the server. Create these coupons, restricted to Advantage White, if they are not already in the Dashboard:
 
-   | Customer pays | Amount off the $9.99 price | Duration |
+   | Customer pays (at the current White price) | Amount off | Duration |
    | --- | --- | --- |
-   | $4.99 | $5.00 USD | Once |
-   | $0.99 | $9.00 USD | Once |
+   | List minus $5.00 | $5.00 USD | Once |
+   | List minus $9.00 | $9.00 USD | Once |
+
+   These are fixed amount-off coupons, not a new sale price. On the current $19.99 list they land at $14.99 and $10.99; during the $15.99 launch window they land at $10.99 and $6.99. The $4.99 and $0.99 amounts were for the former $9.99 list price.
 
    The code strings stay in the owner notes above (`WHITE499`, `WHITE099`). Do not print them on the buy page.
 

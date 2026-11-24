@@ -19,5 +19,5 @@ test('legacy /card goes home and does not show the business card page', async ({
 
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Win by Advantage.', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Buy Advantage White — $9.99' })).toHaveAttribute('href', '/buy');
+  await expect(page.getByRole('link', { name: 'Buy Advantage White — $19.99' })).toHaveAttribute('href', '/buy');
 });

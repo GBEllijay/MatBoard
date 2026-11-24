@@ -102,7 +102,7 @@ export function whiteLiveToolsAllowed(
   return access.whiteUnlocked || access.coachDoor || access.proDoor || isPreviewWhiteUnlocked(hostname);
 }
 
-/** Home and other White entries. Locked visitors land on the $9.99 paywall. */
+/** Home and other White entries. Locked visitors land on the White paywall. */
 export function whiteEntryPath(whiteUnlocked: boolean, hostname?: string): '/white' | typeof WHITE_BUY_PATH {
   return whiteUnlocked || isPreviewWhiteUnlocked(hostname) ? '/white' : WHITE_BUY_PATH;
 }

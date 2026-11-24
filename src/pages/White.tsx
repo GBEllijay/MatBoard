@@ -9,6 +9,8 @@ import { SiteFooter } from '../components/SiteFooter';
 import { PRODUCTS_PATH } from '../lib/productNames';
 import { isPreviewWhiteUnlocked } from '../lib/previewWhiteBypass';
 import { lockWhite } from '../lib/whiteUnlock';
+import { useWhitePublicPricing } from '../hooks/useWhitePublicPricing';
+import { whiteBuyCtaLabel } from '../lib/whitePurchase';
 
 export const WHITE_HUB_TOOLS_LINE = 'BJJ Scoreboard, Round Timer, Brackets & Bracket Roster';
 export const WHITE_HUB_CAST_LINE =
@@ -16,6 +18,7 @@ export const WHITE_HUB_CAST_LINE =
 
 export function WhitePage() {
   const navigate = useNavigate();
+  const whitePricing = useWhitePublicPricing();
   return (
     <main className="home home--white">
       <div className="home__inner">
@@ -57,7 +60,7 @@ export function WhitePage() {
             <>
               <p className="home__soon">
                 <Link className="home__text-btn" to="/buy">
-                  Buy Advantage White — $9.99
+                  {whiteBuyCtaLabel(whitePricing.activePriceCents)}
                 </Link>
               </p>
               <p className="home__soon">

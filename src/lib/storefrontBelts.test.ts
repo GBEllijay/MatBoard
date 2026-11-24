@@ -99,7 +99,7 @@ test('Coach reads Instructor in this section, with the same code name, id and ro
 test('every tier except Pro and Pro Plus Cloud is priced one-time; Pro is $99.99 + $5.99/mo; Cloud is $5.99/month', () => {
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.cardPrice),
-    ['$9.99 one-time', '$19.99 one-time', '$29.99 one-time', '$49.99 one-time', '$99.99 one-time', '$5.99/month'],
+    ['$19.99 one-time', '$19.99 one-time', '$29.99 one-time', '$49.99 one-time', '$99.99 one-time', '$5.99/month'],
   );
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.detail ?? null),
@@ -119,7 +119,7 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   assert.equal(white.detail, undefined);
   assert.deepEqual(
     { title: white.title, rankLabel: white.rankLabel, blurb: white.blurb, cardPrice: white.cardPrice, status: white.status, to: white.to },
-    { title: 'Advantage White', rankLabel: 'WHITE', blurb: 'BJJ scoreboard and round timer.', cardPrice: '$9.99 one-time', status: 'Available now', to: STOREFRONT_BUY_PATH },
+    { title: 'Advantage White', rankLabel: 'WHITE', blurb: 'BJJ scoreboard and round timer.', cardPrice: '$19.99 one-time', status: 'Available now', to: STOREFRONT_BUY_PATH },
   );
   assert.equal(white.to, '/buy');
   const proStep = STOREFRONT_STEPS.find((s) => s.id === 'pro');

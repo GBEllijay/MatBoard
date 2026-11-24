@@ -9,6 +9,8 @@ import { SiteFooter } from '../components/SiteFooter';
 import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useSeatDoor } from '../hooks/useSeatDoor';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { useWhitePublicPricing } from '../hooks/useWhitePublicPricing';
+import { formatUsdFromCents } from '../lib/whitePurchase';
 import { lockCoach } from '../lib/coachUnlock';
 import { lockMedia } from '../lib/mediaUnlock';
 import { entitlementNowMs, entitlementSnapshot } from '../lib/entitlement';
@@ -27,6 +29,7 @@ export function ComingSoonPage() {
     access.amnesty,
   );
   const whiteUnlocked = useWhiteUnlocked();
+  const whitePricing = useWhitePublicPricing();
   const coachUnlocked = useCoachUnlocked();
   const seated = useCurrentSeat() !== null;
   const coachTools = coachDoorOpen(proUnlocked, coachUnlocked, seated);
@@ -97,7 +100,7 @@ export function ComingSoonPage() {
             <p className="home__soon-lead">
               {whiteUnlocked
                 ? 'Advantage White is ready on this browser — Live Bout and Rounds. '
-                : 'Advantage White is $9.99 — Live Bout and Rounds unlock after purchase. '}
+                : `Advantage White is ${formatUsdFromCents(whitePricing.activePriceCents)} — Live Bout and Rounds unlock after purchase. `}
               Advantage Instructor Edition and Advantage Pro stay in alpha on home. Gym-owner tools stay off
               until Instructor Edition or Pro is unlocked on this browser.
             </p>

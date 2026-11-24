@@ -54,7 +54,8 @@ import {
   STUDENT_PRICE_LINE,
   WHITE_ALPHA_ACCESS_NOTE,
 } from '../lib/productPrices';
-import { WHITE_PRICE_LABEL } from '../lib/whitePurchase';
+import { useWhitePublicPricing } from '../hooks/useWhitePublicPricing';
+import { formatUsdFromCents } from '../lib/whitePurchase';
 import { whiteEntryPath } from '../lib/whiteUnlock';
 import { TIER_BUY_PATHS } from '../lib/tierBuyPages';
 
@@ -63,6 +64,7 @@ export function HomePage() {
   const proUnlocked = door.proUnlocked;
   const access = entitlementSnapshot();
   const whiteUnlocked = useWhiteUnlocked();
+  const whitePricing = useWhitePublicPricing();
   const coachUnlocked = useCoachUnlocked();
   const studentUnlocked = useStudentEditionUnlocked();
   const seat = useCurrentSeat();
@@ -135,7 +137,7 @@ export function HomePage() {
               <HomeDescription text={WHITE_HOME_DESCRIPTION} />
               <span className="mode-card__actions">
                 <Link className="btn btn--white" to={whiteEntryPath(false)}>
-                  {`Buy — ${WHITE_PRICE_LABEL}`}
+                  {`Buy — ${formatUsdFromCents(whitePricing.activePriceCents)}`}
                 </Link>
                 <LearnMoreLink tier="white" />
               </span>

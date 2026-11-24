@@ -694,7 +694,7 @@ test('Lock White uses the hub text button and leaves roster and journal in place
   assert.match(line?.textContent ?? '', /Advantage White is on for this browser/);
   assert.match(line?.textContent ?? '', /All products/);
   assert.equal(line?.querySelector('a')?.getAttribute('href'), '/products');
-  assert.match(page.host.textContent ?? '', /Buy Advantage White — \$9\.99/);
+  assert.match(page.host.textContent ?? '', /Buy Advantage White — \$19\.99/);
   act(() => {
     lock.click();
   });

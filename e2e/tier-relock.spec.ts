@@ -67,7 +67,7 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   const lockWhite = page.getByRole('button', { name: 'Lock White' });
   await expect(lockWhite).toHaveClass(/home__text-btn/);
   await expect(page.getByText('Advantage White is on for this browser.')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Buy Advantage White — $9.99' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Buy Advantage White — $19.99' })).toBeVisible();
   await lockWhite.scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${ARTIFACTS}/white-unlocked-lock.png`, fullPage: true });
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -75,7 +75,7 @@ test('re-lock White and Student Edition, then the codes open them again', async 
   await expect(page.getByRole('dialog')).toHaveCount(0);
   // The White route guard sends a locked visitor to the paywall, same as a fresh visit to /white.
   await expect(page).toHaveURL(/\/buy$/);
-  await expect(page.getByRole('button', { name: 'Continue to checkout — $9.99' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue to checkout — $19.99' })).toBeVisible();
   await expect(page.getByText('Advantage White is unlocked on this device.')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Restore', exact: true })).toBeVisible();
   await expect(
@@ -87,7 +87,7 @@ test('re-lock White and Student Edition, then the codes open them again', async 
 
   await page.goto('/products');
   await expect(page.getByRole('link', { name: /Advantage White/ })).toHaveAttribute('href', '/buy');
-  await expect(page.getByRole('link', { name: 'Buy — $9.99' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Buy — $19.99' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Student Edition', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open Advantage Instructor Edition', exact: true })).toBeVisible();
   await page.screenshot({ path: `${ARTIFACTS}/white-locked-products.png`, fullPage: true });

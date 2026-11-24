@@ -6,23 +6,30 @@ import {
   WHITE_ENTITLEMENT_API,
   WHITE_FEATURES,
   WHITE_INCLUDED,
+  WHITE_LAUNCH_PRICE_CENTS,
   WHITE_LIST_PRICE_CENTS,
   WHITE_PRICE_LABEL,
+  whiteBuyCtaLabel,
   WHITE_PRODUCT_ID,
   WHITE_UPGRADE_NOTE,
   formatUsdFromCents,
   priceAfterAmountOff,
 } from './whitePurchase.ts';
 
-test('Advantage White list price is $9.99', () => {
-  assert.equal(WHITE_LIST_PRICE_CENTS, 999);
+test('Advantage White list price is $19.99 and the launch price is $15.99', () => {
+  assert.equal(WHITE_LIST_PRICE_CENTS, 1999);
+  assert.equal(WHITE_LAUNCH_PRICE_CENTS, 1599);
   assert.equal(formatUsdFromCents(WHITE_LIST_PRICE_CENTS), WHITE_PRICE_LABEL);
-  assert.equal(formatUsdFromCents(WHITE_LIST_PRICE_CENTS), '$9.99');
+  assert.equal(formatUsdFromCents(WHITE_LIST_PRICE_CENTS), '$19.99');
+  assert.equal(formatUsdFromCents(WHITE_LAUNCH_PRICE_CENTS), '$15.99');
+  assert.equal(whiteBuyCtaLabel(), 'Buy Advantage White — $19.99');
+  assert.equal(whiteBuyCtaLabel(WHITE_LAUNCH_PRICE_CENTS), 'Buy Advantage White — $15.99');
 });
 
-test('amount-off prices land on $4.99 and $0.99', () => {
-  assert.equal(priceAfterAmountOff(WHITE_LIST_PRICE_CENTS, 500), 499);
-  assert.equal(priceAfterAmountOff(WHITE_LIST_PRICE_CENTS, 900), 99);
+test('amount-off helper subtracts a fixed coupon from the current list price', () => {
+  assert.equal(priceAfterAmountOff(WHITE_LIST_PRICE_CENTS, 500), 1499);
+  assert.equal(priceAfterAmountOff(WHITE_LIST_PRICE_CENTS, 900), 1099);
+  assert.equal(priceAfterAmountOff(WHITE_LAUNCH_PRICE_CENTS, 500), 1099);
   assert.equal(formatUsdFromCents(499), '$4.99');
   assert.equal(formatUsdFromCents(99), '$0.99');
 });

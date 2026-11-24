@@ -11,6 +11,7 @@ import { useCoachUnlocked } from '../hooks/useCoachUnlocked';
 import { useProUnlocked } from '../hooks/useProUnlocked';
 import { useStudentEditionUnlocked } from '../hooks/useStudentEditionUnlocked';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { useWhitePublicPricing } from '../hooks/useWhitePublicPricing';
 import { settleDemoCarryover } from '../lib/demoCarryover';
 import { confirmCheckoutSession, withCheckoutNonce } from '../lib/codeRedeemClient';
 import type { WhiteEntitlementStatus } from '../lib/whiteEntitlementClient';
@@ -23,7 +24,6 @@ import {
   WHITE_FEATURES,
   WHITE_INCLUDED,
   WHITE_PRICE_DETAIL,
-  WHITE_PRICE_LABEL,
   WHITE_STRIPE_NOTE,
   formatUsdFromCents,
 } from '../lib/whitePurchase';
@@ -52,6 +52,8 @@ export function BuyWhitePage() {
   const [studentError, setStudentError] = useState<string | null>(null);
   const halfOff = useHalfOffArrival();
   const unlocked = useWhiteUnlocked();
+  const whitePricing = useWhitePublicPricing();
+  const checkoutPriceLabel = formatUsdFromCents(whitePricing.activePriceCents);
   const studentOpen = studentEditionEntitled({
     pro: useProUnlocked(),
     coach: useCoachUnlocked(),
@@ -196,8 +198,9 @@ export function BuyWhitePage() {
             <p className="buy__kicker">Available now</p>
             <h2>Advantage White</h2>
             <p className="buy__price">
-              {WHITE_PRICE_LABEL} <span>{WHITE_PRICE_DETAIL}</span>
+              {formatUsdFromCents(whitePricing.listPriceCents)} <span>{WHITE_PRICE_DETAIL}</span>
             </p>
+            {whitePricing.launchCopy ? <p className="buy__launch-price">{whitePricing.launchCopy}</p> : null}
             <p>{WHITE_STRIPE_NOTE}</p>
             <p className="buy__storage">{WHITE_STORAGE_LINE}</p>
           </header>
@@ -265,7 +268,7 @@ export function BuyWhitePage() {
                   ? 'Opening checkout…'
                   : unlocked
                     ? 'Apply code'
-                    : `Continue to checkout — ${WHITE_PRICE_LABEL}`}
+                    : `Continue to checkout — ${checkoutPriceLabel}`}
               </button>
             ) : null}
             <p>

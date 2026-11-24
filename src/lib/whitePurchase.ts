@@ -1,5 +1,8 @@
-/** One-time Advantage White list price. Stripe Price id lives in STRIPE_PRICE_WHITE. */
-export const WHITE_LIST_PRICE_CENTS = 999;
+/** Standard one-time Advantage White list price. Stripe Price id lives in STRIPE_PRICE_WHITE. */
+export const WHITE_LIST_PRICE_CENTS = 1999;
+
+/** Two-month launch price. Stripe Price id lives in STRIPE_PRICE_WHITE_LAUNCH. */
+export const WHITE_LAUNCH_PRICE_CENTS = 1599;
 
 export const WHITE_CURRENCY = 'usd';
 
@@ -12,7 +15,11 @@ export const WHITE_ENTITLEMENT_API = '/api/entitlement';
 /** Must match the server product metadata sent to Stripe. */
 export const WHITE_PRODUCT_ID = 'advantage-white';
 
-export const WHITE_PRICE_LABEL = '$9.99';
+export const WHITE_PRICE_LABEL = '$19.99';
+
+export const WHITE_LAUNCH_PRICE_LABEL = '$15.99';
+
+export const WHITE_PRICE_LINE = '$19.99 one-time';
 
 /** Sits beside the price on the buy header. */
 export const WHITE_PRICE_DETAIL = 'USD — One Time Purchase';
@@ -45,4 +52,8 @@ export function formatUsdFromCents(cents: number): string {
   const dollars = Math.floor(abs / 100);
   const remainder = String(abs % 100).padStart(2, '0');
   return `${sign}$${dollars}.${remainder}`;
+}
+
+export function whiteBuyCtaLabel(activePriceCents = WHITE_LIST_PRICE_CENTS): string {
+  return `Buy Advantage White — ${formatUsdFromCents(activePriceCents)}`;
 }

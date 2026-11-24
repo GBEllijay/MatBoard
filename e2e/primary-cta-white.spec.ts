@@ -64,7 +64,7 @@ test('homepage Buy CTA is white, keeps its link, and stays visible in focus', as
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/');
   const buy = page.locator('a.sf-buy');
-  await expect(buy).toHaveText('Buy Advantage White — $9.99');
+  await expect(buy).toHaveText('Buy Advantage White — $19.99');
   await expect(buy).toHaveAttribute('href', '/buy');
   const desktop = await paint(buy);
   expectWhitePrimary(desktop, '800');
@@ -86,7 +86,7 @@ test('homepage Buy CTA is white, keeps its link, and stays visible in focus', as
 
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/products');
-  const productBuy = page.getByRole('link', { name: 'Buy — $9.99' });
+  const productBuy = page.getByRole('link', { name: 'Buy — $19.99' });
   await expect(productBuy).toHaveAttribute('href', '/buy');
   expectWhitePrimary(await paint(productBuy));
   expect(await yellowControls(page)).toEqual([]);
@@ -100,7 +100,7 @@ test('homepage Buy CTA is white, keeps its link, and stays visible in focus', as
   await page.goto('/');
   await buy.click();
   await expect(page).toHaveURL(/\/buy$/);
-  const checkout = page.getByRole('button', { name: 'Continue to checkout — $9.99' });
+  const checkout = page.getByRole('button', { name: 'Continue to checkout — $19.99' });
   await expect(checkout).toBeEnabled();
   await expect(checkout).toHaveAttribute('type', 'submit');
   expectWhitePrimary(await paint(checkout));
