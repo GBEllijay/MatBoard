@@ -5,13 +5,18 @@ const BACK = 'Back. Hold for Home.';
 const PHONE = { width: 390, height: 844 };
 const PNG = '/tmp/gallery-header.png';
 
-const SCROLLING_MENUS: { path: string; heading: string; logo: string }[] = [
+const SCROLLING_MENUS: { path: string; heading: string; logo: string; wrap?: string }[] = [
   { path: '/pro', heading: 'Advantage Pro', logo: '.home__logo' },
   { path: '/coach', heading: 'Advantage - Instructor Edition', logo: '.home__logo' },
   { path: '/coach-unlimited', heading: 'Instructor Edition', logo: '.home__logo' },
   { path: '/instructors', heading: 'Instructor Invitations and Access Management', logo: '.home__logo' },
   { path: '/suite', heading: 'Competition and Tournament Management', logo: '.home__logo' },
-  { path: '/white', heading: 'Advantage - White', logo: '.home__logo' },
+  {
+    path: '/white',
+    heading: 'BJJ Scoreboard, Round Timer, Brackets & Bracket Roster',
+    logo: '.home__logo',
+    wrap: '.home__tools-line',
+  },
 ];
 
 async function unlock(page: Page) {
@@ -103,7 +108,7 @@ test('gallery belt scrolls away and other Pro headers stay as they were', async 
     await page.goto(menu.path);
     const heading = page.getByRole('heading', { name: menu.heading, exact: true });
     await expect(heading).toBeVisible();
-    const pin = await headerPin(heading, '.belt-header', 'main');
+    const pin = await headerPin(heading, menu.wrap ?? '.belt-header', 'main');
     expect(pin.position, menu.path).toBe('static');
     expect(pin.sticky, menu.path).toEqual([]);
     const logo = page.locator(menu.logo).first();

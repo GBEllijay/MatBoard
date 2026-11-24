@@ -2327,7 +2327,8 @@ span.role-plan__mark {
   min-width: 0;
 }
 
-.home__modes > .belt-header {
+.home__modes > .belt-header,
+.home__modes > .home__tools-line {
   grid-column: 1 / -1;
 }
 
@@ -14096,6 +14097,30 @@ html.lesson-cover-open body {
   .notes__bar {
     margin-bottom: 0.45rem;
   }
+}
+
+/* Advantage White hub: tools line above the four cards, and the cast line
+   above Instructions. Same Inter treatment as the Advantage wordmark motto. */
+.home--white .home__tools-line,
+.home--white p.home__cast-line {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  text-wrap: pretty;
+  text-align: center;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+}
+
+.home--white .home__modes > .home__tools-line {
+  margin: 0 0 0.2rem;
+  font-size: clamp(1.12rem, 3.2vw, 1.55rem);
+}
+
+.home--white .home__hints > p.home__cast-line {
+  margin: 0 0 0.85rem;
+  font-size: clamp(1.02rem, 2.6vw, 1.35rem);
 }
 
 /* Advantage White home only. Pro hub buttons stay cream and are not restyled here. */

@@ -1,5 +1,4 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { BeltHeader } from '../components/BeltHeader';
 import { HomeMark } from '../components/HomeMark';
 import { InstructionsButton } from '../components/InstructionsButton';
 import { LiveBoutCard } from '../components/LiveBoutCard';
@@ -11,6 +10,10 @@ import { PRODUCTS_PATH } from '../lib/productNames';
 import { isPreviewWhiteUnlocked } from '../lib/previewWhiteBypass';
 import { lockWhite } from '../lib/whiteUnlock';
 
+export const WHITE_HUB_TOOLS_LINE = 'BJJ Scoreboard, Round Timer, Brackets & Bracket Roster';
+export const WHITE_HUB_CAST_LINE =
+  'Your Scoreboard, Round Timer and Mock Tournament Software. Cast to your TV from your phone or PC.';
+
 export function WhitePage() {
   const navigate = useNavigate();
   return (
@@ -19,11 +22,7 @@ export function WhitePage() {
         <HomeMark to={PRODUCTS_PATH} />
 
         <nav className="home__modes" aria-label="Advantage White">
-          <BeltHeader
-            kind="white"
-            title="Advantage - White"
-            blurb="Your Scoreboard, Round Timer and Mock Tournament Software. Cast to your TV from your phone or PC."
-          />
+          <h2 className="home__tools-line">{WHITE_HUB_TOOLS_LINE}</h2>
           <LiveBoutCard />
           <RoundsCard />
           <BracketsCard />
@@ -31,6 +30,7 @@ export function WhitePage() {
         </nav>
 
         <div className="home__hints">
+          <p className="home__cast-line">{WHITE_HUB_CAST_LINE}</p>
           <InstructionsButton controlsId="white-instructions">
             <p className="home__hint">Install Advantage as an app from your browser menu.</p>
             <p className="home__hint">
