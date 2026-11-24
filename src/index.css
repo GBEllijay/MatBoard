@@ -10941,7 +10941,8 @@ input.roster-pick__name:focus,
   accent-color: var(--permission-on);
 }
 
-.roster-pick__use {
+.roster-pick__use,
+.roster-pick__clear {
   width: 100%;
 }
 
