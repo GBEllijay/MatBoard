@@ -6,18 +6,29 @@ const matchStore = readFileSync(new URL('./matchStore.ts', import.meta.url), 'ut
 const trainingStore = readFileSync(new URL('./trainingStore.ts', import.meta.url), 'utf8');
 const board = readFileSync(new URL('../pages/MatchController.tsx', import.meta.url), 'utf8');
 const timer = readFileSync(new URL('../components/TrainingOptions.tsx', import.meta.url), 'utf8');
-const shared = readFileSync(new URL('../components/StartSoundWhenControls.tsx', import.meta.url), 'utf8');
+const startCue = readFileSync(new URL('../components/StartCueControls.tsx', import.meta.url), 'utf8');
+const toggle = readFileSync(new URL('../components/RoundStartOnlyToggle.tsx', import.meta.url), 'utf8');
 
-test('scoreboard and round timer share the same Combate-when toggle', () => {
-  assert.match(shared, /patchAudioPrefs\(\{ startSoundWhen: option\.id \}\)/);
-  assert.match(shared, /First start only/);
-  assert.match(shared, /Every start/);
-  assert.match(shared, /Begin buttons you tap/);
-  assert.match(shared, /Automatic work and\s+rest cues on the round timer still follow that timer/);
-  assert.doesNotMatch(shared, /Later begins after a pause or\s+rest play a short beep/);
-  assert.doesNotMatch(shared, /import .*(entitle|edition|unlock|tier)|useEdition|whiteBoard|isPro/i);
-  assert.match(board, /<StartSoundWhenControls \/>/);
-  assert.match(timer, /<StartSoundWhenControls \/>/);
+test('scoreboard and round timer share the same Round Start Only toggle', () => {
+  assert.match(toggle, /patchAudioPrefs\(\{ startSoundWhen: e\.target\.checked \? 'first' : 'every' \}\)/);
+  assert.match(toggle, /Round Start Only/);
+  assert.match(toggle, /startSoundWhen === 'first'/);
+  assert.doesNotMatch(toggle, /When to play Combate|First start only|Every start|Begin buttons you tap/);
+  assert.doesNotMatch(toggle, /import .*(entitle|edition|unlock|tier)|useEdition|whiteBoard|isPro/i);
+  assert.match(board, /<RoundStartOnlyToggle \/>/);
+  assert.match(timer, /<RoundStartOnlyToggle \/>/);
+});
+
+test('match start cue row is None, Beep, and COMBATE! ("FIGHT!"), styled like the end cue', () => {
+  assert.match(startCue, /MATCH_START_CUE_OPTIONS\.map/);
+  assert.match(startCue, /aria-label="Match start cue"/);
+  assert.match(startCue, /presets--end-cue/);
+  assert.match(startCue, /matchStartCueChoice\(startBeep, audio\.startCue\)/);
+  assert.match(board, /<StartCueControls startBeep=\{match\.startBeep\} \/>/);
+  assert.doesNotMatch(board, /Start beep|StartSoundWhenControls|When to play Combate|First start only/);
+  const audio = readFileSync(new URL('./audio.ts', import.meta.url), 'utf8');
+  assert.match(audio, /id: 'combate', label: 'COMBATE! \("FIGHT!"\)'/);
+  assert.match(audio, /id: 'none', label: 'None'/);
 });
 
 test('manual match begin uses the shared first-start policy, not a beep on every start', () => {
@@ -31,11 +42,11 @@ test('manual match begin uses the shared first-start policy, not a beep on every
   );
 });
 
-test('manual round-timer begin uses the same policy; automatic work/rest cues stay as they were', () => {
+test('manual round-timer begin uses the same policy and never says Combate on rest; automatic work/rest cues stay as they were', () => {
   assert.match(trainingStore, /playTrainManualStartCue\(firstStart\)/);
   assert.match(
     trainingStore,
-    /function playTrainManualStartCue\(firstStart: boolean\): void \{\s*if \(!state\.startSound\) return;\s*playManualStartSound\(firstStart\);/s,
+    /function playTrainManualStartCue\(firstStart: boolean\): void \{\s*if \(!state\.startSound\) return;\s*playManualStartSound\(firstStart, \{ rest: state\.phase === 'break' \}\);/s,
   );
   assert.match(
     trainingStore,

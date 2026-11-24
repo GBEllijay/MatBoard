@@ -28,8 +28,8 @@ test('round timer keeps every control that was not replaced by a wheel', () => {
     'Reset clock',
     'Reset session',
     'aria-label="Training start sound"',
-    'Beep',
-    'Combate',
+    'START_CUE_OPTIONS',
+    '<RoundStartOnlyToggle',
     '10-second warning',
   ]) {
     assert.ok(options.includes(needle), needle);

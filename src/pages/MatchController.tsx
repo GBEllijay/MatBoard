@@ -21,7 +21,8 @@ import {
 } from '../lib/grandmasterCelebration';
 import { unlockAudio } from '../lib/audio';
 import { EndCueControls } from '../components/EndCueControls';
-import { StartSoundWhenControls } from '../components/StartSoundWhenControls';
+import { RoundStartOnlyToggle } from '../components/RoundStartOnlyToggle';
+import { StartCueControls } from '../components/StartCueControls';
 import { declareMatchOutcome, isLeftoverLinkedBout, scoreboardPath, visibleOutcomeBanner } from '../lib/bracketBout';
 import { kidsBoardClass } from '../lib/kidsScoreboard';
 import { openDisplayWindow, openOrCastDisplay } from '../lib/cast';
@@ -257,15 +258,8 @@ export function MatchControllerPage() {
 
         <fieldset>
           <legend>Match sounds</legend>
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={match.startBeep}
-              onChange={(e) => dispatchMatch({ type: 'setStartBeep', value: e.target.checked })}
-            />
-            Start beep
-          </label>
-          <StartSoundWhenControls />
+          <StartCueControls startBeep={match.startBeep} />
+          <RoundStartOnlyToggle />
           <label className="toggle">
             <input
               type="checkbox"

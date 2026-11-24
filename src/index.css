@@ -4977,7 +4977,15 @@ main.tree:has(> .tier-home) > .tree__bar {
   gap: 0.55rem;
 }
 
-.presets--end-cue .preset {
+.presets--start-cue {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
+  width: 100%;
+  gap: 0.55rem;
+}
+
+.presets--end-cue .preset,
+.presets--start-cue .preset {
   min-width: 0;
   width: 100%;
   min-height: 56px;

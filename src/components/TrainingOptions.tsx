@@ -1,7 +1,7 @@
 import { useAudioPrefs, useTrainingSkin, useTrainingState } from '../hooks/useStores';
-import { patchAudioPrefs, type StartCue } from '../lib/audio';
+import { patchAudioPrefs, START_CUE_OPTIONS } from '../lib/audio';
 import { EndCueControls } from './EndCueControls';
-import { StartSoundWhenControls } from './StartSoundWhenControls';
+import { RoundStartOnlyToggle } from './RoundStartOnlyToggle';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
 import { setTrainingSkin, visibleTrainingSkin } from '../lib/trainingSkin';
 import { TimerBackdropOptions } from './TimerBackdropOptions';
@@ -87,22 +87,22 @@ export function TrainingOptions({ onReset }: { onReset?: () => void }) {
         </label>
         <div className="cue-preview">
           <p className="cue-preview-label">Training start sound</p>
-          <div className="presets presets--split" role="radiogroup" aria-label="Training start sound">
-            {(['beep', 'combate'] as const satisfies readonly StartCue[]).map((id) => (
+          <div className="presets presets--start-cue" role="radiogroup" aria-label="Training start sound">
+            {START_CUE_OPTIONS.map((option) => (
               <button
-                key={id}
+                key={option.id}
                 type="button"
                 role="radio"
-                aria-checked={audio.startCue === id}
-                className={`preset${audio.startCue === id ? ' preset--on' : ''}`}
-                onClick={() => patchAudioPrefs({ startCue: id })}
+                aria-checked={audio.startCue === option.id}
+                className={`preset${audio.startCue === option.id ? ' preset--on' : ''}`}
+                onClick={() => patchAudioPrefs({ startCue: option.id })}
               >
-                {id === 'beep' ? 'Beep' : 'Combate'}
+                {option.label}
               </button>
             ))}
           </div>
         </div>
-        <StartSoundWhenControls />
+        <RoundStartOnlyToggle />
         <label className="toggle">
           <input
             type="checkbox"
