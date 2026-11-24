@@ -116,7 +116,7 @@ export function WhiteNamePicker({
           {saveOnPhone ? 'Save and use this name' : 'Use this name'}
         </button>
         {saveOnPhone && canUseTyped && rosterFull ? (
-          <p className="roster-edit__error">Roster full ({BRACKET_ROSTER_MAX}).</p>
+          <p className="roster-edit__error">The Bracket Roster is full.</p>
         ) : saveOnPhone && canUseTyped && !canSave ? (
           <p className="roster-edit__error">Pick a belt to save this name on this device.</p>
         ) : null}

@@ -70,9 +70,11 @@ test("Kids' Scoreboards is off until this device turns it on", () => {
   );
 });
 
-test('Kids bracket skins stay on the Pro suite and Coach Unlimited boards', () => {
+test('Kids bracket skins stay on White, the Pro suite, and Coach Unlimited boards', () => {
   assert.equal(kidsBracketSkinsAllowed('suite'), true);
   assert.equal(kidsBracketSkinsAllowed('unlimited'), true);
+  assert.equal(kidsBracketSkinsAllowed('white'), false);
+  assert.equal(kidsBracketSkinsAllowed('white', false, true), true);
   assert.equal(kidsBracketSkinsAllowed('coach'), false);
   assert.equal(kidsBracketSkinsAllowed(null), false);
   // Instructor Edition, Pro, and seats (competitionSuiteOpen) get bracket skins on any board.

@@ -97,8 +97,18 @@ export function isPolishedTrainingSkin(skin: TrainingSkin): skin is PolishedTime
  * Every other tier paints Classic for a locked polished pick, and also for a White-only
  * id, so Student and above keep the looks they already had.
  */
-export function visibleTrainingSkin(skin: TrainingSkin, polishedOpen: boolean, whiteBaseSkins = false): TrainingSkin {
-  if (whiteBaseSkins) return isWhiteTimerSkin(skin) ? skin : WHITE_TIMER_BASE;
+export function visibleTrainingSkin(
+  skin: TrainingSkin,
+  polishedOpen: boolean,
+  whiteBaseSkins = false,
+  whiteRoute = false,
+): TrainingSkin {
+  const whiteBoard = whiteBaseSkins || whiteRoute;
+  if (whiteBoard) {
+    if (isWhiteTimerSkin(skin)) return skin;
+    if (isPolishedTimerSlug(skin) || isCustomSkinId(skin)) return skin;
+    return WHITE_TIMER_BASE;
+  }
   if (isCustomSkinId(skin)) return polishedOpen ? skin : DEFAULT_TRAINING_SKIN;
   if (isWhiteTimerSkin(skin)) return DEFAULT_TRAINING_SKIN;
   if (isPolishedTimerSlug(skin) && !polishedOpen) return DEFAULT_TRAINING_SKIN;
@@ -170,16 +180,21 @@ if (typeof window !== 'undefined') {
 
 /**
  * Everything the Timer Skin popup lists.
- * White (no higher tier): the White timer skins. The polished families are absent, not locked.
+ * Advantage BJJ Scoreboard (White route or White-only tier): the White timer skins
+ * plus the polished families.
  * Everyone else: Classic, Advantage, then the polished skins (Calçadão after Brasil)
  * only when this browser has Media Edition or above.
  */
 export function timerPickerSkins(
   polishedOpen: boolean,
   whiteBaseSkins = false,
+  whiteRoute = false,
 ): readonly { id: TrainingSkin; label: string; polished: boolean }[] {
-  if (whiteBaseSkins) {
-    return WHITE_TIMER_SKINS.map((skin) => ({ id: skin.id, label: skin.label, polished: false }));
+  if (whiteBaseSkins || whiteRoute) {
+    return [
+      ...WHITE_TIMER_SKINS.map((skin) => ({ id: skin.id, label: skin.label, polished: false })),
+      ...POLISHED_TIMER_SKINS.map((skin) => ({ id: skin.slug as TrainingSkin, label: skin.label, polished: true })),
+    ];
   }
   return [
     { id: 'classic', label: 'Classic', polished: false },

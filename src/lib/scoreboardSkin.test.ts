@@ -212,7 +212,8 @@ test('a custom scoreboard skin keeps the Mock-Tournament board and the saved id'
   assert.equal(parseScoreboardSkin('custom:nope'), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.equal(scoreboardSkinClass(id), 'scoreboard-skin--mock-tournament scoreboard-skin--custom');
   assert.equal(visibleScoreboardSkin(id, false, false, false, true, false), id);
-  assert.equal(visibleScoreboardSkin(id, false, false, false, false, true), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
+  assert.equal(visibleScoreboardSkin(id, false, false, false, false, true), id);
+  assert.equal(visibleScoreboardSkin(id, false, false, false, false, false, true), id);
   assert.equal(visibleScoreboardSkin(id, false, false, false, false, false), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.equal(parseScoreboardSkin(SCOREBOARD_SKIN.OLD_SCHOOL), SCOREBOARD_SKIN.OLD_SCHOOL);
 });

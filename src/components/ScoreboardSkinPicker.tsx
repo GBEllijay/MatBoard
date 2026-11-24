@@ -8,7 +8,7 @@ import { SkinPicker, type SkinPickerOption } from './SkinPicker';
 
 /**
  * Scoreboard Skin popup for the Display and Controller.
- * Advantage White (no higher tier): Mock-Tournament, Old School, and Quick Result.
+ * Advantage BJJ Scoreboard: the full selectable set plus the polished families.
  * Media Edition and above: the skins this board already offered, then the polished skins.
  * Anyone else keeps the old controls (no Skins button, no lock tiles, no upsell).
  * The pick is stored with the match on this device, so Display and cast follow it.
@@ -22,12 +22,12 @@ export function ScoreboardSkinPicker({
 }) {
   const match = useMatchState();
   const board = useMatchBoard();
-  const custom = useCustomSkinSection(board.polishedOpen, (id) => {
+  const custom = useCustomSkinSection(board.skinsOpen, (id) => {
     dispatchMatch({ type: 'setSkin', value: parseScoreboardSkin(id) });
   });
-  if (board.kidsSkin || (!board.polishedOpen && !board.whiteBaseSkins)) return null;
+  if (board.kidsSkin || !board.skinsOpen) return null;
   const options: SkinPickerOption[] = [
-    ...scoreboardPickerSkins(board.plainWhite, board.polishedOpen, board.whiteBaseSkins).map((skin) => ({
+    ...scoreboardPickerSkins(board.plainWhite, board.polishedOpen, board.whiteBaseSkins, board.whiteProductOpen).map((skin) => ({
       id: skin.id,
       label: skin.label,
       thumb: skin.slug

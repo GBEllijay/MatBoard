@@ -12,6 +12,8 @@ import { TrainingOptions } from '../components/TrainingOptions';
 import { useCustomSkinUrl } from '../hooks/useCustomSkinUrl';
 import { useTrainingClock } from '../hooks/useTrainingClock';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
+import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { whiteProductFeaturesOpen } from '../lib/whiteSkinTier';
 import { usePlayFullscreen } from '../hooks/usePlayFullscreen';
 import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -41,8 +43,11 @@ import { remainingTraining, resetTrainingPeriod, resetTrainingSession, toggleTra
 
 export function TrainingPage() {
   const training = useTrainingState();
-  /** A polished pick paints only with Media Edition or above. White paints one of its three base skins. */
-  const skin = visibleTrainingSkin(useTrainingSkin(), usePolishedSkinsUnlocked(), useWhiteBaseSkins());
+  const polishedOpen = usePolishedSkinsUnlocked();
+  const whiteBase = useWhiteBaseSkins();
+  const whiteProductOpen = whiteProductFeaturesOpen(useSuiteOrigin().fromWhite, whiteBase, useWhiteUnlocked());
+  /** A polished pick paints with Media Edition or above, and on Advantage BJJ Scoreboard routes. */
+  const skin = visibleTrainingSkin(useTrainingSkin(), polishedOpen, whiteBase, whiteProductOpen);
   const whiteSurface = whiteTimerSurfaceClass(skin);
   const customRecordId = isCustomSkinId(skin) ? customSkinRecordId(skin) : null;
   const customUrl = useCustomSkinUrl(customRecordId);

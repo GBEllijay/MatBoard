@@ -1,5 +1,8 @@
 import { useCustomSkinSection } from '../hooks/useCustomSkinSection';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
+import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { whiteProductFeaturesOpen } from '../lib/whiteSkinTier';
+import { useSuiteOrigin } from '../hooks/useSuiteOrigin';
 import { useTrainingSkin } from '../hooks/useStores';
 import type { PolishedTimerSlug } from '../lib/polishedSkins';
 import { setTrainingSkin, timerPickerSkins, visibleTrainingSkin, type TrainingSkin } from '../lib/trainingSkin';
@@ -8,7 +11,7 @@ import { SkinPicker, type SkinPickerOption } from './SkinPicker';
 
 /**
  * Round timer Skin popup.
- * Advantage White (no higher tier): Mock-Tournament, Old School, and Quick Result.
+ * Advantage BJJ Scoreboard: the White timer skins plus the polished families.
  * Media Edition and above: Classic, Advantage, then the polished skins. This button
  * replaces the Classic / Advantage toggle. Anyone else keeps that toggle (no lock tiles).
  * Remembered on this device.
@@ -23,10 +26,12 @@ export function TimerSkinPicker({
   const skin = useTrainingSkin();
   const open = usePolishedSkinsUnlocked();
   const whiteBase = useWhiteBaseSkins();
-  const custom = useCustomSkinSection(open, (id) => setTrainingSkin(id as TrainingSkin));
-  if (!open && !whiteBase) return null;
+  const whiteProductOpen = whiteProductFeaturesOpen(useSuiteOrigin().fromWhite, whiteBase, useWhiteUnlocked());
+  const skinsOpen = open || whiteProductOpen;
+  const custom = useCustomSkinSection(skinsOpen, (id) => setTrainingSkin(id as TrainingSkin));
+  if (!skinsOpen) return null;
   const options: SkinPickerOption[] = [
-    ...timerPickerSkins(open, whiteBase).map((s) => ({
+    ...timerPickerSkins(open, whiteBase, whiteProductOpen).map((s) => ({
       id: s.id,
       label: s.label,
       thumb: s.polished
@@ -38,7 +43,7 @@ export function TimerSkinPicker({
   return (
     <SkinPicker
       label="Timer skins"
-      value={visibleTrainingSkin(skin, open, whiteBase)}
+      value={visibleTrainingSkin(skin, open, whiteBase, whiteProductOpen)}
       options={options}
       buttonClassName={buttonClassName}
       appearance={appearance}

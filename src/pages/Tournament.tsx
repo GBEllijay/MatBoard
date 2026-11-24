@@ -39,6 +39,8 @@ import {
 } from '../lib/bracketTheme';
 import { podiumPlaces } from '../lib/bracketPodium';
 import { useWhiteBaseSkins } from '../hooks/usePolishedSkins';
+import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
+import { whiteProductFeaturesOpen } from '../lib/whiteSkinTier';
 import { BracketMatEdgeBottom, BracketMatEdges, BracketPodiumBanner } from '../components/BracketPodium';
 import { setBracketClean } from '../lib/bracketCleanMode';
 import './tournamentBoard.css';
@@ -132,6 +134,7 @@ export function TournamentPage() {
   const match = useMatchState();
   const theme = useBracketTheme();
   const whiteBaseSkins = useWhiteBaseSkins();
+  const whiteUnlocked = useWhiteUnlocked();
   const cleanOn = useBracketClean();
   const kids = useKidsScoreboard();
   const fs = usePlayFullscreen({ auto: false });
@@ -146,12 +149,13 @@ export function TournamentPage() {
   const competitionSuite = useCompetitionSuite();
   const from = searchParams.get('from');
   const fromWhite = from === WHITE_BOARD_FROM;
+  const whiteProductOpen = whiteProductFeaturesOpen(fromWhite, whiteBaseSkins, whiteUnlocked);
   const plainCoach = isPlainCoachTournament(from, competitionSuite);
   const sizeMax = fromWhite ? WHITE_MAX_COMPETITORS : maxCompetitors(competitionSuite);
   const presets = fromWhite ? WHITE_SIZE_PRESETS : sizePresets(competitionSuite);
   const fromSuite = from === SUITE_FROM;
   const fromUnlimited = from === UNLIMITED_FROM;
-  const shownTheme = visibleBracketTheme(theme, { plainCoach, whiteBaseSkins });
+  const shownTheme = visibleBracketTheme(theme, { plainCoach, whiteBaseSkins: whiteProductOpen });
   const exitPath =
     useSubmenuBack() ??
     (fromWhite
@@ -163,7 +167,7 @@ export function TournamentPage() {
           : plainCoach || from === COACH_BOARD_FROM
             ? '/coach'
             : parent.path);
-  const kidsSkins = kidsBracketSkinsAllowed(from, competitionSuite) && !plainCoach;
+  const kidsSkins = kidsBracketSkinsAllowed(from, competitionSuite, whiteProductOpen) && !plainCoach;
   const kidsOn = kidsBracketChromeOn(kidsSkins, kids.enabled);
   const [namesOpen, setNamesOpen] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
@@ -406,7 +410,7 @@ export function TournamentPage() {
                   onPrefill={(prefill) => setSlotName('champion', prefill.name)}
                   placeholder="Winner"
                   ariaLabel="Champion"
-                  names={plainCoach ? 'student' : 'competitor'}
+                  names={fromWhite ? 'white' : plainCoach ? 'student' : 'competitor'}
                   compact
                 />
                   )}
@@ -431,7 +435,7 @@ export function TournamentPage() {
                   onPrefill={(prefill) => setSlotName('champion', prefill.name)}
                   placeholder="Winner"
                   ariaLabel="Champion"
-                  names={plainCoach ? 'student' : 'competitor'}
+                  names={fromWhite ? 'white' : plainCoach ? 'student' : 'competitor'}
                   compact
                 />
               )}
@@ -504,7 +508,7 @@ export function TournamentPage() {
               <KidsScoreboardSwitcher
                 prefs={kids}
                 suppressed={skinButtonSuppressed}
-                themes={plainCoach ? [] : bracketThemeOptions(whiteBaseSkins)}
+                themes={plainCoach ? [] : bracketThemeOptions(whiteProductOpen)}
                 theme={shownTheme}
                 showKids={kidsSkins}
               />
@@ -544,7 +548,7 @@ export function TournamentPage() {
                 setSizeOpen(true);
               }}
             >
-              {placement === 'lineup' ? `Lineup ${tournament.size}` : tournament.size}
+              {fromWhite ? tournament.size : placement === 'lineup' ? `Lineup ${tournament.size}` : tournament.size}
             </button>
             <button type="button" className="btn btn--ghost tournament__save-btn" onClick={openSaved}>
               {named ? savedLabel : 'Save'}
@@ -614,7 +618,9 @@ export function TournamentPage() {
           {tournament.size === 1 ? '' : 's'}, one bracket
           {byeCountHint(tournament)}.
           {threePerson
-            ? ' Semifinal is 2nd seed vs 3rd seed. The loser faces the 1st seed. Winners of those two matches meet in the final.'
+            ? fromWhite
+              ? ' The semifinal is 2 vs 3. The loser faces 1. Winners of those two matches meet in the final.'
+              : ' Semifinal is 2nd seed vs 3rd seed. The loser faces the 1st seed. Winners of those two matches meet in the final.'
             : ''}
         </p>
         <label className="tournament__paste">
@@ -665,9 +671,9 @@ export function TournamentPage() {
                   value={slotName(tournament, id)}
                   onChange={(value) => setSlotName(id, value)}
                   onPrefill={(prefill) => setSlotName(id, prefill.name)}
-                  placeholder={plainCoach ? 'Student name' : seedPlaceholder(index)}
-                  ariaLabel={plainCoach ? `Student name ${index + 1}` : `Competitor ${index + 1}`}
-                  names={plainCoach ? 'student' : 'competitor'}
+                  placeholder={fromWhite ? 'Competitor name' : plainCoach ? 'Student name' : seedPlaceholder(index)}
+                  ariaLabel={fromWhite ? `Competitor ${index + 1}` : plainCoach ? `Student name ${index + 1}` : `Competitor ${index + 1}`}
+                  names={fromWhite ? 'white' : plainCoach ? 'student' : 'competitor'}
                 />
               </label>
             </li>
@@ -702,18 +708,30 @@ export function TournamentPage() {
         }}
       >
         <p className="tournament__sheet-copy">
-          Any count from 2 to {sizeMax}. Seeded is the default. A field of 3 plays 2nd vs 3rd, the
-          loser faces the 1st seed, and those winners meet in the final. A field of 5 opens with 4th
-          vs 5th, and 1st, 2nd, and 3rd receive byes. A field of 7 gives the bye to the 1st seed.
-          Eight and up, and every other custom count, fill to the next power of two with those same
-          seeded byes. Tap a size to apply it. Names that fit stay. Results on this board clear.
-          {fromWhite
-            ? ` White brackets go up to ${sizeMax} competitors on this device.`
-            : competitionSuite && !plainCoach
-              ? ' Brackets save up to 64 competitors on this device.'
-              : ' Mock Tournament stays at 16.'}
+          {fromWhite ? (
+            <>
+              Any count from 2 to {sizeMax}. A field of 3 plays 2 vs 3, the loser faces 1, and those
+              winners meet in the final. A field of 5 opens with 4 vs 5, and 1, 2, and 3 receive byes.
+              A field of 7 gives the bye to 1. Eight and up, and every other custom count, fill to the
+              next power of two with byes. Tap a size to apply it. Names that fit stay. Results on
+              this board clear. Brackets hold up to {sizeMax} competitors on this device.
+            </>
+          ) : (
+            <>
+              Any count from 2 to {sizeMax}. Seeded is the default. A field of 3 plays 2nd vs 3rd, the
+              loser faces the 1st seed, and those winners meet in the final. A field of 5 opens with 4th
+              vs 5th, and 1st, 2nd, and 3rd receive byes. A field of 7 gives the bye to the 1st seed.
+              Eight and up, and every other custom count, fill to the next power of two with those same
+              seeded byes. Tap a size to apply it. Names that fit stay. Results on this board clear.
+              {competitionSuite && !plainCoach
+                ? ' Brackets save up to 64 competitors on this device.'
+                : ' Mock Tournament stays at 16.'}
+            </>
+          )}
         </p>
-        <p className="tournament__sheet-copy">Placement</p>
+        {fromWhite ? null : <p className="tournament__sheet-copy">Placement</p>}
+        {fromWhite ? null : (
+        <>
         <div className="tournament__size-presets" role="radiogroup" aria-label="Placement rules">
           <button
             type="button"
@@ -738,6 +756,8 @@ export function TournamentPage() {
           Lineup is the override. Names fill the bracket from the top, and byes sit on the last
           first-round cards.
         </p>
+        </>
+        )}
         <div className="tournament__size-presets" role="group" aria-label="Size presets">
           {presets.map((preset) => (
             <button
@@ -845,7 +865,7 @@ export function TournamentPage() {
         </ul>
         <p className="tournament__cloud">
           {/* No tier syncs brackets yet; every save is local (OWNER_BRACKET_CLOUD in tournamentStore). */}
-          {competitionSuite
+          {fromWhite || competitionSuite
             ? OWNER_BRACKET_CLOUD_NOTE
             : 'Coach saves stay on this device. Nothing is uploaded.'}
         </p>

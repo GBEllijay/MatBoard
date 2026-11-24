@@ -62,7 +62,7 @@ test('a tall list peeks the next row, and a short list does not scroll', () => {
   assert.equal(fitted, 280);
 });
 
-test('White sees the White Advantage skins and My skins stays hidden while empty', () => {
+test('White sees the White Advantage skins plus the polished families, and My skins stays hidden while empty', () => {
   const board = scoreboardPickerSkins(true, false, true);
   const timer = timerPickerSkins(false, true);
   assert.deepEqual(
@@ -74,6 +74,7 @@ test('White sees the White Advantage skins and My skins stays hidden while empty
       'Clean Mat Broadcast',
       'Split-Flap Pro',
       'High-Contrast Daylight',
+      ...POLISHED_SKINS.map((skin) => skin.label),
     ],
   );
   assert.deepEqual(
@@ -88,11 +89,11 @@ test('White sees the White Advantage skins and My skins stays hidden while empty
       'LED Gym Wall Clock',
       'True Flip-Card Interval',
       'Work/Rest Color-Shift Tatami',
+      ...POLISHED_TIMER_SKINS.map((skin) => skin.label),
     ],
   );
-  for (const skin of [...board, ...timer]) {
-    assert.equal(POLISHED_SKINS.some((polished) => polished.label === skin.label), false);
-  }
+  assert.equal(board.some((skin) => skin.label === 'Keynote'), true);
+  assert.equal(timer.some((skin) => skin.polished), true);
   const groups = groupSkinPickerOptions(board.map((skin) => ({ id: skin.id })));
   assert.deepEqual(
     groups.map((group) => group.label),
@@ -227,7 +228,7 @@ test('the Skins tile replaces Preview cues and the separate Skins button', () =>
     assert.doesNotMatch(source, /cue-with-stack|Preview cues|Preview match cues|data-cleanup="preview-cues"/);
   }
   assert.match(timer, /<EndCueControls label="Training end cue" value=\{audio\.endCue\} \/>\s*\{picker \? <TimerSkinPicker appearance="stack" \/> : null\}/);
-  assert.match(board, /<EndCueControls label="Match end cue" value=\{match\.endCue\} \/>\s*\{board\.polishedOpen \|\| board\.whiteBaseSkins \? <ScoreboardSkinPicker appearance="stack" \/> : null\}/);
+  assert.match(board, /<EndCueControls label="Match end cue" value=\{match\.endCue\} \/>\s*\{board\.skinsOpen \? <ScoreboardSkinPicker appearance="stack" \/> : null\}/);
   assert.doesNotMatch(timer, /<TimerSkinPicker buttonClassName="preset" \/>/);
   assert.doesNotMatch(board, /<ScoreboardSkinPicker \/>/);
   assert.match(timer, /aria-label="Timer skin"/);

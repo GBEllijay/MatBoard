@@ -13,8 +13,8 @@ import { isGrandmasterId, type GrandmasterId } from './grandmasters.ts';
 import type { MatchOutcome, Side } from './outcomes.ts';
 
 /** Grandmaster cheer on the match scoreboard and its controller. Pro suite only. */
-export function grandmasterOnScoreboard(fromSuite: boolean): boolean {
-  return fromSuite;
+export function grandmasterOnScoreboard(fromSuite: boolean, fromWhite = false): boolean {
+  return fromSuite || fromWhite;
 }
 
 export const DEFAULT_GRANDMASTER_POINTS_THRESHOLD = 10;

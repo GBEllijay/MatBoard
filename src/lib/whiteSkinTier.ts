@@ -27,3 +27,16 @@ export function whiteBaseSkinsOpen(open: Readonly<Record<Door, boolean>>, hostna
     white: open.white || isPreviewWhiteUnlocked(hostname),
   });
 }
+
+/**
+ * Tournament, scoreboard, and timer features for Advantage BJJ Scoreboard.
+ * True for a White-only purchase or preview, and for a White route when White
+ * is unlocked (including via a higher door). A bare ?from=white is not enough.
+ */
+export function whiteProductFeaturesOpen(
+  fromWhite: boolean,
+  whiteBaseSkins: boolean,
+  whiteUnlocked: boolean,
+): boolean {
+  return whiteBaseSkins || (fromWhite && whiteUnlocked);
+}

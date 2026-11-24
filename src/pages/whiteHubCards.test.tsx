@@ -145,8 +145,10 @@ test('Brackets and Bracket Roster open their tools, keep the placeholder image, 
   assert.ok(brackets);
   assert.ok(roster);
   assert.ok(brackets.querySelector('[data-brackets-placeholder="true"]'));
-  assert.match(brackets.textContent ?? '', /up to 16/);
   assert.match(brackets.textContent ?? '', /up to 64/);
+  assert.match(brackets.textContent ?? '', /skins and saved boards/);
+  assert.doesNotMatch(brackets.textContent ?? '', /Seed the bracket/);
+  assert.doesNotMatch(brackets.textContent ?? '', /up to 16/);
   assert.match(brackets.textContent ?? '', /Placeholder image/);
   assert.deepEqual(hrefs(brackets as HTMLElement, 'a'), ['/white/brackets?from=white', '/white/brackets?from=white']);
   assert.equal(roster.querySelector('strong')?.textContent, 'Bracket Roster');

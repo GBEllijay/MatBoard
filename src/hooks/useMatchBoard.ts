@@ -11,6 +11,8 @@ import {
   type StoredScoreboardSkin,
 } from '../lib/scoreboardSkin';
 import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from './usePolishedSkins';
+import { useWhiteUnlocked } from './useWhiteUnlocked';
+import { whiteProductFeaturesOpen } from '../lib/whiteSkinTier';
 import { useSuiteOrigin } from './useSuiteOrigin';
 import { useUnlockQuery } from './useUnlockQuery';
 import { useMatchState } from './useStores';
@@ -36,12 +38,13 @@ export function useMatchBoard() {
     isCoachWhiteBoardSearch(searchParams),
   );
   const plainWhite = isPlainWhiteScoreboard(suite.fromSuite, Boolean(linkedId), whiteBoard);
-  const showGrandmaster = grandmasterOnScoreboard(suite.fromSuite);
   const kidsSkin = kidsSkinFromSearch(searchParams);
   /** Media Edition and above: the polished skins paint and can be picked. */
   const polishedOpen = usePolishedSkinsUnlocked();
   /** Advantage White and no tier above it: the three base skins, on this bout too. */
   const whiteBaseSkins = useWhiteBaseSkins();
+  const whiteProductOpen = whiteProductFeaturesOpen(suite.fromWhite, whiteBaseSkins, useWhiteUnlocked());
+  const showGrandmaster = grandmasterOnScoreboard(suite.fromSuite, whiteProductOpen);
 
   const originPath = (path: string) =>
     withKidsSkin(
@@ -49,8 +52,10 @@ export function useMatchBoard() {
       kidsSkin,
     );
 
-  const skinFor = (skin: StoredScoreboardSkin) =>
-    visibleScoreboardSkin(skin, suite.fromSuite, Boolean(linkedId), whiteBoard, polishedOpen, whiteBaseSkins);
+  const skinsOpen = polishedOpen || whiteProductOpen;
 
-  return { suite, linkedId, plainWhite, showGrandmaster, whiteBoard, kidsSkin, polishedOpen, whiteBaseSkins, originPath, skinFor };
+  const skinFor = (skin: StoredScoreboardSkin) =>
+    visibleScoreboardSkin(skin, suite.fromSuite, Boolean(linkedId), whiteBoard, polishedOpen, whiteBaseSkins, whiteProductOpen);
+
+  return { suite, linkedId, plainWhite, showGrandmaster, whiteBoard, kidsSkin, polishedOpen, whiteBaseSkins, whiteProductOpen, skinsOpen, originPath, skinFor };
 }
