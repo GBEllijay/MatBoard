@@ -6,7 +6,7 @@ import type { PolishedSkinSlug } from '../lib/polishedSkins';
 import { beltChipKey, canonicalBelt } from '../lib/rosterStore';
 import { metalBoardState, metalFaceParts, metalRoundLabel, sideChipLabel } from '../skins/polished/heavyMetal';
 import { fitNamesIn } from '../skins/polished/fitNames';
-import { isPosterSkin, posterFitLineFloor } from '../skins/polished/posterSkins';
+import { arcadePipCount, isPosterSkin, posterFitLineFloor } from '../skins/polished/posterSkins';
 
 export type PolishedRow = {
   side: Side;
@@ -132,12 +132,14 @@ function Belt({ rank, metal, poster }: { rank: string; metal: boolean; poster: b
   );
 }
 
-function Row({ row, cls, extra, metal, poster }: { row: PolishedRow; cls: string; extra: string; metal: boolean; poster: boolean }) {
+function Row({ row, cls, extra, metal, poster, arcade }: { row: PolishedRow; cls: string; extra: string; metal: boolean; poster: boolean; arcade: boolean }) {
   const label = row.side === 'blue' ? 'Blue' : 'White';
   return (
     <section className={`row ${cls}`} aria-label={`${label} competitor`}>
       {extra ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: extra }} /> : null}
       <div className="id">
+        {arcade ? <span className="ptag">{row.side === 'blue' ? '1P' : '2P'}</span> : null}
+        {arcade ? <i className="sil" aria-hidden="true" /> : null}
         {metal || poster ? (
           <div className="side">
             <b>{metal ? sideChipLabel(row.side) : label.toUpperCase()}</b>
@@ -183,7 +185,9 @@ export function PolishedScoreboard({
   const metal = slug === 'heavy-metal';
   const stateLabel = metal && typeof state === 'string' ? metalBoardState(state) : state;
   const poster = isPosterSkin(slug);
+  const arcade = slug === 'arcade-fighter';
   const spec = mod?.POSTER;
+  const pips = arcade ? arcadePipCount(textOf(mat)) : null;
   const rootRef = useRef<HTMLDivElement>(null);
   const nameKey = rows.map((row) => textOf(row.name)).join('\n');
   useEffect(() => {
@@ -211,7 +215,7 @@ export function PolishedScoreboard({
   return (
     <div
       ref={rootRef}
-      className={`skin-root skin-root--board${poster ? ' skin-root--poster' : ''}${mod ? '' : ' skin-root--loading'}`}
+      className={`skin-root skin-root--board${poster ? ' skin-root--poster' : ''}${arcade ? ' skin-root--arcade' : ''}${mod ? '' : ' skin-root--loading'}`}
       data-skin={slug}
     >
       <div className="sb">
@@ -255,7 +259,7 @@ export function PolishedScoreboard({
             </>
           )}
         </header>
-        <Row row={rows[0]} cls="c1" extra={extra[0]} metal={metal} poster={poster} />
+        <Row row={rows[0]} cls="c1" extra={extra[0]} metal={metal} poster={poster} arcade={arcade} />
         <div className={`band${(metal || poster) && stateLabel === 'FINAL' ? ' is-final' : ''}`}>
           {metal ? (
             <div className="bandfx" aria-hidden="true">
@@ -263,7 +267,15 @@ export function PolishedScoreboard({
             </div>
           ) : null}
           {poster && spec?.bandDeco ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: spec.bandDeco }} /> : null}
+          {arcade ? <b className="vs">VS</b> : null}
           <span className="state">{stateLabel}</span>
+          {pips != null ? (
+            <span className="pips" aria-hidden="true">
+              {Array.from({ length: pips }, (_, index) => (
+                <i key={index} />
+              ))}
+            </span>
+          ) : null}
           {metal || poster ? (
             <span className="plate">
               <span className="clock">{clock}</span>
@@ -273,7 +285,7 @@ export function PolishedScoreboard({
           )}
           <span className="status">{status}</span>
         </div>
-        <Row row={rows[1]} cls="c2" extra={extra[1]} metal={metal} poster={poster} />
+        <Row row={rows[1]} cls="c2" extra={extra[1]} metal={metal} poster={poster} arcade={arcade} />
       </div>
     </div>
   );

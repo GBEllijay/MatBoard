@@ -35,8 +35,22 @@
   touch-action: pan-y;
   scroll-padding-bottom: 3rem;
   padding: 0.65rem;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(247, 244, 238, 0.5) transparent;
+  scrollbar-width: auto;
+  scrollbar-color: #f7f4ee #243044;
+}
+
+.skin-pick__scroll::-webkit-scrollbar {
+  width: 12px;
+}
+
+.skin-pick__scroll::-webkit-scrollbar-track {
+  background: #243044;
+}
+
+.skin-pick__scroll::-webkit-scrollbar-thumb {
+  background: #f7f4ee;
+  border-radius: 8px;
+  border: 2px solid #243044;
 }
 
 .skin-pick__scroll::-webkit-scrollbar {
@@ -220,12 +234,13 @@
 .skin-pick__fade {
   position: absolute;
   left: 0;
-  right: 0;
+  right: 12px;
   bottom: 0;
-  height: 2.75rem;
+  z-index: 3;
+  height: 4.5rem;
   pointer-events: none;
   border-radius: 0 0 16px 16px;
-  background: linear-gradient(to bottom, rgba(14, 22, 36, 0), #0e1624 78%);
+  background: linear-gradient(to bottom, rgba(14, 22, 36, 0), rgba(14, 22, 36, 0.94) 62%, #0e1624);
 }
 
 /* Fanned thumbnails. The current skin is the front card. */
