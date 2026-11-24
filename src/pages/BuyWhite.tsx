@@ -249,6 +249,7 @@ export function BuyWhitePage() {
             ) : null}
             <AlphaCodeEntry
               tier="white"
+              showRequestButton={false}
               showEmail
               email={accessEmail}
               onEmailChange={setAccessEmail}

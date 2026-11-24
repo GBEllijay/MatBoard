@@ -52,7 +52,6 @@ import {
   PRO_PRICE_LINE,
   STUDENT_ALPHA_ACCESS_NOTE,
   STUDENT_PRICE_LINE,
-  WHITE_ALPHA_ACCESS_NOTE,
 } from '../lib/productPrices';
 import { useWhitePublicPricing } from '../hooks/useWhitePublicPricing';
 import { formatUsdFromCents } from '../lib/whitePurchase';
@@ -141,7 +140,6 @@ export function HomePage() {
                 </Link>
                 <LearnMoreLink tier="white" />
               </span>
-              <AlphaAccessNote note={WHITE_ALPHA_ACCESS_NOTE} />
             </article>
           )}
 

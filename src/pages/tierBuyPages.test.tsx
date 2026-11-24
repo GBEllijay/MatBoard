@@ -83,7 +83,10 @@ test('/buy: White checkout stays; other products are hidden until they are for s
   assert.match(restore.textContent ?? '', /Already purchased\? Enter the email from checkout\./);
   const email = m.host.querySelector('form.alpha-code__form input[type="email"]');
   assert.equal(email?.getAttribute('aria-label'), 'Email');
-  assert.ok(m.host.querySelector('a[href^="mailto:advantageappllc@gmail.com"]'));
+  // Owner 2026-11-23: no Request an alpha code button on this page. The code field still takes unlock and promo codes.
+  assert.equal(m.host.querySelector('.alpha-code a[href^="mailto:"]'), null);
+  assert.doesNotMatch(m.host.querySelector('.alpha-code')?.textContent ?? '', /Request an alpha code/);
+  assert.ok(m.host.querySelector('form.alpha-code__form input#promotion-code[name="promotionCode"]'));
   assert.ok([...m.host.querySelectorAll('form.alpha-code__form button')].some((b) => b.textContent === 'Unlock'));
   m.done();
 });
