@@ -58,5 +58,5 @@ export function formatUsdFromCents(cents: number): string {
 }
 
 export function whiteBuyCtaLabel(activePriceCents = WHITE_LIST_PRICE_CENTS): string {
-  return `Buy Advantage White — ${formatUsdFromCents(activePriceCents)}`;
+  return `Buy Advantage BJJ Scoreboard — ${formatUsdFromCents(activePriceCents)}`;
 }

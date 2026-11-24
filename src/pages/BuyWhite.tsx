@@ -67,7 +67,7 @@ export function BuyWhitePage() {
 
   useEffect(() => {
     const previous = document.title;
-    document.title = 'Buy Advantage';
+    document.title = 'Buy Advantage BJJ Scoreboard';
     return () => {
       document.title = previous;
     };
@@ -200,7 +200,7 @@ export function BuyWhitePage() {
               <span className="belt-tip__bar" />
             </span>
             <p className="buy__kicker">Available now</p>
-            <h2>Advantage White</h2>
+            <h2>Advantage BJJ Scoreboard</h2>
             <p className="buy__subtitle">{WHITE_BUY_SUBTITLE}</p>
             <p className="buy__price">
               {formatUsdFromCents(whitePricing.listPriceCents)} <span>{WHITE_PRICE_DETAIL}</span>
@@ -217,7 +217,7 @@ export function BuyWhitePage() {
                 {confirming
                   ? 'Confirming that payment with Stripe.'
                   : record?.entitled
-                    ? 'Advantage White is unlocked on this device.'
+                    ? 'Advantage BJJ Scoreboard is unlocked on this device.'
                     : "That payment isn't confirmed. Nothing was unlocked."}
               </p>
             ) : null}
@@ -234,12 +234,12 @@ export function BuyWhitePage() {
             ) : null}
             {freeUnlock ? (
               <p className="buy__status buy__status--ok" role="status">
-                Advantage White is unlocked at $0. No card was charged.
+                Advantage BJJ Scoreboard is unlocked at $0. No card was charged.
               </p>
             ) : null}
             {unlocked && !freeUnlock && checkout !== 'success' ? (
               <p className="buy__status buy__status--ok" role="status">
-                Advantage White is unlocked on this device.
+                Advantage BJJ Scoreboard is unlocked on this device.
               </p>
             ) : null}
             {error ? (
@@ -260,11 +260,11 @@ export function BuyWhitePage() {
               onPromoCheckout={startCheckout}
             />
             <p className="buy__hint">
-              Optional. An unlock code opens Advantage White on this device. A promo code applies at Stripe checkout.
+              Optional. An unlock code opens Advantage BJJ Scoreboard on this device. A promo code applies at Stripe checkout.
             </p>
             {unlocked ? (
               <Link className="btn btn--white" to="/white">
-                Open White
+                Open Advantage BJJ Scoreboard
               </Link>
             ) : null}
             {!unlocked || promoInput.trim() ? (

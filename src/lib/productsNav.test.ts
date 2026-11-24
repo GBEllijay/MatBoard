@@ -51,7 +51,7 @@ test('/products cards follow the belt ladder order: White, Student, Media, Instr
     return i;
   };
   const order = [
-    at('<strong>Advantage White</strong>'),
+    at('<strong>Advantage BJJ Scoreboard</strong>'),
     at('<StudentHomeCard'),
     at('<MediaHomeCard open={mediaEditionDoorOpen(door)} />'),
     at('<strong>{INSTRUCTOR_HOME_TITLE}</strong>'),
@@ -127,7 +127,7 @@ test('Locked product cards have Learn more; unlocked cards show only their Open 
   assert.match(home, /<LearnMoreLink tier="media" \/>/);
   assert.match(home, /to=\{TIER_BUY_PATHS\.media\}/);
   assert.match(home, /Try the demo/);
-  assert.match(home, /Open White/);
+  assert.match(home, /Open Advantage BJJ Scoreboard/);
   assert.match(home, /Open Student Edition/);
   assert.match(home, /Open Media Edition/);
   assert.match(home, /Open Advantage Instructor Edition/);
@@ -143,7 +143,7 @@ test('Locked product cards have Learn more; unlocked cards show only their Open 
   const unlockedMedia = home.slice(home.indexOf('mode-card mode-card--media mode-card--feature'), home.indexOf('mode-card mode-card--media mode-card--locked'));
   assert.doesNotMatch(unlockedMedia, /LearnMoreLink/);
   const unlockedWhite = home.slice(home.indexOf('whiteUnlocked ? ('), home.indexOf(') : (', home.indexOf('whiteUnlocked ? (')));
-  assert.match(unlockedWhite, /Open White/);
+  assert.match(unlockedWhite, /Open Advantage BJJ Scoreboard/);
   assert.doesNotMatch(unlockedWhite, /LearnMoreLink/);
   const student = home.slice(home.indexOf('function StudentHomeCard'));
   const unlockedStudent = student.slice(student.indexOf('if (open)'), student.indexOf('mode-card--locked'));

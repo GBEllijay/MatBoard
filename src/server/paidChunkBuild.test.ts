@@ -121,7 +121,7 @@ test('paid screen code is outside the precache and the public bundle', { timeout
     scope: string;
     icons: { src: string; sizes: string }[];
   };
-  assert.equal(manifest.name, 'Advantage');
+  assert.equal(manifest.name, 'Advantage BJJ Scoreboard');
   assert.equal(manifest.short_name, 'Advantage');
   assert.equal(manifest.display, 'fullscreen');
   assert.deepEqual(manifest.display_override, ['fullscreen', 'standalone']);

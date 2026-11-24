@@ -44,7 +44,7 @@ test('/products belt accents and order match the homepage ladder', async ({ page
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/products');
   await expect(page.locator('.home__modes .mode-card strong')).toHaveText([
-    'Advantage White',
+    'Advantage BJJ Scoreboard',
     'Advantage – Student Edition',
     'Advantage Media Edition',
     'Advantage Instructor Edition',

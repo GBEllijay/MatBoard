@@ -33,7 +33,7 @@ test('the White page has no edition ladder and an Alpha testers footer link to /
   assert.match(footer, /alphaTesters \? <Link to=\{PRODUCTS_PATH\}>Alpha testers</);
   assert.match(page, /whiteBuyCtaLabel\(whitePricing\.activePriceCents\)/);
   assert.match(page, /All products/);
-  assert.match(page, /Lock White/);
+  assert.match(page, /Lock Advantage BJJ Scoreboard/);
   assert.match(page, /<InstructionsButton/);
   assert.doesNotMatch(page, /FaqLink/);
   assert.doesNotMatch(page, /WhiteUpgradePrompt|grow into Pro/);

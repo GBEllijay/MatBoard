@@ -41,7 +41,7 @@ export const INSTRUCTOR_EDITION_LEAD =
   "Tools and templates for instructors. Plan today's class with a downloadable Daily Lesson Plan and loop training videos.";
 
 /** Instructor Edition sits above Media on the ladder. */
-export const INSTRUCTOR_EDITION_INCLUDES = 'Includes everything in Media, Student and White.';
+export const INSTRUCTOR_EDITION_INCLUDES = 'Includes everything in Media, Student and Advantage BJJ Scoreboard.';
 
 /** First Instructor feature: the Daily Lesson Plan, with its download and Drive save. */
 export const INSTRUCTOR_LESSON_PLAN_BODY =
@@ -125,7 +125,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
     title: 'Advantage Pro',
     kicker: COMING_SOON_LABEL,
     lead: PRO_LADDER_DETAIL,
-    includes: 'Includes everything in Instructor Edition, Media, Student and White.',
+    includes: 'Includes everything in Instructor Edition, Media, Student and Advantage BJJ Scoreboard.',
     features: [
       {
         title: MEDIA_CONSOLE_NAME,

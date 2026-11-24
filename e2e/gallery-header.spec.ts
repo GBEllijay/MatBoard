@@ -13,7 +13,7 @@ const SCROLLING_MENUS: { path: string; heading: string; logo: string; wrap?: str
   { path: '/suite', heading: 'Competition and Tournament Management', logo: '.home__logo' },
   {
     path: '/white',
-    heading: 'BJJ Scoreboard, Round Timer, Brackets & Bracket Roster',
+    heading: 'Advantage BJJ Scoreboard',
     logo: '.home__logo',
     wrap: '.home__tools-line',
   },

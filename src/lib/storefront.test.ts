@@ -27,7 +27,7 @@ test('storefront sells White once and sends Buy Now to the existing checkout', (
   assert.equal(STOREFRONT_PRICE_LABEL, WHITE_PRICE_LABEL);
   assert.equal(STOREFRONT_BUY_PATH, '/buy');
   assert.equal(STOREFRONT_BUY_PATH, WHITE_BUY_PATH);
-  assert.equal(STOREFRONT_BUY_LABEL, 'Buy Advantage White — $19.99');
+  assert.equal(STOREFRONT_BUY_LABEL, 'Buy Advantage BJJ Scoreboard — $19.99');
   assert.equal(STOREFRONT_HERO.title, 'Win by Advantage.');
   assert.equal(STOREFRONT_HERO.clock, '05:00');
   assert.equal(STOREFRONT_HERO.leadBeforeBreak, 'Your Scoreboard, Round Timer and Mock Tournament Software.');
@@ -130,7 +130,7 @@ test('coming soon stays Student, Coach, Pro and does not sell Coach or Pro', () 
   assert.equal(STOREFRONT_COMING_SOON[0]?.blurb, 'A personal BJJ training journal.');
   assert.equal(
     STOREFRONT_COMING_SOON[1]?.blurb,
-    'Daily lesson plans, training videos and a technique tree. Includes White.',
+    'Daily lesson plans, training videos and a technique tree. Includes Advantage BJJ Scoreboard.',
   );
   assert.match(STOREFRONT_COMING_SOON[2]?.blurb ?? '', /shared drive/);
   assert.match(STOREFRONT_COMING_SOON[2]?.blurb ?? '', /Includes Instructor Edition/);
@@ -139,7 +139,7 @@ test('coming soon stays Student, Coach, Pro and does not sell Coach or Pro', () 
   assert.equal(STOREFRONT_COMING_SOON[2]?.status, 'This product is in alpha');
   assert.equal(STOREFRONT_COMING_SOON.some((item) => item.forSale), false);
   assert.match(STUDENT_HOME_DESCRIPTION, /rank and stripes/);
-  assert.match(COACH_HOME_DESCRIPTION, /everything in Media, Student and White/);
+  assert.match(COACH_HOME_DESCRIPTION, /everything in Media, Student and Advantage BJJ Scoreboard/);
   assert.match(PRO_HOME_LINES.join(' '), /Includes all Advantage products\./);
   assert.notEqual(STOREFRONT_COMING_SOON[0]?.blurb, STUDENT_HOME_DESCRIPTION);
 });

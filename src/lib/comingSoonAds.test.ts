@@ -65,7 +65,7 @@ test('Coach ad lists basic Coach tools, student roster, and no checkout price', 
   assert.doesNotMatch(splash, /coming soon/i);
   assert.doesNotMatch(text, /coming soon/i);
   assert.match(COMING_SOON_ADS.coach.lead, /downloadable Daily Lesson Plan/);
-  assert.equal(COMING_SOON_ADS.coach.includes, 'Includes everything in Media, Student and White.');
+  assert.equal(COMING_SOON_ADS.coach.includes, 'Includes everything in Media, Student and Advantage BJJ Scoreboard.');
   assert.match(COMING_SOON_ADS.coach.aside ?? '', /Competition Class Curriculum/);
   assert.match(COMING_SOON_ADS.coach.aside ?? '', /Competition Team Management/);
   assert.equal(COACH_PREVIEW_LABEL, 'Advantage Instructor Edition');
@@ -139,7 +139,7 @@ test('Pro ad lists the live Pro hubs and keeps launch pricing off the feature co
   const text = adText('pro');
   assert.equal(COMING_SOON_ADS.pro.title, 'Advantage Pro');
   assert.equal(COMING_SOON_ADS.pro.lead, PRO_LADDER_DETAIL);
-  assert.equal(COMING_SOON_ADS.pro.includes, 'Includes everything in Instructor Edition, Media, Student and White.');
+  assert.equal(COMING_SOON_ADS.pro.includes, 'Includes everything in Instructor Edition, Media, Student and Advantage BJJ Scoreboard.');
   assert.equal(PRO_CONSOLE_PREVIEW_LABEL, 'Advantage Pro');
   assert.equal(
     PRO_CONSOLE_PREVIEW_NOTE,

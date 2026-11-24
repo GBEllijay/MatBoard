@@ -121,7 +121,7 @@ test('/products: a claimed Student license opens White and Student, and keeps hi
   await claim();
   const page = await mount('/products', <HomePage />);
   const text = page.host.textContent ?? '';
-  assert.match(text, /Open White/);
+  assert.match(text, /Open Advantage BJJ Scoreboard/);
   assert.match(text, /Open Student Edition/);
   assert.doesNotMatch(text, /Buy — /);
   assert.equal(hrefs(page.host, '.mode-card--white a.mode-card__hit').every((href) => href === '/white'), true);

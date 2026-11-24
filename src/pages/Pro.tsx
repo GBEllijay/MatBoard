@@ -69,7 +69,7 @@ export function ProPage() {
           {!seat ? <GalleryPendingBadge /> : null}
           <Link className="pro-hub" to="/white" data-pro-entry="white">
             <BeltRail kind="white" />
-            <span>Advantage White</span>
+            <span>Advantage BJJ Scoreboard</span>
           </Link>
           <Link className="pro-hub" to="/student" data-pro-entry="student">
             <BeltRail kind="blue" />

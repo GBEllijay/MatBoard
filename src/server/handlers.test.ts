@@ -939,7 +939,7 @@ test('White checkout refuses a Stripe amount that does not match the active list
   );
   assert.equal(response.status, 503);
   const body = (await response.json()) as { error: string };
-  assert.match(body.error, /Advantage White checkout is not configured/);
+  assert.match(body.error, /Advantage BJJ Scoreboard checkout is not configured/);
 });
 
 test('White checkout returns 503 when the launch window is active but the launch price id is missing', async () => {

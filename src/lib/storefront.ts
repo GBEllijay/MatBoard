@@ -14,7 +14,7 @@ export const STOREFRONT_BUY_PATH = WHITE_BUY_PATH;
 export const STOREFRONT_PRICE_LABEL = WHITE_PRICE_LABEL;
 
 /** Yellow hero button. Checkout stays on the existing buy page. */
-export const STOREFRONT_BUY_LABEL = `Buy Advantage White — ${STOREFRONT_PRICE_LABEL}`;
+export const STOREFRONT_BUY_LABEL = `Buy Advantage BJJ Scoreboard — ${STOREFRONT_PRICE_LABEL}`;
 
 export const STOREFRONT_HERO = {
   title: 'Win by Advantage.',
@@ -130,7 +130,7 @@ export const STOREFRONT_STEPS: readonly StorefrontStep[] = [
     id: 'white',
     rank: '01',
     rankLabel: 'WHITE',
-    title: 'Advantage White',
+    title: 'Advantage BJJ Scoreboard',
     blurb: 'BJJ scoreboard and round timer.',
     price: `${STOREFRONT_PRICE_LABEL} one-time`,
     cardPrice: `${STOREFRONT_PRICE_LABEL} one-time`,
@@ -155,7 +155,7 @@ export const STOREFRONT_STEPS: readonly StorefrontStep[] = [
     rank: '03',
     rankLabel: 'INSTRUCTOR',
     title: 'Advantage Instructor Edition',
-    blurb: 'Daily lesson plans, training videos and a technique tree. Includes White.',
+    blurb: 'Daily lesson plans, training videos and a technique tree. Includes Advantage BJJ Scoreboard.',
     price: COACH_PRICE_LINE,
     cardPrice: COACH_PRICE_LINE,
     to: PRODUCTS_PATH,

@@ -104,7 +104,7 @@ const EDITION_ALPHA: TierAlpha = { note: EDITION_ALPHA_NOTE, display: EDITION_EM
 export const TIER_LADDER: readonly TierBuyEntry[] = [
   {
     id: 'white',
-    name: 'Advantage White',
+    name: 'Advantage BJJ Scoreboard',
     belt: 'white',
     price: WHITE_PRICE_LABEL,
     priceDetail: WHITE_PRICE_DETAIL,

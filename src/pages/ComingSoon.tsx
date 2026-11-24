@@ -99,14 +99,14 @@ export function ComingSoonPage() {
           <nav className="home__soon-actions" aria-label="Alpha">
             <p className="home__soon-lead">
               {whiteUnlocked
-                ? 'Advantage White is ready on this browser — Live Bout and Rounds. '
-                : `Advantage White is ${formatUsdFromCents(whitePricing.activePriceCents)} — Live Bout and Rounds unlock after purchase. `}
+                ? 'Advantage BJJ Scoreboard is ready on this browser — Live Bout and Rounds. '
+                : `Advantage BJJ Scoreboard is ${formatUsdFromCents(whitePricing.activePriceCents)} — Live Bout and Rounds unlock after purchase. `}
               Advantage Instructor Edition and Advantage Pro stay in alpha on home. Gym-owner tools stay off
               until Instructor Edition or Pro is unlocked on this browser.
             </p>
             <AlphaAccessNote />
             <Link className="btn" to={whiteEntryPath(whiteUnlocked)}>
-              {whiteUnlocked ? 'Advantage White' : 'Buy Advantage White'}
+              {whiteUnlocked ? 'Advantage BJJ Scoreboard' : 'Buy Advantage BJJ Scoreboard'}
             </Link>
             <Link className="btn btn--ghost" to={PRODUCTS_PATH}>
               Back to home

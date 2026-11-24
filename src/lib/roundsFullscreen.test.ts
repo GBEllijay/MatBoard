@@ -60,7 +60,7 @@ test('home-screen manifest opens fullscreen and stays public', () => {
   const vite = read('vite.config.ts');
   assert.match(vite, /display: 'fullscreen'/);
   assert.match(vite, /display_override: \['fullscreen', 'standalone'\]/);
-  assert.match(vite, /name: 'Advantage'/);
+  assert.match(vite, /name: 'Advantage BJJ Scoreboard'/);
   assert.match(vite, /short_name: 'Advantage'/);
   assert.match(vite, /start_url: '\/'/);
   assert.match(vite, /scope: '\/'/);

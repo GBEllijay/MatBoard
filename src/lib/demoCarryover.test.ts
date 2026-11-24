@@ -62,7 +62,7 @@ test('White keeps the demo waiting and does not write or unlock Student', () => 
   stageStudentDemoFile(store, edited, seed);
   const plan = settleDemoCarryover(store, ['white']);
   assert.equal(plan.action, 'waiting');
-  assert.match(plan.message, /White/);
+  assert.match(plan.message, /Advantage BJJ Scoreboard/);
   assert.match(plan.message, /does not include Student Edition/);
   assert.equal(plan.writeText, null);
   assert.equal(store.getItem('matboard.studentEdition.v1'), null);

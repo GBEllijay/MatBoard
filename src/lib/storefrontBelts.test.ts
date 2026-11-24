@@ -30,7 +30,7 @@ test('belt ladder is white, blue, purple, brown, black, black in rank order', ()
   assert.deepEqual(
     STOREFRONT_BELT_LADDER.map((r) => r.title),
     [
-      'Advantage White',
+      'Advantage BJJ Scoreboard',
       'Advantage – Student Edition',
       'Advantage Media Edition',
       'Advantage Instructor Edition',
@@ -119,7 +119,7 @@ test('White is unchanged; Pro keeps its title, price, belt and link with the own
   assert.equal(white.detail, undefined);
   assert.deepEqual(
     { title: white.title, rankLabel: white.rankLabel, blurb: white.blurb, cardPrice: white.cardPrice, status: white.status, to: white.to },
-    { title: 'Advantage White', rankLabel: 'WHITE', blurb: 'BJJ scoreboard and round timer.', cardPrice: '$19.99 one-time', status: 'Available now', to: STOREFRONT_BUY_PATH },
+    { title: 'Advantage BJJ Scoreboard', rankLabel: 'WHITE', blurb: 'BJJ scoreboard and round timer.', cardPrice: '$19.99 one-time', status: 'Available now', to: STOREFRONT_BUY_PATH },
   );
   assert.equal(white.to, '/buy');
   const proStep = STOREFRONT_STEPS.find((s) => s.id === 'pro');

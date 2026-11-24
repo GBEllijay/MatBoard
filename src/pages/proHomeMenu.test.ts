@@ -15,7 +15,7 @@ test('the Pro home labels the first four hubs and keeps their destinations', () 
   const student = pro.indexOf('to="/student"');
   const hubs = pro.indexOf('<ProToolboxCard');
   assert.ok(belt > -1 && sheet > belt && white > sheet && student > white && hubs > student);
-  assert.match(pro, /<span>Advantage White<\/span>/);
+  assert.match(pro, /<span>Advantage BJJ Scoreboard<\/span>/);
   assert.match(pro, /<span>Advantage Student Edition<\/span>/);
   assert.match(pro, /title: 'Advantage Media Edition'/);
   assert.match(pro, /hub\.title === MEDIA_CONSOLE_NAME/);
@@ -46,7 +46,7 @@ test('Pro + Cloud edition cards match Pro destinations, belts, and order', () =>
 
   const whiteCard = cloud.slice(cloud.indexOf('data-pro-entry="white"'), cloud.indexOf('data-pro-entry="student"'));
   const studentCard = cloud.slice(cloud.indexOf('data-pro-entry="student"'), cloud.indexOf('<ProToolboxCard'));
-  assert.match(whiteCard, /<BeltRail kind="white" \/>\s*<span>Advantage White<\/span>/);
+  assert.match(whiteCard, /<BeltRail kind="white" \/>\s*<span>Advantage BJJ Scoreboard<\/span>/);
   assert.match(studentCard, /<BeltRail kind="blue" \/>\s*<span>Advantage Student Edition<\/span>/);
   assert.doesNotMatch(whiteCard, /\/buy|whiteEntryPath|WHITE_BUY_PATH|editions\/white/);
   assert.doesNotMatch(studentCard, /\/buy|editions\/student/);

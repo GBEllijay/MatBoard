@@ -200,7 +200,7 @@ export async function handleCheckout(
             : product === 'media'
               ? 'Media Edition'
               : product === 'white'
-                ? 'Advantage White'
+                ? 'Advantage BJJ Scoreboard'
                 : 'Advantage Pro';
         return json(503, { error: `${name} checkout is not configured. No charge was made.` });
       }

@@ -24,7 +24,7 @@ export const STUDENT_EDITION_HUB_TITLE = 'Advantage Student Edition';
 
 /** Home Coach card body. The only line under the Advantage Coach title. */
 export const COACH_HOME_DESCRIPTION =
-  'Downloadable daily lesson plans, training videos, and a technique tree. Includes everything in Media, Student and White.';
+  'Downloadable daily lesson plans, training videos, and a technique tree. Includes everything in Media, Student and Advantage BJJ Scoreboard.';
 
 /** /products title on the Coach card (brown belt). Display only: code kind, entitlement, routes and ids stay `coach`. */
 export const INSTRUCTOR_HOME_TITLE = 'Advantage Instructor Edition';

@@ -70,7 +70,7 @@ test('/buy: White checkout stays; other products are hidden until they are for s
   assert.equal(m.host.querySelector('[data-higher-tiers]'), null);
   const head = m.host.querySelector('.buy__card--belt');
   assert.equal(head?.querySelector('.buy__subtitle')?.textContent, 'BJJ scoreboard, round timer, and mock tournament software');
-  assert.match(head?.textContent ?? '', /Advantage White[\s\S]*mock tournament software[\s\S]*\$19\.99/);
+  assert.match(head?.textContent ?? '', /Advantage BJJ Scoreboard[\s\S]*mock tournament software[\s\S]*\$19\.99/);
   assert.doesNotMatch(head?.textContent ?? '', /Bracket Roster/);
   assert.equal(m.host.querySelector('[data-tier="pro-cloud"]'), null);
   assert.doesNotMatch(m.host.textContent ?? '', /Advantage (Media Edition|Instructor Edition|Pro|Coach)/);
@@ -146,8 +146,8 @@ test('/editions/instructor is its own Instructor page: Daily Lesson Plan first, 
   const m = mount('/editions/instructor');
   const text = m.host.textContent ?? '';
   assert.doesNotMatch(text, /Advantage Coach|basic Coach|Open Coach/);
-  assert.doesNotMatch(text, /Includes everything in Advantage White\./);
-  assert.match(text, /Includes everything in Media, Student and White\./);
+  assert.doesNotMatch(text, /Includes everything in Advantage BJJ Scoreboard\./);
+  assert.match(text, /Includes everything in Media, Student and Advantage BJJ Scoreboard\./);
   const features = [...m.host.querySelectorAll('.buy__features li strong')].map((n) => n.textContent);
   assert.equal(features[0], 'Daily Lesson Plan');
   assert.match(m.host.querySelector('.buy__features li')?.textContent ?? '', /Download/);

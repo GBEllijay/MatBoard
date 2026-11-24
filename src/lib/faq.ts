@@ -217,7 +217,7 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
       'A student packet is your journal, self-assessment, rank, index cards, and the related notes in that file. An older JSON backup is the same idea in the previous file.',
       'Restore a purchase uses the email from checkout. Advantage emails a one-time code. Confirm puts the purchase on this device. It does not bring journal entries back. The code expires and works once. If it does not arrive in a few minutes, check your spam or junk folder.',
       'A Google Drive or OneDrive folder is a place you connect. The academy folder is one your coach shared. You sign in with your own account. Advantage Cloud, when a gym has it, is hosted sharing for that gym’s cloud tools. It is not a hosted copy of your personal journal. If Cloud sharing pauses, the screen can show the days left to download the gym folder. The journal on the phone is separate.',
-      'Buying an edition does not upload the journal. Work you type in the Student Edition demo on this device can be saved into Student Edition when the purchase opens that edition and the real file is empty. Student, Media, Instructor, and Pro include Student Edition. White does not, so that demo stays on this device and is not opened.',
+      'Buying an edition does not upload the journal. Work you type in the Student Edition demo on this device can be saved into Student Edition when the purchase opens that edition and the real file is empty. Student, Media, Instructor, and Pro include Student Edition. Advantage BJJ Scoreboard does not, so that demo stays on this device and is not opened.',
       'If Student Edition already has a file, choose Keep the file on this device or Use the demo copy. The purchase does not replace the file unless you choose the demo copy. The sample seed on the demo screen is not kept. Video files and photos from the demo are not copied. The example technique cloud is not part of this save.',
     ],
     links: [
@@ -232,13 +232,13 @@ export const FAQ_ENTRIES: readonly FaqEntry[] = [
     category: 'Purchases and access',
     question: 'Which edition opens which tools?',
     paragraphs: [
-      'A higher edition opens the editions under it. White does not open the journal. Student Edition does not open the instructor tools.',
-      'White opens the scoreboard and round timer. Student Edition opens the journal, rank, fundamentals, calendar, competitor pages, and backups, and it also opens White. Media opens Media Console — Gallery, Class Schedule, Pro Shop, and Events — and also opens Student and White, when Media is open on this browser. Instructor opens the coach tools, including Daily Lesson Plan, Daily Training Videos, Technique Tree, and Student Roster, and it also opens Media, Student, and White. Pro opens the gym owner console and the editions under it.',
+      'A higher edition opens the editions under it. Advantage BJJ Scoreboard does not open the journal. Student Edition does not open the instructor tools.',
+      'Advantage BJJ Scoreboard opens the scoreboard and round timer. Student Edition opens the journal, rank, fundamentals, calendar, competitor pages, and backups, and it also opens Advantage BJJ Scoreboard. Media opens Media Console — Gallery, Class Schedule, Pro Shop, and Events — and also opens Student and Advantage BJJ Scoreboard, when Media is open on this browser. Instructor opens the coach tools, including Daily Lesson Plan, Daily Training Videos, Technique Tree, and Student Roster, and it also opens Media, Student, and Advantage BJJ Scoreboard. Pro opens the gym owner console and the editions under it.',
       `Pro includes ${FREE_INSTRUCTOR_SEATS} free instructor seats and ${FREE_STUDENT_LICENSES} free Student Edition licenses.`,
       'Prices and alpha notes stay on the edition pages. This FAQ does not copy them.',
     ],
     links: [
-      { label: 'Advantage White', to: '/buy' },
+      { label: 'Advantage BJJ Scoreboard', to: '/buy' },
       { label: 'Student Edition', to: '/editions/student' },
       { label: 'Media Edition', to: '/media' },
       { label: 'Instructor Edition', to: '/editions/instructor' },

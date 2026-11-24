@@ -338,7 +338,7 @@ export function TournamentPage() {
       <PlayExitMark to={exitPath} onExit={exitBoard} />
       <header className="tournament__bar">
         <div className="tournament__brand">
-          <p className="tournament__eyebrow">{fromWhite ? 'Advantage White' : plainCoach ? 'Advantage Instructor Edition' : parent.eyebrow}</p>
+          <p className="tournament__eyebrow">{fromWhite ? 'Advantage BJJ Scoreboard' : plainCoach ? 'Advantage Instructor Edition' : parent.eyebrow}</p>
           <h1>{fromWhite ? 'Brackets' : plainCoach ? MOCK_TOURNAMENT_NAME : tournamentToolLabel(competitionSuite)}</h1>
         </div>
         <BracketHeadline value={tournament.headline} onChange={setBracketHeadline} />

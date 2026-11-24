@@ -119,21 +119,21 @@ export function HomePage() {
         <nav className="home__modes" aria-label="Products">
           {whiteUnlocked ? (
             <article className="mode-card mode-card--white">
-              <Link className="mode-card__hit" to={whiteEntryPath(true)} tabIndex={-1} aria-label="Open White" />
+              <Link className="mode-card__hit" to={whiteEntryPath(true)} tabIndex={-1} aria-label="Open Advantage BJJ Scoreboard" />
               <BeltRail kind="white" />
-              <strong>Advantage White</strong>
+              <strong>Advantage BJJ Scoreboard</strong>
               <HomeDescription text={WHITE_HOME_DESCRIPTION} />
               <span className="mode-card__actions">
                 <Link className="btn btn--white" to={whiteEntryPath(true)}>
-                  Open White
+                  Open Advantage BJJ Scoreboard
                 </Link>
               </span>
             </article>
           ) : (
             <article className="mode-card mode-card--white">
-              <Link className="mode-card__hit" to={whiteEntryPath(false)} aria-label="Advantage White" />
+              <Link className="mode-card__hit" to={whiteEntryPath(false)} aria-label="Advantage BJJ Scoreboard" />
               <BeltRail kind="white" />
-              <strong>Advantage White</strong>
+              <strong>Advantage BJJ Scoreboard</strong>
               <HomeDescription text={WHITE_HOME_DESCRIPTION} />
               <span className="mode-card__actions">
                 <Link className="btn btn--white" to={whiteEntryPath(false)}>

@@ -118,7 +118,7 @@ function realIsEmpty(text: string | null): boolean {
 
 function waitingMessage(open: ReadonlySet<string>): string {
   if (open.has('white') && !open.has('student')) {
-    return 'This purchase opens Advantage White. The Student Edition demo is still saved on this device and was not opened, because White does not include Student Edition.';
+    return 'This purchase opens Advantage BJJ Scoreboard. The Student Edition demo is still saved on this device and was not opened, because Advantage BJJ Scoreboard does not include Student Edition.';
   }
   return 'This purchase does not include Student Edition. The demo is still saved on this device and was not copied into a locked edition.';
 }

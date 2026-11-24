@@ -88,7 +88,7 @@ test('route renders the Media Edition page with its title, price, belt and CTA',
   assert.ok(host.querySelector('input[name="advantageCloud"]'));
   assert.match(host.textContent ?? '', /optional Advantage Cloud/);
   assert.match(host.textContent ?? '', /In alpha testing\. Email advantageappLLC@gmail\.com for a free alpha code\./);
-  assert.match(host.textContent ?? '', /Includes everything in Advantage White\./);
+  assert.match(host.textContent ?? '', /Includes everything in Advantage BJJ Scoreboard\./);
   m.done();
 });
 

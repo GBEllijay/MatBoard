@@ -32,7 +32,7 @@ const studentMenus = read('../pages/student/StudentMenus.tsx');
 const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 test('every tier has a Learn more label and a description page', () => {
-  assert.equal(LEARN_MORE.white.label, 'Learn more about Advantage White');
+  assert.equal(LEARN_MORE.white.label, 'Learn more about Advantage BJJ Scoreboard');
   assert.equal(LEARN_MORE.white.to, '/buy');
   assert.equal(LEARN_MORE.student.label, 'Learn more about Student Edition');
   assert.equal(LEARN_MORE.student.to, '/editions/student');

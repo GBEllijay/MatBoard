@@ -22,8 +22,8 @@ test('Advantage White list price is $19.99 and the launch price is $15.99', () =
   assert.equal(formatUsdFromCents(WHITE_LIST_PRICE_CENTS), WHITE_PRICE_LABEL);
   assert.equal(formatUsdFromCents(WHITE_LIST_PRICE_CENTS), '$19.99');
   assert.equal(formatUsdFromCents(WHITE_LAUNCH_PRICE_CENTS), '$15.99');
-  assert.equal(whiteBuyCtaLabel(), 'Buy Advantage White — $19.99');
-  assert.equal(whiteBuyCtaLabel(WHITE_LAUNCH_PRICE_CENTS), 'Buy Advantage White — $15.99');
+  assert.equal(whiteBuyCtaLabel(), 'Buy Advantage BJJ Scoreboard — $19.99');
+  assert.equal(whiteBuyCtaLabel(WHITE_LAUNCH_PRICE_CENTS), 'Buy Advantage BJJ Scoreboard — $15.99');
 });
 
 test('amount-off helper subtracts a fixed coupon from the current list price', () => {

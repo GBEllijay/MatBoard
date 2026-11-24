@@ -306,7 +306,7 @@ function StudentDemoBanner() {
       </div>
       {ask ? (
         <div className="student-demo-exit" role="dialog" aria-label="Save the demo before leaving">
-          <p>Save a copy before you leave the demo? A purchase that includes Student Edition can use the copy saved on this device. White does not open Student Edition.</p>
+          <p>Save a copy before you leave the demo? A purchase that includes Student Edition can use the copy saved on this device. Advantage BJJ Scoreboard does not open Student Edition.</p>
           <button type="button" onClick={download}>
             Download backup
           </button>
