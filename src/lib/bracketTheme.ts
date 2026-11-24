@@ -1,4 +1,4 @@
-/** Mock Tournament look. Bright is the locked Coach-demo default. */
+/** Mock Tournament look. Stored id stays "bright"; the user-facing name is Advantage. This is the locked Coach-demo default. */
 
 export const BRACKET_THEMES = ['bright', 'dark', 'podium'] as const;
 
@@ -7,11 +7,11 @@ export type BracketTheme = (typeof BRACKET_THEMES)[number];
 export const BRACKET_THEME_KEY = 'matboard.bracketTheme.v1';
 export const DEFAULT_BRACKET_THEME: BracketTheme = 'bright';
 
-/** White-only bracket skin, listed with Bright and Dark when White base skins are open. */
+/** White-only bracket skin, listed with Advantage and Dark when White base skins are open. */
 export const WHITE_BRACKET_THEME: BracketTheme = 'podium';
 
 export const BRACKET_THEME_LABELS: Record<BracketTheme, string> = {
-  bright: 'Bright',
+  bright: 'Advantage',
   dark: 'Dark',
   podium: 'Podium & Mat Strip',
 };
@@ -65,7 +65,7 @@ export function bracketThemeOptions(whiteBaseSkins: boolean): readonly BracketTh
   return podiumThemeOpen(whiteBaseSkins) ? BRACKET_THEMES : (['bright', 'dark'] as const);
 }
 
-/** Paint Bright when the Coach demo hides skins, or when Podium is stored but not allowed. */
+/** Paint Advantage (stored as bright) when the Coach demo hides skins, or when Podium is stored but not allowed. */
 export function visibleBracketTheme(
   theme: BracketTheme,
   options: { plainCoach?: boolean; whiteBaseSkins?: boolean } = {},

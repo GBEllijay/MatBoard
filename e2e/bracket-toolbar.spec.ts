@@ -20,7 +20,7 @@ const SEAT = {
   inviteToken: 'tok',
 };
 
-const CHIPS = ['Skin', 'Bright', 'Dark', '4', 'Save', 'Edit names', 'Fill from check-in', 'Undo last result', 'Reset'] as const;
+const CHIPS = ['Skins', '4', 'Save', 'Edit names', 'Fill from check-in', 'Undo last result', 'Reset'] as const;
 
 async function seed(page: Page, seat: boolean) {
   await page.addInitScript(
@@ -136,7 +136,7 @@ test('seat-bar toolbar chips receive the pointer, and only Fullscreen asks for f
       const tools = document.querySelector('.tournament__tools');
       const center = document.querySelector('.tournament__tools .tournament__center');
       const skin = [...document.querySelectorAll('.tournament__tools button')].find(
-        (button) => button.textContent?.trim() === 'Skin',
+        (button) => button.textContent?.trim() === 'Skins',
       );
       if (!bracket || !tools || !center || !skin) return null;
       const bracketBox = bracket.getBoundingClientRect();
@@ -151,7 +151,7 @@ test('seat-bar toolbar chips receive the pointer, and only Fullscreen asks for f
     });
     expect(order?.toolsAfter, 'controls follow the bracket').toBe(true);
     expect(order?.toolsBelow, 'controls sit under the bracket').toBe(true);
-    expect(order?.infoAboveSkin, 'seed line sits above Skin').toBe(true);
+    expect(order?.infoAboveSkin, 'seed line sits above Skins').toBe(true);
     for (const label of CHIPS) await hitAtCenter(page, label);
     const fullscreen = page.locator('.tournament__tools .play-fs');
     if (await fullscreen.count()) {
@@ -182,10 +182,12 @@ test('seat-bar toolbar chips receive the pointer, and only Fullscreen asks for f
 
   const requests = () => page.evaluate(() => (window as Window & { __fullscreenRequests?: number }).__fullscreenRequests || 0);
 
-  await chip(page, 'Dark').click();
+  await chip(page, 'Skins').click();
+  await page.getByRole('radio', { name: 'Dark', exact: true }).click();
   await expect(page.locator('main')).toHaveClass(/tournament--dark/);
   await page.screenshot({ path: '/opt/cursor/artifacts/toolbar-1280-seat-dark.png', fullPage: false });
-  await chip(page, 'Bright').click();
+  await chip(page, 'Skins').click();
+  await page.getByRole('radio', { name: 'Advantage', exact: true }).click();
   await expect(page.locator('main')).toHaveClass(/tournament--bright/);
   await page.screenshot({ path: '/opt/cursor/artifacts/toolbar-1280-seat-bright.png', fullPage: false });
   expect(await requests()).toBe(0);
@@ -201,7 +203,7 @@ test('seat-bar toolbar chips receive the pointer, and only Fullscreen asks for f
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
 
-  await chip(page, 'Skin').click();
+  await chip(page, 'Skins').click();
   await expect(page.locator('.kids-skin__picker')).toBeVisible();
   await page.locator('.tournament__roundline').click();
   await expect(page.locator('.kids-skin__picker')).toBeHidden();

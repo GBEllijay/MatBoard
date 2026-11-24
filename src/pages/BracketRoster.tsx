@@ -135,9 +135,9 @@ export function BracketRosterPage() {
         <h1>Bracket Roster</h1>
       </header>
       <p className="white-roster__lead">
-        Names for a mock tournament on this device. Gym name sits under the competitor name, the
-        same way Competitor 1 is entered on the scoreboard. The list holds up to {BRACKET_ROSTER_MAX}{' '}
-        people. Import or download a CSV with the header name,gym,weight,division,age,rank.
+        Up to {BRACKET_ROSTER_MAX} names for a mock tournament, saved on this device; the gym shows
+        under each name. Import or download a CSV with the columns name, gym, weight, division, age,
+        rank.
       </p>
 
       <div className="names-sheet bracket-roster__sheet">

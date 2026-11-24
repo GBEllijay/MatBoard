@@ -34,9 +34,7 @@ import { EMPTY_BRACKET_BODY, EMPTY_BRACKET_TITLE, OWNER_BRACKET_CLOUD_NOTE } fro
 import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBout } from '../lib/bracketBout';
 import { scoreboardCompetitionFields } from '../lib/matchRound';
 import {
-  BRACKET_THEME_LABELS,
   bracketThemeOptions,
-  setBracketTheme,
   visibleBracketTheme,
 } from '../lib/bracketTheme';
 import { podiumPlaces } from '../lib/bracketPodium';
@@ -347,8 +345,8 @@ export function TournamentPage() {
       <p className="tournament__hint">
         {kidsOn ? (
           <>
-            {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. Skin under the bracket opens the backgrounds.
-            Grandmaster cheer stays in the corner after a champion, with "Bom trabalho!" Turn it off from Skin.
+            {KIDS_BRACKETS_SKINS_LABEL} paints this bracket. The Skins menu under the bracket opens the backgrounds.
+            Grandmaster cheer stays in the corner after a champion, with "Bom trabalho!" Turn it off from Skins.
           </>
         ) : (
           <>
@@ -490,7 +488,7 @@ export function TournamentPage() {
             </p>
           ) : null}
           <div className="tournament__center">
-            <p className="tournament__roundline">{bracketRoundLine(tournament)}</p>
+            <p className="tournament__roundline">{bracketRoundLine(tournament, { includePlacement: !fromWhite })}</p>
             <label className="tournament__title">
               <span>Division</span>
               <input
@@ -502,23 +500,15 @@ export function TournamentPage() {
             </label>
           </div>
           <div className="tournament__actions">
-            {kidsSkins ? <KidsScoreboardSwitcher prefs={kids} suppressed={skinButtonSuppressed} /> : null}
-            {plainCoach ? null : (
-              <div className="tournament__theme" role="radiogroup" aria-label="Bracket theme">
-                {bracketThemeOptions(whiteBaseSkins).map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    role="radio"
-                    aria-checked={theme === id}
-                    className={`chip${theme === id ? ' chip--on' : ''}`}
-                    onClick={() => setBracketTheme(id)}
-                  >
-                    {BRACKET_THEME_LABELS[id]}
-                  </button>
-                ))}
-              </div>
-            )}
+            {kidsSkins || !plainCoach ? (
+              <KidsScoreboardSwitcher
+                prefs={kids}
+                suppressed={skinButtonSuppressed}
+                themes={plainCoach ? [] : bracketThemeOptions(whiteBaseSkins)}
+                theme={shownTheme}
+                showKids={kidsSkins}
+              />
+            ) : null}
             <button
               type="button"
               role="switch"
@@ -833,7 +823,7 @@ export function TournamentPage() {
                 >
                   <strong>{displayBracketName(row)}</strong>
                   <span>
-                    {bracketRoundLine(row.board)}
+                    {bracketRoundLine(row.board, { includePlacement: !fromWhite })}
                     {active ? ' · Open' : ''}
                   </span>
                 </button>

@@ -345,17 +345,22 @@ export function firstRoundLabel(count: number): string {
   return ROUND_LABEL[firstRoundPrefix(treeSizeFor(count))];
 }
 
-export function bracketRoundLine(current: TournamentState): string {
+export function bracketRoundLine(
+  current: TournamentState,
+  options?: { includePlacement?: boolean },
+): string {
   const n = clampCompetitorCount(current.size);
   const people = `${n} competitor${n === 1 ? '' : 's'}`;
   const style = placementOf(current);
-  const label = placementLabel(style);
-  if (isThreePersonBracket(current)) return `${label} · 3-person · ${people}`;
-  const round = firstRoundLabel(n);
-  const byes = byeCountFor(n, style);
-  const prefix = `${label} · `;
-  if (!byes) return `${prefix}${round} · ${people}`;
-  return `${prefix}${round} · ${people} · ${byes} ${byes === 1 ? 'bye' : 'byes'}`;
+  const body = (() => {
+    if (isThreePersonBracket(current)) return `3-person · ${people}`;
+    const round = firstRoundLabel(n);
+    const byes = byeCountFor(n, style);
+    if (!byes) return `${round} · ${people}`;
+    return `${round} · ${people} · ${byes} ${byes === 1 ? 'bye' : 'byes'}`;
+  })();
+  if (options?.includePlacement === false) return body;
+  return `${placementLabel(style)} · ${body}`;
 }
 
 export function firstRoundSlots(tree: TreeSize): SlotId[] {

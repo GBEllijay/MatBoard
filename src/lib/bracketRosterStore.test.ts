@@ -45,6 +45,18 @@ function memoryStorage() {
 Object.defineProperty(globalThis, 'localStorage', { value: memoryStorage(), configurable: true });
 import { seedSlots, slotName } from './tournamentStore.ts';
 
+function samplePeople(count: number) {
+  return Array.from({ length: count }, (_, i) => ({
+    name: `Person ${i + 1}`,
+    gym: 'Example Academy',
+    weight: '155',
+    division: 'Adult',
+    age: '28',
+    rank: 'Purple',
+  }));
+}
+
+
 test('CSV export writes the required header and quoted cells', () => {
   const csv = formatBracketRosterCsv([
     {
@@ -104,13 +116,19 @@ test('CSV parse truncates past 36 and skips duplicate names', () => {
   assert.equal(result.skipped, 1);
 });
 
-test('the committed sample CSV has 36 fictional rows and the official header', () => {
+test('the committed sample CSV is the official header plus one example row', () => {
   const raw = readFileSync('public/samples/bracket-roster-sample.csv', 'utf8');
   const result = parseBracketRosterCsv(raw);
   assert.equal(result.error, undefined);
-  assert.equal(result.entries.length, 36);
+  assert.equal(raw, 'name,gym,weight,division,age,rank\nJohn Doe,Example Academy,155,Adult,28,Purple\n');
+  assert.equal(result.entries.length, 1);
   assert.equal(result.truncated, 0);
-  assert.equal(new Set(result.entries.map((entry) => entry.name)).size, 36);
+  assert.equal(result.entries[0]?.name, 'John Doe');
+  assert.equal(result.entries[0]?.gym, 'Example Academy');
+  assert.equal(result.entries[0]?.weight, '155');
+  assert.equal(result.entries[0]?.division, 'Adult');
+  assert.equal(result.entries[0]?.age, '28');
+  assert.equal(result.entries[0]?.rank, 'Purple');
   assert.doesNotMatch(raw, /Gracie Barra|GracieBarra|\bGB\b/i);
 });
 
@@ -144,15 +162,14 @@ test('add, edit, and remove persist on this device', () => {
 test('import replace and seed fill a 16-person White bracket from the roster', () => {
   resetBracketRosterForTests();
   resetTournament();
-  const parsed = parseBracketRosterCsv(readFileSync('public/samples/bracket-roster-sample.csv', 'utf8'));
-  replaceBracketRoster(parsed.entries.slice(0, 16));
+  replaceBracketRoster(samplePeople(16));
   const placed = seedWhiteBracketFromRoster(16);
   assert.equal(placed, 16);
   const board = getTournament();
   assert.equal(board.size, 16);
   const names = seedSlots(board).map((id) => slotName(board, id));
-  assert.equal(names[0], 'Atlas');
-  assert.equal(names[15], 'Ivy');
+  assert.equal(names[0], 'Person 1');
+  assert.equal(names[15], 'Person 16');
   resetBracketRosterForTests();
   resetTournament();
 });
@@ -160,8 +177,7 @@ test('import replace and seed fill a 16-person White bracket from the roster', (
 test('Fill respects the selected White bracket size instead of always using 36', () => {
   resetBracketRosterForTests();
   resetTournament();
-  const parsed = parseBracketRosterCsv(readFileSync('public/samples/bracket-roster-sample.csv', 'utf8'));
-  replaceBracketRoster(parsed.entries);
+  replaceBracketRoster(samplePeople(36));
   const placed = seedWhiteBracketFromRoster(16);
   assert.equal(placed, 16);
   const board = getTournament();

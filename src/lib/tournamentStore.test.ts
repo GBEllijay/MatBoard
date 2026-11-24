@@ -103,6 +103,14 @@ describe('flexible bracket size', () => {
     assert.deepEqual(byeSlotIds(5, 'lineup'), ['qf-1-b', 'qf-2-b', 'qf-3-b']);
     assert.equal(firstRoundLabel(5), 'Quarterfinals');
     assert.match(bracketRoundLine(defaultTournament(5)), /Seeded · Quarterfinals · 5 competitors · 3 byes/);
+    assert.equal(
+      bracketRoundLine(defaultTournament(16), { includePlacement: false }),
+      'Round of 16 · 16 competitors',
+    );
+    assert.equal(
+      bracketRoundLine(defaultTournament(5), { includePlacement: false }),
+      'Quarterfinals · 5 competitors · 3 byes',
+    );
     assert.equal(TOURNAMENT_SIZE, 16);
     assert.equal(defaultTournament().size, 16);
     assert.equal(placementOf(defaultTournament()), 'ibjjf');
@@ -268,6 +276,10 @@ describe('3-person bracket', () => {
     assert.equal(byeCountFor(3), 0);
     assert.deepEqual(byeSlotIds(3), []);
     assert.equal(bracketRoundLine(defaultTournament(3)), 'Seeded · 3-person · 3 competitors');
+    assert.equal(
+      bracketRoundLine(defaultTournament(3), { includePlacement: false }),
+      '3-person · 3 competitors',
+    );
     assert.equal(matchHasBye(defaultTournament(3), 'sf-0'), false);
     assert.equal(matchHasBye(defaultTournament(3), 'sf-1'), false);
   });

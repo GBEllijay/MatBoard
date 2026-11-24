@@ -1,5 +1,10 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import {
+  BRACKET_THEME_LABELS,
+  setBracketTheme,
+  type BracketTheme,
+} from '../lib/bracketTheme';
+import {
   KIDS_BRACKETS_SKINS_LABEL,
   KIDS_SKINS,
   kidsSkinLabel,
@@ -11,20 +16,34 @@ import {
   type KidsSkinId,
 } from '../lib/kidsScoreboard';
 
-/** Skin control under the bracket. One button opens thumbnails. */
+/** Skins control under the bracket. One button opens themes and, when allowed, kids thumbnails. */
 export function KidsScoreboardSwitcher({
   prefs,
   suppressed,
+  themes = [],
+  theme,
+  showKids = true,
 }: {
   prefs: KidsScoreboardPrefs;
   /** Fullscreen or an open sheet. A linked bout does not close the picker. */
   suppressed: boolean;
+  /** Advantage, Dark, and any White-gated themes. Stored ids stay unchanged. */
+  themes?: readonly BracketTheme[];
+  theme?: BracketTheme;
+  /** Kids wallpaper thumbs, Off, and Grandmaster cheer. */
+  showKids?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const pickerId = useId();
   const showing = open && !suppressed;
+  const kidsOn = showKids && prefs.enabled;
+  const currentLabel = kidsOn
+    ? kidsSkinLabel(prefs.skin)
+    : theme
+      ? BRACKET_THEME_LABELS[theme]
+      : null;
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -85,9 +104,15 @@ export function KidsScoreboardSwitcher({
     };
   }, [showing]);
 
-  const choose = (skin: KidsSkinId) => {
+  const chooseKids = (skin: KidsSkinId) => {
     setKidsSkin(skin);
     setKidsEnabled(true);
+    setOpen(false);
+  };
+
+  const chooseTheme = (id: BracketTheme) => {
+    setBracketTheme(id);
+    if (showKids) setKidsEnabled(false);
     setOpen(false);
   };
 
@@ -95,64 +120,87 @@ export function KidsScoreboardSwitcher({
     <div className="kids-skin" ref={rootRef}>
       <button
         type="button"
-        className={`btn kids-skin__btn${prefs.enabled ? ' kids-skin__btn--on' : ' btn--ghost'}`}
+        className={`btn kids-skin__btn${kidsOn ? ' kids-skin__btn--on' : ' btn--ghost'}`}
         aria-expanded={showing}
         aria-haspopup="dialog"
         aria-controls={pickerId}
-        aria-pressed={prefs.enabled}
         disabled={suppressed}
-        aria-label={prefs.enabled ? `Skin, ${kidsSkinLabel(prefs.skin)}` : 'Skin'}
+        aria-label={currentLabel ? `Skins, ${currentLabel}` : 'Skins'}
         onClick={() => setOpen((value) => !value)}
       >
-        Skin
+        Skins
       </button>
       {showing ? (
-        <div
-          id={pickerId}
-          ref={pickerRef}
-          className="kids-skin__picker"
-          role="dialog"
-          aria-label={KIDS_BRACKETS_SKINS_LABEL}
-        >
-          <div className="kids-skin__grid" role="radiogroup" aria-label={`${KIDS_BRACKETS_SKINS_LABEL} background`}>
-            {KIDS_SKINS.map((skin) => {
-              const selected = prefs.enabled && prefs.skin === skin.id;
-              return (
+        <div id={pickerId} ref={pickerRef} className="kids-skin__picker" role="dialog" aria-label="Skins">
+          {themes.length ? (
+            <div className="kids-skin__section">
+              {showKids ? <p className="kids-skin__heading">Themes</p> : null}
+              <div className="kids-skin__themes" role="radiogroup" aria-label="Bracket theme">
+                {themes.map((id) => {
+                  const selected = !kidsOn && theme === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      className={`kids-skin__thumb${selected ? ' is-on' : ''}`}
+                      onClick={() => chooseTheme(id)}
+                    >
+                      <span className={`kids-skin__swatch kids-skin__swatch--${id}`} aria-hidden="true" />
+                      <span>{BRACKET_THEME_LABELS[id]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          {showKids ? (
+            <>
+              <div className="kids-skin__section">
+                {themes.length ? <p className="kids-skin__heading">{KIDS_BRACKETS_SKINS_LABEL}</p> : null}
+                <div className="kids-skin__grid" role="radiogroup" aria-label={`${KIDS_BRACKETS_SKINS_LABEL} background`}>
+                  {KIDS_SKINS.map((skin) => {
+                    const selected = kidsOn && prefs.skin === skin.id;
+                    return (
+                      <button
+                        key={skin.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        className={`kids-skin__thumb${selected ? ' is-on' : ''}`}
+                        onClick={() => chooseKids(skin.id)}
+                      >
+                        <img src={kidsWallpaperPath(skin.id)} alt="" />
+                        <span>{skin.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="kids-skin__row">
                 <button
-                  key={skin.id}
                   type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  className={`kids-skin__thumb${selected ? ' is-on' : ''}`}
-                  onClick={() => choose(skin.id)}
+                  className={`kids-skin__choice${!prefs.enabled ? ' is-on' : ''}`}
+                  aria-pressed={!prefs.enabled}
+                  onClick={() => {
+                    setKidsEnabled(false);
+                    setOpen(false);
+                  }}
                 >
-                  <img src={kidsWallpaperPath(skin.id)} alt="" />
-                  <span>{skin.label}</span>
+                  Off
                 </button>
-              );
-            })}
-          </div>
-          <div className="kids-skin__row">
-            <button
-              type="button"
-              className={`kids-skin__choice${!prefs.enabled ? ' is-on' : ''}`}
-              aria-pressed={!prefs.enabled}
-              onClick={() => {
-                setKidsEnabled(false);
-                setOpen(false);
-              }}
-            >
-              Off
-            </button>
-            <button
-              type="button"
-              className={`kids-skin__choice${prefs.mascot ? ' is-on' : ''}`}
-              aria-pressed={prefs.mascot}
-              onClick={() => setKidsMascot(!prefs.mascot)}
-            >
-              Grandmaster cheer
-            </button>
-          </div>
+                <button
+                  type="button"
+                  className={`kids-skin__choice${prefs.mascot ? ' is-on' : ''}`}
+                  aria-pressed={prefs.mascot}
+                  onClick={() => setKidsMascot(!prefs.mascot)}
+                >
+                  Grandmaster cheer
+                </button>
+              </div>
+            </>
+          ) : null}
         </div>
       ) : null}
     </div>
