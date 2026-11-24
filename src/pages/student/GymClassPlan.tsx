@@ -4,7 +4,7 @@
  */
 import './calendar.css';
 import { useCallback, useEffect, useState } from 'react';
-import { dateHasGymClass, formatClassTime, occurrencesOnDate, WEEKDAY_LABELS, type GymCalendarState, type GymClassOccurrence } from '../../lib/gymCalendar';
+import { CLASS_LEVEL_META, dateHasGymClass, formatClassTime, occurrencesOnDate, WEEKDAY_LABELS, type GymCalendarState, type GymClassOccurrence } from '../../lib/gymCalendar';
 import {
   fetchClassAttendance,
   myRsvp,
@@ -142,6 +142,12 @@ export function GymClassDayList({
             <li key={slot.slotId} className="cal-gym-day__row" data-testid={`gym-class-${slot.slotId}`}>
               <strong>{slot.label}</strong>
               {slot.location ? <span className="student-quiet">{slot.location}</span> : null}
+              {slot.level && slot.level !== 'none' ? (
+                <span className="cal-gym-day__level" data-level={slot.level}>
+                  <i className="belt-swatch" data-level={slot.level} aria-hidden="true" />
+                  {CLASS_LEVEL_META[slot.level].short}
+                </span>
+              ) : null}
               <div className="cal-gym-day__actions">
                 <button
                   type="button"

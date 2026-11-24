@@ -411,3 +411,138 @@ test('two devices: the Technique Tree survives a signed-in sync round trip (mock
     g.localStorage = previous;
   }
 });
+
+test('the owner Class Schedule keeps belt levels across owner devices; a never-synced TV board is kept as an earlier copy', async () => {
+  const { SCHEDULE_STORAGE_KEY, SCHEDULE_SYNC_META_KEY, SCHEDULE_BEFORE_SYNC_KEY, readScheduleBeforeSync } = await import(
+    '../lib/scheduleSyncDoc.ts'
+  );
+  const f = await fixture();
+  const { licenseId } = await recordPurchase(f.db, {
+    email: 'schedule@gym.test',
+    product: 'advantage-pro',
+    source: 'stripe_payment',
+    sourceRef: 'cs_schedule_rt',
+    sessionId: 'cs_schedule_rt',
+    pepper: PEPPER,
+    now: NOW,
+  });
+  const session = await openSession(f, 'schedule@gym.test', licenseId);
+  const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(String(input), ORIGIN);
+    const headers = new Headers(init?.headers);
+    headers.set('cookie', session.cookie);
+    const request = new Request(url, { method: init?.method ?? 'GET', headers, body: init?.body ?? null });
+    return handleLogin(request, f.env, f.db, () => NOW, async () => new Response('{}', { status: 404 }));
+  }) as typeof fetch;
+  const mem = (seed: Record<string, string> = {}) => {
+    const map = new Map(Object.entries(seed));
+    return {
+      getItem: (key: string) => map.get(key) ?? null,
+      setItem: (key: string, value: string) => void map.set(key, value),
+      removeItem: (key: string) => void map.delete(key),
+    };
+  };
+  const board = (levels: Record<string, string | undefined>, castEnabled = true) => ({
+    version: 1,
+    title: 'Sample Academy',
+    qrUrl: '',
+    notes: '',
+    template: 'week',
+    castEnabled,
+    classes: Object.entries(levels).map(([title, level], index) => ({
+      id: `c${index}`,
+      kind: 'class',
+      day: 'tue',
+      time: '17:00',
+      title,
+      location: `MAT ${index + 1}`,
+      subtitle: '',
+      ...(level ? { level } : {}),
+    })),
+    specials: [],
+  });
+  const levelsOf = (store: { getItem: (key: string) => string | null }) =>
+    Object.fromEntries(
+      (JSON.parse(store.getItem(SCHEDULE_STORAGE_KEY) ?? '{"classes":[]}').classes as Array<{ title: string; level?: string }>).map(
+        (row) => [row.title, row.level],
+      ),
+    );
+
+  const g = globalThis as { localStorage?: unknown };
+  const previous = g.localStorage;
+  g.localStorage = mem({ [LOGIN_HINT_KEY]: 'schedule@gym.test' });
+  try {
+    // The phone has levels and an edit stamp.
+    const phone = mem({
+      [SCHEDULE_STORAGE_KEY]: JSON.stringify(board({ 'Fundamentals Gi': 'fundamentals', 'Kids Advanced': 'kids-advanced' })),
+      [SCHEDULE_SYNC_META_KEY]: JSON.stringify({ v: 1, updatedAt: 5_000, syncedAt: null }),
+    });
+    const pushed = await pullAndMergeSignedIn({ profileId: 'default', store: phone, fetchImpl, now: 6_000 });
+    assert.equal(pushed.kind, 'synced', JSON.stringify(pushed));
+    const stored = JSON.parse(f.bucket.objects.get(`groups/${licenseId}/account-sync/class-schedule.json`) ?? '{}');
+    assert.equal(stored.updatedAt, 5_000);
+    assert.deepEqual(
+      stored.schedule.classes.map((row: { title: string; level: string }) => [row.title, row.level]),
+      [
+        ['Fundamentals Gi', 'fundamentals'],
+        ['Kids Advanced', 'kids-advanced'],
+      ],
+    );
+
+    // The gym TV has an older board with no levels and was never synced. Cloud wins; its own board is kept.
+    const tv = mem({ [SCHEDULE_STORAGE_KEY]: JSON.stringify(board({ 'Fundamentals Gi': undefined, 'Old class': undefined }, false)) });
+    const pulled = await pullAndMergeSignedIn({ profileId: 'default', store: tv, fetchImpl, now: 7_000 });
+    assert.equal(pulled.kind, 'synced');
+    assert.deepEqual(levelsOf(tv), { 'Fundamentals Gi': 'fundamentals', 'Kids Advanced': 'kids-advanced' });
+    assert.equal(JSON.parse(tv.getItem(SCHEDULE_STORAGE_KEY)!).castEnabled, false, 'On the TV stays per device');
+    assert.ok(tv.getItem(SCHEDULE_BEFORE_SYNC_KEY));
+    assert.deepEqual(
+      readScheduleBeforeSync(tv)?.schedule.classes.map((row) => row.title),
+      ['Fundamentals Gi', 'Old class'],
+    );
+
+    // A later level change on the TV goes back to the phone.
+    const tvBoard = JSON.parse(tv.getItem(SCHEDULE_STORAGE_KEY)!);
+    tvBoard.classes[0].level = 'intermediate';
+    tv.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(tvBoard));
+    tv.setItem(SCHEDULE_SYNC_META_KEY, JSON.stringify({ v: 1, updatedAt: 8_000, syncedAt: 5_000 }));
+    await pullAndMergeSignedIn({ profileId: 'default', store: tv, fetchImpl, now: 8_100 });
+    await pullAndMergeSignedIn({ profileId: 'default', store: phone, fetchImpl, now: 8_200 });
+    assert.deepEqual(levelsOf(phone), { 'Fundamentals Gi': 'intermediate', 'Kids Advanced': 'kids-advanced' });
+    assert.equal(phone.getItem(SCHEDULE_BEFORE_SYNC_KEY), null, 'the phone was already synced, so no earlier copy');
+  } finally {
+    g.localStorage = previous;
+  }
+});
+
+test('an empty or older incoming Class Schedule never replaces the stored one', async () => {
+  const f = await fixture();
+  const { licenseId } = await recordPurchase(f.db, {
+    email: 'schedule-guard@gym.test',
+    product: 'advantage-pro',
+    source: 'stripe_payment',
+    sourceRef: 'cs_schedule_guard',
+    sessionId: 'cs_schedule_guard',
+    pepper: PEPPER,
+    now: NOW,
+  });
+  const owner = await openSession(f, 'schedule-guard@gym.test', licenseId);
+  const doc = (updatedAt: number, level: string | null) => ({
+    v: 1,
+    updatedAt,
+    schedule: {
+      classes: level === null ? [] : [{ id: 'a', day: 'mon', time: '18:00', title: 'Adults', level }],
+      specials: [],
+    },
+  });
+  const first = await call(f, put('/api/login/sync', { profileId: 'default', schedule: doc(200, 'advanced') }, owner.cookie));
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  assert.equal(first.body.schedule.schedule.classes[0].level, 'advanced');
+  const older = await call(f, put('/api/login/sync', { profileId: 'default', schedule: doc(100, 'none') }, owner.cookie));
+  assert.equal(older.body.schedule.updatedAt, 200);
+  assert.equal(older.body.schedule.schedule.classes[0].level, 'advanced');
+  const empty = await call(f, put('/api/login/sync', { profileId: 'default', schedule: doc(900, null) }, owner.cookie));
+  assert.equal(empty.body.schedule.schedule.classes[0].level, 'advanced');
+  const fetched = await call(f, get('/api/login/sync?profile=default', owner.cookie));
+  assert.equal(fetched.body.schedule.schedule.classes[0].level, 'advanced');
+});

@@ -30,6 +30,13 @@ import {
   serializeScheduleCsv,
   type ScheduleCsvImport,
 } from '../lib/scheduleCsv';
+import {
+  describeClassLevels,
+  importScheduleJson,
+  looksLikeScheduleJson,
+  scheduleJsonFileName,
+  serializeScheduleJson,
+} from '../lib/scheduleJson';
 import { isSpreadsheetWorkbook, ROSTER_CSV_WORKBOOK_ERROR, withUtf8Bom } from '../lib/rosterCsv';
 import {
   WEEKDAYS,
@@ -46,6 +53,9 @@ import {
   addSpecial,
   applyScheduleImport,
   boardWeekdays,
+  clearScheduleBeforeSync,
+  getScheduleBeforeSync,
+  getScheduleSaveError,
   classesOnDay,
   formatBoardStamp,
   formatClassTime,
@@ -106,8 +116,15 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return Boolean(el.closest('input, textarea, select, [contenteditable="true"]'));
 }
 
+function downloadScheduleJson(filename: string, json: string): void {
+  downloadBlob(filename, new Blob([json], { type: 'application/json;charset=utf-8' }));
+}
+
 function downloadScheduleCsv(filename: string, csv: string): void {
-  const blob = new Blob([withUtf8Bom(csv)], { type: 'text/csv;charset=utf-8' });
+  downloadBlob(filename, new Blob([withUtf8Bom(csv)], { type: 'text/csv;charset=utf-8' }));
+}
+
+function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -435,10 +452,17 @@ function BoardHeader({
 function ClassCopy({ item }: { item: WeeklyClassSlot }) {
   const subtitle = item.subtitle.trim();
   const title = item.title.trim() || 'Class';
+  const level: ClassLevel = item.level ?? 'none';
   return (
-    <span className="schedule__class">
+    <span className="schedule__class" data-level={level}>
       <strong>{title}</strong>
       {subtitle ? <em>{subtitle}</em> : null}
+      {level !== 'none' ? (
+        <span className="schedule__level">
+          <i className="belt-swatch" data-level={level} aria-hidden="true" />
+          {CLASS_LEVEL_META[level].short}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -519,41 +543,68 @@ function WeeklyListBoard({
 function ScheduleBackup({
   csvNote,
   pending,
+  beforeSync,
   onTemplate,
   onExport,
+  onExportJson,
   onPick,
   onConfirm,
   onCancel,
+  onReviewBeforeSync,
+  onDropBeforeSync,
 }: {
   csvNote: string;
   pending: ScheduleCsvImport | null;
+  beforeSync: { savedAt: number } | null;
   onTemplate: () => void;
   onExport: () => void;
+  onExportJson: () => void;
   onPick: () => void;
   onConfirm: () => void;
   onCancel: () => void;
+  onReviewBeforeSync: () => void;
+  onDropBeforeSync: () => void;
 }) {
+  const levelLine = pending?.payload ? describeClassLevels(pending.payload.classes) : '';
   return (
     <fieldset className="schedule-edit__backup">
       <legend>Backup</legend>
       <p className="schedule-edit__hint">
-        Download a CSV before you clear site data or reset this device. Import replaces the schedule
-        on this device after you confirm. It does not merge. A class-only file replaces classes and
-        leaves the gym name, QR, and notices in place.
+        Export JSON keeps every field, belt levels included, and imports back exactly. Export CSV
+        opens in a spreadsheet. Import reads either file, shows what it found, and replaces the
+        schedule on this device only after you confirm. It does not merge. A class-only CSV
+        replaces classes and leaves the gym name, QR, and notices in place.
       </p>
       <div className="schedule-edit__backup-actions">
-        <button type="button" className="btn btn--ghost" onClick={onTemplate}>
-          Download template
-        </button>
-        <button type="button" className="btn btn--ghost" onClick={onPick}>
-          Import CSV
+        <button type="button" className="btn btn--ghost" onClick={onExportJson}>
+          Export JSON
         </button>
         <button type="button" className="btn btn--ghost" onClick={onExport}>
           Export CSV
         </button>
+        <button type="button" className="btn btn--ghost" onClick={onPick}>
+          Import JSON or CSV
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={onTemplate}>
+          Download CSV template
+        </button>
       </div>
+      {beforeSync && !pending ? (
+        <div className="schedule-edit__confirm" data-testid="schedule-before-sync">
+          <p className="schedule-edit__hint">
+            Advantage Cloud replaced the schedule that was on this device with the one from your
+            other device. This device&apos;s earlier copy is kept here.
+          </p>
+          <button type="button" className="btn btn--ghost" onClick={onReviewBeforeSync}>
+            Review this device&apos;s earlier copy
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={onDropBeforeSync}>
+            Discard the earlier copy
+          </button>
+        </div>
+      ) : null}
       {pending ? (
-        <div className="schedule-edit__confirm">
+        <div className="schedule-edit__confirm" data-testid="schedule-import-preview">
           <p>
             {pending.mode === 'replace-board'
               ? `Replace the schedule on this device with ${pending.classCount} ${
@@ -565,6 +616,12 @@ function ScheduleBackup({
                   pending.classCount === 1 ? 'class' : 'classes'
                 }? Board title, QR link, and notices stay as they are.`}
           </p>
+          {levelLine ? <p className="schedule-edit__hint">{levelLine}</p> : null}
+          {pending.skipped ? (
+            <p className="schedule-edit__hint">
+              {pending.skipped} {pending.skipped === 1 ? 'row' : 'rows'} without a day, time, or name will be skipped.
+            </p>
+          ) : null}
           <button type="button" className="btn" onClick={onConfirm}>
             Replace schedule
           </button>
@@ -659,7 +716,11 @@ export function ScheduleEditor({
   const csvRef = useRef<HTMLInputElement>(null);
   const [csvNote, setCsvNote] = useState('');
   const [pendingImport, setPendingImport] = useState<ScheduleCsvImport | null>(null);
+  const [pendingFromBeforeSync, setPendingFromBeforeSync] = useState(false);
   const rights = useImageRightsConfirm();
+  const saveError = getScheduleSaveError();
+  // Re-read on every schedule change; the copy only exists after a Cloud pull replaced this board.
+  const beforeSync = useMemo(() => getScheduleBeforeSync(), [schedule]);
 
   const usedMatsAtTime = classesOnDay(schedule.classes, day)
     .filter((row) => row.time === time)
@@ -730,6 +791,11 @@ export function ScheduleEditor({
         attend. Save a CSV backup before you clear site data or reset the app.
       </p>
       {pickerNote ? <p className="schedule-edit__error">{pickerNote}</p> : null}
+      {saveError ? (
+        <p className="schedule-edit__error" role="alert" data-testid="schedule-save-error">
+          {saveError}
+        </p>
+      ) : null}
 
       <fieldset data-testid="schedule-publish">
         <legend>Student calendars</legend>
@@ -764,16 +830,41 @@ export function ScheduleEditor({
       <ScheduleBackup
         csvNote={csvNote}
         pending={pendingImport}
+        beforeSync={beforeSync}
         onTemplate={() => downloadScheduleCsv(scheduleCsvFileName('template'), scheduleCsvTemplate())}
         onExport={() => downloadScheduleCsv(scheduleCsvFileName('backup'), serializeScheduleCsv(schedule))}
+        onExportJson={() => downloadScheduleJson(scheduleJsonFileName(), serializeScheduleJson(schedule))}
         onPick={() => csvRef.current?.click()}
         onConfirm={() => {
           if (!pendingImport?.payload) return;
           applyScheduleImport(pendingImport.payload);
           setCsvNote(formatScheduleCsvSummary(pendingImport));
           setPendingImport(null);
+          if (pendingFromBeforeSync) {
+            clearScheduleBeforeSync();
+            setPendingFromBeforeSync(false);
+          }
         }}
-        onCancel={() => setPendingImport(null)}
+        onCancel={() => {
+          setPendingImport(null);
+          setPendingFromBeforeSync(false);
+        }}
+        onReviewBeforeSync={() => {
+          const earlier = getScheduleBeforeSync();
+          if (!earlier) return;
+          const result = importScheduleJson(JSON.stringify(earlier.schedule));
+          if (!result.payload) {
+            setCsvNote(result.error ?? 'That earlier copy could not be read.');
+            return;
+          }
+          setCsvNote('');
+          setPendingImport(result);
+          setPendingFromBeforeSync(true);
+        }}
+        onDropBeforeSync={() => {
+          clearScheduleBeforeSync();
+          setCsvNote('Discarded the earlier copy from this device.');
+        }}
       />
 
       <fieldset>
@@ -1120,19 +1211,23 @@ export function ScheduleEditor({
       <input
         ref={csvRef}
         type="file"
-        accept=".csv,text/csv,text/plain"
+        accept=".json,application/json,.csv,text/csv,text/plain"
         hidden
-        aria-label="Import class schedule CSV"
+        aria-label="Import class schedule JSON or CSV"
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = '';
           if (!file) return;
+          setPendingFromBeforeSync(false);
           if (isSpreadsheetWorkbook(file)) {
             setPendingImport(null);
             setCsvNote(ROSTER_CSV_WORKBOOK_ERROR);
             return;
           }
-          void importScheduleCsvFile(file)
+          const read: Promise<ScheduleCsvImport> = file
+            .text()
+            .then((text) => (looksLikeScheduleJson(file, text) ? importScheduleJson(text) : importScheduleCsvFile(file)));
+          void read
             .then((result) => {
               if (result.error || !result.payload) {
                 setPendingImport(null);

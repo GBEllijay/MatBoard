@@ -251,3 +251,36 @@ test('a newer student document without basics does not erase stored basics', () 
   assert.equal(pick.winner?.basics?.belt, 'blue');
   assert.equal(pick.winner?.basics?.startedOn, '2020-01-15');
 });
+
+test('Class Schedule sync: an unstamped board uploads with a stamp only when Cloud is empty, and loses to a Cloud board', async () => {
+  const { mergeSchedule } = await import('./signedInSync.ts');
+  const board = (level: string) => ({
+    v: 1 as const,
+    updatedAt: 0,
+    schedule: {
+      version: 1 as const,
+      title: '',
+      qrUrl: '',
+      notes: '',
+      template: 'week' as const,
+      castEnabled: true,
+      classes: [{ id: 'a', kind: 'class' as const, day: 'mon' as const, time: '18:00', title: 'Blue Belt Gi', location: '', subtitle: '', level: level as 'advanced' }],
+      specials: [],
+    },
+  });
+  const first = mergeSchedule(board('advanced'), null, 1234);
+  assert.equal(first.source, 'local');
+  assert.equal(first.shouldUpload, true);
+  assert.equal(first.winner?.updatedAt, 1234);
+  assert.equal(first.winner?.schedule.classes[0]?.level, 'advanced');
+
+  const cloud = { ...board('expert'), updatedAt: 500 };
+  const pick = mergeSchedule(board('none'), cloud, 9999);
+  assert.equal(pick.source, 'remote');
+  assert.equal(pick.winner?.schedule.classes[0]?.level, 'expert');
+
+  const newer = mergeSchedule({ ...board('intermediate'), updatedAt: 900 }, cloud, 9999);
+  assert.equal(newer.source, 'local');
+  assert.equal(newer.shouldUpload, true);
+  assert.equal(newer.winner?.updatedAt, 900);
+});

@@ -38,6 +38,16 @@ import {
   type StudentSyncDoc,
   type StudentSyncRank,
 } from './signedInSyncDocs.ts';
+import {
+  applyScheduleDocToStore,
+  collectScheduleDoc,
+  mergeScheduleDocs,
+  readScheduleSyncMeta,
+  sanitizeScheduleSyncDoc,
+  scheduleSyncDocIsEmpty,
+  writeScheduleSyncMeta,
+  type ScheduleSyncDoc,
+} from './scheduleSyncDoc.ts';
 
 import { entitlementSnapshot } from './entitlement.ts';
 import { emptyAdditions, loadAdditions, writeAdditions } from './glossaryAdditions.ts';
@@ -76,6 +86,8 @@ export type SyncDocs = {
   profiles: ProfilesSyncDoc | null;
   /** The coach's own Technique Tree and glossary card links. Per account, never per student. */
   tree?: TreeSyncDoc | null;
+  /** The academy owner's Class Schedule, belt levels included. Owner devices only. */
+  schedule?: ScheduleSyncDoc | null;
 };
 
 export type SyncStatusKind = 'signed-out' | 'syncing' | 'synced' | 'error';
@@ -428,6 +440,37 @@ export function applyProfilesDoc(doc: ProfilesSyncDoc, store: MemoryStore | null
   }
 }
 
+/** Put the owner's Cloud Class Schedule on this device and refresh an open editor or TV board. */
+export function applyScheduleDoc(doc: ScheduleSyncDoc, store: MemoryStore | null = browserStore()): void {
+  const release = suppressSyncTrigger();
+  try {
+    const changed = applyScheduleDocToStore(doc, store);
+    if (changed && store && store === browserStore()) {
+      void import('./scheduleStore.ts')
+        .then((mod) => mod.reloadScheduleFromStorage())
+        .catch(() => undefined);
+    }
+  } finally {
+    release();
+  }
+}
+
+/**
+ * Owner devices only. A board this device never stamped loses to one already
+ * in Cloud; a stamped local edit that is newer uploads.
+ */
+export function mergeSchedule(
+  local: ScheduleSyncDoc | null,
+  remote: ScheduleSyncDoc | null,
+  now = Date.now(),
+): DocPick<ScheduleSyncDoc> {
+  const pick = mergeScheduleDocs(local, remote);
+  if (pick.shouldUpload && pick.winner && !pick.winner.updatedAt) {
+    return { ...pick, winner: { ...pick.winner, updatedAt: now } };
+  }
+  return pick;
+}
+
 export function mergeAcademy(local: AcademySyncDoc, remote: AcademySyncDoc | null): DocPick<AcademySyncDoc> {
   return pickWinningDoc(local, remote, academyDocIsEmpty, (doc) => doc.updatedAt);
 }
@@ -473,6 +516,7 @@ type SyncResponse = {
   student?: StudentSyncDoc | null;
   profiles?: ProfilesSyncDoc | null;
   tree?: TreeSyncDoc | null;
+  schedule?: ScheduleSyncDoc | null;
   canWriteAcademy?: boolean;
 };
 
@@ -549,6 +593,13 @@ export async function pullAndMergeSignedIn(options?: {
     const academyPick = mergeAcademy(localAcademy, remote.academy ?? null);
     if (academyPick.source === 'remote' && academyPick.winner) applyAcademyDoc(academyPick.winner, store);
 
+    const ownerDevice = remote.canWriteAcademy !== false;
+    const remoteSchedule = remote.schedule ? sanitizeScheduleSyncDoc(remote.schedule) : null;
+    const schedulePick: DocPick<ScheduleSyncDoc> = ownerDevice
+      ? mergeSchedule(collectScheduleDoc(store), remoteSchedule, now)
+      : { winner: null, shouldUpload: false, source: 'none' };
+    if (schedulePick.source === 'remote' && schedulePick.winner) applyScheduleDoc(schedulePick.winner, store);
+
     const localStudent = collectStudentDoc(profileId, store, now);
     const studentPick = mergeStudent(localStudent, remote.student ?? null);
     if (studentPick.source === 'remote' && studentPick.winner) applyStudentDoc(studentPick.winner, store);
@@ -570,14 +621,22 @@ export async function pullAndMergeSignedIn(options?: {
       student: studentPick.shouldUpload ? studentPick.winner : null,
       profiles: profilesPick.shouldUpload ? profilesPick.winner : null,
       tree: uploadTree ? mergedTree : null,
+      schedule: schedulePick.shouldUpload ? schedulePick.winner : null,
     };
 
-    if (toUpload.academy || toUpload.student || toUpload.profiles || toUpload.tree) {
+    if (toUpload.academy || toUpload.student || toUpload.profiles || toUpload.tree || toUpload.schedule) {
       const saved = await putRemote(toUpload, fetchImpl);
       const savedTree = saved.ok !== false && saved.tree ? sanitizeTreeSyncDoc(saved.tree) : null;
       if (savedTree && !sameTreeContent(savedTree, mergedTree)) {
         // Another device saved in between; the server merged both. Keep that copy here too.
         applyTreeDoc(mergeTreeDocs(mergedTree, savedTree), store);
+      }
+      const savedSchedule = saved.ok !== false && saved.schedule ? sanitizeScheduleSyncDoc(saved.schedule) : null;
+      if (savedSchedule && toUpload.schedule && savedSchedule.updatedAt > toUpload.schedule.updatedAt) {
+        // Another owner device saved a newer board in between. Keep that one.
+        applyScheduleDoc(savedSchedule, store);
+      } else if (saved.ok !== false && toUpload.schedule) {
+        writeScheduleSyncMeta(store, { v: 1, updatedAt: toUpload.schedule.updatedAt, syncedAt: toUpload.schedule.updatedAt });
       }
       if (saved.ok === false) {
         const failed: SyncStatus = {
@@ -609,6 +668,12 @@ export async function pullAndMergeSignedIn(options?: {
       nextMeta.profilesSyncedAt = profilesPick.winner.updatedAt;
     }
     writeSyncMeta(nextMeta, store);
+    if (schedulePick.source === 'local' && !schedulePick.shouldUpload && schedulePick.winner && !scheduleSyncDocIsEmpty(schedulePick.winner)) {
+      const scheduleMeta = readScheduleSyncMeta(store);
+      if (scheduleMeta.updatedAt && scheduleMeta.syncedAt !== scheduleMeta.updatedAt) {
+        writeScheduleSyncMeta(store, { ...scheduleMeta, syncedAt: scheduleMeta.updatedAt });
+      }
+    }
     const ok: SyncStatus = {
       kind: 'synced',
       lastSyncAt: syncedAt,
@@ -709,6 +774,6 @@ setSyncTrigger((kind, profileId) => {
   if (kind === 'academy') noteLocalAcademyChange();
   else if (kind === 'student') noteLocalStudentChange(profileId);
   else if (kind === 'profiles') noteLocalProfilesChange();
-  else if (kind === 'tree') scheduleSignedInPush();
+  else if (kind === 'tree' || kind === 'schedule') scheduleSignedInPush();
   else if (kind === 'switch' && profileId) void pullAndMergeSignedIn({ profileId });
 });

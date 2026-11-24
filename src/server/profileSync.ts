@@ -8,6 +8,8 @@
  *   accounts/{accountId}/account-sync/profiles.json
  *   accounts/{accountId}/account-sync/profiles/{profileId}/student.json
  *   accounts/{accountId}/account-sync/technique-tree.json   (coach's own trees)
+ *   groups/{licenseId}/account-sync/class-schedule.json      (owner's Class Schedule)
+ *   accounts/{accountId}/account-sync/class-schedule.json    (no license yet)
  *
  * No D1 migration. Last write wins per document by updatedAt, except the
  * Technique Tree doc, which is merged per tree and per link (see
@@ -41,6 +43,12 @@ import {
   TREE_SYNC_MAX_BYTES,
   type TreeSyncDoc,
 } from '../lib/techniqueTreeSync.ts';
+import {
+  sanitizeScheduleSyncDoc,
+  scheduleSyncDocIsEmpty,
+  SCHEDULE_SYNC_MAX_BYTES,
+  type ScheduleSyncDoc,
+} from '../lib/scheduleSyncDoc.ts';
 import { LOGIN_UNAVAILABLE, readLoginSession, type LoginEnv } from './loginAccount.ts';
 import type { InboxBucket } from './studentInbox.ts';
 
@@ -212,6 +220,12 @@ function academyKeyFor(licenseId: string | null, accountId: string): string | nu
   }
   const id = safeSegment(accountId, 90);
   return id ? `accounts/${id}/account-sync/academy-profile.json` : null;
+}
+
+/** The owner's Class Schedule sits beside the academy profile, so the same owner devices share it. */
+function scheduleKeyFor(licenseId: string | null, accountId: string): string | null {
+  const academy = academyKeyFor(licenseId, accountId);
+  return academy ? academy.replace(/academy-profile\.json$/, 'class-schedule.json') : null;
 }
 
 function profilesKey(accountId: string): string | null {
@@ -464,6 +478,19 @@ export async function handleProfileSync(
       academy = sanitizeAcademyDoc(await readJson(bucket, academyKey));
     }
 
+    const scheduleKey = scheduleKeyFor(resolved.licenseId, accountId);
+    let schedule: ScheduleSyncDoc | null = null;
+    if (resolved.canWriteAcademy && scheduleKey) {
+      const stored = sanitizeScheduleSyncDoc(await readJson(bucket, scheduleKey));
+      const incoming = body.schedule ? sanitizeScheduleSyncDoc(body.schedule) : null;
+      const next = incoming ? pickStored(incoming, stored, scheduleSyncDocIsEmpty, (doc) => doc.updatedAt) : stored;
+      if (incoming && next === incoming) {
+        const failed = await writeJson(bucket, scheduleKey, next, SCHEDULE_SYNC_MAX_BYTES);
+        if (failed) return failed;
+      }
+      schedule = next;
+    }
+
     let student: StudentSyncDoc | null = null;
     if (body.student) {
       const incoming = sanitizeStudentDoc(body.student, profileId);
@@ -524,6 +551,7 @@ export async function handleProfileSync(
       student,
       profiles,
       tree,
+      schedule,
     });
   }
 
@@ -538,6 +566,9 @@ export async function handleProfileSync(
   const profiles = sanitizeProfilesDoc(await readJson(bucket, pKey));
   const tKey = treeKey(accountId);
   const tree = tKey ? sanitizeTreeSyncDoc(await readJson(bucket, tKey)) : null;
+  const scheduleKey = scheduleKeyFor(resolved.licenseId, accountId);
+  const schedule =
+    resolved.canWriteAcademy && scheduleKey ? sanitizeScheduleSyncDoc(await readJson(bucket, scheduleKey)) : null;
 
   return json(200, {
     ok: true,
@@ -548,5 +579,6 @@ export async function handleProfileSync(
     student,
     profiles,
     tree,
+    schedule,
   });
 }
