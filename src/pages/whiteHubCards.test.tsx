@@ -199,7 +199,7 @@ test('the White hub shows the brand tools line, moves the cast line above Instru
   assert.doesNotMatch(m.host.textContent ?? '', /Advantage - White/);
   const tools = m.host.querySelector('.home__modes .home__tools-line');
   assert.equal(tools?.tagName, 'H2');
-  assert.equal(tools?.textContent, 'Advantage BJJ Scoreboard');
+  assert.equal(tools?.textContent, 'BJJ Scoreboard, Round Timer & Mock Tournament Software');
   const logo = m.host.querySelector('.home__logo');
   const wordmark = m.host.querySelector('.home__mark h1');
   assert.ok(logo);

@@ -12,7 +12,7 @@ import { lockWhite } from '../lib/whiteUnlock';
 import { useWhitePublicPricing } from '../hooks/useWhitePublicPricing';
 import { whiteBuyCtaLabel } from '../lib/whitePurchase';
 
-export const WHITE_HUB_TOOLS_LINE = 'Advantage BJJ Scoreboard';
+export const WHITE_HUB_TOOLS_LINE = 'BJJ Scoreboard, Round Timer & Mock Tournament Software';
 export const WHITE_HUB_CAST_LINE =
   'Your Scoreboard, Round Timer and Mock Tournament Software. Cast to your TV from your phone or PC.';
 
