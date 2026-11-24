@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { BeltRail } from '../../components/BeltRail';
+import { PlayExitMark } from '../../components/PlayExitMark';
 import { BracketSkinDeco, BracketSkinLinks, useBracketSkin } from '../../components/BracketSkin';
 import { usePinchZoom } from '../../hooks/usePinchZoom';
 import { usePlayFullscreen } from '../../hooks/usePlayFullscreen';
@@ -8,6 +9,7 @@ import { BRACKET_SKIN_SLUGS, bracketSkinClasses } from '../../lib/bracketSkins';
 import { BRACKET_THEME_LABELS } from '../../lib/bracketTheme';
 import { bracketSkinsPreviewOpen } from '../../lib/bracketSkins';
 import type { PolishedTimerSlug } from '../../lib/polishedSkins';
+import { sampleBracket, sampleSize, type SampleBracket, type SampleSlot } from '../../lib/bracketSkinsSample';
 import { BRACKET_SKIN_THUMBS } from '../../skins/bracket/thumbs';
 import '../../pages/tournamentBoard.css';
 import './bracketSkinsPreview.css';
@@ -24,20 +26,6 @@ export const BRACKET_SKINS_PREVIEW_PATH = '/preview/bracket-skins';
 function previewOpenHere(): boolean {
   return typeof window !== 'undefined' && bracketSkinsPreviewOpen(window.location.hostname);
 }
-
-type SampleSlot = { name: string; seed?: number; mark?: 'won' | 'lost' };
-type SampleMatch = { id: string; a: SampleSlot; b: SampleSlot; done?: boolean; live?: boolean };
-
-/** Fictional board: three quarterfinals scored, the fourth live. */
-export const SAMPLE_MATCHES: Record<string, SampleMatch> = {
-  'qf-0': { id: 'qf-0', done: true, a: { name: 'David', seed: 1, mark: 'won' }, b: { name: 'Nathan', seed: 8, mark: 'lost' } },
-  'qf-1': { id: 'qf-1', done: true, a: { name: 'Beth', seed: 4, mark: 'won' }, b: { name: 'Matthew', seed: 5, mark: 'lost' } },
-  'qf-2': { id: 'qf-2', done: true, a: { name: 'Jon', seed: 2, mark: 'won' }, b: { name: 'Shaun', seed: 7, mark: 'lost' } },
-  'qf-3': { id: 'qf-3', live: true, a: { name: 'Anna', seed: 3 }, b: { name: 'Ken', seed: 6 } },
-  'sf-0': { id: 'sf-0', a: { name: 'David' }, b: { name: 'Beth' } },
-  'sf-1': { id: 'sf-1', a: { name: 'Jon' }, b: { name: '' } },
-  'final-0': { id: 'final-0', a: { name: '' }, b: { name: '' } },
-};
 
 function Slot({ slot }: { slot: SampleSlot }) {
   const cls = `t-slot${slot.mark === 'won' ? ' t-slot--won' : ''}${slot.mark === 'lost' ? ' t-slot--lost' : ''}${slot.seed ? ' t-slot--seed' : ''}`;
@@ -57,8 +45,8 @@ function Slot({ slot }: { slot: SampleSlot }) {
   );
 }
 
-function Match({ id }: { id: string }) {
-  const m = SAMPLE_MATCHES[id];
+function Match({ id, sample }: { id: string; sample: SampleBracket }) {
+  const m = sample.matches[id];
   const final = id === 'final-0';
   return (
     <article
@@ -80,7 +68,7 @@ function Match({ id }: { id: string }) {
   );
 }
 
-function Round({ ids, label }: { ids: string[]; label: string }) {
+function Round({ ids, label, sample }: { ids: string[]; label: string; sample: SampleBracket }) {
   return (
     <div className={`bracket__round bracket__round--${ids.length}`}>
       <h2>
@@ -88,28 +76,62 @@ function Round({ ids, label }: { ids: string[]; label: string }) {
       </h2>
       <div className="bracket__matches">
         {ids.map((id) => (
-          <Match key={id} id={id} />
+          <Match key={id} id={id} sample={sample} />
         ))}
       </div>
     </div>
   );
 }
 
-/** One skin, full window. The gallery frames this at 1920x1080 and 390x844. */
-export function BracketSkinSample({ slug }: { slug: PolishedTimerSlug }) {
+/** The live toolbar, painted by the skin. Buttons are inert here; the Division field names the preview. */
+function SampleTools({ slug, sample }: { slug: PolishedTimerSlug; sample: SampleBracket }) {
+  const buttons = ['Current match', String(sample.size), 'Save', 'Edit names', 'Fill from check-in', 'Undo last result', 'Reset'];
+  return (
+    <div className="tournament__tools" aria-label="Bracket controls (preview, inert)">
+      <div className="tournament__center">
+        <p className="tournament__roundline">{sample.roundLine}</p>
+        <label className="tournament__title">
+          <span>Division</span>
+          <input value={`Preview · ${BRACKET_THEME_LABELS[slug]} · fictional names`} readOnly tabIndex={-1} aria-label="Division or class name" />
+        </label>
+      </div>
+      <div className="tournament__actions">
+        <div className="kids-skin">
+          <button type="button" className="btn kids-skin__btn btn--ghost" disabled>
+            Skins
+          </button>
+        </div>
+        <button type="button" className="chip chip--on" disabled>
+          TV Clean
+        </button>
+        {buttons.map((label) => (
+          <button key={label} type="button" className={`btn ${label === 'Undo last result' ? 'btn--blue' : 'btn--ghost'}`} disabled>
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** One skin, full window, with the live page's Back mark and toolbar. The gallery frames this at 1920x1080 and 390x844. */
+export function BracketSkinSample({ slug, size = 8 }: { slug: PolishedTimerSlug; size?: 8 | 16 }) {
   const boardRef = useRef<HTMLDivElement>(null);
   const bracketRef = useRef<HTMLDivElement>(null);
   const fs = usePlayFullscreen({ auto: false });
   const skin = useBracketSkin(slug);
-  usePinchZoom(boardRef, bracketRef, { fitKey: `${slug}-${skin ? 1 : 0}` });
+  const sample = sampleBracket(size);
+  usePinchZoom(boardRef, bracketRef, { fitKey: `${slug}-${size}-${skin ? 1 : 0}` });
   return (
     <main
       className={`tournament ${bracketSkinClasses(slug)} tournament--clean bskin-preview${fs.className ? ` ${fs.className}` : ''}`}
       data-skin={slug}
+      data-size={size}
       data-ready={skin ? 'true' : 'false'}
     >
       {skin ? <BracketSkinDeco html={skin.deco} /> : null}
       <BeltRail kind="tournament" />
+      <PlayExitMark to={BRACKET_SKINS_PREVIEW_PATH} />
       <header className="tournament__bar">
         <div className="bracket-headline">
           <label className="bracket-headline__pill">
@@ -119,14 +141,20 @@ export function BracketSkinSample({ slug }: { slug: PolishedTimerSlug }) {
       </header>
       <div className="tournament__board" ref={boardRef}>
         <div className="bracket-viewport">
-          <div className="bracket bracket--tree-8" ref={bracketRef} role="group" aria-label="Sample 8-competitor bracket">
-            {skin ? <BracketSkinLinks bracketRef={bracketRef} drawKey={slug} /> : null}
+          <div
+            className={`bracket bracket--tree-${sample.tree}`}
+            ref={bracketRef}
+            role="group"
+            aria-label={`Sample ${sample.size}-competitor bracket`}
+          >
+            {skin ? <BracketSkinLinks bracketRef={bracketRef} drawKey={`${slug}-${size}`} /> : null}
             <div className="bracket__side bracket__side--left">
-              <Round ids={['qf-0', 'qf-1']} label="Quarterfinals" />
-              <Round ids={['sf-0']} label="Semifinals" />
+              {sample.left.map((round) => (
+                <Round key={`l-${round.label}`} ids={round.ids} label={round.label} sample={sample} />
+              ))}
             </div>
             <div className="bracket__finals">
-              <Match id="final-0" />
+              <Match id="final-0" sample={sample} />
               <div className="bracket__champ">
                 <BeltRail kind="tournament" />
                 <span>Champion</span>
@@ -138,15 +166,14 @@ export function BracketSkinSample({ slug }: { slug: PolishedTimerSlug }) {
               </div>
             </div>
             <div className="bracket__side bracket__side--right">
-              <Round ids={['sf-1']} label="Semifinals" />
-              <Round ids={['qf-2', 'qf-3']} label="Quarterfinals" />
+              {sample.right.map((round) => (
+                <Round key={`r-${round.label}`} ids={round.ids} label={round.label} sample={sample} />
+              ))}
             </div>
           </div>
         </div>
       </div>
-      <p className="bskin-preview__tag">
-        Preview · {BRACKET_THEME_LABELS[slug]} · fictional names
-      </p>
+      <SampleTools slug={slug} sample={sample} />
     </main>
   );
 }
@@ -163,44 +190,56 @@ function Closed() {
 /** /preview/bracket-skins/:slug */
 export function BracketSkinSamplePage() {
   const { slug } = useParams();
+  const [params] = useSearchParams();
   if (!previewOpenHere()) return <Closed />;
   const found = BRACKET_SKIN_SLUGS.find((s) => s === slug);
   if (!found) return <Closed />;
-  return <BracketSkinSample slug={found} />;
+  return <BracketSkinSample slug={found} size={sampleSize(params.get('size'))} />;
 }
 
-/** /preview/bracket-skins?view=tv|phone|both&skin=<slug> */
+/** /preview/bracket-skins?view=tv|phone|both&skin=<slug>&size=8|16 */
 export function BracketSkinsGalleryPage() {
   const [params] = useSearchParams();
   if (!previewOpenHere()) return <Closed />;
   const view = params.get('view') ?? 'both';
   const only = params.get('skin');
+  const size = sampleSize(params.get('size'));
+  const q = size === 16 ? '?size=16' : '';
+  const link = (extra: Record<string, string>) => {
+    const next = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(extra)) {
+      if (v) next.set(k, v);
+      else next.delete(k);
+    }
+    const text = next.toString();
+    return `${BRACKET_SKINS_PREVIEW_PATH}${text ? `?${text}` : ''}`;
+  };
   const slugs = BRACKET_SKIN_SLUGS.filter((s) => !only || s === only);
   return (
     <main className="bskin-gallery">
-      <h1>Bracket skins · {slugs.length} skins</h1>
+      <h1>Bracket skins · {slugs.length} skins · {size} competitors</h1>
       <p>
-        Live 8-person tree, fictional names. Each frame is a real page at TV 1920×1080 and phone 390×844.{' '}
-        <Link to={`${BRACKET_SKINS_PREVIEW_PATH}?view=tv`}>TV only</Link> ·{' '}
-        <Link to={`${BRACKET_SKINS_PREVIEW_PATH}?view=phone`}>Phone only</Link> ·{' '}
-        <Link to={BRACKET_SKINS_PREVIEW_PATH}>Both</Link>
+        Live bracket markup, fictional names. Each frame is a real page at TV 1920×1080 and phone 390×844.{' '}
+        <Link to={link({ view: 'tv' })}>TV only</Link> · <Link to={link({ view: 'phone' })}>Phone only</Link> ·{' '}
+        <Link to={link({ view: '' })}>Both</Link> · <Link to={link({ size: '' })}>8 competitors</Link> ·{' '}
+        <Link to={link({ size: '16' })}>16 competitors</Link>
       </p>
       <div className="bskin-gallery__grid">
         {slugs.map((slug) => (
           <section key={slug} className="bskin-gallery__item">
             <h2>
               <img src={BRACKET_SKIN_THUMBS[slug]} alt="" width={64} height={36} />
-              <a href={`${BRACKET_SKINS_PREVIEW_PATH}/${slug}`}>{BRACKET_THEME_LABELS[slug]}</a>
+              <a href={`${BRACKET_SKINS_PREVIEW_PATH}/${slug}${q}`}>{BRACKET_THEME_LABELS[slug]}</a>
             </h2>
             <div className="bskin-gallery__frames">
               {view !== 'phone' ? (
                 <div className="bskin-gallery__frame bskin-gallery__frame--tv">
-                  <iframe title={`${slug} TV`} src={`${BRACKET_SKINS_PREVIEW_PATH}/${slug}`} loading="lazy" />
+                  <iframe title={`${slug} TV`} src={`${BRACKET_SKINS_PREVIEW_PATH}/${slug}${q}`} loading="lazy" />
                 </div>
               ) : null}
               {view !== 'tv' ? (
                 <div className="bskin-gallery__frame bskin-gallery__frame--phone">
-                  <iframe title={`${slug} phone`} src={`${BRACKET_SKINS_PREVIEW_PATH}/${slug}`} loading="lazy" />
+                  <iframe title={`${slug} phone`} src={`${BRACKET_SKINS_PREVIEW_PATH}/${slug}${q}`} loading="lazy" />
                 </div>
               ) : null}
             </div>

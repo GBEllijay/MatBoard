@@ -145,6 +145,9 @@ main.tournament.tournament--skin .bracket__matches {
 }
 
 main.tournament.tournament--skin .bracket__finals {
+  /* Advantage caps the finals at 20rem; the skins use the mockup's finals column. */
+  width: auto;
+  max-width: none;
   padding-top: 0;
   gap: calc(3.6 * var(--bu));
 }
@@ -167,6 +170,11 @@ main.tournament.tournament--skin .bracket__side--right .t-match {
 main.tournament.tournament--skin .bracket__side--left .t-match__bouts::after,
 main.tournament.tournament--skin .bracket__side--right .t-match__bouts::after {
   content: none;
+  /* Advantage's stub connector paints these pseudos; a skin that reuses them (Shinobi corners) starts clean. */
+  inset: auto;
+  width: auto;
+  height: auto;
+  background: none;
 }
 
 main.tournament.tournament--skin .t-match--live .t-match__bouts,
@@ -309,6 +317,33 @@ main.tournament.tournament--skin.bskin-reggae .t-match--final > .t-match__finals
 
 main.tournament.tournament--skin.bskin-woodblock .t-match--final::after {
   content: '';
+}
+
+/* Larger trees (16, 32, 64): the same card sizes as the 8-person mockup, one column per round. */
+main.tournament.tournament--skin .bracket:is(.bracket--tree-16, .bracket--tree-32, .bracket--tree-64):not(.bracket--three) {
+  width: max-content;
+  min-width: max-content;
+  grid-template-columns: max-content calc(31.18 * var(--bu)) max-content;
+  gap: 0 calc(4.267 * var(--bu));
+}
+
+main.tournament.tournament--skin .bracket:is(.bracket--tree-16, .bracket--tree-32, .bracket--tree-64) .bracket__side {
+  gap: 0 calc(4.267 * var(--bu));
+}
+
+main.tournament.tournament--skin .bracket--tree-16 { height: calc(96 * var(--bu)); min-height: calc(96 * var(--bu)); }
+main.tournament.tournament--skin .bracket--tree-32 { height: calc(184 * var(--bu)); min-height: calc(184 * var(--bu)); }
+main.tournament.tournament--skin .bracket--tree-64 { height: calc(360 * var(--bu)); min-height: calc(360 * var(--bu)); }
+
+main.tournament.tournament--skin .bracket--tree-16 .bracket__side--left { grid-template-columns: calc(32.85 * var(--bu)) repeat(2, calc(27.28 * var(--bu))); }
+main.tournament.tournament--skin .bracket--tree-16 .bracket__side--right { grid-template-columns: repeat(2, calc(27.28 * var(--bu))) calc(32.85 * var(--bu)); }
+main.tournament.tournament--skin .bracket--tree-32 .bracket__side--left { grid-template-columns: calc(32.85 * var(--bu)) repeat(3, calc(27.28 * var(--bu))); }
+main.tournament.tournament--skin .bracket--tree-32 .bracket__side--right { grid-template-columns: repeat(3, calc(27.28 * var(--bu))) calc(32.85 * var(--bu)); }
+main.tournament.tournament--skin .bracket--tree-64 .bracket__side--left { grid-template-columns: calc(32.85 * var(--bu)) repeat(4, calc(27.28 * var(--bu))); }
+main.tournament.tournament--skin .bracket--tree-64 .bracket__side--right { grid-template-columns: repeat(4, calc(27.28 * var(--bu))) calc(32.85 * var(--bu)); }
+
+main.tournament.tournament--skin .bracket:is(.bracket--tree-16, .bracket--tree-32, .bracket--tree-64) .bracket__matches {
+  justify-content: space-around;
 }
 
 main.tournament.tournament--skin .t-match--final .t-match__bouts {

@@ -39,7 +39,7 @@ main.tournament.tournament--skin.bskin-psychedelic .bracket__round > h2 > span {
 
 /* Polish: the round pills nearly touched. Tighter tracking and a narrower pill leave clear space between them. */
 main.tournament.tournament--skin.bskin-psychedelic .bracket__round > h2 {letter-spacing:.1em}
-main.tournament.tournament--skin.bskin-psychedelic .t-match--final .t-match__finals-label > span {letter-spacing:.06em}
+main.tournament.tournament--skin.bskin-psychedelic .t-match--final .t-match__finals-label > span {font-size:calc(1.3*var(--bu));letter-spacing:.02em}
 main.tournament.tournament--skin.bskin-psychedelic .bracket__round > h2 > span {padding-inline:calc(1.4*var(--bu))}
 @media (max-aspect-ratio: 3/4) {
   main.tournament.tournament--skin.bskin-psychedelic .bracket__round > h2 {letter-spacing:.06em}

@@ -11,6 +11,7 @@ import {
 } from './bracketSkins.ts';
 import { BRACKET_SKIN_THEMES, BRACKET_THEME_LABELS } from './bracketTheme.ts';
 import { POLISHED_SKINS, POLISHED_TIMER_SKINS } from './polishedSkins.ts';
+import { sampleBracket, sampleSize } from './bracketSkinsSample.ts';
 
 const root = new URL('../skins/bracket/', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
@@ -18,7 +19,11 @@ const skinCss = (slug: string) => read(`skins/${slug}.css`);
 const loader = read('load.ts');
 const thumbs = read('thumbs.ts');
 const common = read('common.generated.css');
-const layout = read('layout.css') + read('layout-after.css');
+const layoutBefore = read('layout.css');
+const layoutAfter = read('layout-after.css');
+const layout = layoutBefore + layoutAfter;
+const previewCss = readFileSync(new URL('../preview/bracketSkins/bracketSkinsPreview.css', import.meta.url), 'utf8');
+const previewTsx = readFileSync(new URL('../preview/bracketSkins/BracketSkinsPreview.tsx', import.meta.url), 'utf8');
 
 const APPROVED = [
   'brasil', 'calcadao', 'creature-anime', 'heavy-metal', 'idol-hunters', 'keynote', 'kids-arcade', 'kids-sticker',
@@ -157,4 +162,68 @@ test('the review gallery opens on previews and local dev only', () => {
   assert.equal(bracketSkinsPreviewOpen('advantagebjjtimer.com'), false);
   assert.equal(bracketSkinsPreviewOpen('www.advantagebjjtimer.com'), false);
   assert.equal(bracketSkinsPreviewOpen('evil-matboard.pages.dev.example.com'), false);
+});
+
+test('review: the Finals column is the mockup width, not Advantage\'s 20rem cap', () => {
+  assert.match(layoutBefore, /\.bracket__finals \{[^}]*width: auto;[^}]*max-width: none;/);
+});
+
+test('review: long Finals eyebrows wrap inside the card', () => {
+  assert.match(layoutAfter, /\.t-match__finals-label > span \{[^}]*white-space: normal;/);
+  assert.match(skinCss('psychedelic'), /bskin-psychedelic \.t-match--final \.t-match__finals-label > span \{font-size:calc\(1\.3\*var\(--bu\)\);letter-spacing:\.02em\}/);
+  assert.match(skinCss('woodblock'), /bskin-woodblock \.t-match--final \.t-match__finals-label > span \{letter-spacing:\.12em\}/);
+});
+
+test('review: the Woodblock seal sits on the corner outside the Finals card', () => {
+  assert.match(skinCss('woodblock'), /bskin-woodblock \.t-match--final::after \{right:calc\(-3\.6\*var\(--bu\)\);top:calc\(-3\.6\*var\(--bu\)\)\}/);
+});
+
+test('review: Advantage stub connectors do not paint skin corner pseudos (Shinobi L corners)', () => {
+  assert.match(layoutBefore, /\.t-match__bouts::after \{\s*content: none;[^}]*inset: auto;[^}]*background: none;/);
+});
+
+test('review: on phones the Sign in pill is icon only and the title stays clear of both corners', () => {
+  const phone = phoneBlocks(layoutAfter);
+  assert.match(phone, /body:has\(main\.tournament\.tournament--skin\) \.header-account__label \{\s*display: none;/);
+  assert.match(phone, /\.bracket-headline__pill \{\s*max-width: calc\(100vw - 120px/);
+});
+
+test('review: phone rows spread over the board, room above Finals, Finals and Champion equal width', () => {
+  const phone = phoneBlocks(layoutAfter);
+  assert.match(phone, /container-type: size;/);
+  assert.match(phone, /align-content: space-evenly;/);
+  assert.match(phone, /\.bracket__finals \{\s*margin-top: 14px;/);
+  assert.match(phone, /\.bracket--tree-8 \.t-match--final \{\s*flex: 1 1 0;/);
+  assert.match(phone, /\.bracket--tree-8 \.bracket__champ \{\s*flex: 1 1 0;/);
+});
+
+test('larger trees keep the mockup card sizes', () => {
+  for (const tree of [16, 32, 64]) {
+    assert.match(layoutBefore, new RegExp(`\\.bracket--tree-${tree} \\.bracket__side--left \\{ grid-template-columns: calc\\(32\\.85`));
+  }
+});
+
+test('preview samples: 8 and 16 fictional competitors on the live match ids', () => {
+  assert.equal(sampleSize('16'), 16);
+  assert.equal(sampleSize('8'), 8);
+  assert.equal(sampleSize(null), 8);
+  assert.equal(sampleSize('64'), 8);
+  for (const size of [8, 16] as const) {
+    const sample = sampleBracket(size);
+    const ids = [...sample.left, ...sample.right].flatMap((round) => round.ids);
+    assert.equal(ids.length + 1, size - 1, `${size}: every match but the final sits on a side`);
+    for (const id of [...ids, 'final-0']) assert.ok(sample.matches[id], id);
+    const seeds = Object.values(sample.matches).flatMap((m) => [m.a.seed, m.b.seed]).filter(Boolean);
+    assert.deepEqual([...seeds].sort((a, b) => a! - b!), Array.from({ length: size }, (_, i) => i + 1));
+    assert.equal(Object.values(sample.matches).filter((m) => m.live).length, 1);
+    assert.equal(bracketLinkEdges([...ids, 'final-0']).length, size - 2);
+  }
+});
+
+test('preview page never ships to production and keeps its labels off the board', () => {
+  assert.match(previewTsx, /if \(!previewOpenHere\(\)\) return <Closed \/>;/);
+  assert.doesNotMatch(previewTsx, /bskin-preview__tag/);
+  assert.doesNotMatch(previewCss, /bskin-preview__tag/);
+  assert.match(previewCss, /body:has\(main\.bskin-preview\) \.preview-white-badge \{\s*display: none;/);
+  assert.match(previewTsx, /<PlayExitMark /);
 });

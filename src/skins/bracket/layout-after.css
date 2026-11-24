@@ -9,6 +9,13 @@ main.tournament.tournament--skin .bracket__champ {
   flex: none;
 }
 
+/* A long eyebrow wraps inside the Finals card instead of running past its edges. */
+main.tournament.tournament--skin .t-match--final .t-match__finals-label > span {
+  max-width: 100%;
+  white-space: normal;
+  text-wrap: balance;
+}
+
 /* Creature Anime: the champion is 64% of the column with a character on each side (TV mock). */
 main.tournament.tournament--skin.bskin-creature-anime .bracket__champ {
   width: 64%;
@@ -25,12 +32,33 @@ main.tournament.tournament--skin.bskin-creature-anime .bracket__champ {
     display: none;
   }
 
+  /* The app's Sign in pill shares the top-right corner with the title: icon only here, title kept clear of both corners. */
+  body:has(main.tournament.tournament--skin) .header-account {
+    padding: 0;
+    width: 44px;
+    justify-content: center;
+  }
+
+  body:has(main.tournament.tournament--skin) .header-account__label {
+    display: none;
+  }
+
+  main.tournament.tournament--skin .bracket-headline__pill {
+    max-width: calc(100vw - 120px - var(--safe-l, 0px) - var(--safe-r, 0px));
+  }
+
+  /* The bracket takes the board's height and spreads its rows, so the title, rounds and Finals sit evenly. */
+  main.tournament.tournament--skin > .tournament__board {
+    container-type: size;
+  }
+
   /* Quarterfinals side by side, then the semifinals, then Finals beside Champion. Same matches, same order. */
   main.tournament.tournament--skin .bracket.bracket--tree-8:not(.bracket--three) {
     width: calc(100vw - 24px - var(--safe-l, 0px) - var(--safe-r, 0px));
     min-width: 0;
-    height: auto;
+    height: min(calc(100cqh - 12px), 700px);
     min-height: 0;
+    align-content: space-evenly;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto auto auto;
@@ -38,6 +66,11 @@ main.tournament.tournament--skin.bskin-creature-anime .bracket__champ {
     gap: 12px;
     column-gap: 12px;
     row-gap: 18px;
+  }
+
+  /* Room above Finals for the crests and Brasil's diamond. */
+  main.tournament.tournament--skin .bracket.bracket--tree-8:not(.bracket--three) .bracket__finals {
+    margin-top: 14px;
   }
 
   main.tournament.tournament--skin .bracket.bracket--tree-8:not(.bracket--three) .bracket__side {
@@ -62,13 +95,14 @@ main.tournament.tournament--skin.bskin-creature-anime .bracket__champ {
     justify-content: flex-start;
   }
 
+  /* Finals and Champion share the row equally. */
   main.tournament.tournament--skin .bracket--tree-8 .t-match--final {
-    flex: 1.35;
+    flex: 1 1 0;
     min-width: 0;
   }
 
   main.tournament.tournament--skin .bracket--tree-8 .bracket__champ {
-    flex: 1;
+    flex: 1 1 0;
     min-width: 0;
     width: auto;
     align-self: stretch;

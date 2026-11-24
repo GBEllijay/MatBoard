@@ -36,3 +36,10 @@ main.tournament.tournament--skin.bskin-woodblock .t-match.t-match--live:not(.t-m
 @media (max-aspect-ratio: 3/4) {
   main.tournament.tournament--skin.bskin-woodblock .t-match.t-match--live:not(.t-match--final) > .t-match__bouts {box-shadow:4px 4px 0 #0B1626,0 0 0 5px #B8352B}
 }
+
+/* Review: the eyebrow ran past the Finals card and under the seal. Tighter tracking; the seal sits on the corner outside the card. */
+main.tournament.tournament--skin.bskin-woodblock .t-match--final .t-match__finals-label > span {letter-spacing:.12em}
+main.tournament.tournament--skin.bskin-woodblock .t-match--final::after {right:calc(-3.6*var(--bu));top:calc(-3.6*var(--bu))}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-woodblock .t-match--final::after {right:-14px;top:-14px}
+}
