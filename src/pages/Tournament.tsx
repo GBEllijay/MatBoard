@@ -708,7 +708,7 @@ export function TournamentPage() {
           Eight and up, and every other custom count, fill to the next power of two with those same
           seeded byes. Tap a size to apply it. Names that fit stay. Results on this board clear.
           {fromWhite
-            ? ' White brackets go up to 36 competitors on this device.'
+            ? ` White brackets go up to ${sizeMax} competitors on this device.`
             : competitionSuite && !plainCoach
               ? ' Brackets save up to 64 competitors on this device.'
               : ' Mock Tournament stays at 16.'}
@@ -751,7 +751,7 @@ export function TournamentPage() {
           ))}
         </div>
         <label className="tournament__custom-size">
-          <span>{fromWhite ? 'Custom 2–36' : competitionSuite ? 'Custom 2–64' : 'Custom 3–15'}</span>
+          <span>{fromWhite ? `Custom 2–${sizeMax}` : competitionSuite ? 'Custom 2–64' : 'Custom 3–15'}</span>
           <input
             type="number"
             min={2}

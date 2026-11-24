@@ -294,7 +294,7 @@ export function BracketRosterPage() {
         </button>
         {roster.entries.length >= BRACKET_ROSTER_MAX ? (
           <p className="bracket-roster__full" role="status">
-            Roster full (36)
+            Roster full ({BRACKET_ROSTER_MAX})
           </p>
         ) : null}
         {addError ? <p className="roster-edit__error">{addError}</p> : null}

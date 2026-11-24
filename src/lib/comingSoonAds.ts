@@ -116,7 +116,7 @@ export const COMING_SOON_ADS: Record<SoonProduct, ComingSoonAdCopy> = {
       },
       {
         title: 'Tournament Software',
-        body: 'Brackets up to 64 competitors, with bracket skins and the Competition class template. Brackets save on this device.',
+        body: 'Bracket skins and the Competition class template, on boards of up to 64 competitors. Brackets save on this device.',
       },
     ],
     dismiss: 'Got it',

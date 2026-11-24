@@ -268,9 +268,12 @@ describe('3-person bracket', () => {
   it('is a size preset beside 2, 4, and 8, with no bye', () => {
     assert.deepEqual(SIZE_PRESETS, [2, 3, 4, 5, 7, 8, 16]);
     assert.deepEqual(PRO_SIZE_PRESETS, [2, 3, 4, 5, 7, 8, 16, 32, 64]);
-    assert.deepEqual(WHITE_SIZE_PRESETS, [2, 3, 4, 5, 7, 8, 16, 36]);
-    assert.equal(WHITE_MAX_COMPETITORS, 36);
+    assert.deepEqual(WHITE_SIZE_PRESETS, [2, 3, 4, 5, 7, 8, 16, 32, 64]);
+    assert.deepEqual([...WHITE_SIZE_PRESETS], [...PRO_SIZE_PRESETS]);
+    assert.equal(WHITE_MAX_COMPETITORS, 64);
     assert.equal(treeSizeFor(36), 64);
+    assert.equal(treeSizeFor(64), 64);
+    assert.equal(clampCompetitorCount(80, WHITE_MAX_COMPETITORS), 64);
     assert.equal(isThreePersonBracket(defaultTournament(3)), true);
     assert.equal(treeSizeFor(3), 4);
     assert.equal(byeCountFor(3), 0);

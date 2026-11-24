@@ -7453,7 +7453,7 @@ body:has(.sheet) .preview-white-badge {
   }
 }
 
-/* Mock Tournament — landscape-first single-elim tree (2–16 competitors). */
+/* Mock Tournament — landscape-first single-elim tree (2–64 competitors). */
 .tournament {
   position: relative;
   height: var(--visible-vh, 100dvh);
