@@ -227,3 +227,36 @@ test('preview page never ships to production and keeps its labels off the board'
   assert.match(previewCss, /body:has\(main\.bskin-preview\) \.preview-white-badge \{\s*display: none;/);
   assert.match(previewTsx, /<PlayExitMark /);
 });
+
+test('the shared bracket toolbar stays Inter at a fixed size on every skin', () => {
+  assert.match(
+    layoutBefore,
+    /main\.tournament\.tournament--skin \.tournament__tools,\s*main\.tournament\.tournament--skin \.tournament__tools :is\(\.btn, \.chip, \.kids-skin__btn/,
+  );
+  assert.match(layoutBefore, /\.tournament__tools[\s\S]{0,200}font-family:\s*Inter,/);
+  const actions = layoutBefore.match(
+    /main\.tournament\.tournament--skin \.tournament__tools \.tournament__actions :is\(\.btn, \.chip, \.kids-skin__btn\) \{([^}]+)\}/,
+  );
+  assert.ok(actions, 'actions font rule');
+  assert.match(actions[1], /font-size:\s*0\.78rem/);
+  assert.match(actions[1], /letter-spacing:\s*normal/);
+  assert.doesNotMatch(actions[1], /vh|var\(--bu\)/);
+  const chip = layoutBefore.match(
+    /main\.tournament\.tournament--skin \.tournament__tools \.tournament__actions \.chip \{([^}]+)\}/,
+  );
+  assert.ok(chip, 'chip font rule');
+  assert.match(chip[1], /font-size:\s*0\.9rem/);
+  assert.doesNotMatch(chip[1], /vh|var\(--bu\)/);
+  for (const slug of BRACKET_SKIN_SLUGS) {
+    const css = skinCss(slug);
+    for (const m of css.matchAll(/tournament__(?:tools|actions)[^{]*\{([^}]*font-[^}]*)\}/g)) {
+      assert.doesNotMatch(m[1], /font-family:(?!\s*Inter)/, `${slug}: toolbar font stays Inter (${m[1]})`);
+      assert.doesNotMatch(m[1], /font-size:[^;]*(vh|var\(--bu\))/, `${slug}: toolbar size stays fixed (${m[1]})`);
+    }
+  }
+});
+
+test('the preview page does not reuse the scoreboard data-skin hook, so timer CSS cannot restyle the dock', () => {
+  assert.doesNotMatch(previewTsx, /data-skin=\{/);
+  assert.match(previewTsx, /data-bracket-skin=\{slug\}/);
+});

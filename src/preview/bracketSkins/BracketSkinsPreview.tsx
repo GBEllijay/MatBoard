@@ -125,7 +125,7 @@ export function BracketSkinSample({ slug, size = 8 }: { slug: PolishedTimerSlug;
   return (
     <main
       className={`tournament ${bracketSkinClasses(slug)} tournament--clean bskin-preview${fs.className ? ` ${fs.className}` : ''}`}
-      data-skin={slug}
+      data-bracket-skin={slug}
       data-size={size}
       data-ready={skin ? 'true' : 'false'}
     >

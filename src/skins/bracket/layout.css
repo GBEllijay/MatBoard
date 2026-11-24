@@ -436,6 +436,33 @@ main.tournament.tournament--skin .tournament__tools {
   border-top: 0;
 }
 
+/* Shared dock stays Inter at a fixed size so a skin's display font cannot
+   overflow the phone actions (Kids Arcade Fredoka, Psychedelic Syne). This
+   also beats polished scoreboard/timer [data-skin] .chip rules if they load. */
+main.tournament.tournament--skin .tournament__tools,
+main.tournament.tournament--skin .tournament__tools :is(.btn, .chip, .kids-skin__btn, .tournament__roundline, .tournament__title, input) {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-style: normal;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+main.tournament.tournament--skin .tournament__tools .tournament__actions :is(.btn, .chip, .kids-skin__btn) {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: normal;
+  line-height: 1.2;
+  min-height: 34px;
+  padding: 0.22rem 0.7rem;
+}
+
+/* TV Clean stays the slightly larger chip, still Inter and a fixed size. */
+main.tournament.tournament--skin .tournament__tools .tournament__actions .chip {
+  font-size: 0.9rem;
+  min-height: 40px;
+  padding: 0.35rem 0.85rem;
+}
+
 main.tournament.tournament--skin .tournament__actions :is(.btn, .chip, .kids-skin__btn) {
   border-color: transparent;
 }
