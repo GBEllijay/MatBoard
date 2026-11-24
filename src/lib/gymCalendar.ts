@@ -346,6 +346,8 @@ export type GymClassOccurrence = {
   kind: 'class' | 'special';
   /** "6:00 AM Morning Gi" or the special title. */
   label: string;
+  /** Owner-picked belt level for a weekly class. Specials and older callers leave it out. */
+  level?: ClassLevel;
 };
 
 export function weekdayOfIso(iso: string): Weekday | null {
@@ -375,6 +377,7 @@ export function occurrencesOnDate(
         subtitle: slot.subtitle,
         kind: 'class',
         label: `${formatClassTime(slot.time)} ${title}`.trim(),
+        level: coerceClassLevel(slot.level) ?? 'none',
       });
     }
   }
@@ -676,6 +679,26 @@ export function createSpecialId(): string {
   return newId('special');
 }
 
+/**
+ * `level` is the saved field. Hand-made or older JSON files sometimes use
+ * another name for it, so read those too instead of dropping the belt level.
+ */
+const LEVEL_FIELD_ALIASES = ['level', 'classLevel', 'beltLevel', 'belt', 'difficulty'] as const;
+
+function rawClassLevel(row: Record<string, unknown>): unknown {
+  for (const key of LEVEL_FIELD_ALIASES) {
+    if (coerceClassLevel(row[key]) !== null) return row[key];
+  }
+  return row.level;
+}
+
+/** How many weekly classes carry each level. Used by import previews and the editor. */
+export function classLevelCounts(classes: readonly Pick<WeeklyClassSlot, 'level'>[]): Record<ClassLevel, number> {
+  const counts = Object.fromEntries(CLASS_LEVELS.map((id) => [id, 0])) as Record<ClassLevel, number>;
+  for (const row of classes) counts[coerceClassLevel(row.level) ?? 'none'] += 1;
+  return counts;
+}
+
 function normalizeClass(raw: unknown, fallbackId: string): WeeklyClassSlot | null {
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
@@ -686,7 +709,7 @@ function normalizeClass(raw: unknown, fallbackId: string): WeeklyClassSlot | nul
   const id = typeof row.id === 'string' && row.id.trim() ? row.id.trim() : fallbackId;
   const location = typeof row.location === 'string' ? row.location.trim() : '';
   const subtitle = typeof row.subtitle === 'string' ? row.subtitle.trim() : '';
-  const level = coerceClassLevel(row.level) ?? 'none';
+  const level = coerceClassLevel(rawClassLevel(row)) ?? 'none';
   return { id, kind: 'class', day: row.day, time, title, location, subtitle, level };
 }
 

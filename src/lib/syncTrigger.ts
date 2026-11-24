@@ -4,7 +4,7 @@
  * While Cloud is being applied, suppress so those writes do not look like new edits.
  */
 
-export type SyncTriggerKind = 'academy' | 'student' | 'profiles' | 'switch' | 'tree';
+export type SyncTriggerKind = 'academy' | 'student' | 'profiles' | 'switch' | 'tree' | 'schedule';
 
 type Handler = (kind: SyncTriggerKind, profileId?: string) => void;
 
@@ -50,4 +50,10 @@ export function noteStudentProfileSwitch(profileId: string): void {
 export function noteLocalTreeChange(): void {
   if (suppress) return;
   handler?.('tree');
+}
+
+/** The owner's Class Schedule changed on this device. */
+export function noteLocalScheduleChange(): void {
+  if (suppress) return;
+  handler?.('schedule');
 }

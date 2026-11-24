@@ -392,6 +392,19 @@
   gap: 0.35rem;
 }
 
+.student.student--calendar .cal-gym-day__level {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.student.student--calendar .cal-gym-day__level .belt-swatch {
+  width: 30px;
+  height: 9px;
+}
+
 .student.student--calendar .cal-gym-day__actions,
 .student.student--calendar .cal-gym-day__absentee {
   display: flex;

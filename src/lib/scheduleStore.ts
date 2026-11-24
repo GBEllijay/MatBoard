@@ -24,6 +24,14 @@ import {
   type WeeklyClassSlot,
 } from './gymCalendar.ts';
 import { shrinkImageFile } from './imageShrink.ts';
+import {
+  readScheduleBeforeSync,
+  readScheduleSyncMeta,
+  SCHEDULE_BEFORE_SYNC_KEY,
+  SCHEDULE_SYNC_META_KEY,
+  writeScheduleSyncMeta,
+} from './scheduleSyncDoc.ts';
+import { noteLocalScheduleChange } from './syncTrigger.ts';
 import { assertOriginRoom, isStorageQuotaError, StorageQuotaError } from './storageQuota.ts';
 
 export {
@@ -49,6 +57,7 @@ export {
   CLASS_LEVELS,
   CLASS_LEVEL_META,
   CLASS_LEVEL_ORDER,
+  classLevelCounts,
   groupClassesByTime,
   coerceClassLevel,
   isClassLevel,
@@ -101,6 +110,13 @@ export type ScheduleAssets = {
 const listeners = new Set<() => void>();
 const assetListeners = new Set<() => void>();
 
+/** Shown in the editor when this device could not keep the last change. */
+export const SCHEDULE_SAVE_FAILED =
+  'This change is showing but was not saved on this device. The browser storage is full or blocked. Export a backup, free up space, then make the change again.';
+
+/** The exact JSON this module last read or wrote. Anything else in storage came from another tab or a sync. */
+let lastRaw: string | null = readStorage();
+let saveError: string | null = null;
 let state: ScheduleState = loadState();
 let assets: ScheduleAssets = { logo: null, qrImage: null, revision: 0 };
 
@@ -112,10 +128,17 @@ export function normalizeSchedule(raw: unknown): ScheduleState {
   return normalizeGymCalendar(raw);
 }
 
+function browserStorage(): Storage | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+}
+
 function readStorage(): string | null {
   try {
-    if (typeof localStorage === 'undefined') return null;
-    return localStorage.getItem(STORAGE_KEY);
+    return browserStorage()?.getItem(STORAGE_KEY) ?? null;
   } catch {
     return null;
   }
@@ -124,6 +147,7 @@ function readStorage(): string | null {
 function loadState(): ScheduleState {
   try {
     const raw = readStorage();
+    lastRaw = raw;
     if (!raw) return defaultSchedule();
     return normalizeSchedule(JSON.parse(raw));
   } catch {
@@ -131,28 +155,94 @@ function loadState(): ScheduleState {
   }
 }
 
-function persist(next: ScheduleState): void {
-  state = next;
+/**
+ * Another tab, the gym TV window, or a Cloud pull may have saved a newer
+ * board since this copy was read. Start every edit from what is saved, so an
+ * older copy in memory never writes over a level picked somewhere else.
+ */
+function freshen(): void {
+  const raw = readStorage();
+  if (raw === null || raw === lastRaw) return;
   try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
+    state = normalizeSchedule(JSON.parse(raw));
+    lastRaw = raw;
   } catch {
-    /* quota / private mode */
+    /* unreadable copy; keep the one in memory */
+  }
+}
+
+/** Write and read back. A write the browser refused is reported, not swallowed. */
+function writeStorage(raw: string): boolean {
+  const storage = browserStorage();
+  if (!storage) return true;
+  try {
+    storage.setItem(STORAGE_KEY, raw);
+    return storage.getItem(STORAGE_KEY) === raw;
+  } catch {
+    return false;
+  }
+}
+
+function persist(next: ScheduleState, options: { localEdit?: boolean } = {}): void {
+  state = next;
+  const raw = JSON.stringify(state);
+  if (writeStorage(raw)) {
+    lastRaw = raw;
+    saveError = null;
+    if (options.localEdit !== false) {
+      const storage = browserStorage();
+      const meta = readScheduleSyncMeta(storage);
+      writeScheduleSyncMeta(storage, { ...meta, updatedAt: Date.now() });
+      noteLocalScheduleChange();
+    }
+  } else {
+    saveError = SCHEDULE_SAVE_FAILED;
   }
   listeners.forEach((fn) => fn());
 }
 
+/** Callers run freshen() before they read `state` to build `partial`. */
 function patch(partial: Partial<Omit<ScheduleState, 'version'>>): void {
   persist({ ...state, ...partial, version: 1 });
 }
 
+/** Null when the last change was saved on this device. */
+export function getScheduleSaveError(): string | null {
+  return saveError;
+}
+
+/** Re-read the saved board after another tab or Cloud sync wrote it. */
+export function reloadScheduleFromStorage(): void {
+  const raw = readStorage();
+  if (raw === lastRaw) return;
+  state = loadState();
+  listeners.forEach((fn) => fn());
+}
+
+/** The board this device had before a Cloud copy first replaced it, if one was kept. */
+export function getScheduleBeforeSync(): { savedAt: number; schedule: ScheduleState } | null {
+  return readScheduleBeforeSync(browserStorage());
+}
+
+export function clearScheduleBeforeSync(): void {
+  try {
+    browserStorage()?.removeItem(SCHEDULE_BEFORE_SYNC_KEY);
+  } catch {
+    /* ignore */
+  }
+  listeners.forEach((fn) => fn());
+}
+
+export { SCHEDULE_SYNC_META_KEY };
+
 export function setScheduleTemplate(template: ScheduleTemplate): void {
+  freshen();
   if (!isScheduleTemplate(template)) return;
   patch({ template: template === 'week-grid' ? 'week' : template });
 }
 
 export function setScheduleCastEnabled(enabled: boolean): void {
+  freshen();
   patch({ castEnabled: enabled });
 }
 
@@ -168,6 +258,7 @@ export type ScheduleImportPayload = {
 };
 
 export function applyScheduleImport(payload: ScheduleImportPayload): void {
+  freshen();
   patch({
     classes: sortClasses(payload.classes),
     specials: payload.specials == null ? state.specials : sortSpecials(payload.specials),
@@ -207,14 +298,17 @@ function setAssets(next: Omit<ScheduleAssets, 'revision'>): void {
 }
 
 export function setBoardTitle(title: string): void {
+  freshen();
   patch({ title });
 }
 
 export function setScheduleNotes(notes: string): void {
+  freshen();
   patch({ notes });
 }
 
 export function setQrUrl(qrUrl: string): void {
+  freshen();
   patch({ qrUrl });
 }
 
@@ -226,6 +320,7 @@ export function addClass(
   subtitle = '',
   level: ClassLevel = 'none',
 ): WeeklyClassSlot | null {
+  freshen();
   const next: WeeklyClassSlot = {
     id: createClassId(),
     kind: 'class',
@@ -243,6 +338,7 @@ export function addClass(
 
 /** Same day + time on the next free mat (MAT 1 → MAT 2). Title is filled in Edit. */
 export function addParallelClass(id: string): WeeklyClassSlot | null {
+  freshen();
   const source = state.classes.find((row) => row.id === id);
   if (!source || !source.time) return null;
   const used = state.classes
@@ -255,6 +351,7 @@ export function updateClass(
   id: string,
   partial: Partial<Pick<WeeklyClassSlot, 'day' | 'time' | 'title' | 'location' | 'subtitle' | 'level'>>,
 ): void {
+  freshen();
   patch({
     classes: sortClasses(
       state.classes.map((row) => {
@@ -279,6 +376,7 @@ export function updateClass(
 
 /** Replaces weekly classes with a flyer-shaped sample week for TV preview. */
 export function loadSampleWeek(): void {
+  freshen();
   patch({
     title: state.title.trim() || SAMPLE_WEEK_TITLE,
     notes: state.notes.trim() || SAMPLE_WEEK_NOTES,
@@ -289,10 +387,12 @@ export function loadSampleWeek(): void {
 }
 
 export function removeClass(id: string): void {
+  freshen();
   patch({ classes: state.classes.filter((row) => row.id !== id) });
 }
 
 export function addSpecial(date: string, title: string, body = ''): SpecialDate | null {
+  freshen();
   const next: SpecialDate = {
     id: createSpecialId(),
     kind: 'special',
@@ -310,6 +410,7 @@ export function updateSpecial(
   id: string,
   partial: Partial<Pick<SpecialDate, 'date' | 'title' | 'body' | 'flyerId'>>,
 ): void {
+  freshen();
   patch({
     specials: sortSpecials(
       state.specials.map((row) => {
@@ -328,6 +429,7 @@ export function updateSpecial(
 }
 
 export function removeSpecial(id: string): void {
+  freshen();
   patch({ specials: state.specials.filter((row) => row.id !== id) });
 }
 
@@ -420,11 +522,12 @@ export async function readPickedImage(file: File, maxEdge = 1280): Promise<Blob>
 }
 
 export async function initScheduleSync(): Promise<void> {
+  // Listen before the IndexedDB read, so a slow or blocked picture store never
+  // leaves this tab holding an old board that the next edit would save back.
+  window.addEventListener('storage', (event) => {
+    if (event.key !== null && event.key !== STORAGE_KEY) return;
+    reloadScheduleFromStorage();
+  });
   const loaded = await loadAssetsFromDb();
   setAssets(loaded);
-  window.addEventListener('storage', (event) => {
-    if (event.key !== STORAGE_KEY) return;
-    state = loadState();
-    listeners.forEach((fn) => fn());
-  });
 }
