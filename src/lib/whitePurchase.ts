@@ -28,6 +28,9 @@ export const WHITE_PRICE_DETAIL = 'USD — One Time Purchase';
 export const WHITE_STRIPE_NOTE =
   'Payments processed through Stripe. Card details are entered on Stripe, not on this page.';
 
+/** Owner 2026-11-23: subtitle under the Advantage White heading on /buy, above the price. */
+export const WHITE_BUY_SUBTITLE = 'BJJ scoreboard, round timer, and mock tournament software';
+
 export const WHITE_INCLUDED = [
   'Tournament Style BJJ Scoreboard',
   'Fully Customizable Round Timer',

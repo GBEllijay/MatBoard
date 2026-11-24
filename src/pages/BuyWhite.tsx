@@ -23,6 +23,7 @@ import {
   WHITE_CHECKOUT_API,
   WHITE_FEATURES,
   WHITE_INCLUDED,
+  WHITE_BUY_SUBTITLE,
   WHITE_PRICE_DETAIL,
   WHITE_STRIPE_NOTE,
   formatUsdFromCents,
@@ -200,6 +201,7 @@ export function BuyWhitePage() {
             </span>
             <p className="buy__kicker">Available now</p>
             <h2>Advantage White</h2>
+            <p className="buy__subtitle">{WHITE_BUY_SUBTITLE}</p>
             <p className="buy__price">
               {formatUsdFromCents(whitePricing.listPriceCents)} <span>{WHITE_PRICE_DETAIL}</span>
             </p>

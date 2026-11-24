@@ -68,6 +68,10 @@ test('/buy: White checkout stays; other products are hidden until they are for s
   const m = mount('/buy');
   assert.deepEqual(higher(m.host), []);
   assert.equal(m.host.querySelector('[data-higher-tiers]'), null);
+  const head = m.host.querySelector('.buy__card--belt');
+  assert.equal(head?.querySelector('.buy__subtitle')?.textContent, 'BJJ scoreboard, round timer, and mock tournament software');
+  assert.match(head?.textContent ?? '', /Advantage White[\s\S]*mock tournament software[\s\S]*\$19\.99/);
+  assert.doesNotMatch(head?.textContent ?? '', /Bracket Roster/);
   assert.equal(m.host.querySelector('[data-tier="pro-cloud"]'), null);
   assert.doesNotMatch(m.host.textContent ?? '', /Advantage (Media Edition|Instructor Edition|Pro|Coach)/);
   // White checkout stays. Restore is still a button to /restore. The email sits with the code.
