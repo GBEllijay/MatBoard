@@ -193,12 +193,33 @@ test('the White page source has no Account control and the header hides /white',
   assert.match(header, /pathname\.startsWith\('\/white\/'\)/);
 });
 
-test('the White header uses the owner tagline and no longer shows the old blurb', () => {
+test('the White hub shows the brand tools line, moves the cast line above Instructions, and drops the belt header', () => {
   const m = mount();
-  assert.match(
-    m.host.textContent ?? '',
-    /Your Scoreboard, Round Timer and Mock Tournament Software\. Cast to your TV from your phone or PC\./,
+  assert.equal(m.host.querySelector('.belt-header'), null);
+  assert.doesNotMatch(m.host.textContent ?? '', /Advantage - White/);
+  const tools = m.host.querySelector('.home__modes .home__tools-line');
+  assert.equal(tools?.tagName, 'H2');
+  assert.equal(tools?.textContent, 'BJJ Scoreboard, Round Timer, Brackets & Bracket Roster');
+  const logo = m.host.querySelector('.home__logo');
+  const wordmark = m.host.querySelector('.home__mark h1');
+  assert.ok(logo);
+  assert.equal(wordmark?.textContent, 'Advantage');
+  const cards = [...m.host.querySelectorAll('.home__modes .mode-card')];
+  assert.equal(cards.length, 4);
+  const modeKids = [...(m.host.querySelector('.home__modes')?.children ?? [])];
+  assert.equal(modeKids[0], tools);
+  assert.ok(cards[0] && modeKids.indexOf(cards[0]) > 0);
+  const hints = m.host.querySelector('.home__hints');
+  const hintKids = [...(hints?.children ?? [])];
+  const cast = hints?.querySelector('p.home__cast-line');
+  const instructions = hints?.querySelector('.instructions');
+  assert.equal(
+    cast?.textContent,
+    'Your Scoreboard, Round Timer and Mock Tournament Software. Cast to your TV from your phone or PC.',
   );
+  assert.equal(hintKids[0], cast);
+  assert.ok(instructions && hintKids.some((node) => node === instructions || node.contains(instructions)));
+  assert.ok(hintKids.findIndex((node) => node === instructions || node.contains(instructions)) > 0);
   assert.doesNotMatch(m.host.textContent ?? '', /Customizable Live Matches and Rounds/);
   assert.equal(m.host.querySelector('.site-footer a[href="/account"]'), null);
   m.done();
