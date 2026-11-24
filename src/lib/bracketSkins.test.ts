@@ -169,7 +169,7 @@ test('review: the Finals column is the mockup width, not Advantage\'s 20rem cap'
 });
 
 test('review: long Finals eyebrows wrap inside the card', () => {
-  assert.match(layoutAfter, /\.t-match__finals-label > span \{[^}]*white-space: normal;/);
+  assert.match(layoutAfter, /\.t-match__finals-label > span \{\s*margin-inline: calc\(-1\.6 \* var\(--bu\)\);\s*white-space: normal;/);
   assert.match(skinCss('psychedelic'), /bskin-psychedelic \.t-match--final \.t-match__finals-label > span \{font-size:calc\(1\.3\*var\(--bu\)\);letter-spacing:\.02em\}/);
   assert.match(skinCss('woodblock'), /bskin-woodblock \.t-match--final \.t-match__finals-label > span \{letter-spacing:\.12em\}/);
 });

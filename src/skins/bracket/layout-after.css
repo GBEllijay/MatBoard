@@ -9,9 +9,9 @@ main.tournament.tournament--skin .bracket__champ {
   flex: none;
 }
 
-/* A long eyebrow wraps inside the Finals card instead of running past its edges. */
+/* The eyebrow may use the card's side padding (as the mockups do) and wraps only if it still would not fit. */
 main.tournament.tournament--skin .t-match--final .t-match__finals-label > span {
-  max-width: 100%;
+  margin-inline: calc(-1.6 * var(--bu));
   white-space: normal;
   text-wrap: balance;
 }
@@ -30,6 +30,10 @@ main.tournament.tournament--skin.bskin-creature-anime .bracket__champ {
 
   main.tournament.tournament--skin .bskin-links {
     display: none;
+  }
+
+  main.tournament.tournament--skin .t-match--final .t-match__finals-label > span {
+    margin-inline: 0;
   }
 
   /* The app's Sign in pill shares the top-right corner with the title: icon only here, title kept clear of both corners. */
