@@ -1,0 +1,4 @@
+@font-face { font-family: Anton; font-style: normal; font-weight: 400; font-display: swap; src: url('./anton/anton-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: Bungee; font-style: normal; font-weight: 400; font-display: swap; src: url('./bungee/bungee-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Press Start 2P'; font-style: normal; font-weight: 400; font-display: swap; src: url('./press-start-2p/press-start-2p-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: Kanit; font-style: normal; font-weight: 800; font-display: swap; src: url('./kanit/kanit-latin-800-normal.woff2') format('woff2'); }

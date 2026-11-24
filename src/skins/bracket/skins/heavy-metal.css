@@ -1,0 +1,22 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-heavy-metal {--line:#c9cdd3;--under:#050505;--hot:#ff8a2a;--lw:.5;--uw:1.3}
+main.tournament.tournament--skin.bskin-heavy-metal {--base:#0a0605;--bgi:linear-gradient(180deg,rgba(8,4,3,.45),rgba(8,4,3,.25) 40%,rgba(8,4,3,.75)),url(../../polished/assets/inferno-bg.webp);--fh:'Metal Mania';--hbg:linear-gradient(180deg,#2a2c31,#0d0e10);--hfg:#e9ebef;--hbd:.35vh solid #8c9199;--hsh:0 0 0 .35vh #0a0a0a,0 1.4vh 3vh rgba(0,0,0,.6),0 0 4vh rgba(255,90,20,.35);--fl:Oswald;--lab:#d5d8de;--labsh:0 .3vh .6vh #000;--fn:Oswald;--fnw:700;--tt:uppercase;--ls:.02em;--pbg:url(../../polished/assets/inferno-plate.jpg) center/cover;--pbd:.3vh solid #8c9199;--psh:0 0 0 .3vh #050505,0 1.2vh 3vh rgba(0,0,0,.65),inset 0 0 0 .2vh rgba(255,255,255,.08);--pr:1vh;--sr:.6vh;--s1b:linear-gradient(180deg,#2457d6,#1846c4 50%,#0e2c86);--s1f:#fff;--s1sh:inset 0 .25vh 0 rgba(255,255,255,.25),inset 0 0 0 .2vh rgba(0,0,0,.5);--s2b:linear-gradient(180deg,#f1f2f4,#c9cdd3 60%,#9aa0a8);--s2f:#111;--s2sh:inset 0 .25vh 0 #fff,inset 0 0 0 .2vh rgba(0,0,0,.5);--lostb:rgba(20,20,22,.8);--lostf:#7d828a;--emb:rgba(10,10,12,.7);--embd:.2vh solid #5a5e66;--emf:#c9cdd3;--acc:#ff8a2a;--okf:#1a0800;--live:#c8141e;--fbg:linear-gradient(180deg,#1b1c20,#08090a);--ffg:#fff;--fbd:.35vh solid #8c9199;--fsh:0 0 0 .35vh #050505,0 0 5vh rgba(255,80,10,.45);--fr:1.2vh;--eye:#ff8a8a;--fts:0 0 2vh rgba(255,110,30,.7),0 .4vh 0 #000;--fsb:#121316;--fsf:#c9cdd3;--fsbd:.2vh solid #5a5e66;--cbg:linear-gradient(180deg,#d8222d,#a3101a);--cfg:#fff;--cbd:.35vh solid #c9cdd3;--csh:0 0 0 .3vh #050505,0 0 4vh rgba(200,20,30,.5);--ceye:#ffe0d0;--foot:rgba(6,6,7,.92);--footsh:inset 0 .3vh 0 #5a5e66;--crest:url(../../polished/assets/inferno-crest.webp);--crw:22vh}
+main.tournament.tournament--skin.bskin-heavy-metal .t-match--final .t-match__finals-label > strong {font-size:calc(8*var(--bu));text-transform:none}
+main.tournament.tournament--skin.bskin-heavy-metal .t-match--final .t-match__finals-label > span {font-family:Oswald;letter-spacing:.22em}
+main.tournament.tournament--skin.bskin-heavy-metal .t-slot.t-slot--won > .t-slot__who::after {color:#fff;background:#c8141e}
+main.tournament.tournament--skin.bskin-heavy-metal .bskin-deco .flames {left:0;right:0;bottom:8vh;height:20vh;background:url(../../polished/assets/inferno-flames.webp) center bottom/auto 100% repeat-x;z-index:-1;opacity:.95}
+main.tournament.tournament--skin.bskin-heavy-metal .t-match--final > .t-match__finals-label::before {top:calc(-8.5*var(--bu));height:calc(10*var(--bu))}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-heavy-metal .bskin-deco .flames {bottom:80px;height:110px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-heavy-metal .t-match--final .t-match__finals-label > strong {font-size:30px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-heavy-metal .t-match--final > .t-match__finals-label::before {width:110px;top:-40px}
+}
+
+/* Polish: empty Winner slots were low contrast on the dark plate. Brighter text and a lighter steel edge. */
+main.tournament.tournament--skin.bskin-heavy-metal .bracket .t-match .t-match__bouts .t-slot.t-slot:has(input:placeholder-shown) {color:#e6e8ec!important;background:rgba(34,36,41,.92)!important;border:calc(.25*var(--bu)) solid #9aa0a8!important}
+main.tournament.tournament--skin.bskin-heavy-metal .bracket .t-match .t-match__bouts .t-slot.t-slot:has(input:placeholder-shown) input {opacity:1}
+main.tournament.tournament--skin.bskin-heavy-metal .bracket__champ input:placeholder-shown {opacity:.9}

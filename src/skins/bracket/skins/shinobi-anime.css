@@ -1,0 +1,20 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-shinobi-anime {--line:#2ee6d6;--under:#05060e;--hot:#ff6fa8;--lw:.45;--uw:1.2}
+main.tournament.tournament--skin.bskin-shinobi-anime {--base:#05060e;--bgi:linear-gradient(180deg,rgba(5,6,14,.3),rgba(5,6,14,.15) 35%,rgba(5,6,14,.7)),url(../../polished/assets/shinobi-anime/bg@2560.webp);--fh:'Dela Gothic One';--hbg:rgba(5,6,14,.85);--hfg:#fff;--hbd:.3vh solid #2ee6d6;--hsh:0 0 2vh rgba(46,230,214,.5);--hls:.04em;--fl:Oswald;--lab:#2ee6d6;--labsh:0 0 1vh rgba(46,230,214,.6);--fn:Oswald;--fnw:700;--fs:4.2vh;--tt:uppercase;--ls:.02em;--pbg:linear-gradient(180deg,rgba(12,16,34,.92),rgba(5,6,14,.95));--pbd:.25vh solid rgba(46,230,214,.75);--psh:0 0 2vh rgba(46,230,214,.25),0 1.4vh 3vh rgba(0,0,0,.6);--pr:.6vh;--sr:.4vh;--s1b:linear-gradient(90deg,#1c46cc,#13308f);--s1f:#fff;--s1sh:inset 0 0 0 .15vh rgba(255,255,255,.3);--s2b:linear-gradient(90deg,#e9eef7,#dce3f2);--s2f:#05060e;--lostb:rgba(255,255,255,.05);--lostf:#6f7a94;--emb:rgba(255,255,255,.04);--embd:.2vh solid rgba(46,230,214,.35);--emf:#9aa6c0;--acc:#ff6fa8;--okf:#fff;--live:#c8143c;--fbg:linear-gradient(180deg,#0c1022,#05060e);--ffg:#fff;--fbd:.35vh solid #2ee6d6;--fsh:0 0 3vh rgba(46,230,214,.5),inset 0 0 3vh rgba(46,230,214,.15);--fr:.8vh;--eye:#ff9aa6;--fts:0 0 2vh rgba(46,230,214,.6);--fsb:rgba(255,255,255,.05);--fsf:#9aa6c0;--fsbd:.2vh solid rgba(46,230,214,.35);--cbg:linear-gradient(180deg,#c8143c,#8e0d2a);--cfg:#fff4ee;--cbd:.3vh solid #ff9aa6;--csh:0 0 3vh rgba(255,111,168,.45);--ceye:#fff4ee;--foot:rgba(5,6,14,.94);--footsh:inset 0 .3vh 0 #2ee6d6;--ml:url(../../polished/assets/shinobi-anime/mascot.webp);--mr:url(../../polished/assets/shinobi-anime/mascot.webp);--mh:27vh;--mw:20vh}
+main.tournament.tournament--skin.bskin-shinobi-anime .bracket__side--right .bracket__round--1::after {background-image:url(../../polished/assets/shinobi-anime/mascot.webp);--mflip:-1}
+main.tournament.tournament--skin.bskin-shinobi-anime .t-match:not(.t-match--final) > .t-match__bouts::before {content:'';position:absolute;width:calc(2.2*var(--bu));height:calc(2.2*var(--bu));border:calc(.45*var(--bu)) solid #2ee6d6;pointer-events:none}
+main.tournament.tournament--skin.bskin-shinobi-anime .t-match:not(.t-match--final) > .t-match__bouts::after {content:'';position:absolute;width:calc(2.2*var(--bu));height:calc(2.2*var(--bu));border:calc(.45*var(--bu)) solid #2ee6d6;pointer-events:none}
+main.tournament.tournament--skin.bskin-shinobi-anime .t-match--final::before {content:'';position:absolute;width:calc(2.2*var(--bu));height:calc(2.2*var(--bu));border:calc(.45*var(--bu)) solid #2ee6d6;pointer-events:none}
+main.tournament.tournament--skin.bskin-shinobi-anime .t-match:not(.t-match--final) > .t-match__bouts::before {left:calc(-.8*var(--bu));top:calc(-.8*var(--bu));border-right:0;border-bottom:0}
+main.tournament.tournament--skin.bskin-shinobi-anime .t-match:not(.t-match--final) > .t-match__bouts::after {right:calc(-.8*var(--bu));bottom:calc(-.8*var(--bu));border-left:0;border-top:0}
+main.tournament.tournament--skin.bskin-shinobi-anime .t-match--final::before {left:calc(-1*var(--bu));top:calc(-1*var(--bu));border-right:0;border-bottom:0;border-color:#ff6fa8}
+main.tournament.tournament--skin.bskin-shinobi-anime .t-match--final .t-match__finals-label > strong {font-size:calc(5.4*var(--bu));letter-spacing:.04em}
+main.tournament.tournament--skin.bskin-shinobi-anime .t-match--final .t-match__finals-label > span {font-family:Oswald;letter-spacing:.24em}
+main.tournament.tournament--skin.bskin-shinobi-anime .t-slot.t-slot--won > .t-slot__who::after {background:#ff6fa8}
+main.tournament.tournament--skin.bskin-shinobi-anime .bracket__round > h2 {letter-spacing:.3em}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-shinobi-anime .t-match--final .t-match__finals-label > strong {font-size:24px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-shinobi-anime .bracket-headline__pill {font-size:22px}
+}

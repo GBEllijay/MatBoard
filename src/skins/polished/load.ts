@@ -32,6 +32,9 @@ const LOADERS: Record<PolishedTimerSlug, () => Promise<PolishedSkinModule>> = {
   'creature-anime': () => import('./creature-anime.ts'),
   'idol-hunters': () => import('./idol-hunters.ts'),
   'shinobi-anime': () => import('./shinobi-anime.ts'),
+  'dungeon-quest': () => import('./dungeon-quest.ts'),
+  'mech-battle': () => import('./mech-battle.ts'),
+  'arcade-fighter': () => import('./arcade-fighter.ts'),
 };
 
 const cache = new Map<PolishedTimerSlug, PolishedSkinModule>();

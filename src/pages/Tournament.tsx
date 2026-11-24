@@ -35,10 +35,13 @@ import { linkedBracketMatchId, openBracketBout, scoreboardPath, unlinkBracketBou
 import { scoreboardCompetitionFields } from '../lib/matchRound';
 import {
   bracketThemeOptions,
+  isBracketSkinTheme,
   visibleBracketTheme,
 } from '../lib/bracketTheme';
+import { bracketSkinClasses } from '../lib/bracketSkins';
+import { BracketSkinDeco, BracketSkinLinks, useBracketSkin } from '../components/BracketSkin';
 import { podiumPlaces } from '../lib/bracketPodium';
-import { useWhiteBaseSkins } from '../hooks/usePolishedSkins';
+import { usePolishedSkinsUnlocked, useWhiteBaseSkins } from '../hooks/usePolishedSkins';
 import { useWhiteUnlocked } from '../hooks/useWhiteUnlocked';
 import { whiteProductFeaturesOpen } from '../lib/whiteSkinTier';
 import { BracketMatEdgeBottom, BracketMatEdges, BracketPodiumBanner } from '../components/BracketPodium';
@@ -134,6 +137,7 @@ export function TournamentPage() {
   const match = useMatchState();
   const theme = useBracketTheme();
   const whiteBaseSkins = useWhiteBaseSkins();
+  const polishedUnlocked = usePolishedSkinsUnlocked();
   const whiteUnlocked = useWhiteUnlocked();
   const cleanOn = useBracketClean();
   const kids = useKidsScoreboard();
@@ -155,7 +159,16 @@ export function TournamentPage() {
   const presets = fromWhite ? WHITE_SIZE_PRESETS : sizePresets(competitionSuite);
   const fromSuite = from === SUITE_FROM;
   const fromUnlimited = from === UNLIMITED_FROM;
-  const shownTheme = visibleBracketTheme(theme, { plainCoach, whiteBaseSkins: whiteProductOpen });
+  // Polished bracket skins follow the scoreboard and timer skins: Media Edition and above, not the White board.
+  const polishedBracketSkins = polishedUnlocked && !fromWhite;
+  const shownTheme = visibleBracketTheme(theme, {
+    plainCoach,
+    whiteBaseSkins: whiteProductOpen,
+    polishedSkins: polishedBracketSkins,
+  });
+  const skinSlug = isBracketSkinTheme(shownTheme) ? shownTheme : null;
+  const bracketSkin = useBracketSkin(skinSlug);
+  const themeClass = skinSlug ? bracketSkinClasses(skinSlug) : `tournament--${shownTheme}`;
   const exitPath =
     useSubmenuBack() ??
     (fromWhite
@@ -225,7 +238,7 @@ export function TournamentPage() {
   useVisibleViewportHeight();
   useLockViewportZoom();
   usePinchZoom(boardRef, bracketRef, {
-    fitKey: `${tree}-${cleanOn ? 1 : 0}-${shownTheme}-${threePerson ? 1 : 0}`,
+    fitKey: `${tree}-${cleanOn ? 1 : 0}-${shownTheme}-${bracketSkin ? 1 : 0}-${threePerson ? 1 : 0}`,
     apiRef: zoomApiRef,
     onZoomStateChange: setZoomedFromFit,
   });
@@ -333,9 +346,10 @@ export function TournamentPage() {
 
   return (
     <main
-      className={`tournament tournament--${shownTheme}${fromWhite ? ' tournament--white' : ''}${cleanOn ? ' tournament--clean' : ''}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
+      className={`tournament ${themeClass}${fromWhite ? ' tournament--white' : ''}${cleanOn ? ' tournament--clean' : ''}${kidsOn ? ` tournament--kids tournament--kids-${kids.skin}` : ''}${fs.className ? ` ${fs.className}` : ''}`}
     >
       {shownTheme === 'podium' ? <BracketMatEdges /> : null}
+      {skinSlug && bracketSkin ? <BracketSkinDeco html={bracketSkin.deco} /> : null}
       <BeltRail kind="tournament" />
       <PlayExitMark to={exitPath} onExit={exitBoard} />
       <header className="tournament__bar">
@@ -380,6 +394,12 @@ export function TournamentPage() {
                 : `${tournament.size}-competitor single-elimination bracket`
             }
           >
+          {skinSlug && bracketSkin ? (
+            <BracketSkinLinks
+              bracketRef={bracketRef}
+              drawKey={`${skinSlug}-${tree}-${cleanOn ? 1 : 0}-${Object.keys(tournament.results).join(',')}-${liveMatchId ?? ''}`}
+            />
+          ) : null}
           {tree > 2 ? (
             <div className="bracket__side bracket__side--left">
               {rounds.map((prefix) => (
@@ -508,7 +528,7 @@ export function TournamentPage() {
               <KidsScoreboardSwitcher
                 prefs={kids}
                 suppressed={skinButtonSuppressed}
-                themes={plainCoach ? [] : bracketThemeOptions(whiteProductOpen)}
+                themes={plainCoach ? [] : bracketThemeOptions(whiteProductOpen, polishedBracketSkins)}
                 theme={shownTheme}
                 showKids={kidsSkins}
               />
@@ -961,7 +981,9 @@ function RoundColumn({
   const pairs = paired && ids.length >= 2 ? pairMatchIds(ids) : null;
   return (
     <div className={`bracket__round bracket__round--${ids.length}`}>
-      <h2>{label}</h2>
+      <h2>
+        <span>{label}</span>
+      </h2>
       {detail ? <p className="bracket__path">{detail}</p> : null}
       <div className="bracket__matches">
         {pairs

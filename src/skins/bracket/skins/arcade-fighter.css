@@ -1,0 +1,45 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-arcade-fighter {--line:#ffd23f;--under:#04030a;--hot:#ff6b78;--lw:.5;--uw:1.3}
+main.tournament.tournament--skin.bskin-arcade-fighter {--h2p:22px;--hp:19px;--base:#07060c;--bgi:linear-gradient(180deg,rgba(7,6,12,.25),rgba(7,6,12,.1) 35%,rgba(7,6,12,.7)),url(../../polished/assets/arcade-fighter/bg@2560.webp);--fh:Bungee;--hbg:#04030a;--hfg:#ffd23f;--hbd:.45vh solid #ffd23f;--hsh:0 1.2vh 0 #a10e18,0 1.4vh 3vh rgba(0,0,0,.5);--hls:.04em;--fl:'Press Start 2P';--lab:#ffd23f;--labsh:.3vh .3vh 0 #a10e18;--fn:Kanit;--fnw:800;--fs:4.2vh;--tt:uppercase;--ls:.01em;--pbg:rgba(4,3,10,.92);--pbd:0;--psh:inset 0 0 0 .4vh #ffd23f,0 1.4vh 3vh rgba(0,0,0,.6);--pr:.3vh;--sr:.2vh;--s1b:linear-gradient(180deg,#2a5cf0,#1c46cc);--s1f:#fff;--s1sh:inset 0 -.5vh 0 #0e2c86;--s2b:linear-gradient(180deg,#fff,#d9dce8);--s2f:#0e1726;--s2sh:inset 0 -.5vh 0 #9aa0b8;--lostb:rgba(255,255,255,.06);--lostf:#6b6f80;--emb:rgba(255,210,63,.06);--embd:.25vh dashed #ffd23f;--emf:#ffd23f;--acc:#ffd23f;--okf:#04030a;--live:#a10e18;--livebd:#ffd23f;--fbg:#04030a;--ffg:#fff;--fbd:0;--fsh:inset 0 0 0 .5vh #ffd23f,0 0 0 .5vh #04030a,0 2vh 4vh rgba(0,0,0,.6);--fr:.3vh;--eye:#ffd23f;--fe:'Press Start 2P';--fts:.5vh .5vh 0 #a10e18;--fsb:rgba(255,255,255,.06);--fsf:#c8cbe0;--fsbd:.25vh dashed rgba(255,210,63,.6);--cbg:#a10e18;--cfg:#fff;--csh:inset 0 0 0 .45vh #ffd23f,0 0 0 .45vh #04030a;--ceye:#ffd23f;--foot:rgba(4,3,10,.94);--footsh:inset 0 .35vh 0 #ffd23f;--ml:url(../../polished/assets/arcade-fighter/fighter-blue.webp);--mr:url(../../polished/assets/arcade-fighter/fighter-white.webp);--mh:28vh;--mw:20vh}
+main.tournament.tournament--skin.bskin-arcade-fighter .t-match--final .t-match__finals-label > strong {font-size:calc(6.6*var(--bu));color:#ffd23f}
+main.tournament.tournament--skin.bskin-arcade-fighter .t-match--final .t-match__finals-label > span {font-size:calc(1.4*var(--bu));letter-spacing:.06em;line-height:1.5}
+main.tournament.tournament--skin.bskin-arcade-fighter .bracket__champ > span:not(.belt-rail) {font-size:calc(1.4*var(--bu));letter-spacing:.06em;line-height:1.5}
+main.tournament.tournament--skin.bskin-arcade-fighter .bracket__round > h2 {font-size:calc(1.5*var(--bu));letter-spacing:.06em}
+main.tournament.tournament--skin.bskin-arcade-fighter .t-match--final > .t-match__bouts::before {font-family:Bungee;color:#ffd23f;font-size:calc(2.4*var(--bu));margin:calc(-.6*var(--bu)) 0 calc(.6*var(--bu));text-shadow:calc(.25*var(--bu)) calc(.25*var(--bu)) 0 #a10e18}
+main.tournament.tournament--skin.bskin-arcade-fighter .bracket__champ input,
+main.tournament.tournament--skin.bskin-arcade-fighter .bracket__champ .bracket__champ-flash {font-family:Bungee;text-transform:uppercase;opacity:.75;font-size:calc(3.6*var(--bu))}
+main.tournament.tournament--skin.bskin-arcade-fighter .t-live-pill {font-family:'Press Start 2P';font-size:calc(1.2*var(--bu));letter-spacing:.04em}
+main.tournament.tournament--skin.bskin-arcade-fighter .t-match.t-match--live:not(.t-match--final) > .t-match__bouts {outline-color:#ff6b78}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-arcade-fighter .t-match--final .t-match__finals-label > strong {font-size:24px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-arcade-fighter .bracket__round > h2 {font-size:7px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-arcade-fighter .t-match--final .t-match__finals-label > span {font-size:6px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-arcade-fighter .bracket__champ > span:not(.belt-rail) {font-size:6px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-arcade-fighter .bracket-headline__pill {font-size:20px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-arcade-fighter .bracket__champ input,
+  main.tournament.tournament--skin.bskin-arcade-fighter .bracket__champ .bracket__champ-flash {font-size:17px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-arcade-fighter .t-live-pill {font-size:6px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-arcade-fighter .t-match--final > .t-match__bouts::before {font-size:10px;margin:-3px 0 3px}
+}
+
+/* Polish: the mock's phone round labels, eyebrows and LIVE pill were 6-7px. Legible floor is 11px. */
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-arcade-fighter .bracket__round > h2 {font-size:11px;letter-spacing:.02em;height:auto;min-height:14px;white-space:nowrap}
+  main.tournament.tournament--skin.bskin-arcade-fighter .t-match--final .t-match__finals-label > span,
+  main.tournament.tournament--skin.bskin-arcade-fighter .bracket__champ > span:not(.belt-rail) {font-size:11px;letter-spacing:0;line-height:1.35}
+  main.tournament.tournament--skin.bskin-arcade-fighter .t-live-pill {font-size:11px;padding:4px 7px}
+}

@@ -1,0 +1,45 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-woodblock {--line:#0B1626;--under:#F6EED8;--hot:#B8352B;--lw:.5;--uw:1.3}
+main.tournament.tournament--skin.bskin-woodblock {--base:#F1E6C8;--bgi:url(../../polished/assets/woodblock-wave-frame.jpg);--fh:'DM Serif Display';--hbg:#FBF6E7;--hfg:#1F3A5F;--hbd:.5vh solid #0B1626;--hsh:.9vh .9vh 0 #0B1626;--fl:Fraunces;--lab:#0B1626;--labbg:#FBF6E7;--labpad:.5vh 1.6vh;--labbd:0 0 0 .3vh #0B1626;--fn:Fraunces;--fnw:700;--fs:4.1vh;--pbg:#FBF6E7;--pbd:.5vh solid #0B1626;--psh:.9vh .9vh 0 #0B1626;--pr:.8vh;--sr:.4vh;--s1b:repeating-linear-gradient(178deg,rgba(255,255,255,.03) 0 .4vh,transparent .4vh 1.2vh),linear-gradient(180deg,#2B4C7E,#1F3A5F);--s1f:#FBF6E7;--s2b:repeating-linear-gradient(178deg,rgba(120,90,40,.06) 0 .4vh,transparent .4vh 1.2vh),linear-gradient(180deg,#F6EED8,#EADCB8);--s2f:#1F3A5F;--s2sh:inset 0 0 0 .25vh #1F3A5F;--lostb:#EFE4C8;--lostf:rgba(31,58,95,.5);--emb:#F6F0DE;--emf:rgba(31,58,95,.6);--embd:.25vh dashed rgba(31,58,95,.5);--acc:#B8352B;--okf:#FBF6E7;--live:#B8352B;--livebd:#0B1626;--fbg:repeating-linear-gradient(178deg,rgba(120,90,40,.05) 0 .4vh,transparent .4vh 1.2vh),linear-gradient(180deg,#FBF6E7,#F1E6C8);--ffg:#1F3A5F;--fbd:.6vh solid #0B1626;--fsh:.9vh .9vh 0 #0B1626,inset 0 0 0 .5vh #FBF6E7,inset 0 0 0 .75vh #1F3A5F;--fr:.6vh;--eye:#B8352B;--fsb:#F6EED8;--fsf:rgba(31,58,95,.6);--fsbd:.25vh dashed rgba(31,58,95,.5);--cbg:#B8352B;--cfg:#FBF6E7;--cbd:.6vh solid #0B1626;--csh:.9vh .9vh 0 #0B1626;--ceye:#FBF6E7;--foot:#0B1626;--footsh:0 -.5vh 0 #FBF6E7}
+main.tournament.tournament--skin.bskin-woodblock .t-match--final .t-match__finals-label > strong {font-size:calc(7.4*var(--bu));text-transform:none;letter-spacing:0;font-weight:400}
+main.tournament.tournament--skin.bskin-woodblock .t-match--final .t-match__finals-label > span {font-family:Fraunces;letter-spacing:.24em}
+main.tournament.tournament--skin.bskin-woodblock .bracket__champ > span:not(.belt-rail) {font-family:Fraunces;letter-spacing:.24em}
+main.tournament.tournament--skin.bskin-woodblock .t-match--final::after {position:absolute;right:calc(-2*var(--bu));top:calc(-2*var(--bu));width:calc(4.6*var(--bu));height:calc(4.6*var(--bu));background:#B8352B;border-radius:calc(.4*var(--bu));box-shadow:inset 0 0 0 calc(.35*var(--bu)) #FBF6E7,inset 0 0 0 calc(.55*var(--bu)) #B8352B;transform:rotate(4deg)}
+main.tournament.tournament--skin.bskin-woodblock .bracket__round > h2 {font-weight:700;letter-spacing:.2em}
+main.tournament.tournament--skin.bskin-woodblock .bracket__champ input,
+main.tournament.tournament--skin.bskin-woodblock .bracket__champ .bracket__champ-flash {opacity:.75}
+main.tournament.tournament--skin.bskin-woodblock .t-match.t-match--live:not(.t-match--final) > .t-match__bouts {outline:none;box-shadow:calc(.9*var(--bu)) calc(.9*var(--bu)) 0 #0B1626,0 0 0 calc(1*var(--bu)) #B8352B}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-woodblock .t-match:not(.t-match--final) > .t-match__bouts {border-width:3px;box-shadow:4px 4px 0 #0B1626}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-woodblock .t-match--final {border-width:3px;box-shadow:4px 4px 0 #0B1626}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-woodblock .bracket__champ {border-width:3px;box-shadow:4px 4px 0 #0B1626}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-woodblock .t-match--final {box-shadow:4px 4px 0 #0B1626,inset 0 0 0 3px #FBF6E7,inset 0 0 0 4px #1F3A5F}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-woodblock .bracket-headline__pill {border-width:3px;box-shadow:4px 4px 0 #0B1626}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-woodblock .bracket__round > h2 > span {padding:3px 8px;box-shadow:0 0 0 2px #0B1626}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-woodblock .t-match--final .t-match__finals-label > strong {font-size:28px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-woodblock .t-match--final::after {width:20px;height:20px;right:-8px;top:-8px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-woodblock .t-match.t-match--live:not(.t-match--final) > .t-match__bouts {box-shadow:4px 4px 0 #0B1626,0 0 0 5px #B8352B}
+}
+
+/* Review: the eyebrow ran past the Finals card and under the seal. Tighter tracking; the seal sits on the corner outside the card. */
+main.tournament.tournament--skin.bskin-woodblock .t-match--final .t-match__finals-label > span {letter-spacing:.12em}
+main.tournament.tournament--skin.bskin-woodblock .t-match--final::after {right:calc(-3.6*var(--bu));top:calc(-3.6*var(--bu))}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-woodblock .t-match--final::after {right:-14px;top:-14px}
+}

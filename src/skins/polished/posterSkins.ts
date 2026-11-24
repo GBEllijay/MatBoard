@@ -3,7 +3,14 @@
  * Each skin still loads its own CSS, fonts, and art.
  */
 
-export const POSTER_SKIN_SLUGS = ['creature-anime', 'idol-hunters', 'shinobi-anime'] as const;
+export const POSTER_SKIN_SLUGS = [
+  'creature-anime',
+  'idol-hunters',
+  'shinobi-anime',
+  'dungeon-quest',
+  'mech-battle',
+  'arcade-fighter',
+] as const;
 
 export type PosterSkinSlug = (typeof POSTER_SKIN_SLUGS)[number];
 
@@ -25,17 +32,29 @@ export function isPosterSkin(slug: string): slug is PosterSkinSlug {
 export function posterTimerTitle(slug: PosterSkinSlug, rest: boolean, round: number): string {
   if (slug === 'creature-anime') return rest ? 'Rest Up!' : `Round ${round}`;
   if (slug === 'idol-hunters') return rest ? 'Encore Break' : `Round ${round}`;
+  if (slug === 'dungeon-quest') return rest ? 'Short Rest' : `Round ${round}`;
+  if (slug === 'mech-battle') return rest ? 'Cooldown' : `Round ${round}`;
+  if (slug === 'arcade-fighter') return rest ? 'CATCH YOUR BREATH' : 'FIGHT!';
   return rest ? 'Rest' : `Round ${round}`;
 }
 
-/** Shinobi shrinks further before it wraps. The other two stop at 72%. */
+/** Some faces need a deeper shrink before the name wraps. */
 export function posterFitLineFloor(slug: PosterSkinSlug): number {
-  return slug === 'shinobi-anime' ? 0.56 : 0.72;
+  return slug === 'shinobi-anime' || slug === 'dungeon-quest' || slug === 'arcade-fighter' ? 0.56 : 0.72;
 }
 
-/** A digit inside a decorative heading uses Anton, so 1 does not read as I. */
+/** A digit inside a decorative heading uses a lining face, so 1 does not read as I. */
 export function posterSplitsNums(slug: PosterSkinSlug): boolean {
-  return slug === 'shinobi-anime';
+  return slug === 'shinobi-anime' || slug === 'dungeon-quest';
+}
+
+/** Round pips only when the live round text has a small round number. Otherwise hide them. */
+export function arcadePipCount(roundText: string): number | null {
+  const match = /\d+/.exec(roundText);
+  if (!match) return null;
+  const n = Number(match[0]);
+  if (!Number.isInteger(n) || n < 1 || n > 9) return null;
+  return n;
 }
 
 /**

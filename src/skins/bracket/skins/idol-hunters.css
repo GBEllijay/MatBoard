@@ -1,0 +1,14 @@
+/* Generated from the owner-approved bracket mockups (Design Critic Coach). Mockup vh inside the bracket is --bu. */
+main.tournament.tournament--skin.bskin-idol-hunters {--line:#ff9be0;--under:#0d0620;--hot:#5fe1ff;--lw:.45;--uw:1.2}
+main.tournament.tournament--skin.bskin-idol-hunters {--h2p:22px;--hp:20px;--base:#0d0620;--bgi:linear-gradient(180deg,rgba(13,6,32,.25),rgba(13,6,32,.1) 35%,rgba(13,6,32,.6)),url(../../polished/assets/idol-hunters/stage@2560.webp);--fh:Unbounded;--fhw:900;--hbg:linear-gradient(180deg,#1c0e38,#0d0620);--hfg:#fff;--hbd:.4vh solid #ff6fd8;--hsh:0 0 2.4vh rgba(255,111,216,.8),0 0 0 .8vh rgba(42,98,255,.35);--fl:'Barlow Condensed';--lab:#ffd1f4;--labsh:0 0 1.2vh #ff4fc8;--fn:Unbounded;--fnw:800;--fs:3vh;--tt:uppercase;--pbg:linear-gradient(180deg,rgba(28,14,56,.92),rgba(13,6,32,.95));--pbd:.3vh solid #ff9be0;--psh:0 0 2vh rgba(255,79,200,.55),inset 0 0 1.4vh rgba(255,79,200,.25);--pr:2vh;--sr:1.2vh;--s1b:linear-gradient(180deg,#2a62ff,#1846c4);--s1f:#fff;--s1sh:inset 0 0 0 .2vh rgba(169,194,255,.6);--s2b:linear-gradient(180deg,#fff,#f2e8ff);--s2f:#1c0e38;--s2sh:inset 0 0 0 .2vh #ff9be0;--acc:#5fe1ff;--okf:#0d0620;--live:#a3125a;--fbg:linear-gradient(180deg,#1c0e38,#0d0620);--ffg:#fff;--fbd:.45vh solid #5fe1ff;--fsh:0 0 3vh rgba(95,225,255,.7),0 0 0 1vh rgba(255,79,200,.25);--fr:3vh;--eye:#ff9be0;--fts:0 0 2vh #ff4fc8;--fsb:rgba(255,255,255,.07);--fsf:#e6dcff;--fsbd:.2vh solid rgba(255,155,224,.5);--cbg:linear-gradient(180deg,#d01f7a,#a3125a);--cfg:#fff;--cbd:.35vh solid #ffd1f4;--csh:0 0 3vh rgba(255,79,200,.7);--ceye:#ffe6f6;--foot:rgba(13,6,32,.94);--footsh:inset 0 .3vh 0 #ff6fd8;--crest:url(../../polished/assets/idol-hunters/crest.webp);--ml:url(../../polished/assets/idol-hunters/hero-ribbon.webp);--mr:url(../../polished/assets/idol-hunters/hero-blade.webp);--mh:27vh;--mw:24vh}
+main.tournament.tournament--skin.bskin-idol-hunters .t-match--final .t-match__finals-label > strong {font-size:calc(5.4*var(--bu))}
+main.tournament.tournament--skin.bskin-idol-hunters .bracket__round > h2 {letter-spacing:.24em;font-size:calc(2.2*var(--bu))}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-idol-hunters .t-match--final .t-match__finals-label > strong {font-size:24px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-idol-hunters .t-slot {font-size:14px}
+}
+@media (max-aspect-ratio: 3/4) {
+  main.tournament.tournament--skin.bskin-idol-hunters .bracket-headline__pill {font-size:20px}
+}

@@ -1,0 +1,7 @@
+@font-face { font-family: Anton; font-style: normal; font-weight: 400; font-display: swap; src: url('./anton/anton-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: Grenze; font-style: normal; font-weight: 800; font-display: swap; src: url('./grenze/grenze-latin-800-normal.woff2') format('woff2'); }
+@font-face { font-family: Cinzel; font-style: normal; font-weight: 700; font-display: swap; src: url('./cinzel/cinzel-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: Cinzel; font-style: normal; font-weight: 900; font-display: swap; src: url('./cinzel/cinzel-latin-900-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Cinzel Decorative'; font-style: normal; font-weight: 700; font-display: swap; src: url('./cinzel-decorative/cinzel-decorative-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Big Shoulders Display'; font-style: normal; font-weight: 900; font-display: swap; src: url('./big-shoulders-display/big-shoulders-display-latin-900-normal.woff2') format('woff2'); }
+@font-face { font-family: Oswald; font-style: normal; font-weight: 700; font-display: swap; src: url('./oswald/oswald-latin-700-normal.woff2') format('woff2'); }
