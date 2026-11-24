@@ -32,3 +32,6 @@
 .bskin-gallery__frame--tv iframe { width: 1920px; height: 1080px; transform: scale(0.4); }
 .bskin-gallery__frame--phone { width: 234px; height: 506.4px; }
 .bskin-gallery__frame--phone iframe { width: 390px; height: 844px; transform: scale(0.6); }
+
+/* Review frames get no pointer, so the TV idle dim would fade the headline. Keep it lit here only. */
+main.tournament.bskin-preview.play--idle .tournament__bar { opacity: 1 !important; }
