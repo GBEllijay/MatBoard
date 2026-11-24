@@ -64,26 +64,12 @@ const higher = (host: HTMLElement) =>
   [...host.querySelectorAll('[data-higher-tiers] [data-tier]')].map((n) => n.getAttribute('data-tier'));
 const ALPHA = /In alpha testing\. Email advantageappLLC@gmail\.com for a free alpha code\./;
 
-test('/buy: White checkout stays; other products are Student, Media, Instructor, Pro in ladder colors', () => {
+test('/buy: White checkout stays; other products are hidden until they are for sale', () => {
   const m = mount('/buy');
-  assert.deepEqual(higher(m.host), ['student', 'media', 'instructor', 'pro']);
-  const belts = [...m.host.querySelectorAll('[data-higher-tiers] [data-tier] .belt-tip')].map((n) => n.getAttribute('data-belt'));
-  assert.deepEqual(belts, ['blue', 'purple', 'brown', 'black']);
-  const text = [...m.host.querySelectorAll('[data-higher-tiers] [data-tier]')].map((n) => n.textContent ?? '');
-  assert.match(text[0], /\$19\.99/);
-  assert.match(text[1], /Advantage Media Edition[\s\S]*\$29\.99/);
-  assert.match(text[2], /Advantage Instructor Edition[\s\S]*\$49\.99/);
-  assert.match(text[3], /Advantage Pro[\s\S]*\$99\.99/);
-  assert.doesNotMatch(text[3], /\$99\.99 \+ \$5\.99/);
-  assert.doesNotMatch(m.host.textContent ?? '', /Advantage Coach/);
-  const links = [...m.host.querySelectorAll('[data-higher-tiers] a.buy__more')].map((a) => a.getAttribute('href'));
-  assert.deepEqual(links, ['/editions/student', '/media', '/editions/instructor', '/editions/pro']);
-  const cloud = m.host.querySelector('[data-tier="pro-cloud"]');
-  assert.equal(cloud?.querySelector('.buy__kicker')?.textContent, 'This product is in alpha');
-  assert.match(cloud?.textContent ?? '', /Advantage Pro \+ Cloud/);
-  assert.equal(cloud?.querySelector('a.buy__more')?.getAttribute('href'), '/editions/pro-cloud');
-  assert.equal(m.host.querySelector('[data-higher-tiers] [data-tier="pro-cloud"]'), null);
-  assert.equal(cloud?.querySelector('form, button'), null);
+  assert.deepEqual(higher(m.host), []);
+  assert.equal(m.host.querySelector('[data-higher-tiers]'), null);
+  assert.equal(m.host.querySelector('[data-tier="pro-cloud"]'), null);
+  assert.doesNotMatch(m.host.textContent ?? '', /Advantage (Media Edition|Instructor Edition|Pro|Coach)/);
   // White checkout stays. Restore is still a button to /restore. The email sits with the code.
   assert.ok([...m.host.querySelectorAll('button')].some((b) => /checkout/i.test(b.textContent ?? '')));
   const restore = m.host.querySelector('.buy__restore');

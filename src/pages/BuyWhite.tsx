@@ -29,6 +29,9 @@ import {
 } from '../lib/whitePurchase';
 import { rememberWhitePurchase, restoreHref } from '../lib/whiteUnlock';
 
+/** Owner 2026-11-23: hide Student, Media, Instructor, Pro and Pro + Cloud on /buy until they are for sale. */
+const SHOW_OTHER_PRODUCTS = false;
+
 /** The /buy restore panel. The email and the person check live on /restore. */
 export const BUY_RESTORE_COPY =
   'Already purchased? Enter the email from checkout. If it matches the purchase, we will email a one-time code.';
@@ -308,6 +311,9 @@ export function BuyWhitePage() {
             </section>
           )}
 
+          {/* Owner 2026-11-23: White is the only product for sale, so the other products stay hidden. */}
+          {SHOW_OTHER_PRODUCTS ? (
+            <>
           {/* Higher tiers in ladder order: Student, Media, Instructor Edition, Pro. */}
           <HigherTierList
             from="white"
@@ -336,6 +342,8 @@ export function BuyWhitePage() {
             }}
           />
           <ProCloudBuyCard />
+            </>
+          ) : null}
         </article>
         <SiteFooter />
       </div>
