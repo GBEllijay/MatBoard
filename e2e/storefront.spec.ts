@@ -85,6 +85,7 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(page.getByRole('link', { name: 'Request to join alpha' })).toHaveCount(0);
   await expect(page.getByText('Coming soon to the App Store', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Coming soon to the App Store' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Open my apps' })).toHaveCount(0);
   const testers = page.getByRole('contentinfo').getByRole('link', { name: 'Alpha testers' });
   await expect(testers).toHaveAttribute('href', '/products');
   await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Privacy Policy' })).toBeVisible();
