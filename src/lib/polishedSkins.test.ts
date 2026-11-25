@@ -5,6 +5,8 @@ import {
   POLISHED_TIMER_SKINS,
   polishedSkinAccessFromDoors,
   polishedSkinsUnlocked,
+  resolvePolishedSkinId,
+  resolvePolishedTimerSlug,
 } from './polishedSkins.ts';
 import { mediaConsoleDoorOpen } from './productNames.ts';
 import {
@@ -47,7 +49,7 @@ import {
   visionaryTimerTitle,
 } from '../skins/polished/timerText.ts';
 import { metalTimerTitle } from '../skins/polished/heavyMetal.ts';
-import { brasilRing, keynoteRing, lerpHex } from '../skins/polished/ring.ts';
+import { brasilRing, stageRing, lerpHex } from '../skins/polished/ring.ts';
 import { fitNameBox } from '../skins/polished/fitNames.ts';
 import { arcadePipCount, posterBoardState, posterTimerTitle } from '../skins/polished/posterSkins.ts';
 import { createHash } from 'node:crypto';
@@ -82,11 +84,11 @@ const PRODUCTS = [
 test('the nine polished families in picker order; Calçadão is a timer-only option after Brasil', () => {
   assert.deepEqual(
     POLISHED_SKINS.map((s) => s.label),
-    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime', 'Dungeon Quest', 'Mech Battle', 'Arcade Fighter'],
+    ['Kids Arcade', 'Kids Sticker', 'Stage', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime', 'Dungeon Quest', 'Mech Battle', 'Arcade Fighter'],
   );
   assert.deepEqual(
     POLISHED_TIMER_SKINS.map((s) => s.label),
-    ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Calçadão', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime', 'Dungeon Quest', 'Mech Battle', 'Arcade Fighter'],
+    ['Kids Arcade', 'Kids Sticker', 'Stage', 'Heavy Metal', 'Brasil', 'Calçadão', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime', 'Dungeon Quest', 'Mech Battle', 'Arcade Fighter'],
   );
   assert.equal(parseScoreboardSkin('calcadao'), DEFAULT_SCOREBOARD_SKIN, 'no Calçadão scoreboard');
   assert.equal(parseScoreboardSkin('CALCADAO'), DEFAULT_SCOREBOARD_SKIN, 'no Calçadão scoreboard');
@@ -188,8 +190,8 @@ test('signed passes on this browser: White and Student locked, Media and Pro unl
     assert.equal(browserGate(), open, name);
     // Fallback: a saved polished pick paints the default skin while locked.
     assert.equal(
-      visibleScoreboardSkin(SCOREBOARD_SKIN.KEYNOTE, true, false, false, browserGate()),
-      open ? SCOREBOARD_SKIN.KEYNOTE : DEFAULT_SCOREBOARD_SKIN,
+      visibleScoreboardSkin(SCOREBOARD_SKIN.STAGE, true, false, false, browserGate()),
+      open ? SCOREBOARD_SKIN.STAGE : DEFAULT_SCOREBOARD_SKIN,
       `${name} scoreboard`,
     );
     assert.equal(visibleTrainingSkin('reggae', browserGate()), open ? 'reggae' : 'classic', `${name} timer`);
@@ -263,11 +265,11 @@ test('timer progress --p is the remaining share, clamped 0..1', () => {
   assert.equal(timerProgress(10, 0), 0);
 });
 
-test('Keynote and Brasil rings follow the live screen size', () => {
+test('Stage and Brasil rings follow the live screen size', () => {
   const box = (svg: string) => (/viewBox="([^"]+)"/.exec(svg)?.[1] ?? '').split(' ').map(Number);
-  // Keynote: 84% x 76% of the screen; Brasil: 68% + 22 x 58% + 22.
-  assert.deepEqual(box(keynoteRing(1280, 600, 0.5, false)), [0, 0, 1075.2, 456]);
-  assert.deepEqual(box(keynoteRing(390, 844, 0.5, true)).map((n) => Math.round(n)), [0, 0, 328, 641]);
+  // Stage: 84% x 76% of the screen; Brasil: 68% + 22 x 58% + 22.
+  assert.deepEqual(box(stageRing(1280, 600, 0.5, false)), [0, 0, 1075.2, 456]);
+  assert.deepEqual(box(stageRing(390, 844, 0.5, true)).map((n) => Math.round(n)), [0, 0, 328, 641]);
   assert.deepEqual(box(brasilRing(1280, 600, 0.25)).map((n) => Math.round(n)), [0, 0, 892, 370]);
   assert.equal(lerpHex([[0, '#000000'], [1, '#ffffff']], 0.5).toLowerCase(), '#808080');
 });
@@ -335,7 +337,7 @@ test('poster skins are registered once, on both boards, and the gate still hides
   assert.equal(posterTimerTitle('dungeon-quest', true, 1), 'Short Rest');
   assert.equal(posterTimerTitle('dungeon-quest', false, 2), 'Round 2');
   assert.equal(posterTimerTitle('mech-battle', true, 1), 'Cooldown');
-  assert.equal(posterTimerTitle('arcade-fighter', false, 1), 'FIGHT!');
+  assert.equal(posterTimerTitle('arcade-fighter', false, 1), 'COMBATE!');
   assert.equal(posterTimerTitle('arcade-fighter', true, 1), 'CATCH YOUR BREATH');
   assert.equal(arcadePipCount('Round 3'), 3);
   assert.equal(arcadePipCount('Final'), null);
@@ -395,9 +397,12 @@ test('poster header keeps the round at full size and only ellipsizes the divisio
   assert.match(css, /\.hdr \.mat\s*\{[^}]*min-width:\s*max-content/);
   const fit = await readFile(new URL('../skins/polished/poster-fit.css', import.meta.url), 'utf8');
   assert.match(fit, /max-width:\s*820px[\s\S]*\.phase-endless\s*\{\s*display:\s*none/);
-  const keynote = await readFile(new URL('../skins/polished/keynote.css', import.meta.url), 'utf8');
+  const stageCss = await readFile(new URL('../skins/polished/stage.css', import.meta.url), 'utf8');
   const brasil = await readFile(new URL('../skins/polished/brasil.css', import.meta.url), 'utf8');
-  assert.equal(keynote.includes('phase-endless'), false);
+  assert.equal(stageCss.includes('phase-endless'), false);
+  for (const apple of ['#0A84FF', '#30D158', '#FF453A', '#F5F5F7', '#A1A1A6', '#6E6E73', '#64D2FF', '#FF9F0A', '#5E5CE6']) {
+    assert.equal(stageCss.toUpperCase().includes(apple), false, apple);
+  }
   assert.equal(brasil.includes('trail'), false);
   assert.match(css, /skin-root--arcade \.sb[\s\S]*grid-row:\s*1/);
   const dungeon = await readFile(new URL('../skins/polished/dungeon-quest.css', import.meta.url), 'utf8');
@@ -444,8 +449,21 @@ test('poster tiles show PTS / ADV / PEN below 480px; full labels and accessible 
   assert.match(phone, /\.lab \.lab-full\s*\{\s*display:\s*none/);
   assert.match(phone, /\.lab \.lab-tiny\s*\{\s*display:\s*inline/);
   assert.match(phone, /font-size:\s*clamp\(9px,/);
-  for (const other of ['keynote.css', 'brasil.css']) {
+  for (const other of ['stage.css', 'brasil.css']) {
     const css = await readFile(new URL(`../skins/polished/${other}`, import.meta.url), 'utf8');
     assert.equal(css.includes('lab-tiny'), false, `${other} untouched`);
   }
+});
+
+test('Saved Keynote picks resolve to Stage', () => {
+  assert.equal(resolvePolishedSkinId('KEYNOTE'), 'STAGE');
+  assert.equal(resolvePolishedSkinId('STAGE'), 'STAGE');
+  assert.equal(resolvePolishedSkinId('BRASIL'), 'BRASIL');
+  assert.equal(resolvePolishedSkinId('nope'), null);
+  assert.equal(resolvePolishedTimerSlug('keynote'), 'stage');
+  assert.equal(resolvePolishedTimerSlug('stage'), 'stage');
+  assert.equal(resolvePolishedTimerSlug('calcadao'), 'calcadao');
+  assert.equal(resolvePolishedTimerSlug('nope'), null);
+  assert.equal(parseScoreboardSkin('KEYNOTE'), SCOREBOARD_SKIN.STAGE);
+  assert.equal(parseScoreboardSkin('STAGE'), SCOREBOARD_SKIN.STAGE);
 });

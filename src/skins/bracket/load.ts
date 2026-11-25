@@ -5,7 +5,7 @@ import { loadPolishedSkin } from '../polished/load.ts';
 const SKIN_CSS: Record<PolishedTimerSlug, () => Promise<unknown>> = {
   'kids-arcade': () => import('./skins/kids-arcade.css'),
   'kids-sticker': () => import('./skins/kids-sticker.css'),
-  keynote: () => import('./skins/keynote.css'),
+  stage: () => import('./skins/stage.css'),
   'heavy-metal': () => import('./skins/heavy-metal.css'),
   brasil: () => import('./skins/brasil.css'),
   calcadao: () => import('./skins/calcadao.css'),

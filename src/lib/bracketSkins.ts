@@ -33,7 +33,7 @@ export const BRACKET_SKIN_FLAVOR: Record<PolishedTimerSlug, BracketSkinFlavor> =
   'creature-anime': F(false, true, true, true),
   'heavy-metal': F(true, true, false),
   'idol-hunters': F(true, true, true),
-  keynote: F(true, false, false),
+  stage: F(true, false, false),
   'kids-arcade': F(true, false, false),
   'kids-sticker': F(true, false, false),
   psychedelic: F(true, false, false),

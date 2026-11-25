@@ -30,7 +30,7 @@ function eight(): SampleBracket {
     'qf-0': { id: 'qf-0', done: true, a: won('David', 1), b: lost('Nathan', 8) },
     'qf-1': { id: 'qf-1', done: true, a: won('Beth', 4), b: lost('Matthew', 5) },
     'qf-2': { id: 'qf-2', done: true, a: won('Jon', 2), b: lost('Shaun', 7) },
-    'qf-3': { id: 'qf-3', live: true, a: open('Anna', 3), b: open('Ken', 6) },
+    'qf-3': { id: 'qf-3', live: true, a: open('Anna', 3), b: open('Milo', 6) },
     'sf-0': { id: 'sf-0', a: open('David'), b: open('Beth') },
     'sf-1': { id: 'sf-1', a: open('Jon'), b: open() },
     'final-0': { id: 'final-0', a: open(), b: open() },

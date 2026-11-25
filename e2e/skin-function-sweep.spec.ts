@@ -26,7 +26,7 @@ const TIMER_SKINS = [
   ['themed', 'Advantage'],
   ['kids-arcade', 'Kids Arcade'],
   ['kids-sticker', 'Kids Sticker'],
-  ['keynote', 'Keynote'],
+  ['stage', 'Stage'],
   ['heavy-metal', 'Heavy Metal'],
   ['brasil', 'Brasil'],
   ['calcadao', 'Calçadão'],
@@ -49,7 +49,7 @@ const BOARD_SKINS = [
   ['QUICK_RESULT', 'Quick Result', true],
   ['KIDS_ARCADE', 'Kids Arcade', false],
   ['KIDS_STICKER', 'Kids Sticker', false],
-  ['KEYNOTE', 'Keynote', false],
+  ['STAGE', 'Stage', false],
   ['HEAVY_METAL', 'Heavy Metal', false],
   ['BRASIL', 'Brasil', false],
   ['WOODBLOCK', 'Woodblock', false],
@@ -377,7 +377,7 @@ for (const [vpName, viewport] of VIEWPORTS) {
 
     test(`scoreboard controller · ${label} · ${vpName}: pick the skin, +1/−1 for both athletes, clock, nudges, resets, presets, sounds`, async ({ browser }) => {
       const page = await phone(browser, viewport, {
-        'matboard.match.v1': JSON.stringify(matchState(skin === 'MOCK_TOURNAMENT' ? 'KEYNOTE' : 'MOCK_TOURNAMENT')),
+        'matboard.match.v1': JSON.stringify(matchState(skin === 'MOCK_TOURNAMENT' ? 'STAGE' : 'MOCK_TOURNAMENT')),
       });
       await page.goto(`/match/control${q}`);
       await page.getByRole('button', { name: /^Skins, / }).first().click();

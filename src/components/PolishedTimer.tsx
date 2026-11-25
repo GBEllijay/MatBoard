@@ -3,7 +3,7 @@ import { HoldButton } from './HoldButton';
 import { usePolishedSkinModule, useViewportSize } from '../hooks/usePolishedSkins';
 import { formatMmSs, formatMss } from '../lib/format';
 import type { PolishedTimerSlug } from '../lib/polishedSkins';
-import { brasilRing, keynoteRing } from '../skins/polished/ring';
+import { brasilRing, stageRing } from '../skins/polished/ring';
 import { METAL_METER_SEGMENTS, metalMeterLit, metalPhaseParts, metalTimerTitle } from '../skins/polished/heavyMetal';
 import { isPosterSkin, posterSplitsNums, posterTimerTitle } from '../skins/polished/posterSkins';
 import { psychedelicTimerTitle, reggaeTimerTitle, timerNextLine, timerProgress, visionaryTimerTitle } from '../skins/polished/timerText';
@@ -155,10 +155,10 @@ export function PolishedTimer({
       );
       break;
     }
-    case 'keynote':
+    case 'stage':
       inner = (
         <>
-          <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: keynoteRing(view.w, view.h, ringP, rest) }} />
+          <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: stageRing(view.w, view.h, ringP, rest) }} />
           {clockBtn(digits)}
           <div className="sub">{next.split(' · ').join('\u00a0\u00a0·\u00a0\u00a0')}</div>
         </>

@@ -267,7 +267,7 @@ export function PolishedScoreboard({
             </div>
           ) : null}
           {poster && spec?.bandDeco ? <span style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: spec.bandDeco }} /> : null}
-          {arcade ? <b className="vs">VS</b> : null}
+          {arcade ? <b className="vs">MATCH</b> : null}
           <span className="state">{stateLabel}</span>
           {pips != null ? (
             <span className="pips" aria-hidden="true">

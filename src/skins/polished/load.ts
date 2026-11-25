@@ -21,7 +21,7 @@ export type PolishedSkinModule = {
 const LOADERS: Record<PolishedTimerSlug, () => Promise<PolishedSkinModule>> = {
   'kids-arcade': () => import('./kids-arcade.ts'),
   'kids-sticker': () => import('./kids-sticker.ts'),
-  keynote: () => import('./keynote.ts'),
+  stage: () => import('./stage.ts'),
   'heavy-metal': () => import('./heavy-metal.ts'),
   brasil: () => import('./brasil.ts'),
   woodblock: () => import('./woodblock.ts'),

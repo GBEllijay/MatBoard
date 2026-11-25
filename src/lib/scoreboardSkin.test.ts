@@ -40,7 +40,6 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
     'HEAVY_METAL',
     'HIGH_CONTRAST_DAYLIGHT',
     'IDOL_HUNTERS',
-    'KEYNOTE',
     'KIDS',
     'KIDS_ARCADE',
     'KIDS_STICKER',
@@ -53,6 +52,7 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
     'REGGAE',
     'SHINOBI_ANIME',
     'SPLIT_FLAP_PRO',
+    'STAGE',
     'VISIONARY',
     'WOODBLOCK',
   ]);
@@ -75,6 +75,8 @@ test('Mock-Tournament Skin is the default Match scoreboard', () => {
   assert.equal(parseScoreboardSkin('QUICK_RESULT'), SCOREBOARD_SKIN.QUICK_RESULT);
   assert.equal(parseScoreboardSkin('LIGHT'), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
   assert.equal(parseScoreboardSkin(undefined), SCOREBOARD_SKIN.MOCK_TOURNAMENT);
+  assert.equal(parseScoreboardSkin('STAGE'), SCOREBOARD_SKIN.STAGE);
+  assert.equal(parseScoreboardSkin('KEYNOTE'), SCOREBOARD_SKIN.STAGE);
   assert.deepEqual(flapDigits(4, 2), ['0', '4']);
   assert.deepEqual(flapDigits(12, 2), ['1', '2']);
   assert.deepEqual(flapDigits(3, 1), ['3']);

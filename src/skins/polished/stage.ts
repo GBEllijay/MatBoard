@@ -5,5 +5,5 @@ import '@fontsource/inter/latin-700.css';
 import '@fontsource/inter/latin-800.css';
 import '@fontsource/inter/latin-900.css';
 import './skin-root.css';
-import './keynote.css';
-export * from './keynote.deco.ts';
+import './stage.css';
+export * from './stage.deco.ts';

@@ -14,7 +14,7 @@
 
 import { isCustomSkinId } from './customSkin.ts';
 import { SUITE_FROM, UNLIMITED_FROM, WHITE_BOARD_FROM, withHubFrom } from './productNames.ts';
-import { POLISHED_SKINS, isPolishedSkinId, type PolishedSkinSlug } from './polishedSkins.ts';
+import { POLISHED_SKINS, isPolishedSkinId, resolvePolishedSkinId, type PolishedSkinSlug } from './polishedSkins.ts';
 
 /**
  * Old School matches the owner's tabletop flip boards: large points cards,
@@ -41,7 +41,7 @@ export const SCOREBOARD_SKIN = {
   /** Polished skins (polishedSkins.ts). Media Edition and above only. */
   KIDS_ARCADE: 'KIDS_ARCADE',
   KIDS_STICKER: 'KIDS_STICKER',
-  KEYNOTE: 'KEYNOTE',
+  STAGE: 'STAGE',
   HEAVY_METAL: 'HEAVY_METAL',
   BRASIL: 'BRASIL',
   WOODBLOCK: 'WOODBLOCK',
@@ -112,7 +112,7 @@ const SKIN_CLASS: Record<ScoreboardSkinId, string> = {
   /* Polished skins paint their own board on the display. The controller keeps the default look. */
   [SCOREBOARD_SKIN.KIDS_ARCADE]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.KIDS_STICKER]: 'scoreboard-skin--mock-tournament',
-  [SCOREBOARD_SKIN.KEYNOTE]: 'scoreboard-skin--mock-tournament',
+  [SCOREBOARD_SKIN.STAGE]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.HEAVY_METAL]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.BRASIL]: 'scoreboard-skin--mock-tournament',
   [SCOREBOARD_SKIN.WOODBLOCK]: 'scoreboard-skin--mock-tournament',
@@ -180,7 +180,7 @@ export function isSelectableScoreboardSkin(value: unknown): value is ScoreboardS
 export function parseScoreboardSkin(value: unknown): StoredScoreboardSkin {
   if (isCustomSkinId(value)) return value;
   if (isSelectableScoreboardSkin(value)) return value;
-  return isPolishedSkinId(value) ? value : DEFAULT_SCOREBOARD_SKIN;
+  return resolvePolishedSkinId(value) ?? DEFAULT_SCOREBOARD_SKIN;
 }
 
 /**
