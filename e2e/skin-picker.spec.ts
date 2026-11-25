@@ -10,7 +10,7 @@ import { IMPLIED_DOORS } from '../src/lib/tierImplications';
  * on suite scoreboards). With Media one Skins button replaces those toggles in the same spot.
  */
 
-const POLISHED = ['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime', 'Dungeon Quest', 'Mech Battle', 'Arcade Fighter'];
+const POLISHED = ['Kids Arcade', 'Kids Sticker', 'Stage', 'Heavy Metal', 'Brasil', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary', 'Creature Anime', 'Idol Hunters', 'Shinobi Anime', 'Dungeon Quest', 'Mech Battle', 'Arcade Fighter'];
 const POLISHED_TIMER = [...POLISHED.slice(0, 5), 'Calçadão', ...POLISHED.slice(5)];
 
 function matchState(skin = 'MOCK_TOURNAMENT') {
@@ -188,19 +188,19 @@ for (const tier of ['pro'] as const) {
     await expect(dialog.getByRole('radio')).toHaveText(['Mock-Tournament', ...POLISHED]);
     await expect(dialog.getByRole('radio', { name: 'Mock-Tournament' })).toHaveAttribute('aria-checked', 'true');
     await expect(dialog.getByRole('link')).toHaveCount(0);
-    await dialog.getByRole('radio', { name: 'Keynote' }).click();
+    await dialog.getByRole('radio', { name: 'Stage' }).click();
     await expect(dialog).toHaveCount(0);
-    expect(await savedMatchSkin(page)).toBe('KEYNOTE');
+    expect(await savedMatchSkin(page)).toBe('STAGE');
 
     await page.reload();
-    await page.getByRole('button', { name: 'Skins, Keynote' }).click();
-    await expect(page.getByRole('dialog', { name: 'Scoreboard skins' }).getByRole('radio', { name: 'Keynote' })).toHaveAttribute(
+    await page.getByRole('button', { name: 'Skins, Stage' }).click();
+    await expect(page.getByRole('dialog', { name: 'Scoreboard skins' }).getByRole('radio', { name: 'Stage' })).toHaveAttribute(
       'aria-checked',
       'true',
     );
 
     await page.goto('/match');
-    await expect(page.locator('.skin-root[data-skin="keynote"]')).toBeVisible();
+    await expect(page.locator('.skin-root[data-skin="stage"]')).toBeVisible();
   });
 }
 

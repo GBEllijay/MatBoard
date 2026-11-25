@@ -9,7 +9,7 @@
  */
 
 import { isCustomSkinId } from './customSkin.ts';
-import { POLISHED_TIMER_SKINS, isPolishedTimerSlug, type PolishedTimerSlug } from './polishedSkins.ts';
+import { POLISHED_TIMER_SKINS, isPolishedTimerSlug, resolvePolishedTimerSlug, type PolishedTimerSlug } from './polishedSkins.ts';
 
 /** White-tier round timer skins. */
 export const WHITE_TIMER_SKINS = [
@@ -47,6 +47,17 @@ function isSkin(value: string | null): value is TrainingSkin {
 function readSkin(): TrainingSkin {
   try {
     const raw = localStorage.getItem(TRAINING_SKIN_KEY);
+    const resolved = resolvePolishedTimerSlug(raw);
+    if (resolved) {
+      if (raw !== resolved) {
+        try {
+          localStorage.setItem(TRAINING_SKIN_KEY, resolved);
+        } catch {
+          /* ignore quota / private mode */
+        }
+      }
+      return resolved;
+    }
     return isSkin(raw) ? raw : DEFAULT_TRAINING_SKIN;
   } catch {
     return DEFAULT_TRAINING_SKIN;

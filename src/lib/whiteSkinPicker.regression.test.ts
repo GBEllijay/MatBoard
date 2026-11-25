@@ -112,8 +112,8 @@ test('White paints Old School and Quick Result, and a hidden skin falls back to 
     SCOREBOARD_SKIN.QUICK_RESULT,
   );
   assert.equal(
-    visibleScoreboardSkin(SCOREBOARD_SKIN.KEYNOTE, false, false, false, false, true),
-    SCOREBOARD_SKIN.KEYNOTE,
+    visibleScoreboardSkin(SCOREBOARD_SKIN.STAGE, false, false, false, false, true),
+    SCOREBOARD_SKIN.STAGE,
   );
   assert.equal(visibleTrainingSkin('OLD_SCHOOL', false, true), 'OLD_SCHOOL');
   assert.equal(visibleTrainingSkin('QUICK_RESULT', false, true), 'QUICK_RESULT');

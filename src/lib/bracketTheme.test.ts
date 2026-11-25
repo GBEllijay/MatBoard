@@ -105,3 +105,9 @@ test('A stored bracket skin persists and paints only when polished skins are ope
   assert.equal(visibleBracketTheme('mech-battle', { plainCoach: true, polishedSkins: true }), 'bright');
   setBracketTheme('bright');
 });
+
+test('Saved keynote bracket theme maps to Stage and rewrites the stored slug', () => {
+  localStorage.setItem(BRACKET_THEME_KEY, 'keynote');
+  assert.equal(getBracketTheme(), 'stage');
+  assert.equal(localStorage.getItem(BRACKET_THEME_KEY), 'stage');
+});

@@ -354,7 +354,7 @@ main.tournament.tournament--skin .t-match--final .t-match__bouts {
 }
 
 main.tournament.tournament--skin.bskin-arcade-fighter .t-match--final .t-match__bouts::before {
-  content: 'VS';
+  content: 'MATCH';
   order: 1;
   display: block;
   text-align: center;

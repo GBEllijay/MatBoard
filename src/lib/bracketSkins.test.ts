@@ -26,7 +26,7 @@ const previewCss = readFileSync(new URL('../preview/bracketSkins/bracketSkinsPre
 const previewTsx = readFileSync(new URL('../preview/bracketSkins/BracketSkinsPreview.tsx', import.meta.url), 'utf8');
 
 const APPROVED = [
-  'brasil', 'calcadao', 'creature-anime', 'heavy-metal', 'idol-hunters', 'keynote', 'kids-arcade', 'kids-sticker',
+  'brasil', 'calcadao', 'creature-anime', 'heavy-metal', 'idol-hunters', 'stage', 'kids-arcade', 'kids-sticker',
   'psychedelic', 'reggae', 'shinobi-anime', 'visionary', 'woodblock', 'dungeon-quest', 'mech-battle', 'arcade-fighter',
 ];
 

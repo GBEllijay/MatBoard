@@ -77,7 +77,7 @@ const COMING_ANIME = ['Coming anime 1', 'Coming anime 2', 'Coming anime 3', 'Com
 const MEDIA_TIMER: SkinPickerOption[] = [
   { id: 'classic', label: 'Classic', thumb: '/t/classic.jpg' },
   { id: 'themed', label: 'Advantage', thumb: '/t/advantage.jpg' },
-  ...['Kids Arcade', 'Kids Sticker', 'Keynote', 'Heavy Metal', 'Brasil', 'Calçadão', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary'].map(
+  ...['Kids Arcade', 'Kids Sticker', 'Stage', 'Heavy Metal', 'Brasil', 'Calçadão', 'Woodblock', 'Reggae', 'Psychedelic', 'Visionary'].map(
     (label) => ({ id: label.toLowerCase().replace('ç', 'c'), label, thumb: '/t/x.jpg' }),
   ),
 ];

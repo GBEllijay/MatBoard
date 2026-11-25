@@ -14,8 +14,8 @@ import arcadeSb from './polished/thumbs/kids-arcade-scoreboard.jpg';
 import arcadeTm from './polished/thumbs/kids-arcade-timer.jpg';
 import stickerSb from './polished/thumbs/kids-sticker-scoreboard.jpg';
 import stickerTm from './polished/thumbs/kids-sticker-timer.jpg';
-import keynoteSb from './polished/thumbs/keynote-scoreboard.jpg';
-import keynoteTm from './polished/thumbs/keynote-timer.jpg';
+import stageSb from './polished/thumbs/stage-scoreboard.jpg';
+import stageTm from './polished/thumbs/stage-timer.jpg';
 import metalSb from './polished/thumbs/heavy-metal-scoreboard.jpg';
 import metalTm from './polished/thumbs/heavy-metal-timer.jpg';
 import brasilSb from './polished/thumbs/brasil-scoreboard.jpg';
@@ -60,7 +60,7 @@ export const EXISTING_SKIN_THUMBS = {
 const POLISHED: Record<PolishedTimerSlug, { scoreboard: string; timer: string }> = {
   'kids-arcade': { scoreboard: arcadeSb, timer: arcadeTm },
   'kids-sticker': { scoreboard: stickerSb, timer: stickerTm },
-  keynote: { scoreboard: keynoteSb, timer: keynoteTm },
+  stage: { scoreboard: stageSb, timer: stageTm },
   'heavy-metal': { scoreboard: metalSb, timer: metalTm },
   brasil: { scoreboard: brasilSb, timer: brasilTm },
   woodblock: { scoreboard: woodSb, timer: woodTm },

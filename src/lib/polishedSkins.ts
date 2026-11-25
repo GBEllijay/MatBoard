@@ -1,6 +1,6 @@
 /**
  * Polished skins for the match scoreboard and the round timer.
- * Families from the owner's polished mock: Kids Arcade, Kids Sticker, Keynote,
+ * Families from the owner's polished mock: Kids Arcade, Kids Sticker, Stage,
  * Heavy Metal ("up to 11"), Brasil (plus the timer-only Calçadão variant), Woodblock,
  * Reggae, Psychedelic, Visionary, then Creature Anime, Idol Hunters, and Shinobi Anime.
  *
@@ -19,7 +19,7 @@ import { mediaConsoleDoorOpen, type ProSurfaceInput } from './productNames.ts';
 export const POLISHED_SKINS = [
   { slug: 'kids-arcade', id: 'KIDS_ARCADE', label: 'Kids Arcade' },
   { slug: 'kids-sticker', id: 'KIDS_STICKER', label: 'Kids Sticker' },
-  { slug: 'keynote', id: 'KEYNOTE', label: 'Keynote' },
+  { slug: 'stage', id: 'STAGE', label: 'Stage' },
   { slug: 'heavy-metal', id: 'HEAVY_METAL', label: 'Heavy Metal' },
   { slug: 'brasil', id: 'BRASIL', label: 'Brasil' },
   { slug: 'woodblock', id: 'WOODBLOCK', label: 'Woodblock' },
@@ -69,6 +69,28 @@ export function polishedSkinById(id: unknown): PolishedSkin | null {
 export function polishedSkinBySlug(slug: unknown): PolishedSkin | null {
   return POLISHED_SKINS.find((skin) => skin.slug === slug) ?? null;
 }
+
+/**
+ * The Stage skin was first shipped as "Keynote". Saved picks that still store
+ * that id or slug keep working and resolve to Stage.
+ */
+export const LEGACY_POLISHED_SKIN_IDS = { KEYNOTE: 'STAGE' } as const;
+export const LEGACY_POLISHED_SKIN_SLUGS = { keynote: 'stage' } as const;
+
+export function resolvePolishedSkinId(value: unknown): PolishedSkinId | null {
+  if (typeof value === 'string' && value in LEGACY_POLISHED_SKIN_IDS) {
+    return LEGACY_POLISHED_SKIN_IDS[value as keyof typeof LEGACY_POLISHED_SKIN_IDS];
+  }
+  return isPolishedSkinId(value) ? value : null;
+}
+
+export function resolvePolishedTimerSlug(value: unknown): PolishedTimerSlug | null {
+  if (typeof value === 'string' && value in LEGACY_POLISHED_SKIN_SLUGS) {
+    return LEGACY_POLISHED_SKIN_SLUGS[value as keyof typeof LEGACY_POLISHED_SKIN_SLUGS];
+  }
+  return isPolishedTimerSlug(value) ? value : null;
+}
+
 
 /**
  * Media Edition and above, read from the one check that gates the /media hub

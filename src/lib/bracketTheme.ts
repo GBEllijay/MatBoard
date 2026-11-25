@@ -1,4 +1,4 @@
-import { POLISHED_TIMER_SKINS, isPolishedTimerSlug, type PolishedTimerSlug } from './polishedSkins.ts';
+import { POLISHED_TIMER_SKINS, isPolishedTimerSlug, resolvePolishedTimerSlug, type PolishedTimerSlug } from './polishedSkins.ts';
 
 /** Mock Tournament look. Stored id stays "bright"; the user-facing name is Advantage. This is the locked Coach-demo default. */
 
@@ -43,6 +43,17 @@ export function isBracketTheme(value: string | null): value is BracketTheme {
 function readTheme(): BracketTheme {
   try {
     const raw = localStorage.getItem(BRACKET_THEME_KEY);
+    const resolved = resolvePolishedTimerSlug(raw);
+    if (resolved) {
+      if (raw !== resolved) {
+        try {
+          localStorage.setItem(BRACKET_THEME_KEY, resolved);
+        } catch {
+          /* ignore quota / private mode */
+        }
+      }
+      return resolved;
+    }
     return isBracketTheme(raw) ? raw : DEFAULT_BRACKET_THEME;
   } catch {
     return DEFAULT_BRACKET_THEME;

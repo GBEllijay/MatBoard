@@ -114,19 +114,19 @@ export function ringSvg({ cls, w, h, r, sw, p, stops, track, dot, glow, n = 140 
   );
 }
 
-export const KEYNOTE_WORK_STOPS: readonly RingStop[] = [
+export const STAGE_WORK_STOPS: readonly RingStop[] = [
   [0, '#4B5BFF'],
-  [0.45, '#0A84FF'],
+  [0.45, '#2B7BE8'],
   [1, '#8BE0FF'],
 ];
-export const KEYNOTE_REST_STOPS: readonly RingStop[] = [
+export const STAGE_REST_STOPS: readonly RingStop[] = [
   [0, '#24A148'],
-  [0.6, '#30D158'],
+  [0.6, '#3CBB6B'],
   [1, '#A8FFC0'],
 ];
 
-/** Keynote: 84vw x 76vh box, r 96, stroke 7, glow, end dot. */
-export function keynoteRing(vw: number, vh: number, p: number, rest: boolean): string {
+/** Stage: 84vw x 76vh box, r 96, stroke 7, glow, end dot. */
+export function stageRing(vw: number, vh: number, p: number, rest: boolean): string {
   return ringSvg({
     cls: 'kring',
     w: vw * 0.84,
@@ -134,7 +134,7 @@ export function keynoteRing(vw: number, vh: number, p: number, rest: boolean): s
     r: 96 * Math.min(1, vh / 600),
     sw: 7,
     p,
-    stops: rest ? KEYNOTE_REST_STOPS : KEYNOTE_WORK_STOPS,
+    stops: rest ? STAGE_REST_STOPS : STAGE_WORK_STOPS,
     track: 'rgba(255,255,255,.07)',
     dot: [7.5, '#FFFFFF', rest ? '#9BFFB4' : '#7FDBFF'],
     glow: [9, 0.75],

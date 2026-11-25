@@ -1,4 +1,4 @@
-/* Arcade cards, VS, and fighters. The page grid lives in poster.css so it wins the shared rows. */
+/* Arcade cards, matchup label, and fighters. The page grid lives in poster.css so it wins the shared rows. */
 
 .skin-root.skin-root--arcade .row {
   display: grid;

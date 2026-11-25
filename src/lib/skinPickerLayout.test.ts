@@ -92,7 +92,7 @@ test('White sees the White Advantage skins plus the polished families, and My sk
       ...POLISHED_TIMER_SKINS.map((skin) => skin.label),
     ],
   );
-  assert.equal(board.some((skin) => skin.label === 'Keynote'), true);
+  assert.equal(board.some((skin) => skin.label === 'Stage'), true);
   assert.equal(timer.some((skin) => skin.polished), true);
   const groups = groupSkinPickerOptions(board.map((skin) => ({ id: skin.id })));
   assert.deepEqual(
@@ -217,7 +217,7 @@ test('the skin stack puts the current skin on top and stays inside the tier list
   );
   const board = scoreboardPickerSkins(true, false, true);
   assert.equal(skinStackFaces(board, SCOREBOARD_SKIN.QUICK_RESULT).at(-1)?.id, SCOREBOARD_SKIN.QUICK_RESULT);
-  assert.equal(skinStackFaces(board, SCOREBOARD_SKIN.QUICK_RESULT).some((skin) => skin.id === 'KEYNOTE'), false);
+  assert.equal(skinStackFaces(board, SCOREBOARD_SKIN.QUICK_RESULT).some((skin) => skin.id === 'STAGE'), false);
 });
 
 test('the Skins tile replaces Preview cues and the separate Skins button', () => {

@@ -1,7 +1,7 @@
 import type { PolishedTimerSlug } from '../../lib/polishedSkins';
 import kidsArcade from './thumbs/kids-arcade.jpg';
 import kidsSticker from './thumbs/kids-sticker.jpg';
-import keynote from './thumbs/keynote.jpg';
+import stage from './thumbs/stage.jpg';
 import heavyMetal from './thumbs/heavy-metal.jpg';
 import brasil from './thumbs/brasil.jpg';
 import calcadao from './thumbs/calcadao.jpg';
@@ -20,7 +20,7 @@ import arcadeFighter from './thumbs/arcade-fighter.jpg';
 export const BRACKET_SKIN_THUMBS: Record<PolishedTimerSlug, string> = {
   'kids-arcade': kidsArcade,
   'kids-sticker': kidsSticker,
-  keynote: keynote,
+  stage: stage,
   'heavy-metal': heavyMetal,
   brasil: brasil,
   calcadao: calcadao,

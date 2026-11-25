@@ -34,7 +34,7 @@ export function posterTimerTitle(slug: PosterSkinSlug, rest: boolean, round: num
   if (slug === 'idol-hunters') return rest ? 'Encore Break' : `Round ${round}`;
   if (slug === 'dungeon-quest') return rest ? 'Short Rest' : `Round ${round}`;
   if (slug === 'mech-battle') return rest ? 'Cooldown' : `Round ${round}`;
-  if (slug === 'arcade-fighter') return rest ? 'CATCH YOUR BREATH' : 'FIGHT!';
+  if (slug === 'arcade-fighter') return rest ? 'CATCH YOUR BREATH' : 'COMBATE!';
   return rest ? 'Rest' : `Round ${round}`;
 }
 

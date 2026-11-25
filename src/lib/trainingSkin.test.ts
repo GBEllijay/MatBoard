@@ -148,3 +148,9 @@ test('New White round timer skins persist, map Work/Break CSS, and expose mode h
   assert.doesNotMatch(phone, /training--wt-mock|training--wt-old|training--classic/);
   setTrainingSkin('classic');
 });
+
+test('Saved keynote timer skin maps to Stage and rewrites the stored slug', () => {
+  localStorage.setItem(TRAINING_SKIN_KEY, 'keynote');
+  assert.equal(getTrainingSkin(), 'stage');
+  assert.equal(localStorage.getItem(TRAINING_SKIN_KEY), 'stage');
+});
