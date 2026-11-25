@@ -24,7 +24,6 @@ import {
   COACH_HOME_DESCRIPTION,
   COACH_UNLIMITED_PATH,
   HOME_MOTTO,
-  PRODUCTS_PATH,
   INSTRUCTOR_DRIVE_REQUIREMENT,
   INSTRUCTOR_HOME_TITLE,
   MEDIA_HOME_DESCRIPTION,
@@ -105,9 +104,9 @@ export function HomePage() {
   return (
     <main className="home home--ladder">
       <div className="home__inner">
-        {/* Top-left goes back one page (Home on a direct visit). Center logo is Home. */}
-        <HistoryBackMark fallback={PRODUCTS_PATH} />
-        <HomeMark to={PRODUCTS_PATH} motto={HOME_MOTTO} tagline="BJJ scoreboard, round timer, and gym tools." />
+        {/* Top-left goes back one page (public home on a direct visit). Center logo is the public home. */}
+        <HistoryBackMark fallback="/" />
+        <HomeMark to="/" motto={HOME_MOTTO} tagline="BJJ scoreboard, round timer, and gym tools." />
 
         {signOutNotice ? (
           <p className="home__hint" role="alert">

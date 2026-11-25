@@ -34,7 +34,7 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(page.getByRole('heading', { name: 'Win by Advantage.', exact: true })).toBeVisible();
   await expect(page.getByText('Your Scoreboard, Round Timer and Mock Tournament Software. Cast to your TV from your phone or PC.')).toBeVisible();
   await expect(page.getByText('05:00', { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Click here' })).toHaveAttribute('href', '/white');
+  await expect(page.getByRole('link', { name: 'Buy Advantage $19.99' })).toHaveAttribute('href', '/buy');
   await expect(page.getByRole('link', { name: 'See how it works ↓' })).toHaveAttribute('href', '#scoreboard');
   await expect(page.getByRole('link', { name: 'Open Student Edition' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Round timer', exact: true })).toBeVisible();
@@ -80,6 +80,10 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(brackets.getByRole('heading', { name: 'Mock tournament', exact: true })).toBeVisible();
   await expect(brackets).toContainText('Build a bracket from your roster');
   await expect(page.getByRole('link', { name: 'Open Mock tournament' })).toHaveAttribute('href', '/white/brackets?from=white');
+  const winBuy = page.getByRole('link', { name: 'Win, Buy Advantage' });
+  await expect(winBuy).toHaveAttribute('href', '/buy');
+  await expect(winBuy).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Buy Advantage $19.99' })).toHaveCount(1);
   await expect(page.getByRole('region', { name: 'Start with White. Grow into Pro.' })).toHaveCount(0);
   await expect(page.locator('.sf-step')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Request to join alpha' })).toHaveCount(0);
@@ -107,13 +111,13 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await page.setViewportSize({ width: 1440, height: 900 });
 });
 
-test('Click here opens White, and the Mock tournament card opens White brackets', async ({ page }) => {
+test('Buy Advantage $19.99 opens /buy, and the Mock tournament card opens White brackets', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
 
-  const buy = page.getByRole('link', { name: 'Click here' });
+  const buy = page.getByRole('link', { name: 'Buy Advantage $19.99' });
   const brackets = page.getByRole('link', { name: 'Open Mock tournament' });
-  await expect(buy).toHaveAttribute('href', '/white');
+  await expect(buy).toHaveAttribute('href', '/buy');
   await expect(brackets).toHaveAttribute('href', '/white/brackets?from=white');
   await expect(page.locator('a.sf-step--white, a.sf-step--student, a.sf-step--coach, a.sf-step--pro')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Start with White. Grow into Pro.', exact: true })).toHaveCount(0);
@@ -140,8 +144,17 @@ test('buy page shows an unlock or promo code field without printing launch codes
   const box = await field.boundingBox();
   expect(box && box.y).toBeLessThan(900);
   await expect(page.getByRole('button', { name: 'Continue to checkout — $19.99' })).toBeVisible();
+  const appStore = page.getByRole('link', { name: 'App Store, coming soon' });
+  const play = page.getByRole('link', { name: 'Google Play, coming soon' });
+  await expect(appStore).toHaveAttribute('href', '#');
+  await expect(appStore).toHaveAttribute('aria-disabled', 'true');
+  await expect(appStore).toContainText('Coming soon');
+  await expect(play).toHaveAttribute('href', '#');
+  await expect(play).toHaveAttribute('aria-disabled', 'true');
+  await expect(play).toContainText('Coming soon');
   const body = await page.locator('body').innerText();
   expect(body).not.toMatch(/WHITE499|WHITE099/i);
+  expect(body).not.toMatch(/apps\.apple\.com|play\.google\.com/i);
   await shot(page, 'buy-code-field');
 });
 

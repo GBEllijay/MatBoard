@@ -141,13 +141,13 @@ test('/products: a claimed Student license opens White and Student, and keeps hi
   page.done();
 });
 
-test('homepage: a claimed Student license still opens White from Click here, with no belt ladder', async () => {
+test('homepage: a claimed Student license still opens /buy from the hero buy button, with no belt ladder', async () => {
   await claim();
   const page = await mount('/', <StorefrontPage />);
   const hero = hrefs(page.host, '.sfh-buy, .sf-buy');
   assert.equal(page.host.querySelector('.sf-step, #progression'), null);
-  assert.ok(hero.includes('/white'));
-  assert.equal(hero.includes('/buy'), false);
+  assert.ok(hero.includes('/buy'));
+  assert.equal(hero.includes('/white'), false);
   assert.doesNotMatch(page.host.textContent ?? '', /Open Student Edition/);
   const how = [...page.host.querySelectorAll('a')].find((link) => link.textContent?.includes('See how it works'));
   assert.equal(how?.getAttribute('href'), '#scoreboard');
