@@ -106,7 +106,7 @@ test('no license: `/` stays on the public homepage and has no Open my apps butto
   done();
 });
 
-test('licensed: `/` stays on the public homepage and shows Open my apps to /products', async () => {
+test('licensed: `/` stays on the public homepage with no Open my apps button', async () => {
   reset();
   setWhiteUnlocked(true);
   const { host, router, done } = await mountRouter(['/'], homeRoutes);
@@ -114,9 +114,10 @@ test('licensed: `/` stays on the public homepage and shows Open my apps to /prod
   assert.equal(router.state.historyAction, 'POP');
   assert.ok(host.querySelector('main.home--store'));
   assert.match(host.textContent ?? '', /Win by Advantage/);
-  const button = openMyApps(host);
-  assert.ok(button, 'Open my apps should appear for a saved unlock');
-  assert.equal(button.getAttribute('href'), PRODUCTS_PATH);
+  assert.equal(openMyApps(host), null);
+  const alpha = [...host.querySelectorAll('a')].find((node) => node.textContent?.trim() === 'Alpha testers');
+  assert.ok(alpha, 'Alpha testers footer link should remain');
+  assert.equal(alpha.getAttribute('href'), PRODUCTS_PATH);
   assert.equal(host.querySelector('[data-home="products"]'), null);
   done();
 });
@@ -145,8 +146,8 @@ test('App.tsx PublicHomeRoute no longer auto-redirects saved access, and still f
   assert.match(src, /return <StorefrontPage \/>;/);
   assert.doesNotMatch(src, /HomeLicenseRedirect/);
   const hero = readFileSync(resolve('src/pages/StorefrontHero.tsx'), 'utf8');
-  assert.match(hero, /Open my apps/);
-  assert.match(hero, /useHasSavedAdvantageAccess/);
+  assert.doesNotMatch(hero, /Open my apps/);
+  assert.doesNotMatch(hero, /useHasSavedAdvantageAccess/);
 });
 
 test('/products home and back stay on /products and never link to `/`', async () => {

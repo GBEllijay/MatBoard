@@ -176,6 +176,16 @@ test('the homepage hero has a plain Coming soon to the App Store line, not a bad
   assert.doesNotMatch(around, /<Link[^>]*>Coming soon to the App Store/);
 });
 
+test('the homepage hero has no Open my apps button; Alpha testers stays in the footer', () => {
+  const hero = readFileSync(new URL('../pages/StorefrontHero.tsx', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../pages/Storefront.tsx', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../pages/storefrontHero.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(hero, /Open my apps/);
+  assert.doesNotMatch(hero, /useHasSavedAdvantageAccess/);
+  assert.doesNotMatch(css, /\.sfh-apps\b/);
+  assert.match(page, /to=\{PRODUCTS_PATH\}>Alpha testers</);
+});
+
 test('the homepage hero has no Student Edition or other edition CTAs, and See how it works scrolls the page', () => {
   const hero = readFileSync(new URL('../pages/StorefrontHero.tsx', import.meta.url), 'utf8');
   const page = readFileSync(new URL('../pages/Storefront.tsx', import.meta.url), 'utf8');

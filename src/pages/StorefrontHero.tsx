@@ -1,6 +1,4 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { useHasSavedAdvantageAccess } from '../hooks/useHasSavedAdvantageAccess';
-import { PRODUCTS_PATH } from '../lib/productNames';
 import { STOREFRONT_HERO } from '../lib/storefront';
 import { heroVariantOf } from '../lib/storefrontHero';
 import './storefrontHero.css';
@@ -35,26 +33,8 @@ function Brand() {
   );
 }
 
-/** Shown only when this browser already has a saved unlock, seat, or student code. */
-function OpenMyApps() {
-  const saved = useHasSavedAdvantageAccess();
-  if (!saved) return null;
-  return (
-    <div className="sfh-apps">
-      <Link className="sf-buy sfh-buy" to={PRODUCTS_PATH}>
-        Open my apps
-      </Link>
-    </div>
-  );
-}
-
 function HeroTop() {
-  return (
-    <>
-      <Brand />
-      <OpenMyApps />
-    </>
-  );
+  return <Brand />;
 }
 
 /** B v2: headline in open space, the one-line lead, no duplicate paragraph. */
