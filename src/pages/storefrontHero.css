@@ -90,7 +90,10 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* The one call to action. White, navy ink. */
+/* The one call to action. White, navy ink.
+   Design Coach: restyle the buy button on .sfh-buy below. Keep current white
+   paint until that pass. .sf-buy in storefront.css currently overrides some
+   of these declarations (weight, radius, shadow, focus) because it loads later. */
 .home.home--store .sfh-cta {
   margin-top: 30px;
 }

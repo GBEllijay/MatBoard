@@ -216,7 +216,7 @@ test('HeaderAccount is hidden on White scoreboard and timer controllers so it ca
 });
 
 test('the products page keeps mid-page Account and Sign out, and gets the pinned header too', () => {
-  assert.match(homePage, /<HistoryBackMark fallback=\{PRODUCTS_PATH\} \/>/);
+  assert.match(homePage, /<HistoryBackMark fallback="\/" \/>/);
   assert.match(homePage, /<AccountLink \/>/);
   assert.match(homePage, /<SignOutButton \/>/);
   assert.doesNotMatch(header, /HIDDEN_PATHS = new Set\(\[[^\]]*\'\/products\'/);

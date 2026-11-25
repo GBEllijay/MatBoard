@@ -19553,6 +19553,38 @@ a.plan-pick {
   width: 100%;
 }
 
+/* Placeholder App Store / Google Play actions under checkout. Not live listings. */
+.buy__stores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.buy__stores .buy__store {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 0;
+  text-align: center;
+  text-decoration: none;
+  opacity: 0.72;
+  cursor: default;
+}
+
+.buy a.buy__store,
+.buy a.buy__store:hover,
+.buy a.buy__store:focus-visible {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+@media (max-width: 520px) {
+  .buy__stores {
+    grid-template-columns: 1fr;
+  }
+}
+
 .buy__status {
   margin: 0;
   padding: 0.85rem 1rem;

@@ -11,9 +11,11 @@ import {
 import { PRODUCTS_PATH } from '../lib/productNames';
 import {
   STOREFRONT_BRACKETS,
+  STOREFRONT_BUY_PATH,
   STOREFRONT_NAV,
   STOREFRONT_POINTS,
   STOREFRONT_TIMER,
+  STOREFRONT_WIN_BUY_LABEL,
   STOREFRONT_WOODBLOCKS,
 } from '../lib/storefront';
 import { StorefrontHero } from './StorefrontHero';
@@ -77,6 +79,16 @@ export function StorefrontPage() {
             <p>{STOREFRONT_BRACKETS.body}</p>
           </Link>
         </section>
+      </div>
+
+      <div className="sf-wrap">
+        <Link
+          className="sf-win-buy"
+          to={STOREFRONT_BUY_PATH}
+          aria-label={STOREFRONT_WIN_BUY_LABEL}
+        >
+          <h2>{STOREFRONT_WIN_BUY_LABEL}</h2>
+        </Link>
       </div>
 
       <footer className="sf-footer">

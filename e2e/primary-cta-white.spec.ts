@@ -64,7 +64,7 @@ test('homepage Buy CTA is white, keeps its link, and stays visible in focus', as
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/');
   const buy = page.locator('a.sf-buy');
-  await expect(buy).toHaveText('Buy Advantage BJJ Scoreboard — $19.99');
+  await expect(buy).toHaveText('Buy Advantage $19.99');
   await expect(buy).toHaveAttribute('href', '/buy');
   const desktop = await paint(buy);
   expectWhitePrimary(desktop, '800');

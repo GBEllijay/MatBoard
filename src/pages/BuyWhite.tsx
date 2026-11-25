@@ -277,6 +277,27 @@ export function BuyWhitePage() {
                     : `Continue to checkout — ${checkoutPriceLabel}`}
               </button>
             ) : null}
+            {/* TODO: Replace these placeholder store actions with the real App Store and Google Play listing URLs when those pages exist. Do not use official badge artwork. */}
+            <div className="buy__stores">
+              <a
+                className="btn btn--ghost buy__store"
+                href="#"
+                aria-disabled="true"
+                aria-label="App Store, coming soon"
+                onClick={(event) => event.preventDefault()}
+              >
+                App Store · Coming soon
+              </a>
+              <a
+                className="btn btn--ghost buy__store"
+                href="#"
+                aria-disabled="true"
+                aria-label="Google Play, coming soon"
+                onClick={(event) => event.preventDefault()}
+              >
+                Google Play · Coming soon
+              </a>
+            </div>
             <p>
               <Link to="/terms">Terms of Service</Link>
               {' · '}

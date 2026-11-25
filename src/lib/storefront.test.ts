@@ -7,6 +7,8 @@ import {
   STOREFRONT_ALPHA_NOTE,
   STOREFRONT_BUY_LABEL,
   STOREFRONT_BUY_PATH,
+  STOREFRONT_HERO_BUY_LABEL,
+  STOREFRONT_WIN_BUY_LABEL,
   STOREFRONT_COMING_SOON,
   STOREFRONT_HERO,
   STOREFRONT_NAV,
@@ -28,6 +30,8 @@ test('storefront sells White once and sends Buy Now to the existing checkout', (
   assert.equal(STOREFRONT_BUY_PATH, '/buy');
   assert.equal(STOREFRONT_BUY_PATH, WHITE_BUY_PATH);
   assert.equal(STOREFRONT_BUY_LABEL, 'Buy Advantage BJJ Scoreboard — $19.99');
+  assert.equal(STOREFRONT_HERO_BUY_LABEL, 'Buy Advantage $19.99');
+  assert.equal(STOREFRONT_WIN_BUY_LABEL, 'Win, Buy Advantage');
   assert.equal(STOREFRONT_HERO.title, 'Win by Advantage.');
   assert.equal(STOREFRONT_HERO.clock, '05:00');
   assert.equal(STOREFRONT_HERO.leadBeforeBreak, 'Your Scoreboard, Round Timer and Mock Tournament Software.');
@@ -197,3 +201,39 @@ test('the homepage hero has no Student Edition or other edition CTAs, and See ho
   assert.match(css, /\.home\.home--store \.sfh-links \{[^}]*justify-content:\s*center/s);
   assert.match(css, /\.home\.home--store \.sfh-more \{[^}]*min-height:\s*44px/s);
 });
+
+test('the homepage hero buy button uses the price constant and opens /buy', () => {
+  const hero = readFileSync(new URL('../pages/StorefrontHero.tsx', import.meta.url), 'utf8');
+  assert.match(hero, /to=\{STOREFRONT_BUY_PATH\}/);
+  assert.match(hero, /STOREFRONT_HERO_BUY_LABEL/);
+  assert.doesNotMatch(hero, /Click here/);
+  assert.doesNotMatch(hero, /to="\/white"/);
+  assert.match(hero, /className="sf-buy sfh-buy"/);
+});
+
+test('the homepage closing card says Win, Buy Advantage and links to the same /buy route', () => {
+  const page = readFileSync(new URL('../pages/Storefront.tsx', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../pages/storefront.css', import.meta.url), 'utf8');
+  const brackets = page.indexOf('id="brackets"');
+  const winBuy = page.indexOf('className="sf-win-buy"');
+  const footer = page.indexOf('className="sf-footer"');
+  assert.ok(brackets > -1 && winBuy > brackets && winBuy < footer, 'card sits below Mock tournament and above the footer');
+  assert.match(page, /className="sf-win-buy"/);
+  assert.match(page, /to=\{STOREFRONT_BUY_PATH\}/);
+  assert.match(page, /aria-label=\{STOREFRONT_WIN_BUY_LABEL\}/);
+  assert.doesNotMatch(page, /STOREFRONT_HERO_BUY_LABEL/);
+  assert.match(css, /\.home\.home--store \.sf-win-buy \{/);
+});
+
+test('the White buy page has clearly marked App Store and Google Play placeholders', () => {
+  const page = readFileSync(new URL('../pages/BuyWhite.tsx', import.meta.url), 'utf8');
+  assert.match(page, /TODO: Replace these placeholder store actions/);
+  assert.match(page, /aria-label="App Store, coming soon"/);
+  assert.match(page, /aria-label="Google Play, coming soon"/);
+  assert.match(page, /App Store · Coming soon/);
+  assert.match(page, /Google Play · Coming soon/);
+  assert.match(page, /href="#"/);
+  assert.match(page, /event\.preventDefault\(\)/);
+  assert.doesNotMatch(page, /apps\.apple\.com|play\.google\.com/i);
+});
+

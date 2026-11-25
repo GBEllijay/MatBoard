@@ -168,10 +168,11 @@ test('/products and the public homepage open White and Student from a claimed li
   assert.match(home, /TIER_BUY_PATHS\.instructor/);
   assert.match(home, /TIER_BUY_PATHS\.pro/);
   assert.doesNotMatch(storefront, /studentHomeEntryPath|useStudentEditionUnlocked|Open Student Edition/);
-  assert.match(hero, /to="\/white"/);
-  assert.match(hero, /Click here/);
+  assert.match(hero, /to=\{STOREFRONT_BUY_PATH\}/);
+  assert.match(hero, /STOREFRONT_HERO_BUY_LABEL/);
   assert.match(hero, /See how it works/);
   assert.doesNotMatch(hero, /Open Student Edition/);
   assert.doesNotMatch(hero, /to="\/student"/);
-  assert.doesNotMatch(hero, /STOREFRONT_BUY_PATH/);
+  assert.doesNotMatch(hero, /Click here/);
+  assert.doesNotMatch(hero, /to="\/white"/);
 });
