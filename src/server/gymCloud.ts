@@ -80,7 +80,7 @@ import {
   parseInstructorLessonPath,
   templateLessonPath,
 } from '../lib/lessonPlanCopies.ts';
-import { laneFromMarkers, mediaKindOf, sortForGallery, type ApprovalLane, type ApprovalSource } from '../lib/approvalLanes.ts';
+import { cloudMimeOf, laneFromMarkers, mediaKindOf, sortForGallery, type ApprovalLane, type ApprovalSource } from '../lib/approvalLanes.ts';
 import {
   DEFAULT_VIDEO_CLEANUP_DAYS,
   MEDIA_DELETE_BATCH_MAX,
@@ -117,6 +117,9 @@ export type GymMediaObject = {
   httpMetadata?: R2HttpMetadata;
 };
 
+/** Ask R2 to return each listed object's Content-Type. */
+export const LIST_WITH_TYPES: ('httpMetadata' | 'customMetadata')[] = ['httpMetadata'];
+
 export type GymMediaBucket = {
   head(key: string): Promise<{ size: number; httpMetadata?: R2HttpMetadata } | null>;
   /** `range` reads part of an object, so a large approval copy never holds the whole file. */
@@ -124,7 +127,11 @@ export type GymMediaBucket = {
   put(key: string, value: ArrayBuffer | Uint8Array, options?: { httpMetadata?: R2HttpMetadata }): Promise<unknown>;
   /** One key, or up to 1,000 keys, matching R2's batch delete. */
   delete(keys: string | string[]): Promise<void>;
-  list(options?: { prefix?: string; cursor?: string; limit?: number }): Promise<{
+  /**
+   * R2 leaves `httpMetadata` (the Content-Type) off listed objects unless it is asked for with `include`.
+   * Every list that reads a type passes `LIST_WITH_TYPES`.
+   */
+  list(options?: { prefix?: string; cursor?: string; limit?: number; include?: ('httpMetadata' | 'customMetadata')[] }): Promise<{
     objects: { key: string; size: number; httpMetadata?: R2HttpMetadata }[];
     truncated: boolean;
     cursor?: string;
@@ -326,10 +333,19 @@ export async function roomFor(bucket: GymMediaBucket, key: string, size: number,
   return { ok: next <= cap, used };
 }
 
-/** Dedup markers: groups/{licenseId}/hashes/{fingerprint}.json -> { path }. */
-function fingerprintKey(licenseId: string, fingerprint: string): string | null {
+/**
+ * Dedup markers: groups/{licenseId}/hashes/{fingerprint}.json -> { path }.
+ * Pro Shop, Events, and Schedule keep their own markers (hashes/{folder}/{fingerprint}.json),
+ * so one photo can sit in Gallery and in Events without either blocking the other.
+ */
+function fingerprintKey(licenseId: string, fingerprint: string, scope = ''): string | null {
   if (!isCloudFingerprint(fingerprint)) return null;
-  return `groups/${licenseId}/hashes/${fingerprint}.json`;
+  return `groups/${licenseId}/hashes/${scope ? `${scope}/` : ''}${fingerprint}.json`;
+}
+
+/** The side folder a path belongs to (its own dedup scope), or '' for Gallery and daily videos. */
+function dedupScope(relative: string): string {
+  return parseSideFolderCloudPath(relative)?.folder ?? '';
 }
 
 /** Reverse index: groups/{licenseId}/hashes/paths/{path}.json -> { fingerprint }, so a delete finds its marker. */
@@ -361,7 +377,7 @@ export async function fingerprintKeysForDelete(bucket: GymMediaBucket, licenseId
       const reverseKey = fingerprintPathKey(licenseId, relative);
       const fingerprint = await readJsonField(bucket, reverseKey, 'fingerprint');
       if (!fingerprint) return (await bucket.head(reverseKey)) ? [reverseKey] : [];
-      const markerKey = fingerprintKey(licenseId, fingerprint);
+      const markerKey = fingerprintKey(licenseId, fingerprint, dedupScope(relative));
       if (!markerKey) return [reverseKey];
       const recorded = await readJsonField(bucket, markerKey, 'path');
       return recorded && deleted.has(recorded) ? [reverseKey, markerKey] : [reverseKey];
@@ -377,7 +393,7 @@ async function deleteMediaKeys(bucket: GymMediaBucket, licenseId: string, keys: 
 }
 
 function dedupPath(relative: string): boolean {
-  return isDailyVideoCloudPath(relative) || parseGalleryCloudPath(relative) !== null;
+  return isDailyVideoCloudPath(relative) || parseGalleryCloudPath(relative) !== null || parseSideFolderCloudPath(relative) !== null;
 }
 
 /**
@@ -389,8 +405,9 @@ export async function findCloudDuplicate(
   bucket: GymMediaBucket,
   licenseId: string,
   fingerprint: string,
+  scope = '',
 ): Promise<{ path: string; lane?: 'pending' | 'approved' } | null> {
-  const markerKey = fingerprintKey(licenseId, fingerprint);
+  const markerKey = fingerprintKey(licenseId, fingerprint, scope);
   if (!markerKey) return null;
   const marker = await bucket.get(markerKey);
   if (!marker) return null;
@@ -401,13 +418,15 @@ export async function findCloudDuplicate(
   } catch {
     return null;
   }
-  if (!dedupPath(recorded)) return null;
+  if (!dedupPath(recorded) || dedupScope(recorded) !== scope) return null;
   const candidates = [recorded];
-  const approved = galleryDecisionPath(recorded, 'approved');
+  const approved = galleryDecisionPath(recorded, 'approved') ?? sideFolderApprovedPath(recorded);
   if (approved) candidates.push(approved);
   for (const path of candidates) {
     const key = cloudObjectKey(licenseId, path);
     if (!key || !(await bucket.head(key))) continue;
+    const side = parseSideFolderCloudPath(path);
+    if (side) return { path, lane: side.lane };
     const gallery = parseGalleryCloudPath(path);
     if (gallery) {
       if (gallery.lane === 'rejected') continue;
@@ -426,7 +445,7 @@ async function recordFingerprint(bucket: GymMediaBucket, key: string, fingerprin
   const prefix = licensePrefixOf(key);
   const licenseId = prefix.slice('groups/'.length, -1);
   const relative = key.slice(prefix.length);
-  const markerKey = fingerprintKey(licenseId, fingerprint);
+  const markerKey = fingerprintKey(licenseId, fingerprint, dedupScope(relative));
   if (!markerKey || !dedupPath(relative)) return;
   const at = new Date().toISOString();
   await bucket.put(markerKey, new TextEncoder().encode(JSON.stringify({ path: relative, size, at })), {
@@ -477,7 +496,7 @@ async function listFiles(
   const mediaKeyPrefix = `groups/${actor.licenseId}/${prefix.media}`;
   let cursor: string | undefined;
   for (let page = 0; page < 20; page += 1) {
-    const listed = await bucket.list({ prefix: mediaKeyPrefix, cursor, limit: 1000 });
+    const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix: mediaKeyPrefix, cursor, limit: 1000 });
     for (const object of listed.objects) {
       const relative = object.key.startsWith(`groups/${actor.licenseId}/`)
         ? object.key.slice(`groups/${actor.licenseId}/`.length)
@@ -490,7 +509,7 @@ async function listFiles(
         name: relative.split('/').pop() ?? relative,
         path: relative,
         size: object.size,
-        mime: object.httpMetadata?.contentType || 'application/octet-stream',
+        mime: purpose === 'daily-video' ? object.httpMetadata?.contentType || 'application/octet-stream' : cloudMimeOf(object.httpMetadata?.contentType, relative),
         ...(lane ? { lane } : {}),
       });
     }
@@ -532,7 +551,7 @@ async function dailyLaneSets(bucket: GymMediaBucket, licenseId: string, dateKey:
     let cursor: string | undefined;
     const prefix = `${base}pending/daily/${lane}/${dateKey ? `${dateKey}/` : ''}`;
     for (let page = 0; page < 20; page += 1) {
-      const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+      const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix, cursor, limit: 1000 });
       for (const object of listed.objects) {
         const parsed = parseDailyVideoMarkerPath(object.key.slice(base.length));
         if (parsed && parsed.lane === lane) sets[lane].add(parsed.videoPath);
@@ -636,7 +655,7 @@ async function listApprovedMedia(bucket: GymMediaBucket, actor: Actor): Promise<
   const base = `groups/${actor.licenseId}/`;
   let cursor: string | undefined;
   for (let page = 0; page < 20; page += 1) {
-    const listed = await bucket.list({ prefix: `${base}videos/daily/`, cursor, limit: 1000 });
+    const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix: `${base}videos/daily/`, cursor, limit: 1000 });
     for (const object of listed.objects) {
       const relative = relativePath(actor.licenseId, object.key);
       if (!isDailyVideoCloudPath(relative) || laneOfDaily(lanes, relative) !== 'approved') continue;
@@ -656,7 +675,7 @@ async function listDailyReview(bucket: GymMediaBucket, actor: Actor): Promise<(C
   const rows: (CloudFileRow & { dateKey: string; lane: 'pending' })[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < 20; page += 1) {
-    const listed = await bucket.list({ prefix: `${base}pending/daily/pending/`, cursor, limit: 1000 });
+    const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix: `${base}pending/daily/pending/`, cursor, limit: 1000 });
     for (const marker of listed.objects) {
       const parsed = parseDailyVideoMarkerPath(marker.key.slice(base.length));
       if (!parsed || parsed.lane !== 'pending') continue;
@@ -687,7 +706,7 @@ async function listGallery(
   const mediaKeyPrefix = `groups/${actor.licenseId}/gallery/${lane}/${dateKey ? `${dateKey}/` : ''}`;
   let cursor: string | undefined;
   for (let page = 0; page < 20; page += 1) {
-    const listed = await bucket.list({ prefix: mediaKeyPrefix, cursor, limit: 1000 });
+    const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix: mediaKeyPrefix, cursor, limit: 1000 });
     for (const object of listed.objects) {
       const relative = relativePath(actor.licenseId, object.key);
       const parsed = parseGalleryCloudPath(relative);
@@ -697,7 +716,7 @@ async function listGallery(
         name: parsed.name,
         path: relative,
         size: object.size,
-        mime: object.httpMetadata?.contentType || 'application/octet-stream',
+        mime: cloudMimeOf(object.httpMetadata?.contentType, parsed.name),
       });
     }
     if (!listed.truncated || !listed.cursor) break;
@@ -728,13 +747,13 @@ async function listSideFolder(bucket: GymMediaBucket, actor: Actor, folder: Clou
   const prefix = `groups/${actor.licenseId}/${folder}/`;
   let cursor: string | undefined;
   for (let page = 0; page < 20; page += 1) {
-    const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+    const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix, cursor, limit: 1000 });
     for (const object of listed.objects) {
       const relative = relativePath(actor.licenseId, object.key);
       const parsed = parseSideFolderCloudPath(relative);
       // Pending uploads ({folder}/pending/) stay out until the owner approves them.
       if (!parsed || parsed.folder !== folder || parsed.lane !== 'approved') continue;
-      const mime = object.httpMetadata?.contentType || 'application/octet-stream';
+      const mime = cloudMimeOf(object.httpMetadata?.contentType, parsed.name);
       const kind = mime.startsWith('image/') ? 'photo' : mime.startsWith('video/') ? 'video' : 'file';
       rows.push({ name: parsed.name, path: relative, size: object.size, mime, folder, dateKey: '', kind });
     }
@@ -751,12 +770,12 @@ async function listSideFolderPending(bucket: GymMediaBucket, actor: Actor): Prom
     const prefix = `groups/${actor.licenseId}/${folder}/pending/`;
     let cursor: string | undefined;
     for (let page = 0; page < 20; page += 1) {
-      const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+      const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix, cursor, limit: 1000 });
       for (const object of listed.objects) {
         const relative = relativePath(actor.licenseId, object.key);
         const parsed = parseSideFolderCloudPath(relative);
         if (!parsed || parsed.lane !== 'pending') continue;
-        const mime = object.httpMetadata?.contentType || 'application/octet-stream';
+        const mime = cloudMimeOf(object.httpMetadata?.contentType, parsed.name);
         const kind = mime.startsWith('image/') ? 'photo' : mime.startsWith('video/') ? 'video' : 'file';
         rows.push({ name: parsed.name, path: relative, size: object.size, mime, folder, dateKey: '', kind });
       }
@@ -780,7 +799,7 @@ async function listInstructor(
     : `groups/${actor.licenseId}/instructors/`;
   let cursor: string | undefined;
   for (let page = 0; page < 20; page += 1) {
-    const listed = await bucket.list({ prefix: mediaKeyPrefix, cursor, limit: 1000 });
+    const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix: mediaKeyPrefix, cursor, limit: 1000 });
     for (const object of listed.objects) {
       const relative = relativePath(actor.licenseId, object.key);
       const parsed = parseInstructorCloudPath(relative);
@@ -1030,7 +1049,7 @@ async function listPending(bucket: GymMediaBucket, actor: Actor): Promise<Pendin
   const rows: PendingReplayRow[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < 20; page += 1) {
-    const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+    const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix, cursor, limit: 1000 });
     for (const object of listed.objects) {
       const path = object.key.slice(base.length);
       const parsed = parsePendingReplayPath(path);
@@ -1075,7 +1094,7 @@ async function countCustomSkins(bucket: GymMediaBucket, licenseId: string): Prom
   let cursor: string | undefined;
   const prefix = `groups/${licenseId}/skins/`;
   for (let page = 0; page < 20; page += 1) {
-    const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+    const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix, cursor, limit: 1000 });
     for (const object of listed.objects) {
       if (isCustomSkinImagePath(relativePath(licenseId, object.key))) count += 1;
     }
@@ -1090,7 +1109,7 @@ async function listCustomSkins(bucket: GymMediaBucket, licenseId: string): Promi
   let cursor: string | undefined;
   const prefix = `groups/${licenseId}/skins/`;
   for (let page = 0; page < 20; page += 1) {
-    const listed = await bucket.list({ prefix, cursor, limit: 1000 });
+    const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix, cursor, limit: 1000 });
     for (const object of listed.objects) {
       const relative = relativePath(licenseId, object.key);
       const id = isCustomSkinImagePath(relative) ? customSkinIdFromPath(relative) : null;
@@ -1203,7 +1222,7 @@ async function listOldVideos(bucket: GymMediaBucket, actor: Actor, cutoff: strin
   const lanes = await dailyLaneSets(bucket, actor.licenseId, '');
   let cursor: string | undefined;
   for (let page = 0; page < 20; page += 1) {
-    const listed = await bucket.list({ prefix: `${base}videos/daily/`, cursor, limit: 1000 });
+    const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix: `${base}videos/daily/`, cursor, limit: 1000 });
     for (const object of listed.objects) {
       const relative = object.key.startsWith(base) ? object.key.slice(base.length) : '';
       if (!isDailyVideoCloudPath(relative) || !cloudObjectKey(actor.licenseId, relative)) continue;
@@ -1229,7 +1248,7 @@ async function listOldVideos(bucket: GymMediaBucket, actor: Actor, cutoff: strin
   for (const folder of ['approved', 'rejected'] as const) {
     cursor = undefined;
     for (let page = 0; page < 20; page += 1) {
-      const listed = await bucket.list({ prefix: `${base}gallery/${folder}/`, cursor, limit: 1000 });
+      const listed = await bucket.list({ include: LIST_WITH_TYPES, prefix: `${base}gallery/${folder}/`, cursor, limit: 1000 });
       for (const object of listed.objects) {
         const relative = object.key.startsWith(base) ? object.key.slice(base.length) : '';
         const parsed = parseGalleryCloudPath(relative);
@@ -1885,8 +1904,10 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     return json(400, { ok: false, error });
   }
   // Already in this gym's Cloud: answer with the existing path and send no bytes.
-  if ((purpose === 'gallery' || purpose === 'daily-video') && isCloudFingerprint(body.fingerprint)) {
-    const duplicate = await findCloudDuplicate(bucket, actor.licenseId, body.fingerprint);
+  // Pro Shop, Events, and Schedule skip a repeat of the same file in the same folder too.
+  const dedupFolder = purpose === 'cloud-folder' && folderUploader && isCloudSideFolder(body.folder) ? body.folder : '';
+  if ((purpose === 'gallery' || purpose === 'daily-video' || dedupFolder) && isCloudFingerprint(body.fingerprint)) {
+    const duplicate = await findCloudDuplicate(bucket, actor.licenseId, body.fingerprint, dedupFolder);
     if (duplicate) return json(200, { ok: true, mode: 'duplicate', path: duplicate.path, ...(duplicate.lane ? { lane: duplicate.lane } : {}) });
   }
   if (purpose === 'replay-pending' && actor.replayUpload !== 'pending') {

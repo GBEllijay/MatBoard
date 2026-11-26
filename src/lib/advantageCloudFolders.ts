@@ -14,7 +14,8 @@
  * until the owner approves it in Review Inbox. The server decides; this file only asks.
  */
 
-import type { ApprovalItem } from './approvalLanes.ts';
+import { cloudMimeOf, type ApprovalItem } from './approvalLanes.ts';
+import { cloudFingerprint } from './cloudFingerprint.ts';
 import {
   CLOUD_SIGN_IN_MESSAGE,
   cloudUrl,
@@ -81,10 +82,17 @@ type FolderRow = {
   kind?: unknown;
 };
 
+/** Exported for tests: one listed row as a folder item. */
+export function itemOfForTest(folder: CloudFolderId, row: FolderRow): CloudFolderItem | null {
+  return itemOf(folder, row);
+}
+
 function itemOf(folder: CloudFolderId, row: FolderRow): CloudFolderItem | null {
   if (typeof row.path !== 'string' || typeof row.name !== 'string') return null;
-  const mime = typeof row.mime === 'string' ? row.mime : 'application/octet-stream';
-  const kind = row.kind === 'photo' || row.kind === 'video' || row.kind === 'file' ? row.kind : mime.startsWith('image/') ? 'photo' : mime.startsWith('video/') ? 'video' : 'file';
+  // A missing or generic type falls back to the file extension, so a .png is a photo, never a PDF tile.
+  const mime = cloudMimeOf(typeof row.mime === 'string' ? row.mime : '', row.name);
+  const byType = mime.startsWith('image/') ? 'photo' : mime.startsWith('video/') ? 'video' : 'file';
+  const kind = row.kind === 'file' && byType !== 'file' ? byType : row.kind === 'photo' || row.kind === 'video' || row.kind === 'file' ? row.kind : byType;
   return {
     provider: 'advantage-cloud',
     source: 'gallery',
@@ -161,14 +169,24 @@ export async function uploadToCloudFolder(input: {
   token?: string;
   fetcher?: Fetcher;
   upload?: typeof uploadAdvantageCloudFile;
+  /** Content fingerprint for dedup. A throw uploads without it. */
+  fingerprint?: (file: Blob) => Promise<string>;
 }): Promise<CloudUploadResult> {
   const token = input.token ?? readCloudBearer();
   if (!token) return { ok: false, message: CLOUD_SIGN_IN_MESSAGE };
   const upload = input.upload ?? uploadAdvantageCloudFile;
   const fileName = input.file.name.trim() || (input.folder === 'gallery' ? 'gallery-photo' : 'file');
   const mime = input.file.type || (/\.pdf$/i.test(fileName) ? 'application/pdf' : /\.(mp4|mov|m4v|webm)$/i.test(fileName) ? 'video/mp4' : 'image/jpeg');
+  // The same file sent twice (a retry, or another pick of the same photo) is skipped by the server.
+  let print = '';
+  try {
+    print = await (input.fingerprint ?? cloudFingerprint)(input.file);
+  } catch {
+    print = '';
+  }
   const result = await upload({
     purpose: input.folder === 'gallery' ? 'gallery' : 'cloud-folder',
+    ...(print ? { fingerprint: print } : {}),
     ...(input.folder === 'gallery' ? {} : { folder: input.folder }),
     dateKey: input.dateKey,
     file: input.file,

@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { CloudFolderListing } from './advantageCloudFolders.ts';
+import { listCloudFolder, type CloudFolderListing } from './advantageCloudFolders.ts';
 import { applyCloudIndexPatch, emptyCloudIndex, type CloudIndexPatch, type CloudMediaIndex } from './cloudMediaIndex.ts';
 import {
   CLOUD_BACKED_NOTE,
@@ -21,7 +21,7 @@ import {
   uniqueCloudFileName,
   type MigrationUpload,
 } from './cloudMediaFolders.ts';
-import type { FolderId, StoredPhoto } from './photoStore.ts';
+import { playableItems, type FolderId, type StoredPhoto } from './photoStore.ts';
 
 function listing(folder: CloudFolderListing['folder'], rows: { path: string; name?: string; kind?: 'photo' | 'video' | 'file'; mime?: string }[]): CloudFolderListing {
   return {
@@ -243,4 +243,42 @@ test('Add to event moves files out of any other event and keeps the order', () =
   const created = applyCloudIndexPatch(applied.index, addToEventPatch(applied.index.events, fresh, ['events/1.png']), new Date());
   assert.ok(created.ok);
   assert.deepEqual(created.index.events.map((e) => [e.id, e.items]), [['a', []], ['b', ['events/3.png', 'events/2.png', 'events/4.png']], ['ev-new', ['events/1.png']]]);
+});
+
+test('Events as the only slideshow folder plays its photos, grouped or not; a PDF in Events never plays', () => {
+  const index: CloudMediaIndex = {
+    ...emptyCloudIndex('events'),
+    events: [{ id: 'ev1', title: 'Winter Open', date: '', qrLinks: [], items: ['events/b.png'], order: 0 }],
+  };
+  const rows = cloudRowsForFolder({
+    folderId: 'events',
+    listing: listing('events', [{ path: 'events/a.png' }, { path: 'events/b.png' }, { path: 'events/flyer.pdf', kind: 'file' }]),
+    index,
+    canEdit: true,
+  });
+  const galleryRow = { ...rows[0], id: 'cloud:gallery/approved/2026-11-12/x.jpg', folderId: 'gallery' as const, cloudPath: 'gallery/approved/2026-11-12/x.jpg' };
+  const queue = playableItems([...rows, galleryRow], { gallery: false, shop: false, events: true });
+  assert.deepEqual(queue.map((row) => row.cloudPath), ['events/b.png', 'events/a.png']);
+  assert.ok(queue.every((row) => row.mime.startsWith('image/')));
+});
+
+test('Events-only slideshow plays photos the list sent with a generic type and kind "file" (the PDF-tile bug)', async () => {
+  const names = ['00-Title.png', '1000017087-jsw3yr.png', 'ALLSKIDUSA.COM.png'];
+  const fetcher: typeof fetch = async () =>
+    new Response(
+      JSON.stringify({
+        items: names.map((name) => ({ name, path: `events/${name}`, size: 9, mime: 'application/octet-stream', kind: 'file' })),
+        canUpload: true,
+        canDelete: true,
+        uploadLane: 'approved',
+      }),
+      { status: 200 },
+    );
+  const listed = await listCloudFolder({ folder: 'events', token: 'test-token', fetcher });
+  assert.ok(listed && !('error' in listed));
+  assert.deepEqual(listed.items.map((item) => item.kind), ['photo', 'photo', 'photo']);
+  const rows = cloudRowsForFolder({ folderId: 'events', listing: listed, index: emptyCloudIndex('events'), canEdit: true });
+  assert.equal(rows.length, 3);
+  const queue = playableItems(rows, { gallery: false, shop: false, events: true });
+  assert.deepEqual(queue.map((row) => row.cloudPath), names.map((name) => `events/${name}`));
 });

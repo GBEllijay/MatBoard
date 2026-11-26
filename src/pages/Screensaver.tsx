@@ -821,6 +821,7 @@ export function ScreensaverPage() {
     const failures: string[] = [];
     let sent = 0;
     let waiting = 0;
+    let repeats = 0;
     setCloudSending(true);
     try {
       for (const [i, file] of pictures.entries()) {
@@ -836,6 +837,10 @@ export function ScreensaverPage() {
         const result = await uploadToCloudFolder({ folder: cloudFolder, file: named, dateKey });
         if (!result.ok) {
           failures.push(result.message);
+          continue;
+        }
+        if (result.duplicate) {
+          repeats += 1;
           continue;
         }
         if (result.lane === 'pending') {
@@ -866,6 +871,9 @@ export function ScreensaverPage() {
       setPickerNote(`${APPROVAL_WAITING} They show in ${folder.label} after the owner approves them.`);
     } else if (sent) {
       setBatchStatus({ tone: 'saved', text: 'Saved to Advantage Cloud' });
+      if (repeats) setPickerNote(`${repeats} already in ${folder.label}, skipped.`);
+    } else if (repeats) {
+      setBatchStatus({ tone: 'saved', text: `Already in ${folder.label}` });
     }
     return sent + waiting;
   };

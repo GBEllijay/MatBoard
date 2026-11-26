@@ -475,3 +475,29 @@ test('Review Inbox: pending rows from all four folders; only the owner can decid
     assert.equal(canDecideCloudRow(item, { kind: 'seat', preset: 'instructors' }), item.source === 'daily-video', item.path);
   }
 });
+
+test('Events folder: image files show thumbnails (never a PDF tile), and the slideshow caption has no file name', async () => {
+  const { itemOfForTest } = await import('../lib/advantageCloudFolders.ts');
+  const names = ['00-Title.png', '1000017087-jsw3yr.png', 'KIM-Fitness.png'];
+  const items = names.map((name) => itemOfForTest('events', { name, path: `events/${name}`, size: 10, mime: 'application/octet-stream', kind: 'file' })!);
+  assert.deepEqual(items.map((item) => [item.kind, item.mime]), names.map(() => ['photo', 'image/png']));
+  const opened: string[] = [];
+  const { root, host } = mount(<CloudGallerySection load={folders({ events: items })} store={fakeStore(opened)} initialFolder="events" />);
+  await flush();
+  const tiles = [...host.querySelectorAll('[data-cloud-folder="events"] [data-cloud-gallery-item]')];
+  assert.equal(tiles.length, 3);
+  for (const tile of tiles) {
+    assert.ok(tile.querySelector('img'), 'a real thumbnail');
+    assert.doesNotMatch(tile.querySelector('.cloud-gallery__glyph')?.textContent ?? '', /PDF/);
+  }
+  assert.equal(opened.length, 3);
+
+  await act(async () => (tiles[0].querySelector('button.cloud-gallery__open') as HTMLButtonElement).click());
+  await flush();
+  const player = host.querySelector('.cloud-gallery__player') as HTMLElement;
+  assert.ok(player.querySelector('img'));
+  const count = player.querySelector('[data-cloud-slide-count]');
+  assert.equal(count?.textContent?.replace(/\s+/g, ' ').trim(), '1 of 3');
+  assert.doesNotMatch(player.querySelector('.cloud-gallery__controls')?.textContent ?? '', /\.png|00-Title/);
+  act(() => root.unmount());
+});

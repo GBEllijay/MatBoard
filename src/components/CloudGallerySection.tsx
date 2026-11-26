@@ -32,7 +32,7 @@ import { CloudVideoCleanup } from './CloudVideoCleanup';
 /** Seconds a photo stays up when the Cloud Gallery plays as a slideshow. */
 export const CLOUD_SLIDE_PHOTO_SEC = 8;
 /** Photo thumbnails fetched up front. The rest load when the slideshow reaches them. */
-const THUMB_LIMIT = 24;
+const THUMB_LIMIT = 60;
 
 export const CLOUD_GALLERY_TITLE = CLOUD_FOLDERS_TITLE;
 export const CLOUD_GALLERY_EMPTY = 'No photos or videos in Gallery yet.';
@@ -272,6 +272,7 @@ export function CloudGallerySection({
     setBusy(true);
     let added = 0;
     let waiting = 0;
+    let repeats = 0;
     let failed = '';
     for (const [index, file] of files.entries()) {
       setNote(`Uploading ${index + 1} of ${files.length} to ${label}…`);
@@ -280,14 +281,16 @@ export function CloudGallerySection({
         failed = result.message;
         continue;
       }
-      if (result.lane === 'pending') waiting += 1;
+      if (result.duplicate) repeats += 1;
+      else if (result.lane === 'pending') waiting += 1;
       else added += 1;
     }
     setBusy(false);
     const parts: string[] = [];
     if (added) parts.push(`Added ${added} to ${label}.`);
+    if (repeats) parts.push(`${repeats} already in ${label}, skipped.`);
     if (waiting) parts.push(`${waiting} wait for the owner's approval in Review Inbox.`);
-    if (failed) parts.push(`${files.length - added - waiting} did not upload: ${failed}`);
+    if (failed) parts.push(`${files.length - added - waiting - repeats} did not upload: ${failed}`);
     setNote(parts.join(' '));
     await loadFolder(folder);
   };
@@ -469,8 +472,8 @@ export function CloudGallerySection({
             <button type="button" className="btn btn--ghost" onClick={() => setPlaying(((playing ?? 0) - 1 + playList.length) % Math.max(1, playList.length))}>
               Previous
             </button>
-            <span>
-              {(playing ?? 0) + 1} of {playList.length} · {current.name}
+            <span data-cloud-slide-count="">
+              {(playing ?? 0) + 1} of {playList.length}
             </span>
             <button type="button" className="btn btn--ghost" onClick={advance}>
               Next

@@ -54,6 +54,34 @@ export function decisionLane(decision: ApprovalDecision): 'approved' | 'rejected
   return decision === 'approve' ? 'approved' : 'rejected';
 }
 
+const EXTENSION_MIME: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  heic: 'image/heic',
+  heif: 'image/heif',
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  mov: 'video/quicktime',
+  webm: 'video/webm',
+  pdf: 'application/pdf',
+};
+
+/**
+ * The type a Cloud file is shown and played as. The stored Content-Type wins.
+ * When it is missing or the generic `application/octet-stream` (an R2 list that
+ * left the metadata out, or an upload that sent none), the file extension decides,
+ * so a `.png` is still a photo and never a "document".
+ */
+export function cloudMimeOf(contentType: string | null | undefined, name = ''): string {
+  const stored = (contentType ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+  if (stored && stored !== 'application/octet-stream') return stored;
+  const ext = /\.([A-Za-z0-9]{1,5})$/.exec(name)?.[1]?.toLowerCase() ?? '';
+  return EXTENSION_MIME[ext] ?? 'application/octet-stream';
+}
+
 export function mediaKindOf(mime: string, name = ''): 'photo' | 'video' {
   if (mime.startsWith('image/')) return 'photo';
   if (mime.startsWith('video/')) return 'video';
