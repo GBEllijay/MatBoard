@@ -21870,3 +21870,15 @@ body:has(main.home--buy) .header-account {
   background: rgba(255, 255, 255, 0.16);
   color: #fff;
 }
+
+/* Media screen: four folder tiles, one open folder as a grid. */
+.media-tiles { display: grid; gap: 10px; margin: 8px 0 12px; }
+.media-tile { display: grid; gap: 8px; align-content: start; }
+.media-tile__play { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.media-tile__add { width: 100%; justify-content: center; }
+.media-folder { display: grid; gap: 10px; margin: 8px 0 12px; }
+.media-folder .cloud-folder__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.media-folder .cloud-folder__bar h3 { margin: 0; flex: 1 1 auto; }
+.media-folder__add { display: flex; flex-wrap: wrap; gap: 8px; }
+.media-grid { margin-top: 4px; }
+@media (min-width: 900px) { .media-tiles .cloud-folders { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

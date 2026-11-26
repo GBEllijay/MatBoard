@@ -207,3 +207,36 @@ test('one-time send through the real Cloud: Pro Shop cards arrive with details, 
   assert.equal(uploads, 2);
   assert.equal([...bucket.objects.keys()].filter((key) => key.startsWith(`${BASE}pro-shop/`)).length, 2);
 });
+
+test('delete-media also drops the file from its folder details, events, and send pointers', async () => {
+  const { bucket, fetcher, tokens, put } = await setup();
+  put('events/flyer-a.png', 'image/png');
+  put('events/flyer-b.png', 'image/png');
+  put('gallery/approved/2026-11-19/team.jpg', 'image/jpeg');
+  const saved = await patchCloudMediaIndex({
+    folder: 'events',
+    token: tokens.owner,
+    fetcher,
+    patch: {
+      items: { 'events/flyer-a.png': { label: 'Fictional flyer A' }, 'events/flyer-b.png': { label: 'Fictional flyer B' } },
+      events: { upsert: [{ id: 'ev1', title: 'Fictional Open', items: ['events/flyer-a.png', 'events/flyer-b.png'] }] },
+      migrated: { 'dev:a1': 'events/flyer-a.png' },
+    },
+  });
+  assert.equal(saved.ok, true);
+  const galleryKey = cloudIndexKey(LIC, 'gallery')!;
+  assert.equal(bucket.objects.has(galleryKey), false);
+
+  const res = await call(fetcher, tokens.owner, '/api/gym/cloud', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'delete-media', keys: ['events/flyer-a.png', 'gallery/approved/2026-11-19/team.jpg'] }),
+  });
+  assert.equal(res.status, 200);
+  const after = await readCloudMediaIndex({ folder: 'events', token: tokens.owner, fetcher });
+  assert.ok(after && 'index' in after);
+  assert.deepEqual(Object.keys(after.index.items), ['events/flyer-b.png']);
+  assert.deepEqual(after.index.events[0]?.items, ['events/flyer-b.png']);
+  assert.deepEqual(after.index.migrated, {});
+  // A folder with no details file is not created by a delete.
+  assert.equal(bucket.objects.has(galleryKey), false);
+});

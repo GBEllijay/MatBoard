@@ -501,3 +501,17 @@ export function migrationSummaryLine(summary: MigrationSummary, folderLabel: str
   const line = parts.length ? `${parts.join(', ')}.` : `Nothing new to send from ${folderLabel}.`;
   return `${line.charAt(0).toUpperCase()}${line.slice(1)} This device kept every copy.`;
 }
+
+// --- Media screen copy -------------------------------------------------------
+
+const DEVICE_ONLY_SENTENCES = [/\s*Photos and clips stay on this device\./g, /\s*Photos stay on this device\./g];
+
+/**
+ * A folder's empty text and list hint for where it really saves. "Photos stay on this
+ * device" is true only for a device-only folder; a Cloud-backed folder says nothing of the kind.
+ */
+export function folderCopyFor<T extends { emptyCopy: string; orderHint: string }>(folder: T, backing: MediaBacking): T {
+  if (backing === 'device') return folder;
+  const strip = (text: string) => DEVICE_ONLY_SENTENCES.reduce((out, re) => out.replace(re, ''), text).trim();
+  return { ...folder, emptyCopy: strip(folder.emptyCopy), orderHint: strip(folder.orderHint) };
+}
