@@ -55,7 +55,7 @@ function PolishedTile({ side, kind, value, poster = false }: { side: Side; kind:
   );
 }
 
-/** Metal Mania for the words, Anton for every numeral, so "Round 1" never reads as I. */
+/** Pirata One for the words, Anton for every numeral, so "Round 1" never reads as I. */
 function MetalFace({ children }: { children: ReactNode }) {
   return <>{paintMetal(children)}</>;
 }

@@ -8,7 +8,7 @@ const outfile = '.regression-cache/clear-competitor-name.test.mjs';
 await build({
   entryPoints: ['src/components/clearCompetitorName.test.tsx'],
   bundle: true,
-  loader: { '.css': 'empty', '.jpg': 'empty', '.png': 'empty', '.webp': 'empty', '.woff': 'empty', '.woff2': 'empty' },
+  loader: { '.css': 'empty', '.jpg': 'empty', '.png': 'empty', '.webp': 'empty', '.svg': 'empty', '.woff': 'empty', '.woff2': 'empty' },
   format: 'esm',
   platform: 'node',
   outfile,
