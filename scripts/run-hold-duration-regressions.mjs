@@ -15,7 +15,7 @@ await build({
   packages: 'external',
   external: ['node:test', 'node:assert', 'node:assert/strict'],
   jsx: 'automatic',
-  loader: { '.css': 'empty', '.woff2': 'empty', '.woff': 'empty', '.jpg': 'empty', '.png': 'empty', '.webp': 'empty' },
+  loader: { '.css': 'empty', '.woff2': 'empty', '.woff': 'empty', '.jpg': 'empty', '.png': 'empty', '.webp': 'empty', '.svg': 'empty' },
   logLevel: 'silent',
   plugins: [paidChunksStub],
 });
