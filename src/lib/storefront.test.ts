@@ -196,16 +196,13 @@ test('the homepage hero has no Open my apps button; Alpha testers stays in the f
   assert.match(page, /to=\{PRODUCTS_PATH\}>Alpha testers</);
 });
 
-test('the homepage hero has no Student Edition or other edition CTAs, and See how it works scrolls the page', () => {
+test('the homepage hero has no Student Edition or other edition CTAs, and no See how it works link', () => {
   const hero = readFileSync(new URL('../pages/StorefrontHero.tsx', import.meta.url), 'utf8');
   const page = readFileSync(new URL('../pages/Storefront.tsx', import.meta.url), 'utf8');
-  assert.match(hero, /See how it works ↓/);
-  assert.match(hero, /href="#scoreboard"/);
+  assert.doesNotMatch(hero, /See how it works/);
+  assert.doesNotMatch(hero, /href="#scoreboard"/);
   assert.doesNotMatch(hero, /Open Student Edition|studentUnlocked|Advantage Pro|Instructor Edition/);
   assert.doesNotMatch(page, /useStudentEditionUnlocked|Open Student Edition|Instructor Edition|Advantage Pro/);
-  const css = readFileSync(new URL('../pages/storefrontHero.css', import.meta.url), 'utf8');
-  assert.match(css, /\.home\.home--store \.sfh-links \{[^}]*justify-content:\s*center/s);
-  assert.match(css, /\.home\.home--store \.sfh-more \{[^}]*min-height:\s*44px/s);
 });
 
 test('the homepage hero buy button uses the price constant and opens /buy', () => {

@@ -61,13 +61,6 @@ function Copy() {
   );
 }
 
-function scrollToScoreboard(event: { preventDefault: () => void }) {
-  const target = document.getElementById('scoreboard');
-  if (!target) return;
-  event.preventDefault();
-  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
 export function StorefrontBuyButton() {
   return (
     <Link className="sf-buy sfh-buy" to={STOREFRONT_BUY_PATH}>
@@ -82,11 +75,6 @@ function Cta() {
     <div className="sfh-cta">
       <StorefrontBuyButton />
       <p className="sfh-fine">{STOREFRONT_HERO.fine}</p>
-      <div className="sfh-links">
-        <a className="sfh-more" href="#scoreboard" onClick={scrollToScoreboard}>
-          See how it works ↓
-        </a>
-      </div>
     </div>
   );
 }

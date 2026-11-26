@@ -38,7 +38,7 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(buyButtons).toHaveCount(2);
   await expect(buyButtons.nth(0)).toHaveAttribute('href', '/buy');
   await expect(buyButtons.nth(1)).toHaveAttribute('href', '/buy');
-  await expect(page.getByRole('link', { name: 'See how it works ↓' })).toHaveAttribute('href', '#scoreboard');
+  await expect(page.getByRole('link', { name: 'See how it works ↓' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open Student Edition' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Round timer', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Points', exact: true })).toBeVisible();

@@ -149,8 +149,10 @@ test('homepage: a claimed Student license still opens /buy from the hero buy but
   assert.ok(hero.includes('/buy'));
   assert.equal(hero.includes('/white'), false);
   assert.doesNotMatch(page.host.textContent ?? '', /Open Student Edition/);
-  const how = [...page.host.querySelectorAll('a')].find((link) => link.textContent?.includes('See how it works'));
-  assert.equal(how?.getAttribute('href'), '#scoreboard');
+  assert.equal(
+    [...page.host.querySelectorAll('a')].some((link) => link.textContent?.includes('See how it works')),
+    false,
+  );
   const brackets = hrefs(page.host, '#brackets a, a[href*="/white/brackets"]');
   assert.ok(brackets.some((href) => href.includes('/white/brackets')));
   page.done();
