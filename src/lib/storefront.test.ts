@@ -222,6 +222,9 @@ test('the homepage hero buy button uses the price constant and opens /buy', () =
   assert.match(css, /\.sfh--e \.sfh-cta \{[^}]*margin-top:\s*24px/s);
   assert.match(css, /\.sfh--e \.sfh-cta \{[^}]*align-items:\s*stretch/s);
   assert.match(css, /\.sfh--e \.sfh-cta \.sfh-buy \{[^}]*width:\s*100%/s);
+  // On phone the unpacked mats hero keeps the buy button and fine print with the lead, before the boards.
+  assert.match(css, /\.sfh--e \.sfh-cta \{[^}]*order:\s*4/s);
+  assert.match(css, /\.sfh--e \.sfh-stage \{[^}]*order:\s*5/s);
   assert.match(css, /\.sfh--e \.sfh-text \{[^}]*padding:\s*32px 36px 36px/s);
   assert.doesNotMatch(pageCss, /\.sf-bottom-buy \.sfh-buy \{[^}]*width:\s*100%/s);
   // The default mats hero keeps the button inside the left text card, under the body copy.

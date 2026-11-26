@@ -1168,8 +1168,9 @@
   .home.home--store .sfh--e .sfh-appstore { order: 1; }
   .home.home--store .sfh--e .sfh-title { order: 2; }
   .home.home--store .sfh--e .sfh-lead { order: 3; }
-  .home.home--store .sfh--e .sfh-stage { order: 4; margin-top: 10px; width: 100%; gap: 6px; }
-  .home.home--store .sfh--e .sfh-cta { order: 5; margin-top: 20px; width: 100%; position: relative; z-index: 2; }
+  /* Keep the buy button and fine print with the lead, above the fold, before the boards. */
+  .home.home--store .sfh--e .sfh-cta { order: 4; margin-top: 20px; width: 100%; position: relative; z-index: 2; }
+  .home.home--store .sfh--e .sfh-stage { order: 5; margin-top: 18px; width: 100%; gap: 6px; }
   .home.home--store .sfh--e .sfh-sub { order: 6; margin-top: 18px; text-align: center; }
 
   .home.home--store .sfh--e .sfh-brand,
