@@ -483,3 +483,10 @@
     letter-spacing: 0.06em;
   }
 }
+
+/* TV and tablet landscape: the Kids Sticker clock must not stretch across a 4:3 screen, so the side margins stay tappable. */
+@media (orientation: landscape) {
+  .skin-root[data-skin='kids-sticker'] .tm .digits.tm-clock {
+    font-size: min(40vh, 22vw);
+  }
+}

@@ -1,0 +1,18 @@
+/* Self-hosted SIL Open Font License faces for Heavy Metal (Hellfire Stage).
+   Pirata One: headings only (blackletter feel). Anton: every numeral, including the digit inside a heading.
+   License text: ./pirata-one/OFL.txt and ./anton/OFL.txt. Latin woff2 only. */
+@font-face {
+  font-family: 'Pirata One';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('./pirata-one/pirata-one-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Anton';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('./anton/anton-latin-400-normal.woff2') format('woff2');
+}

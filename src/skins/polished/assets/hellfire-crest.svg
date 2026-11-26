@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
+<defs>
+<linearGradient id="iron" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a4d55"/><stop offset=".45" stop-color="#16171b"/><stop offset=".55" stop-color="#2c2e34"/><stop offset="1" stop-color="#08080a"/></linearGradient>
+<linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset=".5" stop-color="#ff6a14"/><stop offset="1" stop-color="#b3140a"/></linearGradient>
+<radialGradient id="gem" cx=".5" cy=".62" r=".6"><stop offset="0" stop-color="#fff2b0"/><stop offset=".3" stop-color="#ffb21f"/><stop offset=".7" stop-color="#e2370c"/><stop offset="1" stop-color="#5a0704"/></radialGradient>
+<radialGradient id="halo" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff6a14" stop-opacity=".55"/><stop offset="1" stop-color="#ff6a14" stop-opacity="0"/></radialGradient>
+</defs>
+<ellipse cx="200" cy="108" rx="150" ry="80" fill="url(#halo)"/>
+<g>
+<path d="M178,62 C132,14 52,18 30,78 C18,114 44,150 82,146 C60,130 58,104 80,88 C104,70 146,80 176,106Z" fill="url(#iron)" stroke="#050506" stroke-width="3" stroke-linejoin="round"/>
+<path d="M170,66 C130,26 62,30 44,80 C36,106 50,128 70,134" fill="none" stroke="url(#rim)" stroke-width="3" stroke-linecap="round"/>
+<path d="M176,116 L52,150 L66,160 L180,134Z M176,138 L74,176 L90,184 L182,154Z M178,158 L104,196 L124,200 L184,172Z" fill="url(#iron)" stroke="#050506" stroke-width="2.5" stroke-linejoin="round"/>
+<path d="M170,118 L60,148 M172,140 L80,174 M174,160 L108,194" stroke="url(#rim)" stroke-width="1.8" fill="none"/></g>
+<g transform="translate(400,0) scale(-1,1)">
+<path d="M178,62 C132,14 52,18 30,78 C18,114 44,150 82,146 C60,130 58,104 80,88 C104,70 146,80 176,106Z" fill="url(#iron)" stroke="#050506" stroke-width="3" stroke-linejoin="round"/>
+<path d="M170,66 C130,26 62,30 44,80 C36,106 50,128 70,134" fill="none" stroke="url(#rim)" stroke-width="3" stroke-linecap="round"/>
+<path d="M176,116 L52,150 L66,160 L180,134Z M176,138 L74,176 L90,184 L182,154Z M178,158 L104,196 L124,200 L184,172Z" fill="url(#iron)" stroke="#050506" stroke-width="2.5" stroke-linejoin="round"/>
+<path d="M170,118 L60,148 M172,140 L80,174 M174,160 L108,194" stroke="url(#rim)" stroke-width="1.8" fill="none"/></g>
+<path d="M200,26 L246,92 L200,182 L154,92Z" fill="url(#iron)" stroke="#050506" stroke-width="4" stroke-linejoin="round"/>
+<path d="M200,32 L240,92 L200,174 L160,92Z" fill="none" stroke="url(#rim)" stroke-width="3" stroke-linejoin="round"/>
+<path d="M200,64 C190,84 176,92 178,112 C180,134 196,146 200,152 C204,146 220,134 222,112 C224,92 210,84 200,64Z" fill="url(#gem)" stroke="#050506" stroke-width="2.5"/>
+<path d="M200,92 C196,104 190,110 192,122 C194,132 199,136 200,138 C201,136 206,132 208,122 C210,110 204,104 200,92Z" fill="#fff4c8" opacity=".9"/>
+<circle cx="200" cy="40" r="4" fill="#ffd27a"/>
+</svg>

@@ -1,7 +1,7 @@
-/* Heavy Metal v2 — direction A "Chrome Inferno".
-   Scoped to [data-skin="heavy-metal"]. Art is background, flames, plate, and crest only.
-   Names, scores, times, and labels are live text. Digits stay solid white Anton.
-   Metal Mania is headings only; a numeral inside a heading is .n (Anton). */
+/* Heavy Metal v3 "Hellfire Stage": a dark, fiery heavy-metal stage. Original art only.
+   Scoped to [data-skin="heavy-metal"]. Art is CSS gradients plus our own SVG (flames, crest,
+   amp stacks, stage rig). Names, scores, times, and labels are live text. Digits stay solid white Anton.
+   Pirata One (blackletter feel, SIL OFL) is headings only; a numeral inside a heading is .n (Anton). */
 
 .skin-root[data-skin="heavy-metal"] {
   --pts: #ffc53a;
@@ -31,7 +31,7 @@
   letter-spacing: 0.01em;
 }
 
-/* Numeral inside a Metal Mania heading. Never inherits the chrome fill. */
+/* Numeral inside a Pirata One heading. Never inherits the chrome fill. */
 .skin-root[data-skin="heavy-metal"] .n {
   font-family: Anton, sans-serif;
   font-weight: 400;
@@ -52,18 +52,20 @@
 .skin-root[data-skin="heavy-metal"] .wm {
   display: inline-flex;
   align-items: center;
-  font-family: "Metal Mania", cursive;
+  font-family: "Pirata One", serif;
   letter-spacing: 0.05em;
   line-height: 1;
-  background: linear-gradient(180deg, #ffffff 0%, #dadde2 38%, #5a5f68 50%, #e6e8ec 64%, #9ea3ab 100%);
+  background: linear-gradient(180deg, #fff3d6 0%, #ffd27a 32%, #ff8a22 58%, #e2380f 82%, #9c1208 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0.3vh 0 #000) drop-shadow(0 0 1.4vh rgba(255, 120, 30, 0.6));
+  filter: drop-shadow(0 0.3vh 0 #000) drop-shadow(0 0 0.5vh #000) drop-shadow(0 0 1.6vh rgba(255, 90, 20, 0.75));
 }
 
 /* Decoration never takes a tap. */
 .skin-root[data-skin="heavy-metal"] .bg,
+.skin-root[data-skin="heavy-metal"] .rig,
+.skin-root[data-skin="heavy-metal"] .amp,
 .skin-root[data-skin="heavy-metal"] .flames-bot,
 .skin-root[data-skin="heavy-metal"] .embers,
 .skin-root[data-skin="heavy-metal"] .ember,
@@ -79,10 +81,13 @@
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-image: radial-gradient(60% 60% at 50% 52%, rgba(4, 4, 6, 0.78), rgba(4, 4, 6, 0.35) 75%, rgba(4, 4, 6, 0.1)),
-    url(./assets/inferno-bg.webp);
-  background-size: cover;
-  background-position: center;
+  /* Black stage, a molten glow rising off the floor, a red haze behind the rig, and a vignette. */
+  background-image:
+    radial-gradient(70% 55% at 50% 52%, rgba(4, 3, 4, 0.7), rgba(4, 3, 4, 0.2) 75%, transparent),
+    radial-gradient(120% 40% at 50% 104%, rgba(255, 96, 18, 0.55), rgba(190, 30, 8, 0.3) 45%, transparent 75%),
+    radial-gradient(90% 38% at 50% -6%, rgba(160, 20, 12, 0.5), transparent 70%),
+    radial-gradient(120% 120% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.7)),
+    linear-gradient(180deg, #0b0506 0%, #120708 55%, #1b0a06 100%);
 }
 
 .skin-root[data-skin="heavy-metal"] .flames-bot {
@@ -92,7 +97,7 @@
   bottom: -2vh;
   height: 30vh;
   z-index: 1;
-  background: url(./assets/inferno-flames.webp) bottom / 100% 100% no-repeat;
+  background: url(./assets/hellfire-flames.svg) bottom / 100% 100% no-repeat;
   mix-blend-mode: screen;
   opacity: 0.95;
 }
@@ -156,7 +161,7 @@
 
 .skin-root[data-skin="heavy-metal"] .crest {
   display: block;
-  background: url(./assets/inferno-crest.webp) center / contain no-repeat;
+  background: url(./assets/hellfire-crest.svg) center / contain no-repeat;
   filter: drop-shadow(0 0.4vh 0.6vh #000);
 }
 
@@ -191,7 +196,7 @@
   max-width: none;
   text-align: right;
   overflow: hidden;
-  font-family: "Metal Mania", cursive;
+  font-family: "Pirata One", serif;
   font-size: 4.7vh;
   font-weight: 400;
   letter-spacing: 0.04em;
@@ -258,9 +263,10 @@
   padding: 1.8vh 1.8vh 1.8vh 4.2vh;
   min-height: 0;
   background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.62)) padding-box,
-    url(./assets/inferno-plate.jpg) center / cover padding-box,
-    linear-gradient(180deg, #ffffff, #8c9199 22%, #2a2d33 48%, #c9cdd3 60%, #55595f 100%) border-box;
+    linear-gradient(180deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.62)) padding-box,
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 5px) padding-box,
+    radial-gradient(120% 140% at 0% 50%, #2a2326, #0f0d0f 70%) padding-box,
+    linear-gradient(180deg, #ffb36b, #6a6f78 18%, #17181b 48%, #7e838b 62%, #2b2d32 100%) border-box;
   border: 0.6vh solid transparent;
   border-radius: 1.4vh;
   box-shadow: 0 1vh 3vh #000, 0 0 3vh rgba(255, 110, 20, 0.35), inset 0 0 4vh rgba(0, 0, 0, 0.7);
@@ -521,7 +527,7 @@
   right: -2.4vh;
   top: -3vh;
   bottom: -3vh;
-  background: url(./assets/inferno-flames.webp) bottom / 50% 100% repeat-x;
+  background: url(./assets/hellfire-flames.svg) bottom / 100% 100% no-repeat;
   mix-blend-mode: screen;
   opacity: 0.9;
   -webkit-mask: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
@@ -580,7 +586,7 @@
   padding: 0 3vh;
   background:
     linear-gradient(180deg, #121317, #050506) padding-box,
-    linear-gradient(180deg, #ffffff, #8c9199 22%, #2a2d33 48%, #c9cdd3 60%, #55595f) border-box;
+    linear-gradient(180deg, #ffb36b, #6a6f78 18%, #17181b 48%, #7e838b 62%, #2b2d32) border-box;
   border: 0.6vh solid transparent;
   border-radius: 1.4vh;
   box-shadow: 0 0 4vh rgba(255, 120, 30, 0.8), 0 0.8vh 2vh #000;
@@ -695,7 +701,7 @@
   justify-content: center;
   align-items: baseline;
   text-align: center;
-  font-family: "Metal Mania", cursive;
+  font-family: "Pirata One", serif;
   font-size: 7.4vh;
   line-height: 1;
   letter-spacing: 0.05em;
@@ -708,10 +714,12 @@
   right: auto;
   transform: translateX(-50%);
   width: max-content;
-  max-width: 92vw;
+  /* Keep the clock's box narrow so the side margins stay tappable (they open Training options).
+     46vh on a 16:9 TV is about 58vw of digits; the vw cap holds that on 4:3 and tall screens too. */
+  max-width: 62vw;
   top: 29vh;
   z-index: 4;
-  font-size: 46vh;
+  font-size: min(46vh, 24vw);
   line-height: 1;
   text-align: center;
   text-shadow: 0 0.8vh 0 #000, 0 0 4vh rgba(255, 120, 30, 0.95), 0 0 12vh rgba(255, 80, 20, 0.6);
@@ -1157,4 +1165,133 @@
     0 0 0 0.28vh #0a0a0b,
     0 0 0 0.55vh #c9cdd3,
     0 0 1.6vh rgba(255, 110, 20, 0.7);
+}
+
+
+/* ---------- Hellfire Stage art ---------- */
+/* Stage rig: a truss along the top with five lamps. Each lamp throws a soft beam down the stage. */
+.skin-root[data-skin="heavy-metal"] .rig {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 100%;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.skin-root[data-skin="heavy-metal"] .rig .truss {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1.6vh;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 0.9vh, rgba(140, 145, 153, 0.55) 0.9vh 1.1vh),
+    linear-gradient(180deg, #2a2c31, #0b0b0d);
+  box-shadow: 0 0.3vh 0.8vh #000;
+  opacity: 0.9;
+}
+
+.skin-root[data-skin="heavy-metal"] .rig .lamp {
+  position: absolute;
+  top: 0.6vh;
+  width: 2.4vh;
+  height: 2.4vh;
+  margin-left: -1.2vh;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 55%, #fff4d6 0 25%, #ffb21f 45%, #e2380f 80%);
+  box-shadow: 0 0 2.4vh 0.6vh rgba(255, 110, 20, 0.85);
+}
+
+.skin-root[data-skin="heavy-metal"] .rig .lamp::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24vh;
+  height: 86vh;
+  margin-left: -12vh;
+  transform-origin: 50% 0;
+  transform: rotate(var(--a, 0deg));
+  clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, rgba(255, 120, 40, 0.3), rgba(255, 70, 20, 0.07) 55%, transparent);
+  mix-blend-mode: screen;
+}
+
+.skin-root[data-skin="heavy-metal"] .rig .lamp.r::before {
+  background: linear-gradient(180deg, rgba(255, 40, 30, 0.3), rgba(200, 20, 20, 0.07) 55%, transparent);
+}
+
+/* Amp stacks in the corners. They sit behind the live text and never take a tap. */
+/* The scoreboard rows cover the stage, so the stacks belong to the round timer only. */
+.skin-root[data-skin="heavy-metal"]:has(.sb) .amp {
+  display: none;
+}
+
+.skin-root[data-skin="heavy-metal"] .amp {
+  position: absolute;
+  bottom: 0;
+  z-index: 1;
+  height: 52vh;
+  aspect-ratio: 220 / 520;
+  background: url(./assets/hellfire-amp.svg) bottom / 100% 100% no-repeat;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 1.6vh rgba(255, 90, 20, 0.35));
+}
+
+.skin-root[data-skin="heavy-metal"] .amp.l {
+  left: 1vh;
+}
+
+.skin-root[data-skin="heavy-metal"] .amp.r {
+  right: 1vh;
+  transform: scaleX(-1);
+}
+
+/* The pyro bed breathes a little. */
+@keyframes hellfire-flicker {
+  0%, 100% { opacity: 0.95; transform: scaleY(1); }
+  35% { opacity: 0.82; transform: scaleY(1.035); }
+  70% { opacity: 1; transform: scaleY(0.98); }
+}
+
+@keyframes hellfire-rise {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-5vh); }
+}
+
+.skin-root[data-skin="heavy-metal"] .flames-bot {
+  transform-origin: 50% 100%;
+  animation: hellfire-flicker 2.6s ease-in-out infinite;
+}
+
+.skin-root[data-skin="heavy-metal"] .ember {
+  animation: hellfire-rise 5.5s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skin-root[data-skin="heavy-metal"] .flames-bot,
+  .skin-root[data-skin="heavy-metal"] .ember {
+    animation: none;
+  }
+}
+
+/* Phones: the amp stacks would crowd the rows. Keep the rig and the pyro. */
+@media (orientation: portrait) {
+  .skin-root[data-skin="heavy-metal"] .amp {
+    display: none;
+  }
+
+  .skin-root[data-skin="heavy-metal"] .rig .lamp::before {
+    height: 52vh;
+    width: 30vw;
+    margin-left: -15vw;
+  }
+}
+
+/* Header words sit inside overflow clips, so they get a black edge only: an orange glow would show as a clipped box. */
+.skin-root[data-skin="heavy-metal"] .hdr .metal-face,
+.skin-root[data-skin="heavy-metal"] .hdr .wm {
+  filter: drop-shadow(0 0.3vh 0 #000) drop-shadow(0 0 0.4vh #000);
 }

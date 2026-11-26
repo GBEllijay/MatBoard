@@ -47,8 +47,8 @@ export function metalRoundLabel(line: string): string {
 export type MetalFacePart = { kind: 'chrome' | 'num'; value: string };
 
 /**
- * Split a Metal Mania heading so each numeral is its own Anton run.
- * "Round 1" and "Mat 1" keep the digit out of Metal Mania, where 1 reads as I.
+ * Split a Pirata One heading so each numeral is its own Anton run.
+ * "Round 1" and "Mat 1" keep the digit out of Pirata One, where 1 reads as I.
  */
 export function metalFaceParts(text: string): MetalFacePart[] {
   const parts = text.split(/(\d+)/).filter((part) => part !== '');

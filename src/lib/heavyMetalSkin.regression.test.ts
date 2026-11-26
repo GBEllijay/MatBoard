@@ -45,7 +45,7 @@ test('side chips read BLUE and WHITE from the competitor side, never the belt', 
   assert.match(css, /\.c2 \.side b \{[^}]*background: #f4f1ea;[^}]*color: #0e1726/);
 });
 
-test('Metal Mania headings put numerals in Anton, and clocks stay plain Anton', () => {
+test('Pirata One headings put numerals in Anton, and clocks stay plain Anton', () => {
   assert.deepEqual(metalFaceParts('Mat 1'), [
     { kind: 'chrome', value: 'Mat' },
     { kind: 'num', value: '1' },
@@ -59,10 +59,10 @@ test('Metal Mania headings put numerals in Anton, and clocks stay plain Anton', 
   assert.equal(metalTimerTitle(false, 1).numeral, '1');
   assert.deepEqual(metalTimerTitle(true, 1), { word: 'Rest', numeral: null });
   const css = read('../skins/polished/heavy-metal.css');
-  const fonts = read('../skins/polished/fonts/chrome-inferno-fonts.css');
-  assert.match(fonts, /font-family: 'Metal Mania'/);
+  const fonts = read('../skins/polished/fonts/hellfire-fonts.css');
+  assert.match(fonts, /font-family: 'Pirata One'/);
   assert.match(fonts, /font-family: 'Anton'/);
-  assert.match(fonts, /metal-mania-latin-400-normal\.woff2/);
+  assert.match(fonts, /pirata-one-latin-400-normal\.woff2/);
   assert.match(fonts, /anton-latin-400-normal\.woff2/);
   assert.doesNotMatch(fonts, /fonts\.googleapis\.com/);
   assert.match(css, /\.n \{[^}]*font-family: Anton/);
@@ -102,12 +102,12 @@ test('Metal Mania headings put numerals in Anton, and clocks stay plain Anton', 
   assert.match(css, /font-family: Anton, sans-serif;\s*font-weight: 400;/);
   assert.match(css, /color: #fff;/);
   const entry = read('../skins/polished/heavy-metal.ts');
-  assert.match(entry, /chrome-inferno-fonts\.css/);
-  assert.doesNotMatch(entry, /@fontsource\/metal-mania|@fontsource\/anton|fonts\.googleapis\.com/);
+  assert.match(entry, /hellfire-fonts\.css/);
+  assert.doesNotMatch(entry, /@fontsource\/pirata-one|@fontsource\/anton|fonts\.googleapis\.com/);
 });
 
-test('Metal Mania and Anton are committed with the SIL Open Font License', () => {
-  for (const face of ['metal-mania', 'anton']) {
+test('Pirata One and Anton are committed with the SIL Open Font License', () => {
+  for (const face of ['pirata-one', 'anton']) {
     const license = read(`../skins/polished/fonts/${face}/OFL.txt`);
     assert.match(license, /SIL Open Font License, Version 1\.1/);
     assert.match(license, /SIL OPEN FONT LICENSE Version 1\.1/);
@@ -117,7 +117,7 @@ test('Metal Mania and Anton are committed with the SIL Open Font License', () =>
   }
 });
 
-test('the Chrome Inferno meter is 30 live segments and 04:40 of 05:00 lights 28', () => {
+test('the Hellfire Stage meter is 30 live segments and 04:40 of 05:00 lights 28', () => {
   assert.equal(METAL_METER_SEGMENTS, 30);
   assert.equal(metalMeterLit(timerProgress(280_000, 300_000)), 28);
   assert.equal(metalMeterLit(1), 30);
@@ -151,7 +151,7 @@ const skinCss = () => {
     });
   };
   const root = new URL('../skins/polished/', import.meta.url);
-  return `${embed(new URL('fonts/chrome-inferno-fonts.css', root))}\n${embed(new URL('heavy-metal.css', root))}`;
+  return `${embed(new URL('fonts/hellfire-fonts.css', root))}\n${embed(new URL('heavy-metal.css', root))}`;
 };
 
 test('two-digit scores fit a 109px tile at 390', async () => {
@@ -284,4 +284,33 @@ test('a long division ellipsizes and leaves Semifinal clear of the crest', async
     assert.ok(row.crestOff <= 2, `${viewport.width} crest off center by ${row.crestOff}px`);
   }
   await browser.close();
+});
+
+test('Hellfire Stage: original art only, no raster game-style assets, no third-party marks', () => {
+  const css = read('../skins/polished/heavy-metal.css');
+  const bracket = read('../skins/bracket/skins/heavy-metal.css');
+  const deco = read('../skins/polished/heavy-metal.deco.ts');
+  for (const source of [css, bracket, deco]) {
+    assert.doesNotMatch(source, /inferno-(bg|flames|crest|plate)/);
+    assert.doesNotMatch(source, /brutal|legend|jack black|eddie|gracie/i);
+  }
+  for (const art of ['hellfire-flames.svg', 'hellfire-crest.svg', 'hellfire-amp.svg']) {
+    const svg = read(`../skins/polished/assets/${art}`);
+    assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+    assert.doesNotMatch(svg, /<image|<text|href=/i, `${art} is pure vector with no embedded raster or text`);
+    assert.match(css + bracket, new RegExp(art.replace('.', '\\.')));
+  }
+  assert.match(deco, /class="rig"/);
+  assert.match(deco, /amp l/);
+  assert.match(css, /\.rig,[\s\S]*\.amp,[\s\S]*pointer-events: none/);
+});
+
+test('Heavy Metal timer clock stays narrow so TV side margins open Training options', () => {
+  const css = read('../skins/polished/heavy-metal.css');
+  const rule = /\.tm \.digits \{[^}]*\}/.exec(css)?.[0] ?? '';
+  assert.match(rule, /max-width: 62vw/);
+  assert.match(rule, /font-size: min\(46vh, 24vw\)/);
+  assert.doesNotMatch(rule, /max-width: 9\dvw/);
+  const root = read('../skins/polished/skin-root.css');
+  assert.match(root, /data-skin='kids-sticker'\] \.tm \.digits\.tm-clock \{\s*font-size: min\(40vh, 22vw\)/);
 });
