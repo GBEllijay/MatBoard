@@ -217,6 +217,15 @@ test('the homepage hero buy button uses the price constant and opens /buy', () =
   assert.doesNotMatch(hero, /Click here/);
   assert.doesNotMatch(hero, /to="\/white"/);
   assert.match(hero, /className="sf-buy sfh-buy"/);
+  assert.match(hero, /className="sfh-top-buy"/);
+  assert.match(hero, /<StorefrontBuyBlock \/>/);
+  assert.match(css, /\.sfh--e \.sfh-top-buy \{[^}]*grid-column:\s*1 \/ -1/s);
+  // The default mats hero keeps the button under the text and board cards, not inside the text card.
+  const textCard = hero.indexOf("variant === 'e'");
+  const eText = hero.indexOf('className="sfh-text"', textCard);
+  const eBuy = hero.indexOf('<StorefrontBuyBlock />', textCard);
+  const eTextClose = hero.indexOf('</div>', eText);
+  assert.ok(textCard > -1 && eText > textCard && eBuy > eTextClose, 'default hero buy button sits under the hero cards');
   assert.match(css, /--buy-gold:\s*#f6c000/);
   assert.match(css, /\.sfh-buy-price \{[^}]*background:\s*#0e1726/s);
   assert.match(css, /\.sfh-buy-price \{[^}]*color:\s*#f6c000/s);

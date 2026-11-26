@@ -77,11 +77,18 @@ export function StorefrontBuyButton() {
   );
 }
 
+function StorefrontBuyBlock() {
+  return (
+    <div className="sfh-top-buy">
+      <StorefrontBuyButton />
+      <p className="sfh-fine">{STOREFRONT_HERO.fine}</p>
+    </div>
+  );
+}
+
 function Cta() {
   return (
     <div className="sfh-cta">
-      <StorefrontBuyButton />
-      <p className="sfh-fine">{STOREFRONT_HERO.fine}</p>
       <div className="sfh-links">
         <a className="sfh-more" href="#scoreboard" onClick={scrollToScoreboard}>
           See how it works ↓
@@ -197,8 +204,11 @@ export function StorefrontHero() {
               <Shot shot={ROUND_TIMER} alt="Advantage round timer showing round 1 of 5 at 05:00" className="sfh-frame--block" />
             </div>
           </div>
+          <StorefrontBuyBlock />
         </div>
-      ) : null}
+      ) : (
+        <StorefrontBuyBlock />
+      )}
     </section>
   );
 }
