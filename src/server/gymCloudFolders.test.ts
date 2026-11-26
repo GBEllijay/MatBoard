@@ -421,3 +421,22 @@ test('a file with a missing or generic stored type is served and stored as what 
   assert.equal(stored.status, 200);
   assert.equal(bucket.objects.get(`${BASE}events/no-type.png`)?.type, 'image/png');
 });
+
+test('Events dedupe also sees files uploaded before folders kept fingerprints (the 13 already there)', async () => {
+  const { bucket, fetcher, tokens, put } = await setup();
+  await setSwitch(fetcher, tokens.owner, false);
+  // Stored by the old code: no marker beside them.
+  put('events/KIM-Fitness.png', 'image/png', 'kim photo');
+  put('events/Bee-is-the-Balm.png', 'image/png', 'bee photo!');
+  const markers = () => [...bucket.objects.keys()].filter((key) => key.startsWith(`${BASE}hashes/`));
+  assert.equal(markers().length, 0);
+  const photo = (name: string, text: string) => new File([text], name, { type: 'image/png' });
+  // The device sends the same photo again under its migration name: skipped, nothing new stored.
+  const again = await uploadToCloudFolder({ folder: 'events', file: photo('Event-11-e8ad20bc-a83.png', 'kim photo'), dateKey: '2026-11-18', token: tokens.owner, fetcher });
+  assert.deepEqual(again, { ok: true, path: 'events/KIM-Fitness.png', lane: 'approved', duplicate: true });
+  assert.equal(bucket.objects.has(`${BASE}events/Event-11-e8ad20bc-a83.png`), false);
+  // Same size, different bytes: a new photo. The check never reads files of another size.
+  const other = await uploadToCloudFolder({ folder: 'events', file: photo('new.png', 'kim photX'), dateKey: '2026-11-18', token: tokens.owner, fetcher });
+  assert.deepEqual(other, { ok: true, path: 'events/new.png', lane: 'approved' });
+  assert.ok(markers().length > 0, 'the files that were checked now have markers');
+});

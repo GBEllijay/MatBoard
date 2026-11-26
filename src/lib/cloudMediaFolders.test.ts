@@ -310,3 +310,25 @@ test('every networked folder plays on its own: Gallery (photos and a clip) and P
   assert.deepEqual(only('gallery'), ['gallery/approved/2026-11-19/20260218_190358.jpg', 'gallery/approved/2026-11-19/warmup.mp4']);
   assert.deepEqual(only('shop'), ['pro-shop/Rash-guard.jpg']);
 });
+
+test('device send: a photo Cloud already has (under its old name) is linked to that file, not stored again', async () => {
+  const cloud = fakeCloud('events');
+  cloud.files.add('events/KIM-Fitness.png');
+  const row = device('k1', 'events', { label: 'KIM Fitness' });
+  const plan = planDeviceMigration({ rows: [row], folderId: 'events', index: cloud.index, listedPaths: cloud.files, dateKey: '2026-11-19' });
+  assert.equal(plan.send.length, 1);
+  const summary = await runDeviceMigration({
+    plan,
+    folderId: 'events',
+    dateKey: '2026-11-19',
+    upload: async () => ({ ok: true, path: 'events/KIM-Fitness.png', lane: 'approved', duplicate: true }),
+    patch: cloud.patch,
+  });
+  assert.equal(summary.sent, 0);
+  assert.equal(summary.relinked, 1);
+  assert.equal(cloud.index.migrated['dev:k1'], 'events/KIM-Fitness.png');
+  assert.equal(cloud.index.items['events/KIM-Fitness.png'].label, 'KIM Fitness');
+  // The next run skips it.
+  const again = planDeviceMigration({ rows: [row], folderId: 'events', index: cloud.index, listedPaths: cloud.files, dateKey: '2026-11-19' });
+  assert.equal(again.skip.length, 1);
+});

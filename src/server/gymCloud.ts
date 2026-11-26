@@ -69,7 +69,7 @@ import {
   type CloudFileRow,
   type CloudMediaPurpose,
 } from '../lib/advantageCloudMedia.ts';
-import { isCloudFingerprint, sha256Hex } from '../lib/cloudFingerprint.ts';
+import { FINGERPRINT_FULL_MAX_BYTES, isCloudFingerprint, sha256Hex } from '../lib/cloudFingerprint.ts';
 import {
   instructorLessonAccess,
   instructorLessonPath,
@@ -406,11 +406,12 @@ export async function findCloudDuplicate(
   licenseId: string,
   fingerprint: string,
   scope = '',
+  size = 0,
 ): Promise<{ path: string; lane?: 'pending' | 'approved' } | null> {
   const markerKey = fingerprintKey(licenseId, fingerprint, scope);
   if (!markerKey) return null;
   const marker = await bucket.get(markerKey);
-  if (!marker) return null;
+  if (!marker) return scope && size > 0 ? backfillSideFolderDuplicate(bucket, licenseId, fingerprint, scope, size) : null;
   let recorded = '';
   try {
     const parsed = JSON.parse(await new Response(marker.body).text()) as { path?: unknown };
@@ -439,6 +440,45 @@ export async function findCloudDuplicate(
   // No live copy (e.g. deleted before deletes cleaned up markers): drop the stale marker so it stops counting.
   await bucket.delete([markerKey, fingerprintPathKey(licenseId, recorded)]);
   return null;
+}
+
+/** The most same-size files one upload check reads back to fingerprint. */
+const BACKFILL_READS_MAX = 8;
+
+/**
+ * Files in a Pro Shop, Events, or Schedule folder that were uploaded before side folders recorded
+ * fingerprints have no marker, so a repeat of one would slip through. Look at this folder's files
+ * of exactly the same size, fingerprint them now (small files only: the page hashes every byte),
+ * record what is found, and report a match. Reads at most a few files, once per upload start.
+ */
+async function backfillSideFolderDuplicate(
+  bucket: GymMediaBucket,
+  licenseId: string,
+  fingerprint: string,
+  scope: string,
+  size: number,
+): Promise<{ path: string; lane?: 'pending' | 'approved' } | null> {
+  if (!fingerprint.startsWith('v1-full-') || size > FINGERPRINT_FULL_MAX_BYTES) return null;
+  const base = `groups/${licenseId}/`;
+  let reads = 0;
+  let match: { path: string; lane: 'pending' | 'approved' } | null = null;
+  for (const prefix of [`${base}${scope}/`, `${base}${scope}/pending/`]) {
+    const listed = await bucket.list({ prefix, limit: 1000 });
+    for (const object of listed.objects) {
+      if (object.size !== size || reads >= BACKFILL_READS_MAX) continue;
+      const path = relativePath(licenseId, object.key);
+      const parsed = parseSideFolderCloudPath(path);
+      if (!parsed || parsed.folder !== scope) continue;
+      if (await bucket.head(fingerprintPathKey(licenseId, path))) continue;
+      const stored = await bucket.get(object.key);
+      if (!stored) continue;
+      reads += 1;
+      const print = `v1-full-${await sha256Hex(new Uint8Array(await new Response(stored.body).arrayBuffer()))}`;
+      await recordFingerprint(bucket, object.key, print, size);
+      if (print === fingerprint && !match) match = { path, lane: parsed.lane };
+    }
+  }
+  return match;
 }
 
 async function recordFingerprint(bucket: GymMediaBucket, key: string, fingerprint: string, size: number): Promise<void> {
@@ -1929,7 +1969,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
   // Pro Shop, Events, and Schedule skip a repeat of the same file in the same folder too.
   const dedupFolder = purpose === 'cloud-folder' && folderUploader && isCloudSideFolder(body.folder) ? body.folder : '';
   if ((purpose === 'gallery' || purpose === 'daily-video' || dedupFolder) && isCloudFingerprint(body.fingerprint)) {
-    const duplicate = await findCloudDuplicate(bucket, actor.licenseId, body.fingerprint, dedupFolder);
+    const duplicate = await findCloudDuplicate(bucket, actor.licenseId, body.fingerprint, dedupFolder, size);
     if (duplicate) return json(200, { ok: true, mode: 'duplicate', path: duplicate.path, ...(duplicate.lane ? { lane: duplicate.lane } : {}) });
   }
   if (purpose === 'replay-pending' && actor.replayUpload !== 'pending') {
