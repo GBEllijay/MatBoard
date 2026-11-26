@@ -11,11 +11,11 @@ import {
 import { PRODUCTS_PATH } from '../lib/productNames';
 import {
   STOREFRONT_BRACKETS,
-  STOREFRONT_BUY_PATH,
   STOREFRONT_NAV,
   STOREFRONT_POINTS,
   STOREFRONT_TIMER,
-  STOREFRONT_WIN_BUY_LABEL,
+  STOREFRONT_WIN_BUY_KICKER,
+  STOREFRONT_WIN_BUY_PRODUCT,
   STOREFRONT_WOODBLOCKS,
 } from '../lib/storefront';
 import { StorefrontBuyButton, StorefrontHero } from './StorefrontHero';
@@ -82,12 +82,12 @@ export function StorefrontPage() {
       </div>
 
       <div className="sf-wrap">
-        <Link
-          className="sf-win-buy"
-          to={STOREFRONT_BUY_PATH}
-          aria-label={STOREFRONT_WIN_BUY_LABEL}
-        >
-          <h2>{STOREFRONT_WIN_BUY_LABEL}</h2>
+        <div className="sf-win-buy">
+          <h2>
+            <span className="sf-win-buy-kicker">{STOREFRONT_WIN_BUY_KICKER}</span>
+            {' '}
+            <span className="sf-win-buy-product">{STOREFRONT_WIN_BUY_PRODUCT}</span>
+          </h2>
           <img
             className="sf-win-buy-logo"
             src="/advantage-icon.png"
@@ -96,7 +96,7 @@ export function StorefrontPage() {
             height={96}
             draggable={false}
           />
-        </Link>
+        </div>
       </div>
 
       <div className="sf-wrap sf-bottom-buy">

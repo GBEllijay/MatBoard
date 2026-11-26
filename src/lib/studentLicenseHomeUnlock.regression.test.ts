@@ -171,7 +171,7 @@ test('/products and the public homepage open White and Student from a claimed li
   assert.match(hero, /to=\{STOREFRONT_BUY_PATH\}/);
   assert.match(hero, /STOREFRONT_HERO_BUY_TEXT/);
   assert.match(hero, /STOREFRONT_PRICE_LABEL/);
-  assert.match(hero, /See how it works/);
+  assert.doesNotMatch(hero, /See how it works/);
   assert.doesNotMatch(hero, /Open Student Edition/);
   assert.doesNotMatch(hero, /to="\/student"/);
   assert.doesNotMatch(hero, /Click here/);

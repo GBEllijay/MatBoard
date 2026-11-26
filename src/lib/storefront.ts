@@ -23,7 +23,9 @@ export const STOREFRONT_HERO_BUY_TEXT = 'Buy Advantage';
 export const STOREFRONT_HERO_BUY_LABEL = `${STOREFRONT_HERO_BUY_TEXT} ${STOREFRONT_PRICE_LABEL}`;
 
 /** Homepage closing card, below Mock tournament and above the footer. */
-export const STOREFRONT_WIN_BUY_LABEL = 'Win. Buy Advantage.';
+export const STOREFRONT_WIN_BUY_KICKER = 'Win.';
+export const STOREFRONT_WIN_BUY_PRODUCT = 'Buy Advantage.';
+export const STOREFRONT_WIN_BUY_LABEL = `${STOREFRONT_WIN_BUY_KICKER} ${STOREFRONT_WIN_BUY_PRODUCT}`;
 
 export const STOREFRONT_HERO = {
   title: 'Win by Advantage.',

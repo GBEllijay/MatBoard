@@ -1082,7 +1082,8 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   align-content: center;
-  gap: 24px;
+  column-gap: 24px;
+  row-gap: 0;
   max-width: none;
   padding-left: max(48px, calc(50% - 632px));
   padding-right: max(40px, calc(50% - 560px));
@@ -1091,7 +1092,7 @@
 
 .home.home--store .sfh--e .sfh-text {
   max-width: none;
-  padding: 32px 36px 30px;
+  padding: 32px 36px 36px;
   border-radius: 24px;
   background: rgba(0, 0, 0, 0.6);
   -webkit-backdrop-filter: blur(8px);
@@ -1106,19 +1107,28 @@
   width: 100%;
 }
 
-/* Option E buy button sits directly under the hero cards, not inside the text card. */
-.home.home--store .sfh-top-buy {
+/* Option E buy button sits inside the left text card, under the body copy.
+   It stretches to the card's content width at every breakpoint; the bottom
+   buy button is styled separately and stays shrink-to-fit on desktop. */
+.home.home--store .sfh--e .sfh-cta {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
+  width: 100%;
+  margin-top: 24px;
 }
 
-.home.home--store .sfh--e .sfh-top-buy {
-  grid-column: 1 / -1;
-  margin-top: 4px;
+.home.home--store .sfh--e .sfh-cta .sfh-buy {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.home.home--store .sfh-top-buy .sfh-fine {
+.home.home--store .sfh--e .sfh-cta .sfh-buy-price {
+  margin-left: auto;
+}
+
+.home.home--store .sfh--e .sfh-fine {
   text-align: center;
 }
 
@@ -1146,7 +1156,7 @@
     flex-direction: column;
     align-items: stretch;
     min-height: 0;
-    padding: 10px 20px 36px;
+    padding: 10px 20px 44px;
     gap: 0;
   }
 
@@ -1159,9 +1169,8 @@
   .home.home--store .sfh--e .sfh-title { order: 2; }
   .home.home--store .sfh--e .sfh-lead { order: 3; }
   .home.home--store .sfh--e .sfh-stage { order: 4; margin-top: 10px; width: 100%; gap: 6px; }
-  .home.home--store .sfh--e .sfh-top-buy { order: 5; margin-top: 6px; width: 100%; }
-  .home.home--store .sfh--e .sfh-cta { order: 6; margin-top: 6px; position: relative; z-index: 2; }
-  .home.home--store .sfh--e .sfh-sub { order: 7; margin-top: 18px; text-align: center; }
+  .home.home--store .sfh--e .sfh-cta { order: 5; margin-top: 20px; width: 100%; position: relative; z-index: 2; }
+  .home.home--store .sfh--e .sfh-sub { order: 6; margin-top: 18px; text-align: center; }
 
   .home.home--store .sfh--e .sfh-brand,
   .home.home--store .sfh--e .sfh-title,

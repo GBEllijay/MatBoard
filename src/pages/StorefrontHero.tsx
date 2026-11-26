@@ -61,13 +61,6 @@ function Copy() {
   );
 }
 
-function scrollToScoreboard(event: { preventDefault: () => void }) {
-  const target = document.getElementById('scoreboard');
-  if (!target) return;
-  event.preventDefault();
-  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
 export function StorefrontBuyButton() {
   return (
     <Link className="sf-buy sfh-buy" to={STOREFRONT_BUY_PATH}>
@@ -77,23 +70,11 @@ export function StorefrontBuyButton() {
   );
 }
 
-function StorefrontBuyBlock() {
-  return (
-    <div className="sfh-top-buy">
-      <StorefrontBuyButton />
-      <p className="sfh-fine">{STOREFRONT_HERO.fine}</p>
-    </div>
-  );
-}
-
 function Cta() {
   return (
     <div className="sfh-cta">
-      <div className="sfh-links">
-        <a className="sfh-more" href="#scoreboard" onClick={scrollToScoreboard}>
-          See how it works ↓
-        </a>
-      </div>
+      <StorefrontBuyButton />
+      <p className="sfh-fine">{STOREFRONT_HERO.fine}</p>
     </div>
   );
 }
@@ -204,11 +185,8 @@ export function StorefrontHero() {
               <Shot shot={ROUND_TIMER} alt="Advantage round timer showing round 1 of 5 at 05:00" className="sfh-frame--block" />
             </div>
           </div>
-          <StorefrontBuyBlock />
         </div>
-      ) : (
-        <StorefrontBuyBlock />
-      )}
+      ) : null}
     </section>
   );
 }
