@@ -1087,13 +1087,12 @@
   max-width: none;
   padding-left: max(48px, calc(50% - 632px));
   padding-right: max(40px, calc(50% - 560px));
-  padding-bottom: 56px;
   min-height: min(700px, calc(100svh - 40px));
 }
 
 .home.home--store .sfh--e .sfh-text {
   max-width: none;
-  padding: 32px 36px 30px;
+  padding: 32px 36px 36px;
   border-radius: 24px;
   background: rgba(0, 0, 0, 0.6);
   -webkit-backdrop-filter: blur(8px);
@@ -1108,19 +1107,15 @@
   width: 100%;
 }
 
-/* Option E buy button sits directly under the hero cards, not inside the text card. */
-.home.home--store .sfh-top-buy {
+/* Option E buy button sits inside the left text card, under the body copy. */
+.home.home--store .sfh--e .sfh-cta {
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-top: 24px;
 }
 
-.home.home--store .sfh--e .sfh-top-buy {
-  grid-column: 1 / -1;
-  margin-top: 20px;
-}
-
-.home.home--store .sfh-top-buy .sfh-fine {
+.home.home--store .sfh--e .sfh-fine {
   text-align: center;
 }
 
@@ -1161,9 +1156,8 @@
   .home.home--store .sfh--e .sfh-title { order: 2; }
   .home.home--store .sfh--e .sfh-lead { order: 3; }
   .home.home--store .sfh--e .sfh-stage { order: 4; margin-top: 10px; width: 100%; gap: 6px; }
-  .home.home--store .sfh--e .sfh-top-buy { order: 5; margin-top: 16px; width: 100%; }
-  .home.home--store .sfh--e .sfh-cta { order: 6; margin-top: 6px; position: relative; z-index: 2; }
-  .home.home--store .sfh--e .sfh-sub { order: 7; margin-top: 18px; text-align: center; }
+  .home.home--store .sfh--e .sfh-cta { order: 5; margin-top: 20px; width: 100%; position: relative; z-index: 2; }
+  .home.home--store .sfh--e .sfh-sub { order: 6; margin-top: 18px; text-align: center; }
 
   .home.home--store .sfh--e .sfh-brand,
   .home.home--store .sfh--e .sfh-title,
