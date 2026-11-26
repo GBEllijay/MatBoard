@@ -45,21 +45,23 @@
 
 .skin-root.skin-root--arcade .tile {
   width: max-content;
-  min-width: 12vh;
+  min-width: 14.5vh;
   height: auto;
   min-height: 0;
-  padding: 0.4vh 0.6vh 0.6vh;
+  gap: 0.55vh;
+  padding: 0.65vh 1vh 0.7vh;
   flex: none;
 }
 
 .skin-root.skin-root--arcade .num,
 .skin-root.skin-root--arcade .row .tile .num {
   font-size: 9vh;
-  line-height: 0.85;
+  line-height: 0.92;
 }
 
 .skin-root.skin-root--arcade .lab {
-  font-size: 2.2vh;
+  font-size: 1.8vh;
+  line-height: 1.15;
 }
 
 .skin-root.skin-root--arcade .ptag {
@@ -135,8 +137,8 @@
 .skin-root.skin-root--arcade .fighter {
   position: absolute;
   bottom: 0;
-  width: 26vh;
-  height: 86vh;
+  width: clamp(14vh, 13vw, 25vh);
+  height: min(84vh, 52vw);
   z-index: 2;
   pointer-events: none;
   background-position: center bottom;
@@ -226,14 +228,11 @@
 }
 
 @media (max-width: 820px) {
-  .skin-root.skin-root--poster.skin-root--arcade .adv .lab {
-    font-size: 0;
-    line-height: 0;
+  .skin-root.skin-root--poster.skin-root--arcade .adv .lab .lab-full {
+    display: none;
   }
-  .skin-root.skin-root--poster.skin-root--arcade .adv .lab::after {
-    content: 'ADV';
-    font-size: min(1.8vh, 2.6vw);
-    line-height: 1;
+  .skin-root.skin-root--poster.skin-root--arcade .adv .lab .lab-tiny {
+    display: inline;
   }
 }
 
@@ -254,13 +253,24 @@
   .skin-root.skin-root--arcade .row.c2 .adv { grid-column: 2; }
   .skin-root.skin-root--arcade .row.c1 .pen,
   .skin-root.skin-root--arcade .row.c2 .pen { grid-column: 3; }
-  .skin-root.skin-root--poster.skin-root--arcade .pts .lab,
-  .skin-root.skin-root--poster.skin-root--arcade .pen .lab,
-  .skin-root.skin-root--poster.skin-root--arcade .adv .lab {
-    font-size: 0;
-    line-height: 0;
+  .skin-root.skin-root--poster.skin-root--arcade .row .tile {
+    min-width: 0;
+    padding: 0.55vh 1vw 0.7vh;
+    gap: 0.45vh;
   }
-  .skin-root.skin-root--poster.skin-root--arcade .pts .lab::after { content: 'PTS'; font-size: min(1.8vh, 3.2vw); line-height: 1; }
-  .skin-root.skin-root--poster.skin-root--arcade .pen .lab::after { content: 'PEN'; font-size: min(1.8vh, 3.2vw); line-height: 1; }
-  .skin-root.skin-root--poster.skin-root--arcade .adv .lab::after { content: 'ADV'; font-size: min(1.8vh, 3.2vw); line-height: 1; }
+  .skin-root.skin-root--poster.skin-root--arcade .row .tile .lab {
+    font-size: clamp(9px, 2.7vw, 13px);
+    line-height: 1.15;
+    padding: 0.3vh 1.2vw;
+  }
+}
+
+@media (max-width: 1400px) and (min-width: 821px) {
+  .skin-root--arcade .fighter {
+    width: clamp(11vh, 10.2vw, 20vh);
+  }
+  .skin-root--arcade .tile .num {
+    font-size: 8vh;
+    padding-bottom: 0.25vh;
+  }
 }

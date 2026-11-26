@@ -704,8 +704,11 @@
 
 .skin-root[data-skin="heavy-metal"] .tm .digits {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 92vw;
   top: 29vh;
   z-index: 4;
   font-size: 46vh;

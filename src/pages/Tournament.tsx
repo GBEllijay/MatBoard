@@ -187,6 +187,8 @@ export function TournamentPage() {
   const [savedOpen, setSavedOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [pendingPlacement, setPendingPlacement] = useState<PlacementStyle | null>(null);
+  const [pendingSize, setPendingSize] = useState<number | null>(null);
+  const [pendingPasteNames, setPendingPasteNames] = useState<string[] | null>(null);
   const [pasteDraft, setPasteDraft] = useState('');
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [fillPlaced, setFillPlaced] = useState<number | null>(null);
@@ -295,11 +297,46 @@ export function TournamentPage() {
 
   const requestSize = (size: number) => {
     if (size === tournament.size) {
+      setPendingSize(null);
       setSizeOpen(false);
       return;
     }
     setPendingPlacement(null);
+    if (named && bracketHasContent(tournament)) {
+      setPendingSize(size);
+      return;
+    }
+    setPendingSize(null);
     applySize(size);
+  };
+
+  const makeNewForSize = (size: number) => {
+    unlinkBracketBout();
+    setFillPlaced(null);
+    newBracket(clampCompetitorCount(size, sizeMax));
+    if (fromWhite && getBracketRoster().entries.length >= 2) {
+      fillFromWhiteRoster(size, { newBoard: false });
+    }
+    setPendingSize(null);
+    setSizeOpen(false);
+  };
+
+  const requestFillSeedNames = (names: readonly string[]) => {
+    if (!names.length) return;
+    if (named && bracketHasContent(tournament)) {
+      setPendingPasteNames([...names]);
+      return;
+    }
+    setPendingPasteNames(null);
+    fillSeedNames(names, 0);
+  };
+
+  const makeNewForPaste = (names: readonly string[]) => {
+    unlinkBracketBout();
+    setFillPlaced(null);
+    newBracket(clampCompetitorCount(tournament.size, sizeMax));
+    fillSeedNames(names, 0);
+    setPendingPasteNames(null);
   };
 
   const applyPlacementNow = (style: PlacementStyle) => {
@@ -565,6 +602,7 @@ export function TournamentPage() {
               onClick={() => {
                 setCustomSize(String(tournament.size));
                 setPendingPlacement(null);
+                setPendingSize(null);
                 setSizeOpen(true);
               }}
             >
@@ -578,6 +616,7 @@ export function TournamentPage() {
               className="btn btn--ghost"
               onClick={() => {
                 setPasteDraft('');
+                setPendingPasteNames(null);
                 setNamesOpen(true);
               }}
             >
@@ -631,7 +670,10 @@ export function TournamentPage() {
         className="sheet--names"
         open={namesOpen}
         title={plainCoach ? 'Student names' : 'Competitor names'}
-        onClose={() => setNamesOpen(false)}
+        onClose={() => {
+          setPendingPasteNames(null);
+          setNamesOpen(false);
+        }}
       >
         <p className="tournament__sheet-copy">
           {tournament.size} {plainCoach ? 'student' : 'competitor'}
@@ -656,7 +698,7 @@ export function TournamentPage() {
               if (names.length < 2) return;
               event.preventDefault();
               setPasteDraft(event.clipboardData.getData('text'));
-              fillSeedNames(names, 0);
+              requestFillSeedNames(names);
             }}
           />
         </label>
@@ -666,11 +708,35 @@ export function TournamentPage() {
           onClick={() => {
             const names = parseNameList(pasteDraft);
             if (!names.length) return;
-            fillSeedNames(names, 0);
+            requestFillSeedNames(names);
           }}
         >
           Fill bracket
         </button>
+        {pendingPasteNames != null ? (
+          <div className="tournament__confirm" role="alert">
+            <span>
+              You&apos;re editing the saved bracket &ldquo;{savedLabel}&rdquo;. Filling {pendingPasteNames.length}{' '}
+              name{pendingPasteNames.length === 1 ? '' : 's'} will overwrite it.
+            </span>
+            <button type="button" className="btn" onClick={() => makeNewForPaste(pendingPasteNames)}>
+              Make a new one instead
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                fillSeedNames(pendingPasteNames, 0);
+                setPendingPasteNames(null);
+              }}
+            >
+              Overwrite {savedLabel}
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setPendingPasteNames(null)}>
+              Cancel
+            </button>
+          </div>
+        ) : null}
         {fromWhite ? (
           <button
             type="button"
@@ -725,6 +791,7 @@ export function TournamentPage() {
         onClose={() => {
           setSizeOpen(false);
           setPendingPlacement(null);
+          setPendingSize(null);
         }}
       >
         <p className="tournament__sheet-copy">
@@ -813,6 +880,31 @@ export function TournamentPage() {
         >
           Use custom size
         </button>
+        {pendingSize != null ? (
+          <div className="tournament__confirm" role="alert">
+            <span>
+              You&apos;re editing the saved bracket &ldquo;{savedLabel}&rdquo;. Changing size to {pendingSize} will
+              overwrite it.
+            </span>
+            <button type="button" className="btn" onClick={() => makeNewForSize(pendingSize)}>
+              Make a new one instead
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                const target = pendingSize;
+                setPendingSize(null);
+                applySize(target);
+              }}
+            >
+              Overwrite {savedLabel}
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setPendingSize(null)}>
+              Cancel
+            </button>
+          </div>
+        ) : null}
         {pendingPlacement != null ? (
           <div className="tournament__confirm">
             <span>

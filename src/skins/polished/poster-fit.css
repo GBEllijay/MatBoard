@@ -341,29 +341,92 @@
   .skin-root.skin-root--poster .phase-endless {
     display: none;
   }
+}
 
-  /* Dungeon and Mech: the short pill sits in the gap under the crest, and the title moves below it. */
-  .skin-root[data-skin='dungeon-quest'] .tm .phase,
-  .skin-root[data-skin='mech-battle'] .tm .phase {
+@media (orientation: portrait) and (max-width: 820px) {
+  /* Poster skins on portrait phone: center the phase pill below the crest/header so it never truncates or hits Fullscreen. */
+  .skin-root.skin-root--poster .tm .phase {
     position: absolute;
-    top: 18.6vh;
+    top: 17.5vh;
     right: auto;
     left: 50%;
     transform: translateX(-50%);
     margin: 0;
-    max-width: 70vw;
+    max-width: 86vw;
+    font-size: min(2.2vh, 3.4vw);
+    letter-spacing: 0.08em;
+    padding: 0.7vh 3.5vw;
+    white-space: nowrap;
     text-align: center;
     z-index: 6;
   }
 
-  .skin-root[data-skin='dungeon-quest'] .tm .title,
-  .skin-root[data-skin='mech-battle'] .tm .title {
-    top: 25vh;
+  .skin-root.skin-root--poster[data-skin='arcade-fighter'] .tm .phase {
+    top: 12.5vh;
   }
 
-  .skin-root[data-skin='dungeon-quest'] .tm .dplate,
-  .skin-root[data-skin='mech-battle'] .tm .dplate {
-    top: 32vh;
+  .skin-root.skin-root--poster .tm .title {
+    top: 23.5vh;
+    left: 4vw;
+    right: 4vw;
+    font-size: min(5.4vh, 8.2vw);
+  }
+
+  .skin-root.skin-root--poster[data-skin='arcade-fighter'] .tm .title {
+    top: 19vh;
+  }
+
+  .skin-root.skin-root--poster .tm .dplate {
+    top: 30.5vh;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: auto;
+    min-width: 74vw;
+    max-width: 90vw;
+    height: auto;
+    min-height: 0;
+    padding: 2.2vh 5vw;
+  }
+
+  .skin-root.skin-root--poster[data-skin='arcade-fighter'] .tm .dplate {
+    top: 26.5vh;
+  }
+
+  .skin-root.skin-root--poster .tm .digits,
+  .skin-root.skin-root--poster .tm .tm-clock {
+    font-size: min(24vh, 20vw);
+  }
+
+  .skin-root.skin-root--poster .tm .meter {
+    top: 52vh;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: 76vw;
+  }
+
+  .skin-root.skin-root--poster[data-skin='arcade-fighter'] .tm .meter {
+    top: 48vh;
+  }
+
+  .skin-root.skin-root--poster .tm .next {
+    top: 58.5vh;
+    left: 4vw;
+    right: 4vw;
+    font-size: min(2.2vh, 3.4vw);
+    letter-spacing: 0.1em;
+  }
+
+  .skin-root.skin-root--poster[data-skin='arcade-fighter'] .tm .next {
+    top: 54.5vh;
+  }
+
+  .skin-root.skin-root--poster .tm .mascot {
+    bottom: 1vh;
+    height: 34vh;
+    width: 24vh;
+    z-index: 3;
   }
 }
 

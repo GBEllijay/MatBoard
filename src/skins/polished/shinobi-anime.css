@@ -446,10 +446,24 @@
     display: none;
   }
 
+  .skin-root[data-skin='shinobi-anime'] .tseal {
+    left: 50%;
+    transform: translateX(-50%);
+    top: 2.2vh;
+  }
+
+  .skin-root[data-skin='shinobi-anime'] .tseal .seal {
+    width: min(10vh, 18vw);
+    height: min(10vh, 18vw);
+    font-size: min(7.2vh, 13vw);
+  }
+
   .skin-root[data-skin='shinobi-anime'] .tm .mascot {
-    height: 42vh;
-    width: 28vh;
-    opacity: 0.85;
+    left: 2vw;
+    bottom: 0;
+    height: 33vh;
+    width: 18vh;
+    opacity: 1;
   }
 
   .skin-root[data-skin='shinobi-anime'] .tm .title,

@@ -16,6 +16,13 @@ import { setWhiteUnlocked, lockWhite } from '../lib/whiteUnlock.ts';
 import { KIDS_SKINS, kidsBracketScoring, kidsSkinButtonSuppressed, setKidsEnabled, setKidsSkin } from '../lib/kidsScoreboard.ts';
 import { PRO_UNLOCK_STORAGE_KEY } from '../lib/proUnlock.ts';
 import { addStudent, getRoster, resetRoster } from '../lib/rosterStore.ts';
+import { dispatchMatch, getMatch } from '../lib/matchStore.ts';
+import {
+  addBracketRosterEntry,
+  clearBracketRoster,
+  resetBracketRosterForTests,
+  seedWhiteBracketFromRoster,
+} from '../lib/bracketRosterStore.ts';
 import {
   DEFAULT_BRACKET_HEADLINE,
   fillSeedNames,
@@ -27,6 +34,9 @@ import {
   setTournamentTitle,
   slotName,
   STORAGE_KEY,
+  renameActiveBracket,
+  getLibrary,
+  switchBracket,
 } from '../lib/tournamentStore.ts';
 
 const dom = new Window({ url: 'http://localhost/tournament?from=suite' });
@@ -1134,4 +1144,188 @@ test('White size chips include 32 and 64, and the custom range goes to 64', asyn
     resetTournament();
     lockWhite();
   }
+});
+
+test('saved bracket warns before size change or paste overwrites and offers Make a new one instead', async () => {
+  localStorage.clear();
+  resetTournament();
+  setWhiteUnlocked(true);
+  setCompetitorCount(4);
+  fillSeedNames(['Ana', 'Bea', 'Cam', 'Dee']);
+  renameActiveBracket('Saturday Open');
+  const savedId = getLibrary().activeId;
+
+  const mounted = mount(<TournamentPage />, '/white/brackets?from=white');
+  try {
+    await settle();
+    const sizeChip = [...mounted.host.querySelectorAll('button')].find((b) => b.textContent?.trim() === '4');
+    assert.ok(sizeChip);
+    await act(async () => {
+      sizeChip.click();
+    });
+    await settle();
+    const eightBtn = [...document.querySelectorAll('.sheet .tournament__size-presets button')].find(
+      (b) => b.textContent?.trim() === '8',
+    ) as HTMLButtonElement | undefined;
+    assert.ok(eightBtn);
+    await act(async () => {
+      eightBtn.click();
+    });
+    await settle();
+
+    const alertText = document.querySelector('.sheet [role="alert"]')?.textContent ?? '';
+    assert.match(alertText, /Saturday Open/);
+    assert.match(alertText, /Changing size to 8/);
+    const makeNewBtn = [...document.querySelectorAll('.sheet [role="alert"] button')].find(
+      (b) => b.textContent?.trim() === 'Make a new one instead',
+    ) as HTMLButtonElement | undefined;
+    assert.ok(makeNewBtn);
+    await act(async () => {
+      makeNewBtn.click();
+    });
+    await settle();
+
+    assert.notEqual(getLibrary().activeId, savedId);
+    assert.equal(getTournament().size, 8);
+    const savedRow = getLibrary().saved.find((item) => item.id === savedId);
+    assert.equal(savedRow?.name, 'Saturday Open');
+    assert.equal(savedRow?.board.size, 4);
+    assert.equal(savedRow ? slotName(savedRow.board, seedSlots(savedRow.board)[0]) : undefined, 'Ana');
+
+    // Switch back to saved bracket and verify Edit names -> Fill bracket also warns & offers Make a new one instead
+    await act(async () => {
+      switchBracket(savedId);
+    });
+    await settle();
+    assert.equal(getLibrary().activeId, savedId);
+
+    const editNamesBtn = [...mounted.host.querySelectorAll('button')].find(
+      (b) => b.textContent?.trim() === 'Edit names',
+    ) as HTMLButtonElement | undefined;
+    assert.ok(editNamesBtn);
+    await act(async () => {
+      editNamesBtn.click();
+    });
+    await settle();
+    const textarea = document.querySelector('.sheet--names textarea') as HTMLTextAreaElement | null;
+    assert.ok(textarea);
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+      setter?.call(textarea, 'Eli, Finn, Gus, Hal');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      reactProps(textarea)?.onChange?.({
+        target: textarea,
+        currentTarget: textarea,
+        nativeEvent: new Event('input'),
+      } as never);
+    });
+    await settle();
+    const fillBtn = [...document.querySelectorAll('.sheet--names button')].find(
+      (b) => b.textContent?.trim() === 'Fill bracket',
+    ) as HTMLButtonElement | undefined;
+    assert.ok(fillBtn);
+    await act(async () => {
+      fillBtn.click();
+    });
+    await settle();
+    const pasteAlert = document.querySelector('.sheet--names [role="alert"]')?.textContent ?? '';
+    assert.match(pasteAlert, /Saturday Open/);
+    const makeNewPaste = [...document.querySelectorAll('.sheet--names [role="alert"] button')].find(
+      (b) => b.textContent?.trim() === 'Make a new one instead',
+    ) as HTMLButtonElement | undefined;
+    assert.ok(makeNewPaste);
+    await act(async () => {
+      makeNewPaste.click();
+    });
+    await settle();
+    assert.notEqual(getLibrary().activeId, savedId);
+    assert.equal(slotName(getTournament(), seedSlots(getTournament())[0]), 'Eli');
+    const savedAfter = getLibrary().saved.find((item) => item.id === savedId);
+    assert.equal(savedAfter ? slotName(savedAfter.board, seedSlots(savedAfter.board)[0]) : undefined, 'Ana');
+  } finally {
+    unmount(mounted);
+    resetTournament();
+    lockWhite();
+  }
+});
+
+test('adult Bracket Roster fill resets stale kids mode so adult brackets default to Advantage', () => {
+  localStorage.clear();
+  resetTournament();
+  resetBracketRosterForTests();
+  clearBracketRoster();
+  setKidsEnabled(true);
+  setKidsSkin('dinos');
+
+  addBracketRosterEntry({ name: 'Alex Rivera', gym: 'QA Gym', weight: '170', division: 'Adult Blue Belt', age: '26', rank: 'Blue' });
+  addBracketRosterEntry({ name: 'Omar Hassan', gym: 'QA Gym', weight: '170', division: 'Adult Blue Belt', age: '28', rank: 'Blue' });
+
+  const placed = seedWhiteBracketFromRoster(8);
+  assert.equal(placed, 2);
+  assert.equal(slotName(getTournament(), 'qf-0-a'), 'Alex Rivera');
+  assert.equal(
+    (localStorage.getItem('matboard.kidsScoreboard.v1') ?? '').includes('"enabled":false'),
+    true,
+  );
+  resetBracketRosterForTests();
+  resetTournament();
+});
+
+test('matchStore penalty bump applies IBJJF adult and kids ladders, auto-DQ, and undo reversal', () => {
+  localStorage.clear();
+  resetTournament();
+  fillSeedNames(['Alex', 'Ben', 'Cam', 'Dan', 'Eli', 'Finn', 'Gus', 'Hal']);
+
+  dispatchMatch({
+    type: 'loadBracketBout',
+    matchId: 'qf-0',
+    blueName: 'Alex',
+    whiteName: 'Ben',
+    blueGym: '',
+    whiteGym: '',
+    round: 'Quarterfinal',
+    division: 'Adult Blue Belt',
+  });
+
+  // Adult: 1st marked, 2nd +1 adv, 3rd +2 pts, 4th DQ
+  dispatchMatch({ type: 'bump', side: 'blue', kind: 'disadvantages', delta: 1 });
+  dispatchMatch({ type: 'bump', side: 'blue', kind: 'disadvantages', delta: 1 });
+  dispatchMatch({ type: 'bump', side: 'blue', kind: 'disadvantages', delta: 1 });
+  assert.equal(getMatch().blue.disadvantages, 3);
+  assert.equal(getMatch().white.advantages, 1);
+  assert.equal(getMatch().white.points, 2);
+  assert.equal(getMatch().outcome, null);
+
+  dispatchMatch({ type: 'bump', side: 'blue', kind: 'disadvantages', delta: 1 });
+  assert.equal(getMatch().blue.disadvantages, 4);
+  assert.equal(getMatch().outcome?.call, 'dq');
+  assert.equal(getMatch().outcome?.side, 'blue');
+  assert.equal(getTournament().results['qf-0']?.call, 'dq');
+  assert.equal(getTournament().results['qf-0']?.winnerSide, 'b');
+
+  // Undo 4 -> 3 reverses DQ on match and linked bracket
+  dispatchMatch({ type: 'bump', side: 'blue', kind: 'disadvantages', delta: -1 });
+  assert.equal(getMatch().blue.disadvantages, 3);
+  assert.equal(getMatch().outcome, null);
+  assert.equal(getTournament().results['qf-0'], undefined);
+
+  // Kids: 1st marked, 2nd +1 adv, 3rd/4th/5th +2 pts each, 6th DQ
+  dispatchMatch({ type: 'resetScores' });
+  dispatchMatch({ type: 'setField', field: 'division', value: 'Kids 2 Grey' });
+  for (let i = 0; i < 5; i += 1) {
+    dispatchMatch({ type: 'bump', side: 'white', kind: 'disadvantages', delta: 1 });
+  }
+  assert.equal(getMatch().white.disadvantages, 5);
+  assert.equal(getMatch().blue.advantages, 1);
+  assert.equal(getMatch().blue.points, 6);
+  assert.equal(getMatch().outcome, null);
+
+  dispatchMatch({ type: 'bump', side: 'white', kind: 'disadvantages', delta: 1 });
+  assert.equal(getMatch().white.disadvantages, 6);
+  assert.equal(getMatch().outcome?.call, 'dq');
+  assert.equal(getMatch().outcome?.side, 'white');
+  assert.equal(getTournament().results['qf-0']?.call, 'dq');
+  assert.equal(getTournament().results['qf-0']?.winnerSide, 'a');
+
+  resetTournament();
 });

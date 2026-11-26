@@ -37,7 +37,8 @@
   visibility: hidden;
 }
 
-.skin-root .sk-btn {
+/* Keep reset at (0,1,0) so every [data-skin="..."] .tile/.pts/.adv/.pen rule (0,2,0+) wins regardless of chunk order. */
+:where(.skin-root) .sk-btn {
   appearance: none;
   margin: 0;
   border: 0;
@@ -59,7 +60,7 @@
   -webkit-touch-callout: none;
 }
 
-.skin-root .sk-btn:focus-visible {
+:where(.skin-root) .sk-btn:focus-visible {
   outline: 3px solid #fcc000;
   outline-offset: 2px;
 }
@@ -154,15 +155,154 @@
   .skin-root[data-skin] .band > * {
     min-width: 0;
   }
+  .skin-root[data-skin] .band.band {
+    gap: 0.6vh 1.6vw;
+    padding-left: 2.2vw;
+    padding-right: 2.2vw;
+  }
   .skin-root[data-skin] .band .clock.clock {
-    font-size: min(9vh, 12.5vw);
+    font-size: min(7.2vh, 10vw);
   }
   .skin-root[data-skin] .band .state.state,
   .skin-root[data-skin] .band .status.status {
-    font-size: min(2vh, 3vw);
+    font-size: min(1.85vh, 2.85vw);
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .skin-root[data-skin='woodblock'] .band .clock.clock {
+    padding: 0.4vh 2.4vw;
+  }
+  .skin-root[data-skin='woodblock'] .band .state.state,
+  .skin-root[data-skin='woodblock'] .band .status.status {
+    padding: 0.55vh 1.8vw;
+    letter-spacing: 0.08em;
+  }
+  .skin-root[data-skin='brasil'] .band .clock.clock {
+    padding: 0 4.4vw;
+  }
+  .skin-root[data-skin='brasil'] .band .clock::before,
+  .skin-root[data-skin='brasil'] .band .clock::after {
+    width: 2.2vw;
+    height: 2.2vw;
+    margin-top: -1.1vw;
+  }
+  .skin-root[data-skin='brasil'] .band .clock::before { left: 1vw; }
+  .skin-root[data-skin='brasil'] .band .clock::after { right: 1vw; }
+  .skin-root[data-skin='brasil'] .band .state.state,
+  .skin-root[data-skin='brasil'] .band .status.status {
+    padding: 0.55vh 1.8vw;
+    letter-spacing: 0.08em;
+  }
+  .skin-root[data-skin='reggae'] .band .state.state,
+  .skin-root[data-skin='reggae'] .band .status.status {
+    padding: 0.55vh 1.8vw;
+    letter-spacing: 0.06em;
+  }
+  .skin-root[data-skin='kids-sticker'] .band .clock.clock {
+    font-size: min(6.8vh, 9.4vw);
+    padding: 0.4vh 2.4vw;
+  }
+  .skin-root[data-skin='kids-sticker'] .band .state.state,
+  .skin-root[data-skin='kids-sticker'] .band .status.status {
+    font-size: min(1.8vh, 2.7vw);
+    padding: 0.65vh 1.8vw 0.3vh;
+    letter-spacing: 0.04em;
+  }
+  .skin-root[data-skin='stage'] .band .state.state {
+    letter-spacing: 0.14em;
+  }
+  .skin-root[data-skin='stage'] .band .status.status {
+    padding: 0.55vh 1.8vw 0.55vh 3.4vw;
+    letter-spacing: 0.12em;
+  }
+  .skin-root[data-skin='stage'] .band .status.status::before {
+    left: 1.4vw;
+    width: 1.5vw;
+    height: 1.5vw;
+    margin-top: -0.75vw;
+  }
+  /* Item 5: Kids Sticker, Stage, and Brasil portrait round timers */
+  .skin-root[data-skin='kids-sticker'] .tm .burst {
+    left: 50% !important;
+    top: 50% !important;
+    width: 92vw !important;
+    height: 76vw !important;
+    transform: translate(-50%, -52%) rotate(3deg) !important;
+  }
+  .skin-root[data-skin='kids-sticker'] .tm .phase.tm-phase {
+    top: calc(3.8rem + var(--safe-t, 0px));
+    max-width: 86vw;
+    font-size: min(3.2vh, 4.4vw);
+    padding: 0.8vh 4vw 0.4vh;
+  }
+  .skin-root[data-skin='kids-sticker'] .tm .digits.tm-clock {
+    margin-top: 0;
+    font-size: min(26vh, 18.5vw);
+  }
+  .skin-root[data-skin='kids-sticker'] .tm .sub {
+    flex-direction: column;
+    align-items: center;
+    gap: 1.6vh;
+    width: 88vw;
+    max-width: 88vw;
+    margin-top: 1.5vh;
+  }
+  .skin-root[data-skin='kids-sticker'] .tm .sbar {
+    width: 72vw;
+    height: 3.4vh;
+  }
+  .skin-root[data-skin='kids-sticker'] .tm .chip {
+    font-size: min(2.5vh, 3.6vw);
+    padding: 0.7vh 3.4vw 0.3vh;
+    max-width: 86vw;
+    white-space: nowrap;
+  }
+  .skin-root[data-skin='stage'] .tm .phase.tm-phase {
+    top: 9.5vh;
+    font-size: min(2.4vh, 3.1vw);
+    letter-spacing: 0.22em;
+    max-width: 84vw;
+  }
+  .skin-root[data-skin='stage'] .tm .sub {
+    max-width: 68vw;
+    margin-inline: auto;
+    font-size: min(2.1vh, 2.9vw);
+    letter-spacing: 0.14em;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .skin-root[data-skin='brasil'] .tm .phase.tm-phase {
+    top: 6.2vh;
+    padding: 0.55vh 3vw;
+    border-radius: 999px;
+    background: rgba(0, 82, 34, 0.78);
+    color: #fff;
+    font-size: min(2.2vh, 3.2vw);
+    letter-spacing: 0.16em;
+  }
+  .skin-root[data-skin='brasil'] .globe-wrap {
+    width: 84vw;
+    height: 84vw;
+    margin-top: 7vh;
+  }
+  .skin-root[data-skin='brasil'] .globe-wrap .globe {
+    width: 78vw;
+    height: 78vw;
+  }
+  .skin-root[data-skin='brasil'] .globe .band {
+    border-bottom-width: 3.4vh;
+  }
+  .skin-root[data-skin='brasil'] .globe .band span {
+    font-size: min(1.7vh, 2.65vw);
+    letter-spacing: 0.14em;
+    white-space: nowrap;
+    margin-bottom: -2.6vh;
+  }
+  .skin-root[data-skin='brasil'] .globe .digits.tm-clock {
+    font-size: min(26vh, 17vw);
+    margin-top: -3vh;
   }
   /* Heavy Metal's centred wordmark would sit under the chip row. */
   .skin-root[data-skin='heavy-metal'] .sb .wordmark {
@@ -335,4 +475,11 @@
 }
 .skin-root[data-skin='brasil'] .sb .band > .clock > * {
   pointer-events: auto;
+}
+
+@media (orientation: portrait) and (max-width: 480px) {
+  .skin-root:not(.skin-root--poster) .tile .lab {
+    font-size: clamp(0.52rem, 2.3vw, 0.72rem);
+    letter-spacing: 0.06em;
+  }
 }
