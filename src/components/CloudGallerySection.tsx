@@ -33,6 +33,21 @@ import { CloudVideoCleanup } from './CloudVideoCleanup';
 export const CLOUD_SLIDE_PHOTO_SEC = 8;
 /** Photo thumbnails fetched up front. The rest load when the slideshow reaches them. */
 const THUMB_LIMIT = 60;
+/** ...and never more than this many bytes of originals (a Gallery of 6 MB phone photos stops near the old 24). */
+const THUMB_BYTES = 150 * 1024 * 1024;
+
+/** The photos that get a thumbnail up front: in list order, up to the count and byte limits. */
+export function thumbnailBatch(items: readonly CloudFolderItem[], have: Readonly<Record<string, string>>): CloudFolderItem[] {
+  const out: CloudFolderItem[] = [];
+  let bytes = 0;
+  for (const item of items) {
+    if (item.kind !== 'photo' || have[item.path]) continue;
+    if (out.length >= THUMB_LIMIT || (out.length > 0 && bytes + item.size > THUMB_BYTES)) break;
+    out.push(item);
+    bytes += item.size;
+  }
+  return out;
+}
 
 export const CLOUD_GALLERY_TITLE = CLOUD_FOLDERS_TITLE;
 export const CLOUD_GALLERY_EMPTY = 'No photos or videos in Gallery yet.';
@@ -150,7 +165,7 @@ export function CloudGallerySection({
   useEffect(() => {
     if (!openItems?.length) return;
     let cancelled = false;
-    const photos = openItems.filter((item) => item.kind === 'photo' && !thumbs[item.path]).slice(0, THUMB_LIMIT);
+    const photos = thumbnailBatch(openItems, thumbs);
     void (async () => {
       for (const item of photos) {
         const blob = await storeRef.current.open(asLaneItem(item));

@@ -465,9 +465,10 @@ export function streamFrom(bytes: Uint8Array): ReadableStream {
   });
 }
 
-function fileResponse(object: GymMediaObject): Response {
+/** The file as the browser should read it. A missing or generic stored type falls back to the file name's extension. */
+function fileResponse(object: GymMediaObject, name = ''): Response {
   const headers = new Headers();
-  headers.set('content-type', object.httpMetadata?.contentType || 'application/octet-stream');
+  headers.set('content-type', cloudMimeOf(object.httpMetadata?.contentType, name));
   headers.set('content-length', String(object.size));
   headers.set('cache-control', 'private, no-store');
   headers.set('vary', 'authorization');
@@ -1068,6 +1069,27 @@ async function listPending(bucket: GymMediaBucket, actor: Actor): Promise<Pendin
   return rows;
 }
 
+/**
+ * The type stored for an upload. What the page sent wins. A missing or generic type on a
+ * Gallery or folder upload comes from the file extension (a phone or Drive that sends none),
+ * so a photo is never stored as `video/mp4` and an Android `.heic` is not refused for lack of a type.
+ */
+export function uploadMimeOf(claimed: string, fileName: string, purpose: CloudMediaPurpose): string {
+  if (purpose === 'lesson') return safeCloudMime(claimed, 'application/json');
+  const safe = safeCloudMime(claimed, '');
+  if (purpose === 'gallery' || purpose === 'cloud-folder') {
+    const named = cloudMimeOf(safe, fileName);
+    return named === 'application/octet-stream' && !safe ? 'video/mp4' : named;
+  }
+  return safe || 'video/mp4';
+}
+
+/** The single-PUT version: the Content-Type header, or the stored key's extension when the header is generic. */
+export function putMimeOf(header: string, relative: string): string {
+  const safe = safeCloudMime(header, 'application/octet-stream');
+  return parseGalleryCloudPath(relative) || parseSideFolderCloudPath(relative) ? cloudMimeOf(safe, relative) : safe;
+}
+
 function mimeAllowed(purpose: CloudMediaPurpose, mime: string): boolean {
   if (purpose === 'lesson') return mime === 'application/json';
   if (purpose === 'gallery') return mime.startsWith('image/') || mime.startsWith('video/');
@@ -1335,7 +1357,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       if (!key || !allowed || !parsePendingReplayPath(path)) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
       const object = await bucket.get(key);
       if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
-      return fileResponse(object);
+      return fileResponse(object, path);
     }
     if (op === 'list' && url.searchParams.get('purpose') === 'instructor') {
       const kind = url.searchParams.get('kind') === 'photos' ? 'photos' : 'videos';
@@ -1382,7 +1404,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       const key = cloudObjectKey(actor.licenseId, path);
       const object = key ? await bucket.get(key) : null;
       if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
-      return fileResponse(object);
+      return fileResponse(object, path);
     }
     if (op === 'file') {
       const path = url.searchParams.get('path') ?? '';
@@ -1397,7 +1419,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
         if (!key) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
         const object = await bucket.get(key);
         if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
-        return fileResponse(object);
+        return fileResponse(object, path);
       }
     }
     // Names, buy links, QR links, order, and events for Gallery, Pro Shop, and Events.
@@ -1479,7 +1501,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       }
       const object = await bucket.get(key);
       if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
-      return fileResponse(object);
+      return fileResponse(object, path);
     }
     if (!actor.read) return json(403, { ok: false, cloud: false, error: CLOUD_UNAVAILABLE_MESSAGE });
     if (op === 'list' && url.searchParams.get('purpose') === 'gallery') {
@@ -1514,7 +1536,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       }
       const object = await bucket.get(key);
       if (!object) return json(404, { ok: false, error: 'That file is not in Advantage Cloud.' });
-      return fileResponse(object);
+      return fileResponse(object, path);
     }
     if (op === 'skins') {
       return json(200, { ok: true, skins: await listCustomSkins(bucket, actor.licenseId) });
@@ -1571,7 +1593,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     }
     if (bytes.byteLength > maxUpload) return json(413, { ok: false, error: cloudTooLargeMessage(maxUpload) });
     const relative = relativePath(actor.licenseId, key);
-    const mime = safeCloudMime(request.headers.get('content-type') ?? '', 'application/octet-stream');
+    const mime = putMimeOf(request.headers.get('content-type') ?? '', relative);
     if (parseGalleryCloudPath(relative) && !mimeAllowed('gallery', mime)) {
       return json(400, { ok: false, error: 'Gallery files are photos or videos.' });
     }
@@ -1891,7 +1913,7 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
     if (!laneOk) return actor.dailyDrop ? dropRefused() : json(403, { ok: false, error: CLOUD_ROLE_MESSAGE });
   }
   if (size > maxUpload) return json(413, { ok: false, error: cloudTooLargeMessage(maxUpload) });
-  const mime = safeCloudMime(typeof body.mime === 'string' ? body.mime : '', purpose === 'lesson' ? 'application/json' : 'video/mp4');
+  const mime = uploadMimeOf(typeof body.mime === 'string' ? body.mime : '', fileName, purpose);
   if (!mimeAllowed(purpose, mime)) {
     const error =
       purpose === 'daily-video'

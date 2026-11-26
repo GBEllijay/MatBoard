@@ -27,7 +27,7 @@ let urlSeq = 0;
 URL.createObjectURL = () => `blob:test-${(urlSeq += 1)}`;
 URL.revokeObjectURL = () => undefined;
 
-const { CloudGallerySection, CLOUD_GALLERY_EMPTY } = await import('./CloudGallerySection.tsx');
+const { CloudGallerySection, CLOUD_GALLERY_EMPTY, thumbnailBatch } = await import('./CloudGallerySection.tsx');
 const { CloudVideoCleanup, CLOUD_CLEANUP_TITLE } = await import('./CloudVideoCleanup.tsx');
 const { advantageCloudLaneStore, listApprovedCloudMedia, CLOUD_GALLERY_READ_ERROR } = await import('../lib/advantageCloudLanes.ts');
 const { CLOUD_CLEANUP_EMPTY } = await import('../lib/cloudVideoCleanup.ts');
@@ -500,4 +500,27 @@ test('Events folder: image files show thumbnails (never a PDF tile), and the sli
   assert.equal(count?.textContent?.replace(/\s+/g, ' ').trim(), '1 of 3');
   assert.doesNotMatch(player.querySelector('.cloud-gallery__controls')?.textContent ?? '', /\.png|00-Title/);
   act(() => root.unmount());
+});
+
+test('thumbnails: all of a small Events folder, but a Gallery of 6 MB phone photos stays near the old 24', () => {
+  const item = (i: number, size: number) => ({
+    provider: 'advantage-cloud' as const,
+    source: 'gallery' as const,
+    lane: 'approved' as const,
+    folder: 'events' as const,
+    path: `events/p${i}.png`,
+    name: `p${i}.png`,
+    dateKey: '',
+    mime: 'image/png',
+    size,
+    kind: 'photo' as const,
+  });
+  const small = Array.from({ length: 13 }, (_, i) => item(i, 300_000));
+  assert.equal(thumbnailBatch(small, {}).length, 13);
+  const big = Array.from({ length: 89 }, (_, i) => item(i, 6_500_000));
+  const batch = thumbnailBatch(big, {});
+  assert.ok(batch.length >= 20 && batch.length <= 24, `got ${batch.length}`);
+  // One huge photo still gets its thumbnail, and a photo that already has one is skipped.
+  assert.equal(thumbnailBatch([item(0, 400_000_000)], {}).length, 1);
+  assert.equal(thumbnailBatch(small, { 'events/p0.png': 'blob:x' }).length, 12);
 });

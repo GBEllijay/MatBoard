@@ -23,7 +23,7 @@ import {
 import { listCloudFolder, uploadToCloudFolder } from '../lib/advantageCloudFolders.ts';
 import { deleteCloudMedia } from '../lib/cloudVideoCleanup.ts';
 import { type PrivateJwk } from '../lib/entitlementToken.ts';
-import { CLOUD_FOLDER_APPROVE_REFUSED, handleGymCloud, streamFrom, type GymCloudEnv, type GymMediaBucket } from './gymCloud.ts';
+import { CLOUD_FOLDER_APPROVE_REFUSED, handleGymCloud, putMimeOf, streamFrom, uploadMimeOf, type GymCloudEnv, type GymMediaBucket } from './gymCloud.ts';
 import { issueToken } from './tokenIssue.ts';
 
 const now = new Date('2026-11-18T20:00:00.000Z');
@@ -388,4 +388,36 @@ test('Events dedupe also catches a seat\'s repeat while the first copy waits in 
   assert.deepEqual(first, { ok: true, path: 'events/pending/a.png', lane: 'pending' });
   const again = await uploadToCloudFolder({ folder: 'events', file: photo('b.png'), dateKey: '2026-11-18', token: tokens.coach, fetcher });
   assert.deepEqual(again, { ok: true, path: 'events/pending/a.png', lane: 'pending', duplicate: true });
+});
+
+test('a file with a missing or generic stored type is served and stored as what its extension says', async () => {
+  const { fetcher, tokens, put, bucket } = await setup();
+  put('events/untyped.png', '', 'png-bytes');
+  put('gallery/approved/2026-11-12/clip.mov', 'application/octet-stream', 'mov-bytes');
+  put('events/flyer.pdf', 'application/pdf', 'pdf-bytes');
+  const typeOf = async (path: string) => (await call(fetcher, tokens.owner, `/api/gym/cloud?op=file&path=${encodeURIComponent(path)}`)).headers.get('content-type');
+  assert.equal(await typeOf('events/untyped.png'), 'image/png');
+  assert.equal(await typeOf('gallery/approved/2026-11-12/clip.mov'), 'video/quicktime');
+  assert.equal(await typeOf('events/flyer.pdf'), 'application/pdf');
+  // Upload side: a phone or Drive that sends no type, or a generic one, still stores the right one.
+  assert.equal(uploadMimeOf('', 'IMG_1.png', 'gallery'), 'image/png');
+  assert.equal(uploadMimeOf('application/octet-stream', 'IMG_2.heic', 'cloud-folder'), 'image/heic');
+  assert.equal(uploadMimeOf('', 'mystery', 'gallery'), 'video/mp4');
+  assert.equal(uploadMimeOf('application/octet-stream', 'mystery.xyz', 'gallery'), 'application/octet-stream');
+  assert.equal(uploadMimeOf('image/png', 'x.jpg', 'gallery'), 'image/png');
+  assert.equal(uploadMimeOf('', 'day.mp4', 'daily-video'), 'video/mp4');
+  assert.equal(putMimeOf('application/octet-stream', 'events/a.webp'), 'image/webp');
+  assert.equal(putMimeOf('application/octet-stream', 'roster/master.json'), 'application/octet-stream');
+  // End to end: a start with no type for a .png lands as a photo in Events.
+  const start = await call(fetcher, tokens.owner, '/api/gym/cloud', startBody({ purpose: 'cloud-folder', folder: 'events', fileName: 'no-type.png', mime: '' }));
+  assert.equal(start.status, 200);
+  const started = (await start.json()) as { mode: string; key: string };
+  assert.equal(started.mode, 'single');
+  const stored = await call(fetcher, tokens.owner, `/api/gym/cloud?op=put&key=${encodeURIComponent(started.key)}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/octet-stream' },
+    body: new Uint8Array([1, 2, 3, 4]),
+  });
+  assert.equal(stored.status, 200);
+  assert.equal(bucket.objects.get(`${BASE}events/no-type.png`)?.type, 'image/png');
 });

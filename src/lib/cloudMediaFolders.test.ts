@@ -282,3 +282,31 @@ test('Events-only slideshow plays photos the list sent with a generic type and k
   const queue = playableItems(rows, { gallery: false, shop: false, events: true });
   assert.deepEqual(queue.map((row) => row.cloudPath), names.map((name) => `events/${name}`));
 });
+
+test('every networked folder plays on its own: Gallery (photos and a clip) and Pro Shop with the generic type the old list sent', async () => {
+  const fetcherFor = (items: unknown[]): typeof fetch => async () =>
+    new Response(JSON.stringify({ items, canUpload: true, canDelete: true, uploadLane: 'approved' }), { status: 200 });
+  // Gallery rows as the old server sent them: kind from the file name, type dropped to octet-stream.
+  const gallery = await listCloudFolder({
+    folder: 'gallery',
+    token: 'test-token',
+    fetcher: fetcherFor([
+      { name: '20260218_190358.jpg', path: 'gallery/approved/2026-11-19/20260218_190358.jpg', size: 9, mime: 'application/octet-stream', kind: 'photo', dateKey: '2026-11-19' },
+      { name: 'warmup.mp4', path: 'gallery/approved/2026-11-19/warmup.mp4', size: 9, mime: 'application/octet-stream', kind: 'video', dateKey: '2026-11-19' },
+    ]),
+  });
+  const shop = await listCloudFolder({
+    folder: 'pro-shop',
+    token: 'test-token',
+    fetcher: fetcherFor([{ name: 'Rash-guard.jpg', path: 'pro-shop/Rash-guard.jpg', size: 9, mime: 'application/octet-stream', kind: 'file' }]),
+  });
+  assert.ok(gallery && !('error' in gallery) && shop && !('error' in shop));
+  const rows = [
+    ...cloudRowsForFolder({ folderId: 'gallery', listing: gallery, index: emptyCloudIndex('gallery'), canEdit: true }),
+    ...cloudRowsForFolder({ folderId: 'shop', listing: shop, index: emptyCloudIndex('pro-shop'), canEdit: true }),
+  ];
+  const only = (folder: 'gallery' | 'shop') =>
+    playableItems(rows, { gallery: folder === 'gallery', shop: folder === 'shop', events: false }).map((row) => row.cloudPath);
+  assert.deepEqual(only('gallery'), ['gallery/approved/2026-11-19/20260218_190358.jpg', 'gallery/approved/2026-11-19/warmup.mp4']);
+  assert.deepEqual(only('shop'), ['pro-shop/Rash-guard.jpg']);
+});
