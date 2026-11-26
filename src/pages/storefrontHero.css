@@ -90,50 +90,93 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* The one call to action. White, navy ink.
-   Design Coach: restyle the buy button on .sfh-buy below. Keep current white
-   paint until that pass. .sf-buy in storefront.css currently overrides some
-   of these declarations (weight, radius, shadow, focus) because it loads later. */
+/* The one call to action. Option E: brand yellow #f6c000 with a navy price chip.
+   Visual paint lives on .sfh-buy. .sf-buy in storefront.css is a locator class only. */
 .home.home--store .sfh-cta {
   margin-top: 30px;
 }
 
 .home.home--store .sfh-buy {
+  --buy-gold: #f6c000;
+  --buy-gold-hi: #ffd21a;
+  --buy-gold-lo: #e0a800;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   min-height: 52px;
-  padding: 0 26px;
+  padding: 5px 6px 5px 22px;
+  border: 0;
   border-radius: 14px;
-  background: #fff;
-  color: var(--sfh-ink);
+  background: var(--buy-gold);
+  color: #0e1726;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 17px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   text-decoration: none;
-  box-shadow: 0 12px 32px -10px rgba(255, 255, 255, 0.28), inset 0 -2px 0 rgba(14, 23, 38, 0.12);
-  transition: background-color 160ms ease, transform 160ms ease;
+  box-shadow:
+    0 12px 28px -10px rgba(246, 192, 0, 0.45),
+    0 8px 24px -12px rgba(0, 0, 0, 0.55);
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
-.home.home--store .sfh-chev {
-  transition: transform 160ms ease;
+.home.home--store .sfh-buy-label {
+  padding: 0 4px 0 2px;
+}
+
+.home.home--store .sfh-buy-price {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: #0e1726;
+  color: #f6c000;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 @media (hover: hover) {
-  .home.home--store .sfh-buy:hover {
-    background: #e9eef6;
-    color: var(--sfh-ink);
-  }
-
-  .home.home--store .sfh-buy:hover .sfh-chev {
-    transform: translateX(2px);
+  .home.home--store .sfh-buy:hover,
+  .home.home--store .sfh-buy.is-hover {
+    background: var(--buy-gold-hi);
+    color: #0e1726;
+    transform: translateY(-1px);
+    box-shadow:
+      0 16px 32px -10px rgba(246, 192, 0, 0.55),
+      0 10px 26px -12px rgba(0, 0, 0, 0.55);
   }
 }
 
-.home.home--store .sfh-buy:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--sfh-ink), 0 0 0 3px rgba(255, 255, 255, 0.85);
+.home.home--store .sfh-buy:active,
+.home.home--store .sfh-buy.is-active {
+  background: var(--buy-gold-lo);
+  color: #0e1726;
+  transform: translateY(1px);
+  box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.5);
+}
+
+.home.home--store .sfh-buy:focus-visible,
+.home.home--store .sfh-buy.is-focus {
+  outline: 3px solid #f4ecd8;
+  outline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .home.home--store .sfh-buy {
+    display: flex;
+    width: 100%;
+    min-height: 56px;
+    padding-left: 20px;
+  }
+
+  .home.home--store .sfh-buy-price {
+    min-height: 44px;
+    margin-left: auto;
+  }
 }
 
 .home.home--store .sfh-fine {
@@ -434,8 +477,7 @@
     animation: none;
   }
 
-  .home.home--store .sfh-buy,
-  .home.home--store .sfh-chev {
+  .home.home--store .sfh-buy {
     transition: none;
   }
 }
@@ -940,13 +982,6 @@
   color: #fff;
 }
 
-/* Focus ring stays visible on navy. */
-.home.home--store .sfh--d .sfh-buy:focus-visible {
-  outline: 3px solid #fff;
-  outline-offset: 3px;
-  box-shadow: inset 0 0 0 2px var(--sfh-ink);
-}
-
 /* One-time entrance. Board first, headline 120ms after. No loops. */
 @keyframes sfh-d-in {
   from {
@@ -1046,6 +1081,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
+  align-content: center;
   gap: 24px;
   max-width: none;
   padding-left: max(48px, calc(50% - 632px));
@@ -1068,6 +1104,22 @@
   flex-direction: column;
   gap: 14px;
   width: 100%;
+}
+
+/* Option E buy button sits directly under the hero cards, not inside the text card. */
+.home.home--store .sfh-top-buy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.home.home--store .sfh--e .sfh-top-buy {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
+
+.home.home--store .sfh-top-buy .sfh-fine {
+  text-align: center;
 }
 
 /* Same bezel, radius and shadow on both blocks. */
@@ -1107,8 +1159,9 @@
   .home.home--store .sfh--e .sfh-title { order: 2; }
   .home.home--store .sfh--e .sfh-lead { order: 3; }
   .home.home--store .sfh--e .sfh-stage { order: 4; margin-top: 10px; width: 100%; gap: 6px; }
-  .home.home--store .sfh--e .sfh-cta { order: 5; margin-top: 6px; position: relative; z-index: 2; }
-  .home.home--store .sfh--e .sfh-sub { order: 6; margin-top: 18px; text-align: center; }
+  .home.home--store .sfh--e .sfh-top-buy { order: 5; margin-top: 6px; width: 100%; }
+  .home.home--store .sfh--e .sfh-cta { order: 6; margin-top: 6px; position: relative; z-index: 2; }
+  .home.home--store .sfh--e .sfh-sub { order: 7; margin-top: 18px; text-align: center; }
 
   .home.home--store .sfh--e .sfh-brand,
   .home.home--store .sfh--e .sfh-title,

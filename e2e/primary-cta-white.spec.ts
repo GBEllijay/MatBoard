@@ -60,29 +60,51 @@ async function shot(page: Page, name: string, fullPage = false) {
   await page.screenshot({ path: `${ARTIFACTS}/${name}.png`, fullPage });
 }
 
-test('homepage Buy CTA is white, keeps its link, and stays visible in focus', async ({ page }) => {
+function expectOptionEBuy(paintResult: Awaited<ReturnType<typeof paint>>) {
+  expect(paintResult.backgroundColor).toBe('rgb(246, 192, 0)');
+  expect(paintResult.color).toBe('rgb(14, 23, 38)');
+  expect(paintResult.fontWeight).toBe('700');
+  expect(paintResult.borderRadius).toBe('14px');
+}
+
+test('homepage Buy CTA uses brand yellow, keeps its link, and stays visible in focus', async ({ page }) => {
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/');
-  const buy = page.locator('a.sf-buy');
+  const buys = page.locator('a.sfh-buy');
+  await expect(buys).toHaveCount(2);
+  const buy = buys.first();
+  const bottomBuy = buys.nth(1);
   await expect(buy).toHaveText('Buy Advantage $19.99');
   await expect(buy).toHaveAttribute('href', '/buy');
+  await expect(bottomBuy).toHaveText('Buy Advantage $19.99');
+  await expect(bottomBuy).toHaveAttribute('href', '/buy');
   const desktop = await paint(buy);
-  expectWhitePrimary(desktop, '800');
-  expect(desktop.borderRadius).toBe('12px');
+  expectOptionEBuy(desktop);
+  const price = await paint(buy.locator('.sfh-buy-price'));
+  expect(price.backgroundColor).toBe('rgb(14, 23, 38)');
+  expect(price.color).toBe('rgb(246, 192, 0)');
+  expectOptionEBuy(await paint(bottomBuy));
   await buy.focus();
-  await expect(buy).toHaveCSS('outline-color', 'rgb(0, 78, 186)');
+  await expect(buy).toHaveCSS('outline-color', 'rgb(244, 236, 216)');
   await expect(buy).toHaveCSS('outline-style', 'solid');
-  expect(await yellowControls(page)).toEqual([]);
+  await expect(buy).toHaveCSS('outline-width', '3px');
+  const homepageYellow = await yellowControls(page);
+  expect(homepageYellow).toHaveLength(2);
+  expect(homepageYellow.every((entry) => entry.includes('sfh-buy'))).toBe(true);
   await buy.scrollIntoViewIfNeeded();
   await shot(page, 'homepage-buy-desktop');
   await buy.screenshot({ path: `${ARTIFACTS}/homepage-buy-button-desktop.png` });
+  await bottomBuy.scrollIntoViewIfNeeded();
+  await bottomBuy.screenshot({ path: `${ARTIFACTS}/homepage-buy-button-bottom-desktop.png` });
 
   await setSize(page, { width: 390, height: 844 });
   await buy.scrollIntoViewIfNeeded();
-  const phone = await paint(buy);
-  expectWhitePrimary(phone, '800');
+  expectOptionEBuy(await paint(buy));
   await shot(page, 'homepage-buy-390');
   await buy.screenshot({ path: `${ARTIFACTS}/homepage-buy-button-390.png` });
+  await bottomBuy.scrollIntoViewIfNeeded();
+  expectOptionEBuy(await paint(bottomBuy));
+  await bottomBuy.screenshot({ path: `${ARTIFACTS}/homepage-buy-button-bottom-390.png` });
 
   await setSize(page, { width: 1280, height: 900 });
   await page.goto('/products');
