@@ -476,3 +476,10 @@
 .skin-root[data-skin='brasil'] .sb .band > .clock > * {
   pointer-events: auto;
 }
+
+@media (orientation: portrait) and (max-width: 480px) {
+  .skin-root:not(.skin-root--poster) .tile .lab {
+    font-size: clamp(0.52rem, 2.3vw, 0.72rem);
+    letter-spacing: 0.06em;
+  }
+}

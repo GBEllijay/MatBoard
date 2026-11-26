@@ -264,3 +264,13 @@
     padding: 0.3vh 1.2vw;
   }
 }
+
+@media (max-width: 1400px) and (min-width: 821px) {
+  .skin-root--arcade .fighter {
+    width: clamp(11vh, 10.2vw, 20vh);
+  }
+  .skin-root--arcade .tile .num {
+    font-size: 8vh;
+    padding-bottom: 0.25vh;
+  }
+}

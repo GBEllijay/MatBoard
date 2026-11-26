@@ -3713,7 +3713,6 @@ span.role-plan__mark {
   opacity: 0.94;
   background: rgba(10, 14, 24, 0.8);
   color: #fff;
-  -webkit-text-fill-color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(8px);
 }
