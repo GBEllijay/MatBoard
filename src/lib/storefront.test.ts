@@ -226,6 +226,7 @@ test('the homepage hero buy button uses the price constant and opens /buy', () =
   assert.match(css, /\.sfh--e \.sfh-top-buy \{[^}]*grid-column:\s*1 \/ -1/s);
   assert.match(css, /\.sfh--e \.sfh-top-buy \{[^}]*margin-top:\s*20px/s);
   assert.match(css, /\.sfh--e \.sfh-inner \{[^}]*padding-bottom:\s*56px/s);
+  assert.match(css, /\.sfh--e \.sfh-inner \{[^}]*row-gap:\s*0/s);
   // The default mats hero keeps the button under the text and board cards, not inside the text card.
   const textCard = hero.indexOf("variant === 'e'");
   const eText = hero.indexOf('className="sfh-text"', textCard);
