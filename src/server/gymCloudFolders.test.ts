@@ -21,8 +21,9 @@ import {
   sideFolderCloudPath,
 } from '../lib/advantageCloudMedia.ts';
 import { listCloudFolder, uploadToCloudFolder } from '../lib/advantageCloudFolders.ts';
+import { deleteCloudMedia } from '../lib/cloudVideoCleanup.ts';
 import { type PrivateJwk } from '../lib/entitlementToken.ts';
-import { CLOUD_FOLDER_APPROVE_REFUSED, handleGymCloud, streamFrom, type GymCloudEnv, type GymMediaBucket } from './gymCloud.ts';
+import { CLOUD_FOLDER_APPROVE_REFUSED, handleGymCloud, putMimeOf, streamFrom, uploadMimeOf, type GymCloudEnv, type GymMediaBucket } from './gymCloud.ts';
 import { issueToken } from './tokenIssue.ts';
 
 const now = new Date('2026-11-18T20:00:00.000Z');
@@ -48,11 +49,17 @@ function memoryBucket() {
     async delete(names: string | string[]) {
       for (const name of Array.isArray(names) ? names : [names]) objects.delete(name);
     },
-    async list(options?: { prefix?: string }) {
+    // Like R2 on a current compatibility date: a list leaves the Content-Type out unless `include` asks for it.
+    async list(options?: { prefix?: string; include?: string[] }) {
       const prefix = options?.prefix ?? '';
       const keys = [...objects.keys()].filter((item) => item.startsWith(prefix)).sort();
+      const withTypes = options?.include?.includes('httpMetadata') === true;
       return {
-        objects: keys.map((item) => ({ key: item, size: objects.get(item)!.bytes.byteLength, httpMetadata: { contentType: objects.get(item)!.type } })),
+        objects: keys.map((item) => ({
+          key: item,
+          size: objects.get(item)!.bytes.byteLength,
+          ...(withTypes ? { httpMetadata: { contentType: objects.get(item)!.type } } : {}),
+        })),
         truncated: false,
       };
     },
@@ -203,7 +210,7 @@ test('Gallery folder list is approved Gallery photos and videos only; old flat P
 
 test('approval ON: Coach, Program Director, Assistant, Instructors uploads wait in pending in all four folders; the owner is live', async () => {
   const { bucket, fetcher, tokens } = await setup();
-  const file = (name: string, type = 'image/jpeg') => new File(['bytes'], name, { type });
+  const file = (name: string, type = 'image/jpeg') => new File([`bytes-${name}`], name, { type });
   const seats = [['coach', tokens.coach], ['director', tokens.director], ['assistant', tokens.assistant], ['instructors', tokens.instructors]] as const;
   for (const [who, token] of seats) {
     const listing = await listCloudFolder({ folder: 'events', token, fetcher });
@@ -243,9 +250,9 @@ test('approval OFF: anyone with access uploads live right away, and a seat never
   await setSwitch(fetcher, tokens.owner, false);
   put('pro-shop/gi.jpg', 'image/jpeg', 'owner');
   for (const [who, token] of [['coach', tokens.coach], ['director', tokens.director], ['assistant', tokens.assistant]] as const) {
-    const gallery = await uploadToCloudFolder({ folder: 'gallery', file: new File(['x'], `${who}.jpg`, { type: 'image/jpeg' }), dateKey: '2026-11-18', token, fetcher });
+    const gallery = await uploadToCloudFolder({ folder: 'gallery', file: new File([`x-${who}`], `${who}.jpg`, { type: 'image/jpeg' }), dateKey: '2026-11-18', token, fetcher });
     assert.deepEqual(gallery, { ok: true, path: `gallery/approved/2026-11-18/${who}.jpg`, lane: 'approved' }, who);
-    const shop = await uploadToCloudFolder({ folder: 'pro-shop', file: new File(['x'], `${who}.jpg`, { type: 'image/jpeg' }), dateKey: '2026-11-18', token, fetcher });
+    const shop = await uploadToCloudFolder({ folder: 'pro-shop', file: new File([`x-${who}`], `${who}.jpg`, { type: 'image/jpeg' }), dateKey: '2026-11-18', token, fetcher });
     assert.deepEqual(shop, { ok: true, path: `pro-shop/${who}.jpg`, lane: 'approved' }, who);
     const clash = await call(fetcher, token, '/api/gym/cloud', startBody({ purpose: 'cloud-folder', folder: 'pro-shop', fileName: 'gi.jpg', mime: 'image/jpeg' }));
     assert.equal(clash.status, 409, `${who} cannot replace the owner's file`);
@@ -317,4 +324,119 @@ test('delete stays the owner and an Instructors seat', async () => {
   const removed = await call(fetcher, tokens.instructors, '/api/gym/cloud', { method: 'POST', body: JSON.stringify({ action: 'delete-media', keys: ['pro-shop/gi.jpg'] }) });
   assert.equal(removed.status, 200);
   assert.equal(bucket.objects.has(`${BASE}pro-shop/gi.jpg`), false);
+});
+
+test('Events photos list as photos even when R2 leaves the Content-Type off or the upload sent none', async () => {
+  const { fetcher, tokens, put } = await setup();
+  put('events/00-Title.png', 'image/png');
+  put('events/Event-1-0a12b5bd-078.png', 'image/png');
+  // Stored with no type at all (an older upload): the .png name still makes it a photo.
+  put('events/untyped.png', '');
+  put('events/flyer.pdf', 'application/pdf');
+  put('events/clip.mov', 'application/octet-stream');
+  const events = await listCloudFolder({ folder: 'events', token: tokens.owner, fetcher });
+  assert.ok(events && !('error' in events));
+  assert.deepEqual(
+    events.items.map((item) => [item.name, item.kind, item.mime]),
+    [
+      ['00-Title.png', 'photo', 'image/png'],
+      ['clip.mov', 'video', 'video/quicktime'],
+      ['Event-1-0a12b5bd-078.png', 'photo', 'image/png'],
+      ['flyer.pdf', 'file', 'application/pdf'],
+      ['untyped.png', 'photo', 'image/png'],
+    ],
+  );
+  // The old display list reads the same type for Gallery.
+  put('gallery/approved/2026-11-12/a.jpg', 'image/jpeg');
+  const gallery = await listCloudFolder({ folder: 'gallery', token: tokens.owner, fetcher });
+  assert.ok(gallery && !('error' in gallery));
+  assert.deepEqual(gallery.items.map((item) => [item.kind, item.mime]), [['photo', 'image/jpeg']]);
+});
+
+test('Events dedupe: the same photo sent again, or retried, is skipped; another folder and a deleted file are not blocked', async () => {
+  const { bucket, fetcher, tokens } = await setup();
+  await setSwitch(fetcher, tokens.owner, false);
+  const photo = (name: string, text = 'one photo') => new File([text], name, { type: 'image/png' });
+  const first = await uploadToCloudFolder({ folder: 'events', file: photo('1000017087-jsw3yr.png'), dateKey: '2026-11-18', token: tokens.owner, fetcher });
+  assert.deepEqual(first, { ok: true, path: 'events/1000017087-jsw3yr.png', lane: 'approved' });
+  // Same bytes under a new name (a retry, or another pick of the same photo): skipped, nothing new stored.
+  const again = await uploadToCloudFolder({ folder: 'events', file: photo('Event-12-3c9749bf-c79.png'), dateKey: '2026-11-18', token: tokens.owner, fetcher });
+  assert.deepEqual(again, { ok: true, path: 'events/1000017087-jsw3yr.png', lane: 'approved', duplicate: true });
+  assert.equal(bucket.objects.has(`${BASE}events/Event-12-3c9749bf-c79.png`), false);
+  const listed = await listCloudFolder({ folder: 'events', token: tokens.owner, fetcher });
+  assert.ok(listed && !('error' in listed));
+  assert.deepEqual(listed.items.map((item) => item.name), ['1000017087-jsw3yr.png']);
+  // Different bytes are a different photo.
+  const other = await uploadToCloudFolder({ folder: 'events', file: photo('KIM-Fitness.png', 'another photo'), dateKey: '2026-11-18', token: tokens.owner, fetcher });
+  assert.equal(other.ok && other.duplicate, undefined);
+  // The same photo in Gallery or Pro Shop is its own file there.
+  const shop = await uploadToCloudFolder({ folder: 'pro-shop', file: photo('same.png'), dateKey: '2026-11-18', token: tokens.owner, fetcher });
+  assert.deepEqual(shop, { ok: true, path: 'pro-shop/same.png', lane: 'approved' });
+  const gallery = await uploadToCloudFolder({ folder: 'gallery', file: photo('same.png'), dateKey: '2026-11-18', token: tokens.owner, fetcher });
+  assert.deepEqual(gallery, { ok: true, path: 'gallery/approved/2026-11-18/same.png', lane: 'approved' });
+  // Deleting the file clears its marker, so the photo can be sent again.
+  const removed = await deleteCloudMedia({ paths: ['events/1000017087-jsw3yr.png'], token: tokens.owner, fetcher });
+  assert.equal(removed.ok, true);
+  const resent = await uploadToCloudFolder({ folder: 'events', file: photo('back.png'), dateKey: '2026-11-18', token: tokens.owner, fetcher });
+  assert.deepEqual(resent, { ok: true, path: 'events/back.png', lane: 'approved' });
+});
+
+test('Events dedupe also catches a seat\'s repeat while the first copy waits in pending', async () => {
+  const { fetcher, tokens } = await setup();
+  const photo = (name: string) => new File(['pending photo'], name, { type: 'image/png' });
+  const first = await uploadToCloudFolder({ folder: 'events', file: photo('a.png'), dateKey: '2026-11-18', token: tokens.coach, fetcher });
+  assert.deepEqual(first, { ok: true, path: 'events/pending/a.png', lane: 'pending' });
+  const again = await uploadToCloudFolder({ folder: 'events', file: photo('b.png'), dateKey: '2026-11-18', token: tokens.coach, fetcher });
+  assert.deepEqual(again, { ok: true, path: 'events/pending/a.png', lane: 'pending', duplicate: true });
+});
+
+test('a file with a missing or generic stored type is served and stored as what its extension says', async () => {
+  const { fetcher, tokens, put, bucket } = await setup();
+  put('events/untyped.png', '', 'png-bytes');
+  put('gallery/approved/2026-11-12/clip.mov', 'application/octet-stream', 'mov-bytes');
+  put('events/flyer.pdf', 'application/pdf', 'pdf-bytes');
+  const typeOf = async (path: string) => (await call(fetcher, tokens.owner, `/api/gym/cloud?op=file&path=${encodeURIComponent(path)}`)).headers.get('content-type');
+  assert.equal(await typeOf('events/untyped.png'), 'image/png');
+  assert.equal(await typeOf('gallery/approved/2026-11-12/clip.mov'), 'video/quicktime');
+  assert.equal(await typeOf('events/flyer.pdf'), 'application/pdf');
+  // Upload side: a phone or Drive that sends no type, or a generic one, still stores the right one.
+  assert.equal(uploadMimeOf('', 'IMG_1.png', 'gallery'), 'image/png');
+  assert.equal(uploadMimeOf('application/octet-stream', 'IMG_2.heic', 'cloud-folder'), 'image/heic');
+  assert.equal(uploadMimeOf('', 'mystery', 'gallery'), 'video/mp4');
+  assert.equal(uploadMimeOf('application/octet-stream', 'mystery.xyz', 'gallery'), 'application/octet-stream');
+  assert.equal(uploadMimeOf('image/png', 'x.jpg', 'gallery'), 'image/png');
+  assert.equal(uploadMimeOf('', 'day.mp4', 'daily-video'), 'video/mp4');
+  assert.equal(putMimeOf('application/octet-stream', 'events/a.webp'), 'image/webp');
+  assert.equal(putMimeOf('application/octet-stream', 'roster/master.json'), 'application/octet-stream');
+  // End to end: a start with no type for a .png lands as a photo in Events.
+  const start = await call(fetcher, tokens.owner, '/api/gym/cloud', startBody({ purpose: 'cloud-folder', folder: 'events', fileName: 'no-type.png', mime: '' }));
+  assert.equal(start.status, 200);
+  const started = (await start.json()) as { mode: string; key: string };
+  assert.equal(started.mode, 'single');
+  const stored = await call(fetcher, tokens.owner, `/api/gym/cloud?op=put&key=${encodeURIComponent(started.key)}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/octet-stream' },
+    body: new Uint8Array([1, 2, 3, 4]),
+  });
+  assert.equal(stored.status, 200);
+  assert.equal(bucket.objects.get(`${BASE}events/no-type.png`)?.type, 'image/png');
+});
+
+test('Events dedupe also sees files uploaded before folders kept fingerprints (the 13 already there)', async () => {
+  const { bucket, fetcher, tokens, put } = await setup();
+  await setSwitch(fetcher, tokens.owner, false);
+  // Stored by the old code: no marker beside them.
+  put('events/KIM-Fitness.png', 'image/png', 'kim photo');
+  put('events/Bee-is-the-Balm.png', 'image/png', 'bee photo!');
+  const markers = () => [...bucket.objects.keys()].filter((key) => key.startsWith(`${BASE}hashes/`));
+  assert.equal(markers().length, 0);
+  const photo = (name: string, text: string) => new File([text], name, { type: 'image/png' });
+  // The device sends the same photo again under its migration name: skipped, nothing new stored.
+  const again = await uploadToCloudFolder({ folder: 'events', file: photo('Event-11-e8ad20bc-a83.png', 'kim photo'), dateKey: '2026-11-18', token: tokens.owner, fetcher });
+  assert.deepEqual(again, { ok: true, path: 'events/KIM-Fitness.png', lane: 'approved', duplicate: true });
+  assert.equal(bucket.objects.has(`${BASE}events/Event-11-e8ad20bc-a83.png`), false);
+  // Same size, different bytes: a new photo. The check never reads files of another size.
+  const other = await uploadToCloudFolder({ folder: 'events', file: photo('new.png', 'kim photX'), dateKey: '2026-11-18', token: tokens.owner, fetcher });
+  assert.deepEqual(other, { ok: true, path: 'events/new.png', lane: 'approved' });
+  assert.ok(markers().length > 0, 'the files that were checked now have markers');
 });

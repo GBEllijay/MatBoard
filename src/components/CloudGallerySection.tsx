@@ -32,7 +32,22 @@ import { CloudVideoCleanup } from './CloudVideoCleanup';
 /** Seconds a photo stays up when the Cloud Gallery plays as a slideshow. */
 export const CLOUD_SLIDE_PHOTO_SEC = 8;
 /** Photo thumbnails fetched up front. The rest load when the slideshow reaches them. */
-const THUMB_LIMIT = 24;
+const THUMB_LIMIT = 60;
+/** ...and never more than this many bytes of originals (a Gallery of 6 MB phone photos stops near the old 24). */
+const THUMB_BYTES = 150 * 1024 * 1024;
+
+/** The photos that get a thumbnail up front: in list order, up to the count and byte limits. */
+export function thumbnailBatch(items: readonly CloudFolderItem[], have: Readonly<Record<string, string>>): CloudFolderItem[] {
+  const out: CloudFolderItem[] = [];
+  let bytes = 0;
+  for (const item of items) {
+    if (item.kind !== 'photo' || have[item.path]) continue;
+    if (out.length >= THUMB_LIMIT || (out.length > 0 && bytes + item.size > THUMB_BYTES)) break;
+    out.push(item);
+    bytes += item.size;
+  }
+  return out;
+}
 
 export const CLOUD_GALLERY_TITLE = CLOUD_FOLDERS_TITLE;
 export const CLOUD_GALLERY_EMPTY = 'No photos or videos in Gallery yet.';
@@ -150,7 +165,7 @@ export function CloudGallerySection({
   useEffect(() => {
     if (!openItems?.length) return;
     let cancelled = false;
-    const photos = openItems.filter((item) => item.kind === 'photo' && !thumbs[item.path]).slice(0, THUMB_LIMIT);
+    const photos = thumbnailBatch(openItems, thumbs);
     void (async () => {
       for (const item of photos) {
         const blob = await storeRef.current.open(asLaneItem(item));
@@ -272,6 +287,7 @@ export function CloudGallerySection({
     setBusy(true);
     let added = 0;
     let waiting = 0;
+    let repeats = 0;
     let failed = '';
     for (const [index, file] of files.entries()) {
       setNote(`Uploading ${index + 1} of ${files.length} to ${label}…`);
@@ -280,14 +296,16 @@ export function CloudGallerySection({
         failed = result.message;
         continue;
       }
-      if (result.lane === 'pending') waiting += 1;
+      if (result.duplicate) repeats += 1;
+      else if (result.lane === 'pending') waiting += 1;
       else added += 1;
     }
     setBusy(false);
     const parts: string[] = [];
     if (added) parts.push(`Added ${added} to ${label}.`);
+    if (repeats) parts.push(`${repeats} already in ${label}, skipped.`);
     if (waiting) parts.push(`${waiting} wait for the owner's approval in Review Inbox.`);
-    if (failed) parts.push(`${files.length - added - waiting} did not upload: ${failed}`);
+    if (failed) parts.push(`${files.length - added - waiting - repeats} did not upload: ${failed}`);
     setNote(parts.join(' '));
     await loadFolder(folder);
   };
@@ -469,8 +487,8 @@ export function CloudGallerySection({
             <button type="button" className="btn btn--ghost" onClick={() => setPlaying(((playing ?? 0) - 1 + playList.length) % Math.max(1, playList.length))}>
               Previous
             </button>
-            <span>
-              {(playing ?? 0) + 1} of {playList.length} · {current.name}
+            <span data-cloud-slide-count="">
+              {(playing ?? 0) + 1} of {playList.length}
             </span>
             <button type="button" className="btn btn--ghost" onClick={advance}>
               Next

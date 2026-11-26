@@ -27,7 +27,7 @@ let urlSeq = 0;
 URL.createObjectURL = () => `blob:test-${(urlSeq += 1)}`;
 URL.revokeObjectURL = () => undefined;
 
-const { CloudGallerySection, CLOUD_GALLERY_EMPTY } = await import('./CloudGallerySection.tsx');
+const { CloudGallerySection, CLOUD_GALLERY_EMPTY, thumbnailBatch } = await import('./CloudGallerySection.tsx');
 const { CloudVideoCleanup, CLOUD_CLEANUP_TITLE } = await import('./CloudVideoCleanup.tsx');
 const { advantageCloudLaneStore, listApprovedCloudMedia, CLOUD_GALLERY_READ_ERROR } = await import('../lib/advantageCloudLanes.ts');
 const { CLOUD_CLEANUP_EMPTY } = await import('../lib/cloudVideoCleanup.ts');
@@ -474,4 +474,53 @@ test('Review Inbox: pending rows from all four folders; only the owner can decid
     // Instructors seat: not for Gallery, Pro Shop, Events, Schedule. Daily videos keep their old rule.
     assert.equal(canDecideCloudRow(item, { kind: 'seat', preset: 'instructors' }), item.source === 'daily-video', item.path);
   }
+});
+
+test('Events folder: image files show thumbnails (never a PDF tile), and the slideshow caption has no file name', async () => {
+  const { itemOfForTest } = await import('../lib/advantageCloudFolders.ts');
+  const names = ['00-Title.png', '1000017087-jsw3yr.png', 'KIM-Fitness.png'];
+  const items = names.map((name) => itemOfForTest('events', { name, path: `events/${name}`, size: 10, mime: 'application/octet-stream', kind: 'file' })!);
+  assert.deepEqual(items.map((item) => [item.kind, item.mime]), names.map(() => ['photo', 'image/png']));
+  const opened: string[] = [];
+  const { root, host } = mount(<CloudGallerySection load={folders({ events: items })} store={fakeStore(opened)} initialFolder="events" />);
+  await flush();
+  const tiles = [...host.querySelectorAll('[data-cloud-folder="events"] [data-cloud-gallery-item]')];
+  assert.equal(tiles.length, 3);
+  for (const tile of tiles) {
+    assert.ok(tile.querySelector('img'), 'a real thumbnail');
+    assert.doesNotMatch(tile.querySelector('.cloud-gallery__glyph')?.textContent ?? '', /PDF/);
+  }
+  assert.equal(opened.length, 3);
+
+  await act(async () => (tiles[0].querySelector('button.cloud-gallery__open') as HTMLButtonElement).click());
+  await flush();
+  const player = host.querySelector('.cloud-gallery__player') as HTMLElement;
+  assert.ok(player.querySelector('img'));
+  const count = player.querySelector('[data-cloud-slide-count]');
+  assert.equal(count?.textContent?.replace(/\s+/g, ' ').trim(), '1 of 3');
+  assert.doesNotMatch(player.querySelector('.cloud-gallery__controls')?.textContent ?? '', /\.png|00-Title/);
+  act(() => root.unmount());
+});
+
+test('thumbnails: all of a small Events folder, but a Gallery of 6 MB phone photos stays near the old 24', () => {
+  const item = (i: number, size: number) => ({
+    provider: 'advantage-cloud' as const,
+    source: 'gallery' as const,
+    lane: 'approved' as const,
+    folder: 'events' as const,
+    path: `events/p${i}.png`,
+    name: `p${i}.png`,
+    dateKey: '',
+    mime: 'image/png',
+    size,
+    kind: 'photo' as const,
+  });
+  const small = Array.from({ length: 13 }, (_, i) => item(i, 300_000));
+  assert.equal(thumbnailBatch(small, {}).length, 13);
+  const big = Array.from({ length: 89 }, (_, i) => item(i, 6_500_000));
+  const batch = thumbnailBatch(big, {});
+  assert.ok(batch.length >= 20 && batch.length <= 24, `got ${batch.length}`);
+  // One huge photo still gets its thumbnail, and a photo that already has one is skipped.
+  assert.equal(thumbnailBatch([item(0, 400_000_000)], {}).length, 1);
+  assert.equal(thumbnailBatch(small, { 'events/p0.png': 'blob:x' }).length, 12);
 });

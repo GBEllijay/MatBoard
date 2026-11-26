@@ -480,7 +480,9 @@ export async function runDeviceMigration(input: {
       // A seat with approval on: the file waits for the owner, details cannot be saved yet.
       summary.waiting += 1;
     } else if (await record(row, result.path)) {
-      summary.sent += 1;
+      // Cloud already had this photo (maybe under another name): link the device item to it, nothing was added.
+      if (result.duplicate) summary.relinked += 1;
+      else summary.sent += 1;
     }
     done += 1;
   }

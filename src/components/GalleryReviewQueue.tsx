@@ -110,7 +110,13 @@ export function GalleryReviewQueue() {
       setNote('That file could not be opened from Advantage Cloud.');
       return;
     }
-    setPreview({ path: item.path, url: URL.createObjectURL(blob), kind: item.kind });
+    const url = URL.createObjectURL(blob);
+    // A Schedule PDF is a document, not a clip: open it in its own tab instead of a video player.
+    if (/\.pdf$/i.test(item.path) || item.mime === 'application/pdf') {
+      window.open(url, '_blank', 'noopener');
+      return;
+    }
+    setPreview({ path: item.path, url, kind: item.kind });
   };
 
   const showLocal = settings.required && rows.length > 0;

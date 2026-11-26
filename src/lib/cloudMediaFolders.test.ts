@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { CloudFolderListing } from './advantageCloudFolders.ts';
+import { listCloudFolder, type CloudFolderListing } from './advantageCloudFolders.ts';
 import { applyCloudIndexPatch, emptyCloudIndex, type CloudIndexPatch, type CloudMediaIndex } from './cloudMediaIndex.ts';
 import {
   CLOUD_BACKED_NOTE,
@@ -21,7 +21,7 @@ import {
   uniqueCloudFileName,
   type MigrationUpload,
 } from './cloudMediaFolders.ts';
-import type { FolderId, StoredPhoto } from './photoStore.ts';
+import { playableItems, type FolderId, type StoredPhoto } from './photoStore.ts';
 
 function listing(folder: CloudFolderListing['folder'], rows: { path: string; name?: string; kind?: 'photo' | 'video' | 'file'; mime?: string }[]): CloudFolderListing {
   return {
@@ -243,4 +243,92 @@ test('Add to event moves files out of any other event and keeps the order', () =
   const created = applyCloudIndexPatch(applied.index, addToEventPatch(applied.index.events, fresh, ['events/1.png']), new Date());
   assert.ok(created.ok);
   assert.deepEqual(created.index.events.map((e) => [e.id, e.items]), [['a', []], ['b', ['events/3.png', 'events/2.png', 'events/4.png']], ['ev-new', ['events/1.png']]]);
+});
+
+test('Events as the only slideshow folder plays its photos, grouped or not; a PDF in Events never plays', () => {
+  const index: CloudMediaIndex = {
+    ...emptyCloudIndex('events'),
+    events: [{ id: 'ev1', title: 'Winter Open', date: '', qrLinks: [], items: ['events/b.png'], order: 0 }],
+  };
+  const rows = cloudRowsForFolder({
+    folderId: 'events',
+    listing: listing('events', [{ path: 'events/a.png' }, { path: 'events/b.png' }, { path: 'events/flyer.pdf', kind: 'file' }]),
+    index,
+    canEdit: true,
+  });
+  const galleryRow = { ...rows[0], id: 'cloud:gallery/approved/2026-11-12/x.jpg', folderId: 'gallery' as const, cloudPath: 'gallery/approved/2026-11-12/x.jpg' };
+  const queue = playableItems([...rows, galleryRow], { gallery: false, shop: false, events: true });
+  assert.deepEqual(queue.map((row) => row.cloudPath), ['events/b.png', 'events/a.png']);
+  assert.ok(queue.every((row) => row.mime.startsWith('image/')));
+});
+
+test('Events-only slideshow plays photos the list sent with a generic type and kind "file" (the PDF-tile bug)', async () => {
+  const names = ['00-Title.png', '1000017087-jsw3yr.png', 'ALLSKIDUSA.COM.png'];
+  const fetcher: typeof fetch = async () =>
+    new Response(
+      JSON.stringify({
+        items: names.map((name) => ({ name, path: `events/${name}`, size: 9, mime: 'application/octet-stream', kind: 'file' })),
+        canUpload: true,
+        canDelete: true,
+        uploadLane: 'approved',
+      }),
+      { status: 200 },
+    );
+  const listed = await listCloudFolder({ folder: 'events', token: 'test-token', fetcher });
+  assert.ok(listed && !('error' in listed));
+  assert.deepEqual(listed.items.map((item) => item.kind), ['photo', 'photo', 'photo']);
+  const rows = cloudRowsForFolder({ folderId: 'events', listing: listed, index: emptyCloudIndex('events'), canEdit: true });
+  assert.equal(rows.length, 3);
+  const queue = playableItems(rows, { gallery: false, shop: false, events: true });
+  assert.deepEqual(queue.map((row) => row.cloudPath), names.map((name) => `events/${name}`));
+});
+
+test('every networked folder plays on its own: Gallery (photos and a clip) and Pro Shop with the generic type the old list sent', async () => {
+  const fetcherFor = (items: unknown[]): typeof fetch => async () =>
+    new Response(JSON.stringify({ items, canUpload: true, canDelete: true, uploadLane: 'approved' }), { status: 200 });
+  // Gallery rows as the old server sent them: kind from the file name, type dropped to octet-stream.
+  const gallery = await listCloudFolder({
+    folder: 'gallery',
+    token: 'test-token',
+    fetcher: fetcherFor([
+      { name: '20260218_190358.jpg', path: 'gallery/approved/2026-11-19/20260218_190358.jpg', size: 9, mime: 'application/octet-stream', kind: 'photo', dateKey: '2026-11-19' },
+      { name: 'warmup.mp4', path: 'gallery/approved/2026-11-19/warmup.mp4', size: 9, mime: 'application/octet-stream', kind: 'video', dateKey: '2026-11-19' },
+    ]),
+  });
+  const shop = await listCloudFolder({
+    folder: 'pro-shop',
+    token: 'test-token',
+    fetcher: fetcherFor([{ name: 'Rash-guard.jpg', path: 'pro-shop/Rash-guard.jpg', size: 9, mime: 'application/octet-stream', kind: 'file' }]),
+  });
+  assert.ok(gallery && !('error' in gallery) && shop && !('error' in shop));
+  const rows = [
+    ...cloudRowsForFolder({ folderId: 'gallery', listing: gallery, index: emptyCloudIndex('gallery'), canEdit: true }),
+    ...cloudRowsForFolder({ folderId: 'shop', listing: shop, index: emptyCloudIndex('pro-shop'), canEdit: true }),
+  ];
+  const only = (folder: 'gallery' | 'shop') =>
+    playableItems(rows, { gallery: folder === 'gallery', shop: folder === 'shop', events: false }).map((row) => row.cloudPath);
+  assert.deepEqual(only('gallery'), ['gallery/approved/2026-11-19/20260218_190358.jpg', 'gallery/approved/2026-11-19/warmup.mp4']);
+  assert.deepEqual(only('shop'), ['pro-shop/Rash-guard.jpg']);
+});
+
+test('device send: a photo Cloud already has (under its old name) is linked to that file, not stored again', async () => {
+  const cloud = fakeCloud('events');
+  cloud.files.add('events/KIM-Fitness.png');
+  const row = device('k1', 'events', { label: 'KIM Fitness' });
+  const plan = planDeviceMigration({ rows: [row], folderId: 'events', index: cloud.index, listedPaths: cloud.files, dateKey: '2026-11-19' });
+  assert.equal(plan.send.length, 1);
+  const summary = await runDeviceMigration({
+    plan,
+    folderId: 'events',
+    dateKey: '2026-11-19',
+    upload: async () => ({ ok: true, path: 'events/KIM-Fitness.png', lane: 'approved', duplicate: true }),
+    patch: cloud.patch,
+  });
+  assert.equal(summary.sent, 0);
+  assert.equal(summary.relinked, 1);
+  assert.equal(cloud.index.migrated['dev:k1'], 'events/KIM-Fitness.png');
+  assert.equal(cloud.index.items['events/KIM-Fitness.png'].label, 'KIM Fitness');
+  // The next run skips it.
+  const again = planDeviceMigration({ rows: [row], folderId: 'events', index: cloud.index, listedPaths: cloud.files, dateKey: '2026-11-19' });
+  assert.equal(again.skip.length, 1);
 });
