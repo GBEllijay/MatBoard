@@ -400,33 +400,8 @@
   flex-shrink: 0;
 }
 
-/* Legacy locator class on the hero buy button. Visual paint currently wins
-   over .sfh-buy because this file loads after storefrontHero.css.
-   Design Coach: restyle .sfh-buy in storefrontHero.css, then clear conflicts here. */
-.home.home--store .sf-buy {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--cta-bg);
-  color: var(--cta-ink);
-  font-weight: 800;
-  font-size: 17px;
-  padding: 16px 26px;
-  border-radius: 12px;
-  box-shadow: var(--cta-shadow);
-}
-
-@media (hover: hover) {
-  .home.home--store .sf-buy:hover {
-    background: #f4f7fb;
-    color: var(--cta-ink);
-  }
-}
-
-.home.home--store .sf-buy:focus-visible {
-  outline: 3px solid var(--cta-focus);
-  outline-offset: 3px;
-}
+/* Legacy locator class on the homepage buy button. Visual paint lives on
+   .sfh-buy in storefrontHero.css (option E: brand yellow #f6c000). */
 
 .home.home--store .sf-fine {
   font-size: 13px;
@@ -1300,14 +1275,15 @@
   }
 }
 
-/* Closing "Win, Buy Advantage" card. Mirrors the hero "Win by Advantage" title:
+/* Closing "Win. Buy Advantage." card. Mirrors the hero "Win by Advantage" title:
    large tight Inter, dark rounded woodcut card on the mat. The whole card is the buy link. */
 .home.home--store .sf-win-buy {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   margin-top: 48px;
-  padding: 28px 24px;
+  padding: 28px 24px 24px;
   border-radius: 20px;
   background: rgba(0, 0, 0, 0.64);
   color: #fff;
@@ -1322,6 +1298,14 @@
   line-height: 1.02;
   letter-spacing: -0.03em;
   color: #fff;
+  margin: 0;
+}
+
+.home.home--store .sf-win-buy-logo {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin-top: 18px;
 }
 
 .home.home--store .sf-win-buy:hover,
@@ -1332,13 +1316,30 @@
 }
 
 .home.home--store .sf-win-buy:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px #fff, 0 0 0 3px rgba(255, 255, 255, 0.35);
+  outline: 3px solid #f4ecd8;
+  outline-offset: 3px;
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.home.home--store .sf-bottom-buy {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
 }
 
 @media (max-width: 600px) {
   .home.home--store .sf-win-buy {
     margin-top: 40px;
-    padding: 22px 18px;
+    padding: 22px 18px 20px;
+  }
+
+  .home.home--store .sf-win-buy-logo {
+    width: 80px;
+    height: 80px;
+    margin-top: 14px;
+  }
+
+  .home.home--store .sf-bottom-buy {
+    margin-top: 22px;
   }
 }

@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { STOREFRONT_BUY_PATH, STOREFRONT_HERO, STOREFRONT_HERO_BUY_LABEL } from '../lib/storefront';
+import { STOREFRONT_BUY_PATH, STOREFRONT_HERO, STOREFRONT_HERO_BUY_TEXT, STOREFRONT_PRICE_LABEL } from '../lib/storefront';
 import { heroVariantOf } from '../lib/storefrontHero';
 import './storefrontHero.css';
 
@@ -68,16 +68,27 @@ function scrollToScoreboard(event: { preventDefault: () => void }) {
   target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+export function StorefrontBuyButton() {
+  return (
+    <Link className="sf-buy sfh-buy" to={STOREFRONT_BUY_PATH}>
+      <span className="sfh-buy-label">{STOREFRONT_HERO_BUY_TEXT}</span>
+      <span className="sfh-buy-price">{STOREFRONT_PRICE_LABEL}</span>
+    </Link>
+  );
+}
+
+function StorefrontBuyBlock() {
+  return (
+    <div className="sfh-top-buy">
+      <StorefrontBuyButton />
+      <p className="sfh-fine">{STOREFRONT_HERO.fine}</p>
+    </div>
+  );
+}
+
 function Cta() {
   return (
     <div className="sfh-cta">
-      <Link className="sf-buy sfh-buy" to={STOREFRONT_BUY_PATH}>
-        <span>{STOREFRONT_HERO_BUY_LABEL}</span>
-        <svg className="sfh-chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-          <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </Link>
-      <p className="sfh-fine">{STOREFRONT_HERO.fine}</p>
       <div className="sfh-links">
         <a className="sfh-more" href="#scoreboard" onClick={scrollToScoreboard}>
           See how it works ↓
@@ -193,8 +204,11 @@ export function StorefrontHero() {
               <Shot shot={ROUND_TIMER} alt="Advantage round timer showing round 1 of 5 at 05:00" className="sfh-frame--block" />
             </div>
           </div>
+          <StorefrontBuyBlock />
         </div>
-      ) : null}
+      ) : (
+        <StorefrontBuyBlock />
+      )}
     </section>
   );
 }

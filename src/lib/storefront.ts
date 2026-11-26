@@ -16,11 +16,14 @@ export const STOREFRONT_PRICE_LABEL = WHITE_PRICE_LABEL;
 /** Yellow hero button. Checkout stays on the existing buy page. */
 export const STOREFRONT_BUY_LABEL = `Buy Advantage BJJ Scoreboard — ${STOREFRONT_PRICE_LABEL}`;
 
+/** Public homepage hero buy-button wording, without the price chip. */
+export const STOREFRONT_HERO_BUY_TEXT = 'Buy Advantage';
+
 /** Public homepage hero buy button. Uses the White / Student one-time list price. */
-export const STOREFRONT_HERO_BUY_LABEL = `Buy Advantage ${STOREFRONT_PRICE_LABEL}`;
+export const STOREFRONT_HERO_BUY_LABEL = `${STOREFRONT_HERO_BUY_TEXT} ${STOREFRONT_PRICE_LABEL}`;
 
 /** Homepage closing card, below Mock tournament and above the footer. */
-export const STOREFRONT_WIN_BUY_LABEL = 'Win, Buy Advantage';
+export const STOREFRONT_WIN_BUY_LABEL = 'Win. Buy Advantage.';
 
 export const STOREFRONT_HERO = {
   title: 'Win by Advantage.',

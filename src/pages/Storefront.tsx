@@ -18,7 +18,7 @@ import {
   STOREFRONT_WIN_BUY_LABEL,
   STOREFRONT_WOODBLOCKS,
 } from '../lib/storefront';
-import { StorefrontHero } from './StorefrontHero';
+import { StorefrontBuyButton, StorefrontHero } from './StorefrontHero';
 import './storefront.css';
 
 export function StorefrontPage() {
@@ -88,7 +88,19 @@ export function StorefrontPage() {
           aria-label={STOREFRONT_WIN_BUY_LABEL}
         >
           <h2>{STOREFRONT_WIN_BUY_LABEL}</h2>
+          <img
+            className="sf-win-buy-logo"
+            src="/advantage-icon.png"
+            alt=""
+            width={96}
+            height={96}
+            draggable={false}
+          />
         </Link>
+      </div>
+
+      <div className="sf-wrap sf-bottom-buy">
+        <StorefrontBuyButton />
       </div>
 
       <footer className="sf-footer">
