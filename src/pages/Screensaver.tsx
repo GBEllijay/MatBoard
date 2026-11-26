@@ -2,6 +2,8 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExt
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BeltHeader } from '../components/BeltHeader';
 import { FolderChevron } from '../components/FolderChevron';
+import { MediaFolderTiles, type MediaTile } from '../components/MediaFolderTiles';
+import { CloudVideoCleanup } from '../components/CloudVideoCleanup';
 import { MediaConsoleMark } from '../components/MediaConsoleArt';
 import { Chrome } from '../components/Chrome';
 import { GymLogoControl } from '../components/GymLogoControl';
@@ -92,6 +94,7 @@ import {
   cloudFolderOfDevice,
   folderBackingNote,
   isCloudRow,
+  folderCopyFor,
   mergeBackedRows,
   uniqueCloudFileName,
 } from '../lib/cloudMediaFolders';
@@ -255,6 +258,8 @@ export function ScreensaverPage() {
   const [eventsCastMode, setEventsCastModeState] = useState<EventsCastMode>(DEFAULT_EVENTS_CAST_MODE);
   const [gymLogoUrl, setGymLogoUrl] = useState<string | null>(() => readGymLogo());
   const [openSection, setOpenSection] = useState<FolderId | 'schedule' | null>(null);
+  /** The photo open in the Media screen viewer, so its full picture loads even past the first 40. */
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const photoCaptureRef = useRef<HTMLInputElement>(null);
   const photoLibraryRef = useRef<HTMLInputElement>(null);
   const videoRecordRef = useRef<HTMLInputElement>(null);
@@ -397,8 +402,9 @@ export function ScreensaverPage() {
       else if (slide?.kind === 'shop') slide.items.forEach(push);
     }
     if (options && openSection && openSection !== 'schedule') itemsInFolder(mediaRows, openSection).slice(0, 40).forEach(push);
+    if (options && viewingId) push(mediaRows.find((row) => row.id === viewingId));
     return ids;
-  }, [slides, order, index, options, openSection, mediaRows]);
+  }, [slides, order, index, options, openSection, mediaRows, viewingId]);
   const cloudUrls = useCloudRowUrls(cloudMedia.rows, wantedCloudIds);
   const srcById = useMemo(() => ({ ...urlById, ...cloudUrls }), [urlById, cloudUrls]);
   const currentPhoto = currentSlide?.kind === 'media' ? currentSlide.item : undefined;
@@ -1084,6 +1090,46 @@ export function ScreensaverPage() {
           ? 'Nothing is set to play. Turn on Events in options, then tap a left preview so at least one photo is On.'
           : 'Nothing is set to play. Turn on Gallery in options, then tap a left preview so at least one photo or video is On.';
 
+  const visibleFolders = FOLDERS.filter((folder) => {
+    if (!seat) return true;
+    if (folder.id === 'shop') return seatPermissionAllows(seat.permissions, 'proShopAccess');
+    if (folder.id === 'events') return seatPermissionAllows(seat.permissions, 'eventsAccess');
+    if (folder.id === 'gallery') return seatPermissionAllows(seat.permissions, 'galleryUpload');
+    return true;
+  });
+  // The class schedule sat under Gallery before; it keeps the same seat rule.
+  const scheduleVisible = visibleFolders.some((folder) => folder.id === 'gallery');
+  const mediaTiles: MediaTile[] = [
+    ...visibleFolders.map((folder): MediaTile => ({
+      id: folder.id,
+      label: folder.label,
+      count: cloudMedia.checking ? null : itemsInFolder(mediaRows, folder.id).length,
+      noun: folder.itemNoun,
+      nounPlural: folder.itemNounPlural,
+      playOn: folderPlay[folder.id],
+      onPlay: (next) => commitFolderPlay(folder.id, next),
+      addLabel: folder.addLabel,
+      onAdd: folder.ready ? () => openAdd(folder.id, 'photo') : undefined,
+    })),
+    ...(scheduleVisible
+      ? [
+          {
+            id: 'schedule' as const,
+            label: 'Schedule',
+            count: schedule.classes.length,
+            noun: 'class',
+            nounPlural: 'classes',
+            playOn: schedule.castEnabled,
+            onPlay: (next: boolean) => setScheduleCastEnabled(next),
+            addLabel: 'Add classes',
+            addHref: '/schedule',
+          },
+        ]
+      : []),
+  ];
+  // Gallery first, then Schedule, Pro Shop, Events: the order the TV plays them.
+  mediaTiles.sort((a, b) => MEDIA_TILE_ORDER.indexOf(a.id) - MEDIA_TILE_ORDER.indexOf(b.id));
+
   const addSheets = (
     <>
       <MediaSourceSheet
@@ -1400,20 +1446,18 @@ export function ScreensaverPage() {
           </p>
         ) : null}
 
+        {openSection === null ? <MediaFolderTiles tiles={mediaTiles} onOpen={(id) => setOpenSection(id)} /> : null}
         <div className="saver-folders">
-          {FOLDERS.filter((folder) => {
-            if (!seat) return true;
-            if (folder.id === 'shop') return seatPermissionAllows(seat.permissions, 'proShopAccess');
-            if (folder.id === 'events') return seatPermissionAllows(seat.permissions, 'eventsAccess');
-            if (folder.id === 'gallery') return seatPermissionAllows(seat.permissions, 'galleryUpload');
-            return true;
-          }).map((folder) => {
+          {visibleFolders.filter((folder) => openSection === folder.id).map((folder) => {
             const galleryUpload =
               folder.id !== 'gallery' || !seat || seatPermissionAllows(seat.permissions, 'galleryUpload');
             return (
             <Fragment key={folder.id}>
             <ToolboxFolder
-              folder={folder}
+              bare
+              onBack={() => setOpenSection(null)}
+              onViewing={setViewingId}
+              folder={folderCopyFor(folder, cloudMedia.backing)}
               open={openSection === folder.id}
               playEnabled={folderPlay[folder.id]}
               items={itemsInFolder(mediaRows, folder.id)}
@@ -1526,33 +1570,34 @@ export function ScreensaverPage() {
                     }
                   : undefined
               }
-            />
-            {folder.id === 'events' && cloudBacked && openSection === 'events' && cloudMedia.snapshots.events ? (
-              <CloudEventsPanel
-                tiles={itemsInFolder(mediaRows, 'events')
-                  .filter((row) => row.cloudPath)
-                  .map((row) => ({ path: row.cloudPath!, label: row.label, thumb: srcById[row.id] }))}
-                events={cloudMedia.snapshots.events.index.events}
-                canEdit={cloudMedia.canEdit('events')}
-                onPatch={(patch) => cloudMedia.patch('events', patch)}
-              />
-            ) : null}
-            {folder.id === 'gallery' ? (
-              <ClassScheduleEntry
-                open={openSection === 'schedule'}
-                onToggle={(next) => {
-                  setOpenSection((current) => {
-                    if (next) return 'schedule';
-                    return current === 'schedule' ? null : current;
-                  });
-                }}
-              />
-            ) : null}
+            >
+              {folder.id === 'events' && cloudBacked && cloudMedia.snapshots.events ? (
+                <details className="saver-folder media-folder__group" data-media-group-events="">
+                  <summary className="saver-folder__summary">
+                    <FolderChevron />
+                    <span className="saver-folder__title">{GROUP_INTO_EVENT}</span>
+                  </summary>
+                  <div className="saver-folder__panel">
+                    <p className="saver-folder__empty">{GROUP_INTO_EVENT_HINT}</p>
+                    <CloudEventsPanel
+                      tiles={itemsInFolder(mediaRows, 'events')
+                        .filter((row) => row.cloudPath)
+                        .map((row) => ({ path: row.cloudPath!, label: row.label, thumb: srcById[row.id] }))}
+                      events={cloudMedia.snapshots.events.index.events}
+                      canEdit={cloudMedia.canEdit('events')}
+                      onPatch={(patch) => cloudMedia.patch('events', patch)}
+                    />
+                  </div>
+                </details>
+              ) : null}
+              {folder.id === 'gallery' && cloudBacked && cloudMedia.canDelete('gallery') ? <CloudVideoCleanup /> : null}
+            </ToolboxFolder>
             </Fragment>
             );
           })}
+          {openSection === 'schedule' && scheduleVisible ? <ClassScheduleEntry bare onBack={() => setOpenSection(null)} open onToggle={() => undefined} /> : null}
         </div>
-        {galleryPage ? <CloudGallerySection onCopyFromDrive={() => openDrivePick('gallery', 'any')} driveConnected={Boolean(driveBinding)} /> : null}
+        {galleryPage && !cloudBacked ? <CloudGallerySection onCopyFromDrive={() => openDrivePick('gallery', 'any')} driveConnected={Boolean(driveBinding)} /> : null}
 
         <section className="saver-settings">
           <h3 className="saver-settings__title">Settings</h3>
@@ -1735,9 +1780,40 @@ function BatchStatus({
   );
 }
 
-function ClassScheduleEntry({ open, onToggle }: { open: boolean; onToggle: (next: boolean) => void }) {
+const MEDIA_TILE_ORDER = ['gallery', 'schedule', 'shop', 'events'];
+export const GROUP_INTO_EVENT = 'Group into an event (optional)';
+export const GROUP_INTO_EVENT_HINT = 'Photos you do not group still play on their own.';
+export const SCHEDULE_FOLDER_NOTE =
+  'The TV schedule slide comes from your class schedule. Schedule photos and PDFs uploaded to Advantage Cloud never reached the TV, so that upload folder is no longer shown here.';
+
+function ClassScheduleEntry({ open, onToggle, bare, onBack }: { open: boolean; onToggle: (next: boolean) => void; bare?: boolean; onBack?: () => void }) {
   const schedule = useScheduleState();
   const ready = schedule.classes.length > 0;
+  if (bare) {
+    return (
+      <section className="cloud-folder media-folder" data-media-folder="schedule">
+        <div className="cloud-folder__bar">
+          <button type="button" className="btn btn--ghost" data-media-folder-back="" onClick={onBack}>
+            ‹ All folders
+          </button>
+          <h3>Schedule</h3>
+          <label className="toggle media-tile__play">
+            <input type="checkbox" role="switch" checked={schedule.castEnabled} aria-label="Play Schedule on TV" onChange={(event) => setScheduleCastEnabled(event.target.checked)} />
+            Play on TV
+          </label>
+        </div>
+        <Link className="btn" to="/schedule">
+          {ready ? 'Edit class schedule' : 'Add class schedule'}
+        </Link>
+        <p className="saver-folder__empty">
+          {ready
+            ? `${schedule.classes.length} ${schedule.classes.length === 1 ? 'class' : 'classes'}. On adds the full week or month after Gallery and before Pro Shop.`
+            : 'Add classes on the schedule page, then turn Play on TV on to show the week board.'}
+        </p>
+        <p className="saver-folder__empty">{SCHEDULE_FOLDER_NOTE}</p>
+      </section>
+    );
+  }
   return (
     <details
       className="saver-folder"

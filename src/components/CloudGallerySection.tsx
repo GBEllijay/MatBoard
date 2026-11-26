@@ -343,7 +343,7 @@ export function CloudGallerySection({
     <>
       <p className="cloud-gallery__hint">{CLOUD_FOLDERS_HINT}</p>
       <ul className="cloud-folders" aria-label="Advantage Cloud folders">
-        {CLOUD_FOLDERS.map((folder) => {
+        {CLOUD_FOLDERS.filter((folder) => folder.id !== 'schedule' || (listings.schedule?.items.length ?? 0) > 0).map((folder) => {
           const count = listings[folder.id]?.items.length;
           return (
             <li key={folder.id}>

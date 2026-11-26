@@ -29,6 +29,8 @@ URL.revokeObjectURL = () => undefined;
 
 const { CloudGallerySection, CLOUD_GALLERY_EMPTY, thumbnailBatch } = await import('./CloudGallerySection.tsx');
 const { CloudVideoCleanup, CLOUD_CLEANUP_TITLE } = await import('./CloudVideoCleanup.tsx');
+const { MediaFolderTiles, mediaTileCount } = await import('./MediaFolderTiles.tsx');
+const { MediaFolderGrid, viewerCount } = await import('./MediaFolderGrid.tsx');
 const { advantageCloudLaneStore, listApprovedCloudMedia, CLOUD_GALLERY_READ_ERROR } = await import('../lib/advantageCloudLanes.ts');
 const { CLOUD_CLEANUP_EMPTY } = await import('../lib/cloudVideoCleanup.ts');
 const { cloudCopyLine, copyFilesToCloudGallery } = await import('../lib/galleryCloudCopy.ts');
@@ -116,10 +118,11 @@ test('Cloud shows four folders to tap instead of every image; Gallery opens and 
   assert.ok(host.querySelector('[data-cloud-gallery]'));
   assert.match(host.textContent ?? '', /Advantage Cloud/);
   const folderIds = [...host.querySelectorAll('[data-cloud-folder-open]')].map((node) => node.getAttribute('data-cloud-folder-open'));
-  assert.deepEqual(folderIds, ['gallery', 'pro-shop', 'events', 'schedule']);
+  // The Schedule upload folder never fed the TV, so it shows only while it still holds files.
+  assert.deepEqual(folderIds, ['gallery', 'pro-shop', 'events']);
   assert.deepEqual(
     [...host.querySelectorAll('.cloud-folders__label')].map((node) => node.textContent),
-    ['Gallery', 'Pro Shop', 'Events', 'Schedule'],
+    ['Gallery', 'Pro Shop', 'Events'],
   );
   assert.doesNotMatch(host.textContent ?? '', /Class photos/);
   // Folder view: no tiles and no thumbnails until a folder is opened.
@@ -523,4 +526,60 @@ test('thumbnails: all of a small Events folder, but a Gallery of 6 MB phone phot
   // One huge photo still gets its thumbnail, and a photo that already has one is skipped.
   assert.equal(thumbnailBatch([item(0, 400_000_000)], {}).length, 1);
   assert.equal(thumbnailBatch(small, { 'events/p0.png': 'blob:x' }).length, 12);
+});
+
+test('Media screen: four folder tiles with a count, a Play on TV switch, and Add; tapping opens that folder', async () => {
+  const opened: string[] = [];
+  const played: string[] = [];
+  const added: string[] = [];
+  const tiles = (['gallery', 'schedule', 'shop', 'events'] as const).map((id, index) => ({
+    id,
+    label: ['Gallery', 'Schedule', 'Pro Shop', 'Events'][index]!,
+    count: [4, 0, 1, null][index] as number | null,
+    noun: ['item', 'class', 'card', 'photo'][index]!,
+    nounPlural: ['items', 'classes', 'cards', 'photos'][index]!,
+    playOn: index !== 2,
+    onPlay: (on: boolean) => played.push(`${id}:${on}`),
+    addLabel: 'Add',
+    onAdd: () => added.push(id),
+  }));
+  const { root, host } = mount(<MediaFolderTiles tiles={tiles} onOpen={(id) => opened.push(id)} />);
+  assert.deepEqual([...host.querySelectorAll('[data-media-tile]')].map((node) => node.getAttribute('data-media-tile')), ['gallery', 'schedule', 'shop', 'events']);
+  assert.deepEqual([...host.querySelectorAll('[data-media-tile-count]')].map((node) => node.textContent), ['4 items', '0 classes', '1 card', '…']);
+  const shopSwitch = host.querySelector('[data-media-tile="shop"] input[type="checkbox"]') as HTMLInputElement;
+  assert.equal(shopSwitch.checked, false);
+  await act(async () => shopSwitch.click());
+  assert.deepEqual(played, ['shop:true']);
+  await act(async () => (host.querySelector('[data-media-tile="events"] [data-media-tile-add]') as HTMLButtonElement).click());
+  assert.deepEqual(added, ['events']);
+  await act(async () => (host.querySelector('[data-media-tile-open="gallery"]') as HTMLButtonElement).click());
+  assert.deepEqual(opened, ['gallery']);
+  assert.equal(mediaTileCount({ count: 1, noun: 'card', nounPlural: 'cards' }), '1 card');
+  act(() => root.unmount());
+});
+
+test('Media folder grid: thumbnails, one Delete per item, and a viewer that shows only N of M', async () => {
+  const removed: string[] = [];
+  const items = [
+    { id: 'a', name: 'IMG_0001.jpg', mime: 'image/jpeg', label: 'Fictional open mat' },
+    { id: 'b', name: 'IMG_0002.jpg', mime: 'image/jpeg', label: '' },
+  ];
+  const { root, host } = mount(
+    <MediaFolderGrid
+      items={items as never}
+      thumbById={{ a: 'blob:a', b: 'blob:b' }}
+      onRemove={async (id: string) => void removed.push(id)}
+      emptyCopy="Nothing here yet."
+    />,
+  );
+  assert.equal(host.querySelectorAll('[data-media-grid-item]').length, 2);
+  await act(async () => (host.querySelectorAll('[data-media-delete]')[1] as HTMLButtonElement).click());
+  assert.deepEqual(removed, ['b']);
+  await act(async () => (host.querySelector('[data-media-grid-item] .cloud-gallery__open') as HTMLButtonElement).click());
+  const viewer = host.querySelector('[data-media-viewer]');
+  assert.ok(viewer);
+  assert.equal(host.querySelector('[data-media-viewer-count]')?.textContent, '1 of 2');
+  assert.doesNotMatch(viewer.textContent ?? '', /IMG_000/);
+  assert.equal(viewerCount(1, 2), '2 of 2');
+  act(() => root.unmount());
 });

@@ -1044,6 +1044,38 @@ async function readMediaIndex(bucket: GymMediaBucket, licenseId: string, folder:
   }
 }
 
+/** The details folder a deleted file belongs to: Gallery (any lane), Pro Shop, or Events. */
+function indexFolderOfPath(path: string): CloudIndexFolder | null {
+  if (parseGalleryCloudPath(path)) return 'gallery';
+  const side = parseSideFolderCloudPath(path);
+  return side && isCloudIndexFolder(side.folder) ? side.folder : null;
+}
+
+/**
+ * After a delete: drop the files from their folder's details (items, events, and the
+ * one-time-send pointers that named them). A folder with nothing to drop is not rewritten.
+ */
+export async function dropFromMediaIndexes(bucket: GymMediaBucket, licenseId: string, paths: readonly string[], now: Date): Promise<void> {
+  const byFolder = new Map<CloudIndexFolder, string[]>();
+  for (const path of paths) {
+    const folder = indexFolderOfPath(path);
+    if (folder) byFolder.set(folder, [...(byFolder.get(folder) ?? []), path]);
+  }
+  for (const [folder, gone] of byFolder) {
+    const key = cloudIndexKey(licenseId, folder);
+    if (!key || !(await bucket.head(key))) continue;
+    const current = await readMediaIndex(bucket, licenseId, folder);
+    const named = gone.filter(
+      (path) => path in current.items || current.events.some((event) => event.items.includes(path)) || Object.values(current.migrated).includes(path),
+    );
+    if (!named.length) continue;
+    const merged = applyCloudIndexPatch(current, { items: Object.fromEntries(named.map((path) => [path, null])) }, now);
+    if (!merged.ok) continue;
+    for (const [mark, path] of Object.entries(merged.index.migrated)) if (named.includes(path)) delete merged.index.migrated[mark];
+    await bucket.put(key, new TextEncoder().encode(JSON.stringify(merged.index)), { httpMetadata: { contentType: 'application/json' } });
+  }
+}
+
 /**
  * Who may change names, buy links, QR links, order, and events: anyone whose
  * upload goes live. The owner always; a seat only while the approval switch is off.
@@ -1821,6 +1853,8 @@ export async function handleGymCloud(request: Request, env: GymCloudEnv, now: ()
       }
     }
     await deleteMediaKeys(bucket, actor.licenseId, keys);
+    // Every delete path also drops the file's name, links, and event membership from the folder's details.
+    await dropFromMediaIndexes(bucket, actor.licenseId, paths, stamp);
     // Same per-gym measure as op=status (PR 517): everything under groups/{licenseId}/.
     const licenseUsedBytes = await bytesUnder(bucket, `groups/${actor.licenseId}/`);
     return json(200, {

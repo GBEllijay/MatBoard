@@ -20,6 +20,7 @@ import {
   runDeviceMigration,
   uniqueCloudFileName,
   type MigrationUpload,
+  folderCopyFor,
 } from './cloudMediaFolders.ts';
 import { playableItems, type FolderId, type StoredPhoto } from './photoStore.ts';
 
@@ -331,4 +332,13 @@ test('device send: a photo Cloud already has (under its old name) is linked to t
   // The next run skips it.
   const again = planDeviceMigration({ rows: [row], folderId: 'events', index: cloud.index, listedPaths: cloud.files, dateKey: '2026-11-19' });
   assert.equal(again.skip.length, 1);
+});
+
+test('"Photos stay on this device" shows only when the folder really is device-only', () => {
+  const folder = { id: 'gallery', emptyCopy: 'No photos yet. Photos stay on this device.', orderHint: 'Drag to reorder. Photos and clips stay on this device.' };
+  assert.deepEqual(folderCopyFor(folder, 'device'), folder);
+  const cloud = folderCopyFor(folder, 'cloud');
+  assert.equal(cloud.emptyCopy, 'No photos yet.');
+  assert.equal(cloud.orderHint, 'Drag to reorder.');
+  assert.equal(cloud.id, 'gallery');
 });
