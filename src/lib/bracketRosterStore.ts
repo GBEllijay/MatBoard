@@ -6,6 +6,7 @@
  * are copied in once; that old key is left in place.
  */
 
+import { setKidsEnabled } from './kidsScoreboard.ts';
 import { WHITE_BOARD_FROM } from './productNames.ts';
 import { clipName } from './rosterStore.ts';
 import { fillCheckedInBracket, getTournament, newBracket, bracketHasContent, WHITE_MAX_COMPETITORS } from './tournamentStore.ts';
@@ -325,6 +326,10 @@ export function seedWhiteBracketFromRoster(
 ): number {
   const names = state.entries.map((entry) => entry.name).filter(Boolean);
   if (names.length < 2) return 0;
+  const adultRoster =
+    state.entries.some((entry) => /\badult\b/i.test(entry.division)) &&
+    !state.entries.some((entry) => /\b(kid|kids|youth|junior|teen)\b/i.test(entry.division));
+  if (options?.newBoard !== false && adultRoster) setKidsEnabled(false);
   if (options?.newBoard !== false && bracketHasContent(getTournament())) newBracket();
   // The roster can hold many names. A White bracket still tops out at WHITE_MAX_COMPETITORS.
   const cap = Math.min(WHITE_MAX_COMPETITORS, Math.max(2, Math.round(max) || WHITE_MAX_COMPETITORS));

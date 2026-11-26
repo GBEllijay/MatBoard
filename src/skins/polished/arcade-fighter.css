@@ -56,13 +56,13 @@
   font-family: 'Press Start 2P', monospace;
 }
 
-.skin-root[data-skin='arcade-fighter'] .lab { font-size: 1.5vh; letter-spacing: 0; }
+.skin-root[data-skin='arcade-fighter'] .lab { font-size: 1.22vh; letter-spacing: 0; line-height: 1.15; padding: 0.35vh 0.55vh; border-radius: 0.25vh; }
 .skin-root[data-skin='arcade-fighter'] .pts .lab { color: #111; background: var(--pts); }
 .skin-root[data-skin='arcade-fighter'] .adv .lab { color: #111; background: var(--adv); }
 .skin-root[data-skin='arcade-fighter'] .pen .lab { color: #111; background: var(--pen); }
 
-.skin-root[data-skin='arcade-fighter'] .tile { background: #07060c; }
-.skin-root[data-skin='arcade-fighter'] .num { font-size: 12vh; }
+.skin-root[data-skin='arcade-fighter'] .tile { background: rgba(7, 6, 12, 0.92); box-shadow: inset 0 0 0 0.2vh rgba(255, 255, 255, 0.16); }
+.skin-root[data-skin='arcade-fighter'] .num { font-size: 9vh; line-height: 0.92; }
 
 .skin-root[data-skin='arcade-fighter'] .c1 .side b,
 .skin-root[data-skin='arcade-fighter'] .c1 .belt { background: var(--blue); color: #fff; border-radius: 0.3vh; }

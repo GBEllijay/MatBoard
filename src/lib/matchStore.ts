@@ -37,7 +37,10 @@ import {
   type Side,
 } from './outcomes';
 import { defaultCompetitorName, resolvedCompetitorName } from './competitorName';
+import { applyPenaltyDelta, penaltyLadderFor } from './ibjjfPenalties';
+import { getKidsScoreboard, kidsSkinFromSearch } from './kidsScoreboard';
 import {
+  clearMatchResult,
   isBracketMatchId,
   rememberEmptyBoutNames,
   sanitizeBoutPoints,
@@ -107,7 +110,7 @@ export type MatchState = {
 
 export type MatchAction =
   | { type: 'replace'; state: MatchState }
-  | { type: 'bump'; side: Side; kind: ScoreKind; delta: number }
+  | { type: 'bump'; side: Side; kind: ScoreKind; delta: number; kidsRules?: boolean }
   | { type: 'toggleClock' }
   | { type: 'resetClock' }
   | { type: 'adjustClock'; deltaMs: number }
@@ -392,19 +395,34 @@ function maybeAutoAnnounce(current: MatchState): MatchState {
 
 function maybeWriteAutoBracket(prev: MatchState, next: MatchState): void {
   if (applyingRemote || isPresentationReceiver()) return;
+  if (!isBracketMatchId(next.bracketMatchId)) return;
   const outcome = next.outcome;
-  if (!outcome || outcome.source !== 'auto' || outcome.call !== 'win') return;
+  if (!outcome) {
+    if (
+      prev.bracketMatchId === next.bracketMatchId &&
+      prev.outcome?.source === 'auto' &&
+      prev.outcome.call === 'dq'
+    ) {
+      clearMatchResult(next.bracketMatchId);
+    }
+    return;
+  }
+  if (outcome.source !== 'auto') return;
   if (prev.outcome?.at === outcome.at && prev.outcome.side === outcome.side && prev.outcome.call === outcome.call) {
     return;
   }
-  if (!isBracketMatchId(next.bracketMatchId)) return;
   rememberEmptyBoutNames(next.bracketMatchId, { a: next.blue.name, b: next.white.name });
-  const winnerPoints = outcome.side === 'blue' ? next.blue.points : next.white.points;
-  const loserPoints = outcome.side === 'blue' ? next.white.points : next.blue.points;
+  const winnerIsBlue = outcome.call === 'win' ? outcome.side === 'blue' : outcome.side !== 'blue';
+  const winnerPoints = winnerIsBlue ? next.blue.points : next.white.points;
+  const loserPoints = winnerIsBlue ? next.white.points : next.blue.points;
+  const stored =
+    outcome.call === 'win'
+      ? ({ call: 'win', method: outcome.method, scoreReason: outcome.scoreReason } as const)
+      : ({ call: 'dq', reason: outcome.reason } as const);
   setMatchOutcome(
     next.bracketMatchId,
     scoreboardSideToBracket(outcome.side),
-    { call: 'win', method: outcome.method, scoreReason: outcome.scoreReason },
+    stored,
     { toggle: false, points: sanitizeBoutPoints(winnerPoints, loserPoints) },
   );
 }
@@ -414,10 +432,68 @@ function applyAction(current: MatchState, action: MatchAction): MatchState {
     case 'replace':
       return clone(action.state);
     case 'bump': {
+      if (action.kind !== 'disadvantages') {
+        const competitor = { ...current[action.side] };
+        const max = LIMITS[action.kind];
+        competitor[action.kind] = clamp(competitor[action.kind] + action.delta, 0, max);
+        return bumpRevision({ ...current, [action.side]: competitor });
+      }
+      const otherSide: Side = action.side === 'blue' ? 'white' : 'blue';
       const competitor = { ...current[action.side] };
-      const max = LIMITS[action.kind];
-      competitor[action.kind] = clamp(competitor[action.kind] + action.delta, 0, max);
-      return bumpRevision({ ...current, [action.side]: competitor });
+      const opponent = { ...current[otherSide] };
+      const urlKids =
+        typeof window !== 'undefined'
+          ? Boolean(kidsSkinFromSearch(new URLSearchParams(window.location.search)))
+          : false;
+      const kidsBracketActive = Boolean(current.bracketMatchId && getKidsScoreboard().enabled);
+      const ladder = penaltyLadderFor({
+        kidsRules: action.kidsRules ?? urlKids,
+        division: current.division,
+        skin: current.skin,
+        kidsBracketActive,
+      });
+      const step = applyPenaltyDelta({
+        ladder,
+        currentPenalties: competitor.disadvantages,
+        opponentPoints: opponent.points,
+        opponentAdvantages: opponent.advantages,
+        delta: action.delta,
+        maxPoints: LIMITS.points,
+        maxAdvantages: LIMITS.advantages,
+      });
+      competitor.disadvantages = step.penalties;
+      opponent.points = step.opponentPoints;
+      opponent.advantages = step.opponentAdvantages;
+      let nextState: MatchState = {
+        ...current,
+        [action.side]: competitor,
+        [otherSide]: opponent,
+      };
+      if (step.triggerDq && !current.outcome) {
+        const at = Date.now();
+        nextState = {
+          ...nextState,
+          running: false,
+          remainingMs: remainingNow(current),
+          startedAt: null,
+          outcome: {
+            side: action.side,
+            call: 'dq',
+            reason: 'technical',
+            source: 'auto',
+            at,
+          },
+          outcomeFlash: { kind: 'dq', side: action.side, at },
+        };
+      } else if (
+        step.clearAutoDq &&
+        current.outcome?.source === 'auto' &&
+        current.outcome.call === 'dq' &&
+        current.outcome.side === action.side
+      ) {
+        nextState = withoutOutcome(nextState);
+      }
+      return bumpRevision(nextState);
     }
     case 'toggleClock': {
       if (current.running) {

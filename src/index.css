@@ -3710,10 +3710,12 @@ span.role-plan__mark {
 
 .display__chrome .chip {
   pointer-events: auto;
-  opacity: 0.72;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--ink);
-  border: 1px solid var(--line);
+  opacity: 0.94;
+  background: rgba(10, 14, 24, 0.8);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
 }
 
 .display__chrome .chip--gold {
@@ -3767,6 +3769,16 @@ span.role-plan__mark {
   top: calc(0.55rem + var(--safe-t));
   right: calc(0.55rem + var(--safe-r));
   z-index: 5;
+}
+
+.training .play-fs-slot .chip,
+.display .play-fs-slot .chip {
+  opacity: 0.94;
+  background: rgba(10, 14, 24, 0.8);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
 }
 
 /* Media Console belt shares the top row. Keep Fullscreen above that belt. */
@@ -17789,9 +17801,10 @@ a.plan-pick {
 }
 
 .tournament--bright .tournament__tools .tournament__title,
-.tournament--dark .tournament__tools .tournament__title {
-  flex: 1 1 8rem;
-  min-width: 7.5rem;
+.tournament--dark .tournament__tools .tournament__title,
+.tournament--podium .tournament__tools .tournament__title {
+  flex: 1 1 13rem;
+  min-width: 11rem;
   text-transform: none;
 }
 
@@ -18085,15 +18098,69 @@ a.plan-pick {
   opacity: 1;
 }
 
+.tournament--kids .bracket__side--left {
+  grid-template-columns: 19rem 16rem 16rem;
+}
+
+.tournament--kids .bracket__side--right {
+  grid-template-columns: 16rem 16rem 19rem;
+}
+
+.tournament--kids .bracket--tree-8 .bracket__side--left {
+  grid-template-columns: 19rem 16rem;
+}
+
+.tournament--kids .bracket--tree-8 .bracket__side--right {
+  grid-template-columns: 16rem 19rem;
+}
+
+.tournament--kids .bracket--tree-32 .bracket__side--left {
+  grid-template-columns: 18.5rem 15.5rem 15.5rem 15.5rem;
+}
+
+.tournament--kids .bracket--tree-32 .bracket__side--right {
+  grid-template-columns: 15.5rem 15.5rem 15.5rem 18.5rem;
+}
+
+.tournament--kids .bracket--tree-64 .bracket__side--left {
+  grid-template-columns: 18.5rem 15.5rem 15.5rem 15.5rem 15.5rem;
+}
+
+.tournament--kids .bracket--tree-64 .bracket__side--right {
+  grid-template-columns: 15.5rem 15.5rem 15.5rem 15.5rem 18.5rem;
+}
+
+.tournament--kids .t-slot {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.14rem 0.28rem 0.14rem 0.55rem;
+}
+
+.tournament--kids .t-slot__who {
+  min-width: 0;
+}
+
+.tournament--kids .t-bye-note {
+  justify-self: center;
+  min-height: 30px;
+  padding: 0.2rem 0.78rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #101820;
+  -webkit-text-fill-color: #101820;
+  border: 1px solid rgba(16, 24, 34, 0.18);
+  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.14);
+}
+
 .tournament--kids .t-mark,
 .tournament--kids.tournament--bright .t-mark,
 .tournament--kids.tournament--dark .t-mark,
 .tournament--kids.tournament--bright .t-match--final .t-mark,
 .tournament--kids.tournament--dark .t-match--final .t-mark {
-  min-height: 48px;
-  min-width: 3.6rem;
-  padding: 0.28rem 0.65rem;
-  font-size: 1.02rem;
+  min-height: 40px;
+  min-width: 2.85rem;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.86rem;
   font-weight: 800;
   letter-spacing: 0.04em;
 }
