@@ -220,7 +220,10 @@ test('the homepage hero buy button uses the price constant and opens /buy', () =
   assert.match(hero, /className="sf-buy sfh-buy"/);
   assert.doesNotMatch(hero, /StorefrontBuyBlock|sfh-top-buy/);
   assert.match(css, /\.sfh--e \.sfh-cta \{[^}]*margin-top:\s*24px/s);
+  assert.match(css, /\.sfh--e \.sfh-cta \{[^}]*align-items:\s*stretch/s);
+  assert.match(css, /\.sfh--e \.sfh-cta \.sfh-buy \{[^}]*width:\s*100%/s);
   assert.match(css, /\.sfh--e \.sfh-text \{[^}]*padding:\s*32px 36px 36px/s);
+  assert.doesNotMatch(pageCss, /\.sf-bottom-buy \.sfh-buy \{[^}]*width:\s*100%/s);
   // The default mats hero keeps the button inside the left text card, under the body copy.
   const textCard = hero.indexOf("variant === 'e'");
   const eText = hero.indexOf('className="sfh-text"', textCard);

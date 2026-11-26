@@ -1107,12 +1107,25 @@
   width: 100%;
 }
 
-/* Option E buy button sits inside the left text card, under the body copy. */
+/* Option E buy button sits inside the left text card, under the body copy.
+   It stretches to the card's content width at every breakpoint; the bottom
+   buy button is styled separately and stays shrink-to-fit on desktop. */
 .home.home--store .sfh--e .sfh-cta {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
+  width: 100%;
   margin-top: 24px;
+}
+
+.home.home--store .sfh--e .sfh-cta .sfh-buy {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.home.home--store .sfh--e .sfh-cta .sfh-buy-price {
+  margin-left: auto;
 }
 
 .home.home--store .sfh--e .sfh-fine {
