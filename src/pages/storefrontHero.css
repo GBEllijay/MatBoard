@@ -1086,6 +1086,7 @@
   max-width: none;
   padding-left: max(48px, calc(50% - 632px));
   padding-right: max(40px, calc(50% - 560px));
+  padding-bottom: 56px;
   min-height: min(700px, calc(100svh - 40px));
 }
 
@@ -1115,7 +1116,7 @@
 
 .home.home--store .sfh--e .sfh-top-buy {
   grid-column: 1 / -1;
-  margin-top: 4px;
+  margin-top: 20px;
 }
 
 .home.home--store .sfh-top-buy .sfh-fine {
@@ -1146,7 +1147,7 @@
     flex-direction: column;
     align-items: stretch;
     min-height: 0;
-    padding: 10px 20px 36px;
+    padding: 10px 20px 44px;
     gap: 0;
   }
 
@@ -1159,7 +1160,7 @@
   .home.home--store .sfh--e .sfh-title { order: 2; }
   .home.home--store .sfh--e .sfh-lead { order: 3; }
   .home.home--store .sfh--e .sfh-stage { order: 4; margin-top: 10px; width: 100%; gap: 6px; }
-  .home.home--store .sfh--e .sfh-top-buy { order: 5; margin-top: 6px; width: 100%; }
+  .home.home--store .sfh--e .sfh-top-buy { order: 5; margin-top: 16px; width: 100%; }
   .home.home--store .sfh--e .sfh-cta { order: 6; margin-top: 6px; position: relative; z-index: 2; }
   .home.home--store .sfh--e .sfh-sub { order: 7; margin-top: 18px; text-align: center; }
 

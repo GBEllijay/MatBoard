@@ -9,7 +9,9 @@ import {
   STOREFRONT_BUY_PATH,
   STOREFRONT_HERO_BUY_LABEL,
   STOREFRONT_HERO_BUY_TEXT,
+  STOREFRONT_WIN_BUY_KICKER,
   STOREFRONT_WIN_BUY_LABEL,
+  STOREFRONT_WIN_BUY_PRODUCT,
   STOREFRONT_COMING_SOON,
   STOREFRONT_HERO,
   STOREFRONT_NAV,
@@ -33,6 +35,8 @@ test('storefront sells White once and sends Buy Now to the existing checkout', (
   assert.equal(STOREFRONT_BUY_LABEL, 'Buy Advantage BJJ Scoreboard — $19.99');
   assert.equal(STOREFRONT_HERO_BUY_TEXT, 'Buy Advantage');
   assert.equal(STOREFRONT_HERO_BUY_LABEL, 'Buy Advantage $19.99');
+  assert.equal(STOREFRONT_WIN_BUY_KICKER, 'Win.');
+  assert.equal(STOREFRONT_WIN_BUY_PRODUCT, 'Buy Advantage.');
   assert.equal(STOREFRONT_WIN_BUY_LABEL, 'Win. Buy Advantage.');
   assert.equal(STOREFRONT_HERO.title, 'Win by Advantage.');
   assert.equal(STOREFRONT_HERO.clock, '05:00');
@@ -220,6 +224,8 @@ test('the homepage hero buy button uses the price constant and opens /buy', () =
   assert.match(hero, /className="sfh-top-buy"/);
   assert.match(hero, /<StorefrontBuyBlock \/>/);
   assert.match(css, /\.sfh--e \.sfh-top-buy \{[^}]*grid-column:\s*1 \/ -1/s);
+  assert.match(css, /\.sfh--e \.sfh-top-buy \{[^}]*margin-top:\s*20px/s);
+  assert.match(css, /\.sfh--e \.sfh-inner \{[^}]*padding-bottom:\s*56px/s);
   // The default mats hero keeps the button under the text and board cards, not inside the text card.
   const textCard = hero.indexOf("variant === 'e'");
   const eText = hero.indexOf('className="sfh-text"', textCard);
@@ -233,7 +239,7 @@ test('the homepage hero buy button uses the price constant and opens /buy', () =
   assert.doesNotMatch(pageCss, /\.home\.home--store \.sf-buy \{[^}]*background:/s);
 });
 
-test('the homepage closing card says Win. Buy Advantage. and links to the same /buy route', () => {
+test('the homepage closing card says Win. Buy Advantage. and is not a /buy link', () => {
   const page = readFileSync(new URL('../pages/Storefront.tsx', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../pages/storefront.css', import.meta.url), 'utf8');
   const brackets = page.indexOf('id="brackets"');
@@ -241,15 +247,21 @@ test('the homepage closing card says Win. Buy Advantage. and links to the same /
   const bottomBuy = page.indexOf('className="sf-wrap sf-bottom-buy"');
   const footer = page.indexOf('className="sf-footer"');
   assert.ok(brackets > -1 && winBuy > brackets && winBuy < footer, 'card sits below Mock tournament and above the footer');
-  assert.ok(bottomBuy > winBuy && bottomBuy < footer, 'second buy button sits below the card and above the footer');
+  assert.ok(bottomBuy > winBuy && bottomBuy < footer, 'buy button sits below the card and above the footer');
   assert.match(page, /className="sf-win-buy"/);
-  assert.match(page, /to=\{STOREFRONT_BUY_PATH\}/);
-  assert.match(page, /aria-label=\{STOREFRONT_WIN_BUY_LABEL\}/);
+  assert.doesNotMatch(page, /to=\{STOREFRONT_BUY_PATH\}/);
+  assert.doesNotMatch(page, /aria-label=\{STOREFRONT_WIN_BUY_LABEL\}/);
+  assert.match(page, /className="sf-win-buy-kicker"/);
+  assert.match(page, /className="sf-win-buy-product"/);
+  assert.match(page, /STOREFRONT_WIN_BUY_KICKER/);
+  assert.match(page, /STOREFRONT_WIN_BUY_PRODUCT/);
   assert.match(page, /className="sf-win-buy-logo"/);
   assert.match(page, /src="\/advantage-icon\.png"/);
   assert.match(page, /<StorefrontBuyButton \/>/);
   assert.match(css, /\.home\.home--store \.sf-win-buy \{/);
   assert.match(css, /\.sf-win-buy-logo/);
+  assert.match(css, /\.sf-win-buy-product \{[^}]*white-space:\s*nowrap/s);
+  assert.match(css, /\.sf-win-buy-kicker \{[^}]*display:\s*block/s);
   assert.match(css, /\.sf-bottom-buy/);
 });
 

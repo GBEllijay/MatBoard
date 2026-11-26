@@ -83,10 +83,10 @@ test('public homepage sells Advantage White and links coming soon to the edition
   await expect(brackets.getByRole('heading', { name: 'Mock tournament', exact: true })).toBeVisible();
   await expect(brackets).toContainText('Build a bracket from your roster');
   await expect(page.getByRole('link', { name: 'Open Mock tournament' })).toHaveAttribute('href', '/white/brackets?from=white');
-  const winBuy = page.getByRole('link', { name: 'Win. Buy Advantage.' });
-  await expect(winBuy).toHaveAttribute('href', '/buy');
+  const winBuy = page.getByRole('heading', { name: 'Win. Buy Advantage.', exact: true });
   await expect(winBuy).toBeVisible();
-  await expect(winBuy.locator('img.sf-win-buy-logo')).toHaveAttribute('src', '/advantage-icon.png');
+  await expect(page.getByRole('link', { name: 'Win. Buy Advantage.' })).toHaveCount(0);
+  await expect(page.locator('.sf-win-buy img.sf-win-buy-logo')).toHaveAttribute('src', '/advantage-icon.png');
   await expect(page.getByRole('link', { name: 'Buy Advantage $19.99' })).toHaveCount(2);
   await expect(page.getByRole('region', { name: 'Start with White. Grow into Pro.' })).toHaveCount(0);
   await expect(page.locator('.sf-step')).toHaveCount(0);

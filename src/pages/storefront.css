@@ -1276,7 +1276,8 @@
 }
 
 /* Closing "Win. Buy Advantage." card. Mirrors the hero "Win by Advantage" title:
-   large tight Inter, dark rounded woodcut card on the mat. The whole card is the buy link. */
+   large tight Inter, dark rounded woodcut card on the mat. The card is not a link;
+   the option E button under it is the /buy target. */
 .home.home--store .sf-win-buy {
   display: flex;
   flex-direction: column;
@@ -1287,7 +1288,6 @@
   border-radius: 20px;
   background: rgba(0, 0, 0, 0.64);
   color: #fff;
-  text-decoration: none;
   text-align: center;
   box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
@@ -1301,24 +1301,15 @@
   margin: 0;
 }
 
+.home.home--store .sf-win-buy-product {
+  white-space: nowrap;
+}
+
 .home.home--store .sf-win-buy-logo {
   display: block;
   width: 96px;
   height: 96px;
   margin-top: 18px;
-}
-
-.home.home--store .sf-win-buy:hover,
-.home.home--store .sf-win-buy:focus-visible {
-  color: #fff;
-  text-decoration: none;
-  background: rgba(0, 0, 0, 0.72);
-}
-
-.home.home--store .sf-win-buy:focus-visible {
-  outline: 3px solid #f4ecd8;
-  outline-offset: 3px;
-  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .home.home--store .sf-bottom-buy {
@@ -1331,6 +1322,15 @@
   .home.home--store .sf-win-buy {
     margin-top: 40px;
     padding: 22px 18px 20px;
+  }
+
+  .home.home--store .sf-win-buy h2 {
+    font-size: clamp(32px, 10vw, 76px);
+  }
+
+  /* Force the break after "Win." so "Buy Advantage." stays together. */
+  .home.home--store .sf-win-buy-kicker {
+    display: block;
   }
 
   .home.home--store .sf-win-buy-logo {
