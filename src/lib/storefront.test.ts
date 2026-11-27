@@ -222,6 +222,9 @@ test('the homepage hero buy button uses the price constant and opens /buy', () =
   assert.match(css, /\.sfh--e \.sfh-cta \{[^}]*margin-top:\s*24px/s);
   assert.match(css, /\.sfh--e \.sfh-cta \{[^}]*align-items:\s*stretch/s);
   assert.match(css, /\.sfh--e \.sfh-cta \.sfh-buy \{[^}]*width:\s*100%/s);
+  // On phone the unpacked mats hero keeps the buy button and fine print with the lead, before the boards.
+  assert.match(css, /\.sfh--e \.sfh-cta \{[^}]*order:\s*4/s);
+  assert.match(css, /\.sfh--e \.sfh-stage \{[^}]*order:\s*5/s);
   assert.match(css, /\.sfh--e \.sfh-text \{[^}]*padding:\s*32px 36px 36px/s);
   assert.doesNotMatch(pageCss, /\.sf-bottom-buy \.sfh-buy \{[^}]*width:\s*100%/s);
   // The default mats hero keeps the button inside the left text card, under the body copy.
@@ -231,8 +234,8 @@ test('the homepage hero buy button uses the price constant and opens /buy', () =
   const eTextClose = hero.indexOf('</div>', eText);
   assert.ok(textCard > -1 && eText > textCard && eCta > eText && eCta < eTextClose, 'default hero buy button sits inside the text card');
   assert.match(css, /--buy-gold:\s*#f6c000/);
-  assert.match(css, /\.sfh-buy-price \{[^}]*background:\s*#0e1726/s);
-  assert.match(css, /\.sfh-buy-price \{[^}]*color:\s*#f6c000/s);
+  assert.match(css, /\.sfh-buy-price \{[^}]*background:\s*#fff/s);
+  assert.match(css, /\.sfh-buy-price \{[^}]*color:\s*var\(--logo-blue\)/s);
   assert.match(css, /outline:\s*3px solid #f4ecd8/);
   assert.doesNotMatch(pageCss, /\.home\.home--store \.sf-buy \{[^}]*background:/s);
 });
