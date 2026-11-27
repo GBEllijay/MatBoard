@@ -90,8 +90,9 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* The one call to action. Option E: brand yellow #f6c000 with a navy price chip.
-   Visual paint lives on .sfh-buy. .sf-buy in storefront.css is a locator class only. */
+/* The one call to action. Option E: brand yellow #f6c000 with a white price chip
+   in logo blue (var(--logo-blue), #004eba). Visual paint lives on .sfh-buy.
+   .sf-buy in storefront.css is a locator class only. */
 .home.home--store .sfh-cta {
   margin-top: 30px;
 }
@@ -132,11 +133,11 @@
   min-height: 40px;
   padding: 0 14px;
   border-radius: 10px;
-  background: #0e1726;
-  color: #f6c000;
+  background: #fff;
+  color: var(--logo-blue);
   font-weight: 800;
   letter-spacing: -0.02em;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(0, 78, 186, 0.16);
 }
 
 @media (hover: hover) {

@@ -81,9 +81,12 @@ test('homepage Buy CTA uses brand yellow, keeps its link, and stays visible in f
   const desktop = await paint(buy);
   expectOptionEBuy(desktop);
   const price = await paint(buy.locator('.sfh-buy-price'));
-  expect(price.backgroundColor).toBe('rgb(14, 23, 38)');
-  expect(price.color).toBe('rgb(246, 192, 0)');
+  expect(price.backgroundColor).toBe('rgb(255, 255, 255)');
+  expect(price.color).toBe('rgb(0, 78, 186)');
   expectOptionEBuy(await paint(bottomBuy));
+  const bottomPrice = await paint(bottomBuy.locator('.sfh-buy-price'));
+  expect(bottomPrice.backgroundColor).toBe('rgb(255, 255, 255)');
+  expect(bottomPrice.color).toBe('rgb(0, 78, 186)');
   await buy.focus();
   await expect(buy).toHaveCSS('outline-color', 'rgb(244, 236, 216)');
   await expect(buy).toHaveCSS('outline-style', 'solid');

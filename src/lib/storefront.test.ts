@@ -234,8 +234,8 @@ test('the homepage hero buy button uses the price constant and opens /buy', () =
   const eTextClose = hero.indexOf('</div>', eText);
   assert.ok(textCard > -1 && eText > textCard && eCta > eText && eCta < eTextClose, 'default hero buy button sits inside the text card');
   assert.match(css, /--buy-gold:\s*#f6c000/);
-  assert.match(css, /\.sfh-buy-price \{[^}]*background:\s*#0e1726/s);
-  assert.match(css, /\.sfh-buy-price \{[^}]*color:\s*#f6c000/s);
+  assert.match(css, /\.sfh-buy-price \{[^}]*background:\s*#fff/s);
+  assert.match(css, /\.sfh-buy-price \{[^}]*color:\s*var\(--logo-blue\)/s);
   assert.match(css, /outline:\s*3px solid #f4ecd8/);
   assert.doesNotMatch(pageCss, /\.home\.home--store \.sf-buy \{[^}]*background:/s);
 });
